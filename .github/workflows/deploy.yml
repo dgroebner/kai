@@ -1,0 +1,39 @@
+name: Deploy to Strato
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🚚 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2' # Passe dies an deine Strato-PHP-Version an
+          tools: composer
+
+      - name: 📦 Install Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: 🚀 Deploy via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 22
+          # Da der Strato-FTP-User direkt auf /kai_root gemappt ist, 
+          # laden wir alles ins Root-Verzeichnis (/) des FTP-Users hoch.
+          remote_path: '/'
+          local_path: './'
+          # Wichtige Dateien vor dem Löschen/Überschreiben schützen
+          args: '-o ConnectTimeout=5'
+          delete: true # Löscht Dateien auf dem Server, die nicht mehr im Git sind
+          sftp_only: true
