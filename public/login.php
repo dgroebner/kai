@@ -24,6 +24,7 @@ if (isset($_GET['code'])) {
         // Autorisierung prüfen
         $allowed_users = explode(',', $_ENV['ALLOWED_USERS']);
         if (in_array($email, $allowed_users)) {
+			session_regenerate_id(true);
             $_SESSION['user_email'] = $email;
             $_SESSION['user_name'] = $name;
             header('Location: https://kai.agent-smith.de/index.php');
