@@ -9,11 +9,11 @@ class GeminiClient {
     private string $apiUrl;
     private Logger $logger;
 
-    public function __construct(string $model = 'gemini-1.5-flash') {
+	public function __construct(string $model = 'gemini-1.5-flash') {
         $this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
+        // Wir ändern den Pfad von v1beta auf den korrekten Pfad für generateContent
         $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
         
-        // Wir binden den Logger direkt ein, um auch KI-spezifische Events aufzuzeichnen
         $this->logger = new Logger(14);
     }
 

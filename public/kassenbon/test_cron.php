@@ -1,14 +1,6 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-// Prüfung einfügen:
-if (!extension_loaded('imap')) {
-    die("FEHLER: Die PHP-Extension 'imap' ist auf diesem Server nicht installiert oder aktiviert.");
-}
-if (!extension_loaded('fileinfo')) {
-    die("FEHLER: Die PHP-Extension 'fileinfo' ist nicht installiert.");
-}
-
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Kassenbon\ScannerTask;
 
