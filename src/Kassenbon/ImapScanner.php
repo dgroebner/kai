@@ -12,7 +12,7 @@ class ScannerTask {
         $mailClient = new ImapClient($user, $pass);
         $gemini = new GeminiAgent();
 
-        $messages = $mailClient->getUnreadMails();
+        $messages = $mailClient->getVerifiedMails();
 
         if (empty($messages)) {
             echo "Keine neuen Kassenbons gefunden.<br>";
