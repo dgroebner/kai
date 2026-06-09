@@ -12,26 +12,41 @@ jobs:
     steps:
       - name: 🚚 Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Wichtig: Holt die gesamte Git-Historie für die echten Zeitstempel
+
+      - name: ⏱️ Restore Git Timestamps
+        uses: cheerio/git-restore-mtime-action@v2
 
       - name: 🐘 Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          tools: composer
+          php-version: '8.2'
+
+      - name: 💾 Cache Vendor
+        id: composer-cache
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
 
       - name: 📦 Install Dependencies
+        if: steps.composer-cache.outputs.cache-hit != 'true'
         run: composer install --no-dev --optimize-autoloader
 
-      - name: 🚀 Incremental Deploy via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }} # MUSS ftp.strato.de sein!
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 21
-          # Nutzt normales FTP, macht aber ein automatisches, explizites SSL-Upgrade
-          protocol: ftp
-          # Erlaubt verschlüsselte Verbindungen auch bei komplexen Load-Balancer-Zertifikaten
-          security: loose
-          server-dir: /
-          state-name: .ftp-deploy-sync-state.json
+      - name: 🚀 Incremental Deploy via SFTP
+        env:
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PWD: ${{ secrets.FTP_PASSWORD }}
+          FTP_HOST: ${{ secrets.FTP_SERVER }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y lftp
+          lftp -u "$FTP_USER","$FTP_PWD" sftp://"$FTP_HOST" <<EOF
+          set sftp:auto-confirm yes
+          mirror --reverse --delete --only-newer --parallel=5 \
+                 --exclude-glob .git/ \
+                 --exclude-glob .github/ \
+                 --exclude-glob .env \
+                 --exclude-glob .ftpignore \
+                 ./ ./
+          EOF
