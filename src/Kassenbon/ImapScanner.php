@@ -3,7 +3,7 @@ namespace Kai\Tools\Kassenbon;
 
 use Kai\Tools\Shared\Mail\ImapClient;
 
-class ScannerTask {
+class ImapScanner {
     
     public function run() {
         $user = $_ENV['IMAP_USER_KASSENBON'];

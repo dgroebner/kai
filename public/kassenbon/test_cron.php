@@ -10,7 +10,7 @@ if (!extension_loaded('fileinfo')) {
 }
 
 use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Kassenbon\ScannerTask;
+use Kai\Tools\Kassenbon\ImapScanner;
 
 $logger = new Logger(14); // 14 Tage Aufbewahrung
 
@@ -21,7 +21,7 @@ try {
     ini_set('memory_limit', '512M');
     ini_set('max_execution_time', '120');
 
-    $task = new ScannerTask();
+    $task = new ImapScanner();
     $task->run();
     
     $logger->info("Cronjob erfolgreich beendet.");
