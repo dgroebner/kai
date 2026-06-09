@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0 # Wichtig: Holt die gesamte Git-Historie für die echten Zeitstempel
 
       - name: ⏱️ Restore Git Timestamps
-        uses: cheerio/git-restore-mtime-action@v2
+        uses: chetan/git-restore-mtime-action@v2
 
       - name: 🐘 Setup PHP
         uses: shivammathur/setup-php@v2
