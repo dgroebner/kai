@@ -21,7 +21,7 @@ try {
     ini_set('memory_limit', '512M');
     ini_set('max_execution_time', '120');
 
-    $task = new ImapScanner();
+    $task = new ScannerTask();
     $task->run();
     
     $logger->info("Cronjob erfolgreich beendet.");
