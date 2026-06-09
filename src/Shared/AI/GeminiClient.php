@@ -9,7 +9,7 @@ class GeminiClient {
     private string $apiUrl;
     private Logger $logger;
 
-    public function __construct(string $model = 'gemini-1.5-flash') {
+    public function __construct(string $model = 'gemini-3-flash-preview') {
 		$this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
 		// Weg mit dem Modell aus der URL!
 		$this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent"; 
