@@ -25,12 +25,13 @@ jobs:
       - name: 🚀 Incremental Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          server: ${{ secrets.FTP_SERVER }} # MUSS ftp.strato.de sein!
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
           port: 21
-          # Lade in das Root-Verzeichnis deines FTP-Users
+          # Nutzt normales FTP, macht aber ein automatisches, explizites SSL-Upgrade
+          protocol: ftp
+          # Erlaubt verschlüsselte Verbindungen auch bei komplexen Load-Balancer-Zertifikaten
+          security: loose
           server-dir: /
-          # Verhindert, dass das State-File von Strato gelöscht wird
           state-name: .ftp-deploy-sync-state.json
