@@ -16,24 +16,21 @@ jobs:
       - name: 🐘 Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2' # Passe dies an deine Strato-PHP-Version an
+          php-version: '8.2'
           tools: composer
 
       - name: 📦 Install Dependencies
         run: composer install --no-dev --optimize-autoloader
 
-      - name: 🚀 Deploy via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      - name: 🚀 Incremental Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: 22
-          # Da der Strato-FTP-User direkt auf /kai_root gemappt ist, 
-          # laden wir alles ins Root-Verzeichnis (/) des FTP-Users hoch.
-          remote_path: '/'
-          local_path: './'
-          # Wichtige Dateien vor dem Löschen/Überschreiben schützen
-          args: '-o ConnectTimeout=5'
-          delete: true # Löscht Dateien auf dem Server, die nicht mehr im Git sind
-          sftp_only: true
+          protocol: ftps
+          port: 21
+          # Lade in das Root-Verzeichnis deines FTP-Users
+          server-dir: /
+          # Verhindert, dass das State-File von Strato gelöscht wird
+          state-name: .ftp-deploy-sync-state.json
