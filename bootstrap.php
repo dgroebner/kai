@@ -15,8 +15,6 @@ ini_set('session.cookie_samesite', 'Strict');
 
 session_start();
 
-session_start();
-
 function getGoogleClient() {
     $client = new Google\Client();
     $client->setClientId($_ENV['GOOGLE_CLIENT_ID']);
