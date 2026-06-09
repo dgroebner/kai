@@ -6,9 +6,16 @@ class Logger {
     private int $retentionDays;
 
     public function __construct(int $retentionDays = 14) {
-        // Die Logs liegen sicher außerhalb des öffentlichen public/ Ordners
-        $this->logDir = __DIR__ . '/../../../../storage/logs';
-        $this->retentionDays = $retentionDays;
+        // Pfad-Anpassung: Wenn kai_root/src/Shared/Log/Logger.php liegt, 
+        // müssen wir 4 Ebenen nach oben, um wieder auf der Ebene von kai_root zu sein.
+        // Falls storage parallel zu kai_root liegt, reicht das:
+        $this->logDir = __DIR__ . '/../../../storage/logs';
+        
+        // Prüfe, ob das Verzeichnis erreichbar ist, sonst korrigiere den Pfad:
+        if (!is_dir($this->logDir)) {
+            // Debug-Hilfe: Falls er es nicht findet, lass ihn uns anzeigen
+            error_log("Logger konnte Verzeichnis nicht finden: " . $this->logDir);
+        }
 
         if (!is_dir($this->logDir)) {
             mkdir($this->logDir, 0755, true);
@@ -25,16 +32,18 @@ class Logger {
 
     private function writeLog(string $level, string $message, array $context = []) {
         $date = date('Y-m-d');
-        $time = date('H:i:s');
         $file = $this->logDir . "/app-{$date}.log";
 
+        // Versuch das Verzeichnis zu erstellen, falls es fehlt
+        if (!is_dir($this->logDir)) {
+            @mkdir($this->logDir, 0755, true);
+        }
+
         $contextString = !empty($context) ? ' ' . json_encode($context) : '';
-        $logEntry = "[{$date} {$time}] [{$level}] {$message}{$contextString}" . PHP_EOL;
+        $logEntry = "[{$date} " . date('H:i:s') . "] [{$level}] {$message}{$contextString}" . PHP_EOL;
 
-        // LOCK_EX verhindert Dateikonflikte, falls zwei Skripte exakt zeitgleich loggen
-        file_put_contents($file, $logEntry, FILE_APPEND | LOCK_EX);
-
-        $this->cleanup();
+        // Fehler unterdrücken mit @, um einen 500er zu vermeiden, falls Schreiben fehlschlägt
+        @file_put_contents($file, $logEntry, FILE_APPEND | LOCK_EX);
     }
 
     private function cleanup() {
