@@ -15,14 +15,17 @@ class ScannerTask {
     public function run() {
         $this->logger->info("ScannerTask: Starte Verarbeitungslauf...");
 
+        // ERWEITERUNG: Logge bevor etwas passiert
+        $this->logger->info("ScannerTask: Versuche ImapClient zu instanziieren...");
+
         try {
             $user = $_ENV['IMAP_USER_KASSENBON'];
             $pass = $_ENV['IMAP_PASS_KASSENBON'];
 
             $mailClient = new ImapClient($user, $pass);
-            $analyzer = new ReceiptAnalyzer();
-
-            $messages = $mailClient->getVerifiedMails();
+            
+            // Logge nach erfolgreicher Instanziierung
+            $this->logger->info("ScannerTask: ImapClient erfolgreich erstellt.");
 
             if (empty($messages)) {
                 $this->logger->info("ScannerTask: Keine verifizierten Kassenbons zur Verarbeitung gefunden.");
