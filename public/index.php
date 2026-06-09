@@ -24,17 +24,19 @@ if (!isset($_SESSION['user_email'])) {
 
         <main>
             <div class="tool-grid">
+                
                 <div class="card">
-                    <h3>Tool 1</h3>
-                    <p>Beschreibung für das erste Werkzeug in deinem Set.</p>
-                    <a href="#" class="btn">Öffnen</a>
+                    <h3>🛒 eBons</h3>
+                    <p>Automatische KI-Auswertung der Haushalts-Kassenbons und Einzelpreise für die Küchenplanung.</p>
+                    <a href="kassenbon/index.php" class="btn">Öffnen</a>
                 </div>
 
                 <div class="card">
-                    <h3>Tool 2</h3>
-                    <p>Beschreibung für das zweite Werkzeug in deinem Set.</p>
-                    <a href="#" class="btn">Öffnen</a>
+                    <h3>🏠 Home Automation</h3>
+                    <p>Google Home Status & Routinen-Logs (z.B. Gute Nacht Routine).</p>
+                    <a href="#" class="btn" style="opacity: 0.6;">In Entwicklung</a>
                 </div>
+                
             </div>
         </main>
 

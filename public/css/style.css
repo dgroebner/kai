@@ -118,3 +118,18 @@ h1 {
     /* Subtiler Glow passend zum Muted-Text */
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
+
+/* Paginierung */
+.pagination {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 15px;
+	margin-top: 2rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--bg-surface-hover);
+}
+.page-info {
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
