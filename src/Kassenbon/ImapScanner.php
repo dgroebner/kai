@@ -10,7 +10,7 @@ class ImapScanner {
         $pass = $_ENV['IMAP_PASS_KASSENBON'];
 
         $mailClient = new ImapClient($user, $pass);
-        $gemini = new GeminiAgent();
+        $gemini = new ReceiptAnalyzer();
 
         $messages = $mailClient->getVerifiedMails();
 
@@ -36,7 +36,7 @@ class ImapScanner {
                     $base64Data = base64_encode($attachment->getContent());
                     
                     echo "- Sende Daten an Gemini...<br>";
-                    $receiptData = $gemini->analyzeReceipt($mimeType, $base64Data);
+                    $receiptData = $gemini->analyze($mimeType, $base64Data);
                     
                     if ($receiptData) {
                         echo "- Auswertung erfolgreich!<br>";
