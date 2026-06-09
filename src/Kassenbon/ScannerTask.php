@@ -5,62 +5,53 @@ use Kai\Tools\Shared\Mail\ImapClient;
 
 class ScannerTask {
     
-    public function run() {
-        $user = $_ENV['IMAP_USER_KASSENBON'];
-        $pass = $_ENV['IMAP_PASS_KASSENBON'];
+public function run() {
+        $this->logger->info("ScannerTask: Starte Verarbeitungslauf...");
 
-        $mailClient = new ImapClient($user, $pass);
-        $gemini = new ReceiptAnalyzer();
+        try {
+            $mailClient = new \Kai\Tools\Shared\Mail\ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
+            $analyzer = new \Kai\Tools\Kassenbon\ReceiptAnalyzer();
+            $repository = new \Kai\Tools\Kassenbon\ReceiptRepository(); // Neues Repo instanziieren
 
-        $messages = $mailClient->getVerifiedMails();
+            $messages = $mailClient->getVerifiedMails();
 
-        if (empty($messages)) {
-            echo "Keine neuen Kassenbons gefunden.<br>";
-            return;
-        }
+            if (empty($messages)) {
+                $this->logger->info("ScannerTask: Keine verifizierten Kassenbons zur Verarbeitung gefunden.");
+                $mailClient->disconnect();
+                return;
+            }
 
-        foreach ($messages as $message) {
-            echo "Verarbeite Mail: " . $message->getSubject() . "<br>";
+            // Hole bekannte Kategorien vor der Verarbeitung
+            $knownCategories = $repository->getKnownCategories();
 
-            $attachments = $message->getAttachments();
-            $processed = false;
+            foreach ($messages as $message) {
+                // ... (Hier bleibt dein bisheriger Code zur PDF-Extraktion in $base64Data)
+                // Angenommen, du hast hier die Variablen $mimeType und $base64Data
 
-            foreach ($attachments as $attachment) {
-                $mimeType = strtolower($attachment->getMimeType()); 
-                
-                // Wir filtern auf PDFs und gängige Bildformate (z.B. Edeka-Screenshots)
-                if (strpos($mimeType, 'pdf') !== false || strpos($mimeType, 'image') !== false) {
-                    echo "- Valider Anhang gefunden: " . $attachment->getName() . "<br>";
+                if ($base64Data) {
+                    $this->logger->info("ScannerTask: Sende PDF an KI zur Analyse...");
                     
-                    // Extrahiere Binärdaten und kodiere sie für die KI
-                    $base64Data = base64_encode($attachment->getContent());
-                    
-                    echo "- Sende Daten an Gemini...<br>";
-                    $receiptData = $gemini->analyze($mimeType, $base64Data);
-                    
-                    if ($receiptData) {
-                        echo "- Auswertung erfolgreich!<br>";
-                        echo "<pre>" . print_r($receiptData, true) . "</pre>";
-                        
-                        // HIER folgt später das Einfügen in die MySQL-Datenbank
-                        
-                        $processed = true;
+                    // WICHTIG: Kategorien als Kontext übergeben!
+                    $receiptData = $analyzer->analyze($mimeType, $base64Data, $knownCategories);
+
+                    if ($receiptData && isset($receiptData['items'])) {
+                        // In Datenbank speichern
+                        $repository->saveReceipt($receiptData);
+
+                        // Wenn alles geklappt hat, die E-Mail ins Archiv verschieben (damit sie nicht beim nächsten Lauf wieder gelesen wird)
+                        $mailClient->moveMail($message, 'Archive'); // Oder 'Erledigt' – je nachdem wie der Ordner bei Strato heißt
+                        $this->logger->info("ScannerTask: Mail erfolgreich ins Archiv verschoben.");
                     } else {
-                        echo "- [FEHLER] KI konnte die Daten nicht lesen oder formatieren.<br>";
+                        $this->logger->error("ScannerTask: KI lieferte leeres oder ungültiges Ergebnis.");
                     }
-                    
-                    // Wir verarbeiten pro Mail erstmal nur den ersten relevanten Anhang
-                    break; 
                 }
             }
 
-            // Aufräumen: Wenn alles geklappt hat, ab ins Archiv
-            if ($processed) {
-                $mailClient->moveMail($message, 'Archive');
-                echo "- Mail wurde ins Archiv verschoben.<hr>";
-            }
-        }
+            $mailClient->disconnect();
+            $this->logger->info("ScannerTask: Verarbeitungslauf beendet.");
 
-        $mailClient->disconnect();
+        } catch (\Throwable $e) {
+            $this->logger->error("ScannerTask: Kritischer Fehler im Task!", ['error' => $e->getMessage()]);
+        }
     }
 }
