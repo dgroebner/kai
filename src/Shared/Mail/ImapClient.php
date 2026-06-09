@@ -41,13 +41,18 @@ class ImapClient {
         }
     }
 
-    public function getVerifiedMails(): array {
-        $this->logger->info("ImapClient: Prüfe INBOX auf neue Nachrichten...");
-        
-        try {
-            $folder = $this->client->getFolder('INBOX');
-            $messages = $folder->query()->unseen()->get();
-        } catch (Exception $e) {
+	public function getVerifiedMails(): array {
+		$this->logger->info("ImapClient: Prüfe INBOX auf neue Nachrichten...");
+		
+		try {
+			$folder = $this->client->getFolder('INBOX');
+			
+			// DEBUG: Zähle alle Mails, um zu sehen, ob der Ordner leer ist
+			$totalCount = $folder->query()->all()->count();
+			$this->logger->info("ImapClient DEBUG: Anzahl aller Nachrichten in Inbox: {$totalCount}");
+			
+			$messages = $folder->query()->unseen()->get();
+		} catch (Exception $e) {
             $this->logger->error("ImapClient: Fehler beim Abrufen der Mails", ['error' => $e->getMessage()]);
             throw new Exception("Mails konnten nicht abgerufen werden: " . $e->getMessage());
         }
