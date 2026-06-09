@@ -1,11 +1,19 @@
 <?php
 namespace Kai\Tools\Kassenbon;
 
-use Kai\Tools\Shared\Mail\ImapClient;
+use Kai\Tools\Shared\Log\Logger;
+// ... deine anderen use-Statements ...
 
 class ScannerTask {
-    
-public function run() {
+    private Logger $logger;
+
+    public function __construct() {
+        // Diese Zeile hat gefehlt: Wir müssen den Logger erst erschaffen, 
+        // bevor wir ihn in run() benutzen können!
+        $this->logger = new Logger(14);
+    }
+
+    public function run() {
         $this->logger->info("ScannerTask: Starte Verarbeitungslauf...");
 
         try {
