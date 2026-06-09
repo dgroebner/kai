@@ -9,13 +9,14 @@ class GeminiClient {
     private string $apiUrl;
     private Logger $logger;
 
-	public function __construct(string $model = 'gemini-1.5-flash') {
-        $this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
-        // Wir ändern den Pfad von v1beta auf den korrekten Pfad für generateContent
-        $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
-        
-        $this->logger = new Logger(14);
-    }
+    public function __construct(string $model = 'gemini-1.5-flash') {
+		$this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
+		// Weg mit dem Modell aus der URL!
+		$this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent"; 
+		// Wenn das wieder 404 gibt, nutze diesen statischen Pfad:
+		// $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/generateContent";
+		$this->logger = new Logger(14);
+	}
 
     public function generate(string $prompt, ?string $mimeType = null, ?string $base64Data = null, bool $jsonMode = false): ?array {
         $parts = [['text' => $prompt]];
@@ -34,12 +35,11 @@ class GeminiClient {
             ];
         }
 
-        $payload = [
-            'contents' => [['parts' => $parts]],
-            'generationConfig' => [
-                'temperature' => 0.1
-            ]
-        ];
+		$payload = [
+			'model' => 'models/gemini-1.5-flash', // Hier explizit als Feld im JSON
+			'contents' => [['parts' => $parts]],
+			'generationConfig' => ['temperature' => 0.1]
+		];
 
         if ($jsonMode) {
             $payload['generationConfig']['response_mime_type'] = 'application/json';
