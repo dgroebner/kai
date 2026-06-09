@@ -12,15 +12,17 @@ class ScannerTask {
         $mailClient = new ImapClient($user, $pass);
         $analyzer = new ReceiptAnalyzer();
 
-        $messages = $mailClient->getUnreadMails();
+        // Nutzt jetzt die gefilterte Methode aus dem Shared Service
+        $messages = $mailClient->getVerifiedMails();
 
         if (empty($messages)) {
-            echo "Keine neuen Kassenbons gefunden.<br>";
+            echo "Keine neuen, verifizierten Kassenbons gefunden.<br>";
+            $mailClient->disconnect();
             return;
         }
 
         foreach ($messages as $message) {
-            echo "Verarbeite Mail: " . $message->getSubject() . "<br>";
+            echo "Verarbeite Kassenbon von: " . $message->getFrom()[0]->mail . "<br>";
 
             $attachments = $message->getAttachments();
             $processed = false;
@@ -28,36 +30,26 @@ class ScannerTask {
             foreach ($attachments as $attachment) {
                 $mimeType = strtolower($attachment->getMimeType()); 
                 
-                // Wir filtern auf PDFs und gängige Bildformate (z.B. Edeka-Screenshots)
                 if (strpos($mimeType, 'pdf') !== false || strpos($mimeType, 'image') !== false) {
-                    echo "- Valider Anhang gefunden: " . $attachment->getName() . "<br>";
-                    
-                    // Extrahiere Binärdaten und kodiere sie für die KI
                     $base64Data = base64_encode($attachment->getContent());
                     
-                    echo "- Sende Daten an Gemini...<br>";
+                    echo "- Sende an Gemini API...<br>";
                     $receiptData = $analyzer->analyze($mimeType, $base64Data);
                     
                     if ($receiptData) {
                         echo "- Auswertung erfolgreich!<br>";
                         echo "<pre>" . print_r($receiptData, true) . "</pre>";
                         
-                        // HIER folgt später das Einfügen in die MySQL-Datenbank
-                        
+                        // TODO: In kb_* Tabellen wegschreiben
                         $processed = true;
-                    } else {
-                        echo "- [FEHLER] KI konnte die Daten nicht lesen oder formatieren.<br>";
                     }
-                    
-                    // Wir verarbeiten pro Mail erstmal nur den ersten relevanten Anhang
                     break; 
                 }
             }
 
-            // Aufräumen: Wenn alles geklappt hat, ab ins Archiv
             if ($processed) {
                 $mailClient->moveMail($message, 'Archive');
-                echo "- Mail wurde ins Archiv verschoben.<hr>";
+                echo "- Mail erfolgreich archiviert.<hr>";
             }
         }
 

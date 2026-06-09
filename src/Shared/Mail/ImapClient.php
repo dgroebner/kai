@@ -6,12 +6,11 @@ use Webklex\PHPIMAP\Client;
 
 class ImapClient {
     private Client $client;
+    private array $allowedSenders;
 
     public function __construct(string $username, string $password) {
         $cm = new ClientManager();
         
-        // Wir holen die allgemeinen Server-Daten direkt aus der .env, 
-        // da sie für alle Strato-Postfächer gleich sind.
         $this->client = $cm->make([
             'host'          => $_ENV['IMAP_HOST'],
             'port'          => $_ENV['IMAP_PORT'],
@@ -23,19 +22,37 @@ class ImapClient {
         ]);
 
         $this->client->connect();
+
+        // Whitelist direkt aus der zentralen .env Konfiguration laden
+        $this->allowedSenders = explode(',', $_ENV['ALLOWED_USERS']);
     }
 
     /**
-     * Holt alle ungelesenen E-Mails aus dem Posteingang (INBOX)
+     * Holt ungelesene Mails und filtert Spam/unberechtigte Absender direkt aus
      */
-    public function getUnreadMails() {
+    public function getVerifiedMails(): array {
         $folder = $this->client->getFolder('INBOX');
-        // Hole alle ungelesenen Mails
-        return $folder->query()->unseen()->get();
+        $messages = $folder->query()->unseen()->get();
+        $verifiedMessages = [];
+
+        foreach ($messages as $message) {
+            $fromAddress = $message->getFrom()[0]->mail;
+
+            if (in_array($fromAddress, $this->allowedSenders)) {
+                // Berechtigter Absender -> Zur Verarbeitung freigeben
+                $verifiedMessages[] = $message;
+            } else {
+                // Guard schlägt an -> Mail direkt in den Strato-Spam-Ordner verschieben
+                echo "[GUARD] Unautorisierter Absender ({$fromAddress}). Verschiebe in Spam-Ordner.<br>";
+                $this->moveMail($message, 'Spam');
+            }
+        }
+
+        return $verifiedMessages;
     }
 
     /**
-     * Verschiebt eine Mail in einen anderen Ordner (z.B. "Erledigt")
+     * Verschiebt eine Mail in einen anderen Ordner
      */
     public function moveMail($message, string $targetFolderName) {
         $message->move($targetFolderName);
