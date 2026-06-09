@@ -3,62 +3,66 @@ namespace Kai\Tools\Shared\Mail;
 
 use Webklex\PHPIMAP\ClientManager;
 use Webklex\PHPIMAP\Client;
+use Kai\Tools\Shared\Log\Logger;
+use Exception;
 
 class ImapClient {
     private Client $client;
     private array $allowedSenders;
+    private Logger $logger;
 
     public function __construct(string $username, string $password) {
-        $cm = new ClientManager();
+        $this->logger = new Logger(14);
         
-        $this->client = $cm->make([
-            'host'          => $_ENV['IMAP_HOST'],
-            'port'          => $_ENV['IMAP_PORT'],
-            'encryption'    => $_ENV['IMAP_ENCRYPTION'],
-            'validate_cert' => true,
-            'username'      => $username,
-            'password'      => $password,
-            'protocol'      => 'imap'
-        ]);
+        // Sichert ab, dass das Skript nicht stirbt, falls ALLOWED_USERS in der .env fehlt
+        $this->allowedSenders = explode(',', $_ENV['ALLOWED_USERS'] ?? '');
 
-        $this->client->connect();
+        try {
+            $cm = new ClientManager();
+            $this->client = $cm->make([
+                'host'          => $_ENV['IMAP_HOST'],
+                'port'          => $_ENV['IMAP_PORT'],
+                'encryption'    => $_ENV['IMAP_ENCRYPTION'],
+                'validate_cert' => true,
+                'username'      => $username,
+                'password'      => $password,
+                'protocol'      => 'imap'
+            ]);
 
-        // Whitelist direkt aus der zentralen .env Konfiguration laden
-        $this->allowedSenders = explode(',', $_ENV['ALLOWED_USERS']);
+            $this->client->connect();
+            $this->logger->info("ImapClient: Erfolgreich mit Postfach {$username} verbunden.");
+            
+        } catch (Exception $e) {
+            $this->logger->error("ImapClient: Verbindungsaufbau fehlgeschlagen!", ['error' => $e->getMessage()]);
+            throw new Exception("Konnte keine IMAP-Verbindung herstellen: " . $e->getMessage());
+        }
     }
 
     /**
      * Holt ungelesene Mails und filtert Spam/unberechtigte Absender direkt aus
      */
     public function getVerifiedMails(): array {
-        $folder = $this->client->getFolder('INBOX');
-        $messages = $folder->query()->unseen()->get();
-        $verifiedMessages = [];
-
-        foreach ($messages as $message) {
-            $fromAddress = $message->getFrom()[0]->mail;
-
-            if (in_array($fromAddress, $this->allowedSenders)) {
-                // Berechtigter Absender -> Zur Verarbeitung freigeben
-                $verifiedMessages[] = $message;
-            } else {
-                // Guard schlägt an -> Mail direkt in den Strato-Spam-Ordner verschieben
-                echo "[GUARD] Unautorisierter Absender ({$fromAddress}). Verschiebe in Spam-Ordner.<br>";
-                $this->moveMail($message, 'Spam');
-            }
+        $this->logger->info("ImapClient: Prüfe INBOX auf neue Nachrichten...");
+        
+        try {
+            $folder = $this->client->getFolder('INBOX');
+            $messages = $folder->query()->unseen()->get();
+        } catch (Exception $e) {
+            $this->logger->error("ImapClient: Fehler beim Abrufen der Mails", ['error' => $e->getMessage()]);
+            throw new Exception("Mails konnten nicht abgerufen werden: " . $e->getMessage());
         }
 
-        return $verifiedMessages;
-    }
+        $verifiedMessages = [];
+        $count = count($messages);
+        
+        if ($count > 0) {
+            $this->logger->info("ImapClient: {$count} ungelesene Nachricht(en) gefunden.");
+        }
 
-    /**
-     * Verschiebt eine Mail in einen anderen Ordner
-     */
-    public function moveMail($message, string $targetFolderName) {
-        $message->move($targetFolderName);
-    }
-    
-    public function disconnect() {
-        $this->client->disconnect();
-    }
-}
+        foreach ($messages as $message) {
+            $fromAddress = $message->getFrom()[0]->mail ?? 'unknown';
+
+            if (in_array($fromAddress, $this->allowedSenders)) {
+                $this->logger->info("ImapClient: Absender autorisiert ({$fromAddress}).");
+                $verifiedMessages[] = $message;
+            }

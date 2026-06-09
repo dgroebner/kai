@@ -1,29 +1,31 @@
 <?php
 namespace Kai\Tools\Shared\AI;
 
+use Kai\Tools\Shared\Log\Logger;
+use Exception;
+
 class GeminiClient {
     private string $apiKey;
     private string $apiUrl;
+    private Logger $logger;
 
     public function __construct(string $model = 'gemini-1.5-flash') {
-        $this->apiKey = $_ENV['GEMINI_API_KEY'];
+        $this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
         $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+        
+        // Wir binden den Logger direkt ein, um auch KI-spezifische Events aufzuzeichnen
+        $this->logger = new Logger(14);
     }
 
-    /**
-     * Sendet einen Prompt (und optional eine Datei) an Gemini
-     */
     public function generate(string $prompt, ?string $mimeType = null, ?string $base64Data = null, bool $jsonMode = false): ?array {
-        echo "<br>-> [DEBUG] generate() gestartet...<br>";
-        
-        // Teste, ob der API Key überhaupt geladen wurde (zeigt nur die ersten 5 Zeichen)
-        $maskedKey = substr($this->apiKey, 0, 5) . '...';
-        echo "-> [DEBUG] API-Key geladen: " . $maskedKey . "<br>";
-
         $parts = [['text' => $prompt]];
 
         if ($mimeType && $base64Data) {
-            echo "-> [DEBUG] Bilddaten erkannt (Mime: $mimeType, Länge: " . strlen($base64Data) . " Bytes)<br>";
+            $this->logger->info("GeminiClient: Füge Dokument/Bild zum Payload hinzu", [
+                'mime_type' => $mimeType, 
+                'size_bytes' => strlen($base64Data)
+            ]);
+            
             $parts[] = [
                 'inline_data' => [
                     'mime_type' => $mimeType,
@@ -34,49 +36,56 @@ class GeminiClient {
 
         $payload = [
             'contents' => [['parts' => $parts]],
-            'generationConfig' => ['temperature' => 0.1]
+            'generationConfig' => [
+                'temperature' => 0.1
+            ]
         ];
 
         if ($jsonMode) {
             $payload['generationConfig']['response_mime_type'] = 'application/json';
         }
 
-        echo "-> [DEBUG] Payload gebaut. Initialisiere cURL...<br>";
-        
         $ch = curl_init($this->apiUrl . '?key=' . $this->apiKey);
         if ($ch === false) {
-             die("-> [CRITICAL] cURL konnte nicht initialisiert werden! Fehlt die Extension?");
+            throw new Exception("cURL konnte nicht initialisiert werden.");
         }
         
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         
-        // json_encode kann bei sehr großen Base64-Strings am Memory-Limit scheitern!
-        echo "-> [DEBUG] Kodiere JSON...<br>";
         $jsonPayload = json_encode($payload);
         if ($jsonPayload === false) {
-             die("-> [CRITICAL] json_encode fehlgeschlagen: " . json_last_error_msg());
+            throw new Exception("Payload konnte nicht in JSON encodiert werden: " . json_last_error_msg());
         }
         curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
         
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+        // Hinweis: Für reine lokale Windows-Tests ohne SSL-Zertifikate diese Zeile einkommentieren:
+        // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
-        echo "-> [DEBUG] Führe curl_exec() aus (jetzt warten wir auf Google)...<br>";
-        
-        // HIER passiert oft der Timeout oder Absturz
+        $this->logger->info("GeminiClient: Sende Request an Google API...");
         $response = curl_exec($ch);
-        
-        echo "-> [DEBUG] curl_exec() beendet!<br>";
 
+        // Fehlerbehandlung: System-Ebene (cURL)
         if (curl_errno($ch)) {
-            echo "<br><b style='color:red;'>cURL System-Fehler:</b> " . curl_error($ch) . "<br>";
+            $errorMsg = curl_error($ch);
+            curl_close($ch);
+            throw new Exception("Netzwerk/cURL-Fehler bei API-Anfrage: " . $errorMsg);
         }
         
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode === 200 && $response) {
+        // Fehlerbehandlung: API-Ebene (Google)
+        if ($httpCode !== 200) {
+            $this->logger->error("GeminiClient: Google API lehnte Anfrage ab.", [
+                'http_code' => $httpCode, 
+                'response' => $response
+            ]);
+            return null;
+        }
+
+        if ($response) {
             $data = json_decode($response, true);
             $responseText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
             
@@ -85,6 +94,8 @@ class GeminiClient {
             }
         }
         
+        // Fallback, falls die Antwort nicht das erwartete Format hat
+        $this->logger->error("GeminiClient: Unerwartete oder leere API-Antwort", ['raw_response' => $response]);
         return null;
     }
 }
