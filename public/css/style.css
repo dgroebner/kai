@@ -1,0 +1,120 @@
+:root {
+    /* Die Farbpalette - Ein dunkles Blau als Basis */
+    --bg-main: #0f172a;       /* Sehr dunkles Blau/Grau für den Hintergrund */
+    --bg-surface: #1e293b;    /* Etwas helleres Blau für Karten/Container */
+    --bg-surface-hover: #334155; 
+    
+    /* Textfarben */
+    --text-main: #f8fafc;     /* Klares Weiß/Grau für gute Lesbarkeit */
+    --text-muted: #94a3b8;    /* Gedämpftes Grau für Untertitel */
+    
+    /* Akzentfarbe für Buttons und Links */
+    --accent: #3b82f6;        
+    --accent-hover: #2563eb;
+    
+    /* Allgemeines Styling */
+    --border-radius: 8px;
+	
+	--glow-color: rgba(59, 130, 246, 0.5);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    line-height: 1.6;
+    padding: 2rem;
+}
+
+/* Layout Container */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Header & Typografie */
+h1 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--bg-surface-hover);
+    padding-bottom: 1rem;
+}
+
+/* Tool Karten (Grid) */
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background-color: var(--bg-surface);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+.card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    /* Der Glow-Effekt: 0px Versatz nach unten/rechts, 15px Weichzeichner */
+    box-shadow: 0 0 15px var(--glow-color);
+}
+
+.card h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+/* Buttons & Links */
+.btn {
+    display: inline-block;
+    background-color: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    transition: background-color 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: var(--accent-hover);
+    /* Ein etwas engerer Glow für die Buttons */
+    box-shadow: 0 0 12px var(--glow-color);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--bg-surface-hover);
+    color: var(--text-muted);
+}
+
+.btn-outline:hover {
+    background-color: var(--bg-surface-hover);
+    color: var(--text-main);
+    /* Subtiler Glow passend zum Muted-Text */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}

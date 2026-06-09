@@ -38,10 +38,30 @@ if (isset($_GET['code'])) {
 // Wenn nicht eingeloggt, zeige Login-Button
 if (!isset($_SESSION['user_email'])) {
     $login_url = $client->createAuthUrl();
-    echo "<div style='font-family: sans-serif; text-align: center; margin-top: 50px;'>";
-    echo "<h2>Privates Tool-Set</h2>";
-    echo "<a href='" . filter_var($login_url, FILTER_SANITIZE_URL) . "' style='padding: 10px 20px; background-color: #4285F4; color: white; text-decoration: none; border-radius: 5px;'>Login mit Google</a>";
-    echo "</div>";
+    ?>
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login | Tool-Set</title>
+        <link rel="stylesheet" href="css/style.css">
+        <style>
+            /* Spezifisches zentriertes Layout nur für den Login */
+            body { display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .login-card { text-align: center; max-width: 400px; width: 100%; }
+            .login-card h2 { margin-bottom: 1.5rem; }
+        </style>
+    </head>
+    <body>
+        <div class="card login-card">
+            <h2>Privates Tool-Set</h2>
+            <p style="margin-bottom: 2rem;">Bitte melde dich an, um fortzufahren.</p>
+            <a href="<?= filter_var($login_url, FILTER_SANITIZE_URL) ?>" class="btn">Login mit Google</a>
+        </div>
+    </body>
+    </html>
+    <?php
     exit;
 } else {
     header('Location: https://kai.agent-smith.de/index.php');

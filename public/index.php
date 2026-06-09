@@ -11,19 +11,36 @@ if (!isset($_SESSION['user_email'])) {
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kai's Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body style="font-family: sans-serif; padding: 20px;">
-    <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name']) ?></h1>
-    <p>Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email']) ?></p>
-    <hr>
-    
-    <h3>Deine Tools</h3>
-    <ul>
-        <li>Tool 1 (Platzhalter)</li>
-        <li>Tool 2 (Platzhalter)</li>
-    </ul>
+<body>
+    <div class="container">
+        <header>
+            <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name']) ?></h1>
+            <div class="subtitle">Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email']) ?></div>
+        </header>
 
-    <p><a href="login.php?logout=1">Abmelden</a></p>
+        <main>
+            <div class="tool-grid">
+                <div class="card">
+                    <h3>Tool 1</h3>
+                    <p>Beschreibung für das erste Werkzeug in deinem Set.</p>
+                    <a href="#" class="btn">Öffnen</a>
+                </div>
+
+                <div class="card">
+                    <h3>Tool 2</h3>
+                    <p>Beschreibung für das zweite Werkzeug in deinem Set.</p>
+                    <a href="#" class="btn">Öffnen</a>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <a href="login.php?logout=1" class="btn btn-outline">Sicher abmelden</a>
+        </footer>
+    </div>
 </body>
 </html>
