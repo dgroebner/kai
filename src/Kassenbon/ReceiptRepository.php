@@ -1,7 +1,7 @@
 <?php
 namespace Kai\Tools\Kassenbon;
 
-use Kai\Tools\Shared\DB\Database;
+use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use PDO;
 use Exception;
