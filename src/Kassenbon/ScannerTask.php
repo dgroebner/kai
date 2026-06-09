@@ -2,7 +2,7 @@
 namespace Kai\Tools\Kassenbon;
 
 use Kai\Tools\Shared\Log\Logger;
-// ... deine anderen use-Statements ...
+use Kai\Tools\Shared\Mail\ImapClient;
 
 class ScannerTask {
     private Logger $logger;
