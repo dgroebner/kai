@@ -13,34 +13,34 @@ class ImapClient {
 
     public function __construct(string $username, string $password) {
         $this->logger = new Logger(14);
-        
-        // Sichert ab, dass das Skript nicht stirbt, falls ALLOWED_USERS in der .env fehlt
         $this->allowedSenders = explode(',', $_ENV['ALLOWED_USERS'] ?? '');
 
-        try {
-            $cm = new ClientManager();
-            $this->client = $cm->make([
-                'host'          => $_ENV['IMAP_HOST'],
-                'port'          => $_ENV['IMAP_PORT'],
-                'encryption'    => $_ENV['IMAP_ENCRYPTION'],
-                'validate_cert' => true,
-                'username'      => $username,
-                'password'      => $password,
-                'protocol'      => 'imap'
-            ]);
+        // Hier übergeben wir die Konfiguration explizit im Array, 
+        // damit der ClientManager nicht nach externen Dateien sucht.
+        $cm = new ClientManager([
+            'accounts' => [
+                'default' => [
+                    'host'          => $_ENV['IMAP_HOST'],
+                    'port'          => $_ENV['IMAP_PORT'],
+                    'encryption'    => $_ENV['IMAP_ENCRYPTION'],
+                    'validate_cert' => true,
+                    'username'      => $username,
+                    'password'      => $password,
+                    'protocol'      => 'imap'
+                ]
+            ]
+        ]);
 
+        try {
+            $this->client = $cm->account('default');
             $this->client->connect();
             $this->logger->info("ImapClient: Erfolgreich mit Postfach {$username} verbunden.");
-            
         } catch (Exception $e) {
             $this->logger->error("ImapClient: Verbindungsaufbau fehlgeschlagen!", ['error' => $e->getMessage()]);
             throw new Exception("Konnte keine IMAP-Verbindung herstellen: " . $e->getMessage());
         }
     }
 
-    /**
-     * Holt ungelesene Mails und filtert Spam/unberechtigte Absender direkt aus
-     */
     public function getVerifiedMails(): array {
         $this->logger->info("ImapClient: Prüfe INBOX auf neue Nachrichten...");
         
@@ -53,16 +53,35 @@ class ImapClient {
         }
 
         $verifiedMessages = [];
-        $count = count($messages);
-        
-        if ($count > 0) {
-            $this->logger->info("ImapClient: {$count} ungelesene Nachricht(en) gefunden.");
-        }
-
         foreach ($messages as $message) {
             $fromAddress = $message->getFrom()[0]->mail ?? 'unknown';
 
             if (in_array($fromAddress, $this->allowedSenders)) {
                 $this->logger->info("ImapClient: Absender autorisiert ({$fromAddress}).");
                 $verifiedMessages[] = $message;
+            } else {
+                $this->logger->info("ImapClient: [GUARD] Unautorisierter Absender ({$fromAddress}). Verschiebe in Spam-Ordner.");
+                $this->moveMail($message, 'Spam');
             }
+        }
+        return $verifiedMessages;
+    }
+
+    public function moveMail($message, string $targetFolderName) {
+        try {
+            $message->move($targetFolderName);
+            $this->logger->info("ImapClient: Mail in '{$targetFolderName}' verschoben.");
+        } catch (Exception $e) {
+            $this->logger->error("ImapClient: Fehler beim Verschieben.", ['error' => $e->getMessage()]);
+            throw new Exception("Mail konnte nicht verschoben werden.");
+        }
+    }
+    
+    public function disconnect() {
+        try {
+            $this->client->disconnect();
+        } catch (Exception $e) {
+            $this->logger->error("ImapClient: Fehler beim Trennen.", ['error' => $e->getMessage()]);
+        }
+    }
+}
