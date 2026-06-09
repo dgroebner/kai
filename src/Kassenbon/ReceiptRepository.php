@@ -33,24 +33,34 @@ class ReceiptRepository {
     }
 
     /**
-     * Speichert den Bon und alle Positionen atomar in die Datenbank.
+     * Prüft, ob ein Dateihash bereits in der Datenbank existiert.
      */
-    public function saveReceipt(array $data): int {
+    public function receiptExists(string $hash): bool {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM kb_receipts WHERE file_hash = :hash");
+        $stmt->execute([':hash' => $hash]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Speichert den Bon. (Signatur um $fileHash erweitert)
+     */
+    public function saveReceipt(array $data, string $fileHash = null): int {
         try {
             $this->logger->info("ReceiptRepository: Starte Transaktion für Kassenbon von '{$data['store']}'...");
             $this->db->beginTransaction();
 
             // 1. Metadaten in kb_receipts speichern
-            $stmtReceipt = $this->db->prepare("
-                INSERT INTO kb_receipts (store, purchase_date, total) 
-                VALUES (:store, :date, :total)
-            ");
-            
-            $stmtReceipt->execute([
-                ':store' => $data['store'] ?? 'Unbekannt',
-                ':date'  => $data['date'] ?? date('Y-m-d'),
-                ':total' => $data['total'] ?? 0.00
-            ]);
+			$stmtReceipt = $this->db->prepare("
+				INSERT INTO kb_receipts (file_hash, store, purchase_date, total) 
+				VALUES (:hash, :store, :date, :total)
+			");
+			
+			$stmtReceipt->execute([
+				':hash'  => $fileHash,
+				':store' => $data['store'] ?? 'Unbekannt',
+				':date'  => $data['date'] ?? date('Y-m-d'),
+				':total' => $data['total'] ?? 0.00
+			]);
             
             $receiptId = $this->db->lastInsertId();
 
