@@ -1,17 +1,16 @@
 <?php
-// 1. WICHTIG: 'use' Statements müssen in PHP ganz nach oben!
 use Kai\Tools\Shared\Db\Database;
 use \PDO;
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-// 2. Auth-Check
+// Auth-Check
 if (!isset($_SESSION['user_email'])) {
     header('Location: https://kai.agent-smith.de/login.php');
     exit;
 }
 
-// 3. Konfiguration Paginierung
+// Konfiguration Paginierung
 $limit = 15;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
@@ -20,25 +19,20 @@ $receipts = [];
 $itemsByReceipt = [];
 $totalPages = 0;
 
-// 4. Datenbank-Abfragen
 try {
     $pdo = Database::getInstance()->getConnection();
 
-    // Gesamtzahl der Bons ermitteln
     $totalReceipts = $pdo->query("SELECT COUNT(*) FROM kb_receipts")->fetchColumn();
     $totalPages = ceil($totalReceipts / $limit);
 
-    // Bons der aktuellen Seite holen
     $stmtReceipts = $pdo->prepare("SELECT * FROM kb_receipts ORDER BY purchase_date DESC, id DESC LIMIT :limit OFFSET :offset");
     $stmtReceipts->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmtReceipts->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmtReceipts->execute();
     $receipts = $stmtReceipts->fetchAll();
 
-    // Nur die Items für die ANGEZEIGTEN Bons laden
     if (!empty($receipts)) {
         $receiptIds = array_column($receipts, 'id');
-        // Platzhalter für IN-Klausel generieren (?, ?, ?)
         $placeholders = implode(',', array_fill(0, count($receiptIds), '?'));
         
         $stmtItems = $pdo->prepare("SELECT * FROM kb_items WHERE receipt_id IN ($placeholders)");
@@ -66,27 +60,20 @@ try {
     <style>
         .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--bg-surface-hover); padding-bottom: 1rem; }
         .header-actions h1 { margin-bottom: 0; border: none; padding: 0; }
-
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--bg-surface-hover); }
         th { background-color: var(--bg-surface); font-weight: 600; color: var(--text-muted); }
-        
         .receipt-row { cursor: pointer; transition: background-color 0.2s; }
         .receipt-row:hover { background-color: var(--bg-surface-hover); }
         .store-name { font-weight: 600; color: var(--text-main); }
         .total-price { font-weight: bold; color: var(--accent); }
-
         .details-row { display: none; background-color: var(--bg-main); }
         .details-row.active { display: table-row; }
-        
         .details-container { padding: 20px; margin: 10px 0; background-color: var(--bg-surface); border-radius: var(--border-radius); border-left: 4px solid var(--accent); }
         .details-table th { background-color: rgba(0,0,0,0.2); font-size: 0.9em; }
         .details-table td { font-size: 0.9em; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .details-table tr:last-child td { border-bottom: none; }
-        
         .category-badge { display: inline-block; padding: 4px 10px; background: var(--bg-main); border: 1px solid var(--bg-surface-hover); border-radius: 12px; font-size: 0.8em; color: var(--text-muted); }
-        
-        /* Paginierung */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--bg-surface-hover); }
         .page-info { color: var(--text-muted); font-size: 0.9em; }
     </style>
@@ -115,7 +102,7 @@ try {
             </thead>
             <tbody>
                 <?php foreach ($receipts as $receipt): ?>
-                    <tr class="receipt-row" onclick="toggleDetails(<?= $receipt['id'] ?>)">
+                    <tr class="receipt-row js-toggle-receipt" data-id="<?= $receipt['id'] ?>">
                         <td><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
                         <td class="store-name"><?= htmlspecialchars($receipt['store']) ?></td>
                         <td class="total-price"><?= number_format($receipt['total'], 2, ',', '.') ?> €</td>
@@ -182,19 +169,7 @@ try {
     <?php endif; ?>
 </div>
 
-<script>
-    function toggleDetails(receiptId) {
-        const detailsRow = document.getElementById('details-' + receiptId);
-        if (detailsRow.classList.contains('active')) {
-            detailsRow.classList.remove('active');
-        } else {
-            document.querySelectorAll('.details-row.active').forEach(row => {
-                row.classList.remove('active');
-            });
-            detailsRow.classList.add('active');
-        }
-    }
-</script>
+<script src="../js/kassenbon.js"></script>
 
 </body>
 </html>
