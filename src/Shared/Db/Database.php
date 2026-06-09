@@ -1,5 +1,5 @@
 <?php
-namespace Kai\Tools\Shared\DB;
+namespace Kai\Tools\Shared\Db;
 
 use PDO;
 use PDOException;
