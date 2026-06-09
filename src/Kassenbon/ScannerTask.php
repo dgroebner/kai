@@ -36,8 +36,12 @@ class ScannerTask {
                 // HIER WAR DER FEHLER: Wir müssen die Anhänge der Mail durchlaufen
                 $attachments = $message->getAttachments(); 
 
-                if (empty($attachments)) {
-                    $this->logger->info("ScannerTask: Mail besitzt keine Anhänge. Überspringe.");
+				if (empty($attachments)) {
+                    $this->logger->info("ScannerTask: Mail besitzt keine Anhänge. Verschiebe ins Archiv.");
+                    
+                    // WICHTIG: Auch unbrauchbare Mails müssen aus der INBOX verschwinden!
+                    $mailClient->moveMail($message, 'Archive'); 
+                    
                     continue;
                 }
 
