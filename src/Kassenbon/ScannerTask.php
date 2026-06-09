@@ -3,6 +3,8 @@ namespace Kai\Tools\Kassenbon;
 
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Mail\ImapClient;
+use Kai\Tools\Kassenbon\ReceiptAnalyzer;
+use Kai\Tools\Kassenbon\ReceiptRepository;
 
 class ScannerTask {
     private Logger $logger;
@@ -15,9 +17,9 @@ class ScannerTask {
         $this->logger->info("ScannerTask: Starte Verarbeitungslauf...");
 
         try {
-            $mailClient = new \Kai\Tools\Shared\Mail\ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
-            $analyzer = new \Kai\Tools\Kassenbon\ReceiptAnalyzer();
-            $repository = new \Kai\Tools\Kassenbon\ReceiptRepository(); 
+            $mailClient = new ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
+            $analyzer = new ReceiptAnalyzer();
+            $repository = new ReceiptRepository(); 
 
             $messages = $mailClient->getVerifiedMails();
 
@@ -31,53 +33,63 @@ class ScannerTask {
             $knownCategories = $repository->getKnownCategories();
 
             foreach ($messages as $message) {
-                $mimeType = strtolower($attachment->getMimeType()); 
-                
-                // Wir filtern auf PDFs und gängige Bildformate (z.B. Edeka-Screenshots)
-                if (strpos($mimeType, 'pdf') !== false || strpos($mimeType, 'image') !== false) {
-					$this->logger->info("ScannerTask: Valider Anhang gefunden: {$attachment->getName()}");
+                // HIER WAR DER FEHLER: Wir müssen die Anhänge der Mail durchlaufen
+                $attachments = $message->getAttachments(); 
+
+                if (empty($attachments)) {
+                    $this->logger->info("ScannerTask: Mail besitzt keine Anhänge. Überspringe.");
+                    continue;
+                }
+
+                foreach ($attachments as $attachment) {
+                    $mimeType = strtolower($attachment->getMimeType()); 
                     
-                    // Extrahiere Binärdaten und kodiere sie für die KI
-                    $base64Data = base64_encode($attachment->getContent());
+                    // Wir filtern auf PDFs und gängige Bildformate (z.B. Edeka-Screenshots)
+                    if (strpos($mimeType, 'pdf') !== false || strpos($mimeType, 'image') !== false) {
+                        $this->logger->info("ScannerTask: Valider Anhang gefunden: {$attachment->getName()}");
+                        
+                        // Extrahiere Binärdaten und kodiere sie für die KI
+                        $base64Data = base64_encode($attachment->getContent());
 
-					if ($base64Data) {
-						
-						// =========================================================
-						// NATIVE TRENNUNG / DUPLIKATS-SCHUTZ START
-						// =========================================================
-						
-						// 1. Hash aus den rohen Base64-Daten generieren
-						$fileHash = hash('sha256', $base64Data);
+                        if ($base64Data) {
+                            
+                            // =========================================================
+                            // NATIVE TRENNUNG / DUPLIKATS-SCHUTZ START
+                            // =========================================================
+                            
+                            // 1. Hash aus den rohen Base64-Daten generieren
+                            $fileHash = hash('sha256', $base64Data);
 
-						// 2. Datenbank fragen, ob dieser Dateihash existiert
-						if ($repository->receiptExists($fileHash)) {
-							$this->logger->info("ScannerTask: Bon übersprungen. Hash {$fileHash} existiert bereits.");
-							
-							// Wichtig: Mail trotzdem archivieren, damit sie beim nächsten Cronjob nicht wieder blockiert
-							$mailClient->moveMail($message, 'Archive'); 
-							continue; // Schleife abbrechen, direkt zur nächsten Mail springen
-						}
-						
-						// =========================================================
-						// DUPLIKATS-SCHUTZ ENDE
-						// =========================================================
+                            // 2. Datenbank fragen, ob dieser Dateihash existiert
+                            if ($repository->receiptExists($fileHash)) {
+                                $this->logger->info("ScannerTask: Bon übersprungen. Hash {$fileHash} existiert bereits.");
+                                
+                                // Wichtig: Mail trotzdem archivieren, damit sie beim nächsten Cronjob nicht wieder blockiert
+                                $mailClient->moveMail($message, 'Archive'); 
+                                continue 2; // Bricht die Attachment-Schleife ab UND springt zur nächsten Mail (Level 2)
+                            }
+                            
+                            // =========================================================
+                            // DUPLIKATS-SCHUTZ ENDE
+                            // =========================================================
 
-						$this->logger->info("ScannerTask: Neuer Bon erkannt. Sende PDF an KI zur Analyse...");
-						
-						// Bekannte Kategorien an den Analyzer übergeben
-						$receiptData = $analyzer->analyze($mimeType, $base64Data, $knownCategories);
+                            $this->logger->info("ScannerTask: Neuer Bon erkannt. Sende Daten an KI zur Analyse...");
+                            
+                            // Bekannte Kategorien an den Analyzer übergeben
+                            $receiptData = $analyzer->analyze($mimeType, $base64Data, $knownCategories);
 
-						if ($receiptData && isset($receiptData['items'])) {
-							
-							// Dem Repository beim Speichern zusätzlich den Datei-Hash mitgeben
-							$repository->saveReceipt($receiptData, $fileHash);
+                            if ($receiptData && isset($receiptData['items'])) {
+                                
+                                // Dem Repository beim Speichern zusätzlich den Datei-Hash mitgeben
+                                $repository->saveReceipt($receiptData, $fileHash);
 
-							$mailClient->moveMail($message, 'Archive');
-							$this->logger->info("ScannerTask: Mail erfolgreich ins Archiv verschoben.");
-						} else {
-							$this->logger->error("ScannerTask: KI lieferte leeres oder ungültiges Ergebnis.");
-						}
-					}
+                                $mailClient->moveMail($message, 'Archive');
+                                $this->logger->info("ScannerTask: Mail erfolgreich ins Archiv verschoben.");
+                            } else {
+                                $this->logger->error("ScannerTask: KI lieferte leeres oder ungültiges Ergebnis.");
+                            }
+                        }
+                    }
                 }
             }
 
