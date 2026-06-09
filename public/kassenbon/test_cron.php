@@ -10,7 +10,7 @@ if (!extension_loaded('fileinfo')) {
 }
 
 use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Kassenbon\ImapScanner;
+use Kai\Tools\Kassenbon\ScannerTask;
 
 $logger = new Logger(14); // 14 Tage Aufbewahrung
 
