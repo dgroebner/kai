@@ -31,6 +31,3 @@ try {
     http_response_code(500);
     echo "FEHLER - Details im Log.";
 }
-    
-    echo "<b style='color:red;'>Es gab einen kritischen Fehler! Details stehen im Log.</b>";
-}
