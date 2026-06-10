@@ -11,20 +11,24 @@ require_once __DIR__ . '/bootstrap.php';
 use Kai\Tools\Kassenbon\ScannerTask;
 use Kai\Tools\Shared\Log\Logger;
 
-$logger = new Logger(14); // Log-ID für System-Ereignisse
+// Wir nutzen die bekannte ID 14 für System-Ereignisse
+$logger = new Logger(14); 
 
 try {
-    echo "Starte Kassenbon-Scanner...\n";
+    $logger->info("Cronjob: Starte Kassenbon-Scanner...");
     
     $task = new ScannerTask();
     $task->run();
     
-    echo "Scanner-Task erfolgreich abgeschlossen.\n";
+    $logger->info("Cronjob: Scanner-Task erfolgreich abgeschlossen.");
 } catch (\Throwable $e) {
-    $errorMessage = "Kritischer Fehler im Cronjob: " . $e->getMessage();
-    echo $errorMessage . "\n";
-    $logger->error("System: " . $errorMessage);
+    // Falls das Skript komplett crasht, haben wir den Fehler sauber im Log
+    $logger->error("Cronjob: Kritischer Fehler beim Ausführen des Tasks!", [
+        'error' => $e->getMessage(),
+        'file'  => $e->getFile(),
+        'line'  => $e->getLine()
+    ]);
     
-    // Setzt den Exit-Code auf 1, damit Strato weiß, dass der Job fehlschlug
+    // Setzt den Exit-Code auf 1, damit das Betriebssystem (Strato) weiß, dass der Job fehlschlug
     exit(1); 
 }
