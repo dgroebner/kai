@@ -101,4 +101,21 @@ class ReceiptRepository {
             throw new Exception("Kassenbon konnte nicht in der Datenbank gespeichert werden.");
         }
     }
+	
+	/**
+     * Sucht nach der zuletzt verwendeten Kategorie für einen bestimmten Artikelnamen.
+     */
+    public function getKnownCategoryForProduct(string $productName): ?string {
+        $stmt = $this->db->prepare("
+            SELECT category 
+            FROM kb_items 
+            WHERE name = :name AND category != '' AND category IS NOT NULL
+            ORDER BY id DESC 
+            LIMIT 1
+        ");
+        $stmt->execute([':name' => $productName]);
+        $result = $stmt->fetchColumn();
+        
+        return $result ?: null; // Gibt die Kategorie zurück oder null, wenn unbekannt
+    }
 }

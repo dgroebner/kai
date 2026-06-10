@@ -83,6 +83,20 @@ class ScannerTask {
                             $receiptData = $analyzer->analyze($mimeType, $base64Data, $knownCategories);
 
                             if ($receiptData && isset($receiptData['items'])) {
+								
+								// =========================================================
+								// DAS DATENBANK-GEDÄCHTNIS (Interceptor)
+								// =========================================================
+								foreach ($receiptData['items'] as &$item) {
+									// Wir fragen die Datenbank: Kennen wir diesen Artikel schon?
+									$historicalCategory = $repository->getKnownCategoryForProduct($item['name']);
+									
+									if ($historicalCategory) {
+										// Wenn ja, überschreiben wir eiskalt die Vermutung der KI
+										$this->logger->info("Gedächtnis-Korrektur: '{$item['name']}' ist '{$historicalCategory}' (KI dachte: '{$item['category']}').");
+										$item['category'] = $historicalCategory;
+									}
+								}
                                 
                                 // Dem Repository beim Speichern zusätzlich den Datei-Hash mitgeben
                                 $repository->saveReceipt($receiptData, $fileHash);
