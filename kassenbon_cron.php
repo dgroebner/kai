@@ -1,10 +1,4 @@
 <?php
-// 1. CLI-Sicherheitscheck: Nur Ausführung über die Kommandozeile erlauben!
-if (php_sapi_name() !== 'cli') {
-    http_response_code(403);
-    die("Zugriff verweigert: Dieses Skript kann nur als Cronjob ausgefuehrt werden.\n");
-}
-
 // 2. Autoloader und Umgebung laden
 require_once __DIR__ . '/bootstrap.php';
 
