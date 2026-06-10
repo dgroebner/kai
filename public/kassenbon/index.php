@@ -10,6 +10,29 @@ if (!isset($_SESSION['user_email'])) {
     exit;
 }
 
+// --- AJAX Handler für das Inline-Update ---
+// Fängt den POST-Request aus unserem JavaScript ab und speichert die neue Kategorie
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_category') {
+    header('Content-Type: application/json');
+    try {
+        $itemId = (int)($_POST['item_id'] ?? 0);
+        $newCategory = trim($_POST['category'] ?? '');
+        
+        if ($itemId > 0 && !empty($newCategory)) {
+            $pdo = Database::getInstance()->getConnection();
+            $stmt = $pdo->prepare("UPDATE kb_items SET category = :cat WHERE id = :id");
+            $stmt->execute([':cat' => $newCategory, ':id' => $itemId]);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Ungültige Daten']);
+        }
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'error' => 'Datenbankfehler']);
+    }
+    exit; // Skript hier abbrechen, damit kein HTML ausgegeben wird
+}
+// ------------------------------------------
+
 // Konfiguration Paginierung
 $limit = 15;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -18,9 +41,14 @@ $offset = ($page - 1) * $limit;
 $receipts = [];
 $itemsByReceipt = [];
 $totalPages = 0;
+$allCategories = [];
 
 try {
     $pdo = Database::getInstance()->getConnection();
+
+    // Alle aktuell bekannten Kategorien für das Dropdown holen
+    $stmtCats = $pdo->query("SELECT DISTINCT category FROM kb_items WHERE category IS NOT NULL AND category != '' ORDER BY category ASC");
+    $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
 
     $totalReceipts = $pdo->query("SELECT COUNT(*) FROM kb_receipts")->fetchColumn();
     $totalPages = ceil($totalReceipts / $limit);
@@ -73,9 +101,30 @@ try {
         .details-table th { background-color: rgba(0,0,0,0.2); font-size: 0.9em; }
         .details-table td { font-size: 0.9em; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .details-table tr:last-child td { border-bottom: none; }
-        .category-badge { display: inline-block; padding: 4px 10px; background: var(--bg-main); border: 1px solid var(--bg-surface-hover); border-radius: 12px; font-size: 0.8em; color: var(--text-muted); }
+        
+        .category-badge { display: inline-block; padding: 4px 10px; background: var(--bg-main); border: 1px solid var(--bg-surface-hover); border-radius: 12px; font-size: 0.8em; color: var(--text-muted); transition: all 0.2s; }
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--bg-surface-hover); }
         .page-info { color: var(--text-muted); font-size: 0.9em; }
+
+        /* --- Neue CSS Klassen für Inline-Edit --- */
+        .category-cell { position: relative; }
+        
+        /* Edit-Icon (Stift) beim Hovern anzeigen */
+        .category-view { display: flex; align-items: center; gap: 8px; }
+        .edit-icon { opacity: 0; cursor: pointer; font-size: 0.9em; transition: opacity 0.2s; filter: grayscale(1); }
+        .category-view:hover .edit-icon { opacity: 1; filter: grayscale(0); }
+        
+        /* Eingabefeld & Buttons */
+        .category-edit { display: none; position: relative; }
+        .category-input-group { display: flex; align-items: center; gap: 5px; }
+        .category-input { padding: 4px 8px; background: var(--bg-main); border: 1px solid var(--accent); color: var(--text-main); border-radius: 4px; font-size: 0.85em; width: 140px; outline: none; }
+        .action-btn { background: none; border: none; cursor: pointer; padding: 0; font-size: 1.1em; opacity: 0.8; transition: transform 0.1s; }
+        .action-btn:hover { opacity: 1; transform: scale(1.1); }
+        
+        /* Autocomplete Dropdown */
+        .autocomplete-list { position: absolute; top: 100%; left: 0; background: var(--bg-surface); border: 1px solid var(--bg-surface-hover); border-radius: 4px; padding: 0; margin: 4px 0 0 0; list-style: none; width: 180px; max-height: 150px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; }
+        .autocomplete-list li { padding: 8px 12px; font-size: 0.85em; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .autocomplete-list li:hover { background: var(--bg-surface-hover); color: var(--accent); }
     </style>
 </head>
 <body>
@@ -120,7 +169,7 @@ try {
                                         <tr>
                                             <th>Menge</th>
                                             <th>Artikel</th>
-                                            <th>Kategorie</th>
+                                            <th style="min-width: 200px;">Kategorie</th>
                                             <th>Einzelpreis</th>
                                             <th>Gesamt</th>
                                         </tr>
@@ -131,7 +180,24 @@ try {
                                                 <tr>
                                                     <td><?= number_format($item['quantity'], 3, ',', '.') ?> x</td>
                                                     <td style="color: var(--text-main);"><?= htmlspecialchars($item['name']) ?></td>
-                                                    <td><span class="category-badge"><?= htmlspecialchars($item['category']) ?></span></td>
+                                                    
+                                                    <td class="category-cell" data-item-id="<?= $item['id'] ?>">
+                                                        
+                                                        <div class="category-view">
+                                                            <span class="category-badge js-cat-label"><?= htmlspecialchars($item['category']) ?></span>
+                                                            <span class="edit-icon js-edit-cat" title="Kategorie bearbeiten">✏️</span>
+                                                        </div>
+
+                                                        <div class="category-edit">
+                                                            <div class="category-input-group">
+                                                                <input type="text" class="category-input js-cat-input" value="<?= htmlspecialchars($item['category']) ?>" autocomplete="off">
+                                                                <button class="action-btn js-save-cat" title="Übernehmen">✅</button>
+                                                                <button class="action-btn js-cancel-cat" title="Abbrechen">❌</button>
+                                                            </div>
+                                                            <ul class="autocomplete-list js-autocomplete"></ul>
+                                                        </div>
+
+                                                    </td>
                                                     <td><?= number_format($item['unit_price'], 2, ',', '.') ?> €</td>
                                                     <td><?= number_format($item['total_price'], 2, ',', '.') ?> €</td>
                                                 </tr>
@@ -169,6 +235,9 @@ try {
     <?php endif; ?>
 </div>
 
+<script>
+    const knownCategories = <?= json_encode($allCategories) ?>;
+</script>
 <script src="../js/kassenbon.js"></script>
 
 </body>
