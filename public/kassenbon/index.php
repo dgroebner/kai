@@ -129,7 +129,7 @@ try {
 </head>
 <body>
 
-<div class="container">
+<div class="container" data-categories='<?= htmlspecialchars(json_encode($allCategories), ENT_QUOTES, 'UTF-8') ?>'>
     <div class="header-actions">
         <h1>🛒 Meine eBons</h1>
         <a href="../index.php" class="btn btn-outline">← Zurück zur Übersicht</a>
@@ -235,9 +235,6 @@ try {
     <?php endif; ?>
 </div>
 
-<script>
-    const knownCategories = <?= json_encode($allCategories) ?>;
-</script>
 <script src="../js/kassenbon.js"></script>
 
 </body>

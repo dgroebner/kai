@@ -1,6 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // ==========================================
+    // 0. Daten aus dem HTML laden (CSP-sicher!)
+    // ==========================================
+    const container = document.querySelector('.container');
+    let knownCategories = [];
+    if (container && container.hasAttribute('data-categories')) {
+        try {
+            knownCategories = JSON.parse(container.getAttribute('data-categories'));
+        } catch (e) {
+            console.error("Fehler beim Parsen der Kategorien.");
+        }
+    }
+
+    // ==========================================
     // 1. Kassenbons auf- und zuklappen
     // ==========================================
     const receiptRows = document.querySelectorAll('.js-toggle-receipt');
@@ -28,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Stift-Icon geklickt: Wechsel in Edit-Modus
     document.querySelectorAll('.js-edit-cat').forEach(icon => {
         icon.addEventListener('click', function(e) {
-            e.stopPropagation(); // Verhindert, dass die Tabellenzeile Dinge tut
+            e.stopPropagation(); 
             
             const cell = this.closest('.category-cell');
             const viewDiv = cell.querySelector('.category-view');
@@ -38,13 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
             viewDiv.style.display = 'none';
             editDiv.style.display = 'block';
             
-            // Setze Cursor ans Ende des Textes
             input.focus();
             const val = input.value;
             input.value = '';
             input.value = val;
             
-            // Initial das Dropdown füllen (zeigt alle Kategorien)
             updateAutocomplete(cell, input.value);
         });
     });
@@ -59,7 +70,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const input = editDiv.querySelector('.category-input');
             const label = viewDiv.querySelector('.js-cat-label');
             
-            // Eingabefeld zurücksetzen und verstecken
             input.value = label.textContent;
             editDiv.style.display = 'none';
             viewDiv.style.display = 'flex';
@@ -87,15 +97,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const editDiv = cell.querySelector('.category-edit');
             const label = viewDiv.querySelector('.js-cat-label');
 
-            if (newCategory === '') return; // Leer lassen wir nicht zu
+            if (newCategory === '') return;
 
-            // Daten für den Server vorbereiten
             const formData = new URLSearchParams();
             formData.append('action', 'update_category');
             formData.append('item_id', itemId);
             formData.append('category', newCategory);
 
-            // Button kurz ausgrauen
             this.style.opacity = '0.5';
 
             fetch('index.php', {
@@ -107,13 +115,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 this.style.opacity = '1';
                 if (data.success) {
-                    // UI aktualisieren: Badge auf neuen Text setzen und zurück in View-Modus
                     label.textContent = newCategory;
                     editDiv.style.display = 'none';
                     viewDiv.style.display = 'flex';
                     
-                    // Falls es eine völlig neue Kategorie war, fügen wir sie unserem Array hinzu, 
-                    // damit sie ab sofort im Autocomplete anderer Zeilen auftaucht
                     if (!knownCategories.includes(newCategory)) {
                         knownCategories.push(newCategory);
                         knownCategories.sort();
@@ -129,7 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Hilfsfunktion: Dropdown aktualisieren
     function updateAutocomplete(cell, searchValue) {
         const list = cell.querySelector('.js-autocomplete');
         const input = cell.querySelector('.category-input');
@@ -137,18 +141,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const lowerSearch = searchValue.toLowerCase();
         
-        // Finde Treffer (oder zeige alle, wenn leer)
         const matches = knownCategories.filter(cat => cat.toLowerCase().includes(lowerSearch));
         
         if (matches.length > 0) {
             matches.forEach(match => {
                 const li = document.createElement('li');
                 li.textContent = match;
-                // Klick auf ein Listenelement
                 li.addEventListener('click', function(e) {
                     e.stopPropagation();
                     input.value = match;
-                    list.style.display = 'none'; // Verstecken nach Auswahl
+                    list.style.display = 'none';
                     input.focus();
                 });
                 list.appendChild(li);
@@ -159,14 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Wenn man irgendwohin klickt, sollen alle offenen Autocomplete-Listen verschwinden
     document.addEventListener('click', function() {
         document.querySelectorAll('.js-autocomplete').forEach(list => {
             list.style.display = 'none';
         });
     });
 
-    // Verhindern, dass Klicks innerhalb des Edit-Bereichs das Dokument-Click-Event auslösen
     document.querySelectorAll('.category-edit').forEach(editDiv => {
         editDiv.addEventListener('click', function(e) {
             e.stopPropagation();
