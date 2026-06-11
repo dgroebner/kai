@@ -13,7 +13,7 @@ class GeminiClient {
 		$this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
 		$resolvedModel = $model ?? $_ENV['GEMINI_MODEL'] ?? 'gemini-3.1-flash-lite';
 		$this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$resolvedModel}:generateContent"; 
-		$this->logger = new Logger(14);
+		$this->logger = new Logger();
 	}
 
     public function generate(string $prompt, ?string $mimeType = null, ?string $base64Data = null, bool $jsonMode = false): ?array {

@@ -59,6 +59,9 @@ GEMINI_API_KEY=AIzaSy-xxxxxxxxxxxx
 # Optionales Modell (Standard: gemini-3.1-flash-lite)
 # GEMINI_MODEL=gemini-3.1-flash-lite
 
+# Aufbewahrungsdauer der Log-Dateien in Tagen (Standard: 14)
+# LOG_RETENTION_DAYS=14
+
 # -------------------------------------------------------
 # IMAP (E-Mail-Postfach für Kassenbons)
 # -------------------------------------------------------
@@ -104,6 +107,7 @@ CRON_TOKEN=sicherer_zufaelliger_token
 | `ALLOWED_USERS` | ✅ | Kommagetrennte Liste autorisierter Login-E-Mail-Adressen |
 | `GEMINI_API_KEY` | ✅ | API-Key für Google Gemini (Google AI Studio) |
 | `GEMINI_MODEL` | ❌ | Gemini-Modellname (Standard: `gemini-3.1-flash-lite`) |
+| `LOG_RETENTION_DAYS` | ❌ | Aufbewahrungsdauer der Log-Dateien in Tagen (Standard: `14`) |
 | `IMAP_HOST` | ✅ | IMAP-Serverhostname |
 | `IMAP_PORT` | ✅ | IMAP-Port (Standard: `993` für SSL) |
 | `IMAP_USER_KASSENBON` | ✅ | IMAP-Benutzername / E-Mail-Adresse für Kassenbons |
