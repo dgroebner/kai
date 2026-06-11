@@ -10,12 +10,7 @@ class Logger {
         // müssen wir 4 Ebenen nach oben, um wieder auf der Ebene von kai_root zu sein.
         // Falls storage parallel zu kai_root liegt, reicht das:
         $this->logDir = __DIR__ . '/../../../storage/logs';
-        
-        // Prüfe, ob das Verzeichnis erreichbar ist, sonst korrigiere den Pfad:
-        if (!is_dir($this->logDir)) {
-            // Debug-Hilfe: Falls er es nicht findet, lass ihn uns anzeigen
-            error_log("Logger konnte Verzeichnis nicht finden: " . $this->logDir);
-        }
+        $this->retentionDays = $retentionDays;
 
         if (!is_dir($this->logDir)) {
             mkdir($this->logDir, 0755, true);
@@ -34,7 +29,6 @@ class Logger {
         $date = date('Y-m-d');
         $file = $this->logDir . "/app-{$date}.log";
 
-        // Versuch das Verzeichnis zu erstellen, falls es fehlt
         if (!is_dir($this->logDir)) {
             @mkdir($this->logDir, 0755, true);
         }
@@ -42,11 +36,23 @@ class Logger {
         $contextString = !empty($context) ? ' ' . json_encode($context) : '';
         $logEntry = "[{$date} " . date('H:i:s') . "] [{$level}] {$message}{$contextString}" . PHP_EOL;
 
-        // Fehler unterdrücken mit @, um einen 500er zu vermeiden, falls Schreiben fehlschlägt
         @file_put_contents($file, $logEntry, FILE_APPEND | LOCK_EX);
+
+        // Cleanup nur einmal täglich ausführen (gesteuert über eine Marker-Datei)
+        $markerFile = $this->logDir . '/.cleanup_' . $date;
+        if (!file_exists($markerFile)) {
+            @touch($markerFile);
+            // Alte Marker-Dateien ebenfalls entfernen
+            foreach (glob($this->logDir . '/.cleanup_*') as $oldMarker) {
+                if ($oldMarker !== $markerFile) {
+                    @unlink($oldMarker);
+                }
+            }
+            $this->cleanup();
+        }
     }
 
-    private function cleanup() {
+    private function cleanup(): void {
         $files = glob($this->logDir . '/app-*.log');
         $now = time();
         

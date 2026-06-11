@@ -3,7 +3,7 @@ require_once __DIR__ . '/../bootstrap.php';
 
 // Auth-Check
 if (!isset($_SESSION['user_email'])) {
-    header('Location: https://kai.agent-smith.de/login.php');
+    header('Location: ' . APP_URL . '/login.php');
     exit;
 }
 ?>

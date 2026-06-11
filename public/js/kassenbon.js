@@ -5,12 +5,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================
     const container = document.querySelector('.container');
     let knownCategories = [];
-    if (container && container.hasAttribute('data-categories')) {
-        try {
-            knownCategories = JSON.parse(container.getAttribute('data-categories'));
-        } catch (e) {
-            console.error("Fehler beim Parsen der Kategorien.");
+    let csrfToken = '';
+    if (container) {
+        if (container.hasAttribute('data-categories')) {
+            try {
+                knownCategories = JSON.parse(container.getAttribute('data-categories'));
+            } catch (e) {
+                console.error("Fehler beim Parsen der Kategorien.");
+            }
         }
+        csrfToken = container.getAttribute('data-csrf-token') || '';
     }
 
     // ==========================================
@@ -103,6 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('action', 'update_category');
             formData.append('item_id', itemId);
             formData.append('category', newCategory);
+            formData.append('csrf_token', csrfToken);
 
             this.style.opacity = '0.5';
 

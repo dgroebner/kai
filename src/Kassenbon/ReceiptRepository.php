@@ -44,7 +44,7 @@ class ReceiptRepository {
     /**
      * Speichert den Bon. (Signatur um $fileHash erweitert)
      */
-    public function saveReceipt(array $data, string $fileHash = null): int {
+    public function saveReceipt(array $data, ?string $fileHash = null): int {
         try {
             $this->logger->info("ReceiptRepository: Starte Transaktion für Kassenbon von '{$data['store']}'...");
             $this->db->beginTransaction();
@@ -116,6 +116,40 @@ class ReceiptRepository {
         $stmt->execute([':name' => $productName]);
         $result = $stmt->fetchColumn();
         
-        return $result ?: null; // Gibt die Kategorie zurück oder null, wenn unbekannt
+        return $result ?: null;
+    }
+
+    /**
+     * Gibt für eine Liste von Artikelnamen die jeweils zuletzt verwendete Kategorie zurück.
+     * Vermeidet N+1-Queries durch eine einzige IN-Abfrage.
+     *
+     * @param string[] $productNames
+     * @return array<string, string> Map von Artikelname => Kategorie
+     */
+    public function getKnownCategoriesForProducts(array $productNames): array {
+        if (empty($productNames)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($productNames), '?'));
+        $stmt = $this->db->prepare("
+            SELECT name, category
+            FROM kb_items
+            WHERE name IN ($placeholders)
+              AND category != ''
+              AND category IS NOT NULL
+            ORDER BY id DESC
+        ");
+        $stmt->execute($productNames);
+        $rows = $stmt->fetchAll();
+
+        // Nur den ersten (neuesten) Treffer pro Artikelname behalten
+        $result = [];
+        foreach ($rows as $row) {
+            if (!isset($result[$row['name']])) {
+                $result[$row['name']] = $row['category'];
+            }
+        }
+        return $result;
     }
 }

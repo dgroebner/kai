@@ -45,6 +45,8 @@ class ScannerTask {
                     continue;
                 }
 
+                $mailArchived = false;
+
                 foreach ($attachments as $attachment) {
                     $mimeType = strtolower($attachment->getMimeType()); 
                     
@@ -57,25 +59,16 @@ class ScannerTask {
 
                         if ($base64Data) {
                             
-                            // =========================================================
-                            // NATIVE TRENNUNG / DUPLIKATS-SCHUTZ START
-                            // =========================================================
-                            
-                            // 1. Hash aus den rohen Base64-Daten generieren
+                            // Hash aus den rohen Base64-Daten generieren
                             $fileHash = hash('sha256', $base64Data);
 
-                            // 2. Datenbank fragen, ob dieser Dateihash existiert
+                            // Datenbank fragen, ob dieser Dateihash existiert
                             if ($repository->receiptExists($fileHash)) {
                                 $this->logger->info("ScannerTask: Bon übersprungen. Hash {$fileHash} existiert bereits.");
-                                
-                                // Wichtig: Mail trotzdem archivieren, damit sie beim nächsten Cronjob nicht wieder blockiert
-                                $mailClient->moveMail($message, 'Archive'); 
-                                continue 2; // Bricht die Attachment-Schleife ab UND springt zur nächsten Mail (Level 2)
+                                // Nächsten Anhang prüfen – Mail erst am Ende archivieren
+                                $mailArchived = false;
+                                continue;
                             }
-                            
-                            // =========================================================
-                            // DUPLIKATS-SCHUTZ ENDE
-                            // =========================================================
 
                             $this->logger->info("ScannerTask: Neuer Bon erkannt. Sende Daten an KI zur Analyse...");
                             
@@ -83,31 +76,34 @@ class ScannerTask {
                             $receiptData = $analyzer->analyze($mimeType, $base64Data, $knownCategories);
 
                             if ($receiptData && isset($receiptData['items'])) {
-								
-								// =========================================================
-								// DAS DATENBANK-GEDÄCHTNIS (Interceptor)
-								// =========================================================
-								foreach ($receiptData['items'] as &$item) {
-									// Wir fragen die Datenbank: Kennen wir diesen Artikel schon?
-									$historicalCategory = $repository->getKnownCategoryForProduct($item['name']);
-									
-									if ($historicalCategory) {
-										// Wenn ja, überschreiben wir eiskalt die Vermutung der KI
-										$this->logger->info("Gedächtnis-Korrektur: '{$item['name']}' ist '{$historicalCategory}' (KI dachte: '{$item['category']}').");
-										$item['category'] = $historicalCategory;
-									}
-								}
+
+                                // Alle Artikelnamen sammeln und Kategorien per Batch-Query laden
+                                $productNames = array_column($receiptData['items'], 'name');
+                                $historicalCategories = $repository->getKnownCategoriesForProducts($productNames);
+
+                                foreach ($receiptData['items'] as &$item) {
+                                    if (isset($historicalCategories[$item['name']])) {
+                                        $this->logger->info("Gedächtnis-Korrektur: '{$item['name']}' ist '{$historicalCategories[$item['name']]}' (KI dachte: '{$item['category']}').");
+                                        $item['category'] = $historicalCategories[$item['name']];
+                                    }
+                                }
+                                unset($item);
                                 
                                 // Dem Repository beim Speichern zusätzlich den Datei-Hash mitgeben
                                 $repository->saveReceipt($receiptData, $fileHash);
-
-                                $mailClient->moveMail($message, 'Archive');
-                                $this->logger->info("ScannerTask: Mail erfolgreich ins Archiv verschoben.");
+                                $mailArchived = true;
+                                $this->logger->info("ScannerTask: Bon gespeichert.");
                             } else {
                                 $this->logger->error("ScannerTask: KI lieferte leeres oder ungültiges Ergebnis.");
                             }
                         }
                     }
+                }
+
+                // Mail nach Verarbeitung aller Anhänge archivieren
+                if ($mailArchived !== false) {
+                    $mailClient->moveMail($message, 'Archive');
+                    $this->logger->info("ScannerTask: Mail erfolgreich ins Archiv verschoben.");
                 }
             }
 

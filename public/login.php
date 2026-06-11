@@ -6,7 +6,7 @@ $client = getGoogleClient();
 // Logout-Logik
 if (isset($_GET['logout'])) {
     session_destroy();
-    header('Location: https://kai.agent-smith.de/login.php');
+    header('Location: ' . APP_URL . '/login.php');
     exit;
 }
 
@@ -27,7 +27,7 @@ if (isset($_GET['code'])) {
 			session_regenerate_id(true);
             $_SESSION['user_email'] = $email;
             $_SESSION['user_name'] = $name;
-            header('Location: https://kai.agent-smith.de/index.php');
+            header('Location: ' . APP_URL . '/index.php');
             exit;
         } else {
             die("Zugriff verweigert. E-Mail-Adresse nicht autorisiert.");
@@ -64,6 +64,6 @@ if (!isset($_SESSION['user_email'])) {
     <?php
     exit;
 } else {
-    header('Location: https://kai.agent-smith.de/index.php');
+    header('Location: ' . APP_URL . '/index.php');
     exit;
 }

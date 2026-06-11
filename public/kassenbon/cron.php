@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 
 $secretToken = $_ENV['CRON_TOKEN'] ?? null;
 
-if (!isset($_GET['token']) || $_GET['token'] !== $secretToken) {
+if (empty($secretToken) || !isset($_GET['token']) || $_GET['token'] !== $secretToken) {
     http_response_code(403);
     die("Zugriff verweigert.\n");
 }

@@ -9,9 +9,10 @@ class GeminiClient {
     private string $apiUrl;
     private Logger $logger;
 
-    public function __construct(string $model = 'gemini-3.1-flash-lite') {
+    public function __construct(?string $model = null) {
 		$this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
-		$this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent"; 
+		$resolvedModel = $model ?? $_ENV['GEMINI_MODEL'] ?? 'gemini-3.1-flash-lite';
+		$this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$resolvedModel}:generateContent"; 
 		$this->logger = new Logger(14);
 	}
 
@@ -43,14 +44,19 @@ class GeminiClient {
 			$payload['generationConfig']['response_mime_type'] = 'application/json';
 		}
 
-        $ch = curl_init($this->apiUrl . '?key=' . $this->apiKey);
+        $ch = curl_init($this->apiUrl);
         if ($ch === false) {
             throw new Exception("cURL konnte nicht initialisiert werden.");
         }
         
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $this->apiKey
+        ]);
         
         $jsonPayload = json_encode($payload);
         if ($jsonPayload === false) {
