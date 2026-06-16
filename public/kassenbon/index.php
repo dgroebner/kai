@@ -1,8 +1,11 @@
 <?php
+use Kai\Tools\Kassenbon\CategoryAnalyzer;
 use Kai\Tools\Shared\Db\Database;
 use \PDO;
 
 require_once __DIR__ . '/../../bootstrap.php';
+
+$categoryAnalyzer = new CategoryAnalyzer();
 
 // Auth-Check
 if (!isset($_SESSION['user_email'])) {
@@ -177,6 +180,19 @@ try {
                                 <strong style="display: block; margin-bottom: 10px; color: var(--text-muted);">
                                     Positionen für <?= htmlspecialchars($receipt['store']) ?>:
                                 </strong>
+                                <?php
+                                $analysis = $categoryAnalyzer->analyze($itemsByReceipt[$receipt['id']] ?? []);
+                                ?>
+                                <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 5px;">
+                                    <strong style="color: var(--text-muted); font-size: 0.9em;">Kategorien-Anteil:</strong>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                                        <?php foreach ($analysis['categories'] as $cat => $data): ?>
+                                            <span class="category-badge" title="<?= number_format($data['total'], 2, ',', '.') ?> €">
+                                                <?= htmlspecialchars($cat) ?>: <?= number_format($data['percentage'], 1, ',', '.') ?>%
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
                                 <table class="details-table">
                                     <thead>
                                         <tr>
