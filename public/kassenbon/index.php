@@ -141,6 +141,103 @@ try {
         .autocomplete-list { position: absolute; top: 100%; left: 0; background: var(--bg-surface); border: 1px solid var(--bg-surface-hover); border-radius: 4px; padding: 0; margin: 4px 0 0 0; list-style: none; width: 180px; max-height: 150px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; }
         .autocomplete-list li { padding: 8px 12px; font-size: 0.85em; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.02); }
         .autocomplete-list li:hover { background: var(--bg-surface-hover); color: var(--accent); }
+
+        /* --- Analyse-Bereich (Tabelle & Donut Diagramm) --- */
+        .category-analysis-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 25px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--bg-surface-hover);
+        }
+        .category-table-container {
+            flex: 1;
+            min-width: 0;
+        }
+        .category-chart-container {
+            flex: 0 0 220px;
+            width: 220px;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        @media (max-width: 650px) {
+            .category-analysis-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            .category-table-container {
+                width: 100%;
+            }
+        }
+        
+        .category-share-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+            margin-top: 5px;
+        }
+        .category-share-table th {
+            padding: 6px 10px;
+            font-size: 0.8em;
+            color: var(--text-muted);
+            border-bottom: 2px solid var(--bg-surface-hover);
+            background: transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .category-share-table td {
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: none;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+        }
+        .category-share-table td:first-child {
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+        .category-share-table td:last-child {
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+        .category-color-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        /* Interaktives Highlight & Glow */
+        .js-category-row {
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .js-category-row:hover {
+            transform: scale(1.01);
+        }
+        .js-category-row:hover td,
+        .js-category-row.highlight td {
+            background-color: var(--bg-surface-hover) !important;
+            color: var(--text-main) !important;
+            outline: 1px solid var(--category-color);
+            box-shadow: 0 0 10px var(--category-color);
+        }
+        
+        /* SVG Slices */
+        .chart-slice {
+            cursor: pointer;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s, stroke 0.2s, stroke-width 0.2s;
+            transform-origin: 110px 110px;
+        }
     </style>
 </head>
 <body>
@@ -183,14 +280,43 @@ try {
                                 <?php
                                 $analysis = $categoryAnalyzer->analyze($itemsByReceipt[$receipt['id']] ?? []);
                                 ?>
-                                <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 5px;">
-                                    <strong style="color: var(--text-muted); font-size: 0.9em;">Kategorien-Anteil:</strong>
-                                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
-                                        <?php foreach ($analysis['categories'] as $cat => $data): ?>
-                                            <span class="category-badge" title="<?= number_format($data['total'], 2, ',', '.') ?> €">
-                                                <?= htmlspecialchars($cat) ?>: <?= number_format($data['percentage'], 1, ',', '.') ?>%
-                                            </span>
-                                        <?php endforeach; ?>
+                                <div class="category-analysis-wrapper">
+                                    <div class="category-table-container">
+                                        <strong style="color: var(--text-muted); font-size: 0.9em; display: block; margin-bottom: 5px;">Kategorien-Anteil:</strong>
+                                        <table class="category-share-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Kategorie</th>
+                                                    <th style="text-align: right; width: 60px;">Anteil</th>
+                                                    <th style="text-align: right; width: 90px;">Gesamt</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="js-category-table-body">
+                                                <?php
+                                                $niceColors = [
+                                                    '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', 
+                                                    '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6', 
+                                                    '#ef4444', '#64748b'
+                                                ];
+                                                $colorIndex = 0;
+                                                foreach ($analysis['categories'] as $cat => $data):
+                                                    $color = $niceColors[$colorIndex % count($niceColors)];
+                                                    $colorIndex++;
+                                                ?>
+                                                    <tr class="js-category-row" data-category="<?= htmlspecialchars($cat) ?>" data-percentage="<?= (float)$data['percentage'] ?>" data-total="<?= (float)$data['total'] ?>" style="--category-color: <?= $color ?>;">
+                                                        <td>
+                                                            <span class="category-color-dot" style="background-color: <?= $color ?>;"></span>
+                                                            <span class="category-name"><?= htmlspecialchars($cat) ?></span>
+                                                        </td>
+                                                        <td class="percentage-cell" style="text-align: right; font-weight: 500;"><?= number_format($data['percentage'], 1, ',', '.') ?>%</td>
+                                                        <td class="total-cell" style="text-align: right;"><?= number_format($data['total'], 2, ',', '.') ?> €</td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="category-chart-container js-chart-container">
+                                        <!-- Interactive SVG will be injected/updated by JS -->
                                     </div>
                                 </div>
                                 <table class="details-table">
@@ -206,7 +332,7 @@ try {
                                     <tbody>
                                         <?php if (isset($itemsByReceipt[$receipt['id']])): ?>
                                             <?php foreach ($itemsByReceipt[$receipt['id']] as $item): ?>
-                                                <tr>
+                                                <tr class="js-item-row" data-total-price="<?= (float)$item['total_price'] ?>">
                                                     <td><?= number_format($item['quantity'], 3, ',', '.') ?> x</td>
                                                     <td style="color: var(--text-main);"><?= htmlspecialchars($item['name']) ?></td>
                                                     

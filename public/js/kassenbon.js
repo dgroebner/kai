@@ -128,6 +128,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         knownCategories.push(newCategory);
                         knownCategories.sort();
                     }
+
+                    // Recalculate category shares and redraw chart
+                    recalculateReceiptAnalysis(cell.closest('.details-row'));
                 } else {
                     alert('Fehler beim Speichern: ' + (data.error || 'Unbekannt'));
                 }
@@ -176,5 +179,230 @@ document.addEventListener('DOMContentLoaded', function() {
         editDiv.addEventListener('click', function(e) {
             e.stopPropagation();
         });
+    });
+
+    // ==========================================
+    // 3. Diagramm- & Tabellenfunktionen
+    // ==========================================
+
+    function renderReceiptChart(detailsContainer) {
+        const chartContainer = detailsContainer.querySelector('.js-chart-container');
+        if (!chartContainer) return;
+
+        const tableRows = detailsContainer.querySelectorAll('.js-category-row');
+        const categories = [];
+        let grandTotal = 0;
+
+        tableRows.forEach(row => {
+            const name = row.getAttribute('data-category');
+            const color = row.style.getPropertyValue('--category-color').trim();
+            const percentage = parseFloat(row.getAttribute('data-percentage')) || 0;
+            const total = parseFloat(row.getAttribute('data-total')) || 0;
+            categories.push({ name, percentage, total, color, row });
+            grandTotal += total;
+        });
+
+        if (categories.length === 0) {
+            chartContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9em; text-align: center;">Keine Daten</p>';
+            return;
+        }
+
+        const size = 220;
+        const cx = size / 2;
+        const cy = size / 2;
+        const r = 80;
+        const innerR = 48; // Donut hole radius
+
+        let svgHtml = `<svg viewBox="0 0 ${size} ${size}" width="100%" height="100%" style="max-width: ${size}px; display: block; margin: 0 auto; overflow: visible;">`;
+        
+        // Define a drop shadow filter for glowing effect
+        svgHtml += `
+          <defs>
+            <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+        `;
+
+        let currentAngle = -90; // Start at 12 o'clock
+
+        categories.forEach((cat, index) => {
+            const sliceAngle = (cat.percentage / 100) * 360;
+            if (sliceAngle <= 0) return;
+
+            // Calculate bisector angle for translation on hover
+            const bisectorAngleDeg = currentAngle + (sliceAngle / 2);
+            const bisectorRad = bisectorAngleDeg * Math.PI / 180;
+            const dx = Math.cos(bisectorRad) * 6;
+            const dy = Math.sin(bisectorRad) * 6;
+
+            let pathD = '';
+            if (cat.percentage >= 99.9) {
+                // Full circle
+                pathD = `
+                    M ${cx} ${cy - r} 
+                    A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r}
+                    Z
+                `;
+            } else {
+                const radStart = currentAngle * Math.PI / 180;
+                const radEnd = (currentAngle + sliceAngle) * Math.PI / 180;
+
+                const xStart = cx + r * Math.cos(radStart);
+                const yStart = cy + r * Math.sin(radStart);
+                const xEnd = cx + r * Math.cos(radEnd);
+                const yEnd = cy + r * Math.sin(radEnd);
+
+                const largeArcFlag = sliceAngle > 180 ? 1 : 0;
+
+                pathD = `M ${cx} ${cy} L ${xStart} ${yStart} A ${r} ${r} 0 ${largeArcFlag} 1 ${xEnd} ${yEnd} Z`;
+            }
+
+            svgHtml += `
+                <path 
+                    d="${pathD.trim()}" 
+                    fill="${cat.color}" 
+                    stroke="var(--bg-surface)" 
+                    stroke-width="2.5" 
+                    class="chart-slice" 
+                    data-category="${encodeURIComponent(cat.name)}"
+                    data-dx="${dx}"
+                    data-dy="${dy}"
+                    data-color="${cat.color}"
+                    style="--slice-color: ${cat.color};"
+                />
+            `;
+
+            currentAngle += sliceAngle;
+        });
+
+        // Draw inner donut hole to make it a donut chart
+        svgHtml += `
+            <circle cx="${cx}" cy="${cy}" r="${innerR}" fill="var(--bg-surface)" stroke="var(--bg-surface-hover)" stroke-width="1" />
+        `;
+
+        // Format total price
+        const formattedTotal = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(grandTotal);
+        // Put total price in the center of the donut chart
+        svgHtml += `
+            <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="500">Gesamt</text>
+            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--text-main)" font-size="13" font-weight="bold">${formattedTotal}</text>
+        `;
+
+        svgHtml += '</svg>';
+        chartContainer.innerHTML = svgHtml;
+
+        // Attach event listeners
+        const slices = chartContainer.querySelectorAll('.chart-slice');
+        slices.forEach(slice => {
+            const catName = decodeURIComponent(slice.getAttribute('data-category'));
+            const dx = parseFloat(slice.getAttribute('data-dx'));
+            const dy = parseFloat(slice.getAttribute('data-dy'));
+            const color = slice.getAttribute('data-color');
+            const row = Array.from(tableRows).find(r => r.getAttribute('data-category') === catName);
+
+            function highlight() {
+                slice.style.transform = `translate(${dx}px, ${dy}px) scale(1.02)`;
+                slice.style.filter = 'url(#glow-filter)';
+                slice.style.stroke = '#ffffff';
+                slice.style.strokeWidth = '3';
+                if (row) {
+                    row.classList.add('highlight');
+                }
+            }
+
+            function unhighlight() {
+                slice.style.transform = '';
+                slice.style.filter = '';
+                slice.style.stroke = 'var(--bg-surface)';
+                slice.style.strokeWidth = '2.5';
+                if (row) {
+                    row.classList.remove('highlight');
+                }
+            }
+
+            slice.addEventListener('mouseenter', highlight);
+            slice.addEventListener('mouseleave', unhighlight);
+
+            if (row) {
+                row.addEventListener('mouseenter', highlight);
+                row.addEventListener('mouseleave', unhighlight);
+            }
+        });
+    }
+
+    function recalculateReceiptAnalysis(detailsRow) {
+        const itemRows = detailsRow.querySelectorAll('.js-item-row');
+        const categoryTotals = {};
+        let grandTotal = 0;
+
+        itemRows.forEach(row => {
+            const catLabel = row.querySelector('.js-cat-label');
+            if (!catLabel) return;
+            const category = catLabel.textContent.trim() || 'Sonstiges';
+            const price = parseFloat(row.getAttribute('data-total-price')) || 0;
+            
+            if (!categoryTotals[category]) {
+                categoryTotals[category] = 0;
+            }
+            categoryTotals[category] += price;
+            grandTotal += price;
+        });
+
+        const sortedCategories = Object.keys(categoryTotals).map(catName => {
+            return {
+                name: catName,
+                total: categoryTotals[catName],
+                percentage: grandTotal > 0 ? (categoryTotals[catName] / grandTotal) * 100 : 0
+            };
+        }).sort((a, b) => b.total - a.total);
+
+        const tableBody = detailsRow.querySelector('.js-category-table-body');
+        if (!tableBody) return;
+
+        const niceColors = [
+            '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', 
+            '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6', 
+            '#ef4444', '#64748b'
+        ];
+
+        let newRowsHtml = '';
+        sortedCategories.forEach((cat, index) => {
+            const color = niceColors[index % niceColors.length];
+            
+            const formattedTotal = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cat.total) + ' €';
+            const formattedPercentage = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(cat.percentage) + '%';
+
+            newRowsHtml += `
+                <tr class="js-category-row" data-category="${escapeHtml(cat.name)}" data-percentage="${cat.percentage}" data-total="${cat.total}" style="--category-color: ${color};">
+                    <td>
+                        <span class="category-color-dot" style="background-color: ${color};"></span>
+                        <span class="category-name">${escapeHtml(cat.name)}</span>
+                    </td>
+                    <td class="percentage-cell" style="text-align: right;">${formattedPercentage}</td>
+                    <td class="total-cell" style="text-align: right;">${formattedTotal}</td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = newRowsHtml;
+
+        // Draw the updated chart
+        renderReceiptChart(detailsRow);
+    }
+
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Initialisierung aller Diagramme beim Laden
+    document.querySelectorAll('.details-row').forEach(row => {
+        renderReceiptChart(row);
     });
 });
