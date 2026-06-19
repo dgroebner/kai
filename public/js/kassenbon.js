@@ -405,11 +405,6 @@ document.addEventListener('DOMContentLoaded', function() {
             slice.addEventListener('mouseenter', highlight);
             slice.addEventListener('mouseleave', unhighlight);
 
-            if (row) {
-                row.addEventListener('mouseenter', highlight);
-                row.addEventListener('mouseleave', unhighlight);
-            }
-
             function toggleFilter(e) {
                 e.stopPropagation();
                 const currentFilter = detailsContainer.getAttribute('data-active-filter');
@@ -422,9 +417,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             slice.addEventListener('click', toggleFilter);
-            if (row) {
-                row.addEventListener('click', toggleFilter);
-            }
         });
     }
 
@@ -518,5 +510,69 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialisierung aller Diagramme beim Laden
     document.querySelectorAll('.details-row').forEach(row => {
         renderReceiptChart(row);
+    });
+
+    // ==========================================
+    // 4. Delegierte Events für Tabellenzeilen
+    // ==========================================
+    
+    // Click delegation for category table rows
+    document.addEventListener('click', function(e) {
+        const row = e.target.closest('.js-category-row');
+        if (!row) return;
+        const detailsRow = row.closest('.details-row');
+        if (!detailsRow) return;
+
+        const catName = row.getAttribute('data-category');
+        const currentFilter = detailsRow.getAttribute('data-active-filter');
+        if (currentFilter === catName) {
+            detailsRow.removeAttribute('data-active-filter');
+        } else {
+            detailsRow.setAttribute('data-active-filter', catName);
+        }
+        updateCategoryFilterUI(detailsRow);
+    });
+
+    // Hover delegation for category table rows (mouseover)
+    document.addEventListener('mouseover', function(e) {
+        const row = e.target.closest('.js-category-row');
+        if (!row) return;
+        const detailsRow = row.closest('.details-row');
+        if (!detailsRow) return;
+
+        const catName = row.getAttribute('data-category');
+        const slice = detailsRow.querySelector(`.chart-slice[data-category="${encodeURIComponent(catName)}"]`);
+        if (slice) {
+            const dx = parseFloat(slice.getAttribute('data-dx')) || 0;
+            const dy = parseFloat(slice.getAttribute('data-dy')) || 0;
+            slice.style.transform = `translate(${dx}px, ${dy}px) scale(1.02)`;
+            slice.style.filter = 'url(#glow-filter)';
+            slice.style.stroke = '#ffffff';
+            slice.style.strokeWidth = '3';
+        }
+        row.classList.add('highlight');
+    });
+
+    // Hover delegation for category table rows (mouseout)
+    document.addEventListener('mouseout', function(e) {
+        const row = e.target.closest('.js-category-row');
+        if (!row) return;
+        const detailsRow = row.closest('.details-row');
+        if (!detailsRow) return;
+
+        const catName = row.getAttribute('data-category');
+        const activeFilter = detailsRow.getAttribute('data-active-filter');
+        if (activeFilter === catName) {
+            return;
+        }
+
+        const slice = detailsRow.querySelector(`.chart-slice[data-category="${encodeURIComponent(catName)}"]`);
+        if (slice) {
+            slice.style.transform = '';
+            slice.style.filter = '';
+            slice.style.stroke = 'var(--bg-surface)';
+            slice.style.strokeWidth = '2.5';
+        }
+        row.classList.remove('highlight');
     });
 });
