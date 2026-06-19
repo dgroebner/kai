@@ -238,6 +238,13 @@ try {
             transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s, stroke 0.2s, stroke-width 0.2s;
             transform-origin: 110px 110px;
         }
+
+        /* Dynamisch gefärbte Kategorienlabels in den Einzelpositionen */
+        .category-badge[style*="--category-color"] {
+            background-color: color-mix(in srgb, var(--category-color) 15%, transparent) !important;
+            color: var(--category-color) !important;
+            border-color: var(--category-color) !important;
+        }
     </style>
 </head>
 <body>
@@ -279,6 +286,17 @@ try {
                                 </strong>
                                 <?php
                                 $analysis = $categoryAnalyzer->analyze($itemsByReceipt[$receipt['id']] ?? []);
+                                $niceColors = [
+                                    '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', 
+                                    '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6', 
+                                    '#ef4444', '#64748b'
+                                ];
+                                $categoryColorMap = [];
+                                $colorIndex = 0;
+                                foreach ($analysis['categories'] as $cat => $data) {
+                                    $categoryColorMap[$cat] = $niceColors[$colorIndex % count($niceColors)];
+                                    $colorIndex++;
+                                }
                                 ?>
                                 <div class="category-analysis-wrapper">
                                     <div class="category-table-container">
@@ -293,17 +311,12 @@ try {
                                             </thead>
                                             <tbody class="js-category-table-body">
                                                 <?php
-                                                $niceColors = [
-                                                    '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', 
-                                                    '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6', 
-                                                    '#ef4444', '#64748b'
-                                                ];
                                                 $colorIndex = 0;
                                                 foreach ($analysis['categories'] as $cat => $data):
                                                     $color = $niceColors[$colorIndex % count($niceColors)];
                                                     $colorIndex++;
                                                 ?>
-                                                    <tr class="js-category-row" data-category="<?= htmlspecialchars($cat) ?>" data-percentage="<?= (float)$data['percentage'] ?>" data-total="<?= (float)$data['total'] ?>" style="--category-color: <?= $color ?>;">
+                                                    <tr class="js-category-row" data-category="<?= htmlspecialchars($cat) ?>" data-percentage="<?= (float)$data['percentage'] ?>" data-total="<?= (float)$data['total'] ?>" data-color="<?= $color ?>" style="--category-color: <?= $color ?>;">
                                                         <td>
                                                             <span class="category-color-dot" style="background-color: <?= $color ?>;"></span>
                                                             <span class="category-name"><?= htmlspecialchars($cat) ?></span>
@@ -331,7 +344,9 @@ try {
                                     </thead>
                                     <tbody>
                                         <?php if (isset($itemsByReceipt[$receipt['id']])): ?>
-                                            <?php foreach ($itemsByReceipt[$receipt['id']] as $item): ?>
+                                            <?php foreach ($itemsByReceipt[$receipt['id']] as $item): 
+                                                $itemColor = $categoryColorMap[$item['category']] ?? '#64748b';
+                                            ?>
                                                 <tr class="js-item-row" data-total-price="<?= (float)$item['total_price'] ?>">
                                                     <td><?= number_format($item['quantity'], 3, ',', '.') ?> x</td>
                                                     <td style="color: var(--text-main);"><?= htmlspecialchars($item['name']) ?></td>
@@ -339,7 +354,7 @@ try {
                                                     <td class="category-cell" data-item-id="<?= $item['id'] ?>">
                                                         
                                                         <div class="category-view">
-                                                            <span class="category-badge js-cat-label"><?= htmlspecialchars($item['category']) ?></span>
+                                                            <span class="category-badge js-cat-label" style="--category-color: <?= $itemColor ?>;"><?= htmlspecialchars($item['category']) ?></span>
                                                             <span class="edit-icon js-edit-cat" title="Kategorie bearbeiten">✏️</span>
                                                         </div>
 

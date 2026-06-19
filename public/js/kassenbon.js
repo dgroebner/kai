@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         tableRows.forEach(row => {
             const name = row.getAttribute('data-category');
-            const color = row.style.getPropertyValue('--category-color').trim();
+            const color = row.getAttribute('data-color') || '#64748b';
             const percentage = parseFloat(row.getAttribute('data-percentage')) || 0;
             const total = parseFloat(row.getAttribute('data-total')) || 0;
             categories.push({ name, percentage, total, color, row });
@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const formattedPercentage = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(cat.percentage) + '%';
 
             newRowsHtml += `
-                <tr class="js-category-row" data-category="${escapeHtml(cat.name)}" data-percentage="${cat.percentage}" data-total="${cat.total}" style="--category-color: ${color};">
+                <tr class="js-category-row" data-category="${escapeHtml(cat.name)}" data-percentage="${cat.percentage}" data-total="${cat.total}" data-color="${color}" style="--category-color: ${color};">
                     <td>
                         <span class="category-color-dot" style="background-color: ${color};"></span>
                         <span class="category-name">${escapeHtml(cat.name)}</span>
@@ -387,6 +387,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         tableBody.innerHTML = newRowsHtml;
+
+        // Build category to color mapping
+        const categoryColorMap = {};
+        sortedCategories.forEach((cat, index) => {
+            categoryColorMap[cat.name] = niceColors[index % niceColors.length];
+        });
+
+        // Update item badges color dynamically to match the table color
+        itemRows.forEach(row => {
+            const catLabel = row.querySelector('.js-cat-label');
+            if (!catLabel) return;
+            const category = catLabel.textContent.trim() || 'Sonstiges';
+            const color = categoryColorMap[category] || '#64748b';
+            catLabel.style.setProperty('--category-color', color);
+        });
 
         // Draw the updated chart
         renderReceiptChart(detailsRow);
