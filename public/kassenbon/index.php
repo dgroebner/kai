@@ -405,7 +405,7 @@ try {
     <?php endif; ?>
 </div>
 
-<script src="../js/kassenbon.js"></script>
+<script src="../js/kassenbon.js?v=<?= time() ?>"></script>
 
 </body>
 </html>
