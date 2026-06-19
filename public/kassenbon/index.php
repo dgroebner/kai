@@ -119,7 +119,7 @@ try {
         .details-table tr:last-child td { border-bottom: none; }
         
         .category-badge { display: inline-block; padding: 4px 10px; background: var(--bg-main); border: 1px solid var(--bg-surface-hover); border-radius: 12px; font-size: 0.8em; color: var(--text-muted); transition: all 0.2s; }
-        .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--bg-surface-hover); }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--bg-surface-hover); flex-wrap: wrap; }
         .page-info { color: var(--text-muted); font-size: 0.9em; }
 
         /* --- Neue CSS Klassen für Inline-Edit --- */
@@ -171,9 +171,82 @@ try {
             .category-analysis-wrapper {
                 flex-direction: column;
                 align-items: center;
+                padding: 12px;
+                gap: 15px;
             }
             .category-table-container {
                 width: 100%;
+            }
+        }
+        
+        /* Mobile-spezifische Anpassungen */
+        @media (max-width: 600px) {
+            th, td {
+                padding: 8px 8px;
+                font-size: 0.85em;
+            }
+            .receipt-row td {
+                white-space: nowrap;
+            }
+            .store-name {
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            /* Kein Seitenabstand in der Details-Zeile auf Mobilgeräten */
+            .details-row > td {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            .details-container {
+                padding: 10px;
+                margin: 4px 0;
+                border-left-width: 3px;
+                border-radius: 0;
+            }
+            .header-actions {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .header-actions a {
+                width: 100%;
+                text-align: center;
+            }
+            .pagination {
+                gap: 8px;
+            }
+            .pagination .btn {
+                padding: 0.5rem 0.85rem;
+                font-size: 0.85em;
+                flex: 1 1 auto;
+                text-align: center;
+            }
+            .page-info {
+                width: 100%;
+                text-align: center;
+                order: -1;
+                margin-bottom: 5px;
+            }
+            /* Stift-Icon auf Touch-Geräten immer anzeigen */
+            .edit-icon {
+                opacity: 0.6 !important;
+            }
+            /* category-input im Edit-Modus schmaler machen */
+            .category-input {
+                width: 110px;
+            }
+            /* Detailstabelle: Spalten kompakter */
+            .details-table th,
+            .details-table td {
+                padding: 6px 8px;
+            }
+            /* Kategorie-Analyse-Tabelle kompakter */
+            .category-share-table th,
+            .category-share-table td {
+                padding: 5px 6px;
+                font-size: 0.8em;
             }
         }
         
@@ -260,6 +333,7 @@ try {
             <p>Noch keine Kassenbons in der Datenbank.</p>
         </div>
     <?php else: ?>
+        <div class="table-responsive">
         <table>
             <thead>
                 <tr>
@@ -332,57 +406,60 @@ try {
                                         <!-- Interactive SVG will be injected/updated by JS -->
                                     </div>
                                 </div>
-                                <table class="details-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Menge</th>
-                                            <th>Artikel</th>
-                                            <th style="min-width: 200px;">Kategorie</th>
-                                            <th>Einzelpreis</th>
-                                            <th>Gesamt</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (isset($itemsByReceipt[$receipt['id']])): ?>
-                                            <?php foreach ($itemsByReceipt[$receipt['id']] as $item): 
-                                                $itemColor = $categoryColorMap[$item['category']] ?? '#64748b';
-                                            ?>
-                                                <tr class="js-item-row" data-total-price="<?= number_format($item['total_price'], 4, '.', '') ?>">
-                                                    <td><?= number_format($item['quantity'], 3, ',', '.') ?> x</td>
-                                                    <td style="color: var(--text-main);"><?= htmlspecialchars($item['name']) ?></td>
-                                                    
-                                                    <td class="category-cell" data-item-id="<?= $item['id'] ?>">
+                                <div class="table-responsive">
+                                    <table class="details-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Menge</th>
+                                                <th>Artikel</th>
+                                                <th style="min-width: 200px;">Kategorie</th>
+                                                <th>Einzelpreis</th>
+                                                <th>Gesamt</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (isset($itemsByReceipt[$receipt['id']])): ?>
+                                                <?php foreach ($itemsByReceipt[$receipt['id']] as $item): 
+                                                    $itemColor = $categoryColorMap[$item['category']] ?? '#64748b';
+                                                ?>
+                                                    <tr class="js-item-row" data-total-price="<?= number_format($item['total_price'], 4, '.', '') ?>">
+                                                        <td><?= number_format($item['quantity'], 3, ',', '.') ?> x</td>
+                                                        <td style="color: var(--text-main);"><?= htmlspecialchars($item['name']) ?></td>
                                                         
-                                                        <div class="category-view">
-                                                            <span class="category-badge js-cat-label" style="--category-color: <?= $itemColor ?>;"><?= htmlspecialchars($item['category']) ?></span>
-                                                            <span class="edit-icon js-edit-cat" title="Kategorie bearbeiten">✏️</span>
-                                                        </div>
-
-                                                        <div class="category-edit">
-                                                            <div class="category-input-group">
-                                                                <input type="text" class="category-input js-cat-input" value="<?= htmlspecialchars($item['category']) ?>" autocomplete="off">
-                                                                <button class="action-btn js-save-cat" title="Übernehmen">✅</button>
-                                                                <button class="action-btn js-cancel-cat" title="Abbrechen">❌</button>
+                                                        <td class="category-cell" data-item-id="<?= $item['id'] ?>">
+                                                            
+                                                            <div class="category-view">
+                                                                <span class="category-badge js-cat-label" style="--category-color: <?= $itemColor ?>;"><?= htmlspecialchars($item['category']) ?></span>
+                                                                <span class="edit-icon js-edit-cat" title="Kategorie bearbeiten">✏️</span>
                                                             </div>
-                                                            <ul class="autocomplete-list js-autocomplete"></ul>
-                                                        </div>
-
-                                                    </td>
-                                                    <td><?= number_format($item['unit_price'], 2, ',', '.') ?> €</td>
-                                                    <td><?= number_format($item['total_price'], 2, ',', '.') ?> €</td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <tr><td colspan="5">Keine Positionen gefunden.</td></tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
+     
+                                                            <div class="category-edit">
+                                                                <div class="category-input-group">
+                                                                    <input type="text" class="category-input js-cat-input" value="<?= htmlspecialchars($item['category']) ?>" autocomplete="off">
+                                                                    <button class="action-btn js-save-cat" title="Übernehmen">✅</button>
+                                                                    <button class="action-btn js-cancel-cat" title="Abbrechen">❌</button>
+                                                                </div>
+                                                                <ul class="autocomplete-list js-autocomplete"></ul>
+                                                            </div>
+     
+                                                        </td>
+                                                        <td><?= number_format($item['unit_price'], 2, ',', '.') ?> €</td>
+                                                        <td><?= number_format($item['total_price'], 2, ',', '.') ?> €</td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <tr><td colspan="5">Keine Positionen gefunden.</td></tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div><!-- /.table-responsive (main) -->
 
         <?php if ($totalPages > 1): ?>
             <div class="pagination">
