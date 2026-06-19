@@ -188,6 +188,79 @@ document.addEventListener('DOMContentLoaded', function() {
     // 3. Diagramm- & Tabellenfunktionen
     // ==========================================
 
+    function updateCategoryFilterUI(detailsContainer) {
+        const activeFilter = detailsContainer.getAttribute('data-active-filter');
+        const itemRows = detailsContainer.querySelectorAll('.js-item-row');
+        const tableRows = detailsContainer.querySelectorAll('.js-category-row');
+        const slices = detailsContainer.querySelectorAll('.chart-slice');
+
+        if (activeFilter) {
+            // Filter item rows to show only clicked category
+            itemRows.forEach(row => {
+                const catLabel = row.querySelector('.js-cat-label');
+                if (!catLabel) return;
+                const category = catLabel.textContent.trim() || 'Sonstiges';
+                if (category === activeFilter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Keep the corresponding table row highlighted
+            tableRows.forEach(row => {
+                const name = row.getAttribute('data-category');
+                if (name === activeFilter) {
+                    row.classList.add('filter-active');
+                    row.classList.add('highlight');
+                } else {
+                    row.classList.remove('filter-active');
+                    row.classList.remove('highlight');
+                }
+            });
+
+            // Keep the corresponding SVG slice highlighted
+            slices.forEach(slice => {
+                const catName = decodeURIComponent(slice.getAttribute('data-category'));
+                const dx = parseFloat(slice.getAttribute('data-dx'));
+                const dy = parseFloat(slice.getAttribute('data-dy'));
+                if (catName === activeFilter) {
+                    slice.classList.add('filter-active');
+                    slice.style.transform = `translate(${dx}px, ${dy}px) scale(1.02)`;
+                    slice.style.filter = 'url(#glow-filter)';
+                    slice.style.stroke = '#ffffff';
+                    slice.style.strokeWidth = '3';
+                } else {
+                    slice.classList.remove('filter-active');
+                    slice.style.transform = '';
+                    slice.style.filter = '';
+                    slice.style.stroke = 'var(--bg-surface)';
+                    slice.style.strokeWidth = '2.5';
+                }
+            });
+        } else {
+            // Reset - Show all item rows
+            itemRows.forEach(row => {
+                row.style.display = '';
+            });
+
+            // Clear table row highlights
+            tableRows.forEach(row => {
+                row.classList.remove('filter-active');
+                row.classList.remove('highlight');
+            });
+
+            // Clear SVG slice highlights
+            slices.forEach(slice => {
+                slice.classList.remove('filter-active');
+                slice.style.transform = '';
+                slice.style.filter = '';
+                slice.style.stroke = 'var(--bg-surface)';
+                slice.style.strokeWidth = '2.5';
+            });
+        }
+    }
+
     function renderReceiptChart(detailsContainer) {
         const chartContainer = detailsContainer.querySelector('.js-chart-container');
         if (!chartContainer) return;
@@ -316,6 +389,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function unhighlight() {
+                const activeFilter = detailsContainer.getAttribute('data-active-filter');
+                if (activeFilter === catName) {
+                    return;
+                }
                 slice.style.transform = '';
                 slice.style.filter = '';
                 slice.style.stroke = 'var(--bg-surface)';
@@ -332,10 +409,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.addEventListener('mouseenter', highlight);
                 row.addEventListener('mouseleave', unhighlight);
             }
+
+            function toggleFilter(e) {
+                e.stopPropagation();
+                const currentFilter = detailsContainer.getAttribute('data-active-filter');
+                if (currentFilter === catName) {
+                    detailsContainer.removeAttribute('data-active-filter');
+                } else {
+                    detailsContainer.setAttribute('data-active-filter', catName);
+                }
+                updateCategoryFilterUI(detailsContainer);
+            }
+
+            slice.addEventListener('click', toggleFilter);
+            if (row) {
+                row.addEventListener('click', toggleFilter);
+            }
         });
     }
 
     function recalculateReceiptAnalysis(detailsRow) {
+        // Clear active filter to prevent indexing issues during reconstruction
+        detailsRow.removeAttribute('data-active-filter');
+
         const itemRows = detailsRow.querySelectorAll('.js-item-row');
         const categoryTotals = {};
         let grandTotal = 0;
