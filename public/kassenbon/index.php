@@ -316,7 +316,7 @@ try {
                                                     $color = $niceColors[$colorIndex % count($niceColors)];
                                                     $colorIndex++;
                                                 ?>
-                                                    <tr class="js-category-row" data-category="<?= htmlspecialchars($cat) ?>" data-percentage="<?= (float)$data['percentage'] ?>" data-total="<?= (float)$data['total'] ?>" data-color="<?= $color ?>" style="--category-color: <?= $color ?>;">
+                                                    <tr class="js-category-row" data-category="<?= htmlspecialchars($cat) ?>" data-percentage="<?= number_format($data['percentage'], 4, '.', '') ?>" data-total="<?= number_format($data['total'], 4, '.', '') ?>" data-color="<?= $color ?>" style="--category-color: <?= $color ?>;">
                                                         <td>
                                                             <span class="category-color-dot" style="background-color: <?= $color ?>;"></span>
                                                             <span class="category-name"><?= htmlspecialchars($cat) ?></span>
@@ -347,7 +347,7 @@ try {
                                             <?php foreach ($itemsByReceipt[$receipt['id']] as $item): 
                                                 $itemColor = $categoryColorMap[$item['category']] ?? '#64748b';
                                             ?>
-                                                <tr class="js-item-row" data-total-price="<?= (float)$item['total_price'] ?>">
+                                                <tr class="js-item-row" data-total-price="<?= number_format($item['total_price'], 4, '.', '') ?>">
                                                     <td><?= number_format($item['quantity'], 3, ',', '.') ?> x</td>
                                                     <td style="color: var(--text-main);"><?= htmlspecialchars($item['name']) ?></td>
                                                     

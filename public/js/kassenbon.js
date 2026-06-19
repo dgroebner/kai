@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     activeRow.classList.remove('active');
                 });
                 detailsRow.classList.add('active');
+                
+                // Freshly draw the interactive SVG chart when details row becomes visible
+                renderReceiptChart(detailsRow);
             }
         });
     });
@@ -213,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const r = 80;
         const innerR = 48; // Donut hole radius
 
-        let svgHtml = `<svg viewBox="0 0 ${size} ${size}" width="100%" height="100%" style="max-width: ${size}px; display: block; margin: 0 auto; overflow: visible;">`;
+        let svgHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="100%" height="100%" style="max-width: ${size}px; display: block; margin: 0 auto; overflow: visible;">`;
         
         // Define a drop shadow filter for glowing effect
         svgHtml += `
