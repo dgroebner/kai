@@ -441,11 +441,20 @@ document.addEventListener('DOMContentLoaded', function() {
             grandTotal += price;
         });
 
+        // Calculate sum of positive category totals
+        let positiveTotal = 0;
+        Object.values(categoryTotals).forEach(total => {
+            if (total > 0) {
+                positiveTotal += total;
+            }
+        });
+
         const sortedCategories = Object.keys(categoryTotals).map(catName => {
+            const total = categoryTotals[catName];
             return {
                 name: catName,
-                total: categoryTotals[catName],
-                percentage: grandTotal > 0 ? (categoryTotals[catName] / grandTotal) * 100 : 0
+                total: total,
+                percentage: positiveTotal > 0 ? (total / positiveTotal) * 100 : 0
             };
         }).sort((a, b) => b.total - a.total);
 

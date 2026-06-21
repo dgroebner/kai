@@ -25,9 +25,16 @@ class CategoryAnalyzer
             $grandTotal += $price;
         }
 
+        $positiveTotal = 0;
+        foreach ($categoryTotals as $total) {
+            if ($total > 0) {
+                $positiveTotal += $total;
+            }
+        }
+
         $analysis = [];
         foreach ($categoryTotals as $category => $total) {
-            $percentage = ($grandTotal > 0) ? ($total / $grandTotal) * 100 : 0;
+            $percentage = ($positiveTotal > 0) ? ($total / $positiveTotal) * 100 : 0;
             $analysis[$category] = [
                 'total' => $total,
                 'percentage' => $percentage
