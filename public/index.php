@@ -32,9 +32,9 @@ if (!isset($_SESSION['user_email'])) {
                 </div>
 
                 <div class="card">
-                    <h3>🏠 Home Automation</h3>
-                    <p>Google Home Status & Routinen-Logs (z.B. Gute Nacht Routine).</p>
-                    <a href="#" class="btn" style="opacity: 0.6;">In Entwicklung</a>
+                    <h3>📈 Bon-Auswertung</h3>
+                    <p>Auswertung der über die Kassenbons erfassten Positionen nach Zeitraum und Kategorien.</p>
+                    <a href="kassenbon/auswertung.php" class="btn">Öffnen</a>
                 </div>
                 
             </div>
