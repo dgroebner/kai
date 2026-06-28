@@ -16,7 +16,14 @@ class GeminiClient {
 		$this->logger = new Logger();
 	}
 
-    public function generate(string $prompt, ?string $mimeType = null, ?string $base64Data = null, bool $jsonMode = false): ?array {
+    public function generate(
+        string $prompt, 
+        ?string $mimeType = null, 
+        ?string $base64Data = null, 
+        bool $jsonMode = false,
+        ?array $responseSchema = null,
+        ?string $systemInstruction = null
+    ): ?array {
         $parts = [['text' => $prompt]];
 
         if ($mimeType && $base64Data) {
@@ -40,9 +47,21 @@ class GeminiClient {
 			]
 		];
 
-		if ($jsonMode) {
+		if ($jsonMode || $responseSchema !== null) {
 			$payload['generationConfig']['response_mime_type'] = 'application/json';
 		}
+
+        if ($responseSchema !== null) {
+            $payload['generationConfig']['response_schema'] = $responseSchema;
+        }
+
+        if ($systemInstruction !== null) {
+            $payload['system_instruction'] = [
+                'parts' => [
+                    ['text' => $systemInstruction]
+                ]
+            ];
+        }
 
         $ch = curl_init($this->apiUrl);
         if ($ch === false) {
@@ -65,7 +84,9 @@ class GeminiClient {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
         
         // Hinweis: Für reine lokale Windows-Tests ohne SSL-Zertifikate diese Zeile einkommentieren:
-        // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+        if (($_ENV['GEMINI_DISABLE_SSL'] ?? 'false') === 'true') {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        }
 
         $this->logger->info("GeminiClient: Sende Request an Google API...");
         $response = curl_exec($ch);
