@@ -17,7 +17,7 @@ class SolarForecastService {
             
             // Kompakt und absolut sauber:
             $prefix = $apiKey ? $apiKey . '/' : '';
-            $apiUrl = 'https://api.forecast.solar/' . $prefix . '51.2956492/12.4541829/45/0/4.7';
+            $apiUrl = 'https://api.forecast.solar/' . $prefix . 'estimate/51.2956492/12.4541829/45/0/4.7';
         }
 
         $this->apiUrl = $apiUrl;
