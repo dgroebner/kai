@@ -7,39 +7,64 @@ use Exception;
 
 class ChargeDataCollector {
     private Logger $logger;
+    private \PDO $db;
 
     public function __construct() {
         $this->logger = new Logger();
+        $this->db = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection();
     }
 
     /**
-     * Retrieves the predicted solar yield (kWh) and weather summary for the next 4 days.
-     * In a production environment, this would call a weather API (e.g., OpenWeatherMap, Solcast).
+     * Retrieves the predicted solar yield (kWh) and weather summary for the next 4 days from the database.
+     * Fallbacks to standard values if no data has been fetched yet.
      *
      * @return array Array of forecast data grouped by date
      */
     public function getWeatherAndSolarForecast(): array {
-        $this->logger->info("ChargeDataCollector: Sammle PV- und Wetterprognose für die nächsten 4 Tage.");
+        $this->logger->info("ChargeDataCollector: Sammle PV- und Wetterprognose für die nächsten 4 Tage aus der Datenbank.");
         
         $forecast = [];
         $currentDate = new DateTime();
         
-        // Mock data generator for the next 4 days
-        $mockForecasts = [
-            1 => ['kwh' => 18.5, 'summary' => 'Sonnig, kaum Wolken'],
-            2 => ['kwh' => 12.2, 'summary' => 'Wechselnd bewölkt'],
-            3 => ['kwh' => 5.4,  'summary' => 'Stark bewölkt, Regen'],
-            4 => ['kwh' => 15.8, 'summary' => 'Leicht bewölkt, sonnige Abschnitte'],
-        ];
-
         for ($i = 0; $i < 4; $i++) {
             $dateStr = $currentDate->format('Y-m-d');
-            $dayIndex = ($i % 4) + 1;
+            
+            // Query database for daily total in Wh
+            $wh = false;
+            try {
+                $stmt = $this->db->prepare("SELECT watt_hours_day FROM pv_forecast_daily WHERE forecast_date = :date");
+                $stmt->execute([':date' => $dateStr]);
+                $wh = $stmt->fetchColumn();
+            } catch (\Throwable $e) {
+                // If table doesn't exist yet or connection fails, we catch it and use fallback
+                $this->logger->error("ChargeDataCollector: Fehler beim Abruf von Tagesprognose für {$dateStr}: " . $e->getMessage());
+            }
+
+            // Convert Wh to kWh or use fallback
+            if ($wh !== false && $wh !== null) {
+                $kwh = round((float)$wh / 1000.0, 2);
+                
+                // Estimate weather summary based on predicted yield of the 4.7 kWp plant
+                if ($kwh > 16.0) {
+                    $summary = 'Sehr sonnig, hohe Ausbeute';
+                } elseif ($kwh > 10.0) {
+                    $summary = 'Wechselnd bewölkt / heiter';
+                } elseif ($kwh > 5.0) {
+                    $summary = 'Bewölkt';
+                } else {
+                    $summary = 'Stark bewölkt / Regen';
+                }
+            } else {
+                // Fallbacks to keep Gemini planning running even if the API import failed
+                $fallbackYields = [0 => 12.5, 1 => 15.0, 2 => 6.0, 3 => 14.5];
+                $kwh = $fallbackYields[$i] ?? 10.0;
+                $summary = 'Keine Live-Daten (Fallback)';
+            }
             
             $forecast[$dateStr] = [
                 'date' => $dateStr,
-                'predicted_pv_yield_kwh' => $mockForecasts[$dayIndex]['kwh'],
-                'weather_summary' => $mockForecasts[$dayIndex]['summary']
+                'predicted_pv_yield_kwh' => $kwh,
+                'weather_summary' => $summary
             ];
             
             $currentDate->modify('+1 day');

@@ -15,3 +15,4 @@
 [2026-06-28 06:51:32] [INFO] ChargeDataCollector: Prüfe Google Calendar auf Langstrecken-Fahrten in den nächsten 7 Tagen.
 [2026-06-28 06:51:32] [INFO] ChargeDataCollector: Berechne verbleibenden Ladebedarf des Fahrzeugs.
 [2026-06-28 06:51:32] [INFO] GeminiClient: Sende Request an Google API...
+[2026-06-28 07:13:28] [ERROR] Database: Verbindungsaufbau fehlgeschlagen! {"error":"SQLSTATE[HY000] [2002] Ein Verbindungsversuch ist fehlgeschlagen, da die Gegenstelle nach einer bestimmten Zeitspanne nicht richtig reagiert hat, oder die hergestellte Verbindung war fehlerhaft, da der verbundene Host nicht reagiert hat"}
