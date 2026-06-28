@@ -12,19 +12,12 @@ class SolarForecastService {
     private PDO $db;
 
     public function __construct(?string $apiUrl = null) {
-		if ($apiUrl === null) {
-            // Basis-URL ohne Key
-            $baseUrl = 'https://api.forecast.solar/estimate/51.2956/12.4541/45/0/4.7';
-            
-            // API-Key aus $_ENV oder getenv() auslesen
+        if ($apiUrl === null) {
             $apiKey = $_ENV['FORECAST_SOLAR_API_KEY'] ?? getenv('FORECAST_SOLAR_API_KEY') ?: null;
             
-            // Wenn ein Key vorhanden ist, hängen wir ihn als Query-Parameter an
-            if ($apiKey) {
-                $baseUrl .= '?apikey=' . urlencode($apiKey);
-            }
-            
-            $apiUrl = $baseUrl;
+            // Kompakt und absolut sauber:
+            $prefix = $apiKey ? $apiKey . '/' : '';
+            $apiUrl = 'https://api.forecast.solar/' . $prefix . '51.2956492/12.4541829/45/0/4.7';
         }
 
         $this->apiUrl = $apiUrl;
