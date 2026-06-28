@@ -36,6 +36,12 @@ if (!isset($_SESSION['user_email'])) {
                     <p>Auswertung der über die Kassenbons erfassten Positionen nach Zeitraum und Kategorien.</p>
                     <a href="kassenbon/auswertung.php" class="btn">Öffnen</a>
                 </div>
+
+                <div class="card">
+                    <h3>☀️ PV-Solarprognose</h3>
+                    <p>Aktuelle Ertragsprognose der Photovoltaikanlage (4,7 kWp) für die kommenden Tage.</p>
+                    <a href="pvcharge/index.php" class="btn">Öffnen</a>
+                </div>
                 
             </div>
         </main>
