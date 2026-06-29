@@ -85,7 +85,7 @@ $todayKwh = round($todayWh / 1000, 2);
 $peakWatts = empty($hourlyForecasts) ? 0 : max(array_column($hourlyForecasts, 'watts'));
 
 // Wetterzustand aus Ertrag ableiten
-function getWeatherLabel(float $kwh): string {
+function getWeatherLabel(float $kwh): array {
     if ($kwh > 16) return ['icon' => '☀️', 'label' => 'Sehr sonnig'];
     if ($kwh > 10) return ['icon' => '🌤️', 'label' => 'Heiter'];
     if ($kwh > 5)  return ['icon' => '⛅', 'label' => 'Bewölkt'];
