@@ -178,12 +178,12 @@ if ($maxWatts < 1) $maxWatts = 1;
 
         /* --- Balkendiagramm (Stundenwerte) --- */
         .chart-section { margin-bottom: 2.5rem; }
-        .bar-chart {
+		.bar-chart {
             display: flex;
             align-items: flex-end;
             gap: 3px;
-            height: 180px;
-            padding: 0 0 0.5rem;
+            height: 210px;
+            padding: 2rem 0 0.5rem;
             overflow-x: auto;
         }
         .bar-col {
@@ -473,5 +473,6 @@ if ($maxWatts < 1) $maxWatts = 1;
     </footer>
 
 </div>
+<script src="../js/pv-dashboard.js" defer></script>
 </body>
 </html>
