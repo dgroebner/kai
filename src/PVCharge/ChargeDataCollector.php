@@ -44,7 +44,7 @@ class ChargeDataCollector {
             if ($wh !== false && $wh !== null) {
                 $kwh = round((float)$wh / 1000.0, 2);
                 
-                // Estimate weather summary based on predicted yield of the 4.7 kWp plant
+                // Estimate weather summary based on predicted yield of the 4.2 kWp plant
                 if ($kwh > 16.0) {
                     $summary = 'Sehr sonnig, hohe Ausbeute';
                 } elseif ($kwh > 10.0) {

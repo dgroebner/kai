@@ -277,7 +277,7 @@ if ($maxWatts < 1) $maxWatts = 1;
             <?php endif; ?>
         </div>
         <div class="subtitle">
-            Ertragsprognose für die 4,7-kWp-Anlage am Standort 51.30°N / 12.45°O &nbsp;·&nbsp;
+            Ertragsprognose für die 4,6-kWp-Anlage am Standort 51.30°N / 12.45°O &nbsp;·&nbsp;
             <a href="../index.php" style="color:var(--accent);text-decoration:none;">← Dashboard</a>
         </div>
     </header>
