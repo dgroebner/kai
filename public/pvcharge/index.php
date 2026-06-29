@@ -50,9 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $dailyStmt = $db->prepare("
     SELECT forecast_date, watt_hours_day, real_watt_hours_day
     FROM pv_forecast_daily
-    WHERE forecast_date >= CURDATE()
+    WHERE forecast_date >= CURDATE() - 3
     ORDER BY forecast_date ASC
-    LIMIT 7
+    LIMIT 10
 ");
 $dailyStmt->execute();
 $dailyForecasts = $dailyStmt->fetchAll();
