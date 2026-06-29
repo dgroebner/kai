@@ -11,13 +11,48 @@ use Kai\Tools\Shared\Db\Database;
 
 $db = Database::getInstance()->getConnection();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_real_yield') {
+    $yieldData = $_POST['real_yield'] ?? [];
+    
+    $db->beginTransaction();
+    try {
+        $updateStmt = $db->prepare("
+            UPDATE pv_forecast_daily 
+            SET real_watt_hours_day = :real_wh 
+            WHERE forecast_date = :date
+        ");
+        
+        foreach ($yieldData as $date => $kwhValue) {
+            // Wenn das Feld leer gelassen wurde, tragen wir NULL ein
+            if ($kwhValue === '') {
+                $updateStmt->execute([':real_wh' => null, ':date' => $date]);
+                continue;
+            }
+            
+            // Komma durch Punkt ersetzen und in Wattstunden umrechnen
+            $kwh = (float)str_replace(',', '.', $kwhValue);
+            $wh = (int)round($kwh * 1000);
+            
+            $updateStmt->execute([
+                ':real_wh' => $wh,
+                ':date' => $date
+            ]);
+        }
+        $db->commit();
+        $successMessage = "Tatsächliche Erträge erfolgreich gespeichert.";
+    } catch (Exception $e) {
+        $db->rollBack();
+        $errorMessage = "Fehler beim Speichern: " . $e->getMessage();
+    }
+}
+
 // --- Tagesprognosen (nächste 7 Tage) ---
 $dailyStmt = $db->prepare("
-    SELECT forecast_date, watt_hours_day
+    SELECT forecast_date, watt_hours_day, real_watt_hours_day
     FROM pv_forecast_daily
-    WHERE forecast_date >= CURDATE()
+    WHERE forecast_date >= DATE_SUB(CURDATE(), INTERVAL 3 DAY)
     ORDER BY forecast_date ASC
-    LIMIT 7
+    LIMIT 10
 ");
 $dailyStmt->execute();
 $dailyForecasts = $dailyStmt->fetchAll();
@@ -344,50 +379,84 @@ if ($maxWatts < 1) $maxWatts = 1;
         </div>
 
         <!-- Mehrtages-Prognose -->
-        <div class="section-title">Mehrtages-Prognose</div>
+        <div class="section-title">Mehrtages-Prognose & Erfassung</div>
+        
+        <?php if (isset($successMessage)): ?>
+            <div class="alert alert-success" style="color: var(--pv-green); margin-bottom: 1rem; font-weight: bold; background: var(--pv-green-dim); padding: 0.75rem; border-radius: var(--border-radius); border: 1px solid var(--pv-green);"><?= $successMessage ?></div>
+        <?php endif; ?>
+        <?php if (isset($errorMessage)): ?>
+            <div class="alert alert-danger" style="color: #e74c3c; margin-bottom: 1rem; font-weight: bold; background: rgba(231, 76, 60, 0.15); padding: 0.75rem; border-radius: var(--border-radius); border: 1px solid #e74c3c;"><?= $errorMessage ?></div>
+        <?php endif; ?>
+
         <?php if (!empty($dailyForecasts)):
             $maxDayWh = max(array_column($dailyForecasts, 'watt_hours_day'));
             if ($maxDayWh < 1) $maxDayWh = 1;
         ?>
-            <div class="table-responsive">
-                <table class="forecast-table">
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Wetter</th>
-                            <th colspan="2">Prognose</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($dailyForecasts as $day):
-                            $kwh = round($day['watt_hours_day'] / 1000, 2);
-                            $isToday = ($day['forecast_date'] === date('Y-m-d'));
-                            $barPct  = round($day['watt_hours_day'] / $maxDayWh * 100);
-                            $wx      = getWeatherLabel($kwh);
-                            $dateObj = DateTime::createFromFormat('Y-m-d', $day['forecast_date']);
-                            $weekday = ['So','Mo','Di','Mi','Do','Fr','Sa'][(int)$dateObj->format('w')];
-                        ?>
-                        <tr>
-                            <td>
-                                <strong><?= $weekday ?>, <?= $dateObj->format('d.m.') ?></strong>
-                                <?php if ($isToday): ?>
-                                    <span class="today-badge">HEUTE</span>
-                                <?php endif; ?>
-                            </td>
-                            <td><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
-                            <td>
-                                <div class="yield-bar-wrap">
-                                    <div class="yield-bar-bg">
-                                        <div class="yield-bar-fill" style="width: <?= $barPct ?>%"></div>
+            <form action="" method="POST">
+                <input type="hidden" name="action" value="save_real_yield">
+                
+                <div class="table-responsive">
+                    <table class="forecast-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Wetter</th>
+                                <th colspan="2">Prognose</th>
+                                <th style="color: var(--pv-yellow); text-align: right; padding-right: 1.5rem;">Tatsächlich</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($dailyForecasts as $day):
+                                $kwh = round($day['watt_hours_day'] / 1000, 2);
+                                $isToday = ($day['forecast_date'] === date('Y-m-d'));
+                                $barPct  = round($day['watt_hours_day'] / $maxDayWh * 100);
+                                $wx      = getWeatherLabel($kwh);
+                                $dateObj = DateTime::createFromFormat('Y-m-d', $day['forecast_date']);
+                                $weekday = ['So','Mo','Di','Mi','Do','Fr','Sa'][(int)$dateObj->format('w')];
+
+                                // Realen Wert aus DB in kWh für das Input-Feld umrechnen
+                                $realKwh = '';
+                                if (isset($day['real_watt_hours_day']) && $day['real_watt_hours_day'] !== null) {
+                                    $realKwh = number_format($day['real_watt_hours_day'] / 1000, 2, ',', '');
+                                }
+                            ?>
+                            <tr>
+                                <td>
+                                    <strong><?= $weekday ?>, <?= $dateObj->format('d.m.') ?></strong>
+                                    <?php if ($isToday): ?>
+                                        <span class="today-badge">HEUTE</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
+                                <td>
+                                    <div class="yield-bar-wrap">
+                                        <div class="yield-bar-bg">
+                                            <div class="yield-bar-fill" style="width: <?= $barPct ?>%"></div>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td class="yield-value"><?= number_format($kwh, 2, ',', '.') ?> kWh</td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                                </td>
+                                <td class="yield-value"><?= number_format($kwh, 2, ',', '.') ?> kWh</td>
+                                <td style="text-align: right; padding-right: 1rem;">
+                                    <input type="text" 
+                                           name="real_yield[<?= $day['forecast_date'] ?>]" 
+                                           value="<?= $realKwh ?>" 
+                                           placeholder="-,--" 
+                                           style="width: 70px; text-align: right; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--bg-surface-hover); background: var(--bg-surface); color: var(--text-main); font-family: monospace; font-size: 0.9rem;"
+                                           <?= ($day['forecast_date'] > date('Y-m-d')) ? 'disabled' : '' ?> 
+                                    > <small style="color: var(--text-muted);">kWh</small>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="text-align: right; margin-top: 1.5rem; padding-bottom: 0.5rem;">
+                    <button type="submit" class="btn" style="background: var(--pv-yellow); color: #000; font-weight: bold; padding: 0.6rem 1.5rem; border: none; border-radius: var(--border-radius); cursor: pointer; transition: opacity 0.2s;">
+                        💾 Erträge speichern
+                    </button>
+                </div>
+            </form>
         <?php else: ?>
             <div class="no-data">
                 Noch keine Prognosedaten in der Datenbank.<br>
