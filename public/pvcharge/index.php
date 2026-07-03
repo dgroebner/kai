@@ -103,6 +103,8 @@ $biasStmt = $db->query("
     WHERE real_watt_hours_day IS NOT NULL
 ");
 $systemBias = $biasStmt->fetchColumn();
+// Faktor berechnen (Fallback auf 1.0, falls noch keine echten Daten vorliegen)
+$biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
 ?>
 <!DOCTYPE html>
@@ -330,12 +332,20 @@ $systemBias = $biasStmt->fetchColumn();
 
         <!-- KPI-Karten -->
         <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Prognose Heute</div>
+			<div class="kpi-card">
+                <div class="kpi-label">Prognose Heute (korrigiert)</div>
                 <div class="kpi-value">
-                    <?= $todayKwh > 0 ? number_format($todayKwh, 1, ',', '.') : '–' ?>
+                    <?php 
+                    $correctedTodayKwh = $todayKwh * $biasFactor;
+                    echo $correctedTodayKwh > 0 ? number_format($correctedTodayKwh, 1, ',', '.') : '–'; 
+                    ?>
                     <span class="kpi-unit">kWh</span>
                 </div>
+                <?php if ($systemBias !== null): ?>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        (API: <?= number_format($todayKwh, 1, ',', '.') ?> kWh)
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Peak-Leistung Heute</div>
@@ -445,7 +455,17 @@ $systemBias = $biasStmt->fetchColumn();
 											</div>
 										</div>
 									</td>
-									<td class="yield-value"><?= number_format($kwh, 2, ',', '.') ?> kWh</td>
+									<td class="yield-value" style="white-space: nowrap; text-align: right;">
+										<?php 
+										$correctedKwh = $kwh * $biasFactor; 
+										?>
+										<strong><?= number_format($correctedKwh, 2, ',', '.') ?> kWh</strong>
+										<?php if ($systemBias !== null): ?>
+											<span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 400; margin-left: 0.4rem;">
+												(<?= number_format($kwh, 2, ',', '.') ?>)
+											</span>
+										<?php endif; ?>
+									</td>
 									<td style="text-align: right; padding-right: 1rem;">
 										<input type="text" 
 											   name="real_yield[<?= $day['forecast_date'] ?>]" 
