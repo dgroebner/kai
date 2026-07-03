@@ -95,6 +95,15 @@ function getWeatherLabel(float $kwh): array {
 // Max watts für Skalierung des Balkendiagramms
 $maxWatts = empty($hourlyForecasts) ? 1 : max(array_column($hourlyForecasts, 'watts'));
 if ($maxWatts < 1) $maxWatts = 1;
+
+// --- Systemabweichung (Bias) ermitteln ---
+$biasStmt = $db->query("
+    SELECT (SUM(real_watt_hours_day) / SUM(watt_hours_day) - 1) * 100 
+    FROM pv_forecast_daily 
+    WHERE real_watt_hours_day IS NOT NULL
+");
+$systemBias = $biasStmt->fetchColumn();
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -342,11 +351,11 @@ if ($maxWatts < 1) $maxWatts = 1;
                     <?= $wx['icon'] ?> <span class="kpi-unit"><?= $wx['label'] ?></span>
                 </div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Prognosetage</div>
-                <div class="kpi-value">
-                    <?= count($dailyForecasts) ?>
-                    <span class="kpi-unit">Tage</span>
+			<div class="kpi-card">
+                <div class="kpi-label">Systemabweichung</div>
+                <div class="kpi-value" style="color: <?= $systemBias >= 0 ? 'var(--pv-green)' : '#e74c3c' ?>;">
+                    <?= $systemBias !== null ? ($systemBias > 0 ? '+' : '') . number_format($systemBias, 1, ',', '.') : '–' ?>
+                    <span class="kpi-unit">%</span>
                 </div>
             </div>
         </div>
