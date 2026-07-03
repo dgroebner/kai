@@ -333,7 +333,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
         <!-- KPI-Karten -->
         <div class="kpi-grid">
 			<div class="kpi-card">
-                <div class="kpi-label">Prognose Heute (korrigiert)</div>
+                <div class="kpi-label">Prognose Heute</div>
                 <div class="kpi-value">
                     <?php 
                     $correctedTodayKwh = $todayKwh * $biasFactor;
@@ -343,7 +343,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                 </div>
                 <?php if ($systemBias !== null): ?>
                     <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                        (API: <?= number_format($todayKwh, 1, ',', '.') ?> kWh)
+                        (<?= number_format($todayKwh, 1, ',', '.') ?> kWh)
                     </div>
                 <?php endif; ?>
             </div>
