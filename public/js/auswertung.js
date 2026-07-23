@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const chartContainer = container.querySelector('.js-chart-container');
     const tableRows = container.querySelectorAll('.js-category-row');
     const itemRows = container.querySelectorAll('.js-item-row');
+    const paginationContainer = document.getElementById('items-pagination');
+
+    let currentPage = 1;
+    const itemsPerPage = 25;
 
     // ==========================================
     // 1. Diagramm Rendering (SVG Donut Chart)
@@ -157,7 +161,101 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==========================================
-    // 2. Tabellenfilterung & Highlights
+    // 2. Pagination der Einzelpositionen
+    // ==========================================
+    function renderItemsTable() {
+        const activeFilter = container.getAttribute('data-active-filter');
+        
+        // 1. Alle Zeilen filtern, die dem aktiven Kategoriefilter entsprechen
+        const filteredRows = [];
+        itemRows.forEach(row => {
+            const rowCat = row.getAttribute('data-category');
+            if (!activeFilter || rowCat === activeFilter) {
+                filteredRows.push(row);
+            }
+        });
+
+        const totalItems = filteredRows.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+        // Sicherstellen, dass currentPage im gültigen Bereich liegt
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        if (currentPage < 1) {
+            currentPage = 1;
+        }
+
+        // 2. Alle Zeilen ausblenden
+        itemRows.forEach(row => {
+            row.style.display = 'none';
+        });
+
+        // 3. Nur Zeilen für die aktuelle Seite einblenden
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const pageRows = filteredRows.slice(startIdx, endIdx);
+        pageRows.forEach(row => {
+            row.style.display = '';
+        });
+
+        // 4. Paginierungssteuerung rendern
+        renderPaginationControls(totalPages);
+    }
+
+    function renderPaginationControls(totalPages) {
+        if (!paginationContainer) return;
+
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            paginationContainer.style.display = 'none';
+            return;
+        }
+
+        paginationContainer.style.display = 'flex';
+        let html = '';
+
+        // Zurück Button
+        if (currentPage > 1) {
+            html += `<button class="btn btn-outline js-prev-page" style="width: auto; display: inline-block;">&laquo; Vorherige</button>`;
+        } else {
+            html += `<span class="btn btn-outline" style="opacity: 0.5; cursor: not-allowed; width: auto; display: inline-block;">&laquo; Vorherige</span>`;
+        }
+
+        // Seitenanzeige
+        html += `<span class="page-info">Seite ${currentPage} von ${totalPages}</span>`;
+
+        // Weiter Button
+        if (currentPage < totalPages) {
+            html += `<button class="btn btn-outline js-next-page" style="width: auto; display: inline-block;">Nächste &raquo;</button>`;
+        } else {
+            html += `<span class="btn btn-outline" style="opacity: 0.5; cursor: not-allowed; width: auto; display: inline-block;">Nächste &raquo;</span>`;
+        }
+
+        paginationContainer.innerHTML = html;
+
+        // Event-Listeners binden
+        const prevBtn = paginationContainer.querySelector('.js-prev-page');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                currentPage--;
+                renderItemsTable();
+                paginationContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+
+        const nextBtn = paginationContainer.querySelector('.js-next-page');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                currentPage++;
+                renderItemsTable();
+                paginationContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+    }
+
+    // ==========================================
+    // 3. Tabellenfilterung & Highlights
     // ==========================================
     function toggleCategoryFilter(catName) {
         const currentFilter = container.getAttribute('data-active-filter');
@@ -166,6 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             container.setAttribute('data-active-filter', catName);
         }
+        currentPage = 1; // Filterwechsel setzt die Seite auf 1 zurück
         updateFilterUI();
     }
 
@@ -173,17 +272,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const activeFilter = container.getAttribute('data-active-filter');
         const slices = container.querySelectorAll('.chart-slice');
 
-        if (activeFilter) {
-            // Einzelpositionen filtern
-            itemRows.forEach(row => {
-                const rowCat = row.getAttribute('data-category');
-                if (rowCat === activeFilter) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+        // Paginierte Tabelle aktualisieren
+        renderItemsTable();
 
+        if (activeFilter) {
             // Tabellenzeilen-Highlights aktualisieren
             tableRows.forEach(row => {
                 const name = row.getAttribute('data-category');
@@ -216,11 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         } else {
-            // Filter zurücksetzen (alles anzeigen)
-            itemRows.forEach(row => {
-                row.style.display = '';
-            });
-
+            // Filter zurücksetzen
             tableRows.forEach(row => {
                 row.classList.remove('filter-active');
                 row.classList.remove('highlight');
@@ -280,6 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
         row.classList.remove('highlight');
     });
 
-    // Initiales Diagramm-Rendering
+    // Initiales Diagramm-Rendering & Tabellen-Pagination
     renderChart();
+    renderItemsTable();
 });

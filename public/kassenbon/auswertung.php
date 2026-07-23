@@ -436,6 +436,10 @@ try {
                 </tbody>
             </table>
         </div>
+        
+        <div class="pagination" id="items-pagination">
+            <!-- Dynamic pagination buttons will be injected by JavaScript -->
+        </div>
     <?php endif; ?>
 </div>
 
