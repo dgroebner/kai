@@ -109,8 +109,8 @@ class TelemetryRepository {
     }
 
     /**
-     * Schreibt einen vollen Log-Eintrag in vehicle_telemetry_log.
-     * Verwendet die bestehenden Live-Werte aus vehicle_state, falls Einzelwerte im Payload fehlen.
+     * Schreibt einen Log-Eintrag in vehicle_telemetry_log.
+     * Verhindert Duplikate für denselben car_captured_at-Zeitstempel.
      */
     public function saveLog(array $data): bool {
         try {
@@ -164,7 +164,13 @@ class TelemetryRepository {
                     :mileage_km, 
                     :outdoor_temp_c, 
                     :raw_payload
-                )
+                ) ON DUPLICATE KEY UPDATE
+                    `soc_percent`     = VALUES(`soc_percent`),
+                    `charge_power_kw` = VALUES(`charge_power_kw`),
+                    `range_km`        = IF(VALUES(`range_km`) > 0, VALUES(`range_km`), `range_km`),
+                    `mileage_km`      = IF(VALUES(`mileage_km`) > 0, VALUES(`mileage_km`), `mileage_km`),
+                    `outdoor_temp_c`  = VALUES(`outdoor_temp_c`),
+                    `raw_payload`     = VALUES(`raw_payload`)
             ");
 
             $stmtLog->execute([
