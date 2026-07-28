@@ -26,7 +26,7 @@ class TelemetryRepository {
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            // Nullable Variablen (null, wenn nicht vorhanden)
+            // Nullable Variablen
             $socPercent     = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
             $targetSoc      = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
             $chargePowerKw  = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
@@ -59,7 +59,7 @@ class TelemetryRepository {
                     :vin, 
                     :car_captured_at, 
                     COALESCE(:soc_percent, 0), 
-                    COALESCE(:target_soc, 0), 
+                    COALESCE(:target_soc_val, 0), 
                     COALESCE(:charge_power_kw, 0.0), 
                     COALESCE(:battery_temp_max, 0.0), 
                     COALESCE(:battery_temp_min, 0.0), 
@@ -71,34 +71,34 @@ class TelemetryRepository {
                     COALESCE(:outdoor_temp_c, 0.0)
                 ) ON DUPLICATE KEY UPDATE
                     `car_captured_at`  = VALUES(`car_captured_at`),
-                    `soc_percent`      = COALESCE(VALUES(`soc_percent`), `soc_percent`),
-                    `target_soc`       = COALESCE(VALUES(`target_soc`), `target_soc`),
-                    `charge_power_kw`  = COALESCE(VALUES(`charge_power_kw`), `charge_power_kw`),
-                    `battery_temp_max` = COALESCE(VALUES(`battery_temp_max`), `battery_temp_max`),
-                    `battery_temp_min` = COALESCE(VALUES(`battery_temp_min`), `battery_temp_min`),
-                    `charging_state`   = COALESCE(VALUES(`charging_state`), `charging_state`),
-                    `plug_connected`   = COALESCE(VALUES(`plug_connected`), `plug_connected`),
-                    `is_locked`        = COALESCE(VALUES(`is_locked`), `is_locked`),
-                    `mileage_km`       = COALESCE(VALUES(`mileage_km`), `mileage_km`),
-                    `range_km`         = COALESCE(VALUES(`range_km`), `range_km`),
-                    `outdoor_temp_c`   = COALESCE(VALUES(`outdoor_temp_c`), `outdoor_temp_c`),
+                    `soc_percent`      = IF(:soc_percent IS NULL, `soc_percent`, :soc_percent),
+                    `target_soc`       = IF(:target_soc_val IS NULL, `target_soc`, :target_soc_val),
+                    `charge_power_kw`  = IF(:charge_power_kw IS NULL, `charge_power_kw`, :charge_power_kw),
+                    `battery_temp_max` = IF(:battery_temp_max IS NULL, `battery_temp_max`, :battery_temp_max),
+                    `battery_temp_min` = IF(:battery_temp_min IS NULL, `battery_temp_min`, :battery_temp_min),
+                    `charging_state`   = IF(:charging_state IS NULL, `charging_state`, :charging_state),
+                    `plug_connected`   = IF(:plug_connected IS NULL, `plug_connected`, :plug_connected),
+                    `is_locked`        = IF(:is_locked IS NULL, `is_locked`, :is_locked),
+                    `mileage_km`       = IF(:mileage_km IS NULL, `mileage_km`, :mileage_km),
+                    `range_km`         = IF(:range_km IS NULL, `range_km`, :range_km),
+                    `outdoor_temp_c`   = IF(:outdoor_temp_c IS NULL, `outdoor_temp_c`, :outdoor_temp_c),
                     `updated_at`       = CURRENT_TIMESTAMP
             ");
 
             $stmtState->execute([
-                ':vin' => $vin,
-                ':car_captured_at' => $carCapturedAt,
-                ':soc_percent' => $socPercent,
-                ':target_soc' => $targetSoc,
-                ':charge_power_kw' => $chargePowerKw,
+                ':vin'              => $vin,
+                ':car_captured_at'  => $carCapturedAt,
+                ':soc_percent'      => $socPercent,
+                ':target_soc_val'   => $targetSoc,
+                ':charge_power_kw'  => $chargePowerKw,
                 ':battery_temp_max' => $batteryTempMax,
                 ':battery_temp_min' => $batteryTempMin,
-                ':charging_state' => $chargingState,
-                ':plug_connected' => $plugConnected,
-                ':is_locked' => $isLocked,
-                ':mileage_km' => $mileageKm,
-                ':range_km' => $rangeKm,
-                ':outdoor_temp_c' => $outdoorTempC
+                ':charging_state'   => $chargingState,
+                ':plug_connected'   => $plugConnected,
+                ':is_locked'        => $isLocked,
+                ':mileage_km'       => $mileageKm,
+                ':range_km'         => $rangeKm,
+                ':outdoor_temp_c'   => $outdoorTempC
             ]);
 
             return true;
