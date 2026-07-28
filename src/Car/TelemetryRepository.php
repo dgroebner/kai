@@ -18,7 +18,7 @@ class TelemetryRepository {
 
     /**
      * Speichert / aktualisiert den Live-Status in vehicle_state.
-     * Nutzt COALESCE, damit Nicht-Null-Werte bei Rumpf-Updates erhalten bleiben.
+     * Nutzt COALESCE/CASE, damit Nicht-Null-Werte bei Rumpf-Updates erhalten bleiben.
      */
     public function saveState(array $data): bool {
         try {
@@ -110,6 +110,7 @@ class TelemetryRepository {
 
     /**
      * Schreibt einen vollen Log-Eintrag in vehicle_telemetry_log.
+     * Verwendet die bestehenden Live-Werte aus vehicle_state, falls Einzelwerte im Payload fehlen.
      */
     public function saveLog(array $data): bool {
         try {
@@ -117,11 +118,31 @@ class TelemetryRepository {
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
+            // Aktuelle Zustandswerte aus vehicle_state als Fallback laden
+            $stmtCurrent = $this->db->prepare("
+                SELECT mileage_km, range_km, outdoor_temp_c 
+                FROM vehicle_state 
+                WHERE vin = :vin
+            ");
+            $stmtCurrent->execute([':vin' => $vin]);
+            $currentState = $stmtCurrent->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            // Einzelwerte bestimmen (Payload -> Live-State -> Null-Fallback)
             $socPercent    = (int)($data['battery']['soc'] ?? 0);
             $chargePowerKw = (float)($data['battery']['charge_power_kw'] ?? 0.0);
-            $rangeKm       = (int)($data['status']['range_km'] ?? 0);
-            $mileageKm     = (int)($data['status']['mileage_km'] ?? 0);
-            $outdoorTempC  = (float)($data['status']['outdoor_temp_c'] ?? 0.0);
+            
+            $mileageKm     = isset($data['status']['mileage_km']) && $data['status']['mileage_km'] !== null
+                             ? (int)$data['status']['mileage_km']
+                             : (int)($currentState['mileage_km'] ?? 0);
+
+            $rangeKm       = isset($data['status']['range_km']) && $data['status']['range_km'] !== null
+                             ? (int)$data['status']['range_km']
+                             : (int)($currentState['range_km'] ?? 0);
+
+            $outdoorTempC  = isset($data['status']['outdoor_temp_c']) && $data['status']['outdoor_temp_c'] !== null
+                             ? (float)$data['status']['outdoor_temp_c']
+                             : (float)($currentState['outdoor_temp_c'] ?? 0.0);
+
             $rawPayload    = json_encode($data);
 
             $stmtLog = $this->db->prepare("
@@ -147,14 +168,14 @@ class TelemetryRepository {
             ");
 
             $stmtLog->execute([
-                ':vin' => $vin,
+                ':vin'             => $vin,
                 ':car_captured_at' => $carCapturedAt,
-                ':soc_percent' => $socPercent,
+                ':soc_percent'     => $socPercent,
                 ':charge_power_kw' => $chargePowerKw,
-                ':range_km' => $rangeKm,
-                ':mileage_km' => $mileageKm,
-                ':outdoor_temp_c' => $outdoorTempC,
-                ':raw_payload' => $rawPayload
+                ':range_km'        => $rangeKm,
+                ':mileage_km'      => $mileageKm,
+                ':outdoor_temp_c'  => $outdoorTempC,
+                ':raw_payload'     => $rawPayload
             ]);
 
             return true;
