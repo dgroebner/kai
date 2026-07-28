@@ -599,6 +599,6 @@ function chargingLabel(string $state): array {
 
 </div>
 <!-- Inline-Editing Logik für Reichweite -->
-<script src="js/telemetry.js?v=<?= time() ?>"></script>
+<script src="../js/telemetry.js?v=<?= time() ?>"></script>
 </body>
 </html>
