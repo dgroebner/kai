@@ -50,6 +50,7 @@ if (empty($secretToken) || empty($receivedToken) || !hash_equals($secretToken, $
     ]);
     exit;
 }
+
 // 2. Nur POST-Anfragen für Telemetrie-Upload erlauben
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -74,7 +75,7 @@ if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
-// 4. Payload Validierung
+// 3. Payload Validierung (Geglättet für Partial Updates)
 $validationError = validatePayload($data);
 if ($validationError !== null) {
     $logger->error("Car Telemetry API: Payload-Validierung fehlgeschlagen.", ['missing_field' => $validationError]);
@@ -86,15 +87,25 @@ if ($validationError !== null) {
     exit;
 }
 
-// 5. Speichern der Telemetriedaten
+// 4. Speichern der Telemetriedaten
 try {
     $repo = new TelemetryRepository();
-    $repo->saveTelemetry($data);
+    
+    // Prüfen, ob relevante Telemetrie enthalten ist (z.B. SoC oder Kilometerstand)
+    $hasTelemetry = isset($data['battery']['soc']) || isset($data['status']['mileage_km']);
+
+    // Live-State wird IMMER aktualisiert (setzt Zeitstempel neu, behält Nicht-Null-Werte via COALESCE)
+    $repo->saveState($data);
+
+    // Historien-Log wird NUR bei echten Telemetriedaten geschrieben
+    if ($hasTelemetry) {
+        $repo->saveLog($data);
+    }
 
     http_response_code(201); // 201 Created
     echo json_encode([
         'success' => true,
-        'message' => 'Telemetry updated'
+        'message' => $hasTelemetry ? 'Telemetry log & state updated' : 'Keep-alive state updated'
     ]);
 } catch (\Throwable $e) {
     $logger->error("Car Telemetry API: Fehler beim Speichern der Telemetriedaten.", ['error' => $e->getMessage()]);
@@ -106,10 +117,8 @@ try {
 }
 
 /**
- * Validiert die Struktur des empfangenen Telemetrie-Payloads.
- *
- * @param mixed $data
- * @return string|null Name des fehlerhaften Feldes oder null bei Erfolg
+ * Validiert die Grundstruktur des empfangenen Telemetrie-Payloads.
+ * Feldern in battery/status ist NULL nun gestattet (Partial Updates).
  */
 function validatePayload($data): ?string {
     if (!is_array($data)) {
@@ -124,33 +133,23 @@ function validatePayload($data): ?string {
     if (!isset($data['battery']) || !is_array($data['battery'])) {
         return 'battery';
     }
-    
-    // Validierung der Batterie-Werte
-    foreach (['soc', 'target_soc', 'charge_power_kw', 'max_temp_c', 'min_temp_c'] as $key) {
-        if (!isset($data['battery'][$key]) || !is_numeric($data['battery'][$key])) {
-            return "battery.{$key}";
-        }
-    }
-    
     if (!isset($data['status']) || !is_array($data['status'])) {
         return 'status';
     }
-    if (!isset($data['status']['charging_state']) || !is_string($data['status']['charging_state'])) {
-        return 'status.charging_state';
+
+    // Validierung der Batterie-Werte (dürfen auch null sein)
+    foreach (['soc', 'target_soc', 'charge_power_kw', 'max_temp_c', 'min_temp_c'] as $key) {
+        if (array_key_exists($key, $data['battery']) && $data['battery'][$key] !== null && !is_numeric($data['battery'][$key])) {
+            return "battery.{$key}";
+        }
     }
-    if (!isset($data['status']['plug_connected']) || (!is_bool($data['status']['plug_connected']) && !is_numeric($data['status']['plug_connected']))) {
-        return 'status.plug_connected';
-    }
-    if (!isset($data['status']['is_locked']) || (!is_bool($data['status']['is_locked']) && !is_numeric($data['status']['is_locked']))) {
-        return 'status.is_locked';
-    }
-    
-    // Validierung der Status-Werte
+
+    // Validierung der Status-Werte (dürfen auch null sein)
     foreach (['mileage_km', 'range_km', 'outdoor_temp_c'] as $key) {
-        if (!isset($data['status'][$key]) || !is_numeric($data['status'][$key])) {
+        if (array_key_exists($key, $data['status']) && $data['status'][$key] !== null && !is_numeric($data['status'][$key])) {
             return "status.{$key}";
         }
     }
-    
+
     return null;
 }
