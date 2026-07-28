@@ -16,43 +16,30 @@ class TelemetryRepository {
         $this->logger = new Logger(14);
     }
 
-
     /**
-     * Speichert die empfangenen Telemetriedaten in vehicle_state (Upsert) und vehicle_telemetry_log.
-     *
-     * @param array $data Das geparste JSON-Array
-     * @return bool True bei Erfolg
-     * @throws Exception
+     * Speichert / aktualisiert den Live-Status in vehicle_state.
+     * Nutzt COALESCE, damit Nicht-Null-Werte bei Rumpf-Updates erhalten bleiben.
      */
-    public function saveTelemetry(array $data): bool {
+    public function saveState(array $data): bool {
         try {
-            $this->logger->info("TelemetryRepository: Starte Speichern der Telemetriedaten für VIN: " . ($data['vin'] ?? 'Unbekannt'));
-
-            // 1. Daten extrahieren und vorverarbeiten
             $vin = $data['vin'];
-            
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            $socPercent = (int)($data['battery']['soc'] ?? 0);
-            $targetSoc = (int)($data['battery']['target_soc'] ?? 0);
-            $chargePowerKw = (float)($data['battery']['charge_power_kw'] ?? 0.0);
-            $batteryTempMax = (float)($data['battery']['max_temp_c'] ?? 0.0);
-            $batteryTempMin = (float)($data['battery']['min_temp_c'] ?? 0.0);
+            // Nullable Variablen (null, wenn nicht vorhanden)
+            $socPercent     = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
+            $targetSoc      = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
+            $chargePowerKw  = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
+            $batteryTempMax = isset($data['battery']['max_temp_c']) ? (float)$data['battery']['max_temp_c'] : null;
+            $batteryTempMin = isset($data['battery']['min_temp_c']) ? (float)$data['battery']['min_temp_c'] : null;
 
-            $chargingState = $data['status']['charging_state'] ?? 'off';
-            $plugConnected = ($data['status']['plug_connected'] ?? false) ? 1 : 0;
-            $isLocked = ($data['status']['is_locked'] ?? true) ? 1 : 0;
-            $mileageKm = (int)($data['status']['mileage_km'] ?? 0);
-            $rangeKm = (int)($data['status']['range_km'] ?? 0);
-            $outdoorTempC = (float)($data['status']['outdoor_temp_c'] ?? 0.0);
+            $chargingState  = $data['status']['charging_state'] ?? null;
+            $plugConnected  = isset($data['status']['plug_connected']) ? ($data['status']['plug_connected'] ? 1 : 0) : null;
+            $isLocked       = isset($data['status']['is_locked']) ? ($data['status']['is_locked'] ? 1 : 0) : null;
+            $mileageKm      = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
+            $rangeKm        = isset($data['status']['range_km']) ? (int)$data['status']['range_km'] : null;
+            $outdoorTempC   = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
 
-            $rawPayload = json_encode($data);
-
-            // 2. Transaktion starten
-            $this->db->beginTransaction();
-
-            // 3. vehicle_state (Upsert)
             $stmtState = $this->db->prepare("
                 INSERT INTO `vehicle_state` (
                     `vin`, 
@@ -83,19 +70,19 @@ class TelemetryRepository {
                     :range_km, 
                     :outdoor_temp_c
                 ) ON DUPLICATE KEY UPDATE
-                    `car_captured_at` = VALUES(`car_captured_at`),
-                    `soc_percent` = VALUES(`soc_percent`),
-                    `target_soc` = VALUES(`target_soc`),
-                    `charge_power_kw` = VALUES(`charge_power_kw`),
-                    `battery_temp_max` = VALUES(`battery_temp_max`),
-                    `battery_temp_min` = VALUES(`battery_temp_min`),
-                    `charging_state` = VALUES(`charging_state`),
-                    `plug_connected` = VALUES(`plug_connected`),
-                    `is_locked` = VALUES(`is_locked`),
-                    `mileage_km` = VALUES(`mileage_km`),
-                    `range_km` = VALUES(`range_km`),
-                    `outdoor_temp_c` = VALUES(`outdoor_temp_c`),
-                    `updated_at` = CURRENT_TIMESTAMP
+                    `car_captured_at`  = VALUES(`car_captured_at`),
+                    `soc_percent`      = COALESCE(VALUES(`soc_percent`), `soc_percent`),
+                    `target_soc`       = COALESCE(VALUES(`target_soc`), `target_soc`),
+                    `charge_power_kw`  = COALESCE(VALUES(`charge_power_kw`), `charge_power_kw`),
+                    `battery_temp_max` = COALESCE(VALUES(`battery_temp_max`), `battery_temp_max`),
+                    `battery_temp_min` = COALESCE(VALUES(`battery_temp_min`), `battery_temp_min`),
+                    `charging_state`   = COALESCE(VALUES(`charging_state`), `charging_state`),
+                    `plug_connected`   = COALESCE(VALUES(`plug_connected`), `plug_connected`),
+                    `is_locked`        = COALESCE(VALUES(`is_locked`), `is_locked`),
+                    `mileage_km`       = COALESCE(VALUES(`mileage_km`), `mileage_km`),
+                    `range_km`         = COALESCE(VALUES(`range_km`), `range_km`),
+                    `outdoor_temp_c`   = COALESCE(VALUES(`outdoor_temp_c`), `outdoor_temp_c`),
+                    `updated_at`       = CURRENT_TIMESTAMP
             ");
 
             $stmtState->execute([
@@ -114,7 +101,29 @@ class TelemetryRepository {
                 ':outdoor_temp_c' => $outdoorTempC
             ]);
 
-            // 4. vehicle_telemetry_log
+            return true;
+        } catch (Exception $e) {
+            $this->logger->error("TelemetryRepository: Fehler bei saveState.", ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Schreibt einen vollen Log-Eintrag in vehicle_telemetry_log.
+     */
+    public function saveLog(array $data): bool {
+        try {
+            $vin = $data['vin'];
+            $capturedAtObj = new DateTime($data['captured_at']);
+            $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
+
+            $socPercent    = (int)($data['battery']['soc'] ?? 0);
+            $chargePowerKw = (float)($data['battery']['charge_power_kw'] ?? 0.0);
+            $rangeKm       = (int)($data['status']['range_km'] ?? 0);
+            $mileageKm     = (int)($data['status']['mileage_km'] ?? 0);
+            $outdoorTempC  = (float)($data['status']['outdoor_temp_c'] ?? 0.0);
+            $rawPayload    = json_encode($data);
+
             $stmtLog = $this->db->prepare("
                 INSERT INTO `vehicle_telemetry_log` (
                     `vin`, 
@@ -148,16 +157,9 @@ class TelemetryRepository {
                 ':raw_payload' => $rawPayload
             ]);
 
-            // 5. Commit
-            $this->db->commit();
-            $this->logger->info("TelemetryRepository: Telemetriedaten erfolgreich gespeichert für VIN: " . $vin);
             return true;
-
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            $this->logger->error("TelemetryRepository: Fehler beim Speichern der Telemetriedaten.", ['error' => $e->getMessage()]);
+            $this->logger->error("TelemetryRepository: Fehler bei saveLog.", ['error' => $e->getMessage()]);
             throw $e;
         }
     }
