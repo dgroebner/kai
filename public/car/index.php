@@ -12,6 +12,42 @@ use Kai\Tools\Shared\Db\Database;
 $db = Database::getInstance()->getConnection();
 
 // ----------------------------------------------------
+// Hilfsfunktionen (inkl. Zeitzonenkonvertierung)
+// ----------------------------------------------------
+
+/**
+ * Wandelt einen UTC-Zeitstempel für JEDEN Datenpunkt individuell 
+ * unter Berücksichtigung der am Erfassungstag gültigen Sommer-/Winterzeit in deutsche Ortszeit um.
+ */
+function formatToLocalTime(?string $utcTimeString, string $format = 'd.m.Y H:i'): string {
+    if (!$utcTimeString) {
+        return '–';
+    }
+    try {
+        $dt = new DateTime($utcTimeString, new DateTimeZone('UTC'));
+        $dt->setTimezone(new DateTimeZone('Europe/Berlin'));
+        return $dt->format($format);
+    } catch (\Exception $e) {
+        return $utcTimeString;
+    }
+}
+
+function socColor(int $soc): string {
+    if ($soc >= 60) return '#10b981';
+    if ($soc >= 25) return '#f59e0b';
+    return '#ef4444';
+}
+
+function chargingLabel(string $state): array {
+    return match($state) {
+        'charging'         => ['icon' => '⚡', 'label' => 'Lädt',     'color' => '#10b981'],
+        'conservation'     => ['icon' => '🔋', 'label' => 'Erhaltung', 'color' => '#3b82f6'],
+        'readyForCharging' => ['icon' => '🔌', 'label' => 'Bereit',   'color' => '#f59e0b'],
+        default            => ['icon' => '💤', 'label' => 'Aus',       'color' => '#64748b'],
+    };
+}
+
+// ----------------------------------------------------
 // 1. Live-Fahrzeugstatus (Unabhängig vom Zeitraum)
 // ----------------------------------------------------
 $stateStmt = $db->query("
@@ -23,7 +59,7 @@ $stateStmt = $db->query("
 $state = $stateStmt ? $stateStmt->fetch() : null;
 
 // ----------------------------------------------------
-// 2. Zeitraum-Berechnung (Woche, Monat, Jahr)
+// 2. Zeitraum-Berechnung (Woche, Monat, Jahr in Ortszeit)
 // ----------------------------------------------------
 $type = $_GET['type'] ?? 'monat';
 if (!in_array($type, ['woche', 'monat', 'jahr'])) {
@@ -31,9 +67,9 @@ if (!in_array($type, ['woche', 'monat', 'jahr'])) {
 }
 
 $dateParam = $_GET['date'] ?? date('Y-m-d');
-$dateTime = DateTime::createFromFormat('Y-m-d', $dateParam);
+$dateTime = DateTime::createFromFormat('Y-m-d', $dateParam, new DateTimeZone('Europe/Berlin'));
 if (!$dateTime) {
-    $dateTime = new DateTime();
+    $dateTime = new DateTime('now', new DateTimeZone('Europe/Berlin'));
 }
 $refDate = $dateTime->format('Y-m-d');
 
@@ -43,11 +79,11 @@ if ($type === 'woche') {
     if ($dayOfWeek > 1) {
         $startDt->modify('-' . ($dayOfWeek - 1) . ' days');
     }
-    $startDate = $startDt->format('Y-m-d 00:00:00');
+    $startDateLocal = $startDt->format('Y-m-d 00:00:00');
     
     $endDt = clone $startDt;
     $endDt->modify('+6 days');
-    $endDate = $endDt->format('Y-m-d 23:59:59');
+    $endDateLocal = $endDt->format('Y-m-d 23:59:59');
     
     $prevDate = (clone $startDt)->modify('-7 days')->format('Y-m-d');
     $nextDate = (clone $startDt)->modify('+7 days')->format('Y-m-d');
@@ -56,11 +92,11 @@ if ($type === 'woche') {
     $navLabelPrev = "Vorherige Woche";
     $navLabelNext = "Nächste Woche";
 } elseif ($type === 'jahr') {
-    $startDate = $dateTime->format('Y-01-01 00:00:00');
-    $endDate = $dateTime->format('Y-12-31 23:59:59');
+    $startDateLocal = $dateTime->format('Y-01-01 00:00:00');
+    $endDateLocal = $dateTime->format('Y-12-31 23:59:59');
     
-    $startDt = new DateTime($startDate);
-    $endDt = new DateTime($endDate);
+    $startDt = new DateTime($startDateLocal, new DateTimeZone('Europe/Berlin'));
+    $endDt = new DateTime($endDateLocal, new DateTimeZone('Europe/Berlin'));
     
     $prevDate = (clone $startDt)->modify('-1 year')->format('Y-m-d');
     $nextDate = (clone $startDt)->modify('+1 year')->format('Y-m-d');
@@ -69,11 +105,11 @@ if ($type === 'woche') {
     $navLabelPrev = "Vorheriges Jahr";
     $navLabelNext = "Nächstes Jahr";
 } else { // 'monat'
-    $startDate = $dateTime->format('Y-m-01 00:00:00');
-    $endDate = $dateTime->format('Y-m-t 23:59:59');
+    $startDateLocal = $dateTime->format('Y-m-01 00:00:00');
+    $endDateLocal = $dateTime->format('Y-m-t 23:59:59');
     
-    $startDt = new DateTime($startDate);
-    $endDt = new DateTime($endDate);
+    $startDt = new DateTime($startDateLocal, new DateTimeZone('Europe/Berlin'));
+    $endDt = new DateTime($endDateLocal, new DateTimeZone('Europe/Berlin'));
     
     $prevDate = (clone $startDt)->modify('-1 month')->format('Y-m-d');
     $nextDate = (clone $startDt)->modify('+1 month')->format('Y-m-d');
@@ -89,8 +125,17 @@ if ($type === 'woche') {
     $navLabelNext = "Nächster Monat";
 }
 
+// Lokale Grenzen für DB-Abfrage in UTC konvertieren
+$startDtUtc = new DateTime($startDateLocal, new DateTimeZone('Europe/Berlin'));
+$startDtUtc->setTimezone(new DateTimeZone('UTC'));
+$startDateUtc = $startDtUtc->format('Y-m-d H:i:s');
+
+$endDtUtc = new DateTime($endDateLocal, new DateTimeZone('Europe/Berlin'));
+$endDtUtc->setTimezone(new DateTimeZone('UTC'));
+$endDateUtc = $endDtUtc->format('Y-m-d H:i:s');
+
 // ----------------------------------------------------
-// 3. DB-Abfragen für gefilterte Historie
+// 3. DB-Abfragen für gefilterte Historie (mit UTC-Grenzen)
 // ----------------------------------------------------
 
 // Zeitreihe für gefilterten Zeitraum (SoC-Verlauf Chart)
@@ -101,8 +146,8 @@ $historyStmt = $db->prepare("
     ORDER BY car_captured_at ASC
 ");
 $historyStmt->execute([
-    ':start' => $startDate,
-    ':end'   => $endDate
+    ':start' => $startDateUtc,
+    ':end'   => $endDateUtc
 ]);
 $history = $historyStmt->fetchAll();
 
@@ -116,7 +161,7 @@ $countStmt = $db->prepare("
     FROM vehicle_telemetry_log 
     WHERE car_captured_at BETWEEN :start AND :end
 ");
-$countStmt->execute([':start' => $startDate, ':end' => $endDate]);
+$countStmt->execute([':start' => $startDateUtc, ':end' => $endDateUtc]);
 $totalEntries = (int)$countStmt->fetchColumn();
 $totalPages = max(1, ceil($totalEntries / $perPage));
 
@@ -127,28 +172,12 @@ $logStmt = $db->prepare("
     ORDER BY car_captured_at DESC
     LIMIT :limit OFFSET :offset
 ");
-$logStmt->bindValue(':start', $startDate);
-$logStmt->bindValue(':end', $endDate);
+$logStmt->bindValue(':start', $startDateUtc);
+$logStmt->bindValue(':end', $endDateUtc);
 $logStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
 $logStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $logStmt->execute();
 $recentLog = $logStmt->fetchAll();
-
-// Hilfsfunktionen
-function socColor(int $soc): string {
-    if ($soc >= 60) return '#10b981';
-    if ($soc >= 25) return '#f59e0b';
-    return '#ef4444';
-}
-
-function chargingLabel(string $state): array {
-    return match($state) {
-        'charging'         => ['icon' => '⚡', 'label' => 'Lädt',     'color' => '#10b981'],
-        'conservation'     => ['icon' => '🔋', 'label' => 'Erhaltung', 'color' => '#3b82f6'],
-        'readyForCharging' => ['icon' => '🔌', 'label' => 'Bereit',   'color' => '#f59e0b'],
-        default            => ['icon' => '💤', 'label' => 'Aus',       'color' => '#64748b'],
-    };
-}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -343,7 +372,7 @@ function chargingLabel(string $state): array {
         <div class="page-header">
             <h1>🚐 VW ID.Buzz</h1>
             <?php if ($state): ?>
-                <span class="last-update">Aktualisiert: <?= date('d.m.Y H:i', strtotime($state['updated_at'])) ?> Uhr</span>
+                <span class="last-update">Aktualisiert: <?= formatToLocalTime($state['updated_at']) ?> Uhr</span>
             <?php endif; ?>
         </div>
         <div class="subtitle">
@@ -455,7 +484,7 @@ function chargingLabel(string $state): array {
             <div class="current-period-label">
                 <?= htmlspecialchars($periodLabel) ?>
                 <span class="period-range-sub">
-                    Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDate)) ?> bis <?= date('d.m.Y', strtotime($endDate)) ?>
+                    Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDateLocal)) ?> bis <?= date('d.m.Y', strtotime($endDateLocal)) ?>
                 </span>
             </div>
             <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
@@ -477,8 +506,8 @@ function chargingLabel(string $state): array {
                     $polyline = implode(' ', $points);
                     
                     $dateFormat = ($type === 'woche') ? 'd.m. H:i' : (($type === 'jahr') ? 'd.m.Y' : 'd.m. H:i');
-                    $firstTs = date($dateFormat, strtotime($history[0]['car_captured_at']));
-                    $lastTs  = date($dateFormat, strtotime($history[$count - 1]['car_captured_at']));
+                    $firstTs = formatToLocalTime($history[0]['car_captured_at'], $dateFormat);
+                    $lastTs  = formatToLocalTime($history[$count - 1]['car_captured_at'], $dateFormat);
                     ?>
                     <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
                         <defs>
@@ -499,9 +528,9 @@ function chargingLabel(string $state): array {
                             stroke-linecap="round"/>
                     </svg>
                     <div style="display:flex;justify-content:space-between;margin-top:-0.5rem;font-size:0.7rem;color:var(--text-muted);">
-                        <span><?= $firstTs ?></span>
+                        <span><?= $firstTs ?> Uhr</span>
                         <span><?= $count ?> Datenpunkte</span>
-                        <span><?= $lastTs ?></span>
+                        <span><?= $lastTs ?> Uhr</span>
                     </div>
                 </div>
             <?php else: ?>
@@ -532,24 +561,24 @@ function chargingLabel(string $state): array {
                             $sc = socColor((int)$row['soc_percent']);
                         ?>
                         <tr>
-                            <td style="color:var(--text-muted)"><?= date('d.m.Y H:i', strtotime($row['car_captured_at'])) ?></td>
+                            <td style="color:var(--text-muted)"><?= formatToLocalTime($row['car_captured_at']) ?> Uhr</td>
                             <td>
                                 <span class="badge" style="background:<?= $sc ?>22; color:<?= $sc ?>">
                                     <?= $row['soc_percent'] ?> %
                                 </span>
                             </td>
                             <td>
-								<div style="display: flex; align-items: center; gap: 5px;">
-									<input type="number" 
-										   class="inline-range-input" 
-										   data-vin="<?= htmlspecialchars($state['vin']) ?>" 
-										   data-captured="<?= htmlspecialchars($row['car_captured_at']) ?>" 
-										   value="<?= $row['range_km'] > 0 ? (int)$row['range_km'] : '' ?>" 
-										   placeholder="—" 
-										   style="width: 65px; padding: 2px 6px; font-size: 0.85rem; background: var(--bg-surface-hover); border: 1px solid transparent; color: var(--text-main); border-radius: 4px; text-align: right;">
-									<span style="font-size: 0.8rem; color: var(--text-muted);">km</span>
-								</div>
-							</td>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="number" 
+                                           class="inline-range-input" 
+                                           data-vin="<?= htmlspecialchars($state['vin']) ?>" 
+                                           data-captured="<?= htmlspecialchars($row['car_captured_at']) ?>" 
+                                           value="<?= $row['range_km'] > 0 ? (int)$row['range_km'] : '' ?>" 
+                                           placeholder="—" 
+                                           style="width: 65px; padding: 2px 6px; font-size: 0.85rem; background: var(--bg-surface-hover); border: 1px solid transparent; color: var(--text-main); border-radius: 4px; text-align: right;">
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">km</span>
+                                </div>
+                            </td>
                             <td><?= number_format($row['mileage_km'], 0, ',', '.') ?> km</td>
                             <td>
                                 <?php if ($row['charge_power_kw'] > 0): ?>
