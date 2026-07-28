@@ -71,17 +71,17 @@ class TelemetryRepository {
                     COALESCE(:outdoor_temp_c, 0.0)
                 ) ON DUPLICATE KEY UPDATE
                     `car_captured_at`  = VALUES(`car_captured_at`),
-                    `soc_percent`      = IF(VALUES(`soc_percent`) = 0 AND :soc_percent IS NULL, `soc_percent`, VALUES(`soc_percent`)),
-                    `target_soc`       = IF(VALUES(`target_soc`) = 0 AND :target_soc IS NULL, `target_soc`, VALUES(`target_soc`)),
-                    `charge_power_kw`  = IF(VALUES(`charge_power_kw`) = 0.0 AND :charge_power_kw IS NULL, `charge_power_kw`, VALUES(`charge_power_kw`)),
-                    `battery_temp_max` = IF(VALUES(`battery_temp_max`) = 0.0 AND :battery_temp_max IS NULL, `battery_temp_max`, VALUES(`battery_temp_max`)),
-                    `battery_temp_min` = IF(VALUES(`battery_temp_min`) = 0.0 AND :battery_temp_min IS NULL, `battery_temp_min`, VALUES(`battery_temp_min`)),
-                    `charging_state`   = IF(VALUES(`charging_state`) = 'unknown' AND :charging_state IS NULL, `charging_state`, VALUES(`charging_state`)),
-                    `plug_connected`   = IF(VALUES(`plug_connected`) = 0 AND :plug_connected IS NULL, `plug_connected`, VALUES(`plug_connected`)),
-                    `is_locked`        = IF(VALUES(`is_locked`) = 1 AND :is_locked IS NULL, `is_locked`, VALUES(`is_locked`)),
-                    `mileage_km`       = IF(VALUES(`mileage_km`) = 0 AND :mileage_km IS NULL, `mileage_km`, VALUES(`mileage_km`)),
-                    `range_km`         = IF(VALUES(`range_km`) = 0 AND :range_km IS NULL, `range_km`, VALUES(`range_km`)),
-                    `outdoor_temp_c`   = IF(VALUES(`outdoor_temp_c`) = 0.0 AND :outdoor_temp_c IS NULL, `outdoor_temp_c`, VALUES(`outdoor_temp_c`)),
+                    `soc_percent`      = COALESCE(VALUES(`soc_percent`), `soc_percent`),
+                    `target_soc`       = COALESCE(VALUES(`target_soc`), `target_soc`),
+                    `charge_power_kw`  = COALESCE(VALUES(`charge_power_kw`), `charge_power_kw`),
+                    `battery_temp_max` = COALESCE(VALUES(`battery_temp_max`), `battery_temp_max`),
+                    `battery_temp_min` = COALESCE(VALUES(`battery_temp_min`), `battery_temp_min`),
+                    `charging_state`   = COALESCE(VALUES(`charging_state`), `charging_state`),
+                    `plug_connected`   = COALESCE(VALUES(`plug_connected`), `plug_connected`),
+                    `is_locked`        = COALESCE(VALUES(`is_locked`), `is_locked`),
+                    `mileage_km`       = COALESCE(VALUES(`mileage_km`), `mileage_km`),
+                    `range_km`         = COALESCE(VALUES(`range_km`), `range_km`),
+                    `outdoor_temp_c`   = COALESCE(VALUES(`outdoor_temp_c`), `outdoor_temp_c`),
                     `updated_at`       = CURRENT_TIMESTAMP
             ");
 
