@@ -50,28 +50,7 @@ if (empty($secretToken) || empty($receivedToken) || !hash_equals($secretToken, $
     ]);
     exit;
 }
-
-// 2. Optionale Datenbank-Migration per URL-Parameter
-if (isset($_GET['migrate']) && $_GET['migrate'] === '1') {
-    try {
-        $repo = new TelemetryRepository();
-        $repo->migrate();
-        echo json_encode([
-            'success' => true,
-            'message' => 'Migration completed successfully'
-        ]);
-        exit;
-    } catch (\Throwable $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Migration failed: ' . $e->getMessage()
-        ]);
-        exit;
-    }
-}
-
-// 3. Nur POST-Anfragen für Telemetrie-Upload erlauben
+// 2. Nur POST-Anfragen für Telemetrie-Upload erlauben
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode([
