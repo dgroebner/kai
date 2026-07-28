@@ -12,7 +12,18 @@ use Kai\Tools\Shared\Db\Database;
 $db = Database::getInstance()->getConnection();
 
 // ----------------------------------------------------
-// 1. Zeitraum-Berechnung (Woche, Monat, Jahr)
+// 1. Live-Fahrzeugstatus (Unabhängig vom Zeitraum)
+// ----------------------------------------------------
+$stateStmt = $db->query("
+    SELECT *
+    FROM vehicle_state
+    ORDER BY updated_at DESC
+    LIMIT 1
+");
+$state = $stateStmt ? $stateStmt->fetch() : null;
+
+// ----------------------------------------------------
+// 2. Zeitraum-Berechnung (Woche, Monat, Jahr)
 // ----------------------------------------------------
 $type = $_GET['type'] ?? 'monat';
 if (!in_array($type, ['woche', 'monat', 'jahr'])) {
@@ -79,19 +90,10 @@ if ($type === 'woche') {
 }
 
 // ----------------------------------------------------
-// 2. DB-Abfragen
+// 3. DB-Abfragen für gefilterte Historie
 // ----------------------------------------------------
 
-// --- Aktueller Fahrzeugstatus ---
-$stateStmt = $db->query("
-    SELECT *
-    FROM vehicle_state
-    ORDER BY updated_at DESC
-    LIMIT 1
-");
-$state = $stateStmt ? $stateStmt->fetch() : null;
-
-// --- Zeitreihe für gefilterten Zeitraum (SoC-Verlauf Chart) ---
+// Zeitreihe für gefilterten Zeitraum (SoC-Verlauf Chart)
 $historyStmt = $db->prepare("
     SELECT car_captured_at, soc_percent, range_km, charge_power_kw, outdoor_temp_c
     FROM vehicle_telemetry_log
@@ -104,12 +106,11 @@ $historyStmt->execute([
 ]);
 $history = $historyStmt->fetchAll();
 
-// --- Paginierung der Telemetrielog-Tabelle ---
+// Paginierung der Telemetrielog-Tabelle
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $perPage = 15;
 $offset = ($page - 1) * $perPage;
 
-// Gesamtanzahl der Datensätze im Zeitraum ermitteln
 $countStmt = $db->prepare("
     SELECT COUNT(*) 
     FROM vehicle_telemetry_log 
@@ -119,7 +120,6 @@ $countStmt->execute([':start' => $startDate, ':end' => $endDate]);
 $totalEntries = (int)$countStmt->fetchColumn();
 $totalPages = max(1, ceil($totalEntries / $perPage));
 
-// Log-Einträge paginiert abrufen
 $logStmt = $db->prepare("
     SELECT car_captured_at, soc_percent, range_km, mileage_km, charge_power_kw, outdoor_temp_c
     FROM vehicle_telemetry_log
@@ -134,7 +134,7 @@ $logStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $logStmt->execute();
 $recentLog = $logStmt->fetchAll();
 
-// --- Hilfsfunktionen ---
+// Hilfsfunktionen
 function socColor(int $soc): string {
     if ($soc >= 60) return '#10b981';
     if ($soc >= 25) return '#f59e0b';
@@ -182,40 +182,6 @@ function chargingLabel(string $state): array {
         .page-header h1 { margin-bottom: 0; }
         .last-update { font-size: 0.8rem; color: var(--text-muted); }
 
-        /* Period Switcher & Nav (analog zu auswertung.php) */
-        .period-switcher {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 1.5rem;
-            justify-content: center;
-        }
-        .period-switcher .btn { min-width: 100px; text-align: center; }
-
-        .period-navigation {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--bg-surface);
-            padding: 0.8rem 1.5rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 2rem;
-            border: 1px solid var(--bg-surface-hover);
-            gap: 15px;
-        }
-        .current-period-label {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-main);
-            text-align: center;
-        }
-        .period-range-sub {
-            display: block;
-            font-size: 0.8em;
-            color: var(--text-muted);
-            font-weight: normal;
-            margin-top: 2px;
-        }
-
         /* Status-Banner */
         .status-banner {
             display: flex;
@@ -247,7 +213,7 @@ function chargingLabel(string $state): array {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
             gap: 1rem;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
         }
         .kpi-card {
             background: var(--bg-surface);
@@ -272,11 +238,45 @@ function chargingLabel(string $state): array {
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--bg-surface-hover);
         }
         .chart-section { margin-bottom: 2.5rem; }
+
+        /* Period Switcher & Nav */
+        .period-switcher {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.25rem;
+            justify-content: center;
+        }
+        .period-switcher .btn { min-width: 100px; text-align: center; }
+
+        .period-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-surface);
+            padding: 0.8rem 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            border: 1px solid var(--bg-surface-hover);
+            gap: 15px;
+        }
+        .current-period-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            text-align: center;
+        }
+        .period-range-sub {
+            display: block;
+            font-size: 0.8em;
+            color: var(--text-muted);
+            font-weight: normal;
+            margin-top: 2px;
+        }
 
         /* SoC-Chart */
         .soc-chart-container {
@@ -316,10 +316,7 @@ function chargingLabel(string $state): array {
             margin-top: 1.5rem;
             flex-wrap: wrap;
         }
-        .pagination .btn-sm {
-            padding: 0.3rem 0.7rem;
-            font-size: 0.85rem;
-        }
+        .pagination .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
 
         .no-data {
             padding: 2.5rem;
@@ -357,25 +354,6 @@ function chargingLabel(string $state): array {
 
     <main style="margin-top: 1.5rem;">
 
-    <!-- Schnelleinstellungen (Typ-Auswahl) -->
-    <div class="period-switcher">
-        <a href="?type=woche&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'woche' ? '' : 'btn-outline' ?>">Woche</a>
-        <a href="?type=monat&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'monat' ? '' : 'btn-outline' ?>">Monat</a>
-        <a href="?type=jahr&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'jahr' ? '' : 'btn-outline' ?>">Jahr</a>
-    </div>
-
-    <!-- Zeitraum Navigation -->
-    <div class="period-navigation">
-        <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($prevDate) ?>" class="btn btn-outline">◀ <?= htmlspecialchars($navLabelPrev) ?></a>
-        <div class="current-period-label">
-            <?= htmlspecialchars($periodLabel) ?>
-            <span class="period-range-sub">
-                Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDate)) ?> bis <?= date('d.m.Y', strtotime($endDate)) ?>
-            </span>
-        </div>
-        <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
-    </div>
-
     <?php if (!$state): ?>
         <div class="no-data">
             Noch keine Telemetriedaten vorhanden.<br>
@@ -386,7 +364,7 @@ function chargingLabel(string $state): array {
         $socCol   = socColor((int)$state['soc_percent']);
     ?>
 
-        <!-- Status-Banner (Live State) -->
+        <!-- 1. LIVE IST-DATEN (Zeitraum-unabhängig) -->
         <div class="status-banner">
             <div>
                 <div class="vin-label">VIN</div>
@@ -410,7 +388,6 @@ function chargingLabel(string $state): array {
             </div>
         </div>
 
-        <!-- Live KPI-Karten -->
         <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-label">Ladestand</div>
@@ -462,9 +439,30 @@ function chargingLabel(string $state): array {
             </div>
         </div>
 
-        <!-- SoC-Verlauf Chart (Dynamisch nach ausgewähltem Zeitraum) -->
+        <!-- 2. HISTORIE & ZEITRAUM-AUSWERTUNG -->
+        <div class="section-title">📊 Historie &amp; Auswertung</div>
+
+        <!-- Umschalter: Woche / Monat / Jahr -->
+        <div class="period-switcher">
+            <a href="?type=woche&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'woche' ? '' : 'btn-outline' ?>">Woche</a>
+            <a href="?type=monat&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'monat' ? '' : 'btn-outline' ?>">Monat</a>
+            <a href="?type=jahr&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'jahr' ? '' : 'btn-outline' ?>">Jahr</a>
+        </div>
+
+        <!-- Zeitraum Navigation (Vorherige / Nächste) -->
+        <div class="period-navigation">
+            <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($prevDate) ?>" class="btn btn-outline">◀ <?= htmlspecialchars($navLabelPrev) ?></a>
+            <div class="current-period-label">
+                <?= htmlspecialchars($periodLabel) ?>
+                <span class="period-range-sub">
+                    Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDate)) ?> bis <?= date('d.m.Y', strtotime($endDate)) ?>
+                </span>
+            </div>
+            <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
+        </div>
+
+        <!-- SoC-Verlauf Chart (gefiltert) -->
         <div class="chart-section">
-            <div class="section-title">SoC-Verlauf – <?= htmlspecialchars($periodLabel) ?></div>
             <?php if (!empty($history)): ?>
                 <div class="soc-chart-container">
                     <?php
@@ -478,7 +476,6 @@ function chargingLabel(string $state): array {
                     }
                     $polyline = implode(' ', $points);
                     
-                    // Beschriftung je nach Zeitraum anpassen (Datumsformat)
                     $dateFormat = ($type === 'woche') ? 'd.m. H:i' : (($type === 'jahr') ? 'd.m.Y' : 'd.m. H:i');
                     $firstTs = date($dateFormat, strtotime($history[0]['car_captured_at']));
                     $lastTs  = date($dateFormat, strtotime($history[$count - 1]['car_captured_at']));
@@ -514,7 +511,9 @@ function chargingLabel(string $state): array {
 
         <!-- Telemetrie-Log Tabelle mit Paginierung -->
         <div class="chart-section">
-            <div class="section-title">Telemetrie-Einträge (<?= $totalEntries ?> Einträge im Zeitraum)</div>
+            <strong style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.8rem;">
+                Telemetrie-Einträge (<?= $totalEntries ?> Einträge im Zeitraum)
+            </strong>
             <?php if (!empty($recentLog)): ?>
             <div class="table-responsive">
                 <table class="log-table">
