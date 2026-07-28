@@ -17,8 +17,38 @@ class TelemetryRepository {
     }
 
     /**
+     * Schätzt die Reichweite basierend auf historischen Daten aus vehicle_telemetry_log.
+     */
+    private function calculateInterpolatedRange(string $vin, int $socPercent): int {
+        if ($socPercent <= 0) {
+            return 0;
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                SELECT AVG(range_km / soc_percent) as avg_factor
+                FROM vehicle_telemetry_log
+                WHERE vin = :vin 
+                  AND range_km IS NOT NULL 
+                  AND range_km > 0 
+                  AND soc_percent > 0
+            ");
+            $stmt->execute([':vin' => $vin]);
+            $avgFactor = $stmt->fetchColumn();
+
+            if (!$avgFactor || $avgFactor <= 0) {
+                $avgFactor = 3.8; // Fallback: ca. 380 km bei 100% SoC
+            }
+
+            return (int)round($socPercent * $avgFactor);
+
+        } catch (Exception $e) {
+            return (int)round($socPercent * 3.8);
+        }
+    }
+
+    /**
      * Speichert / aktualisiert den Live-Status in vehicle_state.
-     * Nutzt COALESCE/CASE, damit Nicht-Null-Werte bei Rumpf-Updates erhalten bleiben.
      */
     public function saveState(array $data): bool {
         try {
@@ -26,7 +56,6 @@ class TelemetryRepository {
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            // Nullable Variablen
             $socPercent     = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
             $targetSoc      = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
             $chargePowerKw  = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
@@ -37,8 +66,16 @@ class TelemetryRepository {
             $plugConnected  = isset($data['status']['plug_connected']) ? ($data['status']['plug_connected'] ? 1 : 0) : null;
             $isLocked       = isset($data['status']['is_locked']) ? ($data['status']['is_locked'] ? 1 : 0) : null;
             $mileageKm      = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
-            $rangeKm        = isset($data['status']['range_km']) ? (int)$data['status']['range_km'] : null;
             $outdoorTempC   = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
+
+            // Reichweite ermitteln / interpolieren
+            $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
+                       ? (int)$data['status']['range_km']
+                       : null;
+
+            if ($rangeKm === null && $socPercent !== null) {
+                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent);
+            }
 
             $stmtState = $this->db->prepare("
                 INSERT INTO `vehicle_state` (
@@ -110,7 +147,6 @@ class TelemetryRepository {
 
     /**
      * Schreibt einen Log-Eintrag in vehicle_telemetry_log.
-     * Verhindert Duplikate für denselben car_captured_at-Zeitstempel.
      */
     public function saveLog(array $data): bool {
         try {
@@ -118,7 +154,6 @@ class TelemetryRepository {
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            // Aktuelle Zustandswerte aus vehicle_state als Fallback laden
             $stmtCurrent = $this->db->prepare("
                 SELECT mileage_km, range_km, outdoor_temp_c 
                 FROM vehicle_state 
@@ -127,7 +162,6 @@ class TelemetryRepository {
             $stmtCurrent->execute([':vin' => $vin]);
             $currentState = $stmtCurrent->fetch(PDO::FETCH_ASSOC) ?: [];
 
-            // Einzelwerte bestimmen (Payload -> Live-State -> Null-Fallback)
             $socPercent    = (int)($data['battery']['soc'] ?? 0);
             $chargePowerKw = (float)($data['battery']['charge_power_kw'] ?? 0.0);
             
@@ -135,9 +169,18 @@ class TelemetryRepository {
                              ? (int)$data['status']['mileage_km']
                              : (int)($currentState['mileage_km'] ?? 0);
 
-            $rangeKm       = isset($data['status']['range_km']) && $data['status']['range_km'] !== null
-                             ? (int)$data['status']['range_km']
-                             : (int)($currentState['range_km'] ?? 0);
+            // Reichweite bestimmen / interpolieren
+            $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
+                       ? (int)$data['status']['range_km']
+                       : null;
+
+            if ($rangeKm === null && $socPercent > 0) {
+                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent);
+            }
+
+            if ($rangeKm === null || $rangeKm === 0) {
+                $rangeKm = (int)($currentState['range_km'] ?? 0);
+            }
 
             $outdoorTempC  = isset($data['status']['outdoor_temp_c']) && $data['status']['outdoor_temp_c'] !== null
                              ? (float)$data['status']['outdoor_temp_c']
