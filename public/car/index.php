@@ -538,7 +538,18 @@ function chargingLabel(string $state): array {
                                     <?= $row['soc_percent'] ?> %
                                 </span>
                             </td>
-                            <td><?= number_format($row['range_km'], 0, ',', '.') ?> km</td>
+                            <td>
+								<div style="display: flex; align-items: center; gap: 5px;">
+									<input type="number" 
+										   class="inline-range-input" 
+										   data-vin="<?= htmlspecialchars($state['vin']) ?>" 
+										   data-captured="<?= htmlspecialchars($row['car_captured_at']) ?>" 
+										   value="<?= $row['range_km'] > 0 ? (int)$row['range_km'] : '' ?>" 
+										   placeholder="—" 
+										   style="width: 65px; padding: 2px 6px; font-size: 0.85rem; background: var(--bg-surface-hover); border: 1px solid transparent; color: var(--text-main); border-radius: 4px; text-align: right;">
+									<span style="font-size: 0.8rem; color: var(--text-muted);">km</span>
+								</div>
+							</td>
                             <td><?= number_format($row['mileage_km'], 0, ',', '.') ?> km</td>
                             <td>
                                 <?php if ($row['charge_power_kw'] > 0): ?>
@@ -587,5 +598,7 @@ function chargingLabel(string $state): array {
     </footer>
 
 </div>
+<!-- Inline-Editing Logik für Reichweite -->
+<script src="js/telemetry.js?v=<?= time() ?>"></script>
 </body>
 </html>
