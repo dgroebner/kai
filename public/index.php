@@ -42,6 +42,12 @@ if (!isset($_SESSION['user_email'])) {
                     <p>Aktuelle Ertragsprognose der Photovoltaikanlage (4,7 kWp) für die kommenden Tage.</p>
                     <a href="pvcharge/index.php" class="btn">Öffnen</a>
                 </div>
+
+                <div class="card">
+                    <h3>🚐 VW ID.Buzz</h3>
+                    <p>Live-Telemetrie des Fahrzeugs: Ladestand, Reichweite, Temperaturen und Verlaufshistorie.</p>
+                    <a href="car/index.php" class="btn">Öffnen</a>
+                </div>
                 
             </div>
         </main>
