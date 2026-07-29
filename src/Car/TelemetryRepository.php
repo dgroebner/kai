@@ -210,7 +210,6 @@ class TelemetryRepository {
                 ) ON DUPLICATE KEY UPDATE
                     `soc_percent`     = VALUES(`soc_percent`),
                     `charge_power_kw` = VALUES(`charge_power_kw`),
-                    `range_km`        = IF(VALUES(`range_km`) > 0, VALUES(`range_km`), `range_km`),
                     `mileage_km`      = IF(VALUES(`mileage_km`) > 0, VALUES(`mileage_km`), `mileage_km`),
                     `outdoor_temp_c`  = VALUES(`outdoor_temp_c`),
                     `raw_payload`     = VALUES(`raw_payload`)
