@@ -372,7 +372,7 @@ $recentLog = $logStmt->fetchAll();
         <div class="page-header">
             <h1>🚐 VW ID.Buzz</h1>
             <?php if ($state): ?>
-                <span class="last-update">Aktualisiert: <?= formatToLocalTime($state['updated_at']) ?> Uhr</span>
+                <span class="last-update">Fahrzeugdaten von: <?= formatToLocalTime($state['car_captured_at']) ?> Uhr</span>
             <?php endif; ?>
         </div>
         <div class="subtitle">
