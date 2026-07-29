@@ -117,7 +117,6 @@ class TelemetryRepository {
                     `plug_connected`   = VALUES(`plug_connected`),
                     `is_locked`        = VALUES(`is_locked`),
                     `mileage_km`       = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
-                    `range_km`         = CASE WHEN VALUES(`range_km`) = 0 THEN `range_km` ELSE VALUES(`range_km`) END,
                     `outdoor_temp_c`   = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
                     `updated_at`       = CURRENT_TIMESTAMP
             ");
