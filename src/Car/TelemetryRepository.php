@@ -17,27 +17,53 @@ class TelemetryRepository {
     }
 
     /**
-     * Schätzt die Reichweite basierend auf historischen Daten aus vehicle_telemetry_log.
+     * Schätzt die Reichweite basierend auf historischen Daten.
+     * Berücksichtigt bevorzugt Datenpunkte in einem ähnlichen Temperaturbereich (±5°C).
      */
-    private function calculateInterpolatedRange(string $vin, int $socPercent): int {
+    private function calculateInterpolatedRange(string $vin, int $socPercent, ?float $outdoorTempC = null): int {
         if ($socPercent <= 0) {
             return 0;
         }
 
         try {
-            $stmt = $this->db->prepare("
-                SELECT AVG(range_km / soc_percent) as avg_factor
-                FROM vehicle_telemetry_log
-                WHERE vin = :vin 
-                  AND range_km IS NOT NULL 
-                  AND range_km > 0 
-                  AND soc_percent > 0
-            ");
-            $stmt->execute([':vin' => $vin]);
-            $avgFactor = $stmt->fetchColumn();
+            $avgFactor = null;
 
+            // 1. Wenn eine Außentemperatur vorliegt, primär im Fenster ±5°C suchen
+            if ($outdoorTempC !== null) {
+                $stmtTemp = $this->db->prepare("
+                    SELECT AVG(range_km / soc_percent) as avg_factor
+                    FROM vehicle_telemetry_log
+                    WHERE vin = :vin 
+                      AND range_km IS NOT NULL 
+                      AND range_km > 0 
+                      AND soc_percent > 0
+                      AND outdoor_temp_c BETWEEN :temp_min AND :temp_max
+                ");
+                $stmtTemp->execute([
+                    ':vin'      => $vin,
+                    ':temp_min' => $outdoorTempC - 5.0,
+                    ':temp_max' => $outdoorTempC + 5.0
+                ]);
+                $avgFactor = $stmtTemp->fetchColumn();
+            }
+
+            // 2. Fallback: Wenn noch keine Logs im Temperaturbereich existieren, globalen Durchschnitt nehmen
             if (!$avgFactor || $avgFactor <= 0) {
-                $avgFactor = 3.8; // Fallback: ca. 380 km bei 100% SoC
+                $stmtGlobal = $this->db->prepare("
+                    SELECT AVG(range_km / soc_percent) as avg_factor
+                    FROM vehicle_telemetry_log
+                    WHERE vin = :vin 
+                      AND range_km IS NOT NULL 
+                      AND range_km > 0 
+                      AND soc_percent > 0
+                ");
+                $stmtGlobal->execute([':vin' => $vin]);
+                $avgFactor = $stmtGlobal->fetchColumn();
+            }
+
+            // 3. Fallback: Harter Standardwert (ca. 3.8 km / % SoC), falls die DB noch komplett leer ist
+            if (!$avgFactor || $avgFactor <= 0) {
+                $avgFactor = 3.8;
             }
 
             return (int)round($socPercent * $avgFactor);
@@ -68,13 +94,13 @@ class TelemetryRepository {
             $mileageKm      = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
             $outdoorTempC   = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
 
-            // Reichweite ermitteln / interpolieren
+			// Reichweite ermitteln / interpolieren (unter Berücksichtigung der Außentemperatur)
             $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
                        ? (int)$data['status']['range_km']
                        : null;
 
             if ($rangeKm === null && $socPercent !== null) {
-                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent);
+                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
             }
 
             $stmtState = $this->db->prepare("
@@ -168,13 +194,13 @@ class TelemetryRepository {
                              ? (int)$data['status']['mileage_km']
                              : (int)($currentState['mileage_km'] ?? 0);
 
-            // Reichweite bestimmen / interpolieren
+			// Reichweite bestimmen / interpolieren
             $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
                        ? (int)$data['status']['range_km']
                        : null;
 
             if ($rangeKm === null && $socPercent > 0) {
-                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent);
+                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
             }
 
             if ($rangeKm === null || $rangeKm === 0) {
