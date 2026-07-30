@@ -308,43 +308,56 @@ $recentLog = $logStmt->fetchAll();
             margin-top: 2px;
         }
 
-        /* SoC-Chart & Tooltip Styling */
-        .soc-chart-container {
-            position: relative;
-            height: 220px;
-            background: var(--bg-surface);
-            border: 1px solid var(--bg-surface-hover);
-            border-radius: var(--border-radius);
-            padding: 1rem;
-            overflow: visible;
-        }
-        .soc-chart-svg { width: 100%; height: 100%; overflow: visible; }
+		/* SoC-Chart & Tooltip Styling */
+		.soc-chart-container {
+			position: relative;
+			height: 220px;
+			background: var(--bg-surface);
+			border: 1px solid var(--bg-surface-hover);
+			border-radius: var(--border-radius);
+			padding: 1rem;
+			overflow: visible;
+		}
+		.soc-chart-svg { 
+			width: 100%; 
+			height: 100%; 
+			overflow: visible; 
+		}
 
-        .chart-point {
-            cursor: pointer;
-            transition: r 0.15s ease, fill 0.15s ease;
-        }
-        .chart-point:hover {
-            r: 6;
-            fill: #ffffff !important;
-            stroke-width: 3;
-        }
+		/* Verhindert, dass Linien/Flächen das Mouseover der Datenpunkte blockieren */
+		.soc-chart-svg polygon,
+		.soc-chart-svg polyline {
+			pointer-events: none;
+		}
 
-        .chart-tooltip {
-            position: absolute;
-            display: none;
-            pointer-events: none;
-            background: rgba(15, 23, 42, 0.92);
-            border: 1px solid var(--car-blue);
-            color: #fff;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            z-index: 10;
-            white-space: nowrap;
-            transform: translate(-50%, -120%);
-        }
+		.chart-point {
+			cursor: pointer;
+			pointer-events: all;
+			transition: r 0.15s ease, fill 0.15s ease;
+		}
+
+		.chart-point:hover {
+			r: 6 !important;
+			fill: #ffffff !important;
+			stroke-width: 3;
+		}
+
+		/* Globales Tooltip Popup */
+		.chart-tooltip {
+			position: fixed;
+			display: none;
+			pointer-events: none;
+			background: rgba(15, 23, 42, 0.95);
+			border: 1px solid var(--car-blue);
+			color: #fff;
+			padding: 6px 10px;
+			border-radius: 6px;
+			font-size: 0.75rem;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+			z-index: 9999;
+			white-space: nowrap;
+			transform: translate(-50%, -100%);
+		}
 
         /* Log-Tabelle & Paginierung */
         .log-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
@@ -776,41 +789,6 @@ $recentLog = $logStmt->fetchAll();
     </footer>
 
 </div>
-
-<!-- Interactive Tooltip Script for SVG Charts -->
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const containers = document.querySelectorAll('.soc-chart-container');
-
-    containers.forEach(container => {
-        const tooltip = container.querySelector('.chart-tooltip');
-        const points = container.querySelectorAll('.chart-point');
-
-        points.forEach(point => {
-            point.addEventListener('mouseenter', () => {
-                const text = point.dataset.tooltip;
-                if (!text || !tooltip) return;
-
-                tooltip.innerHTML = text;
-                tooltip.style.display = 'block';
-
-                const rect = container.getBoundingClientRect();
-                const pointRect = point.getBoundingClientRect();
-
-                const x = pointRect.left - rect.left + (pointRect.width / 2);
-                const y = pointRect.top - rect.top;
-
-                tooltip.style.left = `${x}px`;
-                tooltip.style.top = `${y}px`;
-            });
-
-            point.addEventListener('mouseleave', () => {
-                if (tooltip) tooltip.style.display = 'none';
-            });
-        });
-    });
-});
-</script>
 
 <!-- Inline-Editing Logik für Reichweite -->
 <script src="../js/telemetry.js?v=<?= time() ?>"></script>
