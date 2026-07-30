@@ -179,18 +179,6 @@ $logStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $logStmt->execute();
 $recentLog = $logStmt->fetchAll();
 
-// Effizienz-Datenpunkte für gefilterten Zeitraum aufbereiten
-$effData = [];
-foreach ($history as $row) {
-    if (!empty($row['soc_percent']) && !empty($row['range_km']) && $row['soc_percent'] > 0 && $row['range_km'] > 0) {
-        $effData[] = [
-            'time' => $row['car_captured_at'],
-            'temp' => (float)$row['outdoor_temp_c'],
-            'km_per_percent' => round((int)$row['range_km'] / (int)$row['soc_percent'], 2)
-        ];
-    }
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -320,17 +308,43 @@ foreach ($history as $row) {
             margin-top: 2px;
         }
 
-        /* SoC-Chart */
+        /* SoC-Chart & Tooltip Styling */
         .soc-chart-container {
             position: relative;
-            height: 200px;
+            height: 220px;
             background: var(--bg-surface);
             border: 1px solid var(--bg-surface-hover);
             border-radius: var(--border-radius);
             padding: 1rem;
-            overflow: hidden;
+            overflow: visible;
         }
-        .soc-chart-svg { width: 100%; height: 100%; }
+        .soc-chart-svg { width: 100%; height: 100%; overflow: visible; }
+
+        .chart-point {
+            cursor: pointer;
+            transition: r 0.15s ease, fill 0.15s ease;
+        }
+        .chart-point:hover {
+            r: 6;
+            fill: #ffffff !important;
+            stroke-width: 3;
+        }
+
+        .chart-tooltip {
+            position: absolute;
+            display: none;
+            pointer-events: none;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid var(--car-blue);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 10;
+            white-space: nowrap;
+            transform: translate(-50%, -120%);
+        }
 
         /* Log-Tabelle & Paginierung */
         .log-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
@@ -503,111 +517,175 @@ foreach ($history as $row) {
             <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
         </div>
 
-		<!-- 1. CHART: SoC-VERLAUF (BLAU) -->
-		<div class="chart-section">
-			<div class="section-title">🔋 SoC-Verlauf – <?= htmlspecialchars($periodLabel) ?></div>
-			<?php if (!empty($history)): ?>
-				<div class="soc-chart-container">
-					<?php
-					$count = count($history);
-					$points = [];
-					$svgW = 1000; $svgH = 160; $padT = 10; $padB = 20;
-					foreach ($history as $i => $row) {
-						$x = ($count > 1) ? round($i / ($count - 1) * $svgW, 1) : $svgW / 2;
-						$y = round($padT + ($svgH - $padT - $padB) * (1 - $row['soc_percent'] / 100), 1);
-						$points[] = "{$x},{$y}";
-					}
-					$polyline = implode(' ', $points);
-					
-					$dateFormat = ($type === 'woche') ? 'd.m. H:i' : (($type === 'jahr') ? 'd.m.Y' : 'd.m. H:i');
-					$firstTs = formatToLocalTime($history[0]['car_captured_at'], $dateFormat);
-					$lastTs  = formatToLocalTime($history[$count - 1]['car_captured_at'], $dateFormat);
-					?>
-					<svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
-						<defs>
-							<linearGradient id="socGrad" x1="0" y1="0" x2="0" y2="1">
-								<stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
-								<stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-							</linearGradient>
-						</defs>
-						<polygon
-							points="0,<?= $svgH - $padB ?> <?= $polyline ?> <?= $svgW ?>,<?= $svgH - $padB ?>"
-							fill="url(#socGrad)"/>
-						<polyline
-							points="<?= $polyline ?>"
-							fill="none"
-							stroke="#3b82f6"
-							stroke-width="2.5"
-							stroke-linejoin="round"
-							stroke-linecap="round"/>
-					</svg>
-					<div style="display:flex;justify-content:space-between;margin-top:-0.5rem;font-size:0.7rem;color:var(--text-muted);">
-						<span><?= $firstTs ?> Uhr</span>
-						<span><?= $count ?> Datenpunkte</span>
-						<span><?= $lastTs ?> Uhr</span>
-					</div>
-				</div>
-			<?php else: ?>
-				<div class="no-data">Keine Telemetrie-Einträge im gewählten Zeitraum vorhanden.</div>
-			<?php endif; ?>
-		</div>
+        <!-- 1. CHART: SoC-VERLAUF MIT SKALA & TOOLTIPS -->
+        <div class="chart-section">
+            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.8rem; font-weight: 600;">
+                🔋 Ladestand-Verlauf (SoC in %)
+            </div>
+            <?php if (!empty($history)): ?>
+                <div class="soc-chart-container" id="chart1-container">
+                    <div class="chart-tooltip" id="tooltip1"></div>
+                    <?php
+                    $count = count($history);
+                    $svgW = 1000; $svgH = 180; $padL = 40; $padR = 20; $padT = 15; $padB = 25;
+                    $chartW = $svgW - $padL - $padR;
+                    $chartH = $svgH - $padT - $padB;
 
-		<!-- 2. CHART: EFFIZIENZ VS. TEMPERATUR (GRÜN & ORANGE) -->
-		<div class="chart-section">
-			<div class="section-title">🌡️ Temperatur vs. Effizienz (km pro 1% Akku)</div>
-			<?php 
-			// Datenpunkte für Effizienz aufbereiten
-			$effData = [];
-			foreach ($history as $row) {
-				if (!empty($row['soc_percent']) && !empty($row['range_km']) && $row['soc_percent'] > 0 && $row['range_km'] > 0) {
-					$effData[] = [
-						'time' => $row['car_captured_at'],
-						'temp' => (float)$row['outdoor_temp_c'],
-						'km_per_percent' => round((int)$row['range_km'] / (int)$row['soc_percent'], 2)
-					];
-				}
-			}
-			?>
-			<?php if (count($effData) >= 2): ?>
-				<div class="soc-chart-container">
-					<?php
-					$countEff = count($effData);
-					$pointsEff = [];
-					$pointsTemp = [];
-					$svgW = 1000; $svgH = 160; $padT = 15; $padB = 25;
+                    $points = [];
+                    $dataNodes = [];
 
-					$minTemp = min(array_column($effData, 'temp')) - 2;
-					$maxTemp = max(array_column($effData, 'temp')) + 2;
-					$rangeTemp = max(1, $maxTemp - $minTemp);
+                    foreach ($history as $i => $row) {
+                        $x = ($count > 1) ? round($padL + ($i / ($count - 1)) * $chartW, 1) : $padL + ($chartW / 2);
+                        $soc = (int)$row['soc_percent'];
+                        $y = round($padT + $chartH * (1 - $soc / 100), 1);
+                        
+                        $points[] = "{$x},{$y}";
+                        $timeFormatted = formatToLocalTime($row['car_captured_at'], 'd.m. H:i');
+                        $dataNodes[] = [
+                            'x' => $x, 'y' => $y, 
+                            'soc' => $soc, 
+                            'range' => $row['range_km'], 
+                            'time' => $timeFormatted
+                        ];
+                    }
+                    $polyline = implode(' ', $points);
+                    
+                    $dateFormat = ($type === 'woche') ? 'd.m. H:i' : (($type === 'jahr') ? 'd.m.Y' : 'd.m. H:i');
+                    $firstTs = formatToLocalTime($history[0]['car_captured_at'], $dateFormat);
+                    $lastTs  = formatToLocalTime($history[$count - 1]['car_captured_at'], $dateFormat);
+                    ?>
+                    <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="socGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
+                                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
 
-					$minEff = 2.0; $maxEff = 6.0; 
-					$rangeEff = $maxEff - $minEff;
+                        <!-- Horizontal Grid Lines & Y-Axis Skala (0%, 25%, 50%, 75%, 100%) -->
+                        <?php for ($v = 0; $v <= 100; $v += 25): 
+                            $gy = round($padT + $chartH * (1 - $v / 100), 1);
+                        ?>
+                            <line x1="<?= $padL ?>" y1="<?= $gy ?>" x2="<?= $svgW - $padR ?>" y2="<?= $gy ?>" stroke="rgba(255,255,255,0.08)" stroke-dasharray="2 2" />
+                            <text x="<?= $padL - 8 ?>" y="<?= $gy + 4 ?>" fill="var(--text-muted)" font-size="10" text-anchor="end"><?= $v ?>%</text>
+                        <?php endfor; ?>
 
-					foreach ($effData as $i => $d) {
-						$x = ($countEff > 1) ? round($i / ($countEff - 1) * $svgW, 1) : $svgW / 2;
-						
-						$yEff = round($padT + ($svgH - $padT - $padB) * (1 - ($d['km_per_percent'] - $minEff) / $rangeEff), 1);
-						$pointsEff[] = "{$x},{$yEff}";
+                        <!-- Fläche & Linie -->
+                        <polygon points="<?= $padL ?>,<?= $svgH - $padB ?> <?= $polyline ?> <?= $svgW - $padR ?>,<?= $svgH - $padB ?>" fill="url(#socGrad)"/>
+                        <polyline points="<?= $polyline ?>" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
 
-						$yTemp = round($padT + ($svgH - $padT - $padB) * (1 - ($d['temp'] - $minTemp) / $rangeTemp), 1);
-						$pointsTemp[] = "{$x},{$yTemp}";
-					}
-					?>
-					<svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
-						<!-- Temperatur Linie (Orange gestrichelt) -->
-						<polyline points="<?= implode(' ', $pointsTemp) ?>" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
-						<!-- Effizienz Linie (Grün durchgezogen) -->
-						<polyline points="<?= implode(' ', $pointsEff) ?>" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linejoin="round" />
-					</svg>
-					<div style="display:flex; justify-content:space-between; margin-top:-0.5rem; font-size:0.75rem; color:var(--text-muted);">
-						<span style="color:#10b981;">🟢 Effizienz (km / % SoC)</span>
-						<span style="color:#f59e0b;">🟠 Außentemperatur (°C)</span>
-					</div>
-				</div>
-			<?php else: ?>
-				<div class="no-data">Ggf. noch zu wenige Datenpunkte mit erfasster Reichweite für den gewählten Zeitraum.</div>
-			<?php endif; ?>
-		</div>
+                        <!-- Interaktive Mouseover-Punkte -->
+                        <?php foreach ($dataNodes as $node): ?>
+                            <circle class="chart-point" 
+                                    cx="<?= $node['x'] ?>" 
+                                    cy="<?= $node['y'] ?>" 
+                                    r="3.5" 
+                                    fill="#3b82f6" 
+                                    stroke="#1e293b" 
+                                    stroke-width="1.5"
+                                    data-tooltip="<strong><?= $node['time'] ?> Uhr</strong><br>Ladestand: <?= $node['soc'] ?> %<br>Reichweite: <?= $node['range'] ? $node['range'].' km' : '–' ?>" />
+                        <?php endforeach; ?>
+                    </svg>
+
+                    <div style="display:flex;justify-content:space-between;margin-top:-0.2rem;padding-left:<?= $padL ?>px;padding-right:<?= $padR ?>px;font-size:0.7rem;color:var(--text-muted);">
+                        <span><?= $firstTs ?> Uhr</span>
+                        <span><?= $count ?> Datenpunkte</span>
+                        <span><?= $lastTs ?> Uhr</span>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="no-data">Keine Telemetrie-Einträge im gewählten Zeitraum vorhanden.</div>
+            <?php endif; ?>
+        </div>
+
+        <!-- 2. CHART: EFFIZIENZ VS. TEMPERATUR MIT SKALEN & TOOLTIPS -->
+        <div class="chart-section">
+            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.8rem; font-weight: 600;">
+                🌡️ Außentemperatur vs. Effizienz (km pro 1% Akku)
+            </div>
+            <?php 
+            $effData = [];
+            foreach ($history as $row) {
+                if (!empty($row['soc_percent']) && !empty($row['range_km']) && $row['soc_percent'] > 0 && $row['range_km'] > 0) {
+                    $effData[] = [
+                        'time' => formatToLocalTime($row['car_captured_at'], 'd.m. H:i'),
+                        'temp' => (float)$row['outdoor_temp_c'],
+                        'km_per_percent' => round((int)$row['range_km'] / (int)$row['soc_percent'], 2)
+                    ];
+                }
+            }
+            ?>
+            <?php if (count($effData) >= 2): ?>
+                <div class="soc-chart-container" id="chart2-container">
+                    <div class="chart-tooltip" id="tooltip2"></div>
+                    <?php
+                    $countEff = count($effData);
+                    $svgW = 1000; $svgH = 180; $padL = 40; $padR = 40; $padT = 15; $padB = 25;
+                    $chartW = $svgW - $padL - $padR;
+                    $chartH = $svgH - $padT - $padB;
+
+                    $minTemp = min(array_column($effData, 'temp')) - 2;
+                    $maxTemp = max(array_column($effData, 'temp')) + 2;
+                    $rangeTemp = max(1, $maxTemp - $minTemp);
+
+                    $minEff = 2.0; $maxEff = 6.0; 
+                    $rangeEff = $maxEff - $minEff;
+
+                    $pointsEff = [];
+                    $pointsTemp = [];
+                    $nodesEff = [];
+
+                    foreach ($effData as $i => $d) {
+                        $x = ($countEff > 1) ? round($padL + ($i / ($countEff - 1)) * $chartW, 1) : $padL + ($chartW / 2);
+                        
+                        $yEff = round($padT + $chartH * (1 - ($d['km_per_percent'] - $minEff) / $rangeEff), 1);
+                        $pointsEff[] = "{$x},{$yEff}";
+
+                        $yTemp = round($padT + $chartH * (1 - ($d['temp'] - $minTemp) / $rangeTemp), 1);
+                        $pointsTemp[] = "{$x},{$yTemp}";
+
+                        $nodesEff[] = [
+                            'x' => $x, 'yEff' => $yEff, 'yTemp' => $yTemp,
+                            'time' => $d['time'],
+                            'eff' => $d['km_per_percent'],
+                            'temp' => $d['temp']
+                        ];
+                    }
+                    ?>
+                    <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
+                        <!-- Left Y-Axis: Effizienz Skala (Green, 2.0 - 6.0) -->
+                        <?php for ($e = 2; $e <= 6; $e += 1): 
+                            $gy = round($padT + $chartH * (1 - ($e - $minEff) / $rangeEff), 1);
+                        ?>
+                            <line x1="<?= $padL ?>" y1="<?= $gy ?>" x2="<?= $svgW - $padR ?>" y2="<?= $gy ?>" stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 2" />
+                            <text x="<?= $padL - 8 ?>" y="<?= $gy + 3 ?>" fill="#10b981" font-size="9" font-weight="600" text-anchor="end"><?= number_format($e, 1) ?></text>
+                        <?php endfor; ?>
+
+                        <!-- Right Y-Axis: Temperatur Skala (Orange, Min - Max) -->
+                        <text x="<?= $svgW - $padR + 8 ?>" y="<?= $padT + 4 ?>" fill="#f59e0b" font-size="9" font-weight="600"><?= round($maxTemp) ?>°C</text>
+                        <text x="<?= $svgW - $padR + 8 ?>" y="<?= $svgH - $padB ?>" fill="#f59e0b" font-size="9" font-weight="600"><?= round($minTemp) ?>°C</text>
+
+                        <!-- Temperatur Linie (Orange gestrichelt) -->
+                        <polyline points="<?= implode(' ', $pointsTemp) ?>" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
+                        <!-- Effizienz Linie (Grün durchgezogen) -->
+                        <polyline points="<?= implode(' ', $pointsEff) ?>" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linejoin="round" />
+
+                        <!-- Points -->
+                        <?php foreach ($nodesEff as $node): ?>
+                            <circle class="chart-point" cx="<?= $node['x'] ?>" cy="<?= $node['yEff'] ?>" r="3.5" fill="#10b981" stroke="#1e293b" stroke-width="1.5"
+                                    data-tooltip="<strong><?= $node['time'] ?> Uhr</strong><br>Effizienz: <?= $node['eff'] ?> km / %<br>Temperatur: <?= $node['temp'] ?> °C" />
+                        <?php endforeach; ?>
+                    </svg>
+
+                    <div style="display:flex; justify-content:space-between; margin-top:-0.2rem; padding-left:<?= $padL ?>px; padding-right:<?= $padR ?>px; font-size:0.75rem; color:var(--text-muted);">
+                        <span style="color:#10b981;">🟢 Effizienz-Skala (km / % SoC, Links)</span>
+                        <span style="color:#f59e0b;">🟠 Außentemperatur-Skala (°C, Rechts)</span>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="no-data">Ggf. noch zu wenige Datenpunkte mit erfasster Reichweite für den gewählten Zeitraum.</div>
+            <?php endif; ?>
+        </div>
 
         <!-- Telemetrie-Log Tabelle mit Paginierung -->
         <div class="chart-section">
@@ -698,6 +776,42 @@ foreach ($history as $row) {
     </footer>
 
 </div>
+
+<!-- Interactive Tooltip Script for SVG Charts -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const containers = document.querySelectorAll('.soc-chart-container');
+
+    containers.forEach(container => {
+        const tooltip = container.querySelector('.chart-tooltip');
+        const points = container.querySelectorAll('.chart-point');
+
+        points.forEach(point => {
+            point.addEventListener('mouseenter', () => {
+                const text = point.dataset.tooltip;
+                if (!text || !tooltip) return;
+
+                tooltip.innerHTML = text;
+                tooltip.style.display = 'block';
+
+                const rect = container.getBoundingClientRect();
+                const pointRect = point.getBoundingClientRect();
+
+                const x = pointRect.left - rect.left + (pointRect.width / 2);
+                const y = pointRect.top - rect.top;
+
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+            });
+
+            point.addEventListener('mouseleave', () => {
+                if (tooltip) tooltip.style.display = 'none';
+            });
+        });
+    });
+});
+</script>
+
 <!-- Inline-Editing Logik für Reichweite -->
 <script src="../js/telemetry.js?v=<?= time() ?>"></script>
 </body>
