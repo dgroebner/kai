@@ -92,7 +92,8 @@ try {
     $repo = new TelemetryRepository();
     
     // Prüfen, ob relevante Telemetrie enthalten ist (z.B. SoC oder Kilometerstand)
-    $hasTelemetry = isset($data['battery']['soc']) || isset($data['status']['mileage_km']);
+    $hasTelemetry = (isset($data['battery']['soc']) && $data['battery']['soc'] > 0) 
+             || isset($data['status']['mileage_km']);
 
     // Live-State wird IMMER aktualisiert (setzt Zeitstempel neu, behält Nicht-Null-Werte via COALESCE)
     $repo->saveState($data);
