@@ -58,6 +58,22 @@ $stateStmt = $db->query("
 ");
 $state = $stateStmt ? $stateStmt->fetch() : null;
 
+// Aktuellen Effizienz-Index für das KPI-Widget berechnen
+$currentEff = null;
+$effRating = ['label' => 'Keine Daten', 'color' => 'var(--text-muted)'];
+
+if ($state && $state['soc_percent'] > 0 && $state['range_km'] > 0) {
+    $currentEff = round((float)$state['range_km'] / (int)$state['soc_percent'], 2);
+    
+    if ($currentEff >= 5.0) {
+        $effRating = ['label' => '🌱 Optimal', 'color' => 'var(--car-green)'];
+    } elseif ($currentEff >= 4.0) {
+        $effRating = ['label' => '⚡ Normal', 'color' => 'var(--car-blue)'];
+    } else {
+        $effRating = ['label' => '🔥 Hoher Verbrauch', 'color' => 'var(--car-orange)'];
+    }
+}
+
 // ----------------------------------------------------
 // 2. Zeitraum-Berechnung (Woche, Monat, Jahr in Ortszeit)
 // ----------------------------------------------------
@@ -498,6 +514,17 @@ $recentLog = $logStmt->fetchAll();
                     <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
                 </div>
             </div>
+			
+			<div class="kpi-card">
+				<div class="kpi-label">Effizienz-Index</div>
+				<div class="kpi-value" style="color: <?= $effRating['color'] ?>">
+					<?= $currentEff ? number_format($currentEff, 1, ',', '.') : '–' ?>
+					<span class="kpi-unit">km / %</span>
+				</div>
+				<div style="font-size: 0.75rem; color: <?= $effRating['color'] ?>; margin-top: 0.4rem; font-weight: 600;">
+					<?= $effRating['label'] ?>
+				</div>
+			</div>
 
             <div class="kpi-card">
                 <div class="kpi-label">Batterie Temp.</div>
