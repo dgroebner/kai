@@ -507,13 +507,6 @@ $recentLog = $logStmt->fetchAll();
                     <?= number_format($state['charge_power_kw'], 1, ',', '.') ?><span class="kpi-unit"> kW</span>
                 </div>
             </div>
-
-            <div class="kpi-card">
-                <div class="kpi-label">Außentemperatur</div>
-                <div class="kpi-value" style="color:var(--car-orange)">
-                    <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
-                </div>
-            </div>
 			
 			<div class="kpi-card">
 				<div class="kpi-label">Effizienz-Index</div>
@@ -525,6 +518,13 @@ $recentLog = $logStmt->fetchAll();
 					<?= $effRating['label'] ?>
 				</div>
 			</div>
+
+            <div class="kpi-card">
+                <div class="kpi-label">Außentemperatur</div>
+                <div class="kpi-value" style="color:var(--car-orange)">
+                    <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
+                </div>
+            </div>
 
             <div class="kpi-card">
                 <div class="kpi-label">Batterie Temp.</div>
