@@ -178,6 +178,19 @@ $logStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
 $logStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $logStmt->execute();
 $recentLog = $logStmt->fetchAll();
+
+// Effizienz-Datenpunkte für gefilterten Zeitraum aufbereiten
+$effData = [];
+foreach ($history as $row) {
+    if (!empty($row['soc_percent']) && !empty($row['range_km']) && $row['soc_percent'] > 0 && $row['range_km'] > 0) {
+        $effData[] = [
+            'time' => $row['car_captured_at'],
+            'temp' => (float)$row['outdoor_temp_c'],
+            'km_per_percent' => round((int)$row['range_km'] / (int)$row['soc_percent'], 2)
+        ];
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -491,52 +504,51 @@ $recentLog = $logStmt->fetchAll();
         </div>
 
         <!-- SoC-Verlauf Chart (gefiltert) -->
-        <div class="chart-section">
-            <?php if (!empty($history)): ?>
-                <div class="soc-chart-container">
-                    <?php
-                    $count = count($history);
-                    $points = [];
-                    $svgW = 1000; $svgH = 160; $padT = 10; $padB = 20;
-                    foreach ($history as $i => $row) {
-                        $x = ($count > 1) ? round($i / ($count - 1) * $svgW, 1) : $svgW / 2;
-                        $y = round($padT + ($svgH - $padT - $padB) * (1 - $row['soc_percent'] / 100), 1);
-                        $points[] = "{$x},{$y}";
-                    }
-                    $polyline = implode(' ', $points);
-                    
-                    $dateFormat = ($type === 'woche') ? 'd.m. H:i' : (($type === 'jahr') ? 'd.m.Y' : 'd.m. H:i');
-                    $firstTs = formatToLocalTime($history[0]['car_captured_at'], $dateFormat);
-                    $lastTs  = formatToLocalTime($history[$count - 1]['car_captured_at'], $dateFormat);
-                    ?>
-                    <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="socGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
-                                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-                            </linearGradient>
-                        </defs>
-                        <polygon
-                            points="0,<?= $svgH - $padB ?> <?= $polyline ?> <?= $svgW ?>,<?= $svgH - $padB ?>"
-                            fill="url(#socGrad)"/>
-                        <polyline
-                            points="<?= $polyline ?>"
-                            fill="none"
-                            stroke="#3b82f6"
-                            stroke-width="2.5"
-                            stroke-linejoin="round"
-                            stroke-linecap="round"/>
-                    </svg>
-                    <div style="display:flex;justify-content:space-between;margin-top:-0.5rem;font-size:0.7rem;color:var(--text-muted);">
-                        <span><?= $firstTs ?> Uhr</span>
-                        <span><?= $count ?> Datenpunkte</span>
-                        <span><?= $lastTs ?> Uhr</span>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="no-data">Keine Telemetrie-Einträge im gewählten Zeitraum vorhanden.</div>
-            <?php endif; ?>
-        </div>
+		<div class="chart-section">
+			<div class="section-title">🌡️ Temperatur vs. Effizienz (km pro 1% Akku)</div>
+			<?php if (count($effData) >= 2): ?>
+				<div class="soc-chart-container">
+					<?php
+					$count = count($effData);
+					$pointsEff = [];
+					$pointsTemp = [];
+					$svgW = 1000; $svgH = 160; $padT = 15; $padB = 25;
+
+					// Min/Max für Skalierung finden
+					$minTemp = min(array_column($effData, 'temp')) - 2;
+					$maxTemp = max(array_column($effData, 'temp')) + 2;
+					$rangeTemp = max(1, $maxTemp - $minTemp);
+
+					$minEff = 2.0; $maxEff = 6.0; // Reichweiten-Faktor Bereich (2.0 - 6.0 km/%)
+					$rangeEff = $maxEff - $minEff;
+
+					foreach ($effData as $i => $d) {
+						$x = ($count > 1) ? round($i / ($count - 1) * $svgW, 1) : $svgW / 2;
+						
+						// Y-Koordinate Effizienz (Grüne Linie)
+						$yEff = round($padT + ($svgH - $padT - $padB) * (1 - ($d['km_per_percent'] - $minEff) / $rangeEff), 1);
+						$pointsEff[] = "{$x},{$yEff}";
+
+						// Y-Koordinate Temperatur (Orange Linie)
+						$yTemp = round($padT + ($svgH - $padT - $padB) * (1 - ($d['temp'] - $minTemp) / $rangeTemp), 1);
+						$pointsTemp[] = "{$x},{$yTemp}";
+					}
+					?>
+					<svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="soc-chart-svg" preserveAspectRatio="none">
+						<!-- Temperatur Linie (Orange) -->
+						<polyline points="<?= implode(' ', $pointsTemp) ?>" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
+						<!-- Effizienz Linie (Grün) -->
+						<polyline points="<?= implode(' ', $pointsEff) ?>" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linejoin="round" />
+					</svg>
+					<div style="display:flex; justify-stream:space-between; justify-content:space-between; margin-top:-0.5rem; font-size:0.75rem; color:var(--text-muted);">
+						<span style="color:#10b981;">🟢 Effizienz (km / % SoC)</span>
+						<span style="color:#f59e0b;">🟠 Außentemperatur (°C)</span>
+					</div>
+				</div>
+			<?php else: ?>
+				<div class="no-data">Zu wenige Datenpunkte für die Effizienzanalyse vorhanden.</div>
+			<?php endif; ?>
+		</div>
 
         <!-- Telemetrie-Log Tabelle mit Paginierung -->
         <div class="chart-section">
