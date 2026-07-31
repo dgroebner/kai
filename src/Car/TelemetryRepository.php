@@ -199,10 +199,6 @@ class TelemetryRepository {
                        ? (int)$data['status']['range_km']
                        : null;
 
-            if ($rangeKm === null && $socPercent > 0) {
-                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
-            }
-
             if ($rangeKm === null || $rangeKm === 0) {
                 $rangeKm = (int)($currentState['range_km'] ?? 0);
             }
