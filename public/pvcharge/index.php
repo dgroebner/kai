@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $dailyStmt = $db->prepare("
     SELECT forecast_date, watt_hours_day, real_watt_hours_day
     FROM pv_forecast_daily
-    WHERE forecast_date >= CURDATE() - 3
+    WHERE forecast_date >= CURDATE() - INTERVAL 3 DAY
     ORDER BY forecast_date ASC
     LIMIT 10
 ");
