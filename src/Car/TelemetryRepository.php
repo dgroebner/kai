@@ -73,107 +73,108 @@ class TelemetryRepository {
         }
     }
 
-    /**
-     * Speichert / aktualisiert den Live-Status in vehicle_state.
-     */
-    public function saveState(array $data): bool {
-        try {
-            $vin = $data['vin'];
-            $capturedAtObj = new DateTime($data['captured_at']);
-            $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
+	 /**
+		 * Speichert / aktualisiert den Live-Status in vehicle_state.
+		 */
+		public function saveState(array $data): bool {
+			try {
+				$vin = $data['vin'];
+				$capturedAtObj = new DateTime($data['captured_at']);
+				$carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            $socPercent     = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
-            $targetSoc      = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
-            $chargePowerKw  = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
-            $batteryTempMax = isset($data['battery']['max_temp_c']) ? (float)$data['battery']['max_temp_c'] : null;
-            $batteryTempMin = isset($data['battery']['min_temp_c']) ? (float)$data['battery']['min_temp_c'] : null;
+				$socPercent        = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
+				$targetSoc         = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
+				$chargePowerKw     = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
+				$batteryTempMax    = isset($data['battery']['max_temp_c']) ? (float)$data['battery']['max_temp_c'] : null;
+				$batteryTempMin    = isset($data['battery']['min_temp_c']) ? (float)$data['battery']['min_temp_c'] : null;
+				$estimatedFinishAt = $data['battery']['estimated_finish_at'] ?? null;
 
-            $chargingState  = $data['status']['charging_state'] ?? null;
-            $plugConnected  = isset($data['status']['plug_connected']) ? ($data['status']['plug_connected'] ? 1 : 0) : null;
-            $isLocked       = isset($data['status']['is_locked']) ? ($data['status']['is_locked'] ? 1 : 0) : null;
-            $mileageKm      = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
-            $outdoorTempC   = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
+				$chargingState  = $data['status']['charging_state'] ?? null;
+				$plugConnected  = isset($data['status']['plug_connected']) ? ($data['status']['plug_connected'] ? 1 : 0) : null;
+				$isLocked       = isset($data['status']['is_locked']) ? ($data['status']['is_locked'] ? 1 : 0) : null;
+				$mileageKm      = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
+				$outdoorTempC   = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
 
-			// Reichweite ermitteln / interpolieren (unter Berücksichtigung der Außentemperatur)
-            $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
-                       ? (int)$data['status']['range_km']
-                       : null;
+				// Reichweite ermitteln / interpolieren
+				$rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
+						   ? (int)$data['status']['range_km']
+						   : null;
 
-            if ($rangeKm === null && $socPercent !== null) {
-                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
-            }
+				if ($rangeKm === null && $socPercent !== null) {
+					$rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
+				}
 
-			$estimatedFinishAt = $data['battery']['estimated_finish_at'] ?? null;
+				$stmtState = $this->db->prepare("
+					INSERT INTO `vehicle_state` (
+						`vin`, 
+						`car_captured_at`, 
+						`soc_percent`, 
+						`target_soc`, 
+						`charge_power_kw`, 
+						`battery_temp_max`, 
+						`battery_temp_min`, 
+						`charging_state`, 
+						`plug_connected`, 
+						`is_locked`, 
+						`mileage_km`, 
+						`range_km`, 
+						`outdoor_temp_c`,
+						`estimated_finish_at`
+					) VALUES (
+						:vin, 
+						:car_captured_at, 
+						COALESCE(:soc_percent, 0), 
+						COALESCE(:target_soc, 0), 
+						COALESCE(:charge_power_kw, 0.0), 
+						COALESCE(:battery_temp_max, 0.0), 
+						COALESCE(:battery_temp_min, 0.0), 
+						COALESCE(:charging_state, 'unknown'), 
+						COALESCE(:plug_connected, 0), 
+						COALESCE(:is_locked, 1), 
+						COALESCE(:mileage_km, 0), 
+						COALESCE(:range_km, 0), 
+						COALESCE(:outdoor_temp_c, 0.0),
+						:estimated_finish_at
+					) ON DUPLICATE KEY UPDATE
+						`car_captured_at`     = VALUES(`car_captured_at`),
+						`soc_percent`         = CASE WHEN VALUES(`soc_percent`) = 0 THEN `soc_percent` ELSE VALUES(`soc_percent`) END,
+						`target_soc`          = CASE WHEN VALUES(`target_soc`) = 0 THEN `target_soc` ELSE VALUES(`target_soc`) END,
+						`charge_power_kw`     = VALUES(`charge_power_kw`),
+						`battery_temp_max`    = CASE WHEN VALUES(`battery_temp_max`) = 0.0 THEN `battery_temp_max` ELSE VALUES(`battery_temp_max`) END,
+						`battery_temp_min`    = CASE WHEN VALUES(`battery_temp_min`) = 0.0 THEN `battery_temp_min` ELSE VALUES(`battery_temp_min`) END,
+						`charging_state`      = CASE WHEN VALUES(`charging_state`) = 'unknown' THEN `charging_state` ELSE VALUES(`charging_state`) END,
+						`plug_connected`      = VALUES(`plug_connected`),
+						`is_locked`           = VALUES(`is_locked`),
+						`mileage_km`          = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
+						`outdoor_temp_c`      = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
+						`estimated_finish_at` = VALUES(`estimated_finish_at`),
+						`updated_at`          = CURRENT_TIMESTAMP
+				");
 
-            $stmtState = $this->db->prepare("
-                INSERT INTO `vehicle_state` (
-                    `vin`, 
-                    `car_captured_at`, 
-                    `soc_percent`, 
-                    `target_soc`, 
-                    `charge_power_kw`, 
-                    `battery_temp_max`, 
-                    `battery_temp_min`, 
-                    `charging_state`, 
-                    `plug_connected`, 
-                    `is_locked`, 
-                    `mileage_km`, 
-                    `range_km`, 
-                    `outdoor_temp_c`,
-                    `estimated_finish_at`
-                ) VALUES (
-                    :vin, 
-                    :car_captured_at, 
-                    COALESCE(:soc_percent, 0), 
-                    COALESCE(:target_soc, 0), 
-                    COALESCE(:charge_power_kw, 0.0), 
-                    COALESCE(:battery_temp_max, 0.0), 
-                    COALESCE(:battery_temp_min, 0.0), 
-                    COALESCE(:charging_state, 'unknown'), 
-                    COALESCE(:plug_connected, 0), 
-                    COALESCE(:is_locked, 1), 
-                    COALESCE(:mileage_km, 0), 
-                    COALESCE(:range_km, 0), 
-                    COALESCE(:outdoor_temp_c, 0.0),
-                    :estimated_finish_at
-                ) ON DUPLICATE KEY UPDATE
-                    `car_captured_at`     = VALUES(`car_captured_at`),
-                    `soc_percent`         = CASE WHEN VALUES(`soc_percent`) = 0 THEN `soc_percent` ELSE VALUES(`soc_percent`) END,
-                    `target_soc`          = CASE WHEN VALUES(`target_soc`) = 0 THEN `target_soc` ELSE VALUES(`target_soc`) END,
-                    `charge_power_kw`     = VALUES(`charge_power_kw`),
-                    `battery_temp_max`    = CASE WHEN VALUES(`battery_temp_max`) = 0.0 THEN `battery_temp_max` ELSE VALUES(`battery_temp_max`) END,
-                    `battery_temp_min`    = CASE WHEN VALUES(`battery_temp_min`) = 0.0 THEN `battery_temp_min` ELSE VALUES(`battery_temp_min`) END,
-                    `charging_state`      = CASE WHEN VALUES(`charging_state`) = 'unknown' THEN `charging_state` ELSE VALUES(`charging_state`) END,
-                    `plug_connected`      = VALUES(`plug_connected`),
-                    `is_locked`           = VALUES(`is_locked`),
-                    `mileage_km`          = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
-                    `outdoor_temp_c`      = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
-                    `estimated_finish_at` = VALUES(`estimated_finish_at`),
-                    `updated_at`          = CURRENT_TIMESTAMP
-            ");
+				// Exakt 14 Parameter im Execute-Array (muss genau zu den 14 Named Parameters oben passen)
+				$stmtState->execute([
+					':vin'                 => $vin,
+					':car_captured_at'     => $carCapturedAt,
+					':soc_percent'         => $socPercent,
+					':target_soc'          => $targetSoc,
+					':charge_power_kw'     => $chargePowerKw,
+					':battery_temp_max'    => $batteryTempMax,
+					':battery_temp_min'    => $batteryTempMin,
+					':charging_state'      => $chargingState,
+					':plug_connected'      => $plugConnected,
+					':is_locked'           => $isLocked,
+					':mileage_km'          => $mileageKm,
+					':range_km'            => $rangeKm,
+					':outdoor_temp_c'      => $outdoorTempC,
+					':estimated_finish_at' => $estimatedFinishAt
+				]);
 
-            $stmtState->execute([
-                ':vin'              => $vin,
-                ':car_captured_at'  => $carCapturedAt,
-                ':soc_percent'      => $socPercent,
-                ':target_soc'       => $targetSoc,
-                ':charge_power_kw'  => $chargePowerKw,
-                ':battery_temp_max' => $batteryTempMax,
-                ':battery_temp_min' => $batteryTempMin,
-                ':charging_state'   => $chargingState,
-                ':plug_connected'   => $plugConnected,
-                ':is_locked'        => $isLocked,
-                ':mileage_km'       => $mileageKm,
-                ':range_km'         => $rangeKm,
-                ':outdoor_temp_c'   => $outdoorTempC
-            ]);
-
-            return true;
-        } catch (Exception $e) {
-            $this->logger->error("TelemetryRepository: Fehler bei saveState.", ['error' => $e->getMessage()]);
-            throw $e;
-        }
-    }
+				return true;
+			} catch (Exception $e) {
+				$this->logger->error("TelemetryRepository: Fehler bei saveState.", ['error' => $e->getMessage()]);
+				throw $e;
+			}
+		}
 
     /**
      * Schreibt einen Log-Eintrag in vehicle_telemetry_log.
