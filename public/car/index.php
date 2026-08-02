@@ -501,12 +501,22 @@ $recentLog = $logStmt->fetchAll();
                 </div>
             </div>
 
-            <div class="kpi-card">
-                <div class="kpi-label">Ladeleistung</div>
-                <div class="kpi-value" style="color:<?= $state['charge_power_kw'] > 0 ? 'var(--car-green)' : 'var(--text-muted)' ?>">
-                    <?= number_format($state['charge_power_kw'], 1, ',', '.') ?><span class="kpi-unit"> kW</span>
-                </div>
-            </div>
+			<div class="kpi-card">
+				<div class="kpi-label">Ladeleistung</div>
+				<div class="kpi-value" style="color:<?= $state['charge_power_kw'] > 0 ? 'var(--car-green)' : 'var(--text-muted)' ?>">
+					<?= number_format($state['charge_power_kw'], 1, ',', '.') ?><span class="kpi-unit"> kW</span>
+				</div>
+				
+				<?php if ($state['charge_power_kw'] > 0 && !empty($state['estimated_finish_at'])): ?>
+					<div style="font-size: 0.75rem; color: var(--car-green); margin-top: 0.4rem; font-weight: 600;">
+						⏱️ Fertig ca. <?= formatToLocalTime($state['estimated_finish_at'], 'H:i') ?> Uhr
+					</div>
+				<?php else: ?>
+					<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;">
+						<?= $state['plug_connected'] ? 'Stecker bereit' : 'Nicht verbunden' ?>
+					</div>
+				<?php endif; ?>
+			</div>
 			
 			<div class="kpi-card">
 				<div class="kpi-label">Effizienz-Index</div>

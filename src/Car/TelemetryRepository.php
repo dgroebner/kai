@@ -103,6 +103,8 @@ class TelemetryRepository {
                 $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
             }
 
+			$estimatedFinishAt = $data['battery']['estimated_finish_at'] ?? null;
+
             $stmtState = $this->db->prepare("
                 INSERT INTO `vehicle_state` (
                     `vin`, 
@@ -117,7 +119,8 @@ class TelemetryRepository {
                     `is_locked`, 
                     `mileage_km`, 
                     `range_km`, 
-                    `outdoor_temp_c`
+                    `outdoor_temp_c`,
+                    `estimated_finish_at`
                 ) VALUES (
                     :vin, 
                     :car_captured_at, 
@@ -131,20 +134,22 @@ class TelemetryRepository {
                     COALESCE(:is_locked, 1), 
                     COALESCE(:mileage_km, 0), 
                     COALESCE(:range_km, 0), 
-                    COALESCE(:outdoor_temp_c, 0.0)
+                    COALESCE(:outdoor_temp_c, 0.0),
+                    :estimated_finish_at
                 ) ON DUPLICATE KEY UPDATE
-                    `car_captured_at`  = VALUES(`car_captured_at`),
-                    `soc_percent`      = CASE WHEN VALUES(`soc_percent`) = 0 THEN `soc_percent` ELSE VALUES(`soc_percent`) END,
-                    `target_soc`       = CASE WHEN VALUES(`target_soc`) = 0 THEN `target_soc` ELSE VALUES(`target_soc`) END,
-                    `charge_power_kw`  = CASE WHEN VALUES(`charge_power_kw`) = 0.0 THEN `charge_power_kw` ELSE VALUES(`charge_power_kw`) END,
-                    `battery_temp_max` = CASE WHEN VALUES(`battery_temp_max`) = 0.0 THEN `battery_temp_max` ELSE VALUES(`battery_temp_max`) END,
-                    `battery_temp_min` = CASE WHEN VALUES(`battery_temp_min`) = 0.0 THEN `battery_temp_min` ELSE VALUES(`battery_temp_min`) END,
-                    `charging_state`   = CASE WHEN VALUES(`charging_state`) = 'unknown' THEN `charging_state` ELSE VALUES(`charging_state`) END,
-                    `plug_connected`   = VALUES(`plug_connected`),
-                    `is_locked`        = VALUES(`is_locked`),
-                    `mileage_km`       = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
-                    `outdoor_temp_c`   = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
-                    `updated_at`       = CURRENT_TIMESTAMP
+                    `car_captured_at`     = VALUES(`car_captured_at`),
+                    `soc_percent`         = CASE WHEN VALUES(`soc_percent`) = 0 THEN `soc_percent` ELSE VALUES(`soc_percent`) END,
+                    `target_soc`          = CASE WHEN VALUES(`target_soc`) = 0 THEN `target_soc` ELSE VALUES(`target_soc`) END,
+                    `charge_power_kw`     = VALUES(`charge_power_kw`),
+                    `battery_temp_max`    = CASE WHEN VALUES(`battery_temp_max`) = 0.0 THEN `battery_temp_max` ELSE VALUES(`battery_temp_max`) END,
+                    `battery_temp_min`    = CASE WHEN VALUES(`battery_temp_min`) = 0.0 THEN `battery_temp_min` ELSE VALUES(`battery_temp_min`) END,
+                    `charging_state`      = CASE WHEN VALUES(`charging_state`) = 'unknown' THEN `charging_state` ELSE VALUES(`charging_state`) END,
+                    `plug_connected`      = VALUES(`plug_connected`),
+                    `is_locked`           = VALUES(`is_locked`),
+                    `mileage_km`          = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
+                    `outdoor_temp_c`      = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
+                    `estimated_finish_at` = VALUES(`estimated_finish_at`),
+                    `updated_at`          = CURRENT_TIMESTAMP
             ");
 
             $stmtState->execute([
