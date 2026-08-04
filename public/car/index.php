@@ -469,6 +469,28 @@ $recentLog = $logStmt->fetchAll();
         </div>
 
         <div class="kpi-grid">
+		
+            <div class="kpi-card">
+                <div class="kpi-label">Außentemperatur</div>
+                <div class="kpi-value" style="color:var(--car-orange)">
+                    <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-label">Kilometerstand</div>
+                <div class="kpi-value" style="color:var(--text-main); font-size:1.5rem">
+                    <?= number_format($state['mileage_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
+                </div>
+            </div>
+			
+            <div class="kpi-card">
+                <div class="kpi-label">Reichweite</div>
+                <div class="kpi-value" style="color:var(--car-blue)">
+                    <?= number_format($state['range_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
+                </div>
+            </div>
+		
             <div class="kpi-card">
                 <div class="kpi-label">Ladestand</div>
                 <div class="kpi-value" style="color: <?= $socCol ?>">
@@ -481,20 +503,17 @@ $recentLog = $logStmt->fetchAll();
                     <div class="soc-target-label">Ziel: <?= $state['target_soc'] ?> %</div>
                 </div>
             </div>
-
-            <div class="kpi-card">
-                <div class="kpi-label">Reichweite</div>
-                <div class="kpi-value" style="color:var(--car-blue)">
-                    <?= number_format($state['range_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
-                </div>
-            </div>
-
-            <div class="kpi-card">
-                <div class="kpi-label">Kilometerstand</div>
-                <div class="kpi-value" style="color:var(--text-main); font-size:1.5rem">
-                    <?= number_format($state['mileage_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
-                </div>
-            </div>
+			
+			<div class="kpi-card">
+				<div class="kpi-label">Effizienz-Index</div>
+				<div class="kpi-value" style="color: <?= $effRating['color'] ?>">
+					<?= $currentEff ? number_format($currentEff, 1, ',', '.') : '–' ?>
+					<span class="kpi-unit">km / %</span>
+				</div>
+				<div style="font-size: 0.75rem; color: <?= $effRating['color'] ?>; margin-top: 0.4rem; font-weight: 600;">
+					<?= $effRating['label'] ?>
+				</div>
+			</div>
 
 			<div class="kpi-card">
 				<div class="kpi-label">Ladeleistung</div>
@@ -513,24 +532,6 @@ $recentLog = $logStmt->fetchAll();
 				<?php endif; ?>
 			</div>
 			
-			<div class="kpi-card">
-				<div class="kpi-label">Effizienz-Index</div>
-				<div class="kpi-value" style="color: <?= $effRating['color'] ?>">
-					<?= $currentEff ? number_format($currentEff, 1, ',', '.') : '–' ?>
-					<span class="kpi-unit">km / %</span>
-				</div>
-				<div style="font-size: 0.75rem; color: <?= $effRating['color'] ?>; margin-top: 0.4rem; font-weight: 600;">
-					<?= $effRating['label'] ?>
-				</div>
-			</div>
-
-            <div class="kpi-card">
-                <div class="kpi-label">Außentemperatur</div>
-                <div class="kpi-value" style="color:var(--car-orange)">
-                    <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
-                </div>
-            </div>
-
             <div class="kpi-card">
                 <div class="kpi-label">Batterie Temp.</div>
                 <div class="kpi-value" style="color:var(--text-main); font-size:1.4rem">
