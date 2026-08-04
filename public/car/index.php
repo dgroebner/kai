@@ -40,10 +40,10 @@ function socColor(int $soc): string {
 
 function chargingLabel(string $state): array {
     return match($state) {
-        'charging'         => ['icon' => '⚡', 'label' => 'Lädt',     'color' => '#10b981'],
-        'conservation'     => ['icon' => '🔋', 'label' => 'Erhaltung', 'color' => '#3b82f6'],
-        'readyForCharging' => ['icon' => '🔌', 'label' => 'Bereit',   'color' => '#f59e0b'],
-        default            => ['icon' => '💤', 'label' => 'Aus',       'color' => '#64748b'],
+        'CHARGE_STATE_CHARGING_HV_BATTERY' => ['icon' => '⚡', 'label' => 'Lädt',     'color' => '#10b981'],
+        'CHARGE_STATE_DISCHARGING'         => ['icon' => '🔋', 'label' => 'Erhaltung', 'color' => '#3b82f6'],
+        'CHARGE_STATE_READY_FOR_CHARGING'  => ['icon' => '🔌', 'label' => 'Bereit',   'color' => '#f59e0b'],
+        default                            => ['icon' => '💤', 'label' => 'Aus',       'color' => '#64748b'],
     };
 }
 
