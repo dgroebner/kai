@@ -503,13 +503,12 @@ $recentLog = $logStmt->fetchAll();
 				</div>
 				
 				<?php if ($state['charge_power_kw'] > 0 && !empty($state['estimated_finish_at'])): ?>
-					<div style="font-size: 0.75rem; color: var(--car-green); margin-top: 0.4rem; font-weight: 600;">
-						⏱️ Fertig ca.<br>
-						<?= formatToLocalTime($state['estimated_finish_at'], 'H:i') ?> Uhr
+					<div style="font-size: 0.75rem; color: var(--car-green); margin-top: 0.4rem; font-weight: 600; white-space: nowrap;">
+						⏱️ Fertig ca. <?= formatToLocalTime($state['estimated_finish_at'], 'H:i') ?> Uhr
 					</div>
 				<?php else: ?>
-					<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;">
-						Nicht verbunden
+					<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; white-space: nowrap;">
+						<?= $state['plug_connected'] ? 'Stecker bereit' : 'Nicht verbunden' ?>
 					</div>
 				<?php endif; ?>
 			</div>
