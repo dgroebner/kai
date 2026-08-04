@@ -508,7 +508,7 @@ $recentLog = $logStmt->fetchAll();
 					</div>
 				<?php else: ?>
 					<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;">
-						<?= $state['plug_connected'] ? 'Stecker bereit' : 'Nicht verbunden' ?>
+						Nicht verbunden
 					</div>
 				<?php endif; ?>
 			</div>
