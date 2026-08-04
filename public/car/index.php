@@ -466,11 +466,6 @@ $recentLog = $logStmt->fetchAll();
                     <?= $state['is_locked'] ? '🔒 Gesperrt' : '🔓 Offen' ?>
                 </span>
             </div>
-            <div>
-                <span class="status-pill" style="<?= $state['plug_connected'] ? 'background:var(--car-blue-dim);color:var(--car-blue)' : '' ?>">
-                    <?= $state['plug_connected'] ? '🔌 Stecker verbunden' : '⭕ Kein Stecker' ?>
-                </span>
-            </div>
         </div>
 
         <div class="kpi-grid">
