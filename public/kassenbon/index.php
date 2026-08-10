@@ -1,17 +1,19 @@
 <?php
-use Kai\Tools\Kassenbon\CategoryAnalyzer;
-use Kai\Tools\Shared\Db\Database;
-use \PDO;
-
 require_once __DIR__ . '/../../bootstrap.php';
 
-$categoryAnalyzer = new CategoryAnalyzer();
-
-// Auth-Check
+// Auth-Check — muss als erstes stehen, bevor irgendwelche Logik läuft
 if (!isset($_SESSION['user_email'])) {
     header('Location: ' . APP_URL . '/login.php');
     exit;
 }
+
+use Kai\Tools\Kassenbon\CategoryAnalyzer;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use \PDO;
+
+$categoryAnalyzer = new CategoryAnalyzer();
+$logger = new Logger();
 
 // CSRF-Token generieren und in der Session speichern
 if (empty($_SESSION['csrf_token'])) {
@@ -89,7 +91,8 @@ try {
     }
 
 } catch (\Throwable $e) {
-    die("Datenbankfehler: " . $e->getMessage() . " in Zeile " . $e->getLine());
+    $logger->error("Kassenbon index.php: Datenbankfehler beim Laden der Übersicht.", ['error' => $e->getMessage()]);
+    die("Interner Fehler. Bitte versuche es später erneut.");
 }
 ?>
 <!DOCTYPE html>

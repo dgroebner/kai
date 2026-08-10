@@ -15,11 +15,14 @@ CREATE TABLE IF NOT EXISTS `pv_forecast_hourly` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
 CREATE TABLE IF NOT EXISTS `pv_forecast_daily` (
     `forecast_date` DATE PRIMARY KEY,
     `watt_hours_day` INT NOT NULL,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`real_watt_hours_day` INT DEFAULT NULL,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE pv_car_schedule (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,6 +35,7 @@ CREATE TABLE pv_car_schedule (
     target_soc INT NULL,                 -- Der geparste Wunsch-SoC (z.B. 100 oder 80)
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
 
 -- Schema for VW ID.Buzz Car Telemetry
 
@@ -49,7 +53,8 @@ CREATE TABLE IF NOT EXISTS `vehicle_state` (
     `is_locked` TINYINT(1) NOT NULL,
     `mileage_km` INT NOT NULL,
     `range_km` INT NOT NULL,
-    `outdoor_temp_c` DECIMAL(4, 1) NOT NULL
+    `outdoor_temp_c` DECIMAL(4, 1) NOT NULL,
+	`estimated_finish_at` datetime DEFAULT NULL,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `vehicle_telemetry_log` (
@@ -65,3 +70,32 @@ CREATE TABLE IF NOT EXISTS `vehicle_telemetry_log` (
     `raw_payload` LONGTEXT NOT NULL,
     INDEX `idx_vin_timestamp` (`vin`, `timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kb_receipts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `file_hash` varchar(64) DEFAULT NULL,
+  `store` varchar(255) NOT NULL,
+  `purchase_date` date NOT NULL,
+  `total` decimal(10,2) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_file_hash` (`file_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kb_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `receipt_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `quantity` decimal(10,3) NOT NULL DEFAULT 1.000,
+  `unit_price` decimal(10,2) NOT NULL,
+  `total_price` decimal(10,2) NOT NULL,
+  `category` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `receipt_id` (`receipt_id`),
+  KEY `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+ALTER TABLE `kb_items`
+  ADD CONSTRAINT `kb_items_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `kb_receipts` (`id`) ON DELETE CASCADE;
+COMMIT;

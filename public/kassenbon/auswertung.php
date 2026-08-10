@@ -1,16 +1,18 @@
 <?php
-use Kai\Tools\Kassenbon\CategoryAnalyzer;
-use Kai\Tools\Shared\Db\Database;
-
 require_once __DIR__ . '/../../bootstrap.php';
 
-$categoryAnalyzer = new CategoryAnalyzer();
-
-// Auth-Check
+// Auth-Check — muss als erstes stehen, bevor irgendwelche Logik läuft
 if (!isset($_SESSION['user_email'])) {
     header('Location: ' . APP_URL . '/login.php');
     exit;
 }
+
+use Kai\Tools\Kassenbon\CategoryAnalyzer;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+
+$categoryAnalyzer = new CategoryAnalyzer();
+$logger = new Logger();
 
 // ----------------------------------------------------
 // Zeitraum-Berechnung (Woche, Monat, Jahr)
@@ -122,7 +124,8 @@ try {
     }
     
 } catch (\Throwable $e) {
-    die("Datenbankfehler: " . $e->getMessage());
+    $logger->error("Kassenbon auswertung.php: Datenbankfehler.", ['error' => $e->getMessage()]);
+    die("Interner Fehler. Bitte versuche es später erneut.");
 }
 ?>
 <!DOCTYPE html>

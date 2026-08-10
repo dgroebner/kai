@@ -11,6 +11,9 @@ if (!isset($_SESSION['user_email'])) {
 }
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+
+$logger = new Logger();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -60,6 +63,7 @@ try {
     echo json_encode(['success' => true]);
 
 } catch (\Throwable $e) {
+    $logger->error("update_range.php: Fehler beim Aktualisieren der Reichweite.", ['error' => $e->getMessage()]);
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Interner Server-Fehler']);
 }

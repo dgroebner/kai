@@ -8,10 +8,24 @@ if (!isset($_SESSION['user_email'])) {
 }
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+
+$logger = new Logger();
+
+// CSRF-Token generieren
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 $db = Database::getInstance()->getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_real_yield') {
+    // CSRF-Token prüfen
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        http_response_code(403);
+        die("Ungültiger CSRF-Token.");
+    }
+
     $yieldData = $_POST['real_yield'] ?? [];
     
     $db->beginTransaction();
@@ -42,7 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $successMessage = "Tatsächliche Erträge erfolgreich gespeichert.";
     } catch (Exception $e) {
         $db->rollBack();
-        $errorMessage = "Fehler beim Speichern: " . $e->getMessage();
+        $logger->error("PVCharge index.php: Fehler beim Speichern der echten Erträge.", ['error' => $e->getMessage()]);
+        $errorMessage = "Fehler beim Speichern. Bitte versuche es später erneut.";
     }
 }
 
@@ -414,6 +429,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 			?>
 				<form action="" method="POST">
 					<input type="hidden" name="action" value="save_real_yield">
+					<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
 					
 					<div class="table-responsive">
 						<table class="forecast-table">
