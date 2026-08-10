@@ -1,118 +1,120 @@
-# kai
+# kai — Privates Web-Tool-Set (Dashboard)
 
-Persönliche Heimanwendung zur automatischen Verarbeitung digitaler Kassenbons (eBons) per E-Mail.
+**kai** ist eine private, PHP-basierte Heimanwendung für den Eigengebrauch. Sie bündelt mehrere unabhängige Werkzeuge unter einer gemeinsamen Authentifizierungs- und Infrastrukturschicht.
 
-## Funktionsweise
+## 🚀 Die Module im Überblick
 
-1. Ein Cronjob ruft regelmäßig `public/kassenbon/cron.php` auf.
-2. Der `ScannerTask` verbindet sich per IMAP mit dem konfigurierten Postfach und liest neue Mails.
-3. PDF- und Bild-Anhänge werden an die Google Gemini KI zur Analyse übergeben.
-4. Die extrahierten Kassenbondaten (Händler, Datum, Artikel, Kategorien) werden in der Datenbank gespeichert.
-5. Verarbeitete Mails werden ins IMAP-Archiv verschoben.
-6. Das Dashboard unter `public/kassenbon/index.php` zeigt alle gespeicherten Bons an.
+1. **🛒 eBons (Kassenbons):** Automatische KI-Auswertung von Haushalts-Kassenbons per E-Mail (IMAP) und Einzelpreis-Erfassung für die Haushaltsplanung mittels Google Gemini.
+2. **📈 Bon-Auswertung:** Dashboard zur grafischen Visualisierung und Analyse der erfassten Einkäufe nach Zeiträumen und Kategorien.
+3. **☀️ PV-Solarprognose:** Ertragsprognose der Photovoltaikanlage für die kommenden Tage basierend auf GPS-Daten und forecast.solar API.
+4. **🚐 VW ID.Buzz Telemetrie:** Live-Fahrzeugstatus (Ladestand, Reichweite, Temperaturen) und Verlaufshistorie mittels API-Schnittstelle.
 
 ---
 
-## Konfiguration (.env)
+## 🛠️ Systemarchitektur & Verzeichnisstruktur
 
-Im Wurzelverzeichnis des Projekts muss eine `.env`-Datei angelegt werden. Eine Vorlage:
+Das Projekt folgt einer strikten Trennung zwischen öffentlich erreichbarem Code und geschützter Server-Logik:
 
-```dotenv
-# -------------------------------------------------------
-# Anwendung
-# -------------------------------------------------------
+```
+kai_root/
+├── public/          ← Document Root des Webservers (einziges öffentlich erreichbares Verzeichnis)
+│   ├── .htaccess    ← Erzwingt HTTPS und setzt Security-Header (CSP, HSTS)
+│   ├── index.php    ← Haupt-Dashboard
+│   ├── login.php    ← Google OAuth Login-Controller
+│   ├── car/         ← Controller & API für das VW ID.Buzz Modul
+│   ├── kassenbon/   ← Controller & Cron-Trigger für Kassenbons
+│   └── pvcharge/    ← Controller & Cron-Trigger für die Solarprognose
+│
+├── src/             ← Core-Servercode (nicht öffentlich erreichbar, PSR-4 autoloaded)
+│   ├── Shared/      ← Domainübergreifende Komponenten (Datenbank, AI-Client, Logger, Mail)
+│   ├── Car/         ← Business-Logik & Repositories für das ID.Buzz Modul
+│   ├── Kassenbon/   ← Business-Logik & ScannerTask für Kassenbons
+│   └── PVCharge/    ← Business-Logik für die Solarprognose
+│
+├── database/
+│   └── schema.sql   ← Versioniertes Datenbankschema (MariaDB/MySQL)
+├── storage/         ← Lokale Logs (vom Deployment ausgeschlossen)
+└── bootstrap.php    ← Zentraler Einstiegspunkt (.env laden, Session starten)
+```
 
-# Basis-URL der Anwendung (ohne abschließenden Slash)
-APP_URL=https://deine-domain.de
+> [!IMPORTANT]
+> **Strikte Trennung von Backend & Browser:**  
+> Das Verzeichnis `public/` ist der einzige Ort, den der Webserver direkt ausliefern darf. PHP-Dateien in `public/` dienen ausschließlich als dünne **Controller**: Sie prüfen die Berechtigung, nehmen Requests entgegen, delegieren an Klassen in `src/` und antworten (HTML oder JSON). Führe niemals Datenbankabfragen oder Business-Logik direkt im `public/`-Ordner aus.
 
-# -------------------------------------------------------
-# Datenbank (MySQL/MariaDB)
-# -------------------------------------------------------
+---
 
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_NAME=kai
-DB_USER=kai_user
-DB_PASS=geheimes_passwort
+## 💻 Installation & Lokales Setup
 
-# -------------------------------------------------------
-# Google OAuth (Login)
-# -------------------------------------------------------
+### Voraussetzungen
+* PHP 8.2 oder höher mit den Erweiterungen `curl`, `pdo_mysql`, `mbstring`, `iconv`
+* MySQL oder MariaDB Datenbank
+* Composer zur Paketverwaltung
+* Google Cloud Console Projekt (für Google OAuth)
+* Google AI Studio Account (für Gemini API)
 
-# OAuth 2.0 Client-ID und Secret aus der Google Cloud Console
-# https://console.cloud.google.com/apis/credentials
-GOOGLE_CLIENT_ID=xxxxxxxxxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
-GOOGLE_REDIRECT_URI=https://deine-domain.de/login.php
+### Setup-Schritte
+1. **Repository klonen**
+2. **Abhängigkeiten installieren:**
+   ```bash
+   composer install
+   ```
+3. **Datenbank einrichten:**  
+   Erstelle eine MySQL/MariaDB-Datenbank und importiere das Schema aus `database/schema.sql`.
+4. **Konfiguration:**  
+   Kopiere `.env.example` zu `.env` und passe alle Zugangsdaten und Pfade an:
+   ```bash
+   cp .env.example .env
+   ```
+5. **Webserver einrichten:**  
+   Konfiguriere deinen lokalen Webserver (z. B. Apache) so, dass der Document Root auf den Ordner `public/` zeigt.
 
-# Autorisierte Nutzer (kommagetrennte E-Mail-Adressen)
-# Nur diese Adressen dürfen sich einloggen
-ALLOWED_USERS=deine@email.de,weitere@email.de
+---
 
-# -------------------------------------------------------
-# Google Gemini KI
-# -------------------------------------------------------
+## 🔒 Security Guidelines (für Entwickler)
 
-# API-Key aus Google AI Studio (https://aistudio.google.com/app/apikey)
-GEMINI_API_KEY=AIzaSy-xxxxxxxxxxxx
+Beim Hinzufügen neuer Features müssen folgende Sicherheitsrichtlinien zwingend beachtet werden:
 
-# Optionales Modell (Standard: gemini-3.1-flash-lite)
-# GEMINI_MODEL=gemini-3.1-flash-lite
+### 1. Absicherung der Endpunkte
+Jeder Endpunkt in `public/` (ausgenommen `login.php`) muss als erstes die Autorisierung prüfen:
+```php
+if (!isset($_SESSION['user_email'])) {
+    http_response_code(401);
+    exit;
+}
+```
 
-# Aufbewahrungsdauer der Log-Dateien in Tagen (Standard: 14)
-# LOG_RETENTION_DAYS=14
+### 2. Vermeidung von SQL-Injections
+Verwende für **alle** Datenbankoperationen PDO Prepared Statements. Setze niemals Werte per String-Interpolation direkt in SQL-Queries ein.
+```php
+// ✅ Richtig
+$stmt = $pdo->prepare("SELECT * FROM kb_items WHERE id = :id");
+$stmt->execute([':id' => $id]);
+```
 
-# -------------------------------------------------------
-# IMAP (E-Mail-Postfach für Kassenbons)
-# -------------------------------------------------------
+### 3. CSRF-Schutz
+Alle POST-Anfragen (Formulare und AJAX-Endpunkte), die den Systemzustand verändern, müssen durch einen CSRF-Token gesichert werden.
+* Generiere einen Token in der Session.
+* Übergib ihn im Formular (`<input type="hidden" name="csrf_token" value="...">`) oder als Request-Header (`X-CSRF-Token`).
+* Validiere den Token im Controller gegen `$_SESSION['csrf_token']`.
 
-IMAP_HOST=imap.beispiel.de
-IMAP_PORT=993
-IMAP_USER_KASSENBON=kassenbon@beispiel.de
-IMAP_PASS_KASSENBON=imap_passwort
+### 4. Keine rohen Fehlermeldungen (Information Disclosure)
+Fehlermeldungen oder Stack-Traces dürfen niemals an den Browser übergeben werden.
+* Verwende `try-catch`-Blöcke.
+* Protokolliere Detail-Fehler serverseitig über die Klasse `Logger`.
+* Gib dem Browser eine neutrale Fehlermeldung aus.
 
-# Verschlüsselung: ssl oder tls
-IMAP_ENCRYPTION=ssl
-
-# IMAP-Ordner, der auf neue Mails überwacht wird
-IMAP_INBOX=INBOX
-
-# Absender-Adressen, von denen Kassenbons akzeptiert werden (kommagetrennt)
-IMAP_ALLOWED_SENDERS=bon@haendler1.de,bon@haendler2.de
-
-# -------------------------------------------------------
-# Cron-Job Absicherung
-# -------------------------------------------------------
-
-# Geheimer Token zur Absicherung des Cron-Endpunkts
-# Aufruf: https://deine-domain.de/kassenbon/cron.php?token=DEIN_TOKEN
-CRON_TOKEN=sicherer_zufaelliger_token
+### 5. Cross-Site Scripting (XSS) verhindern
+Jede Ausgabe von dynamischen Inhalten (z. B. vom Benutzer manipulierte Strings oder KI-Ergebnisse) in HTML muss mit `htmlspecialchars()` escaped werden:
+```html
+<td><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></td>
 ```
 
 ---
 
-## Variablen-Referenz
+## 🚀 Deployment (CI/CD)
 
-| Variable | Pflicht | Beschreibung |
-|---|---|---|
-| `APP_URL` | ✅ | Basis-URL der Anwendung, z. B. `https://deine-domain.de` |
-| `DB_HOST` | ✅ | Hostname des Datenbankservers |
-| `DB_PORT` | ✅ | Port des Datenbankservers (Standard: `3306`) |
-| `DB_NAME` | ✅ | Name der Datenbank |
-| `DB_USER` | ✅ | Datenbankbenutzer |
-| `DB_PASS` | ✅ | Datenbankpasswort |
-| `GOOGLE_CLIENT_ID` | ✅ | OAuth 2.0 Client-ID (Google Cloud Console) |
-| `GOOGLE_CLIENT_SECRET` | ✅ | OAuth 2.0 Client-Secret (Google Cloud Console) |
-| `GOOGLE_REDIRECT_URI` | ✅ | Autorisierte Weiterleitungs-URI (muss in Google Cloud Console hinterlegt sein) |
-| `ALLOWED_USERS` | ✅ | Kommagetrennte Liste autorisierter Login-E-Mail-Adressen |
-| `GEMINI_API_KEY` | ✅ | API-Key für Google Gemini (Google AI Studio) |
-| `GEMINI_MODEL` | ❌ | Gemini-Modellname (Standard: `gemini-3.1-flash-lite`) |
-| `LOG_RETENTION_DAYS` | ❌ | Aufbewahrungsdauer der Log-Dateien in Tagen (Standard: `14`) |
-| `IMAP_HOST` | ✅ | IMAP-Serverhostname |
-| `IMAP_PORT` | ✅ | IMAP-Port (Standard: `993` für SSL) |
-| `IMAP_USER_KASSENBON` | ✅ | IMAP-Benutzername / E-Mail-Adresse für Kassenbons |
-| `IMAP_PASS_KASSENBON` | ✅ | IMAP-Passwort für Kassenbons |
-| `IMAP_ENCRYPTION` | ✅ | Verschlüsselung: `ssl` oder `tls` |
-| `IMAP_INBOX` | ✅ | Zu überwachender IMAP-Ordner (Standard: `INBOX`) |
-| `IMAP_ALLOWED_SENDERS` | ✅ | Kommagetrennte Liste erlaubter Absender-Adressen |
-| `CRON_TOKEN` | ✅ | Geheimer Token zur Absicherung des Cron-Endpunkts |
+Das Deployment erfolgt automatisiert über GitHub Actions (`.github/workflows/deploy.yml`) bei jedem Push auf den `main`-Branch:
+1. Der Workflow baut das Projekt, installiert Abhängigkeiten mit `composer install --no-dev`.
+2. Die Dateien werden inkrementell per SFTP übertragen.
+3. Sensible Daten wie FTP-Verbindungsdaten sind als **GitHub Secrets** hinterlegt.
+4. Dateien wie `.env`, `.git/` und `storage/` werden explizit vom Upload ausgeschlossen.
