@@ -63,7 +63,7 @@ class MailDispatcher
                 }
 
                 // 1. KREDITKARTEN-PDF (Bank-Modul)
-                if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
+				if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
                     $this->logger->info("MailDispatcher: Kreditkartenabrechnung erkannt ({$fileName}).");
                     
                     // Temp-Datei für den Parser anlegen
@@ -71,8 +71,13 @@ class MailDispatcher
                     file_put_contents($tmpFilePath, $content);
 
                     try {
-                        $this->creditCardService->importStatementPdf($tmpFilePath, $fileName);
-                        $this->logger->info("MailDispatcher: Kreditkartenabrechnung erfolgreich importiert.");
+                        // Importiert die Abrechnung und gibt die statement_id zurück
+                        $statementId = $this->creditCardService->importStatementPdf($tmpFilePath, $fileName);
+                        
+                        // Wendet deine manuell gelernten Kategorien auf die neuen Buchungen an
+                        $this->creditCardService->applyHistoricalCategories($statementId);
+
+                        $this->logger->info("MailDispatcher: Kreditkartenabrechnung erfolgreich importiert und Historie angewendet.");
                     } catch (Exception $e) {
                         $this->logger->error("MailDispatcher: Fehler bei Kreditkarten-Import: " . $e->getMessage());
                     } finally {

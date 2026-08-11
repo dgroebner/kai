@@ -89,6 +89,39 @@ class CreditCardService
             throw new RuntimeException("Fehler beim Speichern der Kreditkartenabrechnung: " . $e->getMessage(), 0, $e);
         }
     }
+	
+	public function getKnownCategoriesForMerchants(array $merchantNames): array
+	{
+		if (empty($merchantNames)) {
+			return [];
+		}
+
+		$pdo = $this->db->getConnection();
+		$placeholders = implode(',', array_fill(0, count($merchantNames), '?'));
+		
+		$stmt = $pdo->prepare("
+			SELECT t.merchant_name, t.category_id, c.name AS category_name
+			FROM bank_cc_transactions t
+			JOIN bank_categories c ON t.category_id = c.id
+			WHERE t.merchant_name IN ($placeholders)
+			  AND t.category_id IS NOT NULL
+			ORDER BY t.id DESC
+		");
+		$stmt->execute($merchantNames);
+		$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		// Nur den aktuellsten (neuesten) Treffer pro Händler behalten
+		$result = [];
+		foreach ($rows as $row) {
+			if (!isset($result[$row['merchant_name']])) {
+				$result[$row['merchant_name']] = [
+					'id' => (int)$row['category_id'],
+					'name' => $row['category_name']
+				];
+			}
+		}
+		return $result;
+	}
 
     private function ensureCreditCardAccount(PDO $pdo, string $accountName, string $bankName): int
     {
@@ -137,4 +170,56 @@ class CreditCardService
         $cache[$categoryName] = $newId;
         return $newId;
     }
+	
+	public function applyHistoricalCategories(int $statementId): void
+	{
+		$pdo = $this->db->getConnection();
+
+		// 1. Händler dieser neuen Abrechnung laden
+		$stmt = $pdo->prepare("SELECT id, merchant_name FROM bank_cc_transactions WHERE statement_id = :stmt_id");
+		$stmt->execute([':stmt_id' => $statementId]);
+		$currentTxList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		if (empty($currentTxList)) {
+			return;
+		}
+
+		$merchantNames = array_column($currentTxList, 'merchant_name');
+		
+		// 2. Historische Kategorien für diese Händler aus ÄLTEREN Abrechnungen suchen
+		$placeholders = implode(',', array_fill(0, count($merchantNames), '?'));
+		$sql = "
+			SELECT t.merchant_name, t.category_id
+			FROM bank_cc_transactions t
+			WHERE t.merchant_name IN ($placeholders)
+			  AND t.statement_id != ?
+			  AND t.category_id IS NOT NULL
+			ORDER BY t.id DESC
+		";
+		
+		$params = array_merge($merchantNames, [$statementId]);
+		$stmtHist = $pdo->prepare($sql);
+		$stmtHist->execute($params);
+		$historyRows = $stmtHist->fetchAll(PDO::FETCH_ASSOC);
+
+		$historyMap = [];
+		foreach ($historyRows as $row) {
+			if (!isset($historyMap[$row['merchant_name']])) {
+				$historyMap[$row['merchant_name']] = (int)$row['category_id'];
+			}
+		}
+
+		// 3. Wenn Treffer vorhanden sind, Kategorie-IDs in der neuen Abrechnung aktualisieren
+		$updateStmt = $pdo->prepare("UPDATE bank_cc_transactions SET category_id = :cat_id WHERE id = :tx_id");
+
+		foreach ($currentTxList as $tx) {
+			$mName = $tx['merchant_name'];
+			if (isset($historyMap[$mName])) {
+				$updateStmt->execute([
+					':cat_id' => $historyMap[$mName],
+					':tx_id'  => $tx['id']
+				]);
+			}
+		}
+	}
 }
