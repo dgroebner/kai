@@ -196,28 +196,35 @@ function resetFilter() {
 // Inline-Editierung der Kategorien mit Speichern/Abbrechen
 function enableCategoryEdit(badgeElement, txId) {
     const parentTd = badgeElement.parentElement;
-    
-    // Text aus dem Badge oder Fallback ermitteln
     const textNode = badgeElement.querySelector('.badge-text') || badgeElement;
     const currentCategoryName = textNode.textContent.trim();
-
-    // Original-HTML sichern für Abbrechen
     const originalHtml = parentTd.innerHTML;
 
+    // Container für Input + Buttons
     const container = document.createElement('div');
     container.className = 'category-edit-container';
 
-    const select = document.createElement('select');
-    select.className = 'category-select-custom';
+    // Text-Input mit Vorschlagsliste (Datalist)
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'category-input-custom';
+    input.value = currentCategoryName;
+    input.setAttribute('list', 'categorySuggestions');
+    input.placeholder = 'Kategorie suchen/neu...';
 
+    // Datalist für Auto-Suggest aufbauen
+    let datalist = document.getElementById('categorySuggestions');
+    if (!datalist) {
+        datalist = document.createElement('datalist');
+        datalist.id = 'categorySuggestions';
+        document.body.appendChild(datalist);
+    }
+    
+    datalist.innerHTML = '';
     ALL_CATEGORIES.forEach(cat => {
         const option = document.createElement('option');
-        option.value = cat.id;
-        option.textContent = cat.name;
-        if (cat.name === currentCategoryName) {
-            option.selected = true;
-        }
-        select.appendChild(option);
+        option.value = cat.name;
+        datalist.appendChild(option);
     });
 
     const saveBtn = document.createElement('button');
@@ -230,22 +237,29 @@ function enableCategoryEdit(badgeElement, txId) {
     cancelBtn.innerHTML = '❌';
     cancelBtn.title = 'Abbrechen';
 
-    container.appendChild(select);
+    container.appendChild(input);
     container.appendChild(saveBtn);
     container.appendChild(cancelBtn);
 
     parentTd.innerHTML = '';
     parentTd.appendChild(container);
-    select.focus();
+    
+    input.focus();
+    input.select(); // Text direkt markieren zum schnellen Überschreiben
 
-    // Speichern per Fetch-API
-    saveBtn.addEventListener('click', async () => {
-        const newCatId = select.value;
+    // Speichern
+    const handleSave = async () => {
+        const newCategoryName = input.value.trim();
+        if (!newCategoryName) {
+            alert('Bitte eine Kategorie eingeben.');
+            return;
+        }
+
         try {
             const res = await fetch('api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tx_id: txId, category_id: newCatId })
+                body: JSON.stringify({ tx_id: txId, category_name: newCategoryName })
             });
 
             const result = await res.json();
@@ -257,9 +271,21 @@ function enableCategoryEdit(badgeElement, txId) {
         } catch (e) {
             alert('Netzwerkfehler beim Speichern.');
         }
+    };
+
+    saveBtn.addEventListener('click', handleSave);
+
+    // Enter drückt Speichern, Escape bricht ab
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSave();
+        } else if (e.key === 'Escape') {
+            parentTd.innerHTML = originalHtml;
+        }
     });
 
-    // Abbrechen stellt Ursprungsszustand wieder her
+    // Abbrechen
     cancelBtn.addEventListener('click', () => {
         parentTd.innerHTML = originalHtml;
     });
