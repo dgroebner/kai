@@ -13,7 +13,7 @@ class ImapClient {
 
     public function __construct(string $username, string $password) {
         $this->logger = new Logger(14);
-        $this->allowedSenders = explode(',', $_ENV['ALLOWED_USERS'] ?? '');
+        $this->allowedSenders = $this->getAllowedSenders();
 
         // Hier übergeben wir die Konfiguration explizit im Array, 
         // damit der ClientManager nicht nach externen Dateien sucht.
@@ -39,6 +39,22 @@ class ImapClient {
             $this->logger->error("ImapClient: Verbindungsaufbau fehlgeschlagen!", ['error' => $e->getMessage()]);
             throw new Exception("Konnte keine IMAP-Verbindung herstellen: " . $e->getMessage());
         }
+    }
+	
+	/**
+     * Führt ALLOWED_USERS und IMAP_ALLOWED_SENDERS zu einem bereinigten Array zusammen.
+     * 
+     * @return array<string>
+     */
+    private function getAllowedSenders(): array
+    {
+        $allowedUsers = $_ENV['ALLOWED_USERS'] ?? '';
+        $allowedSenders = $_ENV['IMAP_ALLOWED_SENDERS'] ?? '';
+
+        $list1 = array_map('trim', explode(',', $allowedUsers));
+        $list2 = array_map('trim', explode(',', $allowedSenders));
+
+        return array_unique(array_filter(array_merge($list1, $list2)));
     }
 
 	public function getVerifiedMails(): array {
