@@ -131,14 +131,14 @@ function initCategoryAnalysis() {
         resetBtn.addEventListener('click', resetFilter);
     }
 	
-	document.querySelectorAll('.clickable-badge').forEach(badge => {
-		badge.addEventListener('click', (e) => {
-			const badgeEl = e.currentTarget;
-			const txId = badgeEl.dataset.txId;
-			if (txId) {
-				enableCategoryEdit(badgeEl, txId);
+	document.addEventListener('click', (e) => {
+		const badge = e.target.closest('.clickable-badge');
+		if (badge) {
+			const txId = badge.dataset.txId;
+			if (txId && !badge.closest('.category-edit-container')) {
+				enableCategoryEdit(badge, txId);
 			}
-		});
+		}
 	});
 }
 

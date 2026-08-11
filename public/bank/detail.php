@@ -126,7 +126,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
         </main>
     </div>
 
-    <script src="../js/bank.js"></script>
 	<script src="../js/chart.min.js"></script>
+    <script src="../js/bank.js"></script>
 </body>
 </html>
