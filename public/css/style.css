@@ -1033,3 +1033,91 @@ tbody tr:hover td {
         width: 100%;
     }
 }
+
+/* Kategorien-Analyse Layout */
+.analysis-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+/* Legende links als saubere Tabelle */
+.category-legend {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.legend-header, .legend-row {
+    display: grid;
+    grid-template-columns: 18px 1fr 80px 100px;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.legend-header {
+    font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.legend-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.legend-row:hover, .legend-row.active {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.legend-percent {
+    font-weight: 600;
+    text-align: right;
+}
+
+.legend-value {
+    text-align: right;
+}
+
+/* Rechte Spalte: Kompakter Chart Container */
+.chart-container {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    flex-shrink: 0;
+}
+
+.chart-center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-center-text .label {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.chart-center-text .value {
+    font-size: 0.95rem;
+    font-weight: 700;
+}

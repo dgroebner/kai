@@ -20,28 +20,31 @@ const CHART_COLORS = [
 ];
 
 function initCategoryAnalysis() {
-    // 1. Kategorien aggregieren (nur Ausgaben/negative Beträge einrechnen)
+    // 1. Kategorien aggregieren
     const categoryTotals = {};
     let grandTotal = 0;
 
     TRANSACTIONS.forEach(tx => {
         const amount = Math.abs(parseFloat(tx.amount));
         const catName = tx.category_name || 'Sonstiges';
-
         categoryTotals[catName] = (categoryTotals[catName] || 0) + amount;
         grandTotal += amount;
     });
 
-    // Sortieren nach Betrag absteigend
-    const sortedCategories = Object.entries(categoryTotals)
-        .sort((a, b) => b[1] - a[1]);
-
+    const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
     const labels = sortedCategories.map(item => item[0]);
     const dataValues = sortedCategories.map(item => item[1]);
 
-    // 2. Legende rendern
+    // 2. Legende mit Tabellenkopf rendern
     const legendContainer = document.getElementById('categoryLegend');
-    legendContainer.innerHTML = '';
+    legendContainer.innerHTML = `
+        <div class="legend-header">
+            <span></span>
+            <span>Kategorie</span>
+            <span style="text-align: right;">Anteil</span>
+            <span style="text-align: right;">Gesamt</span>
+        </div>
+    `;
 
     sortedCategories.forEach(([catName, sum], index) => {
         const color = CHART_COLORS[index % CHART_COLORS.length];
@@ -53,7 +56,7 @@ function initCategoryAnalysis() {
         row.innerHTML = `
             <span class="legend-dot" style="background-color: ${color}"></span>
             <span class="legend-label">${catName}</span>
-            <span class="legend-percent">${percentage}%</span>
+            <span class="legend-percent">${percentage.replace('.', ',')}%</span>
             <span class="legend-value">${sum.toFixed(2).replace('.', ',')} €</span>
         `;
 
@@ -61,8 +64,12 @@ function initCategoryAnalysis() {
         legendContainer.appendChild(row);
     });
 
-    // 3. ChartJS Donut-Chart erstellen
+    // 3. ChartJS Donut-Chart (Kompakt)
     const ctx = document.getElementById('categoryChart').getContext('2d');
+    if (categoryChart) {
+        categoryChart.destroy();
+    }
+
     categoryChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -71,11 +78,13 @@ function initCategoryAnalysis() {
                 data: dataValues,
                 backgroundColor: CHART_COLORS.slice(0, labels.length),
                 borderWidth: 0,
-                hoverOffset: 6
+                hoverOffset: 4
             }]
         },
         options: {
-            cutout: '75%',
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -89,8 +98,7 @@ function initCategoryAnalysis() {
             onClick: (evt, activeElements) => {
                 if (activeElements.length > 0) {
                     const index = activeElements[0].index;
-                    const clickedCategory = labels[index];
-                    filterByCategory(clickedCategory);
+                    filterByCategory(labels[index]);
                 }
             }
         }
