@@ -50,40 +50,42 @@ $statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <main>
             <section class="card">
-                <table class="receipts-table">
-                    <thead>
-                        <tr>
-                            <th>Abrechnung</th>
-                            <th>Fälligkeit</th>
-                            <th>Positionen</th>
-                            <th class="text-right">Gesamtbetrag</th>
-                            <th class="text-right">Aktion</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($statements)): ?>
+                <div class="table-responsive">
+                    <table class="receipts-table">
+                        <thead>
                             <tr>
-                                <td colspan="5" class="text-center">Keine Abrechnungen gefunden.</td>
+                                <th>Abrechnung</th>
+                                <th>Fälligkeit</th>
+                                <th>Positionen</th>
+                                <th class="text-right">Gesamtbetrag</th>
+                                <th class="text-right">Aktion</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($statements as $stmtRow): ?>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($statements)): ?>
                                 <tr>
-                                    <td><?= date('d.m.Y', strtotime($stmtRow['statement_date'])) ?></td>
-                                    <td><?= $stmtRow['due_date'] ? date('d.m.Y', strtotime($stmtRow['due_date'])) : '-' ?></td>
-                                    <td><?= (int)$stmtRow['tx_count'] ?> Positionen</td>
-                                    <td class="text-right amount-bold">
-                                        <?= number_format((float)$stmtRow['total_amount'], 2, ',', '.') ?> €
-                                    </td>
-                                    <td class="text-right">
-                                        <a href="detail.php?id=<?= (int)$stmtRow['id'] ?>" class="btn-link">
-                                            &#9660; Details
-                                        </a>
-                                    </td>
+                                    <td colspan="5" class="text-center">Keine Abrechnungen gefunden.</td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                            <?php else: ?>
+                                <?php foreach ($statements as $stmtRow): ?>
+                                    <tr>
+                                        <td><?= date('d.m.Y', strtotime($stmtRow['statement_date'])) ?></td>
+                                        <td><?= $stmtRow['due_date'] ? date('d.m.Y', strtotime($stmtRow['due_date'])) : '-' ?></td>
+                                        <td><?= (int)$stmtRow['tx_count'] ?> Positionen</td>
+                                        <td class="text-right amount-bold">
+                                            <?= number_format((float)$stmtRow['total_amount'], 2, ',', '.') ?> €
+                                        </td>
+                                        <td class="text-right">
+                                            <a href="detail.php?id=<?= (int)$stmtRow['id'] ?>" class="btn-link">
+                                                &#9660; Details
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
 
                 <!-- Paginierung am unteren Ende -->
                 <?php if ($totalPages > 1): ?>

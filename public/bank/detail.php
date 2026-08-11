@@ -45,30 +45,32 @@ $transactions = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
 
         <section class="card">
             <h2>Einzelumsätze</h2>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Datum</th>
-                        <th>Händler / Ort</th>
-                        <th>Karte</th>
-                        <th>Kategorie</th>
-                        <th>Betrag</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($transactions as $tx): ?>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td><?= htmlspecialchars($tx['booking_date']) ?></td>
-                            <td><?= htmlspecialchars($tx['merchant_name']) ?></td>
-                            <td>*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
-                            <td><span class="badge"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?></span></td>
-                            <td class="<?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
-                                <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €
-                            </td>
+                            <th>Datum</th>
+                            <th>Händler / Ort</th>
+                            <th>Karte</th>
+                            <th>Kategorie</th>
+                            <th>Betrag</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($transactions as $tx): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($tx['booking_date']) ?></td>
+                                <td><?= htmlspecialchars($tx['merchant_name']) ?></td>
+                                <td>*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
+                                <td><span class="badge"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?></span></td>
+                                <td class="<?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
+                                    <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </section>
     </div>
 </body>

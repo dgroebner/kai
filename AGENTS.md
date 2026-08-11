@@ -283,6 +283,12 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
 - Alle Tabellen: `ENGINE=InnoDB`, `CHARSET=utf8mb4`, `COLLATE=utf8mb4_unicode_ci`
 - Indizes für häufig gefilterte Spalten dokumentieren und anlegen
 
+### 8.5 CSS & Frontend-Styles (Zentrales Styleschema)
+
+- **Zentrale Vorgabe:** Für alle UI-Elemente ist primär das zentrale Styleschema in `public/css/style.css` zu verwenden.
+- **Keine redundanten Styles:** Das Verwenden von inline-Styles (`style="..."`) oder lokalen `<style>`-Blöcken in PHP/HTML-Seiten ist zu vermeiden, sofern die Styles domainübergreifend oder mehrfach genutzt werden können.
+- **Erweiterungsprinzip:** Wenn neue Styles für ein Feature benötigt werden, dürfen diese nicht ad-hoc im Controller abgelegt werden. Sie müssen das zentrale Styleschema in `public/css/style.css` an geeigneter Stelle ergänzen und dokumentieren, sodass sie für zukünftige Entwicklungen im gesamten Projekt zur Verfügung stehen.
+
 ---
 
 ## 9. Deployment-Pipeline
@@ -325,3 +331,4 @@ Bevor ein neues Feature als fertig gilt, müssen folgende Punkte erfüllt sein:
 - [ ] Neue Drittanbieter in AGENTS.md Abschnitt 7.3 eingetragen
 - [ ] JavaScript enthält keine serverseitigen Credentials oder Logik
 - [ ] Domain-Grenzen eingehalten (kein domainübergreifender direkter Klassenimport)
+- [ ] Keine redundanten `<style>`-Blöcke oder Inline-Styles verwendet (zentrales Styleschema aus `public/css/style.css` genutzt oder erweitert)

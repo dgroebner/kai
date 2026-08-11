@@ -46,17 +46,11 @@ if (!isset($_SESSION['user_email'])) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Login | Tool-Set</title>
         <link rel="stylesheet" href="css/style.css">
-        <style>
-            /* Spezifisches zentriertes Layout nur für den Login */
-            body { display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .login-card { text-align: center; max-width: 400px; width: 100%; }
-            .login-card h2 { margin-bottom: 1.5rem; }
-        </style>
     </head>
-    <body>
+    <body class="login-body">
         <div class="card login-card">
             <h2>Privates Tool-Set</h2>
-            <p style="margin-bottom: 2rem;">Bitte melde dich an, um fortzufahren.</p>
+            <p>Bitte melde dich an, um fortzufahren.</p>
             <a href="<?= filter_var($login_url, FILTER_SANITIZE_URL) ?>" class="btn">Login mit Google</a>
         </div>
     </body>
