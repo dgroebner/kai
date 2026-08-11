@@ -12,22 +12,10 @@ class CreditCardService
     private Database $db;
     private VisaPdfParser $parser;
 
-    // Standard-Kategorien als Fallback, falls in der DB noch wenig/nichts vorhanden ist
     private array $defaultCategories = [
-        'Supermarkt',
-        'Tankstelle',
-        'Online-Shopping',
-        'Gastronomie',
-        'Baumarkt',
-        'Drogerie',
-        'Tierarzt',
-        'Freizeit',
-        'Bekleidung',
-        'Elektronik',
-        'Abonnements / Software',
-        'Parken / Fahrzeuge',
-        'Einzelhandel',
-        'Sonstiges'
+        'Supermarkt', 'Tankstelle', 'Online-Shopping', 'Gastronomie',
+        'Baumarkt', 'Drogerie', 'Tierarzt', 'Freizeit',
+        'Bekleidung', 'Elektronik', 'Parken', 'Einzelhandel', 'Sonstiges'
     ];
 
     public function __construct(Database $db, VisaPdfParser $parser)
@@ -36,19 +24,15 @@ class CreditCardService
         $this->parser = $parser;
     }
 
-    /**
-     * Parst ein Visa-PDF, sorgt dynamisch für die benötigten Stammdaten (Account, Kategorien)
-     * und speichert Abrechnung sowie Einzelpositionen in der Datenbank.
-     */
     public function importStatementPdf(string $pdfFilePath, string $savedFileName): int
     {
-        // 1. Bereits existierende Kategorien aus der Datenbank laden
+        // 1. Kategorien aus bank_categories laden
         $dbCategoryMap = $this->getCategoryMapFromDb();
 
-        // 2. Schnittmenge/Kombination aus DB-Kategorien und Default-Kategorien für den Prompt bilden
+        // 2. Zusammenführen mit Default-Kategorien für den Gemini-Prompt
         $promptCategories = array_unique(array_merge(array_keys($dbCategoryMap), $this->defaultCategories));
 
-        // 3. PDF via Parser und Gemini verarbeiten
+        // 3. PDF parsen
         $parsedData = $this->parser->parsePdf($pdfFilePath, $promptCategories);
         $info = $parsedData['statement_info'];
         $transactions = $parsedData['transactions'];
@@ -57,10 +41,8 @@ class CreditCardService
         $pdo->beginTransaction();
 
         try {
-            // 4. Dynamisches "Get or Create" für das Kreditkarten-Konto
             $accountId = $this->ensureCreditCardAccount($pdo, "ADAC Visa Card", "Solaris SE");
 
-            // 5. Header in bank_cc_statements eintragen
             $stmt = $pdo->prepare("
                 INSERT INTO bank_cc_statements 
                 (account_id, statement_date, due_date, total_amount, pdf_filename, reference_iban_suffix) 
@@ -78,7 +60,6 @@ class CreditCardService
 
             $statementId = (int)$pdo->lastInsertId();
 
-            // 6. Einzelpositionen einfügen
             $stmtTx = $pdo->prepare("
                 INSERT INTO bank_cc_transactions 
                 (statement_id, booking_date, valuta_date, card_number_suffix, merchant_name, amount, category_id) 
@@ -87,8 +68,6 @@ class CreditCardService
 
             foreach ($transactions as $tx) {
                 $categoryName = !empty($tx['category']) ? $tx['category'] : 'Sonstiges';
-                
-                // Wandelt den Namen in eine ID um. Falls noch nicht in kb_categories, wird er neu angelegt.
                 $categoryId = $this->ensureCategoryId($pdo, $categoryName, $dbCategoryMap);
 
                 $stmtTx->execute([
@@ -133,13 +112,11 @@ class CreditCardService
         return (int)$pdo->lastInsertId();
     }
 
-    /**
-     * Liest die bestehenden Kategorien aus kb_categories ein: ['Supermarkt' => 1, 'Tankstelle' => 2, ...]
-     */
     private function getCategoryMapFromDb(): array
     {
         $pdo = $this->db->getConnection();
-        $stmt = $pdo->query("SELECT id, name FROM kb_categories");
+        // Liest aus der separaten Tabelle bank_categories
+        $stmt = $pdo->query("SELECT id, name FROM bank_categories");
         $categories = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $categories[$row['name']] = (int)$row['id'];
@@ -147,16 +124,13 @@ class CreditCardService
         return $categories;
     }
 
-    /**
-     * Holt die ID einer Kategorie oder fügt sie dynamisch in kb_categories ein.
-     */
     private function ensureCategoryId(PDO $pdo, string $categoryName, array &$cache): int
     {
         if (isset($cache[$categoryName])) {
             return $cache[$categoryName];
         }
 
-        $stmt = $pdo->prepare("INSERT INTO kb_categories (name) VALUES (:name)");
+        $stmt = $pdo->prepare("INSERT INTO bank_categories (name) VALUES (:name)");
         $stmt->execute([':name' => $categoryName]);
         $newId = (int)$pdo->lastInsertId();
 
