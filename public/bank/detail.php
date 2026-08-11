@@ -46,7 +46,10 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
             <a href="index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
         </header>
 
-        <main>
+		<main id="bankDetailApp"
+			  data-categories='<?= htmlspecialchars(json_encode($allCategories), ENT_QUOTES, 'UTF-8') ?>'
+			  data-transactions='<?= htmlspecialchars(json_encode($transactions), ENT_QUOTES, 'UTF-8') ?>'
+			  data-total="<?= (float)$statement['total_amount'] ?>">
             <!-- Kopfbereich: Kategorien-Analyse mit Donut-Chart -->
             <section class="card category-analysis-card">
                 <h3>Kategorien-Anteil</h3>
@@ -107,12 +110,6 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
         </main>
     </div>
 
-    <!-- Verfügbare Kategorien für JS bereitstellen -->
-    <script>
-        const ALL_CATEGORIES = <?= json_encode($allCategories) ?>;
-        const TRANSACTIONS = <?= json_encode($transactions) ?>;
-        const TOTAL_AMOUNT = <?= (float)$statement['total_amount'] ?>;
-    </script>
     <script src="../js/bank.js"></script>
 </body>
 </html>

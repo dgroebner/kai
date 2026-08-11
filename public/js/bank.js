@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const appEl = document.getElementById('bankDetailApp');
+    
+    if (appEl) {
+        window.ALL_CATEGORIES = JSON.parse(appEl.dataset.categories || '[]');
+        window.TRANSACTIONS = JSON.parse(appEl.dataset.transactions || '[]');
+        window.TOTAL_AMOUNT = parseFloat(appEl.dataset.total || '0');
+    }
+
     initCategoryAnalysis();
 });
 
