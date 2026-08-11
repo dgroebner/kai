@@ -130,6 +130,16 @@ function initCategoryAnalysis() {
     if (resetBtn) {
         resetBtn.addEventListener('click', resetFilter);
     }
+	
+	document.querySelectorAll('.clickable-badge').forEach(badge => {
+		badge.addEventListener('click', (e) => {
+			const badgeEl = e.currentTarget;
+			const txId = badgeEl.dataset.txId;
+			if (txId) {
+				enableCategoryEdit(badgeEl, txId);
+			}
+		});
+	});
 }
 
 // Filter-Logik für Tabelle, Legende und Chart

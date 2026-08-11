@@ -103,7 +103,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
 								<td class="category-cell">
 									<span class="category-badge clickable-badge" 
 										  title="Kategorie bearbeiten" 
-										  onclick="enableCategoryEdit(this, <?= $tx['id'] ?>)">
+										  data-tx-id="<?= $tx['id'] ?>">
 										<span class="badge-text"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?></span>
 										<span class="edit-icon">✏️</span>
 									</span>
