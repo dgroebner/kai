@@ -86,22 +86,40 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($transactions as $tx): ?>
-                            <tr data-tx-id="<?= $tx['id'] ?>" data-category-id="<?= $tx['category_id'] ?>" data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>" data-amount="<?= abs((float)$tx['amount']) ?>">
-                                <td><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
-                                <td><?= htmlspecialchars($tx['merchant_name']) ?></td>
-                                <td>*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
-                                <td>
-                                    <!-- Inline-Kategorie-Pill -->
-                                    <span class="category-badge clickable-badge" onclick="enableCategoryEdit(this, <?= $tx['id'] ?>)">
-                                        <?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>
-                                    </span>
-                                </td>
-                                <td class="text-right <?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
-                                    <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+						<?php foreach ($transactions as $tx): 
+							$amount = (float)$tx['amount'];
+							$isRefund = $amount > 0; // Positive Beträge = Gutschriften
+							$displayAmount = abs($amount);
+						?>
+							<tr data-tx-id="<?= $tx['id'] ?>" 
+								data-category-id="<?= $tx['category_id'] ?>" 
+								data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>">
+								
+								<td><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
+								<td><?= htmlspecialchars($tx['merchant_name']) ?></td>
+								<td>*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
+								
+								<!-- Kategorie mit dynamischer Farbe & Stift-Icon -->
+								<td class="category-cell">
+									<span class="category-badge clickable-badge" 
+										  title="Kategorie bearbeiten" 
+										  onclick="enableCategoryEdit(this, <?= $tx['id'] ?>)">
+										<span class="badge-text"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?></span>
+										<span class="edit-icon">✏️</span>
+									</span>
+								</td>
+								
+								<!-- Beträge: Weiß für Ausgaben, Grün + Badge für Gutschriften -->
+								<td class="text-right">
+									<?php if ($isRefund): ?>
+										<span class="refund-badge">Gutschrift</span>
+										<span class="text-success">+<?= number_format($displayAmount, 2, ',', '.') ?> €</span>
+									<?php else: ?>
+										<span><?= number_format($displayAmount, 2, ',', '.') ?> €</span>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
                     </tbody>
                 </table>
             </section>

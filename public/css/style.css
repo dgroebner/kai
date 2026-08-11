@@ -1121,3 +1121,73 @@ tbody tr:hover td {
     font-size: 0.95rem;
     font-weight: 700;
 }
+
+/* Badges & Inline-Editing */
+.clickable-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    border: 1px solid currentColor;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.clickable-badge:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.clickable-badge .edit-icon {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* Custom Category Dropdown Overlay */
+.category-edit-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    position: relative;
+}
+
+.category-select-custom {
+    background-color: var(--bg-card, #1e293b);
+    color: #fff;
+    border: 1px solid var(--primary-color, #3b82f6);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.btn-icon-action {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 0.1rem;
+    line-height: 1;
+}
+
+/* Gutschriften */
+.refund-badge {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid #10b981;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    margin-right: 0.4rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.text-success {
+    color: #10b981;
+    font-weight: 600;
+}

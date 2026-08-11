@@ -35,76 +35,101 @@ function initCategoryAnalysis() {
     const labels = sortedCategories.map(item => item[0]);
     const dataValues = sortedCategories.map(item => item[1]);
 
-    // 2. Legende mit Tabellenkopf rendern
-    const legendContainer = document.getElementById('categoryLegend');
-    legendContainer.innerHTML = `
-        <div class="legend-header">
-            <span></span>
-            <span>Kategorie</span>
-            <span style="text-align: right;">Anteil</span>
-            <span style="text-align: right;">Gesamt</span>
-        </div>
-    `;
-
-    sortedCategories.forEach(([catName, sum], index) => {
-        const color = CHART_COLORS[index % CHART_COLORS.length];
-        const percentage = grandTotal > 0 ? ((sum / grandTotal) * 100).toFixed(1) : 0;
-
-        const row = document.createElement('div');
-        row.className = 'legend-row';
-        row.dataset.category = catName;
-        row.innerHTML = `
-            <span class="legend-dot" style="background-color: ${color}"></span>
-            <span class="legend-label">${catName}</span>
-            <span class="legend-percent">${percentage.replace('.', ',')}%</span>
-            <span class="legend-value">${sum.toFixed(2).replace('.', ',')} €</span>
-        `;
-
-        row.addEventListener('click', () => filterByCategory(catName));
-        legendContainer.appendChild(row);
+    // Color Map für Tabellen-Badges aufbauen
+    const categoryColorMap = {};
+    sortedCategories.forEach(([catName], index) => {
+        categoryColorMap[catName] = CHART_COLORS[index % CHART_COLORS.length];
     });
 
-    // 3. ChartJS Donut-Chart (Kompakt)
-    const ctx = document.getElementById('categoryChart').getContext('2d');
-    if (categoryChart) {
-        categoryChart.destroy();
-    }
-
-    categoryChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: dataValues,
-                backgroundColor: CHART_COLORS.slice(0, labels.length),
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '70%',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return ` ${context.label}: ${context.raw.toFixed(2).replace('.', ',')} €`;
-                        }
-                    }
-                }
-            },
-            onClick: (evt, activeElements) => {
-                if (activeElements.length > 0) {
-                    const index = activeElements[0].index;
-                    filterByCategory(labels[index]);
-                }
-            }
+    // 2. Tabellen-Badges mit den Farben des Charts einfärben
+    document.querySelectorAll('#transactionsTable tbody tr').forEach(row => {
+        const catName = row.dataset.categoryName;
+        const badge = row.querySelector('.clickable-badge');
+        if (badge && categoryColorMap[catName]) {
+            const color = categoryColorMap[catName];
+            badge.style.color = color;
+            badge.style.borderColor = color;
         }
     });
 
-    document.getElementById('resetFilterBtn').addEventListener('click', resetFilter);
+    // 3. Legende mit Tabellenkopf rendern
+    const legendContainer = document.getElementById('categoryLegend');
+    if (legendContainer) {
+        legendContainer.innerHTML = `
+            <div class="legend-header">
+                <span></span>
+                <span>Kategorie</span>
+                <span style="text-align: right;">Anteil</span>
+                <span style="text-align: right;">Gesamt</span>
+            </div>
+        `;
+
+        sortedCategories.forEach(([catName, sum], index) => {
+            const color = CHART_COLORS[index % CHART_COLORS.length];
+            const percentage = grandTotal > 0 ? ((sum / grandTotal) * 100).toFixed(1) : 0;
+
+            const row = document.createElement('div');
+            row.className = 'legend-row';
+            row.dataset.category = catName;
+            row.innerHTML = `
+                <span class="legend-dot" style="background-color: ${color}"></span>
+                <span class="legend-label">${catName}</span>
+                <span class="legend-percent">${percentage.replace('.', ',')}%</span>
+                <span class="legend-value">${sum.toFixed(2).replace('.', ',')} €</span>
+            `;
+
+            row.addEventListener('click', () => filterByCategory(catName));
+            legendContainer.appendChild(row);
+        });
+    }
+
+    // 4. ChartJS Donut-Chart
+    const chartEl = document.getElementById('categoryChart');
+    if (chartEl) {
+        const ctx = chartEl.getContext('2d');
+        if (categoryChart) {
+            categoryChart.destroy();
+        }
+
+        categoryChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: CHART_COLORS.slice(0, labels.length),
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: ${context.raw.toFixed(2).replace('.', ',')} €`;
+                            }
+                        }
+                    }
+                },
+                onClick: (evt, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const index = activeElements[0].index;
+                        filterByCategory(labels[index]);
+                    }
+                }
+            }
+        });
+    }
+
+    const resetBtn = document.getElementById('resetFilterBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetFilter);
+    }
 }
 
 // Filter-Logik für Tabelle, Legende und Chart
@@ -125,7 +150,6 @@ function filterByCategory(categoryName) {
         }
     });
 
-    // Legende visuell anpassen
     document.querySelectorAll('.legend-row').forEach(row => {
         if (row.dataset.category === categoryName) {
             row.classList.add('active');
@@ -134,23 +158,39 @@ function filterByCategory(categoryName) {
         }
     });
 
-    document.getElementById('resetFilterBtn').classList.remove('hidden');
+    const resetBtn = document.getElementById('resetFilterBtn');
+    if (resetBtn) {
+        resetBtn.classList.remove('hidden');
+    }
 }
 
 function resetFilter() {
     activeFilterCategory = null;
     document.querySelectorAll('#transactionsTable tbody tr').forEach(row => row.classList.remove('hidden'));
     document.querySelectorAll('.legend-row').forEach(row => row.classList.remove('active'));
-    document.getElementById('resetFilterBtn').classList.add('hidden');
+    
+    const resetBtn = document.getElementById('resetFilterBtn');
+    if (resetBtn) {
+        resetBtn.classList.add('hidden');
+    }
 }
 
-// Inline-Editierung der Kategorien
+// Inline-Editierung der Kategorien mit Speichern/Abbrechen
 function enableCategoryEdit(badgeElement, txId) {
-    const currentCategoryName = badgeElement.textContent.trim();
     const parentTd = badgeElement.parentElement;
+    
+    // Text aus dem Badge oder Fallback ermitteln
+    const textNode = badgeElement.querySelector('.badge-text') || badgeElement;
+    const currentCategoryName = textNode.textContent.trim();
+
+    // Original-HTML sichern für Abbrechen
+    const originalHtml = parentTd.innerHTML;
+
+    const container = document.createElement('div');
+    container.className = 'category-edit-container';
 
     const select = document.createElement('select');
-    select.className = 'category-select-inline';
+    select.className = 'category-select-custom';
 
     ALL_CATEGORIES.forEach(cat => {
         const option = document.createElement('option');
@@ -162,14 +202,27 @@ function enableCategoryEdit(badgeElement, txId) {
         select.appendChild(option);
     });
 
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-icon-action';
+    saveBtn.innerHTML = '✅';
+    saveBtn.title = 'Speichern';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-icon-action';
+    cancelBtn.innerHTML = '❌';
+    cancelBtn.title = 'Abbrechen';
+
+    container.appendChild(select);
+    container.appendChild(saveBtn);
+    container.appendChild(cancelBtn);
+
     parentTd.innerHTML = '';
-    parentTd.appendChild(select);
+    parentTd.appendChild(container);
     select.focus();
 
-    select.addEventListener('change', async () => {
+    // Speichern per Fetch-API
+    saveBtn.addEventListener('click', async () => {
         const newCatId = select.value;
-        const newCatName = select.options[select.selectedIndex].text;
-
         try {
             const res = await fetch('api.php', {
                 method: 'POST',
@@ -179,16 +232,17 @@ function enableCategoryEdit(badgeElement, txId) {
 
             const result = await res.json();
             if (result.success) {
-                location.reload(); // Neuladen zur Aktualisierung von Chart & Legende
+                location.reload();
             } else {
-                alert('Fehler beim Speichern: ' + result.error);
+                alert('Fehler beim Speichern: ' + (result.error || 'Unbekannter Fehler'));
             }
         } catch (e) {
             alert('Netzwerkfehler beim Speichern.');
         }
     });
 
-    select.addEventListener('blur', () => {
-        location.reload();
+    // Abbrechen stellt Ursprungsszustand wieder her
+    cancelBtn.addEventListener('click', () => {
+        parentTd.innerHTML = originalHtml;
     });
 }
