@@ -144,30 +144,38 @@ function initCategoryAnalysis() {
 
 // Filter-Logik für Tabelle, Legende und Chart
 function filterByCategory(categoryName) {
-    if (activeFilterCategory === categoryName) {
+    const cleanCategoryName = categoryName.trim().toLowerCase();
+
+    // Bei erneutem Klick auf dieselbe Kategorie Filter aufheben
+    if (activeFilterCategory === cleanCategoryName) {
         resetFilter();
         return;
     }
 
-    activeFilterCategory = categoryName;
+    activeFilterCategory = cleanCategoryName;
     const rows = document.querySelectorAll('#transactionsTable tbody tr');
 
     rows.forEach(row => {
-        if (row.dataset.categoryName === categoryName) {
+        const rowCategory = (row.dataset.categoryName || '').trim().toLowerCase();
+        
+        if (rowCategory === cleanCategoryName) {
             row.classList.remove('hidden');
         } else {
             row.classList.add('hidden');
         }
     });
 
+    // Legenden-Zeilen visuell anpassen
     document.querySelectorAll('.legend-row').forEach(row => {
-        if (row.dataset.category === categoryName) {
+        const rowCategory = (row.dataset.category || '').trim().toLowerCase();
+        if (rowCategory === cleanCategoryName) {
             row.classList.add('active');
         } else {
             row.classList.remove('active');
         }
     });
 
+    // Reset-Button anzeigen
     const resetBtn = document.getElementById('resetFilterBtn');
     if (resetBtn) {
         resetBtn.classList.remove('hidden');

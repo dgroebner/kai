@@ -91,9 +91,9 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
 							$isRefund = $amount > 0; // Positive Beträge = Gutschriften
 							$displayAmount = abs($amount);
 						?>
-							<tr data-tx-id="<?= $tx['id'] ?>" 
-								data-category-id="<?= $tx['category_id'] ?>" 
-								data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>">
+						<tr data-tx-id="<?= $tx['id'] ?>" 
+							data-category-id="<?= $tx['category_id'] ?>" 
+							data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>">
 								
 								<td><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
 								<td><?= htmlspecialchars($tx['merchant_name']) ?></td>
