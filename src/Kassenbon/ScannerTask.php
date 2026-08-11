@@ -33,15 +33,11 @@ class ScannerTask {
             $knownCategories = $repository->getKnownCategories();
 
             foreach ($messages as $message) {
-                // HIER WAR DER FEHLER: Wir müssen die Anhänge der Mail durchlaufen
                 $attachments = $message->getAttachments(); 
 
-				if (empty($attachments)) {
+                if (empty($attachments)) {
                     $this->logger->info("ScannerTask: Mail besitzt keine Anhänge. Verschiebe ins Archiv.");
-                    
-                    // WICHTIG: Auch unbrauchbare Mails müssen aus der INBOX verschwinden!
                     $mailClient->moveMail($message, 'Archive'); 
-                    
                     continue;
                 }
 
@@ -49,6 +45,13 @@ class ScannerTask {
 
                 foreach ($attachments as $attachment) {
                     $mimeType = strtolower($attachment->getMimeType()); 
+                    $fileName = strtolower($attachment->getName());
+
+                    // NEU: Kreditkartenabrechnungen im Kassenbon-Scanner direkt überspringen!
+                    if (str_contains($fileName, 'kreditkarte') || str_contains($fileName, 'kartenabrechnung')) {
+                        $this->logger->info("ScannerTask: Anhang '{$attachment->getName()}' ist eine Kreditkartenabrechnung. Wird übersprungen.");
+                        continue;
+                    }
                     
                     // Wir filtern auf PDFs und gängige Bildformate (z.B. Edeka-Screenshots)
                     if (strpos($mimeType, 'pdf') !== false || strpos($mimeType, 'image') !== false) {
@@ -65,8 +68,6 @@ class ScannerTask {
                             // Datenbank fragen, ob dieser Dateihash existiert
                             if ($repository->receiptExists($fileHash)) {
                                 $this->logger->info("ScannerTask: Bon übersprungen. Hash {$fileHash} existiert bereits.");
-                                // Nächsten Anhang prüfen – Mail erst am Ende archivieren
-                                $mailArchived = false;
                                 continue;
                             }
 
@@ -100,7 +101,7 @@ class ScannerTask {
                     }
                 }
 
-                // Mail nach Verarbeitung aller Anhänge archivieren
+                // Mail NUR archivieren, wenn tatsächlich ein Kassenbon verarbeitet wurde
                 if ($mailArchived !== false) {
                     $mailClient->moveMail($message, 'Archive');
                     $this->logger->info("ScannerTask: Mail erfolgreich ins Archiv verschoben.");
