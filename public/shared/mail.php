@@ -25,7 +25,7 @@ try {
 
     $db = Database::getInstance();
     $geminiClient = new GeminiClient();
-    $imapClient = new ImapClient();
+    $imapClient = new ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
 
     // Bank-Services
     $visaParser = new VisaPdfParser($geminiClient);
