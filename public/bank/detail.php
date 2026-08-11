@@ -14,6 +14,7 @@ if (!$statement) {
     die("Abrechnung nicht gefunden.");
 }
 
+// Transaktionen laden
 $stmtTx = $db->prepare("
     SELECT t.*, c.name AS category_name 
     FROM bank_cc_transactions t
@@ -23,55 +24,95 @@ $stmtTx = $db->prepare("
 ");
 $stmtTx->execute([':id' => $id]);
 $transactions = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
+
+// Alle verfügbaren Kategorien für das Inline-Dropdown laden
+$stmtCats = $db->query("SELECT id, name FROM bank_categories ORDER BY name ASC");
+$allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Abrechnungsdetails - <?= htmlspecialchars($statement['statement_date']) ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css">
+    <!-- Chart.js für den Donut-Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
         <header class="page-header">
-            <h1>Abrechnung vom <?= htmlspecialchars($statement['statement_date']) ?></h1>
-            <a href="index.php" class="btn btn-secondary">Zurück</a>
+            <h1>💳 Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?></h1>
+            <a href="index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
         </header>
 
-        <section class="card">
-            <p><strong>Fälligkeit:</strong> <?= htmlspecialchars($statement['due_date'] ?? '-') ?></p>
-            <p><strong>Gesamtbetrag:</strong> <?= number_format((float)$statement['total_amount'], 2, ',', '.') ?> €</p>
-        </section>
+        <main>
+            <!-- Kopfbereich: Kategorien-Analyse mit Donut-Chart -->
+            <section class="card category-analysis-card">
+                <h3>Kategorien-Anteil</h3>
+                <div class="analysis-grid">
+                    <!-- Linke Spalte: Klickbare Legende -->
+                    <div class="category-legend" id="categoryLegend">
+                        <!-- Wird dynamisch per JS befüllt -->
+                    </div>
+                    
+                    <!-- Rechte Spalte: ChartJS Pie/Donut -->
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                        <div class="chart-center-text">
+                            <span class="label">Gesamt</span>
+                            <span class="value"><?= number_format((float)$statement['total_amount'], 2, ',', '.') ?> €</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <section class="card">
-            <h2>Einzelumsätze</h2>
-            <div class="table-responsive">
-                <table class="data-table">
+            <!-- Einzelpositionen / Umsatztabelle -->
+            <section class="card">
+                <div class="table-header-flex">
+                    <h2>Positionen</h2>
+                    <button id="resetFilterBtn" class="btn btn-small btn-outline hidden">Filter zurücksetzen</button>
+                </div>
+
+                <table class="receipts-table" id="transactionsTable">
                     <thead>
                         <tr>
                             <th>Datum</th>
                             <th>Händler / Ort</th>
                             <th>Karte</th>
                             <th>Kategorie</th>
-                            <th>Betrag</th>
+                            <th class="text-right">Betrag</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($transactions as $tx): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($tx['booking_date']) ?></td>
+                            <tr data-tx-id="<?= $tx['id'] ?>" data-category-id="<?= $tx['category_id'] ?>" data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>" data-amount="<?= abs((float)$tx['amount']) ?>">
+                                <td><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
                                 <td><?= htmlspecialchars($tx['merchant_name']) ?></td>
                                 <td>*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
-                                <td><span class="badge"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?></span></td>
-                                <td class="<?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
+                                <td>
+                                    <!-- Inline-Kategorie-Pill -->
+                                    <span class="category-badge clickable-badge" onclick="enableCategoryEdit(this, <?= $tx['id'] ?>)">
+                                        <?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>
+                                    </span>
+                                </td>
+                                <td class="text-right <?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
                                     <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
-            </div>
-        </section>
+            </section>
+        </main>
     </div>
+
+    <!-- Verfügbare Kategorien für JS bereitstellen -->
+    <script>
+        const ALL_CATEGORIES = <?= json_encode($allCategories) ?>;
+        const TRANSACTIONS = <?= json_encode($transactions) ?>;
+        const TOTAL_AMOUNT = <?= (float)$statement['total_amount'] ?>;
+    </script>
+    <script src="../js/bank.js"></script>
 </body>
 </html>
