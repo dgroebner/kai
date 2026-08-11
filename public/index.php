@@ -38,7 +38,7 @@ if (!isset($_SESSION['user_email'])) {
                 </div>
 				
 				<div class="card">
-					<h2>💳 Kreditkarten</h2>
+					<h3>💳 Kreditkarten</h3>
 					<p>Monatsabrechnungen, Einzelumsätze und Auswertungen der Visa-Karten.</p>
 					<a href="bank/index.php" class="btn">Öffnen</a>
 				</div>
