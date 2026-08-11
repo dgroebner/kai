@@ -37,15 +37,11 @@ if (!isset($_SESSION['user_email'])) {
                     <a href="kassenbon/auswertung.php" class="btn">Öffnen</a>
                 </div>
 				
-				<a href="bank/index.php" class="card-link">
-					<div class="dashboard-card">
-						<div class="card-icon">💳</div>
-						<div class="card-content">
-							<h2>Kreditkarten</h2>
-							<p>Monatsabrechnungen, Einzelumsätze und Auswertungen der Visa-Karten</p>
-						</div>
-					</div>
-				</a>
+				<div class="card">
+					<h2>💳 Kreditkarten</h2>
+					<p>Monatsabrechnungen, Einzelumsätze und Auswertungen der Visa-Karten.</p>
+					<a href="bank/index.php" class="btn">Öffnen</a>
+				</div>
 
                 <div class="card">
                     <h3>☀️ PV-Solarprognose</h3>
