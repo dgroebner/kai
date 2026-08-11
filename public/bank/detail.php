@@ -36,8 +36,6 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css">
-    <!-- Chart.js für den Donut-Chart -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
