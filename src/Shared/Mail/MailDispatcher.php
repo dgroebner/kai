@@ -52,45 +52,53 @@ class MailDispatcher
                 continue;
             }
 
-            $mailHandled = false;
-
             foreach ($attachments as $attachment) {
-                $filePath = $attachment->getFilePath();
                 $fileName = $attachment->getName();
                 $mimeType = strtolower($attachment->getMimeType());
                 $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                $content = $attachment->getContent();
+
+                if (empty($content)) {
+                    continue;
+                }
 
                 // 1. KREDITKARTEN-PDF (Bank-Modul)
-                if ($extension === 'pdf' && $this->isCreditCardStatement($filePath, $fileName)) {
+                if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
                     $this->logger->info("MailDispatcher: Kreditkartenabrechnung erkannt ({$fileName}).");
+                    
+                    // Temp-Datei für den Parser anlegen
+                    $tmpFilePath = sys_get_temp_dir() . '/' . uniqid('visa_') . '.pdf';
+                    file_put_contents($tmpFilePath, $content);
+
                     try {
-                        $this->creditCardService->importStatementPdf($filePath, $fileName);
-                        $mailHandled = true;
+                        $this->creditCardService->importStatementPdf($tmpFilePath, $fileName);
                         $this->logger->info("MailDispatcher: Kreditkartenabrechnung erfolgreich importiert.");
                     } catch (Exception $e) {
                         $this->logger->error("MailDispatcher: Fehler bei Kreditkarten-Import: " . $e->getMessage());
+                    } finally {
+                        if (file_exists($tmpFilePath)) {
+                            @unlink($tmpFilePath);
+                        }
                     }
                     continue;
                 }
 
                 // 2. CSV-DATEIEN (Späteres Bank-Modul)
                 if ($extension === 'csv' || str_contains($mimeType, 'csv')) {
-                    $this->logger->info("MailDispatcher: CSV-Bankdatei erkannt ({$fileName}) - Vorschau für spätere CSV-Verarbeitung.");
-                    // $this->csvProcessor->process($filePath);
+                    $this->logger->info("MailDispatcher: CSV-Bankdatei erkannt ({$fileName}).");
                     continue;
                 }
 
                 // 3. E-BONS & BELEGE (Kassenbon-Modul)
                 if (str_contains($mimeType, 'pdf') || str_contains($mimeType, 'image')) {
                     $this->logger->info("MailDispatcher: E-Bon/Beleg erkannt ({$fileName}).");
-                    $base64Data = base64_encode($attachment->getContent());
+                    $base64Data = base64_encode($content);
 
                     if ($base64Data) {
                         $fileHash = hash('sha256', $base64Data);
 
                         if ($this->receiptRepository->receiptExists($fileHash)) {
                             $this->logger->info("MailDispatcher: Bon-Hash {$fileHash} existiert bereits.");
-                            $mailHandled = true; // Bereits verarbeitet
                             continue;
                         }
 
@@ -108,15 +116,13 @@ class MailDispatcher
                             unset($item);
 
                             $this->receiptRepository->saveReceipt($receiptData, $fileHash);
-                            $mailHandled = true;
                             $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
                         }
                     }
                 }
             }
 
-            // ZENTRALES AUFRÄUMEN:
-            // Wenn die Mail verarbeitet wurde ODER nicht zuordenbarer Restmüll ist -> Ab ins Archiv.
+            // Mail ins Archiv verschieben
             $this->imapClient->moveMail($message, 'Archive');
             $this->logger->info("MailDispatcher: Mail verarbeitet/bereinigt und ins Archiv verschoben.");
         }
@@ -125,18 +131,17 @@ class MailDispatcher
         $this->logger->info("MailDispatcher: Verarbeitung erfolgreich beendet.");
     }
 
-    private function isCreditCardStatement(string $filePath, string $filename): bool
+    private function isCreditCardStatement(string $content, string $filename): bool
     {
         $lowerFilename = strtolower($filename);
         if (str_contains($lowerFilename, 'kreditkarte') || str_contains($lowerFilename, 'kartenabrechnung')) {
             return true;
         }
 
-        $content = @file_get_contents($filePath, false, null, 0, 2048);
-        if ($content !== false) {
-            if (str_contains($content, 'ADAC') || str_contains($content, 'Solaris') || str_contains($content, 'Kartenabrechnung')) {
-                return true;
-            }
+        // Erste 2KB der Binärdaten prüfen
+        $headerChunk = substr($content, 0, 2048);
+        if (str_contains($headerChunk, 'ADAC') || str_contains($headerChunk, 'Solaris') || str_contains($headerChunk, 'Kartenabrechnung')) {
+            return true;
         }
 
         return false;
