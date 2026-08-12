@@ -332,3 +332,5 @@ Bevor ein neues Feature als fertig gilt, müssen folgende Punkte erfüllt sein:
 - [ ] JavaScript enthält keine serverseitigen Credentials oder Logik
 - [ ] Domain-Grenzen eingehalten (kein domainübergreifender direkter Klassenimport)
 - [ ] Keine redundanten `<style>`-Blöcke oder Inline-Styles verwendet (zentrales Styleschema aus `public/css/style.css` genutzt oder erweitert)
+- [ ] Minorversion in der APP_VERSION Variable der bootstrap.php erhöhen wenn CSS- oder JS-Dateien geändert worden sind.
+- [ ] APP_VERSION ist an alle CSS- und JS-Referenzen angehängt: `?v=<?= APP_VERSION ?>`
