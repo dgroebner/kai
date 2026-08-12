@@ -71,7 +71,7 @@ $statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <tr>
                                         <td><?= date('d.m.Y', strtotime($stmtRow['statement_date'])) ?></td>
                                         <td><?= $stmtRow['due_date'] ? date('d.m.Y', strtotime($stmtRow['due_date'])) : '-' ?></td>
-                                        <td><?= (int)$stmtRow['tx_count'] ?> Positionen</td>
+                                        <td><?= (int)$stmtRow['tx_count'] ?></td>
                                         <td class="text-right amount-bold">
                                             <?= number_format((float)$stmtRow['total_amount'], 2, ',', '.') ?> €
                                         </td>
