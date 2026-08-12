@@ -203,7 +203,7 @@ $recentLog = $logStmt->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VW ID.Buzz – Fahrzeug-Dashboard · Kai</title>
     <meta name="description" content="Live-Übersicht des Fahrzeugstatus, Batterieladestand und Telemetrie-Historie des VW ID.Buzz.">
-    <link rel="stylesheet" href="../css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
+    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
 <div class="container">
@@ -608,6 +608,6 @@ $recentLog = $logStmt->fetchAll();
 </div>
 
 <!-- Inline-Editing Logik für Reichweite -->
-<script src="../js/telemetry.js?v=<?= time() ?>"></script>
+<script src="../js/telemetry.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

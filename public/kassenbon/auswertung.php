@@ -135,7 +135,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bon-Auswertung</title>
     
-    <link rel="stylesheet" href="../css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
+    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     
     <style>
         .header-actions {
@@ -446,7 +446,7 @@ try {
     <?php endif; ?>
 </div>
 
-<script src="../js/auswertung.js?v=<?= time() ?>"></script>
+<script src="../js/auswertung.js?v=<?= APP_VERSION ?>" defer></script>
 
 </body>
 </html>

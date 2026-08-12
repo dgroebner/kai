@@ -35,7 +35,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?> - Kai</title>
-    <link rel="stylesheet" href="../css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
+    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
     <div class="container">
@@ -126,7 +126,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
         </main>
     </div>
 
-	<script src="../js/chart.min.js"></script>
-    <script src="../js/bank.js"></script>
+	<script src="../js/chart.min.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

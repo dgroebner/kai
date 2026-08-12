@@ -128,7 +128,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PV-Solarprognose – Kai</title>
-    <link rel="stylesheet" href="../css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
+    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
 <div class="container">
@@ -321,6 +321,6 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
     </footer>
 
 </div>
-<script src="../js/pv-dashboard.js" defer></script>
+<script src="../js/pv-dashboard.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

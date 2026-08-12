@@ -4,6 +4,12 @@ RewriteEngine On
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+</IfModule>
+
 <IfModule mod_headers.c>
     # Verhindert, dass die Seite in einem iFrame geladen wird (Schutz vor Clickjacking)
     Header set X-Frame-Options "DENY"
@@ -22,7 +28,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline';"
 	
 	# Zwingt den Browser bei CSS und JS zur Re-Validierung
-	<FilesMatch "\.(css|js)$">
-        Header set Cache-Control "max-age=0, private, must-revalidate"
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=604800, stale-while-revalidate=86400"
     </FilesMatch>
 </IfModule>
