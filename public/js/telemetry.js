@@ -11,26 +11,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(tooltip);
     }
 
-    const points = document.querySelectorAll('.chart-point');
+    // Event Delegation auf das gesamte Document
+    // Dadurch greifen Tooltips auch, wenn SVGs/Diagramme nachgeladen werden
+    document.addEventListener('mouseover', (e) => {
+        const point = e.target.closest('.chart-point');
+        if (!point) return;
 
-    points.forEach(point => {
-        point.addEventListener('mouseenter', () => {
-            const text = point.dataset.tooltip;
-            if (!text) return;
+        const text = point.dataset.tooltip;
+        if (!text) return;
 
-            tooltip.innerHTML = text;
-            tooltip.style.display = 'block';
-        });
+        tooltip.innerHTML = text;
+        tooltip.style.display = 'block';
+    });
 
-        point.addEventListener('mousemove', (e) => {
-            // Tooltip direkt an den Mauszeiger hängen
-            tooltip.style.left = `${e.clientX}px`;
-            tooltip.style.top = `${e.clientY - 12}px`;
-        });
+    document.addEventListener('mousemove', (e) => {
+        if (tooltip.style.display === 'block') {
+            // Tooltip direkt an die globale Mauszeiger-Position hängen (Viewport relative)
+            tooltip.style.left = `${e.clientX + 10}px`;
+            tooltip.style.top = `${e.clientY - 15}px`;
+        }
+    });
 
-        point.addEventListener('mouseleave', () => {
+    document.addEventListener('mouseout', (e) => {
+        const point = e.target.closest('.chart-point');
+        if (point) {
             tooltip.style.display = 'none';
-        });
+        }
     });
 
 
