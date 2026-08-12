@@ -261,12 +261,9 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 										$realKwh = number_format($day['real_watt_hours_day'] / 1000, 2, ',', '');
 									}
 								?>
-								<tr>
+								<tr class="<?= $isToday ? 'is-today-row' : '' ?>">
 									<td data-label="Datum">
 										<strong><?= $weekday ?>, <?= $dateObj->format('d.m.') ?></strong>
-										<?php if ($isToday): ?>
-											<span class="today-badge">HEUTE</span>
-										<?php endif; ?>
 									</td>
 									<td data-label="Wetter"><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
 									<td data-label="Prognose" class="yield-value" style="white-space: nowrap; text-align: right;">
