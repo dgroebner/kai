@@ -242,7 +242,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 								<tr>
 									<th>Datum</th>
 									<th>Wetter</th>
-									<th>Prognose</th>
+									<th style="text-align: right; padding-right: 1.5rem;">Prognose</th>
 									<th style="color: var(--pv-yellow); text-align: right; padding-right: 1.5rem;">Tatsächlich</th>
 								</tr>
 							</thead>
