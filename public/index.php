@@ -17,7 +17,7 @@ if (!isset($_SESSION['user_email'])) {
 </head>
 <body>
     <div class="container">
-        <header>
+        <header class="page-header">
             <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name']) ?></h1>
 			<a href="login.php?logout=1" class="btn btn-outline">Sicher abmelden</a>
             <div class="subtitle">Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email']) ?></div>
