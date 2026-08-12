@@ -139,10 +139,11 @@ try {
 <body>
 
 <div class="container" id="auswertung-container">
-    <div class="header-actions">
+    <!-- Standard-Header wie bei Kreditkarten -->
+    <header class="page-header">
         <h1>📈 Bon-Auswertung</h1>
-        <a href="../index.php" class="btn btn-outline">← Zurück zur Übersicht</a>
-    </div>
+        <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+    </header>
     
     <!-- Schnelleinstellungen -->
     <div class="period-switcher">

@@ -485,14 +485,14 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
 }
 
 /* ==========================================================================
-   NAVIGATION & PERIOD-SWITCHER FIX
+   NAVIGATION & PERIOD-SWITCHER FIX (DESKTOP FIRST)
    ========================================================================== */
+
 .period-switcher {
     display: flex;
     gap: 10px;
     margin-bottom: 1.5rem;
     justify-content: flex-start;
-	width: 100%;
 }
 
 .period-switcher .btn {
@@ -500,26 +500,26 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     width: auto;
     min-width: 100px;
     text-align: center;
-	flex: 1; 
 }
 
+/* Desktop: Vorheriger Button - Monat/Jahr Label - Nächster Button in EINER Zeile */
 .period-navigation {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     justify-content: space-between;
     background: var(--bg-surface);
     padding: 0.8rem 1.5rem;
     border-radius: var(--border-radius);
     margin-bottom: 2rem;
     border: 1px solid var(--bg-surface-hover);
-    gap: 10px;
-	flex-direction: column;
-    text-align: center;
+    gap: 15px;
+    flex-direction: row;
 }
 
 .period-navigation .btn {
     display: inline-block;
-    width: 100%;
+    width: auto;
+    flex-shrink: 0;
 }
 
 .current-period-label {
@@ -527,6 +527,7 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     font-weight: 600;
     color: var(--text-main);
     text-align: center;
+    flex: 1;
 }
 
 .period-range-sub {
@@ -537,26 +538,23 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     margin-top: 2px;
 }
 
-/* ==========================================================================
-   ANALYSIS WRAPPER & CHART LAYOUT FIX (DESKTOP NEBENEINANDER)
-   ========================================================================== */
+/* Desktop: Chart und Tabelle sauber nebeneinander */
 .category-analysis-wrapper {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 15px;
+    gap: 25px;
     margin-bottom: 2rem;
-    padding: 12px;
+    padding: 20px;
     background: rgba(0, 0, 0, 0.15);
     border-radius: var(--border-radius);
     border: 1px solid var(--bg-surface-hover);
-	flex-direction: column-reverse;
+    flex-direction: row;
 }
 
 .category-table-container {
     flex: 1;
     min-width: 0;
-	width: 100%;
 }
 
 .category-chart-container {
@@ -567,4 +565,40 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     align-items: center;
     justify-content: center;
     position: relative;
+}
+
+/* ==========================================================================
+   MOBILE OVERRIDES (NUR UNTER 650PX VIEWPORT)
+   ========================================================================== */
+@media (max-width: 650px) {
+    .period-switcher {
+        width: 100%;
+    }
+
+    .period-switcher .btn {
+        flex: 1;
+    }
+
+    /* Auf Mobilgeräten Buttons über und unter dem Datum stapeln */
+    .period-navigation {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .period-navigation .btn {
+        width: 100%;
+    }
+
+    .category-analysis-wrapper {
+        flex-direction: column-reverse;
+        align-items: center;
+        padding: 12px;
+        gap: 15px;
+    }
+
+    .category-table-container {
+        width: 100%;
+    }
 }
