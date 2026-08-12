@@ -614,6 +614,61 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
         width: 100%;
     }
 	
+	/* Tabellen-Struktur auflösen */
+    .stack-table, 
+    .stack-table thead, 
+    .stack-table tbody, 
+    .stack-table tr, 
+    .stack-table td {
+        display: block;
+        width: 100%;
+    }
+
+    /* Tabellenkopf mobil ausblenden */
+    .stack-table thead {
+        display: none;
+    }
+
+    /* Zeile wird zur Card */
+    .stack-table tbody tr {
+        background: var(--bg-surface);
+        border: 1px solid var(--bg-surface-hover);
+        border-radius: var(--border-radius);
+        padding: 0.85rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    /* Zelle mit automatischem Label-Prefix */
+    .stack-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.25rem 0 !important;
+        border: none !important;
+        font-size: 0.9rem;
+    }
+
+    /* Beschriftung aus HTML data-label Attribut auslesen */
+    .stack-table td[data-label]::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 600;
+        margin-right: 1rem;
+    }
+
+    /* Eingabefelder in Mobil-Kacheln anpassen */
+    .stack-table td input,
+    .stack-table td select,
+    .stack-table td .category-edit-container {
+        width: 100% !important;
+        max-width: 200px;
+    }
+	
 }
 
 /* ==========================================================================

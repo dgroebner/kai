@@ -51,7 +51,7 @@ $statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <main>
             <section class="card">
                 <div class="table-responsive">
-                    <table class="receipts-table">
+                    <table class="receipts-table stack-table">
                         <thead>
                             <tr>
                                 <th>Abrechnung</th>
@@ -69,13 +69,17 @@ $statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php else: ?>
                                 <?php foreach ($statements as $stmtRow): ?>
                                     <tr>
-                                        <td><?= date('d.m.Y', strtotime($stmtRow['statement_date'])) ?></td>
-                                        <td><?= $stmtRow['due_date'] ? date('d.m.Y', strtotime($stmtRow['due_date'])) : '-' ?></td>
-                                        <td><?= (int)$stmtRow['tx_count'] ?></td>
-                                        <td class="text-right amount-bold">
+                                        <td data-label="Abrechnung">
+										    <?= date('d.m.Y', strtotime($stmtRow['statement_date'])) ?>
+										</td>
+                                        <td data-label="Fälligkeit">
+										    <?= $stmtRow['due_date'] ? date('d.m.Y', strtotime($stmtRow['due_date'])) : '-' ?>
+										</td>
+                                        <td data-label="Positionen"><?= (int)$stmtRow['tx_count'] ?></td>
+                                        <td data-label="Gesamtbetrag" class="text-right amount-bold">
                                             <?= number_format((float)$stmtRow['total_amount'], 2, ',', '.') ?> €
                                         </td>
-                                        <td class="text-right">
+                                        <td data-label="Aktion" class="text-right">
                                             <a href="detail.php?id=<?= (int)$stmtRow['id'] ?>" class="btn-link">
                                                 &#9660; Details
                                             </a>
