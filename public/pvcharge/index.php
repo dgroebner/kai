@@ -133,18 +133,20 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 <body>
 <div class="container">
 
-    <header>
-        <div class="page-header">
-            <h1>☀️ PV-Solarprognose</h1>
-            <?php if ($lastUpdate): ?>
-                <span class="last-update">Zuletzt aktualisiert: <?= date('d.m.Y H:i', strtotime($lastUpdate)) ?> Uhr</span>
-            <?php endif; ?>
-        </div>
-        <div class="subtitle">
-            Ertragsprognose für die 4,2-kWp-Anlage am Standort 51.30°N / 12.45°O &nbsp;·&nbsp;
-            <a href="../index.php" style="color:var(--accent);text-decoration:none;">← Dashboard</a>
-        </div>
-    </header>
+	<header>
+		<div class="page-header">
+			<h1>☀️ PV-Solarprognose</h1>
+			<div style="display: flex; align-items: center; gap: 1rem;">
+				<?php if ($lastUpdate): ?>
+					<span class="last-update">Zuletzt aktualisiert: <?= date('d.m.Y H:i', strtotime($lastUpdate)) ?> Uhr</span>
+				<?php endif; ?>
+				<a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+			</div>
+		</div>
+		<div class="subtitle">
+			Ertragsprognose für die 4,2-kWp-Anlage am Standort 51.30°N / 12.45°O
+		</div>
+	</header>
 
     <main>
 

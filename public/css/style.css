@@ -602,3 +602,59 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   PV-SOLARPROGNOSE BALKENCHART FIX
+   ========================================================================== */
+
+.bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 200px;
+    padding: 1.5rem 0 0.5rem 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 24px;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.bar-fill {
+    width: 100%;
+    background: linear-gradient(180deg, var(--pv-yellow, #f59e0b) 0%, #f97316 100%);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
+    min-height: 2px;
+    position: relative;
+}
+
+.bar-fill:hover::after {
+    content: attr(data-watts) ' W';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-surface-hover, #334155);
+    color: var(--text-main, #f8fafc);
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.bar-label {
+    font-size: 0.7rem;
+    color: var(--text-muted, #94a3b8);
+    text-align: center;
+}
