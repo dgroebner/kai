@@ -321,14 +321,14 @@ $recentLog = $logStmt->fetchAll();
 			
             <div class="kpi-card">
                 <div class="kpi-label">Außentemperatur</div>
-                <div class="kpi-value" style="color:var(--car-orange)">
+                <div class="kpi-value" style="color:var(--car-orange); font-size:1.4rem">
                     <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
                 </div>
             </div>
 
             <div class="kpi-card">
                 <div class="kpi-label">Kilometerstand</div>
-                <div class="kpi-value" style="color:var(--text-main); font-size:1.5rem">
+                <div class="kpi-value" style="color:var(--text-main); font-size:1.4rem">
                     <?= number_format($state['mileage_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
                 </div>
             </div>
