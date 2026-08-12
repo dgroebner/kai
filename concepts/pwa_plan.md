@@ -31,8 +31,16 @@ kai_root/
 │   │   └── style.css       ← [ANPASSUNG] Ergänzung von PWA-spezifischen CSS-Styles
 │   ├── index.php           ← [ANPASSUNG] Manifest & Registrierung einbinden
 │   ├── login.php           ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   ├── bank/
+│   │   ├── index.php       ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   │   ├── detail.php      ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   │   └── api.php         ← [ANPASSUNG] Muss vom Service Worker ignoriert / Network-Only gehandhabt werden
 │   ├── car/index.php       ← [ANPASSUNG] Manifest & Registrierung einbinden
-│   ├── kassenbon/index.php ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   ├── kassenbon/
+│   │   ├── index.php       ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   │   ├── auswertung.php  ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   │   ├── detail.php      ← [ANPASSUNG] Manifest & Registrierung einbinden
+│   │   └── api.php         ← [ANPASSUNG] Muss vom Service Worker ignoriert / Network-Only gehandhabt werden
 │   └── pvcharge/index.php  ← [ANPASSUNG] Manifest & Registrierung einbinden
 ```
 
@@ -129,7 +137,13 @@ In jedem HTML-Header (oder einem gemeinsamen Header-Include, falls vorhanden) m�
 
 3. **Aktualisierung von CSS/JS:**
    * Da der Service Worker CSS- und JS-Dateien cached, würden Updates bei einem Push auf dem Server nicht sofort auf den Handys der Nutzer aktiv werden.
-   * *Lösung:* Cache-Busting über Versions-Query-Parameter in den CSS/JS Links (z.B. `style.css?v=1.0.1`) oder eine cache-updating Logik im Service Worker (z.B. Ändern des Cache-Namens `const CACHE_NAME = 'kai-v2'`).
+   * In der bootstrap.php wird dafür bereits eine APP_VERSION geführt
+   * *Lösung:* Cache-Busting über Versions-Query-Parameter in den CSS/JS Links (z.B. `style.css?v=<?= APP_VERSION ?>`) oder eine cache-updating Logik im Service Worker (z.B. Ändern des Cache-Namens `const CACHE_NAME = 'kai-<?= APP_VERSION ?>'`).
+   
+4. **POST-Requests dürfen niemals im Cache landen*:*
+   * z. B. kassenbon/api.php, pvcharge/save_real_yield oder car/update_range.php.
+   * Ein POST-Request auf eine PHP-API würde fehlschlagen, wenn der Service Worker versucht, ihn wie ein statisches Asset zu behandeln.
+   * Der Service Worker muss so konfiguriert werden, dass er alle Anfragen mit der Methode POST direkt 1:1 an das Netzwerk durchreicht.
 
 ---
 
