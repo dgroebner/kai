@@ -609,11 +609,6 @@ $recentLog = $logStmt->fetchAll();
     <?php endif; ?>
 
     </main>
-
-    <footer style="margin-top: 2.5rem;">
-        <a href="../index.php" class="btn btn-outline">← Zurück zum Hauptdashboard</a>
-    </footer>
-
 </div>
 
 <!-- Inline-Editing Logik für Reichweite -->
