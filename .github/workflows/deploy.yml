@@ -49,5 +49,6 @@ jobs:
                  --exclude-glob .env \
                  --exclude-glob .ftpignore \
                  --exclude-glob storage/ \
+                 --exclude-glob concepts/ \
                  ./ ./
           EOF
