@@ -1195,3 +1195,92 @@ tbody tr:hover td {
 .hidden {
     display: none !important;
 }
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE FIXES (Breakpoints für Smartphones)
+   ========================================================================== */
+
+/* 1. Generelle Tabellen-Sicherung (Verhindert Text-Quetschung) */
+.table-responsive, 
+.card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.receipts-table, 
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px; /* Erzwingt Mindestbreite, erzeugt sauberes Wischen statt Textbruch */
+}
+
+/* 2. Kreditkarten-Tabelle Mobile UI */
+@media (max-width: 600px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .page-header .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Analyse-Kopfbereich (Chart & Legende) untereinander stapeln */
+    .analysis-grid {
+        flex-direction: column-reverse;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .chart-container {
+        width: 180px;
+        height: 180px;
+    }
+
+    .category-legend {
+        width: 100%;
+    }
+
+    .legend-header, .legend-row {
+        grid-template-columns: 14px 1fr 60px 80px;
+        font-size: 0.8rem;
+    }
+}
+
+/* 3. Auto- & Telemetrie-Dashboard (car/index.php) Mobile Grid */
+@media (max-width: 768px) {
+    .telemetry-grid,
+    .dashboard-grid,
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+        gap: 0.75rem !important;
+    }
+
+    .stat-card, .info-card {
+        padding: 0.75rem;
+        text-align: center;
+    }
+
+    .stat-card .value {
+        font-size: 1.25rem;
+    }
+}
+
+/* 4. PV-Solarprognose (pvcharge/index.php) Mobile Grid */
+@media (max-width: 768px) {
+    .pv-grid, 
+    .forecast-grid {
+        display: grid;
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+
+    .hourly-forecast-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
+}
