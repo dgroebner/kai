@@ -1276,3 +1276,38 @@ tbody tr:hover td {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
+
+/* ==========================================================================
+   Kreditkarten-Detailansicht Mobile Fix (Anpassung an E-Bon-Detail)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* Stapelt Legende und Chart untereinander statt nebeneinander */
+    .analysis-grid {
+        flex-direction: column-reverse !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 1.5rem !important;
+    }
+
+    /* Legende nutzt volle Breite */
+    .category-legend {
+        width: 100% !important;
+    }
+
+    /* Chart-Container zentriert sich und bekommt eine feste, kompakte Größe */
+    .chart-container {
+        position: relative !important;
+        width: 200px !important;
+        height: 200px !important;
+        margin: 0 auto !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Tabellenspalten der Legende auf Mobilgeräten anpassen */
+    .legend-header, 
+    .legend-row {
+        grid-template-columns: 14px 1fr 60px 80px !important;
+        font-size: 0.8rem !important;
+    }
+}
