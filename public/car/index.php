@@ -208,49 +208,58 @@ $recentLog = $logStmt->fetchAll();
 <body>
 <div class="container">
 
-    <header>
-        <div class="page-header">
-            <h1>🚐 VW ID.Buzz</h1>
-            <?php if ($state): ?>
-                <span class="last-update">Fahrzeugdaten von: <?= formatToLocalTime($state['car_captured_at']) ?> Uhr</span>
-            <?php endif; ?>
-        </div>
-        <div class="subtitle">
-            Fahrzeug-Telemetrie &amp; Batterie-Dashboard &nbsp;·&nbsp;
-            <a href="../index.php" style="color:var(--accent);text-decoration:none;">← Hauptübersicht</a>
-        </div>
-    </header>
+	<header>
+		<div class="page-header">
+			<h1>🚐 VW ID.Buzz</h1>
+			<div style="display: flex; align-items: center; gap: 1rem;">
+				<?php if ($state): ?>
+					<span class="last-update">Fahrzeugdaten von: <?= formatToLocalTime($state['car_captured_at']) ?> Uhr</span>
+				<?php endif; ?>
+				<a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+			</div>
+		</div>
+		<div class="subtitle">
+			Fahrzeug-Telemetrie &amp; Batterie-Dashboard
+		</div>
+	</header>
 
     <main style="margin-top: 1.5rem;">
 
-    <?php if (!$state): ?>
-        <div class="no-data">
-            Noch keine Telemetriedaten vorhanden.<br>
-            <small>Der erste Datenpunkt erscheint nach dem ersten erfolgreichen API-Call an <code>/car/telemetry</code>.</small>
-        </div>
-    <?php else:
-        $charging = chargingLabel($state['charging_state']);
-        $socCol   = socColor((int)$state['soc_percent']);
-    ?>
+	<?php if (!$state): ?>
+		<div class="no-data">
+			Noch keine Telemetriedaten vorhanden.<br>
+			<small>Der erste Datenpunkt erscheint nach dem ersten erfolgreichen API-Call an <code>/car/telemetry</code>.</small>
+		</div>
+	<?php else:
+		$charging = chargingLabel($state['charging_state']);
+		$socCol   = socColor((int)$state['soc_percent']);
+	?>
 
-        <!-- 1. LIVE IST-DATEN (Zeitraum-unabhängig) -->
-        <div class="status-banner">
-            <div>
-                <div class="vin-label">VIN</div>
-                <div class="vin"><?= htmlspecialchars($state['vin']) ?></div>
-            </div>
-            <div class="status-divider"></div>
-            <div>
-                <span class="status-pill" style="background:<?= $charging['color'] ?>22; color:<?= $charging['color'] ?>">
-                    <?= $charging['icon'] ?> <?= $charging['label'] ?>
-                </span>
-            </div>
-            <div>
-                <span class="status-pill" style="<?= $state['is_locked'] ? 'background:var(--car-green-dim);color:var(--car-green)' : 'background:var(--car-red-dim);color:var(--car-red)' ?>">
-                    <?= $state['is_locked'] ? '🔒 Gesperrt' : '🔓 Offen' ?>
-                </span>
-            </div>
-        </div>
+		<!-- 1. LIVE IST-DATEN (Als strukturierte Status-Card) -->
+		<div class="card car-info-card" style="margin-bottom: 1.5rem;">
+			<div class="car-info-grid">
+				<div class="car-info-item">
+					<span class="info-label">Fahrgestellnummer (VIN)</span>
+					<span class="info-value vin-code"><?= htmlspecialchars($state['vin']) ?></span>
+				</div>
+				<div class="car-info-item">
+					<span class="info-label">Lade-Status</span>
+					<div>
+						<span class="status-pill" style="background:<?= $charging['color'] ?>22; color:<?= $charging['color'] ?>">
+							<?= $charging['icon'] ?> <?= $charging['label'] ?>
+						</span>
+					</div>
+				</div>
+				<div class="car-info-item">
+					<span class="info-label">Fahrzeug-Schloss</span>
+					<div>
+						<span class="status-pill" style="<?= $state['is_locked'] ? 'background:var(--car-green-dim);color:var(--car-green)' : 'background:var(--car-red-dim);color:var(--car-red)' ?>">
+							<?= $state['is_locked'] ? '🔒 Gesperrt' : '🔓 Offen' ?>
+						</span>
+					</div>
+				</div>
+			</div>
+		</div>
 
         <div class="kpi-grid">
 			

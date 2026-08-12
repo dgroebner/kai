@@ -317,11 +317,6 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 			<?php endif; ?>
 		</div>
     </main>
-
-    <footer style="margin-top: 2.5rem;">
-        <a href="../index.php" class="btn btn-outline">← Zurück zum Dashboard</a>
-    </footer>
-
 </div>
 <script src="../js/pv-dashboard.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
