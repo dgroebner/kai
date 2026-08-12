@@ -75,7 +75,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
                     <button id="resetFilterBtn" class="btn btn-small btn-outline hidden">Filter zurücksetzen</button>
                 </div>
 
-                <table class="receipts-table" id="transactionsTable">
+                <table class="receipts-table stack-table" id="transactionsTable">
                     <thead>
                         <tr>
                             <th>Datum</th>
@@ -95,12 +95,12 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
 							data-category-id="<?= $tx['category_id'] ?>" 
 							data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>">
 								
-								<td><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
-								<td><?= htmlspecialchars($tx['merchant_name']) ?></td>
-								<td>*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
+								<td data-label="Datum"><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
+								<td data-label="Händler / Ort"><?= htmlspecialchars($tx['merchant_name']) ?></td>
+								<td data-label="Karte">*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
 								
 								<!-- Kategorie mit dynamischer Farbe & Stift-Icon -->
-								<td class="category-cell">
+								<td  data-label="Kategorie" class="category-cell">
 									<span class="category-badge clickable-badge" 
 										  title="Kategorie bearbeiten" 
 										  data-tx-id="<?= $tx['id'] ?>">
@@ -110,7 +110,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
 								</td>
 								
 								<!-- Beträge: Weiß für Ausgaben, Grün + Badge für Gutschriften -->
-								<td class="text-right">
+								<td data-label="Betrag" class="text-right">
 									<?php if ($isRefund): ?>
 										<span class="refund-badge">Gutschrift</span>
 										<span class="text-success">+<?= number_format($displayAmount, 2, ',', '.') ?> €</span>

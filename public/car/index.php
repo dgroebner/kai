@@ -533,7 +533,7 @@ $recentLog = $logStmt->fetchAll();
             </strong>
             <?php if (!empty($recentLog)): ?>
             <div class="table-responsive">
-                <table class="log-table">
+                <table class="log-table stack-table">
                     <thead>
                         <tr>
                             <th>Zeitpunkt</th>
@@ -549,13 +549,15 @@ $recentLog = $logStmt->fetchAll();
                             $sc = socColor((int)$row['soc_percent']);
                         ?>
                         <tr>
-                            <td style="color:var(--text-muted)"><?= formatToLocalTime($row['car_captured_at']) ?> Uhr</td>
-                            <td>
+                            <td data-label="Zeitpunkt" style="color:var(--text-muted)">
+							     <?= formatToLocalTime($row['car_captured_at']) ?> Uhr
+							</td>
+                            <td> data-label="SoC"
                                 <span class="badge" style="background:<?= $sc ?>22; color:<?= $sc ?>">
                                     <?= $row['soc_percent'] ?> %
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Reichweite">
                                 <div style="display: flex; align-items: center; gap: 5px;">
                                     <input type="number" 
                                            class="inline-range-input" 
@@ -567,8 +569,8 @@ $recentLog = $logStmt->fetchAll();
                                     <span style="font-size: 0.8rem; color: var(--text-muted);">km</span>
                                 </div>
                             </td>
-                            <td><?= number_format($row['mileage_km'], 0, ',', '.') ?> km</td>
-                            <td>
+                            <td data-label="Kilometerstand"><?= number_format($row['mileage_km'], 0, ',', '.') ?> km</td>
+                            <td data-label="Ladeleistung">
                                 <?php if ($row['charge_power_kw'] > 0): ?>
                                     <span class="badge" style="background:var(--car-green-dim);color:var(--car-green)">
                                         ⚡ <?= number_format($row['charge_power_kw'], 1, ',', '.') ?> kW
@@ -577,7 +579,7 @@ $recentLog = $logStmt->fetchAll();
                                     <span style="color:var(--text-muted)">–</span>
                                 <?php endif; ?>
                             </td>
-                            <td><?= number_format($row['outdoor_temp_c'], 1, ',', '.') ?> °C</td>
+                            <td data-label="Außentemp."><?= number_format($row['outdoor_temp_c'], 1, ',', '.') ?> °C</td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>

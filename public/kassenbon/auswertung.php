@@ -207,7 +207,7 @@ try {
         
         <h2>Einzelpositionen</h2>
         <div class="table-responsive">
-            <table class="details-table">
+            <table class="details-table stack-table">
                 <thead>
                     <tr>
                         <th>Datum</th>
@@ -224,17 +224,23 @@ try {
 						$itemColor = $categoryColorMap[$catName] ?? '#64748b';
 					?>
 						<tr class="js-item-row" data-category="<?= htmlspecialchars($catName) ?>">
-							<td><?= date('d.m.Y', strtotime($item['purchase_date'])) ?></td>
-							<td><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
-							<td style="color: var(--text-main); font-weight: 500;"><?= htmlspecialchars($item['name']) ?></td>
-							<td>
+							<td data-label="Datum"><?= date('d.m.Y', strtotime($item['purchase_date'])) ?></td>
+							<td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
+							<td data-label="Artikel" style="color: var(--text-main); font-weight: 500;">
+							    <?= htmlspecialchars($item['name']) ?>
+							</td>
+							<td data-label="Kategorie">
 								<!-- Badge-Farbe dynamisch an die Map der Legende binden -->
 								<span class="category-badge clickable-badge" style="color: <?= $itemColor ?>; border-color: <?= $itemColor ?>;">
 									<?= htmlspecialchars($catName) ?>
 								</span>
 							</td>
-							<td style="text-align: right;"><?= number_format((float)$item['unit_price'], 2, ',', '.') ?> €</td>
-							<td style="text-align: right; font-weight: bold; color: var(--text-main);"><?= number_format((float)$item['total_price'], 2, ',', '.') ?> €</td>
+							<td data-label="Einzelpreis" style="text-align: right;">
+							    <?= number_format((float)$item['unit_price'], 2, ',', '.') ?> €
+							</td>
+							<td data-label="Gesamt" style="text-align: right; font-weight: bold; color: var(--text-main);">
+							    <?= number_format((float)$item['total_price'], 2, ',', '.') ?> €
+							</td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>

@@ -294,6 +294,7 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
   - Standard-Dashboards: Tabellen- und KPI-Elemente nutzen universelle Klassen (`.kpi-grid`, `.mobile-dashboard-grid`, `.table-responsive`).
   - Responsive Breakpoints: Alle Media Queries (`@media (max-width: 768px)` / `< 600px`) werden zentral am Ende von `public/css/style.css` gepflegt und strikt abgekapselt.
 - **Erweiterungsprinzip:** Wenn neue Styles für ein Feature benötigt werden, dürfen diese nicht ad-hoc im Controller abgelegt werden. Sie müssen das zentrale Styleschema in `public/css/style.css` an geeigneter Stelle ergänzen und dokumentieren, sodass sie für zukünftige Entwicklungen im gesamten Projekt zur Verfügung stehen.
+- **Stack-Tabellen und data-labels** verwenden um die Tabellen in mobilen Ansichten übersichtlich darzustellen.
 
 ---
 

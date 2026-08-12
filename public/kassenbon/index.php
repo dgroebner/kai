@@ -51,7 +51,7 @@ try {
 
         <section class="card">
             <div class="table-responsive">
-                <table class="receipts-table">
+                <table class="receipts-table stack-table">
                     <thead>
                         <tr>
                             <th>Datum</th>
@@ -64,11 +64,13 @@ try {
                     <tbody>
                         <?php foreach ($receipts as $receipt): ?>
                             <tr>
-                                <td><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
-                                <td class="amount-bold"><?= htmlspecialchars($receipt['store']) ?></td>
-                                <td><?= (int)$receipt['item_count'] ?> Positionen</td>
-                                <td class="text-right amount-bold"><?= number_format((float)$receipt['total'], 2, ',', '.') ?> €</td>
-                                <td class="text-right">
+                                <td data-label="Datum"><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
+                                <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store']) ?></td>
+                                <td data-label="Positionen"><?= (int)$receipt['item_count'] ?> Positionen</td>
+                                <td data-label="Gesamtbetrag" class="text-right amount-bold">
+								    <?= number_format((float)$receipt['total'], 2, ',', '.') ?> €
+								</td>
+                                <td data-label="Aktion" class="text-right">
                                     <a href="detail.php?id=<?= $receipt['id'] ?>" class="btn btn-sm btn-outline">Details &rarr;</a>
                                 </td>
                             </tr>

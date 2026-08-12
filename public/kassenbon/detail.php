@@ -69,7 +69,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
                 </div>
 
                 <div class="table-responsive">
-                    <table class="receipts-table" id="itemsTable">
+                    <table class="receipts-table stack-table" id="itemsTable">
                         <thead>
                             <tr>
                                 <th>Menge</th>
@@ -82,16 +82,20 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
                         <tbody>
                             <?php foreach ($items as $item): ?>
                                 <tr data-item-id="<?= $item['id'] ?>" data-category-name="<?= htmlspecialchars($item['category'] ?? 'Sonstiges') ?>">
-                                    <td><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
-                                    <td class="amount-bold"><?= htmlspecialchars($item['name']) ?></td>
-                                    <td class="category-cell">
+                                    <td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
+                                    <td data-label="Artikel" class="amount-bold"><?= htmlspecialchars($item['name']) ?></td>
+                                    <td data-label="Kategorie" class="category-cell">
                                         <span class="clickable-badge" data-item-id="<?= $item['id'] ?>">
                                             <span class="badge-text"><?= htmlspecialchars($item['category'] ?? 'Sonstiges') ?></span>
                                             <span class="edit-icon">✏️</span>
                                         </span>
                                     </td>
-                                    <td class="text-right"><?= number_format((float)$item['unit_price'], 2, ',', '.') ?> €</td>
-                                    <td class="text-right amount-bold"><?= number_format((float)$item['total_price'], 2, ',', '.') ?> €</td>
+                                    <td data-label="Einzelpreis" class="text-right">
+									    <?= number_format((float)$item['unit_price'], 2, ',', '.') ?> €
+									</td>
+                                    <td data-label="Gesamt" class="text-right amount-bold">
+									    <?= number_format((float)$item['total_price'], 2, ',', '.') ?> €
+									</td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
