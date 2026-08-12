@@ -196,6 +196,8 @@ $pdo->query("SELECT * FROM receipts WHERE id = $id");
 ### 6.6 Ausgabe & XSS
 
 - Alle Werte, die in HTML ausgegeben werden, müssen mit `htmlspecialchars($value, ENT_QUOTES, 'UTF-8')` escaped werden
+- **Keine Inline-Event-Handler:** Event-Handler wie `onclick="..."`, `onchange="..."` oder `<script>`-Blöcke im HTML-Body sind **verboten**, da sie von der Content Security Policy (`script-src-attr`) blockiert werden.
+- **Event Delegation:** Interaktionen (z. B. Inline-Editing, Tooltips) müssen ausschließlich über externe JavaScript-Dateien in `public/js/` per Event Delegation (`document.addEventListener(...)`) eingebunden werden.
 - `echo $variable` ohne Escaping ist verboten, wenn die Variable aus externen Quellen stammt
 - Content-Security-Policy und XSS-Protection-Header sind in `.htaccess` gesetzt
 
@@ -285,8 +287,12 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
 
 ### 8.5 CSS & Frontend-Styles (Zentrales Styleschema)
 
-- **Zentrale Vorgabe:** Für alle UI-Elemente ist primär das zentrale Styleschema in `public/css/style.css` zu verwenden.
-- **Keine redundanten Styles:** Das Verwenden von inline-Styles (`style="..."`) oder lokalen `<style>`-Blöcken in PHP/HTML-Seiten ist zu vermeiden, sofern die Styles domainübergreifend oder mehrfach genutzt werden können.
+- **Zentrale Vorgabe:** Für alle UI-Elemente ist ausschließlich das zentrale Styleschema in `public/css/style.css` zu verwenden.
+- **Keine Inline-Styles & `<style>`-Blöcke:** PHP- und HTML-Dateien dürfen weder lokale `<style>`-Blöcke noch `style="..."`-Attribute enthalten (Ausnahme: dynamisch berechnete Werte wie Prozentbreiten von Ladebalken oder Farbcodes).
+- **Einheitliche Layout-Komponenten:**
+  - Standard-Header: Immer `.page-header` mit rechtsbündigem Action-Button (`.btn .btn-outline`).
+  - Standard-Dashboards: Tabellen- und KPI-Elemente nutzen universelle Klassen (`.kpi-grid`, `.mobile-dashboard-grid`, `.table-responsive`).
+  - Responsive Breakpoints: Alle Media Queries (`@media (max-width: 768px)` / `< 600px`) werden zentral am Ende von `public/css/style.css` gepflegt und strikt abgekapselt.
 - **Erweiterungsprinzip:** Wenn neue Styles für ein Feature benötigt werden, dürfen diese nicht ad-hoc im Controller abgelegt werden. Sie müssen das zentrale Styleschema in `public/css/style.css` an geeigneter Stelle ergänzen und dokumentieren, sodass sie für zukünftige Entwicklungen im gesamten Projekt zur Verfügung stehen.
 
 ---
@@ -334,3 +340,7 @@ Bevor ein neues Feature als fertig gilt, müssen folgende Punkte erfüllt sein:
 - [ ] Keine redundanten `<style>`-Blöcke oder Inline-Styles verwendet (zentrales Styleschema aus `public/css/style.css` genutzt oder erweitert)
 - [ ] Minorversion in der APP_VERSION Variable der bootstrap.php erhöhen wenn CSS- oder JS-Dateien geändert worden sind.
 - [ ] APP_VERSION ist an alle CSS- und JS-Referenzen angehängt: `?v=<?= APP_VERSION ?>`
+- [ ] Keine Inline-JavaScript-Event-Handler (`onclick` etc.) oder `<script>`-Blöcke in HTML/PHP verwendet (CSP-Konformität).
+- [ ] Externe JS-Logik bindet Events über Event Delegation (`e.target.closest(...)`) ein.
+- [ ] Keine `<style>`-Blöcke in PHP-Dateien verwendet — alle Layout-Klassen sind zentral in `public/css/style.css` organisiert.
+- [ ] Standard-Layouts (`.page-header`, `.kpi-grid`, `.table-responsive`) für konsistentes Look & Feel eingehalten.
