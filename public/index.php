@@ -19,8 +19,10 @@ if (!isset($_SESSION['user_email'])) {
     <div class="container">
         <header class="page-header">
             <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name']) ?></h1>
-			<a href="login.php?logout=1" class="btn btn-outline">Sicher abmelden</a>
-            <div class="subtitle">Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email']) ?></div>
+			<div style="display: flex; align-items: center; gap: 1rem;">
+				<span class="last-update">Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email']) ?></span>
+				<a href="login.php?logout=1" class="btn btn-outline">Sicher abmelden</a>
+			</div>
         </header>
 
         <main>
