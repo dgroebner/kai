@@ -237,7 +237,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 					<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
 					
 					<div class="table-responsive">
-						<table class="forecast-table">
+						<table class="forecast-table stack-table">
 							<thead>
 								<tr>
 									<th>Datum</th>
@@ -262,21 +262,14 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 									}
 								?>
 								<tr>
-									<td>
+									<td data-label="Datum">
 										<strong><?= $weekday ?>, <?= $dateObj->format('d.m.') ?></strong>
 										<?php if ($isToday): ?>
 											<span class="today-badge">HEUTE</span>
 										<?php endif; ?>
 									</td>
-									<td><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
-									<td>
-										<div class="yield-bar-wrap">
-											<div class="yield-bar-bg">
-												<div class="yield-bar-fill" style="width: <?= $barPct ?>%"></div>
-											</div>
-										</div>
-									</td>
-									<td class="yield-value" style="white-space: nowrap; text-align: right;">
+									<td data-label="Wetter"><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
+									<td data-label="Prognose" class="yield-value" style="white-space: nowrap; text-align: right;">
 										<?php 
 										$correctedKwh = $kwh * $biasFactor; 
 										?>
@@ -287,7 +280,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 											</span>
 										<?php endif; ?>
 									</td>
-									<td style="text-align: right; padding-right: 1rem;">
+									<td data-label="Tatsächlich" style="text-align: right; padding-right: 1rem;">
 										<input type="text" 
 											   name="real_yield[<?= $day['forecast_date'] ?>]" 
 											   value="<?= $realKwh ?>" 
