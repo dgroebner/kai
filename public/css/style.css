@@ -492,7 +492,7 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     display: flex;
     gap: 10px;
     margin-bottom: 1.5rem;
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 .period-switcher .btn {
