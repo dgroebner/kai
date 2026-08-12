@@ -1197,147 +1197,82 @@ tbody tr:hover td {
 }
 
 /* ==========================================================================
-   MOBILE & RESPONSIVE FIXES (Breakpoints für Smartphones)
+   MOBILE & RESPONSIVE FIXES FOR DASHBOARDS
    ========================================================================== */
 
-/* 1. Generelle Tabellen-Sicherung (Verhindert Text-Quetschung) */
-.table-responsive, 
-.card {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+/* 1. KPI-Grid (Desktop: flexibel / Mobil: 2 Kacheln nebeneinander) */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 }
 
-.receipts-table, 
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 500px; /* Erzwingt Mindestbreite, erzeugt sauberes Wischen statt Textbruch */
-}
-
-/* 2. Kreditkarten-Tabelle Mobile UI */
 @media (max-width: 600px) {
-    .page-header {
-        flex-direction: column;
-        align-items: flex-start;
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
     }
 
-    .page-header .btn {
+    .kpi-card {
+        padding: 0.75rem;
+    }
+
+    .kpi-value {
+        font-size: 1.2rem !important;
+    }
+
+    .kpi-label {
+        font-size: 0.7rem;
+    }
+}
+
+/* 2. Zeitraum-Umschalter & Navigation Mobil */
+@media (max-width: 600px) {
+    .period-switcher {
+        display: flex;
         width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .period-switcher .btn {
+        flex: 1;
         text-align: center;
-    }
-
-    /* Analyse-Kopfbereich (Chart & Legende) untereinander stapeln */
-    .analysis-grid {
-        flex-direction: column-reverse;
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    .chart-container {
-        width: 180px;
-        height: 180px;
-    }
-
-    .category-legend {
-        width: 100%;
-    }
-
-    .legend-header, .legend-row {
-        grid-template-columns: 14px 1fr 60px 80px;
+        padding: 0.5rem 0.25rem;
         font-size: 0.8rem;
     }
-}
 
-/* 3. Auto- & Telemetrie-Dashboard (car/index.php) Mobile Grid */
-@media (max-width: 768px) {
-    .telemetry-grid,
-    .dashboard-grid,
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
-        gap: 0.75rem !important;
-    }
-
-    .stat-card, .info-card {
-        padding: 0.75rem;
+    .period-navigation {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
         text-align: center;
     }
 
-    .stat-card .value {
-        font-size: 1.25rem;
+    .period-navigation .btn {
+        width: 100%;
     }
 }
 
-/* Das neue universelle Kachel-Grid für Dashboards */
-.mobile-dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-
-.dashboard-tile {
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.tile-label {
-    font-size: 0.75rem;
-    color: var(--text-muted, #94a3b8);
-    text-transform: uppercase;
-}
-
-.tile-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-/* Stündliches Solar-Grid */
-.hourly-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.hour-tile {
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 6px;
-    padding: 0.4rem;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.hour-time {
-    display: block;
-    font-size: 0.7rem;
-    color: var(--text-muted, #94a3b8);
-}
-
-.hour-val {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-/* 4. PV-Solarprognose (pvcharge/index.php) Mobile Grid */
-@media (max-width: 768px) {
-    .pv-grid, 
-    .forecast-grid {
-        display: grid;
-        grid-template-columns: 1fr !important;
-        gap: 1rem;
+/* 3. Balkendiagramme & Tabellenschutz */
+@media (max-width: 600px) {
+    .bar-chart {
+        gap: 4px;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
     }
 
-    .hourly-forecast-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-        gap: 0.5rem;
+    .bar-col {
+        min-width: 18px;
     }
+
+    .bar-label {
+        font-size: 0.65rem;
+    }
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
