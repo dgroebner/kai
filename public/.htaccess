@@ -20,4 +20,9 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # Basis Content-Security-Policy (CSP): Erlaubt nur Ressourcen von deiner eigenen Domain
     # (Passe dies an, falls du externe Fonts, Bilder oder Scripts einbindest)
     Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline';"
+	
+	# Zwingt den Browser bei CSS und JS zur Re-Validierung
+	<FilesMatch "\.(css|js)$">
+        Header set Cache-Control "max-age=0, private, must-revalidate"
+    </FilesMatch>
 </IfModule>

@@ -102,7 +102,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kassenbon Dashboard</title>
     
-    <link rel="stylesheet" href="../css/style.css">
+        <link rel="stylesheet" href="../css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
     
     <style>
         .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--bg-surface-hover); padding-bottom: 1rem; }
