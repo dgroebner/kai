@@ -219,25 +219,26 @@ try {
     <!-- Tag-Statistikleiste (Kategorienübersicht im Zeitraum) -->
     <?php if (!empty($tagStats)): ?>
         <section class="card" style="margin-bottom: 1.5rem;">
-            <strong class="table-label-strong" style="display:block; margin-bottom: 0.75rem;">Aktive Tags im Zeitraum:</strong>
-            <div class="tag-pill-group">
-                <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="badge <?= !$selectedTagId ? 'badge-primary' : 'badge-outline' ?>">
-                    Alle anzeigen (<?= $totalTransactions ?>)
-                </a>
-                <?php foreach ($tagStats as $stat): ?>
-                    <?php 
-                        $isActive = $selectedTagId === (int)$stat['id']; 
-                        $amt = (float)$stat['total_amount'];
-                        $formattedAmt = number_format(abs($amt), 2, ',', '.') . ' €';
-                    ?>
-                    <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
-                       class="badge" 
-                       style="background-color: <?= $isActive ? $stat['color'] : 'transparent' ?>; color: <?= $isActive ? '#fff' : $stat['color'] ?>; border: 1px solid <?= $stat['color'] ?>;">
-                       <?= htmlspecialchars($stat['name']) ?> (<?= $stat['tx_count'] ?> | <?= $amt < 0 ? '-' : '+' ?><?= $formattedAmt ?>)
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </section>
+			<strong class="table-label-strong" style="display:block; margin-bottom: 0.75rem;">Aktive Tags im Zeitraum:</strong>
+			<div id="active-tags-bar" class="tag-pill-group">
+				<a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="badge <?= !$selectedTagId ? 'badge-primary' : 'badge-outline' ?>">
+					Alle anzeigen (<?= $totalTransactions ?>)
+				</a>
+				<?php foreach ($tagStats as $stat): ?>
+					<?php 
+						$isActive = $selectedTagId === (int)$stat['id']; 
+						$amt = (float)$stat['total_amount'];
+						$formattedAmt = number_format(abs($amt), 2, ',', '.') . ' €';
+					?>
+					<a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
+					   class="badge" 
+					   data-stat-tag-id="<?= $stat['id'] ?>"
+					   style="background-color: <?= $isActive ? $stat['color'] : 'transparent' ?>; color: <?= $isActive ? '#fff' : $stat['color'] ?>; border: 1px solid <?= $stat['color'] ?>;">
+					   <?= htmlspecialchars($stat['name']) ?> (<?= $stat['tx_count'] ?> | <?= $amt < 0 ? '-' : '+' ?><?= $formattedAmt ?>)
+					</a>
+				<?php endforeach; ?>
+			</div>
+		</section>
     <?php endif; ?>
 
     <!-- Transaktions-Tabelle -->
@@ -258,7 +259,7 @@ try {
                         </thead>
                         <tbody>
                             <?php foreach ($transactions as $tx): ?>
-                                <tr data-tx-id="<?= $tx['id'] ?>">
+                                <tr data-tx-id="<?= $tx['id'] ?>" data-amount="<?= $tx['amount'] ?>">
                                     <td data-label="Datum">
                                         <?= date('d.m.Y', strtotime($tx['booking_date'])) ?>
                                     </td>

@@ -2,7 +2,6 @@
 let activePopover = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Tags sicher aus dem HTML data-Attribut parsen
     const container = document.getElementById('giro-container');
     if (container && container.dataset.tags) {
         try {
@@ -16,9 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 2. Globaler Klick-Dispatcher
+// Globaler Klick-Dispatcher
 document.addEventListener('click', (e) => {
-    // A: Tag entfernen
     const removeBtn = e.target.closest('.remove-tag-btn');
     if (removeBtn) {
         e.preventDefault();
@@ -27,7 +25,6 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // B: Popover öffnen
     const openBtn = e.target.closest('.js-open-tag-popover');
     if (openBtn) {
         e.preventDefault();
@@ -36,7 +33,6 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // C: Klick auf existierendes Tag im Popover
     const tagOption = e.target.closest('.js-tag-option');
     if (tagOption) {
         e.preventDefault();
@@ -50,7 +46,6 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // D: Klick auf "Neu anlegen" im Popover
     const createOption = e.target.closest('.js-tag-create');
     if (createOption && activePopover) {
         e.preventDefault();
@@ -63,12 +58,10 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // E: Klick innerhalb des Popovers
     if (activePopover && activePopover.contains(e.target)) {
         return;
     }
 
-    // F: Klick außerhalb schließt Popover
     if (activePopover) {
         closePopover();
     }
@@ -151,13 +144,12 @@ function openTagPopover(anchorBtn, txId) {
 }
 
 // ----------------------------------------------------
-// AJAX-Aktionen ohne Reload
+// AJAX-Aktionen
 // ----------------------------------------------------
 
 async function addExistingTagToTx(txId, tag) {
     try {
         closePopover();
-        
         const data = await KaiHttp.postJson('api.php', {
             action: 'add_tag_to_tx',
             tx_id: parseInt(txId, 10),
@@ -175,7 +167,6 @@ async function addExistingTagToTx(txId, tag) {
 async function createNewTagAndAssign(txId, name, color) {
     try {
         closePopover();
-        
         const data = await KaiHttp.postJson('api.php', {
             action: 'create_and_assign_tag',
             tx_id: parseInt(txId, 10),
@@ -209,7 +200,7 @@ async function removeTagFromTx(txId, tagId) {
 }
 
 // ----------------------------------------------------
-// Dynamische UI-Updates (Rein lokal im DOM)
+// Dynamische UI-Updates
 // ----------------------------------------------------
 
 function appendBadgeToUI(txId, tag) {
@@ -239,6 +230,8 @@ function appendBadgeToUI(txId, tag) {
     } else {
         group.appendChild(badge);
     }
+
+    updateTagStatsBar();
 }
 
 function removeBadgeFromUI(txId, tagId) {
@@ -249,6 +242,74 @@ function removeBadgeFromUI(txId, tagId) {
             badge.remove();
         }
     }
+
+    updateTagStatsBar();
+}
+
+/**
+ * Aggregiert die sichtbar zugewiesenen Tags der aktuellen Tabelle neu
+ * und aktualisiert die Leiste oben dynamisch.
+ */
+function updateTagStatsBar() {
+    const bar = document.getElementById('active-tags-bar');
+    if (!bar) return;
+
+    const statsMap = {};
+
+    // 1. Tabelle durchgehen und Summen / Counts pro Tag neu aufbauen
+    const rows = document.querySelectorAll('tr[data-tx-id]');
+    rows.forEach(row => {
+        const amount = parseFloat(row.dataset.amount || '0');
+        const badges = row.querySelectorAll('.tag-badge');
+
+        badges.forEach(badge => {
+            const tagId = badge.dataset.tagId;
+            const tagName = badge.textContent.replace('×', '').trim();
+            const tagColor = badge.style.color || '#3b82f6';
+
+            if (!statsMap[tagId]) {
+                statsMap[tagId] = {
+                    id: tagId,
+                    name: tagName,
+                    color: tagColor,
+                    count: 0,
+                    total: 0
+                };
+            }
+
+            statsMap[tagId].count += 1;
+            statsMap[tagId].total += amount;
+        });
+    });
+
+    // 2. Den "Alle anzeigen"-Button im Header behalten
+    const allBtn = bar.querySelector('.badge-primary, .badge-outline');
+    bar.innerHTML = '';
+    if (allBtn) {
+        bar.appendChild(allBtn);
+    }
+
+    // 3. Nach Anzahl absteigend sortieren
+    const sortedStats = Object.values(statsMap).sort((a, b) => b.count - a.count);
+
+    // 4. Tags in der Leiste neu rendern
+    const currentUrlParams = new URLSearchParams(window.location.search);
+    const type = currentUrlParams.get('type') || 'monat';
+    const date = currentUrlParams.get('date') || '';
+
+    sortedStats.forEach(stat => {
+        const sign = stat.total < 0 ? '-' : '+';
+        const formattedAmt = Math.abs(stat.total).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+        const a = document.createElement('a');
+        a.href = `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}&tag_id=${stat.id}`;
+        a.className = 'badge';
+        a.dataset.statTagId = stat.id;
+        a.style.cssText = `background-color: transparent; color: ${stat.color}; border: 1px solid ${stat.color};`;
+        a.textContent = `${stat.name} (${stat.count} | ${sign}${formattedAmt})`;
+
+        bar.appendChild(a);
+    });
 }
 
 function escapeHtml(str) {
