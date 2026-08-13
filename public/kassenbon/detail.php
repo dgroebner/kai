@@ -1,43 +1,58 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-if (!isset($_SESSION['user_email'])) {
-    header('Location: ' . APP_URL . '/login.php');
-    exit;
-}
-
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
 
-$id = (int)($_GET['id'] ?? 0);
-$pdo = Database::getInstance()->getConnection();
+// Auth-Check — immer zuerst
+Auth::requirePage();
 
-$stmt = $pdo->prepare("SELECT * FROM kb_receipts WHERE id = :id");
-$stmt->execute([':id' => $id]);
-$receipt = $stmt->fetch(PDO::FETCH_ASSOC);
+$csrfToken = Auth::csrfToken();
 
-if (!$receipt) {
-    die("Kassenbon nicht gefunden.");
+$id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+if ($id === false || $id === null || $id <= 0) {
+    http_response_code(400);
+    exit('Ungültiger Kassenbon.');
 }
 
-$stmtItems = $pdo->prepare("SELECT * FROM kb_items WHERE receipt_id = :id ORDER BY id ASC");
-$stmtItems->execute([':id' => $id]);
-$items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $pdo = Database::getInstance()->getConnection();
 
-$stmtCats = $pdo->query("SELECT DISTINCT category FROM kb_items WHERE category IS NOT NULL AND category != '' ORDER BY category ASC");
-$allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
+    $stmt = $pdo->prepare("SELECT * FROM kb_receipts WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$receipt) {
+        http_response_code(404);
+        exit('Kassenbon nicht gefunden.');
+    }
+
+    $stmtItems = $pdo->prepare("SELECT * FROM kb_items WHERE receipt_id = :id ORDER BY id");
+    $stmtItems->execute([':id' => $id]);
+    $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmtCats = $pdo->query("SELECT DISTINCT category FROM kb_items WHERE category IS NOT NULL AND category != '' ORDER BY category");
+    $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
+} catch (\Throwable $e) {
+    (new Logger())->error('kassenbon/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    http_response_code(500);
+    exit('Interner Fehler. Bitte versuche es später erneut.');
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eBon <?= htmlspecialchars($receipt['store']) ?> - Kai</title>
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+    <title>eBon <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
     <div class="container">
         <header class="page-header">
-            <h1>🛒 <?= htmlspecialchars($receipt['store']) ?> <small style="font-size: 0.6em; color: var(--text-muted);">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small></h1>
+            <h1>🛒 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small class="page-header-sub">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small></h1>
             <a href="index.php" class="btn btn-outline">&larr; Zurück zu den Mails</a>
         </header>
 
@@ -62,8 +77,8 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
             </section>
 
             <!-- Einzelpositionen -->
-            <section class="card" style="margin-top: 1.5rem;">
-                <div class="page-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+            <section class="card u-mt-lg">
+                <div class="page-header page-header-flush">
                     <h2>Positionen</h2>
                     <button id="resetFilterBtn" class="btn btn-sm btn-outline hidden">Filter zurücksetzen</button>
                 </div>
@@ -81,12 +96,12 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
                         </thead>
                         <tbody>
                             <?php foreach ($items as $item): ?>
-                                <tr data-item-id="<?= $item['id'] ?>" data-category-name="<?= htmlspecialchars($item['category'] ?? 'Sonstiges') ?>">
+                                <tr data-item-id="<?= (int)$item['id'] ?>" data-category-name="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
                                     <td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
-                                    <td data-label="Artikel" class="amount-bold"><?= htmlspecialchars($item['name']) ?></td>
+                                    <td data-label="Artikel" class="amount-bold"><?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
                                     <td data-label="Kategorie" class="category-cell">
-                                        <span class="clickable-badge" data-item-id="<?= $item['id'] ?>">
-                                            <span class="badge-text"><?= htmlspecialchars($item['category'] ?? 'Sonstiges') ?></span>
+                                        <span class="clickable-badge" data-item-id="<?= (int)$item['id'] ?>">
+                                            <span class="badge-text"><?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></span>
                                             <span class="edit-icon">✏️</span>
                                         </span>
                                     </td>
@@ -106,6 +121,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
     </div>
 
     <script src="../js/chart.min.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="../js/kassenbon.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

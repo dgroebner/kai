@@ -2,38 +2,58 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
 
-$id = (int)($_GET['id'] ?? 0);
-$db = Database::getInstance()->getConnection();
+// Auth-Check — immer zuerst
+Auth::requirePage();
 
-$stmtInfo = $db->prepare("SELECT * FROM bank_cc_statements WHERE id = :id");
-$stmtInfo->execute([':id' => $id]);
-$statement = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+$csrfToken = Auth::csrfToken();
 
-if (!$statement) {
-    die("Abrechnung nicht gefunden.");
+$id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+if ($id === false || $id === null || $id <= 0) {
+    http_response_code(400);
+    exit('Ungültige Abrechnung.');
 }
 
-// Transaktionen laden
-$stmtTx = $db->prepare("
-    SELECT t.*, c.name AS category_name 
-    FROM bank_cc_transactions t
-    LEFT JOIN bank_categories c ON t.category_id = c.id
-    WHERE t.statement_id = :id
-    ORDER BY t.booking_date DESC
-");
-$stmtTx->execute([':id' => $id]);
-$transactions = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $db = Database::getInstance()->getConnection();
 
-// Alle verfügbaren Kategorien für das Inline-Dropdown laden
-$stmtCats = $db->query("SELECT id, name FROM bank_categories ORDER BY name ASC");
-$allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
+    $stmtInfo = $db->prepare("SELECT * FROM bank_cc_statements WHERE id = :id");
+    $stmtInfo->execute([':id' => $id]);
+    $statement = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+
+    if (!$statement) {
+        http_response_code(404);
+        exit('Abrechnung nicht gefunden.');
+    }
+
+    // Transaktionen laden
+    $stmtTx = $db->prepare("
+        SELECT t.*, c.name AS category_name 
+        FROM bank_cc_transactions t
+        LEFT JOIN bank_categories c ON t.category_id = c.id
+        WHERE t.statement_id = :id
+        ORDER BY t.booking_date DESC
+    ");
+    $stmtTx->execute([':id' => $id]);
+    $transactions = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
+
+    // Alle verfügbaren Kategorien für das Inline-Dropdown laden
+    $stmtCats = $db->query("SELECT id, name FROM bank_categories ORDER BY name");
+    $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
+} catch (\Throwable $e) {
+    (new Logger())->error('bank/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    http_response_code(500);
+    exit('Interner Fehler. Bitte versuche es später erneut.');
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <title>Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
@@ -91,20 +111,20 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
 							$isRefund = $amount > 0; // Positive Beträge = Gutschriften
 							$displayAmount = abs($amount);
 						?>
-						<tr data-tx-id="<?= $tx['id'] ?>" 
-							data-category-id="<?= $tx['category_id'] ?>" 
-							data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?>">
+						<tr data-tx-id="<?= (int)$tx['id'] ?>" 
+							data-category-id="<?= (int)$tx['category_id'] ?>" 
+							data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
 								
 								<td data-label="Datum"><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
-								<td data-label="Händler / Ort"><?= htmlspecialchars($tx['merchant_name']) ?></td>
-								<td data-label="Karte">*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----') ?></td>
+								<td data-label="Händler / Ort"><?= htmlspecialchars($tx['merchant_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+								<td data-label="Karte">*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----', ENT_QUOTES, 'UTF-8') ?></td>
 								
 								<!-- Kategorie mit dynamischer Farbe & Stift-Icon -->
 								<td  data-label="Kategorie" class="category-cell">
 									<span class="category-badge clickable-badge" 
 										  title="Kategorie bearbeiten" 
-										  data-tx-id="<?= $tx['id'] ?>">
-										<span class="badge-text"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges') ?></span>
+										  data-tx-id="<?= (int)$tx['id'] ?>">
+										<span class="badge-text"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></span>
 										<span class="edit-icon">✏️</span>
 									</span>
 								</td>
@@ -127,6 +147,7 @@ $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
 	<script src="../js/chart.min.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

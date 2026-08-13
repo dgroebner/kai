@@ -4,6 +4,11 @@ RewriteEngine On
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# Zugriff auf sensible Dateien blockieren, falls das Document Root abweichend gesetzt ist
+<FilesMatch "^(\.env|\.ftpignore|composer\.(json|lock|phar)|.*\.md)$">
+    Require all denied
+</FilesMatch>
+
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType text/css "access plus 1 week"
@@ -13,20 +18,27 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 <IfModule mod_headers.c>
     # Verhindert, dass die Seite in einem iFrame geladen wird (Schutz vor Clickjacking)
     Header set X-Frame-Options "DENY"
-    
+
     # Zwingt den Browser, sich an die deklarierten MIME-Types zu halten (Schutz vor MIME-Sniffing)
     Header set X-Content-Type-Options "nosniff"
-    
+
     # Weist den Browser an, für 1 Jahr ausschließlich HTTPS zu nutzen (Strict Transport Security)
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    
-    # Aktiviert den browserinternen XSS-Filter
+
+    # Aktiviert den browserinternen XSS-Filter (Legacy-Browser)
     Header set X-XSS-Protection "1; mode=block"
-    
-    # Basis Content-Security-Policy (CSP): Erlaubt nur Ressourcen von deiner eigenen Domain
-    # (Passe dies an, falls du externe Fonts, Bilder oder Scripts einbindest)
-    Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline';"
-	
+
+    # Referrer nur innerhalb der eigenen Domain vollständig übermitteln
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Nicht benötigte Browser-Features vollständig deaktivieren
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
+
+    # Content-Security-Policy: nur eigene Ressourcen, keine Inline-Event-Handler.
+    # 'unsafe-inline' bei style-src wird ausschließlich für dynamisch berechnete
+    # Werte (Balkenbreiten, Kategoriefarben) benötigt.
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
 	# Zwingt den Browser bei CSS und JS zur Re-Validierung
     <FilesMatch "\.(css|js)$">
         Header set Cache-Control "public, max-age=604800, stale-while-revalidate=86400"

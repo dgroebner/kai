@@ -256,17 +256,15 @@ function enableCategoryEdit(badgeElement, txId) {
         }
 
         try {
-            const res = await fetch('api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tx_id: txId, category_name: newCategoryName })
+            const result = await KaiHttp.postJson('api.php', {
+                tx_id: txId,
+                category_name: newCategoryName
             });
 
-            const result = await res.json();
             if (result.success) {
                 location.reload();
             } else {
-                alert('Fehler beim Speichern: ' + (result.error || 'Unbekannter Fehler'));
+                alert('Fehler beim Speichern: ' + (result.message || result.error || 'Unbekannter Fehler'));
             }
         } catch (e) {
             alert('Netzwerkfehler beim Speichern.');

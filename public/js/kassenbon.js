@@ -160,13 +160,16 @@ function enableCategoryEdit(badgeElement, itemId) {
     const save = async () => {
         const newCat = input.value.trim();
         if (!newCat) return;
-        const res = await fetch('api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId, category_name: newCat })
-        });
-        const data = await res.json();
-        if (data.success) location.reload();
+        try {
+            const data = await KaiHttp.postJson('api.php', { item_id: itemId, category_name: newCat });
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Fehler beim Speichern: ' + (data.message || data.error || 'Unbekannter Fehler'));
+            }
+        } catch (e) {
+            alert('Netzwerkfehler beim Speichern.');
+        }
     };
 
     saveBtn.addEventListener('click', save);

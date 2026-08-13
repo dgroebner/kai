@@ -1,36 +1,43 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-header('Content-Type: application/json');
-
-// Auth-Check
-if (!isset($_SESSION['user_email'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Nicht angemeldet']);
-    exit;
-}
-
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
+
+header('Content-Type: application/json; charset=utf-8');
+
+// 1. Auth-Check — immer zuerst
+Auth::requireApi();
+
+// 2. HTTP-Methoden-Check
+Auth::requireMethod('POST');
 
 $logger = new Logger();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
-    exit;
+// 3. Input validieren & bereinigen
+$input = json_decode(file_get_contents('php://input'), true);
+if (!is_array($input)) {
+    Auth::sendJsonError(400, 'Ungültige Anfrage');
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+Auth::requireCsrfToken($input);
 
-$vin = $input['vin'] ?? null;
-$carCapturedAt = $input['car_captured_at'] ?? null;
-$rangeKm = isset($input['range_km']) && $input['range_km'] !== null ? (int)$input['range_km'] : null;
+$vin = trim((string)($input['vin'] ?? ''));
+$carCapturedAt = trim((string)($input['car_captured_at'] ?? ''));
+$rangeKm = null;
 
-if (!$vin || !$carCapturedAt) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Fehlende Parameter']);
-    exit;
+if (isset($input['range_km']) && $input['range_km'] !== null && $input['range_km'] !== '') {
+    $rangeKm = filter_var($input['range_km'], FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 0, 'max_range' => 2000],
+    ]);
+    if ($rangeKm === false) {
+        Auth::sendJsonError(400, 'Ungültige Reichweite');
+    }
+}
+
+if (strlen($vin) !== 17 || $carCapturedAt === '' || strtotime($carCapturedAt) === false) {
+    Auth::sendJsonError(400, 'Fehlende oder ungültige Parameter');
 }
 
 try {
@@ -64,6 +71,5 @@ try {
 
 } catch (\Throwable $e) {
     $logger->error("update_range.php: Fehler beim Aktualisieren der Reichweite.", ['error' => $e->getMessage()]);
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Interner Server-Fehler']);
+    Auth::sendJsonError(500, 'Interner Server-Fehler');
 }

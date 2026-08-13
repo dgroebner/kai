@@ -839,3 +839,228 @@ tr.is-today-row {
     padding: 0.75rem 1rem;
     font-size: 1rem;
 }
+
+/* ==========================================================================
+   UTILITIES & GETEILTE LAYOUT-KOMPONENTEN
+   (zentrales Styleschema — ersetzt frühere Inline-Styles in den Controllern)
+   ========================================================================== */
+
+/* Abstands-Utilities */
+.u-mt-sm { margin-top: 0.4rem; }
+.u-mt-md { margin-top: 1rem; }
+.u-mt-lg { margin-top: 1.5rem; }
+.u-mb-lg { margin-bottom: 1.5rem; }
+.u-nowrap { white-space: nowrap; }
+.u-muted { color: var(--text-muted); }
+
+/* Header-Bereich rechts: Meta-Information + Action-Button */
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Header ohne Trennlinie (z. B. innerhalb einer Card) */
+.page-header-flush {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Kleiner, gedämpfter Zusatz in einer Überschrift */
+.page-header-sub {
+    font-size: 0.6em;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Meta-Zeile "Zuletzt aktualisiert / Fahrzeugdaten von …" */
+.last-update {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Leerzustand, wenn noch keine Daten vorliegen */
+.no-data,
+.empty-state {
+    background-color: var(--bg-surface);
+    border-radius: var(--border-radius);
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+.no-data small { display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; }
+.empty-state-text { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0; }
+
+/* Beschriftung über einem Diagramm oder einer Teil-Tabelle */
+.chart-label,
+.table-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.8rem;
+    font-weight: 600;
+    display: block;
+}
+
+/* Achsen-/Skalenbeschriftung unterhalb eines SVG-Charts.
+   Die seitlichen Abstände kommen als CSS-Variablen aus dem Controller. */
+.chart-axis-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -0.2rem;
+    padding-left: var(--chart-pad-left, 0);
+    padding-right: var(--chart-pad-right, 0);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+.chart-axis-labels.chart-axis-labels-lg { font-size: 0.75rem; }
+
+/* Status-Pillen (Ladezustand, Schloss) — Farbe kommt dynamisch über --pill-color */
+.status-pill {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--pill-color, var(--accent)) 15%, transparent);
+    color: var(--pill-color, var(--accent));
+}
+.status-pill-locked { --pill-color: var(--color-green); }
+.status-pill-unlocked { --pill-color: var(--color-red); }
+
+/* Farbige KPI-Werte / Zusatzzeilen — Farbe dynamisch über --value-color */
+.kpi-value-colored { color: var(--value-color, var(--text-main)); }
+.kpi-value-sm { font-size: 1.4rem; }
+.kpi-note {
+    font-size: 0.75rem;
+    margin-top: 0.4rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--value-color, var(--text-muted));
+}
+.kpi-note-muted { color: var(--text-muted); font-weight: 400; }
+
+/* Ladebalken (SoC) — Breite und Farbe werden dynamisch gesetzt */
+.soc-bar-wrap { margin-top: 0.6rem; }
+.soc-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-surface-hover);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.soc-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+.soc-target-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+/* Inline-Editierfeld (z. B. Reichweite in der Telemetrie-Historie) */
+.inline-edit-cell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.inline-range-input {
+    width: 65px;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+    background: var(--bg-surface-hover);
+    border: 1px solid transparent;
+    color: var(--text-main);
+    border-radius: 4px;
+    text-align: right;
+}
+.input-unit { font-size: 0.8rem; color: var(--text-muted); }
+
+/* Eingabefeld für erfasste Tageserträge (PV) */
+.yield-input {
+    width: 70px;
+    text-align: right;
+    padding: 0.3rem;
+    border-radius: 4px;
+    border: 1px solid var(--bg-surface-hover);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+/* Meldungen (Erfolg / Fehler) */
+.alert {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+}
+.alert-success {
+    color: var(--color-green);
+    background: var(--color-green-dim);
+    border: 1px solid var(--color-green);
+}
+.alert-danger {
+    color: var(--color-red);
+    background: var(--color-red-dim);
+    border: 1px solid var(--color-red);
+}
+
+/* Formular-Aktionsleiste */
+.form-actions {
+    text-align: right;
+    margin-top: 1.5rem;
+    padding-bottom: 0.5rem;
+}
+.btn-save {
+    background: var(--pv-yellow);
+    color: #000;
+    font-weight: bold;
+    padding: 0.6rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+.btn-save:hover { filter: brightness(1.1); }
+
+/* Tabellen-Spaltenbreiten & Ausrichtung */
+.col-share { width: 60px; }
+.col-total { width: 90px; }
+.col-category { min-width: 180px; }
+.cell-strong { color: var(--text-main); font-weight: 500; }
+.cell-amount { text-align: right; font-weight: bold; color: var(--text-main); }
+.table-label-strong { color: var(--text-muted); font-size: 0.9em; display: block; margin-bottom: 5px; }
+.pagination-gap { font-size: 0.85rem; color: var(--text-muted); margin: 0 8px; }
+
+/* Legenden-Beschriftung unter den Kombi-Charts */
+.legend-scale-eff { color: var(--color-green); }
+.legend-scale-temp { color: var(--color-orange); }
+
+/* Farbcode für Domain "Car", ergänzend zu den bestehenden Aliassen */
+:root {
+    --car-green: var(--color-green);
+    --car-green-dim: var(--color-green-dim);
+    --car-red: var(--color-red);
+    --car-red-dim: var(--color-red-dim);
+    --car-orange: var(--color-orange);
+}
+
+@media (max-width: 768px) {
+    .page-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 600px) {
+    .chart-axis-labels { font-size: 0.65rem; }
+    .form-actions { text-align: center; }
+    .btn-save { width: 100%; }
+}
+
+/* Statusfarben für Inline-Editierfelder (durch JS gesetzte Klassen) */
+.inline-range-input.is-saving { border-color: var(--color-orange); }
+.inline-range-input.is-saved { border-color: var(--color-green); }
+.inline-range-input.is-error { border-color: var(--color-red); }

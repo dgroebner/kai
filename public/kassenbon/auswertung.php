@@ -1,15 +1,13 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-// Auth-Check — muss als erstes stehen, bevor irgendwelche Logik läuft
-if (!isset($_SESSION['user_email'])) {
-    header('Location: ' . APP_URL . '/login.php');
-    exit;
-}
-
 use Kai\Tools\Kassenbon\CategoryAnalyzer;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
+
+// Auth-Check — muss als erstes stehen, bevor irgendwelche Logik läuft
+Auth::requirePage();
 
 $categoryAnalyzer = new CategoryAnalyzer();
 $logger = new Logger();
@@ -101,7 +99,7 @@ try {
         FROM kb_items i
         JOIN kb_receipts r ON i.receipt_id = r.id
         WHERE r.purchase_date BETWEEN :start AND :end
-        ORDER BY r.purchase_date DESC, r.id DESC, i.id ASC
+        ORDER BY r.purchase_date DESC, r.id DESC, i.id
     ");
     $stmtItems->execute([
         ':start' => $startDate,
@@ -125,7 +123,8 @@ try {
     
 } catch (\Throwable $e) {
     $logger->error("Kassenbon auswertung.php: Datenbankfehler.", ['error' => $e->getMessage()]);
-    die("Interner Fehler. Bitte versuche es später erneut.");
+    http_response_code(500);
+    exit("Interner Fehler. Bitte versuche es später erneut.");
 }
 ?>
 <!DOCTYPE html>
@@ -165,19 +164,19 @@ try {
     </div>
     
     <?php if (empty($items)): ?>
-        <div class="card" style="text-align: center; padding: 3rem 1.5rem;">
-            <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0;">Keine Kassenbon-Positionen für diesen Zeitraum gefunden.</p>
+        <div class="card empty-state">
+            <p class="empty-state-text">Keine Kassenbon-Positionen für diesen Zeitraum gefunden.</p>
         </div>
     <?php else: ?>
         <div class="category-analysis-wrapper">
             <div class="category-table-container">
-                <strong style="color: var(--text-muted); font-size: 0.9em; display: block; margin-bottom: 5px;">Kategorien-Anteil:</strong>
+                <strong class="table-label-strong">Kategorien-Anteil:</strong>
                 <table class="category-share-table">
                     <thead>
                         <tr>
                             <th>Kategorie</th>
-                            <th style="text-align: right; width: 60px;">Anteil</th>
-                            <th style="text-align: right; width: 90px;">Gesamt</th>
+                            <th class="text-right col-share">Anteil</th>
+                            <th class="text-right col-total">Gesamt</th>
                         </tr>
                     </thead>
                     <tbody class="js-category-table-body">
@@ -187,13 +186,13 @@ try {
                             $color = $niceColors[$colorIndex % count($niceColors)];
                             $colorIndex++;
                         ?>
-                            <tr class="js-category-row" data-category="<?= htmlspecialchars($cat) ?>" data-percentage="<?= number_format($data['percentage'], 4, '.', '') ?>" data-total="<?= number_format($data['total'], 4, '.', '') ?>" data-color="<?= $color ?>" style="--category-color: <?= $color ?>;">
+                            <tr class="js-category-row" data-category="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>" data-percentage="<?= number_format($data['percentage'], 4, '.', '') ?>" data-total="<?= number_format($data['total'], 4, '.', '') ?>" data-color="<?= $color ?>" style="--category-color: <?= $color ?>;">
                                 <td>
                                     <span class="category-color-dot" style="background-color: <?= $color ?>;"></span>
-                                    <span class="category-name"><?= htmlspecialchars($cat) ?></span>
+                                    <span class="category-name"><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></span>
                                 </td>
-                                <td class="percentage-cell" style="text-align: right; font-weight: 500;"><?= number_format($data['percentage'], 1, ',', '.') ?>%</td>
-                                <td class="total-cell" style="text-align: right;"><?= number_format($data['total'], 2, ',', '.') ?> €</td>
+                                <td class="percentage-cell text-right amount-bold"><?= number_format($data['percentage'], 1, ',', '.') ?>%</td>
+                                <td class="total-cell text-right"><?= number_format($data['total'], 2, ',', '.') ?> €</td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -213,9 +212,9 @@ try {
                         <th>Datum</th>
                         <th>Menge</th>
                         <th>Artikel</th>
-                        <th style="min-width: 180px;">Kategorie</th>
-                        <th style="text-align: right;">Einzelpreis</th>
-                        <th style="text-align: right;">Gesamt</th>
+                        <th class="col-category">Kategorie</th>
+                        <th class="text-right">Einzelpreis</th>
+                        <th class="text-right">Gesamt</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -223,22 +222,22 @@ try {
 						$catName = $item['category'] ?? 'Sonstiges';
 						$itemColor = $categoryColorMap[$catName] ?? '#64748b';
 					?>
-						<tr class="js-item-row" data-category="<?= htmlspecialchars($catName) ?>">
+						<tr class="js-item-row" data-category="<?= htmlspecialchars($catName, ENT_QUOTES, 'UTF-8') ?>">
 							<td data-label="Datum"><?= date('d.m.Y', strtotime($item['purchase_date'])) ?></td>
 							<td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
-							<td data-label="Artikel" style="color: var(--text-main); font-weight: 500;">
-							    <?= htmlspecialchars($item['name']) ?>
+							<td data-label="Artikel" class="cell-strong">
+							    <?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
 							</td>
 							<td data-label="Kategorie">
 								<!-- Badge-Farbe dynamisch an die Map der Legende binden -->
 								<span class="category-badge clickable-badge" style="color: <?= $itemColor ?>; border-color: <?= $itemColor ?>;">
-									<?= htmlspecialchars($catName) ?>
+									<?= htmlspecialchars($catName, ENT_QUOTES, 'UTF-8') ?>
 								</span>
 							</td>
-							<td data-label="Einzelpreis" style="text-align: right;">
+							<td data-label="Einzelpreis" class="text-right">
 							    <?= number_format((float)$item['unit_price'], 2, ',', '.') ?> €
 							</td>
-							<td data-label="Gesamt" style="text-align: right; font-weight: bold; color: var(--text-main);">
+							<td data-label="Gesamt" class="cell-amount">
 							    <?= number_format((float)$item['total_price'], 2, ',', '.') ?> €
 							</td>
 						</tr>

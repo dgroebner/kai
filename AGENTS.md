@@ -81,34 +81,41 @@ für den Browser **nicht erreichbar**.
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\DomainX\SomeRepository;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
+
+header('Content-Type: application/json; charset=utf-8');
+
 // 1. Auth-Check — immer zuerst
-if (!isset($_SESSION['user_email'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Nicht angemeldet']);
-    exit;
-}
+Auth::requireApi();
 
 // 2. HTTP-Methoden-Check
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    exit;
-}
+Auth::requireMethod('POST');
 
-// 3. Input validieren & bereinigen
+// 3. Input validieren & bereinigen (inkl. CSRF-Token)
 $input = json_decode(file_get_contents('php://input'), true);
+if (!is_array($input)) {
+    Auth::sendJsonError(400, 'Ungültige Anfrage');
+}
+Auth::requireCsrfToken($input);
+
 $value = filter_var($input['value'] ?? null, FILTER_VALIDATE_INT);
 if ($value === false || $value === null) {
-    http_response_code(400);
-    exit;
+    Auth::sendJsonError(400, 'Ungültige Parameter');
 }
 
 // 4. Logik delegieren (nie direkt DB-Queries im Controller)
-use Kai\Tools\DomainX\SomeRepository;
-$repo = new SomeRepository();
-$result = $repo->doSomething($value);
+try {
+    $repo = new SomeRepository();
+    $result = $repo->doSomething($value);
 
-// 5. Antwort ausgeben
-echo json_encode(['success' => true, 'data' => $result]);
+    // 5. Antwort ausgeben
+    echo json_encode(['success' => true, 'data' => $result]);
+} catch (\Throwable $e) {
+    (new Logger())->error('domainx/api.php: Fehler.', ['error' => $e->getMessage()]);
+    Auth::sendJsonError(500, 'Interner Fehler');
+}
 ```
 
 ---
@@ -143,6 +150,24 @@ Shared-Klassen sind die einzige Stelle für domainübergreifende Infrastruktur.
 | `Kai\Tools\Shared\AI\GeminiClient` | Google Gemini API. Konstruktor akzeptiert optionales Modell |
 | `Kai\Tools\Shared\Log\Logger` | Dateibasierter Logger. Methoden: `->info()`, `->error()` |
 | `Kai\Tools\Shared\Mail\*` | IMAP-Zugriff für E-Mail-Verarbeitung |
+| `Kai\Tools\Shared\Security\Auth` | Zugriffskontrolle für alle `public/`-Endpunkte (Session, CSRF, Cron-Token) |
+
+### 5.1 Verbindliche Nutzung von `Auth`
+
+Jeder Endpunkt in `public/` verwendet ausschließlich die Guards der Klasse
+`Kai\Tools\Shared\Security\Auth` — keine handgeschriebenen Session-Prüfungen mehr.
+
+| Methode | Einsatz |
+|---|---|
+| `Auth::requirePage()` | HTML-Seiten: leitet nicht angemeldete Besucher nach `login.php` um |
+| `Auth::requireApi()` | JSON-Endpunkte: antwortet mit `401` statt einer Weiterleitung |
+| `Auth::requireMethod('POST')` | Erzwingt die HTTP-Methode (antwortet mit `405`) |
+| `Auth::requireCsrfToken($payload)` | Erzwingt einen gültigen CSRF-Token (Header `X-CSRF-Token` oder Body) |
+| `Auth::csrfToken()` | Liefert/erzeugt den Session-CSRF-Token für `<meta>` bzw. Hidden-Field |
+| `Auth::isValidCsrfToken($token)` | Zeitkonstante Prüfung, z. B. für klassische Formular-POSTs |
+| `Auth::requireCronToken()` | Schützt Cronjob-Endpunkte über `CRON_TOKEN` (zeitkonstant, `hash_equals`) |
+| `Auth::cronTokenMatches(false)` | Token-Prüfung ohne Query-Parameter (nur Header) für Maschinen-APIs |
+| `Auth::sendJsonError($status, $msg)` | Beendet den Request mit generischer JSON-Fehlerantwort |
 
 **Neue Shared-Klassen anlegen,** wenn dieselbe Infrastruktur von mehr als einer Domain
 benötigt wird. Einzeldomänen-Utilities bleiben in der jeweiligen Domain.
@@ -184,18 +209,28 @@ $pdo->query("SELECT * FROM receipts WHERE id = $id");
 
 ### 6.4 Authentifizierung & Session
 
-- Jeder `public/`-Endpunkt der nicht öffentlich zugänglich sein soll, prüft als **erstes**
-  `$_SESSION['user_email']`
+- Jeder `public/`-Endpunkt der nicht öffentlich zugänglich sein soll, ruft als **erstes**
+  `Auth::requirePage()` (HTML) bzw. `Auth::requireApi()` (JSON) auf
+- Der OAuth-Flow verwendet einen `state`-Parameter, der beim Callback zeitkonstant geprüft wird
 - Nach erfolgreichem Login wird `session_regenerate_id(true)` aufgerufen (Session Fixation Schutz)
-- Session-Cookies sind konfiguriert: `httponly=1`, `secure=1`, `samesite=Strict`
-- Die Allowlist (`ALLOWED_USERS`) ist die einzige Zugangskontrolle; sie wird aus `$_ENV` gelesen
+- Session-Cookies sind konfiguriert: `httponly=1`, `secure=1`, `samesite=Lax`,
+  zusätzlich `session.use_strict_mode=1` und `session.use_only_cookies=1`
+  (`Lax` ist zwingend, damit der OAuth-Callback von Google die Session behält;
+  Cross-Site-POSTs bleiben blockiert und sind zusätzlich CSRF-Token-geschützt)
+- Die Allowlist (`ALLOWED_USERS`) ist die einzige Zugangskontrolle; sie wird aus `$_ENV`
+  gelesen und beim Vergleich normalisiert (trim + lowercase, strikter Vergleich)
+- Maschinen-Endpunkte (Cronjobs, Telemetrie-Upload) nutzen `Auth::requireCronToken()`
+  bzw. `Auth::cronTokenMatches()` mit zeitkonstantem `hash_equals`-Vergleich
 
 ### 6.5 CSRF-Schutz
 
 - State-verändernde Aktionen (POST, Datenbankschreibzugriffe) erfordern einen CSRF-Token
-- CSRF-Token werden pro Session generiert und im `<form>`-Hidden-Field oder als
-  Request-Header (`X-CSRF-Token`) übermittelt
-- Der Token wird serverseitig gegen `$_SESSION['csrf_token']` geprüft
+- CSRF-Token werden pro Session generiert (`Auth::csrfToken()`) und im `<form>`-Hidden-Field
+  oder als `<meta name="csrf-token">` für AJAX bereitgestellt
+- AJAX-Aufrufe nutzen ausschließlich `KaiHttp.postJson()` aus `public/js/http.js`;
+  dieser Helfer hängt den Header `X-CSRF-Token` automatisch an
+- Serverseitig wird der Token zeitkonstant über `Auth::requireCsrfToken()` bzw.
+  `Auth::isValidCsrfToken()` gegen `$_SESSION['csrf_token']` geprüft
 
 ### 6.6 Ausgabe & XSS
 
@@ -208,15 +243,17 @@ $pdo->query("SELECT * FROM receipts WHERE id = $id");
 ### 6.7 Fehlerbehandlung
 
 - Im Produktivbetrieb werden Fehler **geloggt**, aber **nicht** an den Browser ausgegeben
-- `display_errors` ist auf dem Server deaktiviert
+- `display_errors` ist in `bootstrap.php` deaktiviert und zusätzlich auf dem Server abgeschaltet
+- `bootstrap.php` registriert einen globalen `set_exception_handler`, der jede nicht
+  abgefangene Ausnahme loggt und dem Browser nur eine generische Meldung zeigt
 - Catch-Blöcke geben dem Browser generische Fehlermeldungen zurück:
   ```php
   } catch (\Throwable $e) {
       $logger->error("Beschreibung", ['error' => $e->getMessage()]);
-      http_response_code(500);
-      echo json_encode(['success' => false, 'message' => 'Interner Fehler']);
+      Auth::sendJsonError(500, 'Interner Fehler');
   }
   ```
+- `$e->getMessage()` darf **niemals** an den Browser gelangen — nur ins Log
 
 ---
 

@@ -1,32 +1,28 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-// Auth-Check
-if (!isset($_SESSION['user_email'])) {
-    header('Location: ' . APP_URL . '/login.php');
-    exit;
-}
-
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
+
+// Auth-Check — immer zuerst
+Auth::requirePage();
 
 $logger = new Logger();
 
-// CSRF-Token generieren
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
+// CSRF-Token für das Formular bereitstellen
+$csrfToken = Auth::csrfToken();
 
 $db = Database::getInstance()->getConnection();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_real_yield') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_real_yield') {
     // CSRF-Token prüfen
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    if (!Auth::isValidCsrfToken($_POST['csrf_token'] ?? null)) {
         http_response_code(403);
-        die("Ungültiger CSRF-Token.");
+        exit("Ungültiger CSRF-Token.");
     }
 
-    $yieldData = $_POST['real_yield'] ?? [];
+    $yieldData = is_array($_POST['real_yield'] ?? null) ? $_POST['real_yield'] : [];
     
     $db->beginTransaction();
     try {
@@ -37,15 +33,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ");
         
         foreach ($yieldData as $date => $kwhValue) {
+            // Datum strikt validieren, bevor es in die Abfrage gelangt
+            $dateObj = DateTime::createFromFormat('Y-m-d', (string)$date);
+            if (!$dateObj || $dateObj->format('Y-m-d') !== (string)$date) {
+                continue;
+            }
+
             // Wenn das Feld leer gelassen wurde, tragen wir NULL ein
-            if ($kwhValue === '') {
+            if (!is_scalar($kwhValue) || trim((string)$kwhValue) === '') {
                 $updateStmt->execute([':real_wh' => null, ':date' => $date]);
                 continue;
             }
             
             // Komma durch Punkt ersetzen und in Wattstunden umrechnen
-            $kwh = (float)str_replace(',', '.', $kwhValue);
-            $wh = (int)round($kwh * 1000);
+            $kwh = (float)str_replace(',', '.', (string)$kwhValue);
+            $wh = (int)round(max(0.0, $kwh) * 1000);
             
             $updateStmt->execute([
                 ':real_wh' => $wh,
@@ -54,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
         $db->commit();
         $successMessage = "Tatsächliche Erträge erfolgreich gespeichert.";
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         $db->rollBack();
         $logger->error("PVCharge index.php: Fehler beim Speichern der echten Erträge.", ['error' => $e->getMessage()]);
         $errorMessage = "Fehler beim Speichern. Bitte versuche es später erneut.";
@@ -66,7 +68,7 @@ $dailyStmt = $db->prepare("
     SELECT forecast_date, watt_hours_day, real_watt_hours_day
     FROM pv_forecast_daily
     WHERE forecast_date >= CURDATE() - INTERVAL 3 DAY
-    ORDER BY forecast_date ASC
+    ORDER BY forecast_date
     LIMIT 10
 ");
 $dailyStmt->execute();
@@ -77,7 +79,7 @@ $hourlyStmt = $db->prepare("
     SELECT forecast_time, watts, watt_hours
     FROM pv_forecast_hourly
     WHERE DATE(forecast_time) = CURDATE()
-    ORDER BY forecast_time ASC
+    ORDER BY forecast_time
 ");
 $hourlyStmt->execute();
 $hourlyForecasts = $hourlyStmt->fetchAll();
@@ -136,7 +138,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 	<header>
 		<div class="page-header">
 			<h1>☀️ PV-Solarprognose</h1>
-			<div style="display: flex; align-items: center; gap: 1rem;">
+			<div class="page-header-actions">
 				<?php if ($lastUpdate): ?>
 					<span class="last-update">Zuletzt aktualisiert: <?= date('d.m.Y H:i', strtotime($lastUpdate)) ?> Uhr</span>
 				<?php endif; ?>
@@ -162,7 +164,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                     <span class="kpi-unit">kWh</span>
                 </div>
                 <?php if ($systemBias !== null): ?>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    <div class="kpi-note kpi-note-muted">
                         (<?= number_format($todayKwh, 1, ',', '.') ?> kWh)
                     </div>
                 <?php endif; ?>
@@ -177,13 +179,13 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             <div class="kpi-card">
                 <div class="kpi-label">Wetter Heute</div>
                 <?php $wx = getWeatherLabel($todayKwh); ?>
-                <div class="kpi-value" style="font-size:1.4rem;">
+                <div class="kpi-value kpi-value-sm">
                     <?= $wx['icon'] ?> <span class="kpi-unit"><?= $wx['label'] ?></span>
                 </div>
             </div>
 			<div class="kpi-card">
                 <div class="kpi-label">Systemabweichung</div>
-                <div class="kpi-value" style="color: <?= $systemBias >= 0 ? 'var(--pv-green)' : '#e74c3c' ?>;">
+                <div class="kpi-value kpi-value-colored" style="--value-color: <?= $systemBias >= 0 ? 'var(--pv-green)' : 'var(--color-red)' ?>;">
                     <?= $systemBias !== null ? ($systemBias > 0 ? '+' : '') . number_format($systemBias, 1, ',', '.') : '–' ?>
                     <span class="kpi-unit">%</span>
                 </div>
@@ -222,10 +224,10 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 			<div class="section-title">Mehrtages-Prognose & Erfassung</div>
 			
 			<?php if (isset($successMessage)): ?>
-				<div class="alert alert-success" style="color: var(--pv-green); margin-bottom: 1rem; font-weight: bold; background: var(--pv-green-dim); padding: 0.75rem; border-radius: var(--border-radius); border: 1px solid var(--pv-green);"><?= $successMessage ?></div>
+				<div class="alert alert-success"><?= htmlspecialchars($successMessage, ENT_QUOTES, 'UTF-8') ?></div>
 			<?php endif; ?>
 			<?php if (isset($errorMessage)): ?>
-				<div class="alert alert-danger" style="color: #e74c3c; margin-bottom: 1rem; font-weight: bold; background: rgba(231, 76, 60, 0.15); padding: 0.75rem; border-radius: var(--border-radius); border: 1px solid #e74c3c;"><?= $errorMessage ?></div>
+				<div class="alert alert-danger"><?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></div>
 			<?php endif; ?>
 
 			<?php if (!empty($dailyForecasts)):
@@ -234,7 +236,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 			?>
 				<form action="" method="POST">
 					<input type="hidden" name="action" value="save_real_yield">
-					<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
+					<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 					
 					<div class="table-responsive">
 						<table class="forecast-table stack-table">
@@ -242,8 +244,8 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 								<tr>
 									<th>Datum</th>
 									<th>Wetter</th>
-									<th style="text-align: right; padding-right: 1.5rem;">Prognose</th>
-									<th style="color: var(--pv-yellow); text-align: right; padding-right: 1.5rem;">Tatsächlich</th>
+									<th class="text-right">Prognose</th>
+									<th class="text-right text-warning">Tatsächlich</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -266,25 +268,25 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 										<strong><?= $weekday ?>, <?= $dateObj->format('d.m.') ?></strong>
 									</td>
 									<td data-label="Wetter"><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
-									<td data-label="Prognose" class="yield-value" style="white-space: nowrap; text-align: right;">
+									<td data-label="Prognose" class="yield-value text-right u-nowrap">
 										<?php 
 										$correctedKwh = $kwh * $biasFactor; 
 										?>
 										<strong><?= number_format($correctedKwh, 2, ',', '.') ?> kWh</strong>
 										<?php if ($systemBias !== null): ?>
-											<span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 400; margin-left: 0.4rem;">
+											<span class="kpi-note kpi-note-muted">
 												(<?= number_format($kwh, 2, ',', '.') ?>)
 											</span>
 										<?php endif; ?>
 									</td>
-									<td data-label="Tatsächlich" style="text-align: right; padding-right: 1rem;">
+									<td data-label="Tatsächlich" class="text-right">
 										<input type="text" 
-											   name="real_yield[<?= $day['forecast_date'] ?>]" 
-											   value="<?= $realKwh ?>" 
+											   class="yield-input"
+											   name="real_yield[<?= htmlspecialchars($day['forecast_date'], ENT_QUOTES, 'UTF-8') ?>]" 
+											   value="<?= htmlspecialchars($realKwh, ENT_QUOTES, 'UTF-8') ?>" 
 											   placeholder="-,--" 
-											   style="width: 70px; text-align: right; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--bg-surface-hover); background: var(--bg-surface); color: var(--text-main); font-family: monospace; font-size: 0.9rem;"
 											   <?= ($day['forecast_date'] > date('Y-m-d')) ? 'disabled' : '' ?> 
-										> <small style="color: var(--text-muted);">kWh</small>
+										> <small class="input-unit">kWh</small>
 									</td>
 								</tr>
 								<?php endforeach; ?>
@@ -292,8 +294,8 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 						</table>
 					</div>
 
-					<div style="text-align: right; margin-top: 1.5rem; padding-bottom: 0.5rem;">
-						<button type="submit" class="btn" style="background: var(--pv-yellow); color: #000; font-weight: bold; padding: 0.6rem 1.5rem; border: none; border-radius: var(--border-radius); cursor: pointer;">
+					<div class="form-actions">
+						<button type="submit" class="btn btn-save">
 							💾 Erträge speichern
 						</button>
 					</div>
@@ -302,7 +304,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 				<div class="no-data">
 					Noch keine Prognosedaten in der Datenbank.<br>
 					<small>Bitte den Forecast-Cronjob einmalig manuell ausführen:<br>
-					<code style="color:var(--pv-yellow)"><?= APP_URL ?>/pvcharge/cron_forecast.php?token=...</code></small>
+					<code class="text-warning"><?= htmlspecialchars(APP_URL, ENT_QUOTES, 'UTF-8') ?>/pvcharge/cron_forecast.php?token=...</code></small>
 				</div>
 			<?php endif; ?>
 		</div>

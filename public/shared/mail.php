@@ -1,12 +1,9 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-$secretToken = $_ENV['CRON_TOKEN'] ?? null;
+use Kai\Tools\Shared\Security\Auth;
 
-if (empty($secretToken) || !isset($_GET['token']) || $_GET['token'] !== $secretToken) {
-    http_response_code(403);
-    die("Zugriff verweigert.\n");
-}
+Auth::requireCronToken('shared/mail.php');
 
 // -------------------------------------------------------------------------
 // ASYNCHRONE ENT KOPPLUNG: HTTP-Verbindung sofort schließen

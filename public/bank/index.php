@@ -2,35 +2,43 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
 
-$db = Database::getInstance()->getConnection();
+// Auth-Check — immer zuerst
+Auth::requirePage();
 
 // Paginierungseinstellungen
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-// Gesamtzahl für Paginierung ermitteln
-$countStmt = $db->query("SELECT COUNT(*) FROM bank_cc_statements");
-$totalStatements = (int)$countStmt->fetchColumn();
-$totalPages = max(1, (int)ceil($totalStatements / $limit));
+try {
+    $db = Database::getInstance()->getConnection();
 
-// Abrechnungen laden
-$sql = "
-    SELECT s.*, 
-           COUNT(t.id) AS tx_count
-    FROM bank_cc_statements s
-    LEFT JOIN bank_cc_transactions t ON s.id = t.statement_id
-    GROUP BY s.id
-    ORDER BY s.statement_date DESC
-    LIMIT :limit OFFSET :offset
-";
+    // Gesamtzahl für Paginierung ermitteln
+    $totalStatements = (int)$db->query("SELECT COUNT(*) FROM bank_cc_statements")->fetchColumn();
+    $totalPages = max(1, (int)ceil($totalStatements / $limit));
 
-$stmt = $db->prepare($sql);
-$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Abrechnungen laden
+    $stmt = $db->prepare("
+        SELECT s.*, 
+               COUNT(t.id) AS tx_count
+        FROM bank_cc_statements s
+        LEFT JOIN bank_cc_transactions t ON s.id = t.statement_id
+        GROUP BY s.id
+        ORDER BY s.statement_date DESC
+        LIMIT :limit OFFSET :offset
+    ");
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (\Throwable $e) {
+    (new Logger())->error('bank/index.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    http_response_code(500);
+    exit('Interner Fehler. Bitte versuche es später erneut.');
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">

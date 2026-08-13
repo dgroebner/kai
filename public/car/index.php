@@ -1,13 +1,13 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-// Auth-Check
-if (!isset($_SESSION['user_email'])) {
-    header('Location: ' . APP_URL . '/login.php');
-    exit;
-}
-
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Security\Auth;
+
+// Auth-Check — immer zuerst
+Auth::requirePage();
+
+$csrfToken = Auth::csrfToken();
 
 $db = Database::getInstance()->getConnection();
 
@@ -159,7 +159,7 @@ $historyStmt = $db->prepare("
     SELECT car_captured_at, soc_percent, range_km, charge_power_kw, outdoor_temp_c
     FROM vehicle_telemetry_log
     WHERE car_captured_at BETWEEN :start AND :end
-    ORDER BY car_captured_at ASC
+    ORDER BY car_captured_at
 ");
 $historyStmt->execute([
     ':start' => $startDateUtc,
@@ -201,6 +201,7 @@ $recentLog = $logStmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <title>VW ID.Buzz – Fahrzeug-Dashboard · Kai</title>
     <meta name="description" content="Live-Übersicht des Fahrzeugstatus, Batterieladestand und Telemetrie-Historie des VW ID.Buzz.">
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
@@ -211,7 +212,7 @@ $recentLog = $logStmt->fetchAll();
 	<header>
 		<div class="page-header">
 			<h1>🚐 VW ID.Buzz</h1>
-			<div style="display: flex; align-items: center; gap: 1rem;">
+			<div class="page-header-actions">
 				<?php if ($state): ?>
 					<span class="last-update">Fahrzeugdaten von: <?= formatToLocalTime($state['car_captured_at']) ?> Uhr</span>
 				<?php endif; ?>
@@ -223,7 +224,7 @@ $recentLog = $logStmt->fetchAll();
 		</div>
 	</header>
 
-    <main style="margin-top: 1.5rem;">
+    <main class="u-mt-lg">
 
 	<?php if (!$state): ?>
 		<div class="no-data">
@@ -236,16 +237,16 @@ $recentLog = $logStmt->fetchAll();
 	?>
 
 		<!-- 1. LIVE IST-DATEN (Als strukturierte Status-Card) -->
-		<div class="card car-info-card" style="margin-bottom: 1.5rem;">
+		<div class="card car-info-card u-mb-lg">
 			<div class="car-info-grid">
 				<div class="car-info-item">
 					<span class="info-label">Fahrgestellnummer (VIN)</span>
-					<span class="info-value vin-code"><?= htmlspecialchars($state['vin']) ?></span>
+					<span class="info-value vin-code"><?= htmlspecialchars($state['vin'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
 				</div>
 				<div class="car-info-item">
 					<span class="info-label">Lade-Status</span>
 					<div>
-						<span class="status-pill" style="background:<?= $charging['color'] ?>22; color:<?= $charging['color'] ?>">
+						<span class="status-pill" style="--pill-color: <?= $charging['color'] ?>;">
 							<?= $charging['icon'] ?> <?= $charging['label'] ?>
 						</span>
 					</div>
@@ -253,7 +254,7 @@ $recentLog = $logStmt->fetchAll();
 				<div class="car-info-item">
 					<span class="info-label">Fahrzeug-Schloss</span>
 					<div>
-						<span class="status-pill" style="<?= $state['is_locked'] ? 'background:var(--car-green-dim);color:var(--car-green)' : 'background:var(--car-red-dim);color:var(--car-red)' ?>">
+						<span class="status-pill <?= $state['is_locked'] ? 'status-pill-locked' : 'status-pill-unlocked' ?>">
 							<?= $state['is_locked'] ? '🔒 Gesperrt' : '🔓 Offen' ?>
 						</span>
 					</div>
@@ -265,47 +266,47 @@ $recentLog = $logStmt->fetchAll();
 			
             <div class="kpi-card">
                 <div class="kpi-label">Reichweite</div>
-                <div class="kpi-value" style="color:var(--car-blue)">
+                <div class="kpi-value text-info">
                     <?= number_format($state['range_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
                 </div>
             </div>
 		
             <div class="kpi-card">
                 <div class="kpi-label">Ladestand</div>
-                <div class="kpi-value" style="color: <?= $socCol ?>">
-                    <?= $state['soc_percent'] ?><span class="kpi-unit"> %</span>
+                <div class="kpi-value kpi-value-colored" style="--value-color: <?= $socCol ?>;">
+                    <?= (int)$state['soc_percent'] ?><span class="kpi-unit"> %</span>
                 </div>
                 <div class="soc-bar-wrap">
                     <div class="soc-bar-bg">
-                        <div class="soc-bar-fill" style="width:<?= $state['soc_percent'] ?>%; background:<?= $socCol ?>"></div>
+                        <div class="soc-bar-fill" style="width:<?= (int)$state['soc_percent'] ?>%; background:<?= $socCol ?>;"></div>
                     </div>
-                    <div class="soc-target-label">Ziel: <?= $state['target_soc'] ?> %</div>
+                    <div class="soc-target-label">Ziel: <?= (int)$state['target_soc'] ?> %</div>
                 </div>
             </div>
 			
 			<div class="kpi-card">
 				<div class="kpi-label">Effizienz-Index</div>
-				<div class="kpi-value" style="color: <?= $effRating['color'] ?>">
+				<div class="kpi-value kpi-value-colored" style="--value-color: <?= $effRating['color'] ?>;">
 					<?= $currentEff ? number_format($currentEff, 1, ',', '.') : '–' ?>
 					<span class="kpi-unit">km / %</span>
 				</div>
-				<div style="font-size: 0.75rem; color: <?= $effRating['color'] ?>; margin-top: 0.4rem; font-weight: 600;">
+				<div class="kpi-note" style="--value-color: <?= $effRating['color'] ?>;">
 					<?= $effRating['label'] ?>
 				</div>
 			</div>
 
 			<div class="kpi-card">
 				<div class="kpi-label">Ladeleistung</div>
-				<div class="kpi-value" style="color:<?= $state['charge_power_kw'] > 0 ? 'var(--car-green)' : 'var(--text-muted)' ?>">
+				<div class="kpi-value kpi-value-colored" style="--value-color: <?= $state['charge_power_kw'] > 0 ? 'var(--car-green)' : 'var(--text-muted)' ?>;">
 					<?= number_format($state['charge_power_kw'], 1, ',', '.') ?><span class="kpi-unit"> kW</span>
 				</div>
 				
 				<?php if ($state['charge_power_kw'] > 0 && !empty($state['estimated_finish_at'])): ?>
-					<div style="font-size: 0.75rem; color: var(--car-green); margin-top: 0.4rem; font-weight: 600; white-space: nowrap;">
+					<div class="kpi-note" style="--value-color: var(--car-green);">
 						⏱️ Fertig ca. <?= formatToLocalTime($state['estimated_finish_at'], 'H:i') ?> Uhr
 					</div>
 				<?php else: ?>
-					<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; white-space: nowrap;">
+					<div class="kpi-note kpi-note-muted">
 						<?= $state['plug_connected'] ? 'Stecker bereit' : 'Nicht verbunden' ?>
 					</div>
 				<?php endif; ?>
@@ -313,7 +314,7 @@ $recentLog = $logStmt->fetchAll();
 			
             <div class="kpi-card">
                 <div class="kpi-label">Batterie Temp.</div>
-                <div class="kpi-value" style="color:var(--text-main); font-size:1.4rem">
+                <div class="kpi-value kpi-value-sm">
                     <?= number_format($state['battery_temp_min'], 1, ',', '.') ?> – <?= number_format($state['battery_temp_max'], 1, ',', '.') ?>
                     <span class="kpi-unit">°C</span>
                 </div>
@@ -321,14 +322,14 @@ $recentLog = $logStmt->fetchAll();
 			
             <div class="kpi-card">
                 <div class="kpi-label">Außentemperatur</div>
-                <div class="kpi-value" style="color:var(--car-orange); font-size:1.4rem">
+                <div class="kpi-value kpi-value-sm text-warning">
                     <?= number_format($state['outdoor_temp_c'], 1, ',', '.') ?><span class="kpi-unit"> °C</span>
                 </div>
             </div>
 
             <div class="kpi-card">
                 <div class="kpi-label">Kilometerstand</div>
-                <div class="kpi-value" style="color:var(--text-main); font-size:1.4rem">
+                <div class="kpi-value kpi-value-sm">
                     <?= number_format($state['mileage_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
                 </div>
             </div>
@@ -358,7 +359,7 @@ $recentLog = $logStmt->fetchAll();
 
         <!-- 1. CHART: SoC-VERLAUF MIT SKALA & TOOLTIPS -->
         <div class="chart-section">
-            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.8rem; font-weight: 600;">
+            <div class="chart-label">
                 🔋 Ladestand-Verlauf (SoC in %)
             </div>
             <?php if (!empty($history)): ?>
@@ -426,7 +427,7 @@ $recentLog = $logStmt->fetchAll();
                         <?php endforeach; ?>
                     </svg>
 
-                    <div style="display:flex;justify-content:space-between;margin-top:-0.2rem;padding-left:<?= $padL ?>px;padding-right:<?= $padR ?>px;font-size:0.7rem;color:var(--text-muted);">
+                    <div class="chart-axis-labels" style="--chart-pad-left: <?= (int)$padL ?>px; --chart-pad-right: <?= (int)$padR ?>px;">
                         <span><?= $firstTs ?> Uhr</span>
                         <span><?= $count ?> Datenpunkte</span>
                         <span><?= $lastTs ?> Uhr</span>
@@ -439,7 +440,7 @@ $recentLog = $logStmt->fetchAll();
 
         <!-- 2. CHART: EFFIZIENZ VS. TEMPERATUR MIT SKALEN & TOOLTIPS -->
         <div class="chart-section">
-            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.8rem; font-weight: 600;">
+            <div class="chart-label">
                 🌡️ Außentemperatur vs. Effizienz (km pro 1% Akku)
             </div>
             <?php 
@@ -516,9 +517,9 @@ $recentLog = $logStmt->fetchAll();
                         <?php endforeach; ?>
                     </svg>
 
-                    <div style="display:flex; justify-content:space-between; margin-top:-0.2rem; padding-left:<?= $padL ?>px; padding-right:<?= $padR ?>px; font-size:0.75rem; color:var(--text-muted);">
-                        <span style="color:#10b981;">🟢 Effizienz-Skala (km / % SoC, Links)</span>
-                        <span style="color:#f59e0b;">🟠 Außentemperatur-Skala (°C, Rechts)</span>
+                    <div class="chart-axis-labels chart-axis-labels-lg" style="--chart-pad-left: <?= (int)$padL ?>px; --chart-pad-right: <?= (int)$padR ?>px;">
+                        <span class="legend-scale-eff">🟢 Effizienz-Skala (km / % SoC, Links)</span>
+                        <span class="legend-scale-temp">🟠 Außentemperatur-Skala (°C, Rechts)</span>
                     </div>
                 </div>
             <?php else: ?>
@@ -528,8 +529,8 @@ $recentLog = $logStmt->fetchAll();
 
         <!-- Telemetrie-Log Tabelle mit Paginierung -->
         <div class="chart-section">
-            <strong style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.8rem;">
-                Telemetrie-Einträge (<?= $totalEntries ?> Einträge im Zeitraum)
+            <strong class="table-label">
+                Telemetrie-Einträge (<?= (int)$totalEntries ?> Einträge im Zeitraum)
             </strong>
             <?php if (!empty($recentLog)): ?>
             <div class="table-responsive">
@@ -549,34 +550,33 @@ $recentLog = $logStmt->fetchAll();
                             $sc = socColor((int)$row['soc_percent']);
                         ?>
                         <tr>
-                            <td data-label="Zeitpunkt" style="color:var(--text-muted)">
+                            <td data-label="Zeitpunkt" class="u-muted">
 							     <?= formatToLocalTime($row['car_captured_at']) ?> Uhr
 							</td>
-                            <td> data-label="SoC"
-                                <span class="badge" style="background:<?= $sc ?>22; color:<?= $sc ?>">
-                                    <?= $row['soc_percent'] ?> %
+                            <td data-label="SoC">
+                                <span class="badge status-pill" style="--pill-color: <?= $sc ?>;">
+                                    <?= (int)$row['soc_percent'] ?> %
                                 </span>
                             </td>
                             <td data-label="Reichweite">
-                                <div style="display: flex; align-items: center; gap: 5px;">
+                                <div class="inline-edit-cell">
                                     <input type="number" 
                                            class="inline-range-input" 
-                                           data-vin="<?= htmlspecialchars($state['vin']) ?>" 
-                                           data-captured="<?= htmlspecialchars($row['car_captured_at']) ?>" 
+                                           data-vin="<?= htmlspecialchars($state['vin'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                                           data-captured="<?= htmlspecialchars($row['car_captured_at'], ENT_QUOTES, 'UTF-8') ?>" 
                                            value="<?= $row['range_km'] > 0 ? (int)$row['range_km'] : '' ?>" 
-                                           placeholder="—" 
-                                           style="width: 65px; padding: 2px 6px; font-size: 0.85rem; background: var(--bg-surface-hover); border: 1px solid transparent; color: var(--text-main); border-radius: 4px; text-align: right;">
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">km</span>
+                                           placeholder="—">
+                                    <span class="input-unit">km</span>
                                 </div>
                             </td>
                             <td data-label="Kilometerstand"><?= number_format($row['mileage_km'], 0, ',', '.') ?> km</td>
                             <td data-label="Ladeleistung">
                                 <?php if ($row['charge_power_kw'] > 0): ?>
-                                    <span class="badge" style="background:var(--car-green-dim);color:var(--car-green)">
+                                    <span class="badge badge-success">
                                         ⚡ <?= number_format($row['charge_power_kw'], 1, ',', '.') ?> kW
                                     </span>
                                 <?php else: ?>
-                                    <span style="color:var(--text-muted)">–</span>
+                                    <span class="u-muted">–</span>
                                 <?php endif; ?>
                             </td>
                             <td data-label="Außentemp."><?= number_format($row['outdoor_temp_c'], 1, ',', '.') ?> °C</td>
@@ -593,7 +593,7 @@ $recentLog = $logStmt->fetchAll();
                         <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page - 1 ?>" class="btn btn-outline btn-sm">◀ Zurück</a>
                     <?php endif; ?>
 
-                    <span style="font-size:0.85rem; color:var(--text-muted); margin: 0 8px;">
+                    <span class="pagination-gap">
                         Seite <?= $page ?> von <?= $totalPages ?>
                     </span>
 
@@ -614,6 +614,7 @@ $recentLog = $logStmt->fetchAll();
 </div>
 
 <!-- Inline-Editing Logik für Reichweite -->
+<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/telemetry.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

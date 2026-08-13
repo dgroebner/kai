@@ -1,12 +1,12 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-if (!isset($_SESSION['user_email'])) {
-    header('Location: ' . APP_URL . '/login.php');
-    exit;
-}
-
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
+
+// Auth-Check — immer zuerst
+Auth::requirePage();
 
 $limit = 15;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -15,8 +15,8 @@ $offset = ($page - 1) * $limit;
 try {
     $pdo = Database::getInstance()->getConnection();
     
-    $totalReceipts = $pdo->query("SELECT COUNT(*) FROM kb_receipts")->fetchColumn();
-    $totalPages = ceil($totalReceipts / $limit);
+    $totalReceipts = (int)$pdo->query("SELECT COUNT(*) FROM kb_receipts")->fetchColumn();
+    $totalPages = (int)ceil($totalReceipts / $limit);
 
     $stmt = $pdo->prepare("
         SELECT r.*, COUNT(i.id) as item_count 
@@ -31,7 +31,9 @@ try {
     $stmt->execute();
     $receipts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (\Throwable $e) {
-    die("Datenbankfehler.");
+    (new Logger())->error('kassenbon/index.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    http_response_code(500);
+    exit('Interner Fehler. Bitte versuche es später erneut.');
 }
 ?>
 <!DOCTYPE html>
@@ -65,13 +67,13 @@ try {
                         <?php foreach ($receipts as $receipt): ?>
                             <tr>
                                 <td data-label="Datum"><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
-                                <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store']) ?></td>
+                                <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
                                 <td data-label="Positionen"><?= (int)$receipt['item_count'] ?> Positionen</td>
                                 <td data-label="Gesamtbetrag" class="text-right amount-bold">
 								    <?= number_format((float)$receipt['total'], 2, ',', '.') ?> €
 								</td>
                                 <td data-label="Aktion" class="text-right">
-                                    <a href="detail.php?id=<?= $receipt['id'] ?>" class="btn btn-sm btn-outline">Details &rarr;</a>
+                                    <a href="detail.php?id=<?= (int)$receipt['id'] ?>" class="btn btn-sm btn-outline">Details &rarr;</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

@@ -1,15 +1,11 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-$secretToken = $_ENV['CRON_TOKEN'] ?? null;
-
-if (empty($secretToken) || !isset($_GET['token']) || $_GET['token'] !== $secretToken) {
-    http_response_code(403);
-    die("Zugriff verweigert.\n");
-}
-
 use Kai\Tools\PVCharge\SolarForecastService;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
+
+Auth::requireCronToken('pvcharge/cron_forecast.php');
 
 $logger = new Logger();
 

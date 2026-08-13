@@ -51,32 +51,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const capturedAt = this.dataset.captured;
             const rangeKm = this.value.trim();
 
-            this.style.borderColor = '#f59e0b'; // Gelb: Speichert...
+            // Statusanzeige über Klassen statt Inline-Styles (CSP-konform)
+            this.classList.remove('is-saved', 'is-error');
+            this.classList.add('is-saving');
 
             try {
-                const response = await fetch('update_range.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        vin: vin,
-                        car_captured_at: capturedAt,
-                        range_km: rangeKm === '' ? null : parseInt(rangeKm, 10)
-                    })
+                const result = await KaiHttp.postJson('update_range.php', {
+                    vin: vin,
+                    car_captured_at: capturedAt,
+                    range_km: rangeKm === '' ? null : parseInt(rangeKm, 10)
                 });
 
-                const result = await response.json();
-
                 if (result.success) {
-                    this.style.borderColor = '#10b981'; // Grün: Erfolgreich
-                    setTimeout(() => { 
-                        this.style.borderColor = 'transparent'; 
+                    this.classList.remove('is-saving');
+                    this.classList.add('is-saved');
+                    setTimeout(() => {
+                        this.classList.remove('is-saved');
                     }, 1500);
                 } else {
-                    this.style.borderColor = '#ef4444'; // Rot: Fehler
+                    this.classList.remove('is-saving');
+                    this.classList.add('is-error');
                     alert('Fehler beim Speichern: ' + (result.message || 'Unbekannter Fehler'));
                 }
             } catch (err) {
-                this.style.borderColor = '#ef4444';
+                this.classList.remove('is-saving');
+                this.classList.add('is-error');
                 alert('Netzwerkfehler beim Speichern der Reichweite.');
             }
         });
