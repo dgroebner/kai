@@ -100,71 +100,92 @@ ALTER TABLE `kb_items`
   ADD CONSTRAINT `kb_items_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `kb_receipts` (`id`) ON DELETE CASCADE;
 COMMIT;
 
+-- ==========================================================================
+-- DOMAIN: BANKING & FINANZEN
+-- ==========================================================================
+
 -- 1. Stammdaten für Konten (Giro, Tagesgeld, Kreditkarte, etc.)
-CREATE TABLE IF NOT EXISTS `bank_accounts` (
-  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `account_name` VARCHAR(100) NOT NULL,            -- z.B. "Hausbank Giro", "Visa Card", "Tagesgeld"
-  `bank_name` VARCHAR(100) NOT NULL,               -- z.B. "DVK", "DKB", "Sparkasse"
-  `account_type` ENUM('checking', 'savings', 'credit_card', 'other') NOT NULL DEFAULT 'checking',
-  `iban` VARCHAR(34) NULL,                          -- IBAN (falls vorhanden) zur Auto-Erkennung
-  `currency` VARCHAR(3) NOT NULL DEFAULT 'EUR',
-  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_name VARCHAR(100) NOT NULL,
+    bank_name VARCHAR(100) NOT NULL,
+    account_type ENUM('checking', 'savings', 'credit_card', 'other') NOT NULL DEFAULT 'checking',
+    iban VARCHAR(34) NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'EUR',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 2. Girokonto Transaktionen (CSV-Imports & E-Mail-Import)
+CREATE TABLE IF NOT EXISTS bank_giro_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tx_hash VARCHAR(64) NOT NULL,
+    booking_date DATE NOT NULL,
+    valuta_date DATE NOT NULL,
+    type VARCHAR(100) NULL,
+    merchant_raw TEXT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_tx_hash (tx_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Bankumsätze (Girokonto & Tagesgeld aus CSV-Imports)
-CREATE TABLE IF NOT EXISTS `bank_transactions` (
-  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `account_id` INT UNSIGNED NOT NULL,              -- Verweis auf bank_accounts (Giro / Tagesgeld)
-  `booking_date` DATE NOT NULL,                     -- Buchungstag
-  `valuta_date` DATE NULL,                          -- Wertstellung
-  `amount` DECIMAL(10, 2) NOT NULL,                 -- Betrag (+ / -)
-  `applicant_name` VARCHAR(255) NULL,              -- Empfänger / Empfängerin / Auftraggeber
-  `applicant_iban` VARCHAR(34) NULL,
-  `purpose` TEXT NULL,                             -- Verwendungszweck
-  `source_type` ENUM('csv_import', 'manual') NOT NULL DEFAULT 'csv_import',
-  `hash` VARCHAR(64) NOT NULL,                      -- SHA-256 zur Vermeidung von Import-Duplikaten
-  `matched_receipt_id` INT UNSIGNED NULL,            -- Verknüpfung direkt zu kb_receipts (falls Girocard)
-  `category_id` INT UNSIGNED NULL,                  -- Verweis auf kb_categories
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`account_id`) REFERENCES `bank_accounts` (`id`) ON DELETE CASCADE,
-  UNIQUE KEY `uniq_account_hash` (`account_id`, `hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
--- 3. Kopfdaten der Kreditkarten-Monatsabrechnung (Visa PDF)
-CREATE TABLE IF NOT EXISTS `bank_cc_statements` (
-  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `account_id` INT UNSIGNED NOT NULL,              -- Verweis auf das Kreditkarten-Konto in bank_accounts
-  `statement_date` DATE NOT NULL,                  -- Rechnungsdatum / Abrechnungsmonat (z.B. 2026-05-26)
-  `due_date` DATE NULL,                            -- Geplantes Einzugsdatum auf dem Girokonto (z.B. 2026-06-02)
-  `total_amount` DECIMAL(10, 2) NOT NULL,          -- Gesamtsumme der Abrechnung
-  `pdf_filename` VARCHAR(255) NULL,                -- Gespeichertes PDF im storage/
-  `reference_iban_suffix` VARCHAR(8) NULL,         -- Letchte Ziffern der Referenz-IBAN für Auto-Matching
-  `bank_transaction_id` INT UNSIGNED NULL,         -- Verweis auf die Ausgleichsabbuchung in bank_transactions
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`account_id`) REFERENCES `bank_accounts` (`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`bank_transaction_id`) REFERENCES `bank_transactions` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
--- 4. Einzelpositionen der Kreditkartenabrechnung
-CREATE TABLE IF NOT EXISTS `bank_cc_transactions` (
-  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  `statement_id` INT UNSIGNED NOT NULL,             -- Verweis auf den Abrechnungskopf (bank_cc_statements)
-  `booking_date` DATE NOT NULL,                     -- Kaufdatum
-  `valuta_date` DATE NULL,                          -- Buchungsdatum
-  `card_number_suffix` VARCHAR(8) NULL,              -- Kennzeichnung der Sub-Karte (z.B. "*1234")
-  `merchant_name` VARCHAR(255) NOT NULL,              -- Händler / Verwendungszweck
-  `amount` DECIMAL(10, 2) NOT NULL,                   -- Einzelbetrag
-  `category_id` INT UNSIGNED NULL,                    -- Verweis auf deine bestehenden E-Bon-Kategorien (kb_categories)
-  `matched_receipt_id` INT UNSIGNED NULL,             -- Verknüpfung direkt zu kb_receipts (falls E-Bon vorhanden)
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`statement_id`) REFERENCES `bank_cc_statements` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
+-- 3. Kreditkarten-Kategorien (bestehend für Visa-Abrechnungen)
 CREATE TABLE IF NOT EXISTS bank_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Kopfdaten der Kreditkarten-Monatsabrechnung (Visa PDF)
+CREATE TABLE IF NOT EXISTS bank_cc_statements (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNSIGNED NOT NULL,
+    statement_date DATE NOT NULL,
+    due_date DATE NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    pdf_filename VARCHAR(255) NULL,
+    reference_iban_suffix VARCHAR(8) NULL,
+    bank_transaction_id INT NULL, -- Verweis auf Ausgleichsabbuchung im Girokonto
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (bank_transaction_id) REFERENCES bank_giro_transactions(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Einzelpositionen der Kreditkartenabrechnung
+CREATE TABLE IF NOT EXISTS bank_cc_transactions (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    statement_id INT UNSIGNED NOT NULL,
+    booking_date DATE NOT NULL,
+    valuta_date DATE NULL,
+    card_number_suffix VARCHAR(8) NULL,
+    merchant_name VARCHAR(255) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    category_id INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (statement_id) REFERENCES bank_cc_statements(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Universelle Tags & Zuordnungen (Girokonto)
+CREATE TABLE IF NOT EXISTS bank_tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    color VARCHAR(7) DEFAULT '#3b82f6',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS bank_transaction_tags (
+    transaction_id INT NOT NULL,
+    tag_id INT NOT NULL,
+    PRIMARY KEY (transaction_id, tag_id),
+    FOREIGN KEY (transaction_id) REFERENCES bank_giro_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES bank_tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Regel-Gedächtnis für Girokonto Vorkategorisierung
+CREATE TABLE IF NOT EXISTS bank_tag_rules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    payee_pattern VARCHAR(100) NULL,
+    text_pattern VARCHAR(100) NULL,
+    tag_ids JSON NOT NULL,
+    priority INT DEFAULT 10,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

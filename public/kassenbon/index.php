@@ -5,35 +5,174 @@ use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
-// Auth-Check — immer zuerst
+// 1. Auth-Check — immer zuerst (AGENTS.md)
 Auth::requirePage();
 
-$limit = 15;
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$logger = new Logger();
+
+// ----------------------------------------------------
+// 2. Zeitraum-Berechnung (Woche, Monat, Jahr)
+// ----------------------------------------------------
+$type = $_GET['type'] ?? 'monat';
+if (!in_array($type, ['woche', 'monat', 'jahr'])) {
+    $type = 'monat';
+}
+
+$dateParam = $_GET['date'] ?? date('Y-m-d');
+$dateTime = DateTime::createFromFormat('Y-m-d', $dateParam);
+if (!$dateTime) {
+    $dateTime = new DateTime();
+}
+$refDate = $dateTime->format('Y-m-d');
+
+if ($type === 'woche') {
+    $dayOfWeek = (int)$dateTime->format('N');
+    $startDt = clone $dateTime;
+    if ($dayOfWeek > 1) {
+        $startDt->modify('-' . ($dayOfWeek - 1) . ' days');
+    }
+    $startDate = $startDt->format('Y-m-d');
+    
+    $endDt = clone $startDt;
+    $endDt->modify('+6 days');
+    $endDate = $endDt->format('Y-m-d');
+    
+    $prevDate = (clone $startDt)->modify('-7 days')->format('Y-m-d');
+    $nextDate = (clone $startDt)->modify('+7 days')->format('Y-m-d');
+    
+    $periodLabel = "KW " . $startDt->format('W') . " (" . $startDt->format('d.m.Y') . " - " . $endDt->format('d.m.Y') . ")";
+    $navLabelPrev = "Vorherige Woche";
+    $navLabelNext = "Nächste Woche";
+} elseif ($type === 'jahr') {
+    $startDate = $dateTime->format('Y-01-01');
+    $endDate = $dateTime->format('Y-12-31');
+    
+    $startDt = new DateTime($startDate);
+    $endDt = new DateTime($endDate);
+    
+    $prevDate = (clone $startDt)->modify('-1 year')->format('Y-m-d');
+    $nextDate = (clone $startDt)->modify('+1 year')->format('Y-m-d');
+    
+    $periodLabel = "Jahr " . $startDt->format('Y');
+    $navLabelPrev = "Vorheriges Jahr";
+    $navLabelNext = "Nächstes Jahr";
+} else { // 'monat'
+    $startDate = $dateTime->format('Y-m-01');
+    $endDate = $dateTime->format('Y-m-t');
+    
+    $startDt = new DateTime($startDate);
+    $endDt = new DateTime($endDate);
+    
+    $prevDate = (clone $startDt)->modify('-1 month')->format('Y-m-d');
+    $nextDate = (clone $startDt)->modify('+1 month')->format('Y-m-d');
+    
+    $germanMonths = [
+        1 => 'Januar', 2 => 'Februar', 3 => 'März', 4 => 'April',
+        5 => 'Mai', 6 => 'Juni', 7 => 'Juli', 8 => 'August',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Dezember'
+    ];
+    $periodLabel = $germanMonths[(int)$startDt->format('n')] . " " . $startDt->format('Y');
+    $navLabelPrev = "Vorheriger Monat";
+    $navLabelNext = "Nächster Monat";
+}
+
+// ----------------------------------------------------
+// 3. Paginierung & Filter-Parameter
+// ----------------------------------------------------
+$page = max(1, (int)($_GET['page'] ?? 1));
+$limit = 25;
 $offset = ($page - 1) * $limit;
+$selectedTagId = isset($_GET['tag_id']) ? (int)$_GET['tag_id'] : null;
+
+$transactions = [];
+$availableTags = [];
+$tagStats = [];
+$totalPages = 1;
+$totalTransactions = 0;
 
 try {
     $pdo = Database::getInstance()->getConnection();
-    
-    $totalReceipts = (int)$pdo->query("SELECT COUNT(*) FROM kb_receipts")->fetchColumn();
-    $totalPages = (int)ceil($totalReceipts / $limit);
 
-    $stmt = $pdo->prepare("
-        SELECT r.*, COUNT(i.id) as item_count 
-        FROM kb_receipts r 
-        LEFT JOIN kb_items i ON r.id = i.receipt_id 
-        GROUP BY r.id 
-        ORDER BY r.purchase_date DESC, r.id DESC 
+    // Alle vorhandenen Tags für Popover & Auto-Suggest laden
+    $stmtAllTags = $pdo->query("SELECT id, name, color FROM bank_tags ORDER BY name ASC");
+    $availableTags = $stmtAllTags->fetchAll(PDO::FETCH_ASSOC);
+
+    // Tag-Statistik für den Zeitraum ermitteln (Summen & Häufigkeit)
+    $stmtStats = $pdo->prepare("
+        SELECT 
+            t.id, t.name, t.color,
+            COUNT(DISTINCT bt.id) AS tx_count,
+            SUM(bt.amount) AS total_amount
+        FROM bank_tags t
+        JOIN bank_transaction_tags tt ON t.id = tt.tag_id
+        JOIN bank_giro_transactions bt ON tt.transaction_id = bt.id
+        WHERE bt.booking_date BETWEEN :start AND :end
+        GROUP BY t.id, t.name, t.color
+        ORDER BY tx_count DESC, t.name ASC
+    ");
+    $stmtStats->execute([':start' => $startDate, ':end' => $endDate]);
+    $tagStats = $stmtStats->fetchAll(PDO::FETCH_ASSOC);
+
+    // SQL-Filter vorbereiten
+    $whereClause = "WHERE bt.booking_date BETWEEN :start AND :end";
+    $params = [':start' => $startDate, ':end' => $endDate];
+
+    if ($selectedTagId) {
+        $whereClause .= " AND bt.id IN (SELECT transaction_id FROM bank_transaction_tags WHERE tag_id = :tag_id)";
+        $params[':tag_id'] = $selectedTagId;
+    }
+
+    // Gesamtzahl für Paginierung
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM bank_giro_transactions bt {$whereClause}");
+    $stmtCount->execute($params);
+    $totalTransactions = (int)$stmtCount->fetchColumn();
+    $totalPages = max(1, (int)ceil($totalTransactions / $limit));
+
+    // Umsätze mit zugewiesenen Tags laden
+    $stmtTx = $pdo->prepare("
+        SELECT 
+            bt.*,
+            GROUP_CONCAT(CONCAT(t.id, ':', t.name, ':', t.color) SEPARATOR '||') AS tag_data
+        FROM bank_giro_transactions bt
+        LEFT JOIN bank_transaction_tags tt ON bt.id = tt.transaction_id
+        LEFT JOIN bank_tags t ON tt.tag_id = t.id
+        {$whereClause}
+        GROUP BY bt.id
+        ORDER BY bt.booking_date DESC, bt.id DESC
         LIMIT :limit OFFSET :offset
     ");
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmt->execute();
-    $receipts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($params as $key => $val) {
+        $stmtTx->bindValue($key, $val);
+    }
+    $stmtTx->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmtTx->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmtTx->execute();
+    
+    $rawTxs = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
+
+    // Tags pro Transaktion strukturiert aufbereiten
+    foreach ($rawTxs as $row) {
+        $tags = [];
+        if (!empty($row['tag_data'])) {
+            $tagParts = explode('||', $row['tag_data']);
+            foreach ($tagParts as $part) {
+                list($tId, $tName, $tColor) = explode(':', $part);
+                $tags[] = [
+                    'id'    => (int)$tId,
+                    'name'  => $tName,
+                    'color' => $tColor ?: '#3b82f6'
+                ];
+            }
+        }
+        $row['tags'] = $tags;
+        $transactions[] = $row;
+    }
+
 } catch (\Throwable $e) {
-    (new Logger())->error('kassenbon/index.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    $logger->error("bank/index.php: Fehler beim Laden der Umsätze.", ['error' => $e->getMessage()]);
     http_response_code(500);
-    exit('Interner Fehler. Bitte versuche es später erneut.');
+    exit("Interner Fehler. Bitte versuche es später erneut.");
 }
 ?>
 <!DOCTYPE html>
@@ -41,58 +180,141 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meine eBons - Kai</title>
+    <title>Girokonto Umsätze – Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
-    <div class="container">
-        <header class="page-header">
-            <h1>🛒 Meine eBons</h1>
-            <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
-        </header>
+<div class="container" id="giro-container" data-tags='<?= htmlspecialchars(json_encode($availableTags, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>'>
 
-        <section class="card">
-            <div class="table-responsive">
-                <table class="receipts-table stack-table">
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Händler</th>
-                            <th>Positionen</th>
-                            <th class="text-right">Gesamtbetrag</th>
-                            <th class="text-right">Aktion</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($receipts as $receipt): ?>
-                            <tr>
-                                <td data-label="Datum"><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
-                                <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td data-label="Positionen"><?= (int)$receipt['item_count'] ?> Positionen</td>
-                                <td data-label="Gesamtbetrag" class="text-right amount-bold">
-								    <?= number_format((float)$receipt['total'], 2, ',', '.') ?> €
-								</td>
-                                <td data-label="Aktion" class="text-right">
-                                    <a href="detail.php?id=<?= (int)$receipt['id'] ?>" class="btn btn-sm btn-outline">Details &rarr;</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <header class="page-header">
+        <h1>🏦 Girokonto Umsätze</h1>
+        <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+    </header>
+
+    <!-- Tab-Switcher (Girokonto / Kreditkarte) -->
+    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
+        <a href="index.php" class="btn">🏦 Girokonto</a>
+        <a href="creditcard.php" class="btn btn-outline">💳 Kreditkarte</a>
+    </div>
+
+    <!-- Schnelleinstellungen (Typ) -->
+    <div class="period-switcher">
+        <a href="?type=woche&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'woche' ? '' : 'btn-outline' ?>">Woche</a>
+        <a href="?type=monat&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'monat' ? '' : 'btn-outline' ?>">Monat</a>
+        <a href="?type=jahr&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $type === 'jahr' ? '' : 'btn-outline' ?>">Jahr</a>
+    </div>
+
+    <!-- Zeitraum Navigation -->
+    <div class="period-navigation">
+        <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($prevDate) ?>" class="btn btn-outline">◀ <?= htmlspecialchars($navLabelPrev) ?></a>
+        <div class="current-period-label">
+            <?= htmlspecialchars($periodLabel) ?>
+            <span class="period-range-sub">
+                Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDate)) ?> bis <?= date('d.m.Y', strtotime($endDate)) ?>
+            </span>
+        </div>
+        <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
+    </div>
+
+    <!-- Tag-Statistikleiste (Kategorienübersicht im Zeitraum) -->
+    <?php if (!empty($tagStats)): ?>
+        <section class="card" style="margin-bottom: 1.5rem;">
+            <strong class="table-label-strong" style="display:block; margin-bottom: 0.75rem;">Aktive Tags im Zeitraum:</strong>
+            <div class="tag-pill-group">
+                <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="badge <?= !$selectedTagId ? 'badge-primary' : 'badge-outline' ?>">
+                    Alle anzeigen (<?= $totalTransactions ?>)
+                </a>
+                <?php foreach ($tagStats as $stat): ?>
+                    <?php 
+                        $isActive = $selectedTagId === (int)$stat['id']; 
+                        $amt = (float)$stat['total_amount'];
+                        $formattedAmt = number_format(abs($amt), 2, ',', '.') . ' €';
+                    ?>
+                    <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
+                       class="badge" 
+                       style="background-color: <?= $isActive ? $stat['color'] : 'transparent' ?>; color: <?= $isActive ? '#fff' : $stat['color'] ?>; border: 1px solid <?= $stat['color'] ?>;">
+                       <?= htmlspecialchars($stat['name']) ?> (<?= $stat['tx_count'] ?> | <?= $amt < 0 ? '-' : '+' ?><?= $formattedAmt ?>)
+                    </a>
+                <?php endforeach; ?>
             </div>
+        </section>
+    <?php endif; ?>
 
-            <?php if ($totalPages > 1): ?>
-                <div class="pagination">
-                    <?php if ($page > 1): ?>
-                        <a href="?page=<?= $page - 1 ?>" class="btn btn-outline">&laquo; Vorherige</a>
-                    <?php endif; ?>
-                    <span class="page-info">Seite <?= $page ?> von <?= $totalPages ?></span>
-                    <?php if ($page < $totalPages): ?>
-                        <a href="?page=<?= $page + 1 ?>" class="btn btn-outline">Nächste &raquo;</a>
-                    <?php endif; ?>
+    <!-- Transaktions-Tabelle -->
+    <main>
+        <section class="card">
+            <?php if (empty($transactions)): ?>
+                <p class="text-center text-muted" style="padding: 2rem 0;">Keine Umsätze für diesen Zeitraum vorhanden.</p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="stack-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 110px;">Datum</th>
+                                <th>Buchungstext</th>
+                                <th>Tags</th>
+                                <th class="text-right" style="width: 130px;">Betrag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($transactions as $tx): ?>
+                                <tr data-tx-id="<?= $tx['id'] ?>">
+                                    <td data-label="Datum">
+                                        <?= date('d.m.Y', strtotime($tx['booking_date'])) ?>
+                                    </td>
+                                    <td data-label="Text">
+                                        <strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <span class="text-muted" style="font-size: 0.85rem;">
+                                            <?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    </td>
+                                    <td data-label="Tags">
+                                        <div class="tag-pill-group js-tag-group" data-tx-id="<?= $tx['id'] ?>">
+                                            <?php foreach ($tx['tags'] as $tag): ?>
+                                                <span class="badge tag-badge clickable-tag" 
+                                                      data-tag-id="<?= $tag['id'] ?>"
+                                                      style="background-color: <?= htmlspecialchars($tag['color']) ?>; color: #fff;">
+                                                    <?= htmlspecialchars($tag['name']) ?>
+                                                    <span class="remove-tag-btn" data-tx-id="<?= $tx['id'] ?>" data-tag-id="<?= $tag['id'] ?>">&times;</span>
+                                                </span>
+                                            <?php endforeach; ?>
+                                            <button type="button" class="btn-add-tag js-open-tag-popover" data-tx-id="<?= $tx['id'] ?>" title="Tag hinzufügen">+</button>
+                                        </div>
+                                    </td>
+                                    <td data-label="Betrag" class="text-right amount-bold <?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
+                                        <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
+
+                <!-- Paginierung -->
+                <?php if ($totalPages > 1): ?>
+                    <div class="pagination" style="margin-top: 1.5rem;">
+                        <?php if ($page > 1): ?>
+                            <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page - 1 ?><?= $selectedTagId ? '&tag_id='.$selectedTagId : '' ?>" class="btn btn-outline">&laquo; Vorherige</a>
+                        <?php else: ?>
+                            <span class="btn btn-outline disabled">&laquo; Vorherige</span>
+                        <?php endif; ?>
+
+                        <span class="page-info">Seite <?= $page ?> von <?= $totalPages ?></span>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page + 1 ?><?= $selectedTagId ? '&tag_id='.$selectedTagId : '' ?>" class="btn btn-outline">Nächste &raquo;</a>
+                        <?php else: ?>
+                            <span class="btn btn-outline disabled">Nächste &raquo;</span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </section>
-    </div>
+    </main>
+
+</div>
+
+<script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

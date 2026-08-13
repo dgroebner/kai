@@ -1164,3 +1164,27 @@ tr.is-today-row {
         margin-right: 1rem;
     }
 }
+
+.tag-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-right: 0.4rem;
+}
+
+.remove-tag-btn {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.remove-tag-btn:hover {
+    opacity: 1;
+}
+
+.tag-option-item:hover {
+    background: var(--bg-surface-hover, rgba(255,255,255,0.05));
+}
