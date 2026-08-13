@@ -31,19 +31,24 @@ class AiTagClassifier
             return [];
         }
 
-        $prompt = [
-            'role' => 'user',
-            'parts' => [
-                [
-                    'text' => $this->buildPromptText($unmatchedTransactions, $availableTags)
-                ]
-            ]
-        ];
+        $promptText = $this->buildPromptText($unmatchedTransactions, $availableTags);
 
         try {
-            // Gemini API Aufruf
-            $response = $this->geminiClient->generateContent([$prompt]);
-            return $this->parseResponse($response, $unmatchedTransactions);
+            // Nutzt den GeminiClient deines Projekts (generateJson liefert direkt strukturiertes JSON/Array zurück)
+            $parsed = $this->geminiClient->generateJson($promptText);
+            
+            if (!is_array($parsed)) {
+                return [];
+            }
+
+            $resultMap = [];
+            foreach ($parsed as $item) {
+                if (isset($item['id'], $item['tags']) && is_array($item['tags'])) {
+                    $resultMap[(int)$item['id']] = $item['tags'];
+                }
+            }
+
+            return $resultMap;
         } catch (Exception $e) {
             $this->logger->error('AiTagClassifier: Fehler bei Gemini-Klassifizierung: ' . $e->getMessage());
             return [];
@@ -72,26 +77,5 @@ Regeln:
 Transaktionen:
 {$txJson}
 TEXT;
-    }
-
-    private function parseResponse(string $responseRaw, array $originalTxs): array
-    {
-        // JSON aus der Antwort extrahieren (falls Markdown-Codeblocks enthalten sind)
-        $cleanJson = preg_replace('/^```json\s*|\s*```$/i', '', trim($responseRaw));
-        $parsed = json_decode($cleanJson, true);
-
-        if (!is_array($parsed)) {
-            $this->logger->warning('AiTagClassifier: Konnte KI-Antwort nicht als JSON parsen.', ['raw' => $responseRaw]);
-            return [];
-        }
-
-        $resultMap = [];
-        foreach ($parsed as $item) {
-            if (isset($item['id'], $item['tags']) && is_array($item['tags'])) {
-                $resultMap[(int)$item['id']] = $item['tags'];
-            }
-        }
-
-        return $resultMap;
     }
 }
