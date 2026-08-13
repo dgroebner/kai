@@ -138,15 +138,24 @@ class MailDispatcher
 
     private function isCreditCardStatement(string $content, string $filename): bool
     {
-        $lowerFilename = strtolower($filename);
-        if (str_contains($lowerFilename, 'kreditkarte') || str_contains($lowerFilename, 'kartenabrechnung')) {
-            return true;
+        // Schlüsselwörter aus der Umgebungsvariable (kommasepariert) laden
+        $keywords = array_filter(array_map(
+            static fn(string $keyword): string => strtolower(trim($keyword)),
+            explode(',', (string)($_ENV['MAIL_BANK_KEYWORDS'] ?? ''))
+        ));
+
+        if (empty($keywords)) {
+            return false;
         }
 
+        $lowerFilename = strtolower($filename);
         // Erste 2KB der Binärdaten prüfen
-        $headerChunk = substr($content, 0, 2048);
-        if (str_contains($headerChunk, 'ADAC') || str_contains($headerChunk, 'Solaris') || str_contains($headerChunk, 'Kartenabrechnung')) {
-            return true;
+        $headerChunk = strtolower(substr($content, 0, 2048));
+
+        foreach ($keywords as $keyword) {
+            if (str_contains($lowerFilename, $keyword) || str_contains($headerChunk, $keyword)) {
+                return true;
+            }
         }
 
         return false;
