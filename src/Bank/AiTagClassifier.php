@@ -31,13 +31,31 @@ class AiTagClassifier
             return [];
         }
 
-        $systemPrompt = "Du bist ein Finanz-Assistent für automatische Kategorisierung.";
-        $userPrompt   = $this->buildPromptText($unmatchedTransactions, $availableTags);
+        $systemInstruction = "Du bist ein Finanz-Assistent für automatische Kategorisierung von Bank-Umsätzen.";
+        $prompt = $this->buildPromptText($unmatchedTransactions, $availableTags);
 
         try {
-            // Aufruf der echten GeminiClient-Methode prompt($systemPrompt, $userPrompt)
-            $responseRaw = $this->geminiClient->prompt($systemPrompt, $userPrompt);
-            return $this->parseResponse($responseRaw);
+            // Aufruf von generate() mit jsonMode = true
+            // Gibt direkt das decodierte JSON-Array zurück
+            $parsed = $this->geminiClient->generate(
+                prompt: $prompt,
+                jsonMode: true,
+                systemInstruction: $systemInstruction
+            );
+
+            if (!is_array($parsed)) {
+                $this->logger->warning('AiTagClassifier: Gemini lieferte kein gültiges Array zurück.');
+                return [];
+            }
+
+            $resultMap = [];
+            foreach ($parsed as $item) {
+                if (isset($item['id'], $item['tags']) && is_array($item['tags'])) {
+                    $resultMap[(int)$item['id']] = $item['tags'];
+                }
+            }
+
+            return $resultMap;
         } catch (Exception $e) {
             $this->logger->error('AiTagClassifier: Fehler bei Gemini-Klassifizierung: ' . $e->getMessage());
             return [];
@@ -55,9 +73,9 @@ Ordne den folgenden Bank-Transaktionen passende Tags aus der Liste der verfügba
 Verfügbare Tags: [{$tagList}]
 
 Regeln:
-1. Wähle pro Transaktion 1 bis max. 3 passende Tags aus der Liste.
+1. Wähle pro Transaktion 1 bis max. 3 passende Tags aus der Liste der verfügbaren Tags.
 2. Wenn kein Tag passt, gib ein leeres Array für "tags" zurück.
-3. Antworte AUSSCHLIESSLICH als valides JSON-Array im folgenden Format:
+3. Antworte AUSSCHLIESSLICH als JSON-Array im folgenden Format:
 [
   {"id": 12, "tags": ["Energie", "Strom"]},
   {"id": 13, "tags": ["Lebensmittel"]}
@@ -66,26 +84,5 @@ Regeln:
 Transaktionen:
 {$txJson}
 TEXT;
-    }
-
-    private function parseResponse(string $responseRaw): array
-    {
-        // Entfernt evtl. von Gemini gelieferte Markdown-Code-Wrapper ```json ... ```
-        $cleanJson = preg_replace('/^```json\s*|\s*```$/i', '', trim($responseRaw));
-        $parsed = json_decode($cleanJson, true);
-
-        if (!is_array($parsed)) {
-            $this->logger->warning('AiTagClassifier: Konnte KI-Antwort nicht als JSON parsen.', ['raw' => $responseRaw]);
-            return [];
-        }
-
-        $resultMap = [];
-        foreach ($parsed as $item) {
-            if (isset($item['id'], $item['tags']) && is_array($item['tags'])) {
-                $resultMap[(int)$item['id']] = $item['tags'];
-            }
-        }
-
-        return $resultMap;
     }
 }
