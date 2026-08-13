@@ -63,12 +63,12 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // E: Klick innerhalb des Popovers nicht als "Klick außerhalb" werten
+    // E: Klick innerhalb des Popovers -> Nicht schließen
     if (activePopover && activePopover.contains(e.target)) {
         return;
     }
 
-    // F: Klick außerhalb schließt das Popover
+    // F: Klick außerhalb -> Schließen
     if (activePopover) {
         closePopover();
     }
@@ -152,24 +152,31 @@ function openTagPopover(anchorBtn, txId) {
 
 async function addExistingTagToTx(txId, tag) {
     try {
+        closePopover(); // Popover sofort optisch schließen für schnelles Feedback
+        
         const data = await KaiHttp.postJson('api.php', {
             action: 'add_tag_to_tx',
             tx_id: parseInt(txId, 10),
             tag_id: parseInt(tag.id, 10)
         });
 
-        if (data.success) {
-            location.reload(); // Reload aktualisiert auch die Statistik-Leiste oben
+        // Garantierter Reload nach erfolgreichem DB-Write
+        if (data && data.success) {
+            window.location.href = window.location.href; // Unmittelbarer Hart-Reload der aktuellen URL
         } else {
-            console.error('Server meldet Fehler beim Hinzufügen:', data);
+            console.error('API Antwort unvollständig:', data);
+            window.location.reload();
         }
     } catch (err) {
         console.error('Fehler beim Zuweisen:', err);
+        window.location.reload(); // Fallback-Reload, da DB-Eintrag oft trotzdem geklappt hat
     }
 }
 
 async function createNewTagAndAssign(txId, name, color) {
     try {
+        closePopover();
+        
         const data = await KaiHttp.postJson('api.php', {
             action: 'create_and_assign_tag',
             tx_id: parseInt(txId, 10),
@@ -177,11 +184,14 @@ async function createNewTagAndAssign(txId, name, color) {
             color: color
         });
 
-        if (data.success && data.tag) {
-            location.reload(); // Reload aktualisiert auch die Statistik-Leiste oben
+        if (data && data.success) {
+            window.location.href = window.location.href;
+        } else {
+            window.location.reload();
         }
     } catch (err) {
         console.error('Fehler beim Erstellen:', err);
+        window.location.reload();
     }
 }
 
@@ -193,11 +203,14 @@ async function removeTagFromTx(txId, tagId) {
             tag_id: parseInt(tagId, 10)
         });
 
-        if (data.success) {
-            location.reload(); // Reload aktualisiert auch die Statistik-Leiste oben
+        if (data && data.success) {
+            window.location.href = window.location.href;
+        } else {
+            window.location.reload();
         }
     } catch (err) {
         console.error('Fehler beim Entfernen:', err);
+        window.location.reload();
     }
 }
 
