@@ -12,12 +12,6 @@ class BankTransactionRepository
         $this->pdo = Database::getInstance()->getConnection();
     }
 
-    /**
-     * Importiert Transaktionen und ignoriert bereits vorhandene Zeilen (Hash-Match).
-     *
-     * @param array $transactions
-     * @return array Statistik der verarbeiteten Daten
-     */
     public function importTransactions(array $transactions): array
     {
         $stmt = $this->pdo->prepare("
@@ -50,5 +44,67 @@ class BankTransactionRepository
             'imported' => $imported,
             'ignored'  => $ignored
         ];
+    }
+
+    /**
+     * Lädt alle Transaktionen, die noch kein Tag in bank_transaction_tags besitzen.
+     */
+    public function getUntaggedTransactions(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT t.id, t.merchant_raw 
+            FROM bank_giro_transactions t
+            LEFT JOIN bank_transaction_tags tt ON t.id = tt.transaction_id
+            WHERE tt.transaction_id IS NULL
+        ");
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Weist einer Transaktion ein oder mehrere Tag-IDs zu.
+     */
+    public function assignTagsToTransaction(int $transactionId, array $tagIds): void
+    {
+        if (empty($tagIds)) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare("
+            INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) 
+            VALUES (:transaction_id, :tag_id)
+        ");
+
+        foreach ($tagIds as $tagId) {
+            $stmt->execute([
+                ':transaction_id' => $transactionId,
+                ':tag_id'         => (int)$tagId
+            ]);
+        }
+    }
+
+    /**
+     * Gibt alle bekannten Tag-Namen zurück.
+     */
+    public function getAllTagNames(): array
+    {
+        $stmt = $this->pdo->query("SELECT name FROM bank_tags");
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Ermittelt die Tag-IDs zu einer Liste von Tag-Namen.
+     */
+    public function getTagIdsByNames(array $tagNames): array
+    {
+        if (empty($tagNames)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($tagNames), '?'));
+        $stmt = $this->pdo->prepare("SELECT id FROM bank_tags WHERE name IN ($placeholders)");
+        $stmt->execute($tagNames);
+
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 }
