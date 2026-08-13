@@ -248,13 +248,15 @@ function removeBadgeFromUI(txId, tagId) {
 
 /**
  * Aggregiert die sichtbar zugewiesenen Tags der aktuellen Tabelle neu
- * und aktualisiert die Leiste oben dynamisch.
+ * und aktualisiert den Verteilungsbalken + die Kacheln oben im DOM.
  */
 function updateTagStatsBar() {
-    const bar = document.getElementById('active-tags-bar');
-    if (!bar) return;
+    const grid = document.getElementById('active-tags-grid');
+    const distBar = document.querySelector('.tag-distribution-bar');
+    if (!grid) return;
 
     const statsMap = {};
+    let totalAssignments = 0;
 
     // 1. Tabelle durchgehen und Summen / Counts pro Tag neu aufbauen
     const rows = document.querySelectorAll('tr[data-tx-id]');
@@ -279,36 +281,62 @@ function updateTagStatsBar() {
 
             statsMap[tagId].count += 1;
             statsMap[tagId].total += amount;
+            totalAssignments += 1;
         });
     });
 
-    // 2. Den "Alle anzeigen"-Button im Header behalten
-    const allBtn = bar.querySelector('.badge-primary, .badge-outline');
-    bar.innerHTML = '';
-    if (allBtn) {
-        bar.appendChild(allBtn);
-    }
-
-    // 3. Nach Anzahl absteigend sortieren
     const sortedStats = Object.values(statsMap).sort((a, b) => b.count - a.count);
 
-    // 4. Tags in der Leiste neu rendern
+    // 2. Verteilungsbalken oben aktualisieren
+    if (distBar) {
+        distBar.innerHTML = '';
+        sortedStats.forEach(stat => {
+            const pct = totalAssignments > 0 ? (stat.count / totalAssignments) * 100 : 0;
+            const seg = document.createElement('div');
+            seg.className = 'tag-bar-segment';
+            seg.style.width = `${pct.toFixed(2)}%`;
+            seg.style.backgroundColor = stat.color;
+            seg.title = `${stat.name}: ${pct.toFixed(1)}% (${stat.count} Buchungen)`;
+            distBar.appendChild(seg);
+        });
+    }
+
+    // 3. Kacheln neu aufbauen
+    grid.innerHTML = '';
     const currentUrlParams = new URLSearchParams(window.location.search);
     const type = currentUrlParams.get('type') || 'monat';
     const date = currentUrlParams.get('date') || '';
+    const totalTxCount = rows.length;
 
     sortedStats.forEach(stat => {
         const sign = stat.total < 0 ? '-' : '+';
         const formattedAmt = Math.abs(stat.total).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+        const fillPct = totalTxCount > 0 ? Math.min(100, (stat.count / totalTxCount) * 100) : 0;
+        const isDanger = stat.total < 0;
 
-        const a = document.createElement('a');
-        a.href = `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}&tag_id=${stat.id}`;
-        a.className = 'badge';
-        a.dataset.statTagId = stat.id;
-        a.style.cssText = `background-color: transparent; color: ${stat.color}; border: 1px solid ${stat.color};`;
-        a.textContent = `${stat.name} (${stat.count} | ${sign}${formattedAmt})`;
+        const card = document.createElement('a');
+        card.href = `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}&tag_id=${stat.id}`;
+        card.className = 'tag-stat-card';
+        card.dataset.statTagId = stat.id;
+        card.style.setProperty('--tag-color', stat.color);
 
-        bar.appendChild(a);
+        card.innerHTML = `
+            <div class="tag-stat-bg-bar" style="width: ${fillPct.toFixed(1)}%;"></div>
+            <div class="tag-stat-content">
+                <div class="tag-stat-header">
+                    <span class="tag-color-dot" style="background-color: ${stat.color};"></span>
+                    <span class="tag-stat-name">${escapeHtml(stat.name)}</span>
+                </div>
+                <div class="tag-stat-metrics">
+                    <span class="tag-stat-count">${stat.count}×</span>
+                    <span class="tag-stat-amount ${isDanger ? 'text-danger' : 'text-success'}">
+                        ${sign}${formattedAmt}
+                    </span>
+                </div>
+            </div>
+        `;
+
+        grid.appendChild(card);
     });
 }
 

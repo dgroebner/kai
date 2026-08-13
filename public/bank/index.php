@@ -216,29 +216,66 @@ try {
         <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
     </div>
 
-    <!-- Tag-Statistikleiste (Kategorienübersicht im Zeitraum) -->
+    <!-- Visuelle Tag-Übersicht & Verteilung -->
     <?php if (!empty($tagStats)): ?>
         <section class="card" style="margin-bottom: 1.5rem;">
-			<strong class="table-label-strong" style="display:block; margin-bottom: 0.75rem;">Aktive Tags im Zeitraum:</strong>
-			<div id="active-tags-bar" class="tag-pill-group">
-				<a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="badge <?= !$selectedTagId ? 'badge-primary' : 'badge-outline' ?>">
-					Alle anzeigen (<?= $totalTransactions ?>)
-				</a>
-				<?php foreach ($tagStats as $stat): ?>
-					<?php 
-						$isActive = $selectedTagId === (int)$stat['id']; 
-						$amt = (float)$stat['total_amount'];
-						$formattedAmt = number_format(abs($amt), 2, ',', '.') . ' €';
-					?>
-					<a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
-					   class="badge" 
-					   data-stat-tag-id="<?= $stat['id'] ?>"
-					   style="background-color: <?= $isActive ? $stat['color'] : 'transparent' ?>; color: <?= $isActive ? '#fff' : $stat['color'] ?>; border: 1px solid <?= $stat['color'] ?>;">
-					   <?= htmlspecialchars($stat['name']) ?> (<?= $stat['tx_count'] ?> | <?= $amt < 0 ? '-' : '+' ?><?= $formattedAmt ?>)
-					</a>
-				<?php endforeach; ?>
-			</div>
-		</section>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <strong class="table-label-strong" style="margin-bottom: 0;">📊 Tag-Verteilung & Umsätze:</strong>
+                <?php if ($selectedTagId): ?>
+                    <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn btn-outline" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">
+                        ✖ Filter aufheben
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <!-- 1. Durchgehender Verteilungsbalken (Multi-Tag Prozentanzeige) -->
+            <?php 
+                $totalTagAssignments = array_sum(array_column($tagStats, 'tx_count'));
+            ?>
+            <div class="tag-distribution-bar" style="display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--bg-surface-hover); margin-bottom: 1rem;">
+                <?php foreach ($tagStats as $stat): 
+                    $pct = $totalTagAssignments > 0 ? ($stat['tx_count'] / $totalTagAssignments) * 100 : 0;
+                ?>
+                    <div class="tag-bar-segment" 
+                         style="width: <?= number_format($pct, 2, '.', '') ?>%; background-color: <?= $stat['color'] ?>;" 
+                         title="<?= htmlspecialchars($stat['name']) ?>: <?= number_format($pct, 1, ',', '.') ?>% (<?= $stat['tx_count'] ?> Buchungen)">
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- 2. Gliederung als Kacheln / Fortschrittsleisten -->
+            <div id="active-tags-grid" class="tag-stats-grid">
+                <?php foreach ($tagStats as $stat): ?>
+                    <?php 
+                        $isActive = $selectedTagId === (int)$stat['id']; 
+                        $amt = (float)$stat['total_amount'];
+                        $formattedAmt = number_format(abs($amt), 2, ',', '.') . ' €';
+                        $fillPct = $totalTransactions > 0 ? min(100, ($stat['tx_count'] / $totalTransactions) * 100) : 0;
+                    ?>
+                    <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
+                       class="tag-stat-card <?= $isActive ? 'active' : '' ?>" 
+                       data-stat-tag-id="<?= $stat['id'] ?>"
+                       style="--tag-color: <?= $stat['color'] ?>;">
+                       
+                       <!-- Hintergrund-Aktivitätsbalken -->
+                       <div class="tag-stat-bg-bar" style="width: <?= number_format($fillPct, 1, '.', '') ?>%;"></div>
+
+                       <div class="tag-stat-content">
+                           <div class="tag-stat-header">
+                               <span class="tag-color-dot" style="background-color: <?= $stat['color'] ?>;"></span>
+                               <span class="tag-stat-name"><?= htmlspecialchars($stat['name']) ?></span>
+                           </div>
+                           <div class="tag-stat-metrics">
+                               <span class="tag-stat-count"><?= $stat['tx_count'] ?>×</span>
+                               <span class="tag-stat-amount <?= $amt < 0 ? 'text-danger' : 'text-success' ?>">
+                                   <?= $amt < 0 ? '-' : '+' ?><?= $formattedAmt ?>
+                               </span>
+                           </div>
+                       </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </section>
     <?php endif; ?>
 
     <!-- Transaktions-Tabelle -->
