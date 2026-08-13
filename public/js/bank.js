@@ -152,8 +152,11 @@ async function addExistingTagToTx(txId, tag) {
         });
 
         if (data.success) {
+            // ERST das Badge im DOM platzieren, DANN das Popover schließen
             appendBadgeToUI(txId, tag);
             closePopover();
+        } else {
+            console.error('Server meldet Fehler beim Hinzufügen:', data);
         }
     } catch (err) {
         console.error('Fehler beim Zuweisen:', err);
@@ -183,21 +186,33 @@ function appendBadgeToUI(txId, tag) {
     const group = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
     if (!group) return;
 
-    if (group.querySelector(`[data-tag-id="${tag.id}"]`)) return;
+    // Prüfen, ob das Tag (z.B. per ID oder Name) nicht schon vorhanden ist
+    const existingBadge = group.querySelector(`[data-tag-id="${tag.id}"]`);
+    if (existingBadge) return;
 
     const openBtn = group.querySelector('.js-open-tag-popover');
     
+    // Neues Badge im festen Outline-Design bauen
     const badge = document.createElement('span');
     badge.className = 'badge tag-badge clickable-tag';
     badge.dataset.tagId = tag.id;
-    badge.style.color = tag.color;
-    badge.style.borderColor = tag.color;
+    
+    // Farbwerte für Outline setzen (Text & Rahmen)
+    const tagColor = tag.color || '#3b82f6';
+    badge.style.color = tagColor;
+    badge.style.borderColor = tagColor;
+    badge.style.backgroundColor = 'transparent';
+
     badge.innerHTML = `
         ${escapeHtml(tag.name)}
         <span class="remove-tag-btn" data-tx-id="${txId}" data-tag-id="${tag.id}">&times;</span>
     `;
 
-    group.insertBefore(badge, openBtn);
+    if (openBtn) {
+        group.insertBefore(badge, openBtn);
+    } else {
+        group.appendChild(badge);
+    }
 }
 
 async function removeTagFromTx(txId, tagId) {
