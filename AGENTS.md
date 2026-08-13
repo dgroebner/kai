@@ -30,6 +30,8 @@ kai_root/
 │   ├── login.php
 │   ├── css/
 │   ├── js/
+│   ├── shared/      ← Domainübergreifende Endpunkte (z. B. Cron-Trigger mail.php)
+│   ├── bank/        ← Öffentliche Einstiegspunkte der Domain "Bank"
 │   ├── car/         ← Öffentliche Einstiegspunkte der Domain "Car"
 │   ├── kassenbon/   ← Öffentliche Einstiegspunkte der Domain "Kassenbon"
 │   └── pvcharge/    ← Öffentliche Einstiegspunkte der Domain "PVCharge"
@@ -40,12 +42,14 @@ kai_root/
 │   │   ├── Db/      ← Database (PDO Singleton)
 │   │   ├── Log/     ← Logger
 │   │   └── Mail/    ← IMAP-Zugriff
+│   ├── Bank/        ← Business-Logik der Domain "Bank" (inkl. Parser/)
 │   ├── Car/         ← Business-Logik der Domain "Car"
 │   ├── Kassenbon/   ← Business-Logik der Domain "Kassenbon"
 │   └── PVCharge/    ← Business-Logik der Domain "PVCharge"
 │
 ├── database/
 │   └── schema.sql   ← Datenbankschema (versioniert, kein Migrations-Tool)
+├── concepts/        ← Konzept- und Planungsdokumente (Markdown); nicht deployed
 ├── storage/         ← Laufzeitdaten (Logs); nicht im Repo, nicht deployed
 ├── bootstrap.php    ← Globaler Einstiegspunkt: .env laden, Session starten
 ├── composer.json
@@ -305,7 +309,7 @@ Push auf `main` via SFTP auf den Produktiv-Webserver.
 
 ### Was deployed wird
 
-- Alle Dateien aus dem Repository **außer**: `.git/`, `.github/`, `.env`, `.ftpignore`, `storage/`
+- Alle Dateien aus dem Repository **außer**: `.git/`, `.github/`, `.env`, `.ftpignore`, `storage/`, `concepts/`
 - `vendor/` wird im CI neu gebaut (`composer install --no-dev`) und mitdeployed
 
 ### Was **nicht** deployed werden darf
@@ -314,6 +318,7 @@ Push auf `main` via SFTP auf den Produktiv-Webserver.
 |---|---|
 | `.env` | Enthält Produktiv-Secrets |
 | `storage/` | Enthält Laufzeit-Logs (serverseitig persistent) |
+| `concepts/` | Reine Konzept-/Planungsdokumente, für den Betrieb irrelevant |
 | `vendor/` aus dem Repo | Wird im CI frisch gebaut |
 
 ### Credentials für die Pipeline

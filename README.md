@@ -8,6 +8,7 @@
 2. **📈 Bon-Auswertung:** Dashboard zur grafischen Visualisierung und Analyse der erfassten Einkäufe nach Zeiträumen und Kategorien.
 3. **☀️ PV-Solarprognose:** Ertragsprognose der Photovoltaikanlage für die kommenden Tage basierend auf GPS-Daten und forecast.solar API.
 4. **🚐 VW ID.Buzz Telemetrie:** Live-Fahrzeugstatus (Ladestand, Reichweite, Temperaturen) und Verlaufshistorie mittels API-Schnittstelle.
+5. **💳 Bank (Kreditkarte):** Einlesen und Auswertung von Visa-Kreditkartenabrechnungen (PDF-Parsing) inklusive Umsatzübersicht je Abrechnungszeitraum.
 
 ---
 
@@ -17,24 +18,38 @@ Das Projekt folgt einer strikten Trennung zwischen öffentlich erreichbarem Code
 
 ```
 kai_root/
-├── public/          ← Document Root des Webservers (einziges öffentlich erreichbares Verzeichnis)
-│   ├── .htaccess    ← Erzwingt HTTPS und setzt Security-Header (CSP, HSTS)
-│   ├── index.php    ← Haupt-Dashboard
-│   ├── login.php    ← Google OAuth Login-Controller
-│   ├── car/         ← Controller & API für das VW ID.Buzz Modul
-│   ├── kassenbon/   ← Controller & Cron-Trigger für Kassenbons
-│   └── pvcharge/    ← Controller & Cron-Trigger für die Solarprognose
+├── public/                  ← Document Root des Webservers (einziges öffentlich erreichbares Verzeichnis)
+│   ├── .htaccess            ← Erzwingt HTTPS und setzt Security-Header (CSP, HSTS)
+│   ├── index.php            ← Haupt-Dashboard
+│   ├── login.php            ← Google OAuth Login-Controller
+│   ├── css/                 ← Zentrales Styleschema (style.css)
+│   ├── js/                  ← Frontend-Logik je Modul (Event Delegation, keine Secrets)
+│   ├── shared/              ← Domainübergreifende Endpunkte (z. B. mail.php als Cron-Trigger)
+│   ├── bank/                ← Controller für die Kreditkartenabrechnungen
+│   ├── car/                 ← Controller für das VW ID.Buzz Modul
+│   │   └── telemetry/       ← JSON-Endpunkt zur Entgegennahme der Fahrzeug-Telemetrie
+│   ├── kassenbon/           ← Controller & API für Kassenbons
+│   └── pvcharge/            ← Controller & Cron-Trigger für die Solarprognose
 │
-├── src/             ← Core-Servercode (nicht öffentlich erreichbar, PSR-4 autoloaded)
-│   ├── Shared/      ← Domainübergreifende Komponenten (Datenbank, AI-Client, Logger, Mail)
-│   ├── Car/         ← Business-Logik & Repositories für das ID.Buzz Modul
-│   ├── Kassenbon/   ← Business-Logik & ScannerTask für Kassenbons
-│   └── PVCharge/    ← Business-Logik für die Solarprognose
+├── src/                     ← Core-Servercode (nicht öffentlich erreichbar, PSR-4: Kai\Tools\)
+│   ├── Shared/              ← Domainübergreifende Komponenten
+│   │   ├── AI/              ← GeminiClient
+│   │   ├── Db/              ← Database (PDO-Singleton)
+│   │   ├── Log/             ← Logger
+│   │   └── Mail/            ← ImapClient, MailDispatcher
+│   ├── Bank/                ← Business-Logik der Kreditkartenabrechnungen
+│   │   └── Parser/          ← VisaPdfParser
+│   ├── Car/                 ← Repositories für das ID.Buzz Modul
+│   ├── Kassenbon/           ← Business-Logik & ScannerTask für Kassenbons
+│   └── PVCharge/            ← Business-Logik für die Solarprognose
 │
 ├── database/
-│   └── schema.sql   ← Versioniertes Datenbankschema (MariaDB/MySQL)
-├── storage/         ← Lokale Logs (vom Deployment ausgeschlossen)
-└── bootstrap.php    ← Zentraler Einstiegspunkt (.env laden, Session starten)
+│   └── schema.sql           ← Versioniertes Datenbankschema (MariaDB/MySQL)
+├── concepts/                ← Konzept- und Planungsdokumente (vom Deployment ausgeschlossen)
+├── storage/                 ← Lokale Logs (vom Deployment ausgeschlossen)
+├── bootstrap.php            ← Zentraler Einstiegspunkt (.env laden, Session starten, APP_VERSION)
+├── composer.json
+└── .env.example             ← Vorlage für die lokale .env-Datei
 ```
 
 > [!IMPORTANT]
@@ -117,4 +132,4 @@ Das Deployment erfolgt automatisiert über GitHub Actions (`.github/workflows/de
 1. Der Workflow baut das Projekt, installiert Abhängigkeiten mit `composer install --no-dev`.
 2. Die Dateien werden inkrementell per SFTP übertragen.
 3. Sensible Daten wie FTP-Verbindungsdaten sind als **GitHub Secrets** hinterlegt.
-4. Dateien wie `.env`, `.git/` und `storage/` werden explizit vom Upload ausgeschlossen.
+4. Dateien und Verzeichnisse wie `.env`, `.git/`, `.github/`, `storage/` und `concepts/` werden explizit vom Upload ausgeschlossen.
