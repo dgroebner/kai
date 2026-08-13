@@ -314,7 +314,7 @@ try {
 
 </div>
 
-<script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

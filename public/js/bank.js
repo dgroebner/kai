@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 2. Ein einziger globaler Klick-Dispatcher (Event Delegation)
+// 2. Globaler Klick-Dispatcher
 document.addEventListener('click', (e) => {
     // A: Tag entfernen
     const removeBtn = e.target.closest('.remove-tag-btn');
@@ -63,12 +63,12 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // E: Klick innerhalb des Popovers -> Nicht schließen
+    // E: Klick innerhalb des Popovers
     if (activePopover && activePopover.contains(e.target)) {
         return;
     }
 
-    // F: Klick außerhalb -> Schließen
+    // F: Klick außerhalb schließt Popover
     if (activePopover) {
         closePopover();
     }
@@ -150,9 +150,13 @@ function openTagPopover(anchorBtn, txId) {
     });
 }
 
+// ----------------------------------------------------
+// AJAX-Aktionen ohne Reload
+// ----------------------------------------------------
+
 async function addExistingTagToTx(txId, tag) {
     try {
-        closePopover(); // Popover sofort optisch schließen für schnelles Feedback
+        closePopover();
         
         const data = await KaiHttp.postJson('api.php', {
             action: 'add_tag_to_tx',
@@ -160,16 +164,11 @@ async function addExistingTagToTx(txId, tag) {
             tag_id: parseInt(tag.id, 10)
         });
 
-        // Garantierter Reload nach erfolgreichem DB-Write
         if (data && data.success) {
-            window.location.href = window.location.href; // Unmittelbarer Hart-Reload der aktuellen URL
-        } else {
-            console.error('API Antwort unvollständig:', data);
-            window.location.reload();
+            appendBadgeToUI(txId, tag);
         }
     } catch (err) {
         console.error('Fehler beim Zuweisen:', err);
-        window.location.reload(); // Fallback-Reload, da DB-Eintrag oft trotzdem geklappt hat
     }
 }
 
@@ -184,14 +183,12 @@ async function createNewTagAndAssign(txId, name, color) {
             color: color
         });
 
-        if (data && data.success) {
-            window.location.href = window.location.href;
-        } else {
-            window.location.reload();
+        if (data && data.success && data.tag) {
+            window.AVAILABLE_TAGS.push(data.tag);
+            appendBadgeToUI(txId, data.tag);
         }
     } catch (err) {
         console.error('Fehler beim Erstellen:', err);
-        window.location.reload();
     }
 }
 
@@ -204,13 +201,53 @@ async function removeTagFromTx(txId, tagId) {
         });
 
         if (data && data.success) {
-            window.location.href = window.location.href;
-        } else {
-            window.location.reload();
+            removeBadgeFromUI(txId, tagId);
         }
     } catch (err) {
         console.error('Fehler beim Entfernen:', err);
-        window.location.reload();
+    }
+}
+
+// ----------------------------------------------------
+// Dynamische UI-Updates (Rein lokal im DOM)
+// ----------------------------------------------------
+
+function appendBadgeToUI(txId, tag) {
+    const group = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
+    if (!group) return;
+
+    if (group.querySelector(`[data-tag-id="${tag.id}"]`)) return;
+
+    const openBtn = group.querySelector('.js-open-tag-popover');
+    
+    const badge = document.createElement('span');
+    badge.className = 'badge tag-badge clickable-tag';
+    badge.dataset.tagId = tag.id;
+    
+    const tagColor = tag.color || '#3b82f6';
+    badge.style.color = tagColor;
+    badge.style.borderColor = tagColor;
+    badge.style.backgroundColor = 'transparent';
+
+    badge.innerHTML = `
+        ${escapeHtml(tag.name)}
+        <span class="remove-tag-btn" data-tx-id="${txId}" data-tag-id="${tag.id}">&times;</span>
+    `;
+
+    if (openBtn) {
+        group.insertBefore(badge, openBtn);
+    } else {
+        group.appendChild(badge);
+    }
+}
+
+function removeBadgeFromUI(txId, tagId) {
+    const group = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
+    if (group) {
+        const badge = group.querySelector(`[data-tag-id="${tagId}"]`);
+        if (badge) {
+            badge.remove();
+        }
     }
 }
 
