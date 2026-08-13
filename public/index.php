@@ -40,8 +40,8 @@ Auth::requirePage();
                 </div>
 				
 				<div class="card">
-					<h3>💳 Kreditkarten</h3>
-					<p>Monatsabrechnungen, Einzelumsätze und Auswertungen der Visa-Karten.</p>
+					<h3>🏦 Finanzen</h3>
+					<p>Girokonto-Umsätze, Kreditkartenabrechnungen und Tag-Auswertungen im Überblick.</p>
 					<a href="bank/index.php" class="btn">Öffnen</a>
 				</div>
 

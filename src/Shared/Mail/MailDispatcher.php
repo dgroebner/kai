@@ -3,6 +3,8 @@
 namespace Kai\Tools\Shared\Mail;
 
 use Kai\Tools\Bank\CreditCardService;
+use Kai\Tools\Bank\Parser\BankCsvParser;
+use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
 use Kai\Tools\Shared\Log\Logger;
@@ -12,6 +14,8 @@ class MailDispatcher
 {
     private ImapClient $imapClient;
     private CreditCardService $creditCardService;
+    private BankCsvParser $bankCsvParser;
+    private BankTransactionRepository $bankRepo;
     private ReceiptAnalyzer $receiptAnalyzer;
     private ReceiptRepository $receiptRepository;
     private Logger $logger;
@@ -19,11 +23,14 @@ class MailDispatcher
     public function __construct(
         ImapClient $imapClient,
         CreditCardService $creditCardService,
+        BankGiroService $bankGiroService,
         ReceiptAnalyzer $receiptAnalyzer,
         ReceiptRepository $receiptRepository
     ) {
         $this->imapClient = $imapClient;
         $this->creditCardService = $creditCardService;
+        $this->bankCsvParser = $bankCsvParser;
+        $this->bankRepo = $bankRepo;
         $this->receiptAnalyzer = $receiptAnalyzer;
         $this->receiptRepository = $receiptRepository;
         $this->logger = new Logger(14);
@@ -63,20 +70,15 @@ class MailDispatcher
                 }
 
                 // 1. KREDITKARTEN-PDF (Bank-Modul)
-				if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
+                if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
                     $this->logger->info("MailDispatcher: Kreditkartenabrechnung erkannt ({$fileName}).");
                     
-                    // Temp-Datei für den Parser anlegen
                     $tmpFilePath = sys_get_temp_dir() . '/' . uniqid('visa_') . '.pdf';
                     file_put_contents($tmpFilePath, $content);
 
                     try {
-                        // Importiert die Abrechnung und gibt die statement_id zurück
                         $statementId = $this->creditCardService->importStatementPdf($tmpFilePath, $fileName);
-                        
-                        // Wendet deine manuell gelernten Kategorien auf die neuen Buchungen an
                         $this->creditCardService->applyHistoricalCategories($statementId);
-
                         $this->logger->info("MailDispatcher: Kreditkartenabrechnung erfolgreich importiert und Historie angewendet.");
                     } catch (Exception $e) {
                         $this->logger->error("MailDispatcher: Fehler bei Kreditkarten-Import: " . $e->getMessage());
@@ -88,11 +90,26 @@ class MailDispatcher
                     continue;
                 }
 
-                // 2. CSV-DATEIEN (Späteres Bank-Modul)
+                // 2. CSV-GIROKONTO UMSÄTZE (Neues Bank-Modul)
                 if ($extension === 'csv' || str_contains($mimeType, 'csv')) {
-                    $this->logger->info("MailDispatcher: CSV-Bankdatei erkannt ({$fileName}).");
-                    continue;
-                }
+					$this->logger->info("MailDispatcher: CSV-Bankdatei erkannt ({$fileName}).");
+
+					$tmpFilePath = sys_get_temp_dir() . '/' . uniqid('giro_') . '.csv';
+					file_put_contents($tmpFilePath, $content);
+
+					try {
+						// Ein einziger Aufruf kümmert sich um Parsing, Deduplizierung, Regel-Matching & KI
+						$stats = $this->bankGiroService->importCsv($tmpFilePath);
+						$this->logger->info("MailDispatcher: Giro-Import erfolgreich ({$stats['imported']} neu, {$stats['ignored']} Dubletten, {$stats['tagged']} getaggt).");
+					} catch (Exception $e) {
+						$this->logger->error("MailDispatcher: Fehler beim Giro-Import: " . $e->getMessage());
+					} finally {
+						if (file_exists($tmpFilePath)) {
+							@unlink($tmpFilePath);
+						}
+					}
+					continue;
+				}
 
                 // 3. E-BONS & BELEGE (Kassenbon-Modul)
                 if (str_contains($mimeType, 'pdf') || str_contains($mimeType, 'image')) {
@@ -138,7 +155,6 @@ class MailDispatcher
 
     private function isCreditCardStatement(string $content, string $filename): bool
     {
-        // Schlüsselwörter aus der Umgebungsvariable (kommasepariert) laden
         $keywords = array_filter(array_map(
             static fn(string $keyword): string => strtolower(trim($keyword)),
             explode(',', (string)($_ENV['MAIL_BANK_KEYWORDS'] ?? ''))
@@ -149,7 +165,6 @@ class MailDispatcher
         }
 
         $lowerFilename = strtolower($filename);
-        // Erste 2KB der Binärdaten prüfen
         $headerChunk = strtolower(substr($content, 0, 2048));
 
         foreach ($keywords as $keyword) {

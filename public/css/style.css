@@ -1064,3 +1064,103 @@ tr.is-today-row {
 .inline-range-input.is-saving { border-color: var(--color-orange); }
 .inline-range-input.is-saved { border-color: var(--color-green); }
 .inline-range-input.is-error { border-color: var(--color-red); }
+
+/* ==========================================================================
+   BANKING TAGS & MOBILE STACKING TABLE
+   ========================================================================== */
+
+.tag-pill-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.btn-add-tag {
+    background: transparent;
+    border: 1px dashed var(--accent, #3b82f6);
+    color: var(--accent, #3b82f6);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-add-tag:hover {
+    background: var(--accent, #3b82f6);
+    color: #fff;
+}
+
+/* Popover für Tag-Selection & Inline-Creation */
+.tag-popover {
+    position: absolute;
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    width: 240px;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+.tag-search-input {
+    width: 100%;
+    background: var(--bg-main);
+    border: 1px solid var(--bg-surface-hover);
+    color: var(--text-main);
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Mobile Stacking Table (< 650px) */
+@media (max-width: 650px) {
+    .stack-table, 
+    .stack-table thead, 
+    .stack-table tbody, 
+    .stack-table tr, 
+    .stack-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .stack-table thead {
+        display: none;
+    }
+
+    .stack-table tbody tr {
+        background: var(--bg-surface);
+        border: 1px solid var(--bg-surface-hover);
+        border-radius: var(--border-radius);
+        padding: 0.85rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .stack-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.25rem 0 !important;
+        border: none !important;
+        font-size: 0.9rem;
+    }
+
+    .stack-table td[data-label]::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 600;
+        margin-right: 1rem;
+    }
+}
