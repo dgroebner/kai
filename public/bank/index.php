@@ -269,17 +269,17 @@ try {
                                         </span>
                                     </td>
                                     <td data-label="Tags">
-                                        <div class="tag-pill-group js-tag-group" data-tx-id="<?= $tx['id'] ?>">
-                                            <?php foreach ($tx['tags'] as $tag): ?>
-                                                <span class="badge tag-badge clickable-tag" 
-                                                      data-tag-id="<?= $tag['id'] ?>"
-                                                      style="background-color: <?= htmlspecialchars($tag['color']) ?>; color: #fff;">
-                                                    <?= htmlspecialchars($tag['name']) ?>
-                                                    <span class="remove-tag-btn" data-tx-id="<?= $tx['id'] ?>" data-tag-id="<?= $tag['id'] ?>">&times;</span>
-                                                </span>
-                                            <?php endforeach; ?>
-                                            <button type="button" class="btn-add-tag js-open-tag-popover" data-tx-id="<?= $tx['id'] ?>" title="Tag hinzufügen">+</button>
-                                        </div>
+										<div class="tag-pill-group js-tag-group" data-tx-id="<?= $tx['id'] ?>">
+											<?php foreach ($tx['tags'] as $tag): ?>
+												<span class="badge tag-badge clickable-tag" 
+													  data-tag-id="<?= $tag['id'] ?>"
+													  style="color: <?= htmlspecialchars($tag['color']) ?>; border-color: <?= htmlspecialchars($tag['color']) ?>;">
+													<?= htmlspecialchars($tag['name']) ?>
+													<span class="remove-tag-btn" data-tx-id="<?= $tx['id'] ?>" data-tag-id="<?= $tag['id'] ?>">&times;</span>
+												</span>
+											<?php endforeach; ?>
+											<button type="button" class="btn-add-tag js-open-tag-popover" data-tx-id="<?= $tx['id'] ?>" title="Tag hinzufügen">+</button>
+										</div>
                                     </td>
                                     <td data-label="Betrag" class="text-right amount-bold <?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
                                         <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €

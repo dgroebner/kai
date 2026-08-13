@@ -190,8 +190,8 @@ function appendBadgeToUI(txId, tag) {
     const badge = document.createElement('span');
     badge.className = 'badge tag-badge clickable-tag';
     badge.dataset.tagId = tag.id;
-    badge.style.backgroundColor = tag.color;
-    badge.style.color = '#fff';
+    badge.style.color = tag.color;
+    badge.style.borderColor = tag.color;
     badge.innerHTML = `
         ${escapeHtml(tag.name)}
         <span class="remove-tag-btn" data-tx-id="${txId}" data-tag-id="${tag.id}">&times;</span>
