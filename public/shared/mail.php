@@ -6,20 +6,17 @@ use Kai\Tools\Shared\Security\Auth;
 Auth::requireCronToken('shared/mail.php');
 
 // -------------------------------------------------------------------------
-// ASYNCHRONE ENT KOPPLUNG: HTTP-Verbindung sofort schließen
+// ASYNCHRONE ENTKOPPLUNG: HTTP-Verbindung sofort schließen
 // -------------------------------------------------------------------------
-ignore_user_abort(true); // Verhindert, dass das Skript abbricht, wenn der Aufrufer auflegt
-set_time_limit(300);     // Reichende Ausführungszeit für Mail/Gemini-Verarbeitung gewähren
+ignore_user_abort(true);
+set_time_limit(300);
 
-// Antwort für den Aufrufer vorbereiten
 $responseMessage = "OK - MailDispatcher im Hintergrund gestartet.";
 
 if (function_exists('fastcgi_finish_request')) {
-    // Perfekt für PHP-FPM / FastCGI Setup
     echo $responseMessage;
-    fastcgi_finish_request(); // Schließt die HTTP-Verbindung sofort!
+    fastcgi_finish_request();
 } else {
-    // Fallback für klassischen Apache / Puffer-Modus
     ob_start();
     echo $responseMessage;
     header('Connection: close');
@@ -39,7 +36,12 @@ use Kai\Tools\Shared\Mail\ImapClient;
 use Kai\Tools\Shared\Mail\MailDispatcher;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
+use Kai\Tools\Bank\Parser\BankCsvParser;
 use Kai\Tools\Bank\CreditCardService;
+use Kai\Tools\Bank\BankTransactionRepository;
+use Kai\Tools\Bank\CategoryMatcher;
+use Kai\Tools\Bank\AiTagClassifier;
+use Kai\Tools\Bank\BankGiroService;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
 
@@ -52,18 +54,32 @@ try {
     $geminiClient = new GeminiClient();
     $imapClient = new ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
 
-    // Bank-Services
+    // 1. Credit Card Services
     $visaParser = new VisaPdfParser($geminiClient);
     $creditCardService = new CreditCardService($db, $visaParser);
 
-    // Kassenbon-Services
+    // 2. Giro Bank Services (NEU)
+    $bankCsvParser = new BankCsvParser();
+    $bankRepo = new BankTransactionRepository();
+    $categoryMatcher = new CategoryMatcher();
+    $aiClassifier = new AiTagClassifier($geminiClient);
+
+    $bankGiroService = new BankGiroService(
+        $bankCsvParser,
+        $bankRepo,
+        $categoryMatcher,
+        $aiClassifier
+    );
+
+    // 3. Kassenbon-Services
     $receiptAnalyzer = new ReceiptAnalyzer();
     $receiptRepository = new ReceiptRepository();
 
-    // Dispatcher ausführen
+    // 4. Dispatcher mit korrekten Argumenten ausführen
     $dispatcher = new MailDispatcher(
         $imapClient,
         $creditCardService,
+        $bankGiroService, // <-- KORREKTES 3. ARGUMENT
         $receiptAnalyzer,
         $receiptRepository
     );
