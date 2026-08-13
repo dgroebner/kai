@@ -21,6 +21,7 @@ document.addEventListener('click', (e) => {
     // A: Tag entfernen
     const removeBtn = e.target.closest('.remove-tag-btn');
     if (removeBtn) {
+        e.preventDefault();
         e.stopPropagation();
         removeTagFromTx(removeBtn.dataset.txId, removeBtn.dataset.tagId);
         return;
@@ -29,6 +30,7 @@ document.addEventListener('click', (e) => {
     // B: Popover öffnen
     const openBtn = e.target.closest('.js-open-tag-popover');
     if (openBtn) {
+        e.preventDefault();
         e.stopPropagation();
         openTagPopover(openBtn, openBtn.dataset.txId);
         return;
@@ -37,6 +39,7 @@ document.addEventListener('click', (e) => {
     // C: Klick auf existierendes Tag im Popover
     const tagOption = e.target.closest('.js-tag-option');
     if (tagOption) {
+        e.preventDefault();
         e.stopPropagation();
         const txId = tagOption.dataset.txId;
         const tagId = tagOption.dataset.tagId;
@@ -50,6 +53,7 @@ document.addEventListener('click', (e) => {
     // D: Klick auf "Neu anlegen" im Popover
     const createOption = e.target.closest('.js-tag-create');
     if (createOption && activePopover) {
+        e.preventDefault();
         e.stopPropagation();
         const txId = createOption.dataset.txId;
         const name = createOption.dataset.tagName;
@@ -59,8 +63,13 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // E: Klick außerhalb schließt das Popover
-    if (activePopover && !activePopover.contains(e.target)) {
+    // E: Klick innerhalb des Popovers nicht als "Klick außerhalb" werten
+    if (activePopover && activePopover.contains(e.target)) {
+        return;
+    }
+
+    // F: Klick außerhalb schließt das Popover
+    if (activePopover) {
         closePopover();
     }
 });
@@ -98,7 +107,6 @@ function openTagPopover(anchorBtn, txId) {
 
     searchInput.focus();
 
-    // Reines Rendering ohne Event-Binding!
     const renderOptions = (query) => {
         tagListEl.innerHTML = '';
         const lowerQuery = query.toLowerCase();
@@ -137,7 +145,6 @@ function openTagPopover(anchorBtn, txId) {
 
     renderOptions('');
 
-    // Nur der Tastatur-Input aktualisiert das Markup
     searchInput.addEventListener('input', (e) => {
         renderOptions(e.target.value.trim());
     });
@@ -152,9 +159,7 @@ async function addExistingTagToTx(txId, tag) {
         });
 
         if (data.success) {
-            // ERST das Badge im DOM platzieren, DANN das Popover schließen
-            appendBadgeToUI(txId, tag);
-            closePopover();
+            location.reload(); // Reload aktualisiert auch die Statistik-Leiste oben
         } else {
             console.error('Server meldet Fehler beim Hinzufügen:', data);
         }
@@ -173,45 +178,10 @@ async function createNewTagAndAssign(txId, name, color) {
         });
 
         if (data.success && data.tag) {
-            window.AVAILABLE_TAGS.push(data.tag);
-            appendBadgeToUI(txId, data.tag);
-            closePopover();
+            location.reload(); // Reload aktualisiert auch die Statistik-Leiste oben
         }
     } catch (err) {
         console.error('Fehler beim Erstellen:', err);
-    }
-}
-
-function appendBadgeToUI(txId, tag) {
-    const group = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
-    if (!group) return;
-
-    // Prüfen, ob das Tag (z.B. per ID oder Name) nicht schon vorhanden ist
-    const existingBadge = group.querySelector(`[data-tag-id="${tag.id}"]`);
-    if (existingBadge) return;
-
-    const openBtn = group.querySelector('.js-open-tag-popover');
-    
-    // Neues Badge im festen Outline-Design bauen
-    const badge = document.createElement('span');
-    badge.className = 'badge tag-badge clickable-tag';
-    badge.dataset.tagId = tag.id;
-    
-    // Farbwerte für Outline setzen (Text & Rahmen)
-    const tagColor = tag.color || '#3b82f6';
-    badge.style.color = tagColor;
-    badge.style.borderColor = tagColor;
-    badge.style.backgroundColor = 'transparent';
-
-    badge.innerHTML = `
-        ${escapeHtml(tag.name)}
-        <span class="remove-tag-btn" data-tx-id="${txId}" data-tag-id="${tag.id}">&times;</span>
-    `;
-
-    if (openBtn) {
-        group.insertBefore(badge, openBtn);
-    } else {
-        group.appendChild(badge);
     }
 }
 
@@ -224,11 +194,7 @@ async function removeTagFromTx(txId, tagId) {
         });
 
         if (data.success) {
-            const group = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
-            if (group) {
-                const badge = group.querySelector(`[data-tag-id="${tagId}"]`);
-                if (badge) badge.remove();
-            }
+            location.reload(); // Reload aktualisiert auch die Statistik-Leiste oben
         }
     } catch (err) {
         console.error('Fehler beim Entfernen:', err);
