@@ -42,6 +42,15 @@ document.addEventListener('click', (e) => {
         }
         return;
     }
+	
+	// Klick auf Kreditkarten-Kategorie-Badge (Inline Category Editor)
+    const ccCategoryBadge = e.target.closest('.category-badge.clickable-badge');
+    if (ccCategoryBadge) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCcCategoryDropdown(ccCategoryBadge);
+        return;
+    }
 
     // B: Klick auf Tag-Kachel in der Statistik (Filter schalten)
     const filterCard = e.target.closest('.js-filter-tag-card');
@@ -918,4 +927,74 @@ function initCreditCardDetail(appEl) {
             }
         });
     }
+}
+
+function openCcCategoryDropdown(badgeEl) {
+    const cell = badgeEl.closest('.category-cell');
+    if (!cell || cell.querySelector('.category-select-custom')) return; // Bereits im Edit-Modus
+
+    const txId = badgeEl.dataset.txId;
+    const currentText = badgeEl.querySelector('.badge-text')?.textContent.trim() || '';
+
+    // Kategorien aus dem data-Attribut des Haupt-Containers lesen
+    const ccApp = document.getElementById('bankDetailApp');
+    const availableCategories = ccApp && ccApp.dataset.categories ? JSON.parse(ccApp.dataset.categories) : [];
+
+    // Select-Element aufbauen
+    const select = document.createElement('select');
+    select.className = 'category-select-custom';
+
+    availableCategories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        if (cat.name.toLowerCase() === currentText.toLowerCase()) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+
+    // Badge ausblenden, Select anzeigen
+    badgeEl.style.display = 'none';
+    cell.appendChild(select);
+    select.focus();
+
+    const saveChange = async () => {
+        const newCatId = select.value;
+        const selectedOptionText = select.options[select.selectedIndex].text;
+
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'update_cc_transaction_category',
+                tx_id: parseInt(txId, 10),
+                category_id: parseInt(newCatId, 10)
+            });
+
+            if (data && data.success) {
+                // UI ohne Reload aktualisieren
+                badgeEl.querySelector('.badge-text').textContent = selectedOptionText;
+                const row = badgeEl.closest('tr');
+                if (row) {
+                    row.dataset.categoryName = selectedOptionText;
+                    row.dataset.categoryId = newCatId;
+                }
+                
+                // Chart & Farbschema neu berechnen
+                if (ccApp) {
+                    initCreditCardDetail(ccApp);
+                }
+            }
+        } catch (err) {
+            console.error('Fehler beim Aktualisieren der Kategorie:', err);
+        } finally {
+            select.remove();
+            badgeEl.style.display = 'inline-flex';
+        }
+    };
+
+    select.addEventListener('change', saveChange);
+    select.addEventListener('blur', () => {
+        select.remove();
+        badgeEl.style.display = 'inline-flex';
+    });
 }

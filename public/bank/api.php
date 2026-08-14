@@ -225,20 +225,16 @@ try {
         exit;
     }
 
-    // 3. Regel löschen
-    if ($action === 'delete_rule') {
-        $ruleId = filter_var($data['rule_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($action === 'update_cc_transaction_category') {
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+        $categoryId = filter_var($data['category_id'] ?? null, FILTER_VALIDATE_INT);
 
-        if (!$ruleId) {
-            Auth::sendJsonError(400, 'Ungültige Rule-ID');
+        if (!$txId || !$categoryId) {
+            Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        $pdo->beginTransaction();
-
-        $stmt = $pdo->prepare("DELETE FROM bank_tag_rules WHERE id = :id");
-        $stmt->execute([':id' => $ruleId]);
-
-        $pdo->commit();
+        $stmt = $pdo->prepare("UPDATE bank_cc_transactions SET category_id = :cat_id WHERE id = :tx_id");
+        $stmt->execute([':cat_id' => $categoryId, ':tx_id' => $txId]);
 
         echo json_encode(['success' => true]);
         exit;
