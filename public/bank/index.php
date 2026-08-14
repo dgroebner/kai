@@ -111,7 +111,7 @@ try {
         JOIN bank_transaction_tags tt ON t.id = tt.tag_id
         JOIN bank_giro_transactions bt ON tt.transaction_id = bt.id
         WHERE bt.booking_date BETWEEN :start AND :end
-		  AND NOT t.id = 17  // ignoriere Umbuchungen
+		  AND NOT t.id = 17  -- ignoriere Umbuchungen
         GROUP BY t.id, t.name, t.color
         ORDER BY tx_count DESC, t.name ASC
     ");
