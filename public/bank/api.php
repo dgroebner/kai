@@ -1,11 +1,10 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../src/Bank/RuleMatcher.php';
 
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
-use Kai\Bank\RuleMatcher;
+use Kai\Tools\Bank\RuleMatcher;
 
 header('Content-Type: application/json; charset=utf-8');
 

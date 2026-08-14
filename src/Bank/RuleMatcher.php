@@ -1,6 +1,6 @@
 <?php
 
-namespace Kai\Bank;
+namespace Kai\Tools\Bank;
 
 use PDO;
 use Kai\Tools\Shared\Log\Logger;
