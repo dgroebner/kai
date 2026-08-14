@@ -3,8 +3,10 @@
 namespace Kai\Tools\Bank;
 
 use Kai\Tools\Bank\Parser\BankCsvParser;
+use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Db\Database;
 use Exception;
 
 class BankGiroService
@@ -59,7 +61,7 @@ class BankGiroService
 		$taggedCount = 0;
 
 		// 4. Phase 1: Lokales Regel-Gedächtnis per Regex anwenden
-		$ruleMatcher = new \Kai\Bank\RuleMatcher(\Kai\Tools\Shared\Db\Database::getInstance()->getConnection());
+		$ruleMatcher = new RuleMatcher(Database::getInstance()->getConnection());
 		$taggedCount = $ruleMatcher->applyAllRulesToUntagged();
 
 		// Verbleibende ungetaggte Umsätze für KI laden
