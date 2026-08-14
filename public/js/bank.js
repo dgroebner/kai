@@ -29,6 +29,19 @@ document.addEventListener('click', (e) => {
         openRuleBuilderModal(ruleBtn);
         return;
     }
+	
+	// Klick auf Tag-Badge in der Tabelle (zum Bearbeiten von Name & Farbe)
+    const tagBadge = e.target.closest('.tag-badge.clickable-tag');
+    if (tagBadge && !e.target.classList.contains('remove-tag-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const tagId = tagBadge.dataset.tagId;
+        const tag = (window.AVAILABLE_TAGS || []).find(t => t.id == tagId);
+        if (tag) {
+            openEditTagModal(tag);
+        }
+        return;
+    }
 
     // B: Klick auf Tag-Kachel in der Statistik (Filter schalten)
     const filterCard = e.target.closest('.js-filter-tag-card');
@@ -703,4 +716,85 @@ function updateTagStatsBar() {
 
 function escapeHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function openEditTagModal(tag) {
+    // Vorherige Modals/Popups schließen
+    closePopover();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'rule-modal-overlay';
+
+    overlay.innerHTML = `
+        <div class="rule-modal-card" style="max-width: 380px;">
+            <div class="rule-modal-header">
+                <h3>🏷️ Tag bearbeiten</h3>
+                <button type="button" class="rule-modal-close js-close-edit-tag">&times;</button>
+            </div>
+            
+            <div class="rule-modal-body" style="gap: 1rem;">
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Name des Tags:</label>
+                    <input type="text" class="tag-search-input js-edit-tag-name" value="${escapeHtml(tag.name)}" style="font-weight: 600;">
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Farbe:</label>
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <input type="color" class="js-edit-tag-color" value="${tag.color || '#3b82f6'}" style="border: none; width: 42px; height: 42px; cursor: pointer; background: transparent; padding: 0;">
+                        <span class="js-color-hex-label" style="font-family: monospace; font-size: 0.9rem; color: var(--text-muted);">${tag.color || '#3b82f6'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rule-modal-footer">
+                <button type="button" class="btn btn-outline js-close-edit-tag">Abbrechen</button>
+                <button type="button" class="btn js-save-edit-tag">Speichern</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const nameInput = overlay.querySelector('.js-edit-tag-name');
+    const colorInput = overlay.querySelector('.js-edit-tag-color');
+    const colorHexLabel = overlay.querySelector('.js-color-hex-label');
+
+    colorInput.addEventListener('input', (e) => {
+        colorHexLabel.textContent = e.target.value;
+    });
+
+    const closeModal = () => overlay.remove();
+
+    overlay.querySelectorAll('.js-close-edit-tag').forEach(b => b.addEventListener('click', closeModal));
+
+    overlay.querySelector('.js-save-edit-tag').addEventListener('click', async () => {
+        const newName = nameInput.value.trim();
+        const newColor = colorInput.value;
+
+        if (!newName) {
+            alert('Bitte einen Namen eingeben.');
+            return;
+        }
+
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'update_tag',
+                tag_id: parseInt(tag.id, 10),
+                name: newName,
+                color: newColor
+            });
+
+            if (data && data.success) {
+                // Lokales Tag im Speicher aktualisieren
+                tag.name = newName;
+                tag.color = newColor;
+
+                closeModal();
+                window.location.reload(); // Neuladen, damit Tabelle & Statistik-Kacheln direkt aktualisiert werden
+            }
+        } catch (err) {
+            console.error('Fehler beim Aktualisieren des Tags:', err);
+        }
+    });
 }

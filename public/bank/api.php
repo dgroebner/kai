@@ -38,6 +38,23 @@ try {
         echo json_encode(['success' => true]);
         exit;
     }
+	
+	// Tag bearbeiten (Name & Farbe ändern)
+    if ($action === 'update_tag') {
+        $tagId = filter_var($data['tag_id'] ?? null, FILTER_VALIDATE_INT);
+        $name = trim((string)($data['name'] ?? ''));
+        $color = trim((string)($data['color'] ?? '#3b82f6'));
+
+        if (!$tagId || $name === '' || mb_strlen($name) > 50) {
+            Auth::sendJsonError(400, 'Ungültige Parameter');
+        }
+
+        $stmt = $pdo->prepare("UPDATE bank_tags SET name = :name, color = :color WHERE id = :id");
+        $stmt->execute([':name' => $name, ':color' => $color, ':id' => $tagId]);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
 
     if ($action === 'remove_tag_from_tx') {
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
