@@ -798,3 +798,124 @@ function openEditTagModal(tag) {
         }
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Girokonto Tags laden
+    const giroContainer = document.getElementById('giro-container');
+    if (giroContainer && giroContainer.dataset.tags) {
+        try {
+            window.AVAILABLE_TAGS = JSON.parse(giroContainer.dataset.tags);
+        } catch (e) {
+            console.error('Fehler beim Parsen der Tags:', e);
+            window.AVAILABLE_TAGS = [];
+        }
+    } else {
+        window.AVAILABLE_TAGS = [];
+    }
+
+    // 2. Kreditkarten-Detailseite (Donut Chart & Legende rendern)
+    const ccApp = document.getElementById('bankDetailApp');
+    if (ccApp) {
+        initCreditCardDetail(ccApp);
+    }
+});
+
+/**
+ * Initialisiert Donut-Chart, Legende und Kategorie-Farben für die Kreditkarten-Detailansicht
+ */
+function initCreditCardDetail(appEl) {
+    const rawTxs = appEl.dataset.transactions ? JSON.parse(appEl.dataset.transactions) : [];
+    const totalAmount = parseFloat(appEl.dataset.total || '0');
+
+    if (!rawTxs.length) return;
+
+    // Farbpalette für Kreditkarten-Kategorien
+    const colorPalette = [
+        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
+        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#64748b'
+    ];
+
+    // Umsätze nach Kategorien aggregieren
+    const catMap = {};
+    rawTxs.forEach(tx => {
+        const catName = tx.category_name || 'Sonstiges';
+        const amt = Math.abs(parseFloat(tx.amount || '0'));
+        if (!catMap[catName]) {
+            catMap[catName] = { name: catName, total: 0, count: 0 };
+        }
+        catMap[catName].total += amt;
+        catMap[catName].count += 1;
+    });
+
+    const sortedCats = Object.values(catMap).sort((a, b) => b.total - a.total);
+
+    // Farben zuweisen
+    sortedCats.forEach((cat, idx) => {
+        cat.color = colorPalette[idx % colorPalette.length];
+    });
+
+    // A: Kategorie-Badges in der Tabelle einfärben
+    document.querySelectorAll('#transactionsTable tbody tr').forEach(row => {
+        const catName = row.dataset.categoryName || 'Sonstiges';
+        const match = sortedCats.find(c => c.name === catName);
+        if (match) {
+            const badge = row.querySelector('.category-badge');
+            if (badge) {
+                badge.style.borderColor = match.color;
+                badge.style.color = match.color;
+                badge.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+            }
+        }
+    });
+
+    // B: Klickbare Legende rendern
+    const legendEl = document.getElementById('categoryLegend');
+    if (legendEl) {
+        legendEl.innerHTML = '';
+        sortedCats.forEach(cat => {
+            const pct = totalAmount > 0 ? ((cat.total / totalAmount) * 100).toFixed(1) : 0;
+            const formattedAmt = cat.total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+            const row = document.createElement('div');
+            row.className = 'legend-row';
+            row.innerHTML = `
+                <span class="legend-dot" style="background-color: ${cat.color};"></span>
+                <span class="legend-label">${escapeHtml(cat.name)}</span>
+                <span class="legend-percent">${pct}%</span>
+                <span class="legend-value">${formattedAmt}</span>
+            `;
+            legendEl.appendChild(row);
+        });
+    }
+
+    // C: ChartJS Donut-Chart zeichnen (falls Chart.js geladen ist)
+    const canvas = document.getElementById('categoryChart');
+    if (canvas && typeof Chart !== 'undefined') {
+        new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: sortedCats.map(c => c.name),
+                datasets: [{
+                    data: sortedCats.map(c => c.total),
+                    backgroundColor: sortedCats.map(c => c.color),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ` ${ctx.label}: ${ctx.raw.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
