@@ -184,7 +184,7 @@ try {
         FROM bank_giro_transactions
         WHERE booking_date BETWEEN :start AND :end
     ");
-    $stmtPeriodTotals::execute([':start' => $startDate, ':end' => $endDate]);
+    $stmtPeriodTotals->execute([':start' => $startDate, ':end' => $endDate]);
     $periodTotals = $stmtPeriodTotals->fetch(PDO::FETCH_ASSOC);
 
     $realTotalExpenses = abs((float)($periodTotals['total_expenses'] ?? 0));
