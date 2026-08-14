@@ -385,7 +385,8 @@ try {
                             <tr>
                                 <th style="width: 110px;">Datum</th>
                                 <th>Buchungstext</th>
-                                <th>Tags & Regel</th>
+								<th>Regel</th>
+                                <th>Tags</th>
                                 <th class="text-right" style="width: 130px;">Betrag</th>
                             </tr>
                         </thead>
@@ -401,29 +402,30 @@ try {
                                             <?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
                                     </td>
+									<td data-label="Tags">
+										<!-- Regel-Indikator (Zauberstab / Blitz) -->
+										<?php if (!empty($tx['matched_rule_id'])): ?>
+											<button type="button" 
+													class="btn-rule-indicator active js-open-rule-builder" 
+													data-tx-id="<?= $tx['id'] ?>" 
+													data-rule-id="<?= $tx['matched_rule_id'] ?>"
+													data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
+													data-text-pattern="<?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													title="Regel aktiv: <?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?> (Klicken zum Bearbeiten)">
+												⚡
+											</button>
+										<?php else: ?>
+											<button type="button" 
+													class="btn-rule-indicator js-open-rule-builder" 
+													data-tx-id="<?= $tx['id'] ?>" 
+													data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
+													title="Keine Regel verknüpft (Klicken zum Erstellen)">
+												🪄
+											</button>
+										<?php endif; ?>
+									</td>
                                     <td data-label="Tags">
                                         <div class="tag-pill-group js-tag-group" data-tx-id="<?= $tx['id'] ?>">
-                                            <!-- Regel-Indikator (Zauberstab / Blitz) -->
-                                            <?php if (!empty($tx['matched_rule_id'])): ?>
-                                                <button type="button" 
-                                                        class="btn-rule-indicator active js-open-rule-builder" 
-                                                        data-tx-id="<?= $tx['id'] ?>" 
-                                                        data-rule-id="<?= $tx['matched_rule_id'] ?>"
-                                                        data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
-                                                        data-text-pattern="<?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                                                        title="Regel aktiv: <?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?> (Klicken zum Bearbeiten)">
-                                                    ⚡
-                                                </button>
-                                            <?php else: ?>
-                                                <button type="button" 
-                                                        class="btn-rule-indicator js-open-rule-builder" 
-                                                        data-tx-id="<?= $tx['id'] ?>" 
-                                                        data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
-                                                        title="Keine Regel verknüpft (Klicken zum Erstellen)">
-                                                    🪄
-                                                </button>
-                                            <?php endif; ?>
-
                                             <!-- Tags der Transaktion -->
                                             <?php foreach ($tx['tags'] as $tag): ?>
                                                 <span class="badge tag-badge clickable-tag" 
