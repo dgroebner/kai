@@ -1307,3 +1307,182 @@ tr.is-today-row {
         grid-template-columns: 1fr;
     }
 }
+
+.btn-rule-indicator {
+    background: transparent;
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    padding: 0;
+    margin-right: 0.2rem;
+}
+
+.btn-rule-indicator:hover {
+    opacity: 1;
+    background: var(--bg-surface-hover);
+    transform: scale(1.1);
+}
+
+.btn-rule-indicator.active {
+    opacity: 1;
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+}
+
+/* ==========================================================================
+   VISUAL REGEX BUILDER MODAL (PHASE 3)
+   ========================================================================== */
+
+.rule-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 1rem;
+}
+
+.rule-modal-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 620px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.rule-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--bg-surface-hover);
+}
+
+.rule-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rule-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.rule-modal-close:hover { color: var(--text-main); }
+
+.rule-modal-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Interaktiver Wort-Segmentierer */
+.word-segment-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.6rem;
+    background: var(--bg-main);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    margin-top: 0.3rem;
+}
+
+.word-chip {
+    background: var(--bg-surface-hover);
+    color: var(--text-main);
+    padding: 0.25rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: monospace;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.word-chip:hover, .word-chip.selected {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent);
+}
+
+/* Helper Buttons */
+.helper-btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.btn-helper {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--bg-surface-hover);
+    color: var(--text-main);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-helper:hover {
+    background: var(--bg-surface-hover);
+    border-color: var(--accent);
+}
+
+/* Live Match Pill */
+.live-match-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-orange);
+    border: 1px solid var(--color-orange);
+}
+
+.rule-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--bg-surface-hover);
+    background: rgba(0, 0, 0, 0.1);
+}

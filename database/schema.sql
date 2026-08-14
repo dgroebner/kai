@@ -125,8 +125,10 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     type VARCHAR(100) NULL,
     merchant_raw TEXT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
+    matched_rule_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_tx_hash (tx_hash)
+    UNIQUE KEY uk_tx_hash (tx_hash),
+    FOREIGN KEY (matched_rule_id) REFERENCES bank_tag_rules(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Kreditkarten-Kategorien (bestehend für Visa-Abrechnungen)

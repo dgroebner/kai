@@ -58,20 +58,19 @@ class BankGiroService
 		$unmatchedForAi = [];
 		$taggedCount = 0;
 
-		// 4. Phase 1: Lokales Regel-Gedächtnis prüfen
+		// 4. Phase 1: Lokales Regel-Gedächtnis per Regex anwenden
+		$ruleMatcher = new \Kai\Bank\RuleMatcher(\Kai\Tools\Shared\Db\Database::getInstance()->getConnection());
+		$taggedCount = $ruleMatcher->applyAllRulesToUntagged();
+
+		// Verbleibende ungetaggte Umsätze für KI laden
+		$unprocessedTxs = $this->repository->getUntaggedTransactions();
+		$unmatchedForAi = [];
+
 		foreach ($unprocessedTxs as $tx) {
-			$matchedTagIds = $this->matcher->match($tx['merchant_raw']);
-			
-			if (!empty($matchedTagIds)) {
-				$this->repository->assignTagsToTransaction($tx['id'], $matchedTagIds);
-				$taggedCount++;
-			} else {
-				// Für KI-Analyse vormerken
-				$unmatchedForAi[] = [
-					'id'   => $tx['id'],
-					'text' => $tx['merchant_raw']
-				];
-			}
+			$unmatchedForAi[] = [
+				'id'   => $tx['id'],
+				'text' => $tx['merchant_raw']
+			];
 		}
 
 		// 5. Phase 2: verbleibende unkategorisierte Umsätze im Bulk an Gemini schicken

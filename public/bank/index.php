@@ -57,6 +57,10 @@ if ($type === 'woche') {
     $navLabelPrev = "Vorheriges Jahr";
     $navLabelNext = "Nächstes Jahr";
 } else { // 'monat'
+    $startDate = $dateTime->format('Y-01-01');
+    $endDate = $dateTime->format('Y-12-31');
+    
+    // Für Monatsansicht: Erster bis letzter Tag des Monats
     $startDate = $dateTime->format('Y-m-01');
     $endDate = $dateTime->format('Y-m-t');
     
@@ -128,12 +132,14 @@ try {
     $totalTransactions = (int)$stmtCount->fetchColumn();
     $totalPages = max(1, (int)ceil($totalTransactions / $limit));
 
-    // Umsätze mit zugewiesenen Tags laden
+    // Umsätze mit zugewiesenen Tags & Regel-Informationen laden
     $stmtTx = $pdo->prepare("
         SELECT 
             bt.*,
+            r.text_pattern AS matched_text_pattern,
             GROUP_CONCAT(CONCAT(t.id, ':', t.name, ':', t.color) SEPARATOR '||') AS tag_data
         FROM bank_giro_transactions bt
+        LEFT JOIN bank_tag_rules r ON bt.matched_rule_id = r.id
         LEFT JOIN bank_transaction_tags tt ON bt.id = tt.transaction_id
         LEFT JOIN bank_tags t ON tt.tag_id = t.id
         {$whereClause}
@@ -356,7 +362,7 @@ try {
                             <tr>
                                 <th style="width: 110px;">Datum</th>
                                 <th>Buchungstext</th>
-                                <th>Tags</th>
+                                <th>Tags & Regel</th>
                                 <th class="text-right" style="width: 130px;">Betrag</th>
                             </tr>
                         </thead>
@@ -373,17 +379,40 @@ try {
                                         </span>
                                     </td>
                                     <td data-label="Tags">
-										<div class="tag-pill-group js-tag-group" data-tx-id="<?= $tx['id'] ?>">
-											<?php foreach ($tx['tags'] as $tag): ?>
-												<span class="badge tag-badge clickable-tag" 
-													  data-tag-id="<?= $tag['id'] ?>"
-													  style="color: <?= htmlspecialchars($tag['color']) ?>; border-color: <?= htmlspecialchars($tag['color']) ?>;">
-													<?= htmlspecialchars($tag['name']) ?>
-													<span class="remove-tag-btn" data-tx-id="<?= $tx['id'] ?>" data-tag-id="<?= $tag['id'] ?>">&times;</span>
-												</span>
-											<?php endforeach; ?>
-											<button type="button" class="btn-add-tag js-open-tag-popover" data-tx-id="<?= $tx['id'] ?>" title="Tag hinzufügen">+</button>
-										</div>
+                                        <div class="tag-pill-group js-tag-group" data-tx-id="<?= $tx['id'] ?>">
+                                            <!-- Regel-Indikator (Zauberstab / Blitz) -->
+                                            <?php if (!empty($tx['matched_rule_id'])): ?>
+                                                <button type="button" 
+                                                        class="btn-rule-indicator active js-open-rule-builder" 
+                                                        data-tx-id="<?= $tx['id'] ?>" 
+                                                        data-rule-id="<?= $tx['matched_rule_id'] ?>"
+                                                        data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-text-pattern="<?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                        title="Regel aktiv: <?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?> (Klicken zum Bearbeiten)">
+                                                    ⚡
+                                                </button>
+                                            <?php else: ?>
+                                                <button type="button" 
+                                                        class="btn-rule-indicator js-open-rule-builder" 
+                                                        data-tx-id="<?= $tx['id'] ?>" 
+                                                        data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        title="Keine Regel verknüpft (Klicken zum Erstellen)">
+                                                    🪄
+                                                </button>
+                                            <?php endif; ?>
+
+                                            <!-- Tags der Transaktion -->
+                                            <?php foreach ($tx['tags'] as $tag): ?>
+                                                <span class="badge tag-badge clickable-tag" 
+                                                      data-tag-id="<?= $tag['id'] ?>"
+                                                      style="color: <?= htmlspecialchars($tag['color']) ?>; border-color: <?= htmlspecialchars($tag['color']) ?>;">
+                                                    <?= htmlspecialchars($tag['name']) ?>
+                                                    <span class="remove-tag-btn" data-tx-id="<?= $tx['id'] ?>" data-tag-id="<?= $tag['id'] ?>">&times;</span>
+                                                </span>
+                                            <?php endforeach; ?>
+
+                                            <button type="button" class="btn-add-tag js-open-tag-popover" data-tx-id="<?= $tx['id'] ?>" title="Tag manuell hinzufügen">+</button>
+                                        </div>
                                     </td>
                                     <td data-label="Betrag" class="text-right amount-bold <?= $tx['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
                                         <?= number_format((float)$tx['amount'], 2, ',', '.') ?> €

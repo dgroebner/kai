@@ -1,6 +1,8 @@
 // Scope-Variablen auf Modulebene
 let activePopover = null;
 let activeFilterTagId = null;
+let activeRuleModal = null;
+let liveTestTimeout = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Tags sicher aus dem HTML data-Attribut parsen
@@ -19,7 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Globaler Klick-Dispatcher
 document.addEventListener('click', (e) => {
-    // A: Klick auf Tag-Kachel in der Statistik (Filter schalten)
+    // A: Klick auf Zauberstab / Blitz (Rule Builder Modal)
+    const ruleBtn = e.target.closest('.js-open-rule-builder');
+    if (ruleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openRuleBuilderModal(ruleBtn);
+        return;
+    }
+
+    // B: Klick auf Tag-Kachel in der Statistik (Filter schalten)
     const filterCard = e.target.closest('.js-filter-tag-card');
     if (filterCard) {
         e.preventDefault();
@@ -29,7 +40,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // B: Reset-Button für Filter
+    // C: Reset-Button für Filter
     const resetBtn = e.target.closest('#btn-reset-tag-filter');
     if (resetBtn) {
         e.preventDefault();
@@ -38,7 +49,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // C: Tag aus Transaktionszeile entfernen
+    // D: Tag aus Transaktionszeile entfernen
     const removeBtn = e.target.closest('.remove-tag-btn');
     if (removeBtn) {
         e.preventDefault();
@@ -47,7 +58,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // D: Popover öffnen
+    // E: Popover öffnen
     const openBtn = e.target.closest('.js-open-tag-popover');
     if (openBtn) {
         e.preventDefault();
@@ -56,7 +67,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // E: Klick auf existierendes Tag im Popover
+    // F: Klick auf existierendes Tag im Popover
     const tagOption = e.target.closest('.js-tag-option');
     if (tagOption) {
         e.preventDefault();
@@ -70,7 +81,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // F: Klick auf "Neu anlegen" im Popover
+    // G: Klick auf "Neu anlegen" im Popover
     const createOption = e.target.closest('.js-tag-create');
     if (createOption && activePopover) {
         e.preventDefault();
@@ -93,7 +104,241 @@ document.addEventListener('click', (e) => {
 });
 
 // ----------------------------------------------------
-// Client-Side Filtering (Kein Page-Reload, kein Wegspringen)
+// Visual Regex Builder Modal (Phase 3.2 - 3.4)
+// ----------------------------------------------------
+
+function openRuleBuilderModal(btn) {
+    closeRuleModal();
+
+    const txId = btn.dataset.txId;
+    const ruleId = btn.dataset.ruleId || null;
+    const merchantRaw = btn.dataset.merchantRaw || '';
+    const initialPattern = btn.dataset.textPattern || '';
+
+    // Aktuell an der Transaktion befindliche Tags auslesen (Vorselektion)
+    const rowGroup = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
+    const existingTagBadges = rowGroup ? rowGroup.querySelectorAll('.tag-badge') : [];
+    const selectedTagIds = Array.from(existingTagBadges).map(b => parseInt(b.dataset.tagId, 10));
+
+    const overlay = document.createElement('div');
+    overlay.className = 'rule-modal-overlay';
+
+    overlay.innerHTML = `
+        <div class="rule-modal-card">
+            <div class="rule-modal-header">
+                <h3>🪄 Rule Builder ${ruleId ? '(Regel bearbeiten)' : '(Neue Regel ersteller)'}</h3>
+                <button type="button" class="rule-modal-close js-close-modal">&times;</button>
+            </div>
+            
+            <div class="rule-modal-body">
+                <div>
+                    <label class="chart-label" style="margin-bottom:0.3rem;">Buchungstext (Klickbar für Regex):</label>
+                    <div class="word-segment-wrap js-word-segments"></div>
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom:0.3rem;">Helper & Schnellbausteine:</label>
+                    <div class="helper-btn-group">
+                        <button type="button" class="btn-helper js-helper-exact">🔤 Exakter Wortstamm</button>
+                        <button type="button" class="btn-helper js-helper-start">^ Startet mit</button>
+                        <button type="button" class="btn-helper js-helper-num">🔢 Zahlen durch \\d+ ersetzen</button>
+                        <button type="button" class="btn-helper js-helper-wild">.* Wildcard</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                        <label class="chart-label" style="margin-bottom:0;">Regel-Muster (Regex):</label>
+                        <span class="live-match-pill js-live-match-pill"> Prüfe Matches...</span>
+                    </div>
+                    <input type="text" class="tag-search-input js-rule-pattern" value="${escapeHtml(initialPattern)}" placeholder="z. B. REWE oder ^REWE.*" style="font-family:monospace; font-size:0.95rem;">
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom:0.3rem;">Zuweisende Tags:</label>
+                    <div class="tag-pill-group js-modal-tags-wrap" style="min-height:32px;"></div>
+                </div>
+            </div>
+
+            <div class="rule-modal-footer">
+                <div>
+                    ${ruleId ? `<button type="button" class="btn btn-outline js-delete-rule" style="border-color:var(--color-red); color:var(--color-red);">🗑 Regel löschen</button>` : ''}
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" class="btn btn-outline js-close-modal">Abbrechen</button>
+                    <button type="button" class="btn js-save-rule">Speichern & Anwenden</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    activeRuleModal = overlay;
+
+    // Wort-Chips aus merchantRaw aufbauen
+    const wordsContainer = overlay.querySelector('.js-word-segments');
+    const words = merchantRaw.split(/(\s+)/).filter(w => w.trim().length > 0);
+    
+    words.forEach(word => {
+        const chip = document.createElement('span');
+        chip.className = 'word-chip';
+        chip.textContent = word;
+        chip.addEventListener('click', () => {
+            chip.classList.toggle('selected');
+            const patternInput = overlay.querySelector('.js-rule-pattern');
+            patternInput.value = escapeRegex(word);
+            triggerLiveMatchCheck(patternInput.value);
+        });
+        wordsContainer.appendChild(chip);
+    });
+
+    // Helper Buttons Event Binding
+    const patternInput = overlay.querySelector('.js-rule-pattern');
+
+    overlay.querySelector('.js-helper-exact').addEventListener('click', () => {
+        if (patternInput.value) {
+            patternInput.value = `\\b${patternInput.value.replace(/^\\b|\\b$/g, '')}\\b`;
+            triggerLiveMatchCheck(patternInput.value);
+        }
+    });
+
+    overlay.querySelector('.js-helper-start').addEventListener('click', () => {
+        if (patternInput.value && !patternInput.value.startsWith('^')) {
+            patternInput.value = `^${patternInput.value}`;
+            triggerLiveMatchCheck(patternInput.value);
+        }
+    });
+
+    overlay.querySelector('.js-helper-num').addEventListener('click', () => {
+        patternInput.value = patternInput.value.replace(/\d+/g, '\\d+');
+        triggerLiveMatchCheck(patternInput.value);
+    });
+
+    overlay.querySelector('.js-helper-wild').addEventListener('click', () => {
+        patternInput.value = patternInput.value + '.*';
+        triggerLiveMatchCheck(patternInput.value);
+    });
+
+    // Pattern Live-Input Handler
+    patternInput.addEventListener('input', (e) => {
+        triggerLiveMatchCheck(e.target.value);
+    });
+
+    // Modal-Tag-Picker rendern
+    renderModalTagPicker(overlay.querySelector('.js-modal-tags-wrap'), selectedTagIds);
+
+    // Initialen Live-Check ausführen
+    triggerLiveMatchCheck(patternInput.value || merchantRaw);
+
+    // Event Listener für Buttons im Footer & Close
+    overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', closeRuleModal));
+    
+    overlay.querySelector('.js-save-rule').addEventListener('click', async () => {
+        const textPattern = patternInput.value.trim();
+        const currentTagIds = Array.from(overlay.querySelectorAll('.js-modal-tag-chip')).map(c => parseInt(c.dataset.tagId, 10));
+
+        if (!textPattern) {
+            alert('Bitte ein Muster angeben.');
+            return;
+        }
+
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'save_rule',
+                rule_id: ruleId ? parseInt(ruleId, 10) : null,
+                tx_id: parseInt(txId, 10),
+                text_pattern: textPattern,
+                tag_ids: currentTagIds
+            });
+
+            if (data && data.success) {
+                closeRuleModal();
+                window.location.reload(); // Nach Regelspeicherung Tabelle neu aufbauen
+            }
+        } catch (err) {
+            console.error('Fehler beim Speichern der Regel:', err);
+        }
+    });
+
+    if (ruleId) {
+        overlay.querySelector('.js-delete-rule').addEventListener('click', async () => {
+            if (!confirm('Regel wirklich löschen?')) return;
+            try {
+                const data = await KaiHttp.postJson('api.php', {
+                    action: 'delete_rule',
+                    rule_id: parseInt(ruleId, 10)
+                });
+                if (data && data.success) {
+                    closeRuleModal();
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error('Fehler beim Löschen der Regel:', err);
+            }
+        });
+    }
+}
+
+function closeRuleModal() {
+    if (activeRuleModal) {
+        activeRuleModal.remove();
+        activeRuleModal = null;
+    }
+}
+
+function renderModalTagPicker(wrapEl, selectedIds) {
+    wrapEl.innerHTML = '';
+    
+    (window.AVAILABLE_TAGS || []).forEach(tag => {
+        const isSelected = selectedIds.includes(parseInt(tag.id, 10));
+        const chip = document.createElement('span');
+        chip.className = `badge clickable-tag js-modal-tag-chip ${isSelected ? '' : 'btn-outline'}`;
+        chip.dataset.tagId = tag.id;
+        chip.style.cssText = `cursor:pointer; color:${tag.color}; border-color:${tag.color}; background-color:${isSelected ? 'rgba(255,255,255,0.1)' : 'transparent'};`;
+        chip.textContent = tag.name;
+
+        chip.addEventListener('click', () => {
+            const idx = selectedIds.indexOf(parseInt(tag.id, 10));
+            if (idx > -1) {
+                selectedIds.splice(idx, 1);
+            } else {
+                selectedIds.push(parseInt(tag.id, 10));
+            }
+            renderModalTagPicker(wrapEl, selectedIds);
+        });
+
+        wrapEl.appendChild(chip);
+    });
+}
+
+function triggerLiveMatchCheck(pattern) {
+    if (liveTestTimeout) clearTimeout(liveTestTimeout);
+    
+    const pill = document.querySelector('.js-live-match-pill');
+    if (pill) pill.textContent = 'Prüfe...';
+
+    liveTestTimeout = setTimeout(async () => {
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'test_rule_pattern',
+                text_pattern: pattern
+            });
+
+            if (pill && data && data.success) {
+                pill.textContent = `🎯 Gilt für ${data.match_count} Buchung${data.match_count === 1 ? '' : 'en'}`;
+            }
+        } catch (err) {
+            if (pill) pill.textContent = '⚠️ Regex-Fehler';
+        }
+    }, 300);
+}
+
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ----------------------------------------------------
+// Client-Side Filtering & Popover (Bestehender Code)
 // ----------------------------------------------------
 
 function toggleTagFilter(tagId) {
@@ -116,7 +361,6 @@ function applyTableFilter() {
     const cards = document.querySelectorAll('.js-filter-tag-card');
     const resetBtn = document.getElementById('btn-reset-tag-filter');
 
-    // 1. Tabellenzeilen ein-/ausblenden
     rows.forEach(row => {
         if (!activeFilterTagId) {
             row.classList.remove('hidden');
@@ -131,7 +375,6 @@ function applyTableFilter() {
         }
     });
 
-    // 2. Visuelles Highlighting der Kacheln
     cards.forEach(card => {
         if (activeFilterTagId && card.dataset.filterTagId === activeFilterTagId) {
             card.classList.add('active');
@@ -140,7 +383,6 @@ function applyTableFilter() {
         }
     });
 
-    // 3. Reset-Button anzeigen/verstecken
     if (resetBtn) {
         if (activeFilterTagId) {
             resetBtn.classList.remove('hidden');
@@ -227,7 +469,7 @@ function openTagPopover(anchorBtn, txId) {
 }
 
 // ----------------------------------------------------
-// AJAX-Aktionen
+// AJAX-Aktionen für manuelles Tagging
 // ----------------------------------------------------
 
 async function addExistingTagToTx(txId, tag) {
@@ -282,10 +524,6 @@ async function removeTagFromTx(txId, tagId) {
     }
 }
 
-// ----------------------------------------------------
-// Dynamische UI-Updates
-// ----------------------------------------------------
-
 function appendBadgeToUI(txId, tag) {
     const group = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
     if (!group) return;
@@ -315,7 +553,7 @@ function appendBadgeToUI(txId, tag) {
     }
 
     updateTagStatsBar();
-    applyTableFilter(); // Filter nach Hinzufügen neu bewerten
+    applyTableFilter();
 }
 
 function removeBadgeFromUI(txId, tagId) {
@@ -328,7 +566,7 @@ function removeBadgeFromUI(txId, tagId) {
     }
 
     updateTagStatsBar();
-    applyTableFilter(); // Filter nach Löschen neu bewerten
+    applyTableFilter();
 }
 
 function updateTagStatsBar() {
