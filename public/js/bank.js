@@ -248,7 +248,7 @@ function removeBadgeFromUI(txId, tagId) {
 
 /**
  * Aggregiert die sichtbar zugewiesenen Tags der aktuellen Tabelle neu
- * und aktualisiert den Verteilungsbalken + die Kacheln oben im DOM.
+ * und aktualisiert den Verteilungsbalken + die Kacheln gewichtet nach Euro-Beträgen.
  */
 function updateTagStatsBar() {
     const grid = document.getElementById('active-tags-grid');
@@ -256,9 +256,10 @@ function updateTagStatsBar() {
     if (!grid) return;
 
     const statsMap = {};
-    let totalAssignments = 0;
+    let totalAbsoluteAmount = 0;
+    let maxTagAmount = 0;
 
-    // 1. Tabelle durchgehen und Summen / Counts pro Tag neu aufbauen
+    // 1. Beträge pro Tag aufsummieren
     const rows = document.querySelectorAll('tr[data-tx-id]');
     rows.forEach(row => {
         const amount = parseFloat(row.dataset.amount || '0');
@@ -275,43 +276,55 @@ function updateTagStatsBar() {
                     name: tagName,
                     color: tagColor,
                     count: 0,
-                    total: 0
+                    total: 0,
+                    absTotal: 0
                 };
             }
 
             statsMap[tagId].count += 1;
             statsMap[tagId].total += amount;
-            totalAssignments += 1;
+            statsMap[tagId].absTotal += Math.abs(amount);
         });
     });
 
-    const sortedStats = Object.values(statsMap).sort((a, b) => b.count - a.count);
+    // Max und Summe bestimmen
+    Object.values(statsMap).forEach(stat => {
+        totalAbsoluteAmount += stat.absTotal;
+        if (stat.absTotal > maxTagAmount) {
+            maxTagAmount = stat.absTotal;
+        }
+    });
 
-    // 2. Verteilungsbalken oben aktualisieren
+    // Sortierung nach absolutem Euro-Betrag
+    const sortedStats = Object.values(statsMap).sort((a, b) => b.absTotal - a.absTotal);
+
+    // 2. Verteilungsbalken mit Betragsanteilen rendern
     if (distBar) {
         distBar.innerHTML = '';
         sortedStats.forEach(stat => {
-            const pct = totalAssignments > 0 ? (stat.count / totalAssignments) * 100 : 0;
+            const pct = totalAbsoluteAmount > 0 ? (stat.absTotal / totalAbsoluteAmount) * 100 : 0;
+            if (pct <= 0) return;
+
+            const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
             const seg = document.createElement('div');
             seg.className = 'tag-bar-segment';
             seg.style.width = `${pct.toFixed(2)}%`;
             seg.style.backgroundColor = stat.color;
-            seg.title = `${stat.name}: ${pct.toFixed(1)}% (${stat.count} Buchungen)`;
+            seg.title = `${stat.name}: ${pct.toFixed(1)}% (${formattedAmt} | ${stat.count} Buchungen)`;
             distBar.appendChild(seg);
         });
     }
 
-    // 3. Kacheln neu aufbauen
+    // 3. Kacheln neu rendern
     grid.innerHTML = '';
     const currentUrlParams = new URLSearchParams(window.location.search);
     const type = currentUrlParams.get('type') || 'monat';
     const date = currentUrlParams.get('date') || '';
-    const totalTxCount = rows.length;
 
     sortedStats.forEach(stat => {
         const sign = stat.total < 0 ? '-' : '+';
-        const formattedAmt = Math.abs(stat.total).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-        const fillPct = totalTxCount > 0 ? Math.min(100, (stat.count / totalTxCount) * 100) : 0;
+        const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+        const fillPct = maxTagAmount > 0 ? (stat.absTotal / maxTagAmount) * 100 : 0;
         const isDanger = stat.total < 0;
 
         const card = document.createElement('a');
@@ -328,10 +341,10 @@ function updateTagStatsBar() {
                     <span class="tag-stat-name">${escapeHtml(stat.name)}</span>
                 </div>
                 <div class="tag-stat-metrics">
-                    <span class="tag-stat-count">${stat.count}×</span>
                     <span class="tag-stat-amount ${isDanger ? 'text-danger' : 'text-success'}">
                         ${sign}${formattedAmt}
                     </span>
+                    <span class="tag-stat-count">${stat.count} Buchung${stat.count === 1 ? '' : 'en'}</span>
                 </div>
             </div>
         `;

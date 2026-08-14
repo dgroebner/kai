@@ -216,11 +216,28 @@ try {
         <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>" class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
     </div>
 
-    <!-- Visuelle Tag-Übersicht & Verteilung -->
+    <!-- Visuelle Tag-Übersicht & Verteilung (basierend auf Geldsummen) -->
     <?php if (!empty($tagStats)): ?>
+        <?php
+            // 1. Gesamtsumme aller absoluten Beträge über alle Tags berechnen
+            $totalAbsoluteAmount = 0;
+            $maxTagAmount = 0;
+
+            foreach ($tagStats as &$stat) {
+                $stat['abs_amount'] = abs((float)$stat['total_amount']);
+                $totalAbsoluteAmount += $stat['abs_amount'];
+                if ($stat['abs_amount'] > $maxTagAmount) {
+                    $maxTagAmount = $stat['abs_amount'];
+                }
+            }
+            unset($stat);
+
+            // Nach absolutem Finanzvolumen absteigend sortieren
+            usort($tagStats, fn($a, $b) => $b['abs_amount'] <=> $a['abs_amount']);
+        ?>
         <section class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                <strong class="table-label-strong" style="margin-bottom: 0;">📊 Tag-Verteilung & Umsätze:</strong>
+                <strong class="table-label-strong" style="margin-bottom: 0;">📊 Finanzielle Verteilung nach Umsätzen:</strong>
                 <?php if ($selectedTagId): ?>
                     <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn btn-outline" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">
                         ✖ Filter aufheben
@@ -228,36 +245,37 @@ try {
                 <?php endif; ?>
             </div>
 
-            <!-- 1. Durchgehender Verteilungsbalken (Multi-Tag Prozentanzeige) -->
-            <?php 
-                $totalTagAssignments = array_sum(array_column($tagStats, 'tx_count'));
-            ?>
+            <!-- 1. Segmentbalken gewichtet nach Euro-Beträgen -->
             <div class="tag-distribution-bar" style="display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--bg-surface-hover); margin-bottom: 1rem;">
                 <?php foreach ($tagStats as $stat): 
-                    $pct = $totalTagAssignments > 0 ? ($stat['tx_count'] / $totalTagAssignments) * 100 : 0;
+                    $pct = $totalAbsoluteAmount > 0 ? ($stat['abs_amount'] / $totalAbsoluteAmount) * 100 : 0;
+                    if ($pct <= 0) continue;
+                    $formattedAmt = number_format($stat['abs_amount'], 2, ',', '.') . ' €';
                 ?>
                     <div class="tag-bar-segment" 
                          style="width: <?= number_format($pct, 2, '.', '') ?>%; background-color: <?= $stat['color'] ?>;" 
-                         title="<?= htmlspecialchars($stat['name']) ?>: <?= number_format($pct, 1, ',', '.') ?>% (<?= $stat['tx_count'] ?> Buchungen)">
+                         title="<?= htmlspecialchars($stat['name']) ?>: <?= number_format($pct, 1, ',', '.') ?>% (<?= $formattedAmt ?> | <?= $stat['tx_count'] ?> Buchungen)">
                     </div>
                 <?php endforeach; ?>
             </div>
 
-            <!-- 2. Gliederung als Kacheln / Fortschrittsleisten -->
+            <!-- 2. Kacheln gewichtet relativ zum stärksten Tag -->
             <div id="active-tags-grid" class="tag-stats-grid">
                 <?php foreach ($tagStats as $stat): ?>
                     <?php 
                         $isActive = $selectedTagId === (int)$stat['id']; 
                         $amt = (float)$stat['total_amount'];
-                        $formattedAmt = number_format(abs($amt), 2, ',', '.') . ' €';
-                        $fillPct = $totalTransactions > 0 ? min(100, ($stat['tx_count'] / $totalTransactions) * 100) : 0;
+                        $formattedAmt = number_format($stat['abs_amount'], 2, ',', '.') . ' €';
+                        
+                        // Füllstand relativ zur größten Kategorie des Zeitraums
+                        $fillPct = $maxTagAmount > 0 ? ($stat['abs_amount'] / $maxTagAmount) * 100 : 0;
                     ?>
                     <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
                        class="tag-stat-card <?= $isActive ? 'active' : '' ?>" 
                        data-stat-tag-id="<?= $stat['id'] ?>"
                        style="--tag-color: <?= $stat['color'] ?>;">
                        
-                       <!-- Hintergrund-Aktivitätsbalken -->
+                       <!-- Hintergrund-Füllstand basierend auf Euro-Volumen -->
                        <div class="tag-stat-bg-bar" style="width: <?= number_format($fillPct, 1, '.', '') ?>%;"></div>
 
                        <div class="tag-stat-content">
@@ -266,10 +284,10 @@ try {
                                <span class="tag-stat-name"><?= htmlspecialchars($stat['name']) ?></span>
                            </div>
                            <div class="tag-stat-metrics">
-                               <span class="tag-stat-count"><?= $stat['tx_count'] ?>×</span>
                                <span class="tag-stat-amount <?= $amt < 0 ? 'text-danger' : 'text-success' ?>">
                                    <?= $amt < 0 ? '-' : '+' ?><?= $formattedAmt ?>
                                </span>
+                               <span class="tag-stat-count"><?= $stat['tx_count'] ?> Buchung<?= $stat['tx_count'] === 1 ? '' : 'en' ?></span>
                            </div>
                        </div>
                     </a>
