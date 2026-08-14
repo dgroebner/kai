@@ -3,6 +3,7 @@ namespace Kai\Tools\PVCharge;
 
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Log\ActivityLogger
 use PDO;
 use Exception;
 
@@ -142,6 +143,9 @@ class SolarForecastService {
                 }
                 $this->db->commit();
             }
+			
+			$activityLogger = new ActivityLogger($this->db);
+			$activityLogger->logPvForecastLoaded(date('d.m.Y'));
 
             $this->logger->info("SolarForecastService: Prognosedaten erfolgreich importiert.");
             return true;

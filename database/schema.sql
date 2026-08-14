@@ -191,3 +191,16 @@ CREATE TABLE IF NOT EXISTS bank_tag_rules (
     priority INT DEFAULT 10,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `activity_log` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `event_type` VARCHAR(50) NOT NULL,
+  `message` VARCHAR(255) NOT NULL,
+  `link_url` VARCHAR(255) DEFAULT NULL,
+  `entity_id` INT DEFAULT NULL,
+  `is_read` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_event_type` (`event_type`),
+  INDEX `idx_is_read` (`is_read`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

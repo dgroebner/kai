@@ -2,6 +2,7 @@
 namespace Kai\Tools\Kassenbon;
 
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Log\ActivityLogger
 use Kai\Tools\Shared\Mail\ImapClient;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
@@ -92,6 +93,11 @@ class ScannerTask {
                                 
                                 // Dem Repository beim Speichern zusätzlich den Datei-Hash mitgeben
                                 $repository->saveReceipt($receiptData, $fileHash);
+								
+								$receiptId = $this->db->lastInsertId();
+								$activityLogger = new ActivityLogger($this->db);
+								$activityLogger->logReceipt($receiptId, $receiptData['store_name'] ?? '');
+								
                                 $mailArchived = true;
                                 $this->logger->info("ScannerTask: Bon gespeichert.");
                             } else {

@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\Bank;
 
+use Kai\Tools\Shared\Log\ActivityLogger
 use Kai\Tools\Bank\Parser\VisaPdfParser;
 use Kai\Tools\Shared\Db\Database;
 use RuntimeException;
@@ -80,6 +81,9 @@ class CreditCardService
                     ':category_id' => $categoryId,
                 ]);
             }
+			
+			$activityLogger = new ActivityLogger($this->db);
+			$activityLogger->logCreditCardStatement($statementId, '08/2026');
 
             $pdo->commit();
             return $statementId;

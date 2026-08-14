@@ -6,6 +6,7 @@ use Kai\Tools\Bank\Parser\BankCsvParser;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Log\ActivityLogger
 use Kai\Tools\Shared\Db\Database;
 use Exception;
 
@@ -93,6 +94,9 @@ class BankGiroService
 				}
 			}
 		}
+		
+		$activityLogger = new ActivityLogger($this->db);
+		$activityLogger->logBankDataImport(count($parsedTransactions));
 
 		$stats['tagged'] = $taggedCount;
 		return $stats;
