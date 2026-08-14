@@ -250,7 +250,7 @@ function openRuleBuilderModal(btn) {
     
     overlay.querySelector('.js-save-rule').addEventListener('click', async () => {
         const textPattern = patternInput.value.trim();
-        const currentTagIds = Array.from(overlay.querySelectorAll('.js-modal-tag-chip')).map(c => parseInt(c.dataset.tagId, 10));
+		const currentTagIds = Array.from(overlay.querySelectorAll('.js-modal-tag-chip.active')).map(c => parseInt(c.dataset.tagId, 10));
 
         if (!textPattern) {
             alert('Bitte ein Muster angeben.');
@@ -308,6 +308,7 @@ function renderModalTagPicker(wrapEl, selectedIds) {
         const isSelected = selectedIds.includes(parseInt(tag.id, 10));
         const chip = document.createElement('span');
         
+        // Bei Selektion .active anhängen, sonst .inactive
         chip.className = `badge clickable-tag js-modal-tag-chip ${isSelected ? 'active' : 'inactive'}`;
         chip.dataset.tagId = tag.id;
         chip.style.cssText = `
@@ -322,11 +323,12 @@ function renderModalTagPicker(wrapEl, selectedIds) {
         chip.textContent = isSelected ? `✓ ${tag.name}` : tag.name;
 
         chip.addEventListener('click', () => {
-            const idx = selectedIds.indexOf(parseInt(tag.id, 10));
+            const tagIdNum = parseInt(tag.id, 10);
+            const idx = selectedIds.indexOf(tagIdNum);
             if (idx > -1) {
                 selectedIds.splice(idx, 1);
             } else {
-                selectedIds.push(parseInt(tag.id, 10));
+                selectedIds.push(tagIdNum);
             }
             renderModalTagPicker(wrapEl, selectedIds);
         });
