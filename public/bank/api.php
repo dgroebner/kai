@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../src/Bank/RuleMatcher.php';
 
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
