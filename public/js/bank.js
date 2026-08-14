@@ -247,19 +247,21 @@ function removeBadgeFromUI(txId, tagId) {
 }
 
 /**
- * Aggregiert die sichtbar zugewiesenen Tags der aktuellen Tabelle neu
- * und aktualisiert den Verteilungsbalken + die Kacheln gewichtet nach Euro-Beträgen.
+ * Aggregiert die sichtbar zugewiesenen Tags getrennt nach Ausgaben (<0) 
+ * und Einnahmen (>0) neu und aktualisiert beide Diagrammbereiche.
  */
 function updateTagStatsBar() {
-    const grid = document.getElementById('active-tags-grid');
-    const distBar = document.querySelector('.tag-distribution-bar');
-    if (!grid) return;
+    const expGrid = document.getElementById('exp-tags-grid');
+    const incGrid = document.getElementById('inc-tags-grid');
+    if (!expGrid && !incGrid) return;
 
-    const statsMap = {};
-    let totalAbsoluteAmount = 0;
-    let maxTagAmount = 0;
+    const expMap = {};
+    const incMap = {};
 
-    // 1. Beträge pro Tag aufsummieren
+    let expTotalAbs = 0, expMaxAbs = 0;
+    let incTotalAbs = 0, incMaxAbs = 0;
+
+    // 1. Tabelle durchgehen und getrennt nach Vorzeichen aggregieren
     const rows = document.querySelectorAll('tr[data-tx-id]');
     rows.forEach(row => {
         const amount = parseFloat(row.dataset.amount || '0');
@@ -270,8 +272,10 @@ function updateTagStatsBar() {
             const tagName = badge.textContent.replace('×', '').trim();
             const tagColor = badge.style.color || '#3b82f6';
 
-            if (!statsMap[tagId]) {
-                statsMap[tagId] = {
+            const targetMap = amount < 0 ? expMap : incMap;
+
+            if (!targetMap[tagId]) {
+                targetMap[tagId] = {
                     id: tagId,
                     name: tagName,
                     color: tagColor,
@@ -281,76 +285,83 @@ function updateTagStatsBar() {
                 };
             }
 
-            statsMap[tagId].count += 1;
-            statsMap[tagId].total += amount;
-            statsMap[tagId].absTotal += Math.abs(amount);
+            targetMap[tagId].count += 1;
+            targetMap[tagId].total += amount;
+            targetMap[tagId].absTotal += Math.abs(amount);
         });
     });
 
-    // Max und Summe bestimmen
-    Object.values(statsMap).forEach(stat => {
-        totalAbsoluteAmount += stat.absTotal;
-        if (stat.absTotal > maxTagAmount) {
-            maxTagAmount = stat.absTotal;
-        }
+    // Kennzahlen für Ausgaben berechnen
+    Object.values(expMap).forEach(s => {
+        expTotalAbs += s.absTotal;
+        if (s.absTotal > expMaxAbs) expMaxAbs = s.absTotal;
     });
 
-    // Sortierung nach absolutem Euro-Betrag
-    const sortedStats = Object.values(statsMap).sort((a, b) => b.absTotal - a.absTotal);
+    // Kennzahlen für Einnahmen berechnen
+    Object.values(incMap).forEach(s => {
+        incTotalAbs += s.absTotal;
+        if (s.absTotal > incMaxAbs) incMaxAbs = s.absTotal;
+    });
 
-    // 2. Verteilungsbalken mit Betragsanteilen rendern
-    if (distBar) {
-        distBar.innerHTML = '';
-        sortedStats.forEach(stat => {
-            const pct = totalAbsoluteAmount > 0 ? (stat.absTotal / totalAbsoluteAmount) * 100 : 0;
-            if (pct <= 0) return;
-
-            const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-            const seg = document.createElement('div');
-            seg.className = 'tag-bar-segment';
-            seg.style.width = `${pct.toFixed(2)}%`;
-            seg.style.backgroundColor = stat.color;
-            seg.title = `${stat.name}: ${pct.toFixed(1)}% (${formattedAmt} | ${stat.count} Buchungen)`;
-            distBar.appendChild(seg);
-        });
-    }
-
-    // 3. Kacheln neu rendern
-    grid.innerHTML = '';
     const currentUrlParams = new URLSearchParams(window.location.search);
     const type = currentUrlParams.get('type') || 'monat';
     const date = currentUrlParams.get('date') || '';
 
-    sortedStats.forEach(stat => {
-        const sign = stat.total < 0 ? '-' : '+';
-        const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-        const fillPct = maxTagAmount > 0 ? (stat.absTotal / maxTagAmount) * 100 : 0;
-        const isDanger = stat.total < 0;
+    // Hilfsfunktion zum Rendern einer Gruppe
+    const renderGroup = (gridEl, barEl, statsMap, totalAbs, maxAbs, isExpense) => {
+        if (!gridEl) return;
 
-        const card = document.createElement('a');
-        card.href = `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}&tag_id=${stat.id}`;
-        card.className = 'tag-stat-card';
-        card.dataset.statTagId = stat.id;
-        card.style.setProperty('--tag-color', stat.color);
+        const sorted = Object.values(statsMap).sort((a, b) => b.absTotal - a.absTotal);
 
-        card.innerHTML = `
-            <div class="tag-stat-bg-bar" style="width: ${fillPct.toFixed(1)}%;"></div>
-            <div class="tag-stat-content">
-                <div class="tag-stat-header">
-                    <span class="tag-color-dot" style="background-color: ${stat.color};"></span>
-                    <span class="tag-stat-name">${escapeHtml(stat.name)}</span>
+        // Segmentbalken
+        if (barEl) {
+            barEl.innerHTML = '';
+            sorted.forEach(stat => {
+                const pct = totalAbs > 0 ? (stat.absTotal / totalAbs) * 100 : 0;
+                if (pct <= 0) return;
+                const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+                const seg = document.createElement('div');
+                seg.className = 'tag-bar-segment';
+                seg.style.width = `${pct.toFixed(2)}%`;
+                seg.style.backgroundColor = stat.color;
+                seg.title = `${stat.name}: ${pct.toFixed(1)}% (${formattedAmt} | ${stat.count} Buchungen)`;
+                barEl.appendChild(seg);
+            });
+        }
+
+        // Kacheln
+        gridEl.innerHTML = '';
+        sorted.forEach(stat => {
+            const sign = isExpense ? '-' : '+';
+            const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            const fillPct = maxAbs > 0 ? (stat.absTotal / maxAbs) * 100 : 0;
+
+            const card = document.createElement('a');
+            card.href = `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}&tag_id=${stat.id}`;
+            card.className = 'tag-stat-card';
+            card.style.setProperty('--tag-color', stat.color);
+
+            card.innerHTML = `
+                <div class="tag-stat-bg-bar" style="width: ${fillPct.toFixed(1)}%;"></div>
+                <div class="tag-stat-content">
+                    <div class="tag-stat-header">
+                        <span class="tag-color-dot" style="background-color: ${stat.color};"></span>
+                        <span class="tag-stat-name">${escapeHtml(stat.name)}</span>
+                    </div>
+                    <div class="tag-stat-metrics">
+                        <span class="tag-stat-amount ${isExpense ? 'text-danger' : 'text-success'}">
+                            ${sign}${formattedAmt}
+                        </span>
+                        <span class="tag-stat-count">${stat.count} Buchung${stat.count === 1 ? '' : 'en'}</span>
+                    </div>
                 </div>
-                <div class="tag-stat-metrics">
-                    <span class="tag-stat-amount ${isDanger ? 'text-danger' : 'text-success'}">
-                        ${sign}${formattedAmt}
-                    </span>
-                    <span class="tag-stat-count">${stat.count} Buchung${stat.count === 1 ? '' : 'en'}</span>
-                </div>
-            </div>
-        `;
+            `;
+            gridEl.appendChild(card);
+        });
+    };
 
-        grid.appendChild(card);
-    });
+    renderGroup(expGrid, document.getElementById('exp-distribution-bar'), expMap, expTotalAbs, expMaxAbs, true);
+    renderGroup(incGrid, document.getElementById('inc-distribution-bar'), incMap, incTotalAbs, incMaxAbs, false);
 }
 
 function escapeHtml(str) {
