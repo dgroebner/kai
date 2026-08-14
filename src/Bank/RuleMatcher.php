@@ -62,7 +62,7 @@ class RuleMatcher
     }
 
     /**
-     * Prüft den Buchungstext gegen Regex-Muster.
+     * Führt den Regex sicher aus (fängt invalide Muster ab).
      */
     public function matchesRule(string $merchantRaw, ?string $textPattern, ?string $payeePattern = null): bool
     {
@@ -73,7 +73,7 @@ class RuleMatcher
             }
         }
 
-        // 2. Payee-Pattern prüfen (falls separat vorgehalten)
+        // 2. Payee-Pattern prüfen
         if (!empty($payeePattern)) {
             if (!$this->evalRegex($payeePattern, $merchantRaw)) {
                 return false;
@@ -156,16 +156,16 @@ class RuleMatcher
     }
 
     /**
-     * Führt den Regex sicher aus (fängt invalide Muster ab).
+     * Führt den Regex sicher aus (fängt invalide/unvollständige Muster beim Tippen ab).
      */
     private function evalRegex(string $pattern, string $subject): bool
     {
         $delimiterPattern = $this->normalizePattern($pattern);
 
+        // Warning-Suppressor @ fängt Regex-Syntaxfehler ab, try-catch fängt PHP 8+ Errors
         try {
             $result = @preg_match($delimiterPattern, $subject);
-            if ($result === false) {
-                $this->logger->error("RuleMatcher: Invalides Regex-Muster übersprungen.", ['pattern' => $pattern]);
+            if ($result === false || $result === null) {
                 return false;
             }
             return $result === 1;
@@ -180,11 +180,16 @@ class RuleMatcher
     public function normalizePattern(string $pattern): string
     {
         $pattern = trim($pattern);
+        if ($pattern === '') {
+            return '//i';
+        }
         
+        // Prüfen ob bereits Regex-Delimiter wie /.../i vorhanden sind
         if (preg_match('/^(\/|#|~).+\1[a-z]*$/i', $pattern)) {
             return $pattern;
         }
 
+        // Maskiere Slashes, damit der Delimiter nicht gebrochen wird
         return '/' . str_replace('/', '\/', $pattern) . '/i';
     }
 }
