@@ -61,7 +61,7 @@ try {
     <div class="container">
         <header class="page-header">
             <h1>💳 Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?></h1>
-            <a href="index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+            <a href="creditcard.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
         </header>
 
 		<main id="bankDetailApp"
