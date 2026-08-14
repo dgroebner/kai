@@ -156,6 +156,7 @@ try {
     $stmtTx->execute();
     
     $rawTxs = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
+	
 
     // Tags pro Transaktion strukturiert aufbereiten
     foreach ($rawTxs as $row) {
@@ -174,6 +175,20 @@ try {
         $row['tags'] = $tags;
         $transactions[] = $row;
     }
+	
+	// Echte Gesamtsummen direkt aus den Transaktionen ermitteln (ohne Tag-Doppelzählungen)
+    $stmtPeriodTotals = $pdo->prepare("
+        SELECT 
+            SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END) AS total_expenses,
+            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) AS total_income
+        FROM bank_giro_transactions
+        WHERE booking_date BETWEEN :start AND :end
+    ");
+    $stmtPeriodTotals::execute([':start' => $startDate, ':end' => $endDate]);
+    $periodTotals = $stmtPeriodTotals->fetch(PDO::FETCH_ASSOC);
+
+    $realTotalExpenses = abs((float)($periodTotals['total_expenses'] ?? 0));
+    $realTotalIncome   = (float)($periodTotals['total_income'] ?? 0);
 
 } catch (\Throwable $e) {
     $logger->error("bank/index.php: Fehler beim Laden der Umsätze.", ['error' => $e->getMessage()]);
@@ -249,8 +264,14 @@ try {
         ?>
         
         <section class="card" style="margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <strong class="table-label-strong" style="margin-bottom: 0;">📊 Ausgaben- & Einnahmenverteilung:</strong>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <div>
+                    <strong class="table-label-strong" style="margin-bottom: 0; font-size: 1.05rem;">📊 Übersicht im Zeitraum:</strong>
+                    <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">
+                        Tatsächliche Ausgaben: <strong class="text-danger">-<?= number_format($realTotalExpenses, 2, ',', '.') ?> €</strong> | 
+                        Einnahmen: <strong class="text-success">+<?= number_format($realTotalIncome, 2, ',', '.') ?> €</strong>
+                    </span>
+                </div>
                 <button type="button" id="btn-reset-tag-filter" class="btn btn-outline hidden" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">
                     ✖ Filter aufheben
                 </button>
@@ -259,8 +280,9 @@ try {
             <!-- A: AUSGABEN -->
             <?php if (!empty($expensesStats)): ?>
                 <div style="margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--color-red); margin-bottom: 0.4rem;">
-                        🔴 Ausgaben nach Kategorien (Gesamt: <?= number_format($expTotalAbs, 2, ',', '.') ?> €)
+                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--color-red); margin-bottom: 0.4rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🔴 Ausgaben – Verteilung nach Kategorien</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(Relative Gewichtung der Kategorien)</span>
                     </div>
                     
                     <div class="tag-distribution-bar" id="exp-distribution-bar" style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-surface-hover); margin-bottom: 0.75rem;">
@@ -305,8 +327,9 @@ try {
             <!-- B: EINNAHMEN -->
             <?php if (!empty($incomeStats)): ?>
                 <div>
-                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--color-green); margin-bottom: 0.4rem;">
-                        🟢 Einnahmen nach Kategorien (Gesamt: <?= number_format($incTotalAbs, 2, ',', '.') ?> €)
+                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--color-green); margin-bottom: 0.4rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🟢 Einnahmen – Verteilung nach Kategorien</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(Relative Gewichtung der Kategorien)</span>
                     </div>
                     
                     <div class="tag-distribution-bar" id="inc-distribution-bar" style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-surface-hover); margin-bottom: 0.75rem;">
