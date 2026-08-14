@@ -223,7 +223,6 @@ try {
             $expensesStats = array_filter($tagStats, fn($s) => (float)$s['total_amount'] < 0);
             $incomeStats   = array_filter($tagStats, fn($s) => (float)$s['total_amount'] > 0);
 
-            // Hilfsfunktion zur Berechnung der Kennzahlen & Sortierung
             $prepareGroup = function(array $group) {
                 $totalAbs = 0;
                 $maxAbs = 0;
@@ -246,11 +245,9 @@ try {
         <section class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <strong class="table-label-strong" style="margin-bottom: 0;">📊 Ausgaben- & Einnahmenverteilung:</strong>
-                <?php if ($selectedTagId): ?>
-                    <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn btn-outline" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">
-                        ✖ Filter aufheben
-                    </a>
-                <?php endif; ?>
+                <button type="button" id="btn-reset-tag-filter" class="btn btn-outline hidden" style="padding: 0.2rem 0.6rem; font-size: 0.8rem;">
+                    ✖ Filter aufheben
+                </button>
             </div>
 
             <!-- A: AUSGABEN -->
@@ -279,9 +276,9 @@ try {
                                 $formattedAmt = number_format($stat['abs_amount'], 2, ',', '.') . ' €';
                                 $fillPct = $expMaxAbs > 0 ? ($stat['abs_amount'] / $expMaxAbs) * 100 : 0;
                             ?>
-                            <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
-                               class="tag-stat-card <?= $isActive ? 'active' : '' ?>" 
-                               style="--tag-color: <?= $stat['color'] ?>;">
+                            <div class="tag-stat-card js-filter-tag-card <?= $isActive ? 'active' : '' ?>" 
+                                 data-filter-tag-id="<?= $stat['id'] ?>"
+                                 style="--tag-color: <?= $stat['color'] ?>; cursor: pointer;">
                                <div class="tag-stat-bg-bar" style="width: <?= number_format($fillPct, 1, '.', '') ?>%;"></div>
                                <div class="tag-stat-content">
                                    <div class="tag-stat-header">
@@ -293,7 +290,7 @@ try {
                                        <span class="tag-stat-count"><?= $stat['tx_count'] ?> Buchung<?= $stat['tx_count'] === 1 ? '' : 'en' ?></span>
                                    </div>
                                </div>
-                            </a>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -325,9 +322,9 @@ try {
                                 $formattedAmt = number_format($stat['abs_amount'], 2, ',', '.') . ' €';
                                 $fillPct = $incMaxAbs > 0 ? ($stat['abs_amount'] / $incMaxAbs) * 100 : 0;
                             ?>
-                            <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&tag_id=<?= $stat['id'] ?>" 
-                               class="tag-stat-card <?= $isActive ? 'active' : '' ?>" 
-                               style="--tag-color: <?= $stat['color'] ?>;">
+                            <div class="tag-stat-card js-filter-tag-card <?= $isActive ? 'active' : '' ?>" 
+                                 data-filter-tag-id="<?= $stat['id'] ?>"
+                                 style="--tag-color: <?= $stat['color'] ?>; cursor: pointer;">
                                <div class="tag-stat-bg-bar" style="width: <?= number_format($fillPct, 1, '.', '') ?>%;"></div>
                                <div class="tag-stat-content">
                                    <div class="tag-stat-header">
@@ -339,7 +336,7 @@ try {
                                        <span class="tag-stat-count"><?= $stat['tx_count'] ?> Buchung<?= $stat['tx_count'] === 1 ? '' : 'en' ?></span>
                                    </div>
                                </div>
-                            </a>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>

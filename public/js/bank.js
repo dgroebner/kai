@@ -1,7 +1,9 @@
 // Scope-Variablen auf Modulebene
 let activePopover = null;
+let activeFilterTagId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Tags sicher aus dem HTML data-Attribut parsen
     const container = document.getElementById('giro-container');
     if (container && container.dataset.tags) {
         try {
@@ -17,6 +19,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Globaler Klick-Dispatcher
 document.addEventListener('click', (e) => {
+    // A: Klick auf Tag-Kachel in der Statistik (Filter schalten)
+    const filterCard = e.target.closest('.js-filter-tag-card');
+    if (filterCard) {
+        e.preventDefault();
+        e.stopPropagation();
+        const tagId = filterCard.dataset.filterTagId;
+        toggleTagFilter(tagId);
+        return;
+    }
+
+    // B: Reset-Button für Filter
+    const resetBtn = e.target.closest('#btn-reset-tag-filter');
+    if (resetBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        resetTagFilter();
+        return;
+    }
+
+    // C: Tag aus Transaktionszeile entfernen
     const removeBtn = e.target.closest('.remove-tag-btn');
     if (removeBtn) {
         e.preventDefault();
@@ -25,6 +47,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
+    // D: Popover öffnen
     const openBtn = e.target.closest('.js-open-tag-popover');
     if (openBtn) {
         e.preventDefault();
@@ -33,6 +56,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
+    // E: Klick auf existierendes Tag im Popover
     const tagOption = e.target.closest('.js-tag-option');
     if (tagOption) {
         e.preventDefault();
@@ -46,6 +70,7 @@ document.addEventListener('click', (e) => {
         return;
     }
 
+    // F: Klick auf "Neu anlegen" im Popover
     const createOption = e.target.closest('.js-tag-create');
     if (createOption && activePopover) {
         e.preventDefault();
@@ -66,6 +91,64 @@ document.addEventListener('click', (e) => {
         closePopover();
     }
 });
+
+// ----------------------------------------------------
+// Client-Side Filtering (Kein Page-Reload, kein Wegspringen)
+// ----------------------------------------------------
+
+function toggleTagFilter(tagId) {
+    if (activeFilterTagId === tagId) {
+        resetTagFilter();
+        return;
+    }
+
+    activeFilterTagId = tagId;
+    applyTableFilter();
+}
+
+function resetTagFilter() {
+    activeFilterTagId = null;
+    applyTableFilter();
+}
+
+function applyTableFilter() {
+    const rows = document.querySelectorAll('tr[data-tx-id]');
+    const cards = document.querySelectorAll('.js-filter-tag-card');
+    const resetBtn = document.getElementById('btn-reset-tag-filter');
+
+    // 1. Tabellenzeilen ein-/ausblenden
+    rows.forEach(row => {
+        if (!activeFilterTagId) {
+            row.classList.remove('hidden');
+            return;
+        }
+
+        const hasTag = row.querySelector(`.tag-badge[data-tag-id="${activeFilterTagId}"]`);
+        if (hasTag) {
+            row.classList.remove('hidden');
+        } else {
+            row.classList.add('hidden');
+        }
+    });
+
+    // 2. Visuelles Highlighting der Kacheln
+    cards.forEach(card => {
+        if (activeFilterTagId && card.dataset.filterTagId === activeFilterTagId) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
+    });
+
+    // 3. Reset-Button anzeigen/verstecken
+    if (resetBtn) {
+        if (activeFilterTagId) {
+            resetBtn.classList.remove('hidden');
+        } else {
+            resetBtn.classList.add('hidden');
+        }
+    }
+}
 
 function closePopover() {
     if (activePopover) {
@@ -232,6 +315,7 @@ function appendBadgeToUI(txId, tag) {
     }
 
     updateTagStatsBar();
+    applyTableFilter(); // Filter nach Hinzufügen neu bewerten
 }
 
 function removeBadgeFromUI(txId, tagId) {
@@ -244,12 +328,9 @@ function removeBadgeFromUI(txId, tagId) {
     }
 
     updateTagStatsBar();
+    applyTableFilter(); // Filter nach Löschen neu bewerten
 }
 
-/**
- * Aggregiert die sichtbar zugewiesenen Tags getrennt nach Ausgaben (<0) 
- * und Einnahmen (>0) neu und aktualisiert beide Diagrammbereiche.
- */
 function updateTagStatsBar() {
     const expGrid = document.getElementById('exp-tags-grid');
     const incGrid = document.getElementById('inc-tags-grid');
@@ -261,7 +342,6 @@ function updateTagStatsBar() {
     let expTotalAbs = 0, expMaxAbs = 0;
     let incTotalAbs = 0, incMaxAbs = 0;
 
-    // 1. Tabelle durchgehen und getrennt nach Vorzeichen aggregieren
     const rows = document.querySelectorAll('tr[data-tx-id]');
     rows.forEach(row => {
         const amount = parseFloat(row.dataset.amount || '0');
@@ -291,29 +371,21 @@ function updateTagStatsBar() {
         });
     });
 
-    // Kennzahlen für Ausgaben berechnen
     Object.values(expMap).forEach(s => {
         expTotalAbs += s.absTotal;
         if (s.absTotal > expMaxAbs) expMaxAbs = s.absTotal;
     });
 
-    // Kennzahlen für Einnahmen berechnen
     Object.values(incMap).forEach(s => {
         incTotalAbs += s.absTotal;
         if (s.absTotal > incMaxAbs) incMaxAbs = s.absTotal;
     });
 
-    const currentUrlParams = new URLSearchParams(window.location.search);
-    const type = currentUrlParams.get('type') || 'monat';
-    const date = currentUrlParams.get('date') || '';
-
-    // Hilfsfunktion zum Rendern einer Gruppe
     const renderGroup = (gridEl, barEl, statsMap, totalAbs, maxAbs, isExpense) => {
         if (!gridEl) return;
 
         const sorted = Object.values(statsMap).sort((a, b) => b.absTotal - a.absTotal);
 
-        // Segmentbalken
         if (barEl) {
             barEl.innerHTML = '';
             sorted.forEach(stat => {
@@ -329,17 +401,18 @@ function updateTagStatsBar() {
             });
         }
 
-        // Kacheln
         gridEl.innerHTML = '';
         sorted.forEach(stat => {
             const sign = isExpense ? '-' : '+';
             const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
             const fillPct = maxAbs > 0 ? (stat.absTotal / maxAbs) * 100 : 0;
+            const isActive = activeFilterTagId === stat.id;
 
-            const card = document.createElement('a');
-            card.href = `?type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}&tag_id=${stat.id}`;
-            card.className = 'tag-stat-card';
+            const card = document.createElement('div');
+            card.className = `tag-stat-card js-filter-tag-card ${isActive ? 'active' : ''}`;
+            card.dataset.filterTagId = stat.id;
             card.style.setProperty('--tag-color', stat.color);
+            card.style.cursor = 'pointer';
 
             card.innerHTML = `
                 <div class="tag-stat-bg-bar" style="width: ${fillPct.toFixed(1)}%;"></div>
