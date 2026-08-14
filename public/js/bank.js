@@ -183,12 +183,27 @@ function openRuleBuilderModal(btn) {
         const chip = document.createElement('span');
         chip.className = 'word-chip';
         chip.textContent = word;
+        
         chip.addEventListener('click', () => {
             chip.classList.toggle('selected');
-            const patternInput = overlay.querySelector('.js-rule-pattern');
-            patternInput.value = escapeRegex(word);
+
+            // Alle aktuell ausgewählten Wort-Chips auslesen
+            const selectedChips = Array.from(wordsContainer.querySelectorAll('.word-chip.selected'));
+            
+            if (selectedChips.length > 0) {
+                // Ausgewählte Wörter escapen und mit .* verknüpfen
+                const combinedPattern = selectedChips
+                    .map(c => escapeRegex(c.textContent.trim()))
+                    .join('.*');
+
+                patternInput.value = combinedPattern;
+            } else {
+                patternInput.value = '';
+            }
+
             triggerLiveMatchCheck(patternInput.value);
         });
+
         wordsContainer.appendChild(chip);
     });
 
@@ -292,10 +307,19 @@ function renderModalTagPicker(wrapEl, selectedIds) {
     (window.AVAILABLE_TAGS || []).forEach(tag => {
         const isSelected = selectedIds.includes(parseInt(tag.id, 10));
         const chip = document.createElement('span');
-        chip.className = `badge clickable-tag js-modal-tag-chip ${isSelected ? '' : 'btn-outline'}`;
+        
+        chip.className = `badge clickable-tag js-modal-tag-chip ${isSelected ? 'active' : 'inactive'}`;
         chip.dataset.tagId = tag.id;
-        chip.style.cssText = `cursor:pointer; color:${tag.color}; border-color:${tag.color}; background-color:${isSelected ? 'rgba(255,255,255,0.1)' : 'transparent'};`;
-        chip.textContent = tag.name;
+        chip.style.cssText = `
+            cursor: pointer;
+            transition: all 0.15s ease;
+            ${isSelected 
+                ? `color: ${tag.color}; border-color: ${tag.color}; background-color: color-mix(in srgb, ${tag.color} 15%, transparent); box-shadow: 0 0 8px color-mix(in srgb, ${tag.color} 30%, transparent);` 
+                : 'color: var(--text-muted); border-color: rgba(255, 255, 255, 0.1); background-color: rgba(255, 255, 255, 0.02); opacity: 0.55;'
+            }
+        `;
+        
+        chip.textContent = isSelected ? `✓ ${tag.name}` : tag.name;
 
         chip.addEventListener('click', () => {
             const idx = selectedIds.indexOf(parseInt(tag.id, 10));
