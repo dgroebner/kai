@@ -426,7 +426,7 @@ try {
                                                    class="badge badge-success" 
                                                    style="text-decoration: none; font-size: 0.75rem;" 
                                                    title="Zum E-Bon wechseln">
-                                                    🧾 E-Bon vorhanden (#<?= (int)$tx['linked_receipt_id'] ?>) &rarr;
+                                                    🧾 E-Bon vorhanden &rarr;
                                                 </a>
                                             </div>
                                         <?php endif; ?>
