@@ -15,12 +15,23 @@ class ActivityLogRepository
     }
 
     /**
-     * Holt die neuesten Aktivitäts-Einträge für das Dashboard
-     *
-     * @param int $limit
-     * @return array
+     * Holt die Gesamtzahl aller Log-Einträge
      */
-    public function getLatestActivities(int $limit = 8): array
+    public function getTotalCount(): int
+    {
+        $dbCon = $this->db->getConnection();
+        try {
+            $stmt = $dbCon->query("SELECT COUNT(*) FROM activity_log");
+            return (int) $stmt->fetchColumn();
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Holt Aktivitäts-Einträge paginiert
+     */
+    public function getLatestActivities(int $limit = 20, int $offset = 0): array
     {
         $dbCon = $this->db->getConnection();
         
@@ -29,9 +40,10 @@ class ActivityLogRepository
                 SELECT id, event_type, message, link_url, is_read, created_at 
                 FROM activity_log 
                 ORDER BY created_at DESC 
-                LIMIT :limit
+                LIMIT :limit OFFSET :offset
             ");
             $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
             $stmt->execute();
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
