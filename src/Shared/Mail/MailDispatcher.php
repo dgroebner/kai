@@ -6,7 +6,10 @@ use Kai\Tools\Bank\CreditCardService;
 use Kai\Tools\Bank\BankGiroService;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
+use Kai\Tools\Kassenbon\ReceiptMatcher;
+use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Log\ActivityLogger;
 use Exception;
 
 class MailDispatcher
@@ -134,7 +137,14 @@ class MailDispatcher
                             }
                             unset($item);
 
-                            $this->receiptRepository->saveReceipt($receiptData, $fileHash);
+                            $receiptId = $this->receiptRepository->saveReceipt($receiptData, $fileHash);
+							
+							$activityLogger = new ActivityLogger(Database::getInstance());
+							$activityLogger->logReceipt($receiptId, $receiptData['store']);
+							
+							$matcher = new ReceiptMatcher();
+                            $matcher->syncUnlinkedReceipts();
+				
                             $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
                         }
                     }

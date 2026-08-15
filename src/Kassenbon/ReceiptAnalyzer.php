@@ -44,7 +44,6 @@ class ReceiptAnalyzer {
             
         } catch (Exception $e) {
             $this->logger->error("ReceiptAnalyzer: Abbruch bei der KI-Analyse.", ['error' => $e->getMessage()]);
-            // Wir werfen den Fehler weiter, damit die ScannerTask weiß, dass dieser spezielle Bon fehlgeschlagen ist
             throw new Exception("Fehler bei der Receipt-Analyse: " . $e->getMessage());
         }
     }
