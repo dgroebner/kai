@@ -4,6 +4,7 @@ namespace Kai\Tools\Shared\Log;
 
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Db\Database;
+use PDO;
 
 class ActivityLogger
 {
