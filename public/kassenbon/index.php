@@ -94,7 +94,7 @@ try {
                                         <span class="badge badge-warning">🟡 Offen</span>
                                     <?php endif; ?>
                                 </td>
-                                <td data-label="Positionen"><?= (int)$receipt['item_count'] ?> Positionen</td>
+                                <td data-label="Positionen"><?= (int)$receipt['item_count'] ?></td>
                                 <td data-label="Gesamtbetrag" class="text-right amount-bold">
 								    <?= number_format((float)$receipt['total'], 2, ',', '.') ?> €
 								</td>
