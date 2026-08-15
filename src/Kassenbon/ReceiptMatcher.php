@@ -156,7 +156,7 @@ class ReceiptMatcher
             ':date_start' => $purchaseDate, 
             ':date_end'   => $dateEnd, 
             ':amount'     => $expectedGiroAmount,
-            ':amount_min' => $expectedGiroAmount - 20, // Toleranz für evtl. Bargeldabhebung
+            ':amount_min' => $expectedGiroAmount - 200, // Toleranz für evtl. Bargeldabhebung
             ':amount_max' => 0
         ]);
         $giroCandidates = $stmtGiro->fetchAll(PDO::FETCH_ASSOC);
