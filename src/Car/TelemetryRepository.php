@@ -14,7 +14,7 @@ class TelemetryRepository {
     private Logger $logger;
 
     public function __construct() {
-		$this->db = Database::getInstance()
+		$this->db = Database::getInstance();
         $this->dbCon = $this->db->getConnection();
         $this->logger = new Logger(14);
     }
