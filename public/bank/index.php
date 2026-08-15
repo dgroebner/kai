@@ -133,17 +133,19 @@ try {
     $totalTransactions = (int)$stmtCount->fetchColumn();
     $totalPages = max(1, (int)ceil($totalTransactions / $limit));
 
-    // Umsätze mit zugewiesenen Tags, Regel-Informationen & verknüpfter Kreditkartenabrechnung laden
+    // Umsätze mit zugewiesenen Tags, Regel-Informationen, Kreditkartenabrechnung & E-Bons laden
     $stmtTx = $pdo->prepare("
         SELECT 
             bt.*,
             r.text_pattern AS matched_text_pattern,
             s.id AS linked_statement_id,
             s.statement_date AS linked_statement_date,
+            rec.id AS linked_receipt_id,
             GROUP_CONCAT(CONCAT(t.id, ':', t.name, ':', t.color) SEPARATOR '||') AS tag_data
         FROM bank_giro_transactions bt
         LEFT JOIN bank_tag_rules r ON bt.matched_rule_id = r.id
         LEFT JOIN bank_cc_statements s ON bt.id = s.bank_transaction_id
+        LEFT JOIN kb_receipts rec ON bt.id = rec.bank_giro_transaction_id
         LEFT JOIN bank_transaction_tags tt ON bt.id = tt.transaction_id
         LEFT JOIN bank_tags t ON tt.tag_id = t.id
         {$whereClause}
@@ -160,7 +162,6 @@ try {
     $stmtTx->execute();
     
     $rawTxs = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
-	
 
     // Tags pro Transaktion strukturiert aufbereiten
     foreach ($rawTxs as $row) {
@@ -406,7 +407,7 @@ try {
                                             <?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
 
-                                        <!-- Falls mit einer Kreditkarten-Abrechnung verknüpft: Link anzeigen -->
+                                        <!-- Falls mit einer Kreditkarten-Abrechnung verknüpft -->
                                         <?php if (!empty($tx['linked_statement_id'])): ?>
                                             <div style="margin-top: 0.25rem;">
                                                 <a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" 
@@ -414,6 +415,18 @@ try {
                                                    style="text-decoration: none; font-size: 0.75rem;" 
                                                    title="Zur Kreditkarten-Abrechnung wechseln">
                                                     💳 Kreditkarten-Abrechnung (<?= date('m/Y', strtotime($tx['linked_statement_date'])) ?>) &rarr;
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <!-- Falls mit einem E-Bon verknüpft -->
+                                        <?php if (!empty($tx['linked_receipt_id'])): ?>
+                                            <div style="margin-top: 0.25rem;">
+                                                <a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>" 
+                                                   class="badge badge-success" 
+                                                   style="text-decoration: none; font-size: 0.75rem;" 
+                                                   title="Zum E-Bon wechseln">
+                                                    🧾 E-Bon vorhanden (#<?= (int)$tx['linked_receipt_id'] ?>) &rarr;
                                                 </a>
                                             </div>
                                         <?php endif; ?>

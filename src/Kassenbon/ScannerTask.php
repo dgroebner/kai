@@ -6,6 +6,7 @@ use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Mail\ImapClient;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
+use Kai\Tools\Kassenbon\ReceiptMatcher;
 
 class ScannerTask {
     private Logger $logger;
@@ -32,6 +33,7 @@ class ScannerTask {
 
             // Hole bekannte Kategorien vor der Verarbeitung
             $knownCategories = $repository->getKnownCategories();
+            $hasNewReceipts = false;
 
             foreach ($messages as $message) {
                 $attachments = $message->getAttachments(); 
@@ -94,11 +96,8 @@ class ScannerTask {
                                 // Dem Repository beim Speichern zusätzlich den Datei-Hash mitgeben
                                 $repository->saveReceipt($receiptData, $fileHash);
 								
-								$receiptId = $this->db->lastInsertId();
-								$activityLogger = new ActivityLogger($this->db);
-								$activityLogger->logReceipt($receiptId, $receiptData['store_name'] ?? '');
-								
                                 $mailArchived = true;
+                                $hasNewReceipts = true;
                                 $this->logger->info("ScannerTask: Bon gespeichert.");
                             } else {
                                 $this->logger->error("ScannerTask: KI lieferte leeres oder ungültiges Ergebnis.");
@@ -115,6 +114,13 @@ class ScannerTask {
             }
 
             $mailClient->disconnect();
+
+            // Automatischer Abgleich für neu geladene Kassenbons
+            if ($hasNewReceipts) {
+                $matcher = new ReceiptMatcher();
+                $matcher->syncUnlinkedReceipts();
+            }
+
             $this->logger->info("ScannerTask: Verarbeitungslauf beendet.");
 
         } catch (\Throwable $e) {

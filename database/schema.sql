@@ -71,35 +71,6 @@ CREATE TABLE IF NOT EXISTS `vehicle_telemetry_log` (
     INDEX `idx_vin_timestamp` (`vin`, `timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `kb_receipts` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `file_hash` varchar(64) DEFAULT NULL,
-  `store` varchar(255) NOT NULL,
-  `purchase_date` date NOT NULL,
-  `total` decimal(10,2) NOT NULL,
-  `created_at` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_file_hash` (`file_hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `kb_items` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `receipt_id` int(11) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `quantity` decimal(10,3) NOT NULL DEFAULT 1.000,
-  `unit_price` decimal(10,2) NOT NULL,
-  `total_price` decimal(10,2) NOT NULL,
-  `category` varchar(100) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `receipt_id` (`receipt_id`),
-  KEY `idx_category` (`category`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
-ALTER TABLE `kb_items`
-  ADD CONSTRAINT `kb_items_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `kb_receipts` (`id`) ON DELETE CASCADE;
-COMMIT;
-
 -- ==========================================================================
 -- DOMAIN: BANKING & FINANZEN
 -- ==========================================================================
@@ -204,3 +175,36 @@ CREATE TABLE IF NOT EXISTS `activity_log` (
   INDEX `idx_is_read` (`is_read`),
   INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kb_receipts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bank_giro_transaction_id` INT NULL DEFAULT NULL,
+  `bank_cc_transaction_id` INT UNSIGNED NULL DEFAULT NULL,
+  `file_hash` varchar(64) DEFAULT NULL,
+  `store` varchar(255) NOT NULL,
+  `purchase_date` date NOT NULL,
+  `total` decimal(10,2) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_file_hash` (`file_hash`),
+  FOREIGN KEY (`bank_giro_transaction_id`) REFERENCES `bank_giro_transactions`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`bank_cc_transaction_id`) REFERENCES `bank_cc_transactions`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kb_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `receipt_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `quantity` decimal(10,3) NOT NULL DEFAULT 1.000,
+  `unit_price` decimal(10,2) NOT NULL,
+  `total_price` decimal(10,2) NOT NULL,
+  `category` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `receipt_id` (`receipt_id`),
+  KEY `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+ALTER TABLE `kb_items`
+  ADD CONSTRAINT `kb_items_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `kb_receipts` (`id`) ON DELETE CASCADE;
+COMMIT;

@@ -34,11 +34,15 @@ try {
         exit('Abrechnung nicht gefunden.');
     }
 
-    // Transaktionen laden
+    // Transaktionen & verknüpfte E-Bons laden
     $stmtTx = $db->prepare("
-        SELECT t.*, c.name AS category_name 
+        SELECT 
+            t.*, 
+            c.name AS category_name,
+            rec.id AS linked_receipt_id
         FROM bank_cc_transactions t
         LEFT JOIN bank_categories c ON t.category_id = c.id
+        LEFT JOIN kb_receipts rec ON t.id = rec.bank_cc_transaction_id
         WHERE t.statement_id = :id
         ORDER BY t.booking_date DESC
     ");
@@ -138,11 +142,23 @@ try {
 							data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
 								
 								<td data-label="Datum"><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
-								<td data-label="Händler / Ort"><?= htmlspecialchars($tx['merchant_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+								<td data-label="Händler / Ort">
+									<strong style="display:block;"><?= htmlspecialchars($tx['merchant_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></strong>
+									<?php if (!empty($tx['linked_receipt_id'])): ?>
+										<div style="margin-top: 0.25rem;">
+											<a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>" 
+											   class="badge badge-success" 
+											   style="text-decoration: none; font-size: 0.75rem;" 
+											   title="Zum E-Bon wechseln">
+												🧾 E-Bon vorhanden (#<?= (int)$tx['linked_receipt_id'] ?>) &rarr;
+											</a>
+										</div>
+									<?php endif; ?>
+								</td>
 								<td data-label="Karte">*<?= htmlspecialchars($tx['card_number_suffix'] ?? '----', ENT_QUOTES, 'UTF-8') ?></td>
 								
 								<!-- Kategorie mit dynamischer Farbe & Stift-Icon -->
-								<td  data-label="Kategorie" class="category-cell">
+								<td data-label="Kategorie" class="category-cell">
 									<span class="category-badge clickable-badge" 
 										  title="Kategorie bearbeiten" 
 										  data-tx-id="<?= (int)$tx['id'] ?>">

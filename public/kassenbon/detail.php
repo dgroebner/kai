@@ -19,7 +19,18 @@ if ($id === false || $id === null || $id <= 0) {
 try {
     $pdo = Database::getInstance()->getConnection();
 
-    $stmt = $pdo->prepare("SELECT * FROM kb_receipts WHERE id = :id");
+    // Bon inkl. Verknüpfung zu Girokonto oder Kreditkarte laden
+    $stmt = $pdo->prepare("
+        SELECT 
+            r.*,
+            gt.booking_date AS giro_booking_date,
+            ct.booking_date AS cc_booking_date,
+            ct.statement_id AS cc_statement_id
+        FROM kb_receipts r
+        LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
+        LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
+        WHERE r.id = :id
+    ");
     $stmt->execute([':id' => $id]);
     $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -52,7 +63,22 @@ try {
 <body>
     <div class="container">
         <header class="page-header">
-            <h1>🛒 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small class="page-header-sub">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small></h1>
+            <div>
+                <h1>🛒 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small class="page-header-sub">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small></h1>
+                <div style="margin-top: 0.5rem;">
+                    <?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
+                        <a href="../bank/index.php" class="badge badge-success" style="text-decoration: none; font-size: 0.85rem;" title="Zur Girokonto-Ansicht wechseln">
+                            🟢 Girokonto abgebucht (<?= date('d.m.Y', strtotime($receipt['giro_booking_date'])) ?>) &rarr;
+                        </a>
+                    <?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
+                        <a href="../bank/detail.php?id=<?= (int)$receipt['cc_statement_id'] ?>" class="badge badge-success" style="text-decoration: none; font-size: 0.85rem;" title="Zur Kreditkartenabrechnung wechseln">
+                            🟢 Kreditkarte abgebucht (<?= date('d.m.Y', strtotime($receipt['cc_booking_date'])) ?>) &rarr;
+                        </a>
+                    <?php else: ?>
+                        <span class="badge badge-warning" style="font-size: 0.85rem;">🟡 Zahlung offen</span>
+                    <?php endif; ?>
+                </div>
+            </div>
             <a href="index.php" class="btn btn-outline">&larr; Zurück zu den Mails</a>
         </header>
 
