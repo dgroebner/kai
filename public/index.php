@@ -56,6 +56,12 @@ Auth::requirePage();
                     <p>Live-Telemetrie des Fahrzeugs: Ladestand, Reichweite, Temperaturen und Verlaufshistorie.</p>
                     <a href="car/index.php" class="btn">Öffnen</a>
                 </div>
+				
+				<div class="card">
+					<h3>📋 Aktivitäts-Log</h3>
+					<p>Übersicht aller System-Ereignisse: Neue Kassenbons, Bankdaten, Fahrzeug-Telemetrie und PV-Prognosen.</p>
+					<a href="system/index.php" class="btn">Öffnen</a>
+				</div>
                 
             </div>
         </main>
