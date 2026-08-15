@@ -136,10 +136,11 @@ try {
 							$amount = (float)$tx['amount'];
 							$isRefund = $amount > 0; // Positive Beträge = Gutschriften
 							$displayAmount = abs($amount);
+							$categoryName = $tx['category_name'] ?? 'Sonstiges';
 						?>
 						<tr data-tx-id="<?= (int)$tx['id'] ?>" 
-							data-category-id="<?= (int)$tx['category_id'] ?>" 
-							data-category-name="<?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
+							data-category-id="<?= (int)($tx['category_id'] ?? 0) ?>" 
+							data-category-name="<?= htmlspecialchars($categoryName, ENT_QUOTES, 'UTF-8') ?>">
 								
 								<td data-label="Datum"><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
 								<td data-label="Händler / Ort">
@@ -162,7 +163,7 @@ try {
 									<span class="category-badge clickable-badge" 
 										  title="Kategorie bearbeiten" 
 										  data-tx-id="<?= (int)$tx['id'] ?>">
-										<span class="badge-text"><?= htmlspecialchars($tx['category_name'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></span>
+										<span class="badge-text"><?= htmlspecialchars($categoryName, ENT_QUOTES, 'UTF-8') ?></span>
 										<span class="edit-icon">✏️</span>
 									</span>
 								</td>
@@ -178,7 +179,7 @@ try {
 								</td>
 							</tr>
 						<?php endforeach; ?>
-                    </tbody>
+					</tbody>
                 </table>
             </section>
         </main>
