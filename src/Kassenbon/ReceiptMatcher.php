@@ -126,9 +126,6 @@ class ReceiptMatcher
         return ['giro' => $linkedGiro, 'cc' => $linkedCc];
     }
 
-    /**
-     * Ermittelt potenzielle Giro- und Kreditkarten-Kandidaten für einen Bon im erweiterten Zeitfenster (+10 Tage).
-     */
     public function getCandidatesForReceipt(int $receiptId): array
     {
         $stmt = $this->pdo->prepare("SELECT purchase_date, total, store FROM kb_receipts WHERE id = :id");
@@ -140,39 +137,44 @@ class ReceiptMatcher
         }
 
         $purchaseDate = date('Y-m-d', strtotime($receipt['purchase_date']));
-        $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +10 days'));
-        $storeName = trim((string)$receipt['store']);
-        $merchantParam = '%' . $storeName . '%';
+        $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +14 days'));
+        $totalAmount = (float)$receipt['total'];
 
-        // 1. Giro-Kandidaten (unverknüpft im Zeitraum)[cite: 16]
+        $expectedGiroAmount = -abs($totalAmount);
+        $expectedCcAmount   = abs($totalAmount);
+
+        // 1. Giro-Kandidaten (Suche über Betrag & Zeitraum, unabhängig vom exakten Händlertext)
         $stmtGiro = $this->pdo->prepare("
             SELECT id, booking_date, amount, merchant_raw, 'giro' AS account_type
             FROM bank_giro_transactions
             WHERE booking_date BETWEEN :date_start AND :date_end
-              AND merchant_raw LIKE :merchant
+              AND (amount = :amount OR amount BETWEEN :amount_min AND :amount_max)
               AND id NOT IN (SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL)
             ORDER BY booking_date ASC
         ");
         $stmtGiro->execute([
             ':date_start' => $purchaseDate, 
             ':date_end'   => $dateEnd, 
-            ':merchant'   => $merchantParam
+            ':amount'     => $expectedGiroAmount,
+            ':amount_min' => $expectedGiroAmount - 20, // Toleranz für evtl. Bargeldabhebung
+            ':amount_max' => 0
         ]);
         $giroCandidates = $stmtGiro->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Kreditkarten-Kandidaten (unverknüpft im Zeitraum)[cite: 16]
+        // 2. Kreditkarten-Kandidaten (Suche über Betrag & Zeitraum)
         $stmtCc = $this->pdo->prepare("
             SELECT id, booking_date, amount, merchant_name AS merchant_raw, 'cc' AS account_type
             FROM bank_cc_transactions
             WHERE booking_date BETWEEN :date_start AND :date_end
-              AND merchant_name LIKE :merchant
+              AND (amount = :amount OR amount = :amount_neg)
               AND id NOT IN (SELECT bank_cc_transaction_id FROM kb_receipts WHERE bank_cc_transaction_id IS NOT NULL)
             ORDER BY booking_date ASC
         ");
         $stmtCc->execute([
             ':date_start' => $purchaseDate, 
             ':date_end'   => $dateEnd, 
-            ':merchant'   => $merchantParam
+            ':amount'     => $expectedCcAmount,
+            ':amount_neg' => -$expectedCcAmount
         ]);
         $ccCandidates = $stmtCc->fetchAll(PDO::FETCH_ASSOC);
 
