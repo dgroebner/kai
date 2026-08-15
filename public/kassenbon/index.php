@@ -94,21 +94,25 @@ try {
                             <tr>
                                 <td data-label="Datum"><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
                                 <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
-                                <td data-label="Zahlungsstatus">
-                                    <?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
-                                        <span class="badge badge-success" title="Auf Girokonto verbucht">🟢 Girokonto</span>
-                                    <?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
-                                        <span class="badge badge-success" title="Über Kreditkarte verbucht">🟢 Kreditkarte</span>
-                                    <?php elseif ($receipt['candidate_count'] > 0): ?>
-                                        <button type="button" class="badge badge-warning js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>" style="cursor: pointer; border: none;">
-                                            🟡 <?= (int)$receipt['candidate_count'] ?> Kandidat(en)
-                                        </button>
-                                    <?php else: ?>
-                                        <button type="button" class="badge badge-warning js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>" style="cursor: pointer; border: none;">
-                                            🟡 Offen
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
+								<td data-label="Zahlungsstatus">
+									<?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
+										<a href="../bank/index.php" class="badge badge-success" style="text-decoration: none;" title="Auf Girokonto verbucht">
+											🟢 Girokonto
+										</a>
+									<?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
+										<a href="../bank/detail.php?id=<?= (int)$receipt['cc_statement_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Über Kreditkarte verbucht">
+											🟢 Kreditkarte
+										</a>
+									<?php elseif ($receipt['candidate_count'] > 0): ?>
+										<button type="button" class="badge badge-warning js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>" style="cursor: pointer; border: none;">
+											🟡 <?= (int)$receipt['candidate_count'] ?> Kandidat(en)
+										</button>
+									<?php else: ?>
+										<button type="button" class="badge badge-warning js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>" style="cursor: pointer; border: none;">
+											🟡 Offen
+										</button>
+									<?php endif; ?>
+								</td>
                                 <td data-label="Positionen"><?= (int)$receipt['item_count'] ?></td>
                                 <td data-label="Gesamtbetrag" class="text-right amount-bold">
 								    <?= number_format((float)$receipt['total'], 2, ',', '.') ?> €
