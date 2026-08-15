@@ -178,11 +178,11 @@ class ReceiptMatcher
             ':date_start' => $purchaseDate, 
             ':date_end'   => $dateEnd, 
             ':amount'     => $expectedCcAmount,
-            ':amount_neg' => -$expectedCcAmount,
             ':amount_min' => $expectedCcAmount - 10, // Toleranz für evtl. Sofortrabatte
             ':amount_max' => $expectedCcAmount + 10,
-            ':amount_min' => -($expectedCcAmount + 10), // Toleranz für evtl. Sofortrabatte
-            ':amount_max' => -($expectedCcAmount - 10)
+            ':amount_neg' => -$expectedCcAmount,
+            ':amount_min_neg' => -($expectedCcAmount + 10), // Toleranz für evtl. Sofortrabatte
+            ':amount_max_neg' => -($expectedCcAmount - 10)
         ]);
         $ccCandidates = $stmtCc->fetchAll(PDO::FETCH_ASSOC);
 
