@@ -84,11 +84,11 @@ try {
                                 <td data-label="Zahlungsstatus">
                                     <?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
                                         <a href="../bank/index.php" class="badge badge-success" style="text-decoration: none;" title="Auf Girokonto verbucht">
-                                            🟢 Girokonto (<?= date('d.m.Y', strtotime($receipt['giro_booking_date'])) ?>)
+                                            🟢 Girokonto
                                         </a>
                                     <?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
                                         <a href="../bank/detail.php?id=<?= (int)$receipt['cc_statement_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Über Kreditkarte verbucht">
-                                            🟢 Kreditkarte (<?= date('d.m.Y', strtotime($receipt['cc_booking_date'])) ?>)
+                                            🟢 Kreditkarte
                                         </a>
                                     <?php else: ?>
                                         <span class="badge badge-warning">🟡 Offen</span>
