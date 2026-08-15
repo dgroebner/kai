@@ -19,17 +19,25 @@ class ActivityLogger
      */
     public function log(string $eventType, string $message, ?string $linkUrl = null, ?int $entityId = null): void
     {
+		$dbCon = $this->db->getConnection();
         try {
-			$sql = "INSERT INTO activity_log (event_type, message, link_url, entity_id, created_at) 
-					VALUES (:event_type, :message, :link_url, :entity_id, NOW())";
+			
+			$this->dbCon->beginTransaction();
+			$stmnt = $this->dbCon->prepare("INSERT INTO activity_log (event_type, message, link_url, entity_id, created_at) 
+					VALUES (:event_type, :message, :link_url, :entity_id, NOW())");
 
-			$this->db->query($sql, [
+			$stmnt->execute([
 				'event_type' => $eventType,
 				'message'    => $message,
 				'link_url'   => $linkUrl,
 				'entity_id'  => $entityId,
 			]);
+			
+			$this->dbCon->commit();
         } catch (Exception $e) {
+		    if (dbCon->inTransaction()) {
+                dbCon->rollBack();
+            }
             $this->logger->error("ActivityLogger: Fehler bei save log.", ['error' => $e->getMessage()]);
             throw $e;
         }
