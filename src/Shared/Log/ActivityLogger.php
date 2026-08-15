@@ -2,17 +2,19 @@
 
 namespace Kai\Tools\Shared\Log;
 
-use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Db\Database;
-use PDO;
+use Kai\Tools\Shared\Log\Logger;
+use Exception;
 
 class ActivityLogger
 {
     private Database $db;
+    private Logger $logger;
 
     public function __construct(Database $db)
     {
         $this->db = $db;
+        $this->logger = new Logger();
     }
 
     /**
@@ -20,24 +22,27 @@ class ActivityLogger
      */
     public function log(string $eventType, string $message, ?string $linkUrl = null, ?int $entityId = null): void
     {
-		$dbCon = $this->db->getConnection();
-        try {
-			
-			dbCon->beginTransaction();
-			$stmnt = $this->dbCon->prepare("INSERT INTO activity_log (event_type, message, link_url, entity_id, created_at) 
-					VALUES (:event_type, :message, :link_url, :entity_id, NOW())");
+        $dbCon = $this->db->getConnection();
 
-			$stmnt->execute([
-				'event_type' => $eventType,
-				'message'    => $message,
-				'link_url'   => $linkUrl,
-				'entity_id'  => $entityId,
-			]);
-			
-			dbCon->commit();
+        try {
+            $dbCon->beginTransaction();
+
+            $stmnt = $dbCon->prepare("
+                INSERT INTO activity_log (event_type, message, link_url, entity_id, created_at) 
+                VALUES (:event_type, :message, :link_url, :entity_id, NOW())
+            ");
+
+            $stmnt->execute([
+                'event_type' => $eventType,
+                'message'    => $message,
+                'link_url'   => $linkUrl,
+                'entity_id'  => $entityId,
+            ]);
+
+            $dbCon->commit();
         } catch (Exception $e) {
-		    if (dbCon->inTransaction()) {
-                dbCon->rollBack();
+            if ($dbCon->inTransaction()) {
+                $dbCon->rollBack();
             }
             $this->logger->error("ActivityLogger: Fehler bei save log.", ['error' => $e->getMessage()]);
             throw $e;
