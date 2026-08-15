@@ -22,7 +22,7 @@ class ActivityLogger
 		$dbCon = $this->db->getConnection();
         try {
 			
-			$this->dbCon->beginTransaction();
+			dbCon->beginTransaction();
 			$stmnt = $this->dbCon->prepare("INSERT INTO activity_log (event_type, message, link_url, entity_id, created_at) 
 					VALUES (:event_type, :message, :link_url, :entity_id, NOW())");
 
@@ -33,7 +33,7 @@ class ActivityLogger
 				'entity_id'  => $entityId,
 			]);
 			
-			$this->dbCon->commit();
+			dbCon->commit();
         } catch (Exception $e) {
 		    if (dbCon->inTransaction()) {
                 dbCon->rollBack();
