@@ -125,4 +125,104 @@ class ReceiptMatcher
 
         return ['giro' => $linkedGiro, 'cc' => $linkedCc];
     }
+
+    /**
+     * Ermittelt potenzielle Giro- und Kreditkarten-Kandidaten für einen Bon im erweiterten Zeitfenster (+10 Tage).
+     */
+    public function getCandidatesForReceipt(int $receiptId): array
+    {
+        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store FROM kb_receipts WHERE id = :id");
+        $stmt->execute([':id' => $receiptId]);
+        $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$receipt) {
+            return ['giro' => [], 'cc' => []];
+        }
+
+        $purchaseDate = date('Y-m-d', strtotime($receipt['purchase_date']));
+        $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +10 days'));
+        $storeName = trim((string)$receipt['store']);
+        $merchantParam = '%' . $storeName . '%';
+
+        // 1. Giro-Kandidaten (unverknüpft im Zeitraum)[cite: 16]
+        $stmtGiro = $this->pdo->prepare("
+            SELECT id, booking_date, amount, merchant_raw, 'giro' AS account_type
+            FROM bank_giro_transactions
+            WHERE booking_date BETWEEN :date_start AND :date_end
+              AND merchant_raw LIKE :merchant
+              AND id NOT IN (SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL)
+            ORDER BY booking_date ASC
+        ");
+        $stmtGiro->execute([
+            ':date_start' => $purchaseDate, 
+            ':date_end'   => $dateEnd, 
+            ':merchant'   => $merchantParam
+        ]);
+        $giroCandidates = $stmtGiro->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Kreditkarten-Kandidaten (unverknüpft im Zeitraum)[cite: 16]
+        $stmtCc = $this->pdo->prepare("
+            SELECT id, booking_date, amount, merchant_name AS merchant_raw, 'cc' AS account_type
+            FROM bank_cc_transactions
+            WHERE booking_date BETWEEN :date_start AND :date_end
+              AND merchant_name LIKE :merchant
+              AND id NOT IN (SELECT bank_cc_transaction_id FROM kb_receipts WHERE bank_cc_transaction_id IS NOT NULL)
+            ORDER BY booking_date ASC
+        ");
+        $stmtCc->execute([
+            ':date_start' => $purchaseDate, 
+            ':date_end'   => $dateEnd, 
+            ':merchant'   => $merchantParam
+        ]);
+        $ccCandidates = $stmtCc->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'giro' => $giroCandidates,
+            'cc'   => $ccCandidates
+        ];
+    }
+
+    /**
+     * Verknüpft einen Kassenbon manuell mit einer Transaktion und setzt optional das Bargeld-Tag[cite: 16].
+     */
+    public function linkReceiptManually(int $receiptId, int $txId, string $accountType, bool $applyCashTag = false): bool
+    {
+        if ($accountType === 'giro') {
+            $stmt = $this->pdo->prepare("UPDATE kb_receipts SET bank_giro_transaction_id = :tx_id, bank_cc_transaction_id = NULL WHERE id = :receipt_id");
+            $stmt->execute([':tx_id' => $txId, ':receipt_id' => $receiptId]);
+
+            if ($applyCashTag) {
+                $this->assignCashTagToGiroTx($txId);
+            }
+        } elseif ($accountType === 'cc') {
+            $stmt = $this->pdo->prepare("UPDATE kb_receipts SET bank_cc_transaction_id = :tx_id, bank_giro_transaction_id = NULL WHERE id = :receipt_id");
+            $stmt->execute([':tx_id' => $txId, ':receipt_id' => $receiptId]);
+        } else {
+            return false;
+        }
+
+        $this->logger->info("ReceiptMatcher: Kassenbon #{$receiptId} manuell mit {$accountType}-Transaktion #{$txId} verknüpft.");
+        return true;
+    }
+
+    /**
+     * Hilfsmethode: Weist einer Giro-Transaktion das Tag "Bargeld" zu[cite: 16].
+     */
+    private function assignCashTagToGiroTx(int $txId): void
+    {
+        // Prüfen ob Tag "Bargeld" existiert, ansonsten anlegen
+        $stmtTag = $this->pdo->prepare("SELECT id FROM bank_tags WHERE name = 'Bargeld' LIMIT 1");
+        $stmtTag->execute();
+        $tagId = $stmtTag->fetchColumn();
+
+        if (!$tagId) {
+            $stmtCreate = $this->pdo->prepare("INSERT INTO bank_tags (name, color) VALUES ('Bargeld', '#f59e0b')");
+            $stmtCreate->execute();
+            $tagId = $this->pdo->lastInsertId();
+        }
+
+        // Verknüpfung in bank_transaction_tags herstellen (Ignore falls bereits verknüpft)
+        $stmtLink = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
+        $stmtLink->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
+    }
 }

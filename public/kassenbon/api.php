@@ -25,11 +25,46 @@ Auth::requireCsrfToken($data);
 $action = $data['action'] ?? 'update_category';
 
 try {
+    $matcher = new ReceiptMatcher();
+
     if ($action === 'sync_receipts') {
-        $matcher = new ReceiptMatcher();
         $result = $matcher->syncUnlinkedReceipts();
 
         echo json_encode(['success' => true, 'linked' => $result]);
+        exit;
+    }
+
+    if ($action === 'get_candidates') {
+        $receiptId = filter_var($data['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($receiptId === false || $receiptId === null || $receiptId <= 0) {
+            Auth::sendJsonError(400, 'Ungültige Parameter');
+        }
+
+        $candidates = $matcher->getCandidatesForReceipt($receiptId);
+
+        echo json_encode(['success' => true, 'candidates' => $candidates]);
+        exit;
+    }
+
+    if ($action === 'link_manual') {
+        $receiptId = filter_var($data['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+        $accountType = trim((string)($data['account_type'] ?? ''));
+        $applyCashTag = (bool)($data['apply_cash_tag'] ?? false);
+
+        if ($receiptId === false || $receiptId === null || $receiptId <= 0
+            || $txId === false || $txId === null || $txId <= 0
+            || !in_array($accountType, ['giro', 'cc'])) {
+            Auth::sendJsonError(400, 'Ungültige Parameter');
+        }
+
+        $success = $matcher->linkReceiptManually($receiptId, $txId, $accountType, $applyCashTag);
+
+        if ($success) {
+            echo json_encode(['success' => true]);
+        } else {
+            Auth::sendJsonError(500, 'Verknüpfung fehlgeschlagen');
+        }
         exit;
     }
 
