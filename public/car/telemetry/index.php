@@ -61,9 +61,9 @@ try {
         $repo->saveLog($data);
     }
 	
-	$capturedAt = $data['captured_at']
-	$activityLogger = new ActivityLogger(Database::getInstance());
-	$activityLogger->logCarTelemetryLoaded("ID.Buzz captured at: {$capturedAt}");
+    $capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
+    $activityLogger = new ActivityLogger(Database::getInstance());
+    $activityLogger->logCarTelemetryLoaded("ID.Buzz (Stand: {$capturedAt} Uhr)");
 
     http_response_code(201); // 201 Created
     echo json_encode([
