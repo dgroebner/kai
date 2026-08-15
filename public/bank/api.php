@@ -5,6 +5,7 @@ use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Bank\RuleMatcher;
+use Kai\Tools\Bank\StatementMatcher;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -237,6 +238,18 @@ try {
         $stmt->execute([':cat_id' => $categoryId, ':tx_id' => $txId]);
 
         echo json_encode(['success' => true]);
+        exit;
+    }
+	
+	// Manuelles Synchronisieren/Matchen von Kreditkartenabrechnungen mit Girokonto-Umsätzen
+    if ($action === 'sync_cc_statements') {
+        $matcher = new StatementMatcher($pdo);
+        $linkedCount = $matcher->syncUnlinkedStatements();
+
+        echo json_encode([
+            'success' => true,
+            'linked_count' => $linkedCount
+        ]);
         exit;
     }
 

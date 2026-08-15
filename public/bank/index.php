@@ -133,14 +133,17 @@ try {
     $totalTransactions = (int)$stmtCount->fetchColumn();
     $totalPages = max(1, (int)ceil($totalTransactions / $limit));
 
-    // Umsätze mit zugewiesenen Tags & Regel-Informationen laden
+    // Umsätze mit zugewiesenen Tags, Regel-Informationen & verknüpfter Kreditkartenabrechnung laden
     $stmtTx = $pdo->prepare("
         SELECT 
             bt.*,
             r.text_pattern AS matched_text_pattern,
+            s.id AS linked_statement_id,
+            s.statement_date AS linked_statement_date,
             GROUP_CONCAT(CONCAT(t.id, ':', t.name, ':', t.color) SEPARATOR '||') AS tag_data
         FROM bank_giro_transactions bt
         LEFT JOIN bank_tag_rules r ON bt.matched_rule_id = r.id
+        LEFT JOIN bank_cc_statements s ON bt.id = s.bank_transaction_id
         LEFT JOIN bank_transaction_tags tt ON bt.id = tt.transaction_id
         LEFT JOIN bank_tags t ON tt.tag_id = t.id
         {$whereClause}
@@ -399,9 +402,21 @@ try {
                                     </td>
                                     <td data-label="Text">
                                         <strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
-                                        <span class="text-muted" style="font-size: 0.85rem;">
+                                        <span class="text-muted" style="font-size: 0.85rem; display: block;">
                                             <?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
+
+                                        <!-- Falls mit einer Kreditkarten-Abrechnung verknüpft: Link anzeigen -->
+                                        <?php if (!empty($tx['linked_statement_id'])): ?>
+                                            <div style="margin-top: 0.25rem;">
+                                                <a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" 
+                                                   class="badge badge-primary" 
+                                                   style="text-decoration: none; font-size: 0.75rem;" 
+                                                   title="Zur Kreditkarten-Abrechnung wechseln">
+                                                    💳 Kreditkarten-Abrechnung (<?= date('m/Y', strtotime($tx['linked_statement_date'])) ?>) &rarr;
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
 									<td data-label="Tags">
 										<!-- Regel-Indikator (Zauberstab / Blitz) -->

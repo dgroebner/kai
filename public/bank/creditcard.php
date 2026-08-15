@@ -20,12 +20,14 @@ try {
     $totalStatements = (int)$db->query("SELECT COUNT(*) FROM bank_cc_statements")->fetchColumn();
     $totalPages = max(1, (int)ceil($totalStatements / $limit));
 
-    // Abrechnungen laden
+	// Abrechnungen inklusive Abbuchungsstatus vom Girokonto laden
     $stmt = $db->prepare("
         SELECT s.*, 
-               COUNT(t.id) AS tx_count
+               COUNT(t.id) AS tx_count,
+               g.booking_date AS giro_booking_date
         FROM bank_cc_statements s
         LEFT JOIN bank_cc_transactions t ON s.id = t.statement_id
+        LEFT JOIN bank_giro_transactions g ON s.bank_transaction_id = g.id
         GROUP BY s.id
         ORDER BY s.statement_date DESC
         LIMIT :limit OFFSET :offset
@@ -66,10 +68,11 @@ try {
             <section class="card">
                 <div class="table-responsive">
                     <table class="receipts-table stack-table">
-                        <thead>
+						<thead>
                             <tr>
                                 <th>Abrechnung</th>
                                 <th>Fälligkeit</th>
+                                <th>Status</th>
                                 <th>Positionen</th>
                                 <th class="text-right">Gesamtbetrag</th>
                                 <th class="text-right">Aktion</th>
@@ -89,6 +92,17 @@ try {
                                         <td data-label="Fälligkeit">
 										    <?= $stmtRow['due_date'] ? date('d.m.Y', strtotime($stmtRow['due_date'])) : '-' ?>
 										</td>
+                                        <td data-label="Status">
+                                            <?php if (!empty($stmtRow['giro_booking_date'])): ?>
+                                                <span class="badge badge-success" title="Auf dem Girokonto verbucht">
+                                                    🟢 Abgebucht (<?= date('d.m.Y', strtotime($stmtRow['giro_booking_date'])) ?>)
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge badge-warning" title="Noch keine Abbuchung auf dem Girokonto gefunden">
+                                                    🟡 Offen
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td data-label="Positionen"><?= (int)$stmtRow['tx_count'] ?></td>
                                         <td data-label="Gesamtbetrag" class="text-right amount-bold">
                                             <?= number_format((float)$stmtRow['total_amount'], 2, ',', '.') ?> €

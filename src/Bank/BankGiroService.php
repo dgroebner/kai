@@ -4,6 +4,7 @@ namespace Kai\Tools\Bank;
 
 use Kai\Tools\Bank\Parser\BankCsvParser;
 use Kai\Tools\Bank\RuleMatcher;
+use Kai\Tools\Bank\StatementMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Log\ActivityLogger;
@@ -95,6 +96,13 @@ class BankGiroService
 			}
 		}
 		
+        // 6. Phase 3: Kreditkartenabrechnungen mit neuen Girokonto-Umsätzen verknüpfen
+		$statementMatcher = new StatementMatcher(Database::getInstance()->getConnection());
+		$linkedStatementsCount = $statementMatcher->syncUnlinkedStatements();
+		if ($linkedStatementsCount > 0) {
+			$this->logger->info("BankGiroService: {$linkedStatementsCount} Kreditkartenabrechnung(en) automatisch mit Giro-Umsatz verknüpft.");
+		}
+
 		$activityLogger = new ActivityLogger($this->db);
 		$activityLogger->logBankDataImport(count($parsedTransactions));
 

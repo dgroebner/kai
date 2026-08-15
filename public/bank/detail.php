@@ -19,7 +19,13 @@ if ($id === false || $id === null || $id <= 0) {
 try {
     $db = Database::getInstance()->getConnection();
 
-    $stmtInfo = $db->prepare("SELECT * FROM bank_cc_statements WHERE id = :id");
+    $stmtInfo = $db->prepare("
+        SELECT s.*, 
+               g.booking_date AS giro_booking_date
+        FROM bank_cc_statements s
+        LEFT JOIN bank_giro_transactions g ON s.bank_transaction_id = g.id
+        WHERE s.id = :id
+    ");
     $stmtInfo->execute([':id' => $id]);
     $statement = $stmtInfo->fetch(PDO::FETCH_ASSOC);
 
@@ -60,7 +66,23 @@ try {
 <body>
     <div class="container">
         <header class="page-header">
-            <h1>💳 Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?></h1>
+            <div>
+                <h1>💳 Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?></h1>
+                <div style="margin-top: 0.4rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <?php if (!empty($statement['giro_booking_date'])): ?>
+                        <span class="badge badge-success">
+                            🟢 Abgebucht am <?= date('d.m.Y', strtotime($statement['giro_booking_date'])) ?>
+                        </span>
+                        <a href="index.php?highlight_tx=<?= (int)$statement['bank_transaction_id'] ?>" class="btn-link" style="font-size: 0.85rem;">
+                            🔗 Zur Girokonto-Buchung &rarr;
+                        </a>
+                    <?php else: ?>
+                        <span class="badge badge-warning">
+                            🟡 Offen (Noch keine Girokonto-Abbuchung verknüpft)
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
             <a href="creditcard.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
         </header>
 
