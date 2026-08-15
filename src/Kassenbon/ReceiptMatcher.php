@@ -47,7 +47,7 @@ class ReceiptMatcher
               AND booking_date BETWEEN :date_start AND :date_end
               AND (
                   merchant_raw LIKE :merchant
-                  OR :merchant_short != '' AND merchant_raw LIKE :merchant_short
+                  OR (:has_short = 1 AND merchant_raw LIKE :merchant_short)
               )
             ORDER BY booking_date ASC 
             LIMIT 1
@@ -61,7 +61,7 @@ class ReceiptMatcher
               AND booking_date BETWEEN :date_start AND :date_end
               AND (
                   merchant_name LIKE :merchant
-                  OR :merchant_short != '' AND merchant_name LIKE :merchant_short
+                  OR (:has_short = 1 AND merchant_name LIKE :merchant_short)
               )
             ORDER BY booking_date ASC 
             LIMIT 1
@@ -83,7 +83,8 @@ class ReceiptMatcher
             $dateEnd   = date('Y-m-d', strtotime($purchaseDate . ' +14 days'));
 
             $merchantParam = '%' . $storeName . '%';
-            $merchantShort = strlen($storeName) > 3 ? '%' . substr($storeName, 0, 4) . '%' : '';
+            $hasShort      = strlen($storeName) > 3 ? 1 : 0;
+            $merchantShort = $hasShort ? '%' . substr($storeName, 0, 4) . '%' : '';
 
             // 1. Erst auf dem Girokonto suchen
             $stmtFindGiro->execute([
@@ -91,6 +92,7 @@ class ReceiptMatcher
                 ':date_start'     => $dateStart,
                 ':date_end'       => $dateEnd,
                 ':merchant'       => $merchantParam,
+                ':has_short'      => $hasShort,
                 ':merchant_short' => $merchantShort
             ]);
             $giroTxId = $stmtFindGiro->fetchColumn();
@@ -109,6 +111,7 @@ class ReceiptMatcher
                 ':date_start'     => $dateStart,
                 ':date_end'       => $dateEnd,
                 ':merchant'       => $merchantParam,
+                ':has_short'      => $hasShort,
                 ':merchant_short' => $merchantShort
             ]);
             $ccTxId = $stmtFindCc->fetchColumn();
