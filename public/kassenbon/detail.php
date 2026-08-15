@@ -79,7 +79,7 @@ try {
                     <?php endif; ?>
                 </div>
             </div>
-            <a href="index.php" class="btn btn-outline">&larr; Zurück zu den Mails</a>
+            <a href="index.php" class="btn btn-outline">&larr; Zurück zu der Übersicht</a>
         </header>
 
         <main id="kassenbonDetailApp"
