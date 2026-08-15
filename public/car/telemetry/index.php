@@ -4,7 +4,6 @@ require_once __DIR__ . '/../../../bootstrap.php';
 use Kai\Tools\Car\TelemetryRepository;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -59,12 +58,6 @@ try {
     // Historien-Log wird NUR bei echten Telemetriedaten geschrieben
     if ($hasTelemetry) {
         $repo->saveLog($data);
-		
-	    if (!empty($data['captured_at'])) {
-		    $capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
-		    $activityLogger = new ActivityLogger(Database::getInstance());
-		    $activityLogger->logCarTelemetryLoaded("ID.Buzz Stand: {$capturedAt} Uhr");
-	    }
     }
 
     http_response_code(201); // 201 Created

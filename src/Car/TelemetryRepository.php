@@ -3,16 +3,19 @@ namespace Kai\Tools\Car;
 
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Log\ActivityLogger;
 use PDO;
 use Exception;
 use DateTime;
 
 class TelemetryRepository {
-    private PDO $db;
+	private Database $db;
+    private PDO $dbCon;
     private Logger $logger;
 
     public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+		$this->db = Database::getInstance()
+        $this->dbCon = $this->db->getConnection();
         $this->logger = new Logger(14);
     }
 
@@ -30,7 +33,7 @@ class TelemetryRepository {
 
             // 1. Wenn eine Außentemperatur vorliegt, primär im Fenster ±5°C suchen
             if ($outdoorTempC !== null) {
-                $stmtTemp = $this->db->prepare("
+                $stmtTemp = $this->dbCon->prepare("
                     SELECT AVG(range_km / soc_percent) as avg_factor
                     FROM vehicle_telemetry_log
                     WHERE vin = :vin 
@@ -49,7 +52,7 @@ class TelemetryRepository {
 
             // 2. Fallback: Wenn noch keine Logs im Temperaturbereich existieren, globalen Durchschnitt nehmen
             if (!$avgFactor || $avgFactor <= 0) {
-                $stmtGlobal = $this->db->prepare("
+                $stmtGlobal = $this->dbCon->prepare("
                     SELECT AVG(range_km / soc_percent) as avg_factor
                     FROM vehicle_telemetry_log
                     WHERE vin = :vin 
@@ -104,7 +107,7 @@ class TelemetryRepository {
 					$rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
 				}
 
-				$stmtState = $this->db->prepare("
+				$stmtState = $this->dbCon->prepare("
 					INSERT INTO `vehicle_state` (
 						`vin`, 
 						`car_captured_at`, 
@@ -185,7 +188,7 @@ class TelemetryRepository {
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            $stmtCurrent = $this->db->prepare("
+            $stmtCurrent = $this->dbCon->prepare("
                 SELECT mileage_km, range_km, outdoor_temp_c 
                 FROM vehicle_state 
                 WHERE vin = :vin
@@ -215,7 +218,7 @@ class TelemetryRepository {
 
             $rawPayload    = json_encode($data);
 
-            $stmtLog = $this->db->prepare("
+            $stmtLog = $this->dbCon->prepare("
                 INSERT INTO `vehicle_telemetry_log` (
                     `vin`, 
                     `car_captured_at`, 
@@ -252,6 +255,13 @@ class TelemetryRepository {
                 ':outdoor_temp_c'  => $outdoorTempC,
                 ':raw_payload'     => $rawPayload
             ]);
+			
+			$affectedRows = $stmtLog->rowCount();
+			if ($affectedRows === 1) {
+				$capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
+		        $activityLogger = new ActivityLogger($this->db);
+		        $activityLogger->logCarTelemetryLoaded("ID.Buzz Stand: {$capturedAt} Uhr");
+			}
 
             return true;
         } catch (Exception $e) {
