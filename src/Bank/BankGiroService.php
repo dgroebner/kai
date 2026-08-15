@@ -5,6 +5,7 @@ namespace Kai\Tools\Bank;
 use Kai\Tools\Bank\Parser\BankCsvParser;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Bank\StatementMatcher;
+use Kai\Tools\Kassenbon\ReceiptMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Log\ActivityLogger;
@@ -102,6 +103,10 @@ class BankGiroService
 		if ($linkedStatementsCount > 0) {
 			$this->logger->info("BankGiroService: {$linkedStatementsCount} Kreditkartenabrechnung(en) automatisch mit Giro-Umsatz verknüpft.");
 		}
+		
+		// 7. Phase 4: E-Bons mit neuen Girokonto-Umsätzen verknüpfen
+		$receiptMatcher = new ReceiptMatcher($this->pdo);
+        $receiptMatcher->syncUnlinkedReceipts();
 
 		$activityLogger = new ActivityLogger($this->db);
 		$activityLogger->logBankDataImport(count($parsedTransactions));

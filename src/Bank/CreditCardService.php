@@ -2,9 +2,10 @@
 
 namespace Kai\Tools\Bank;
 
-use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
+use Kai\Tools\Kassenbon\ReceiptMatcher;
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\ActivityLogger;
 use RuntimeException;
 use PDO;
 
@@ -81,6 +82,10 @@ class CreditCardService
                     ':category_id' => $categoryId,
                 ]);
             }
+			
+			// Link E-Bons
+			$receiptMatcher = new ReceiptMatcher($this->pdo);
+            $receiptMatcher->syncUnlinkedReceipts();
 			
 			$activityLogger = new ActivityLogger($this->db);
 			$activityLogger->logCreditCardStatement($statementId, '08/2026');
