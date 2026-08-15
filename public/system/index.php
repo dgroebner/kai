@@ -15,47 +15,44 @@ $activities = $activityRepo->getLatestActivities(50);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aktivitäts-Log - KAI Tools</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
-    <header class="header-container">
-        <div class="header-left">
-            <a href="/" class="btn btn-secondary">&larr; Dashboard</a>
+    <div class="container">
+        <header class="page-header">
             <h1>📋 Aktivitäts-Log</h1>
-        </div>
-        <div class="user-info">
-            <a href="/logout.php" class="btn btn-secondary">Abmelden</a>
-        </div>
-    </header>
+            <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+        </header> 
 
-    <main class="container">
-        <section class="card">
-            <h2>Letchte System-Aktivitäten</h2>
-            <?php if (empty($activities)): ?>
-                <p class="text-muted">Noch keine Aktivitäten protokolliert.</p>
-            <?php else: ?>
-                <ul class="activity-list">
-                    <?php foreach ($activities as $activity): ?>
-                        <li class="activity-item <?= $activity['is_read'] ? 'read' : 'unread' ?>">
-                            <div class="activity-main">
-                                <span class="activity-message">
-                                    <?php if (!empty($activity['link_url'])): ?>
-                                        <a href="<?= htmlspecialchars($activity['link_url']) ?>">
-                                            <?= htmlspecialchars($activity['message']) ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <?= htmlspecialchars($activity['message']) ?>
-                                    <?php endif; ?>
-                                </span>
-                                <time class="activity-time" datetime="<?= $activity['created_at'] ?>">
-                                    <?= date('d.m.Y H:i', strtotime($activity['created_at'])) ?> Uhr
-                                </time>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </section>
-    </main>
+		<main>
+			<section class="card">
+				<h2>Letzte System-Aktivitäten</h2>
+				<?php if (empty($activities)): ?>
+					<p class="text-muted">Noch keine Aktivitäten protokolliert.</p>
+				<?php else: ?>
+					<ul class="activity-list">
+						<?php foreach ($activities as $activity): ?>
+							<li class="activity-item <?= $activity['is_read'] ? 'read' : 'unread' ?>">
+								<div class="activity-main">
+									<span class="activity-message">
+										<?php if (!empty($activity['link_url'])): ?>
+											<a href="<?= htmlspecialchars($activity['link_url']) ?>">
+												<?= htmlspecialchars($activity['message']) ?>
+											</a>
+										<?php else: ?>
+											<?= htmlspecialchars($activity['message']) ?>
+										<?php endif; ?>
+									</span>
+									<time class="activity-time" datetime="<?= $activity['created_at'] ?>">
+										<?= date('d.m.Y H:i', strtotime($activity['created_at'])) ?> Uhr
+									</time>
+								</div>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+			</section>
+		</main>
+	</div>
 </body>
 </html>
