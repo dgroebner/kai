@@ -166,7 +166,11 @@ class ReceiptMatcher
             SELECT id, booking_date, amount, merchant_name AS merchant_raw, 'cc' AS account_type
             FROM bank_cc_transactions
             WHERE booking_date BETWEEN :date_start AND :date_end
-              AND (amount = :amount OR amount = :amount_neg)
+              AND (amount = :amount 
+				   OR amount BETWEEN :amount_min AND :amount_max
+				   OR amount = :amount_neg
+				   OR amount BETWEEN :amount_min_neg AND :amount_max_neg
+				   )
               AND id NOT IN (SELECT bank_cc_transaction_id FROM kb_receipts WHERE bank_cc_transaction_id IS NOT NULL)
             ORDER BY booking_date ASC
         ");
@@ -174,7 +178,11 @@ class ReceiptMatcher
             ':date_start' => $purchaseDate, 
             ':date_end'   => $dateEnd, 
             ':amount'     => $expectedCcAmount,
-            ':amount_neg' => -$expectedCcAmount
+            ':amount_neg' => -$expectedCcAmount,
+            ':amount_min' => $expectedCcAmount - 10, // Toleranz für evtl. Sofortrabatte
+            ':amount_max' => $expectedCcAmount + 10,
+            ':amount_min' => -($expectedCcAmount + 10), // Toleranz für evtl. Sofortrabatte
+            ':amount_max' => -($expectedCcAmount - 10)
         ]);
         $ccCandidates = $stmtCc->fetchAll(PDO::FETCH_ASSOC);
 
