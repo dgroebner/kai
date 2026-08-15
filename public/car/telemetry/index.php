@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../../bootstrap.php';
 
 use Kai\Tools\Car\TelemetryRepository;
 use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger
+use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');

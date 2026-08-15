@@ -3,7 +3,7 @@
 namespace Kai\Tools\Shared\Mail;
 
 use Kai\Tools\Bank\CreditCardService;
-use Kai\Tools\Bank\BankGiroService; // <-- FEHLENDER IMPORT
+use Kai\Tools\Bank\BankGiroService;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
 use Kai\Tools\Shared\Log\Logger;
@@ -13,7 +13,7 @@ class MailDispatcher
 {
     private ImapClient $imapClient;
     private CreditCardService $creditCardService;
-    private BankGiroService $bankGiroService; // <-- RICHTIGE PROPERTY
+    private BankGiroService $bankGiroService;
     private ReceiptAnalyzer $receiptAnalyzer;
     private ReceiptRepository $receiptRepository;
     private Logger $logger;

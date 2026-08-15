@@ -2,6 +2,7 @@
 namespace Kai\Tools\PVCharge;
 
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Db\Database;
 use DateTime;
 use Exception;
 
@@ -11,7 +12,7 @@ class ChargeDataCollector {
 
     public function __construct() {
         $this->logger = new Logger();
-        $this->db = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection();
+        $this->db = Database::getInstance()->getConnection();
     }
 
     /**

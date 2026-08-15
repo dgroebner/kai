@@ -6,9 +6,6 @@ class Logger {
     private int $retentionDays;
 
     public function __construct(?int $retentionDays = null) {
-        // Pfad-Anpassung: Wenn kai_root/src/Shared/Log/Logger.php liegt, 
-        // müssen wir 4 Ebenen nach oben, um wieder auf der Ebene von kai_root zu sein.
-        // Falls storage parallel zu kai_root liegt, reicht das:
         $this->logDir = __DIR__ . '/../../../storage/logs';
         $this->retentionDays = $retentionDays ?? (int)($_ENV['LOG_RETENTION_DAYS'] ?? 14);
 

@@ -2,7 +2,7 @@
 
 namespace Kai\Tools\Bank;
 
-use Kai\Tools\Shared\Log\ActivityLogger
+use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
 use Kai\Tools\Shared\Db\Database;
 use RuntimeException;
