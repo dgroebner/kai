@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\System\ActivityLogRepository;
 
-Auth::requireAuth();
+Auth::requirePage();
 
 $activityRepo = new ActivityLogRepository();
 $activities = $activityRepo->getLatestActivities(50);
