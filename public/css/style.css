@@ -1499,3 +1499,10 @@ tr.is-today-row {
     color: var(--text-muted);
     white-space: nowrap;
 }
+
+.activity-icon {
+    display: inline-block;
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+    vertical-align: middle;
+}

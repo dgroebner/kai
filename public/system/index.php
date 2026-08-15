@@ -20,6 +20,21 @@ if ($page > $totalPages) {
 
 $offset = ($page - 1) * $limit;
 $activities = $activityRepo->getLatestActivities($limit, $offset);
+
+/**
+ * Mapping von Event-Typen zu Emojis
+ */
+function getEventIcon(string $eventType): string
+{
+    return match ($eventType) {
+        'car_telemetry_loaded'         => '🚐',
+        'pv_forecast_loaded'            => '☀️',
+        'receipt_created'               => '🧾',
+        'bank_data_imported'            => '🏦',
+        'creditcard_statement_created'  => '💳',
+        default                         => '📌',
+    };
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -47,6 +62,7 @@ $activities = $activityRepo->getLatestActivities($limit, $offset);
                             <li class="activity-item <?= $activity['is_read'] ? 'read' : 'unread' ?>">
                                 <div class="activity-main">
                                     <span class="activity-message">
+                                        <span class="activity-icon"><?= getEventIcon($activity['event_type']) ?></span>
                                         <?php if (!empty($activity['link_url'])): ?>
                                             <a href="<?= htmlspecialchars($activity['link_url']) ?>" class="btn-link">
                                                 <?= htmlspecialchars($activity['message']) ?>
