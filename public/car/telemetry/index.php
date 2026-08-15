@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../bootstrap.php';
 
 use Kai\Tools\Car\TelemetryRepository;
+use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Security\Auth;
@@ -60,7 +61,7 @@ try {
         $repo->saveLog($data);
     }
 	
-	$activityLogger = new ActivityLogger($this->db);
+	$activityLogger = new ActivityLogger(Database::getInstance());
 	$activityLogger->logCarTelemetryLoaded('ID.Buzz');
 
     http_response_code(201); // 201 Created
