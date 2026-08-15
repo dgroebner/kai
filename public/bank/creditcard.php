@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Bank\StatementMatcher;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
@@ -15,6 +16,10 @@ $offset = ($page - 1) * $limit;
 
 try {
     $db = Database::getInstance()->getConnection();
+	
+	// Automatischen Abgleich für evtl. neu eingetroffene Abrechnungen ausführen
+    $statementMatcher = new StatementMatcher($db);
+    $statementMatcher->syncUnlinkedStatements();
 
     // Gesamtzahl für Paginierung ermitteln
     $totalStatements = (int)$db->query("SELECT COUNT(*) FROM bank_cc_statements")->fetchColumn();
