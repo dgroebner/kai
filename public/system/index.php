@@ -36,7 +36,7 @@ $activities = $activityRepo->getLatestActivities(50);
 								<div class="activity-main">
 									<span class="activity-message">
 										<?php if (!empty($activity['link_url'])): ?>
-											<a href="<?= htmlspecialchars($activity['link_url']) ?>">
+											<a href="<?= htmlspecialchars($activity['link_url']) ?>" class="btn-link">
 												<?= htmlspecialchars($activity['message']) ?>
 											</a>
 										<?php else: ?>
