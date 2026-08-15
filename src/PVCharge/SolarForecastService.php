@@ -10,7 +10,8 @@ use Exception;
 class SolarForecastService {
     private string $apiUrl;
     private Logger $logger;
-    private PDO $db;
+	private Database $db;
+    private PDO $dbCon;
 
     public function __construct(?string $apiUrl = null) {
         if ($apiUrl === null) {
@@ -23,7 +24,8 @@ class SolarForecastService {
 
         $this->apiUrl = $apiUrl;
         $this->logger = new Logger();
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = Database::getInstance();
+		$this->dbCon = $this->db->getConnection();
     }
 
     /**
@@ -104,8 +106,8 @@ class SolarForecastService {
             if (!empty($hourlyRecords)) {
                 $this->logger->info("SolarForecastService: Speichere " . count($hourlyRecords) . " stündliche Datensätze...");
                 
-                $this->db->beginTransaction();
-                $stmtHourly = $this->db->prepare("
+                $this->dbCon->beginTransaction();
+                $stmtHourly = $this->dbCon->prepare("
                     INSERT INTO pv_forecast_hourly (forecast_time, watts, watt_hours)
                     VALUES (:time, :watts, :watt_hours)
                     ON DUPLICATE KEY UPDATE 
@@ -120,15 +122,15 @@ class SolarForecastService {
                         ':watt_hours' => $record['watt_hours']
                     ]);
                 }
-                $this->db->commit();
+                $this->dbCon->commit();
             }
 
             // 2. Daily Forecasts speichern
             if (!empty($wattHoursDay)) {
                 $this->logger->info("SolarForecastService: Speichere " . count($wattHoursDay) . " tägliche Datensätze...");
                 
-                $this->db->beginTransaction();
-                $stmtDaily = $this->db->prepare("
+                $this->dbCon->beginTransaction();
+                $stmtDaily = $this->dbCon->prepare("
                     INSERT INTO pv_forecast_daily (forecast_date, watt_hours_day)
                     VALUES (:date, :watt_hours_day)
                     ON DUPLICATE KEY UPDATE 
@@ -141,7 +143,7 @@ class SolarForecastService {
                         ':watt_hours_day' => (int)$wh
                     ]);
                 }
-                $this->db->commit();
+                $this->dbCon->commit();
             }
 			
 			$activityLogger = new ActivityLogger($this->db);
@@ -151,8 +153,8 @@ class SolarForecastService {
             return true;
 
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
+            if ($this->dbCon->inTransaction()) {
+                $this->dbCon->rollBack();
             }
             $this->logger->error("SolarForecastService: Fehler beim Speichern der Prognosedaten.", [
                 'error' => $e->getMessage()
