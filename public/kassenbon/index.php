@@ -98,9 +98,9 @@ try {
                                 <td data-label="Gesamtbetrag" class="text-right amount-bold">
 								    <?= number_format((float)$receipt['total'], 2, ',', '.') ?> €
 								</td>
-                                <td data-label="Aktion" class="text-right">
-                                    <a href="detail.php?id=<?= (int)$receipt['id'] ?>" class="btn btn-sm btn-outline">Details &rarr;</a>
-                                </td>
+								<td data-label="Aktion" class="text-right">
+									<a href="detail.php?id=<?= (int)$receipt['id'] ?>" class="btn btn-sm btn-outline btn-icon-only" title="Details anzeigen">🔍</a>
+								</td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
