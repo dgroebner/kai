@@ -60,13 +60,12 @@ try {
     if ($hasTelemetry) {
         $repo->saveLog($data);
 		
-		$activityLogger = new ActivityLogger(Database::getInstance());
-		$activityLogger->logCarTelemetryLoaded("ID.Buzz Stand: {$capturedAt} Uhr");
+	    if (!empty($data['captured_at'])) {
+		    $capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
+		    $activityLogger = new ActivityLogger(Database::getInstance());
+		    $activityLogger->logCarTelemetryLoaded("ID.Buzz Stand: {$capturedAt} Uhr");
+	    }
     }
-	
-	if (!empty($data['captured_at'])) {
-		$capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
-	}
 
     http_response_code(201); // 201 Created
     echo json_encode([
