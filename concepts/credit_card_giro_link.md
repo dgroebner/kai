@@ -47,8 +47,8 @@ Automatisches Matching von Kreditkarten-Abrechnungen (`bank_cc_statements`) mit 
 
 ## 🏦 Phase 4: UI-Erweiterung Girokonto-Ansicht (`public/bank/index.php`)
 
-* [ ] **4.1 SQL-Query Erweiterung (`public/bank/index.php`)**
+* [x] **4.1 SQL-Query Erweiterung (`public/bank/index.php`)**
   * `LEFT JOIN bank_cc_statements s ON t.id = s.bank_transaction_id` in die Transaktions-Abfrage aufnehmen, um `s.id AS linked_statement_id` und `s.statement_date` mitzuladen.
-* [ ] **4.2 Visueller Link in der Tabelle**
+* [x] **4.2 Visueller Link in der Tabelle**
   * Wenn ein Giro-Umsatz mit einer Abrechnung verknüpft ist, im Buchungstext ein dezentes Badge / Icon rendern:
     * `💳 Kreditkarten-Abrechnung (MM/YYYY)` als Link zu `public/bank/detail.php?id=:linked_statement_id`.
