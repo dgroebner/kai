@@ -877,8 +877,10 @@ function initCreditCardDetail(appEl) {
         }
     });
 
-    // B: Klickbare Legende rendern
+    // B: Klickbare Legende rendern + Filter-Event
     const legendEl = document.getElementById('categoryLegend');
+    const resetBtn = document.getElementById('resetFilterBtn');
+
     if (legendEl) {
         legendEl.innerHTML = '';
         sortedCats.forEach(cat => {
@@ -887,14 +889,45 @@ function initCreditCardDetail(appEl) {
 
             const row = document.createElement('div');
             row.className = 'legend-row';
+            row.dataset.categoryName = cat.name;
+            row.style.cursor = 'pointer';
             row.innerHTML = `
                 <span class="legend-dot" style="background-color: ${cat.color};"></span>
                 <span class="legend-label">${escapeHtml(cat.name)}</span>
                 <span class="legend-percent">${pct}%</span>
                 <span class="legend-value">${formattedAmt}</span>
             `;
+
+            // Klick auf Legendenzeile -> Tabelle nach Kategorie filtern
+            row.addEventListener('click', () => {
+                const isAlreadyActive = row.classList.contains('active');
+
+                // Alle Zeilen in Legende zurücksetzen
+                legendEl.querySelectorAll('.legend-row').forEach(r => r.classList.remove('active'));
+
+                if (isAlreadyActive) {
+                    filterCcTable(null);
+                    if (resetBtn) resetBtn.classList.add('hidden');
+                } else {
+                    row.classList.add('active');
+                    filterCcTable(cat.name);
+                    if (resetBtn) resetBtn.classList.remove('hidden');
+                }
+            });
+
             legendEl.appendChild(row);
         });
+    }
+
+    // Reset-Button Event
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            if (legendEl) {
+                legendEl.querySelectorAll('.legend-row').forEach(r => r.classList.remove('active'));
+            }
+            filterCcTable(null);
+            resetBtn.classList.add('hidden');
+        };
     }
 
     // C: ChartJS Donut-Chart zeichnen (falls Chart.js geladen ist)
@@ -927,6 +960,26 @@ function initCreditCardDetail(appEl) {
             }
         });
     }
+}
+
+/**
+ * Filtert die Kreditkarten-Tabelle nach Kategorie-Namen
+ */
+function filterCcTable(categoryName) {
+    const rows = document.querySelectorAll('#transactionsTable tbody tr');
+    rows.forEach(row => {
+        if (!categoryName) {
+            row.style.display = '';
+            return;
+        }
+
+        const rowCat = row.dataset.categoryName || 'Sonstiges';
+        if (rowCat.toLowerCase() === categoryName.toLowerCase()) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
 }
 
 function openCcCategoryDropdown(badgeEl) {
