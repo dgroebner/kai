@@ -3,7 +3,7 @@ namespace Kai\Tools\PVCharge;
 
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger
+use Kai\Tools\Shared\Log\ActivityLogger;
 use PDO;
 use Exception;
 

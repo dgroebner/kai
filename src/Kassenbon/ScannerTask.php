@@ -2,7 +2,7 @@
 namespace Kai\Tools\Kassenbon;
 
 use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger
+use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Mail\ImapClient;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptRepository;
