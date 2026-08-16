@@ -67,7 +67,7 @@ try {
                 <h1>🛒 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small class="page-header-sub">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small></h1>
                 <div style="margin-top: 0.5rem;">
                     <?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
-                        <a href="../bank/index.php" class="badge badge-success" style="text-decoration: none; font-size: 0.85rem;" title="Zur Girokonto-Ansicht wechseln">
+                        <a href="../bank/index.php?tx=<?= (int)$receipt['bank_giro_transaction_id'] ?>" class="badge badge-success" style="text-decoration: none; font-size: 0.85rem;" title="Zur Girokonto-Ansicht wechseln">
                             🟢 Girokonto abgebucht (<?= date('d.m.Y', strtotime($receipt['giro_booking_date'])) ?>) &rarr;
                         </a>
                     <?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
