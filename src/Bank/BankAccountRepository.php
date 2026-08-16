@@ -102,6 +102,8 @@ class BankAccountRepository
 		$expirationTime = $createdAt + $expiresIn;
 		$currentTime = time();
 		$remainingTime = $expirationTime - $currentTime;
+		
+		$this->logger->debug("BankAccountRepository.areTokensValid: Remaining time $remainingTime seconds.", ['remaining' => $remainingTime]);
 
         // Prüfen, ob das Zeitfenster überschritten wurde
         return $remainingTime > $maxAge;
