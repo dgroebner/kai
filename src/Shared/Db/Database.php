@@ -35,7 +35,6 @@ class Database {
 
         try {
             $this->connection = new PDO($dsn, $user, $pass, $options);
-            $this->logger->info("Database: Erfolgreich mit MariaDB/MySQL Datenbank '{$db}' verbunden.");
         } catch (PDOException $e) {
             // Wir loggen den echten Fehler für dich ins interne Log...
             $this->logger->error("Database: Verbindungsaufbau fehlgeschlagen!", ['error' => $e->getMessage()]);

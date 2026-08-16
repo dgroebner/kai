@@ -11,9 +11,6 @@ Auth::requirePage();
 $logger = new Logger();
 
 // ----------------------------------------------------
-// 1.5 Direkter Transaktions-Sprung per ?tx=ID
-// ----------------------------------------------------
-// ----------------------------------------------------
 // 1.5 Direkter Transaktions-Sprung per ?tx=ID & Seitenberechnung
 // ----------------------------------------------------
 $highlightTxId = isset($_GET['tx']) ? (int)$_GET['tx'] : null;
@@ -59,7 +56,7 @@ if ($highlightTxId && !isset($_GET['page'])) {
             }
         }
     } catch (\Throwable $e) {
-        // Fallback bei Fehlern
+        $this->logger->error("Database: Verbindungsaufbau fehlgeschlagen!", ['error' => $e->getMessage()]);
     }
 }
 
