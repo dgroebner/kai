@@ -27,7 +27,6 @@
   - **Keine dauerhafte PIN-Speicherung:** Um das Risiko im Falle eines Datenlecks zu minimieren, werden die sensiblen Bank-Zugangsdaten (Zugangsnummer & PIN) *nicht* dauerhaft in der Datenbank gespeichert. Sie werden ausschließlich beim initialen Setup-Login im Arbeitsspeicher (RAM) verarbeitet, um den OAuth2-Flow und die photoTAN-Freigabe anzustoßen, und danach sofort verworfen.
   - **Verschlüsselte Token-Speicherung (`bank_accounts.api_credentials`):** Persistiert werden lediglich die dynamischen OAuth2-Tokens (`access_token` und `refresh_token`) als verschlüsselter JSON-Blob in der Datenbank. 
   - **Verschlüsselungsverfahren:** Die Tokens werden mittels moderner Kryptografie (Sodium/AES-256-GCM) geschützt. Der automatisierte Cron-Job nutzt im Alltag ausschließlich den `refresh_token`, um neue `access_tokens` abzurufen, ohne jemals Zugriff auf die PIN zu benötigen.
-- [ ] **3.3 Verschlüsselte Credentials:** Die Zugangsdaten (comdorect Zugangsnummer und Zugangs-pin) werden über eine Admin-/Setup-Maske mit einer geheimen Sync-PIN verschlüsselt (AES-256 / Sodium) in der Datenbank hinterlegt. Bei der Ausführung werden sie temporär in der PHP-Session gehalten und nach dem API-Aufruf sofort aus dem RAM gelöscht.
 
 ---
 
