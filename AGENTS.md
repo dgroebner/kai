@@ -172,6 +172,10 @@ Jeder Endpunkt in `public/` verwendet ausschließlich die Guards der Klasse
 **Neue Shared-Klassen anlegen,** wenn dieselbe Infrastruktur von mehr als einer Domain
 benötigt wird. Einzeldomänen-Utilities bleiben in der jeweiligen Domain.
 
+### 5.2 Globale Systemparameter
+
+Globale Systemparameter können in der Tabelle `system_settings` abgelegt werden. Diese dient als globaler Key-Value-Store.
+
 ---
 
 ## 6. Security by Design

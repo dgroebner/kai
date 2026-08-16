@@ -21,9 +21,12 @@
 
 ---
 
-## 3. Konfiguration & Sichere Credential-Persistenz (.env & Cache)
-- [ ] **3.1 Statische App-Konfiguration (`.env`):** Es werden *keine* Benutzerdaten oder Passwörter in der `.env` hinterlegt, sondern lediglich allgemeine App-Konfigurationen und Client-IDs (COMDIRECT_CLIENT_ID, COMDIRECT_CLIENT_SECRET) [cite: 1].
-- [ ] **3.2 Dynamische Tokens:** Speicherung von `access_token` und `refresh_token` in einer geschützten Cache-Datei (`storage/tokens.json`), um den OAuth2-Flow mit Token-Refresh abzusichern[cite: 3].
+## 3. Konfiguration & Sichere Credential-Persistenz
+- [x] **3.1 Statische App-Konfiguration (`.env`):** Es werden *keine* Benutzerdaten oder Passwörter in der `.env` hinterlegt, sondern lediglich allgemeine App-Konfigurationen und Client-IDs (`COMDIRECT_CLIENT_ID`, `COMDIRECT_CLIENT_SECRET`).
+- [ ] **3.2 Token-basierte Persistenz & Sicherheit (Variante B):** 
+  - **Keine dauerhafte PIN-Speicherung:** Um das Risiko im Falle eines Datenlecks zu minimieren, werden die sensiblen Bank-Zugangsdaten (Zugangsnummer & PIN) *nicht* dauerhaft in der Datenbank gespeichert. Sie werden ausschließlich beim initialen Setup-Login im Arbeitsspeicher (RAM) verarbeitet, um den OAuth2-Flow und die photoTAN-Freigabe anzustoßen, und danach sofort verworfen.
+  - **Verschlüsselte Token-Speicherung (`bank_accounts.api_credentials`):** Persistiert werden lediglich die dynamischen OAuth2-Tokens (`access_token` und `refresh_token`) als verschlüsselter JSON-Blob in der Datenbank. 
+  - **Verschlüsselungsverfahren:** Die Tokens werden mittels moderner Kryptografie (Sodium/AES-256-GCM) geschützt. Der automatisierte Cron-Job nutzt im Alltag ausschließlich den `refresh_token`, um neue `access_tokens` abzurufen, ohne jemals Zugriff auf die PIN zu benötigen.
 - [ ] **3.3 Verschlüsselte Credentials:** Die Zugangsdaten (comdorect Zugangsnummer und Zugangs-pin) werden über eine Admin-/Setup-Maske mit einer geheimen Sync-PIN verschlüsselt (AES-256 / Sodium) in der Datenbank hinterlegt. Bei der Ausführung werden sie temporär in der PHP-Session gehalten und nach dem API-Aufruf sofort aus dem RAM gelöscht.
 
 ---
@@ -35,12 +38,15 @@
 
 ---
 
-## 5. Ablauf des API-Syncs (Button-Auslösung)
-- [ ] **5.1 Authentifizierung / Session:** Der Nutzer löst den Sync per Button aus und gibt die Sync-PIN ein. Der Client validiert die Tokens, führt bei Bedarf einen Refresh durch oder initialisiert den Login über den passwortbasierten Flow[cite: 3].
-- [ ] **5.2 Konten- & Salden-Abgleich:** Abruf der Konten und Salden über die entsprechende API-Ressource und Aktualisierung der Salden in der Account-Tabelle[cite: 3].
-- [ ] **5.3 Transaktions-Import:** Abruf der Transaktionen für Giro- und Tagesgeldkonto, Transformation und Speicherung in der Datenbank unter Nutzung der API-Transaktions-IDs zur Dublettenvermeidung[cite: 3].
-- [ ] **5.4 Nachgelagerte Services:** Automatische Ausführung des Regel-Gedächtnisses zur Kategorisierung, Zuordnung von E-Bons und Dokumentation des Vorgangs im Aktivitäts-Log[cite: 1, 5].
-- [ ] **5.5 Visualisierung des Sync-Prozesses** Die einzelnen Schritte des Sync-Prozesses sollen in der Sync-Maske dargestellt werden, dabei werden alle Punkte einzeln in einer Liste aufgeführt und bei Abschluss mit einem grünen Haken versehen. Bei Fehlern bricht der Syncprozess ab und der Schritt wird mit einem roten x versehen. Dadurch ist der Fortschritt des Syncprozesses transparent.
+## 5. Ablauf des API-Syncs (Manuell & Automatisiert)
+- [ ] **5.1 Auslöser (Manuell & Cron-Job):** Generell besteht neben einem automatisierten Prozess (Cron-Job) stets die manuelle Sync-Möglichkeit per Button auf der Girokontoseite.
+- [ ] **5.2 Automatisierter Sync (Cron-Job):** Ein Cron-Job aktualisiert die Salden und Buchungen automatisch im Hintergrund. Dieser Job führt den Sync jedoch nur aus, solange der gespeicherte `refresh_token` noch gültig ist.
+- [ ] **5.3 Token-Ablauf & Fehlerbehandlung:** Nur bei einem gültigen Token wird der eigentliche Datenabruf gestartet. Läuft der `refresh_token` ab, bricht der Cron-Job ab und schreibt eine eindeutige Meldung in das Aktivitäts-Log (`activity_log`). Diese Meldung enthält einen direkten Link zur Setup-Maske, damit der Nutzer das Token per manuellem Login aktualisieren kann.
+- [ ] **5.4 Authentifizierung / Session (Manuell):** Der Nutzer löst den Sync per Button aus und gibt die Sync-PIN ein[cite: 17]. Der Client validiert die Tokens, führt bei Bedarf einen Refresh durch oder initialisiert den Login über den passwortbasierten Flow[cite: 17].
+- [ ] **5.5 Konten- & Salden-Abgleich:** Abruf der Konten und Salden über die entsprechende API-Ressource und Aktualisierung der Salden in der Account-Tabelle[cite: 17].
+- [ ] **5.6 Transaktions-Import:** Abruf der Transaktionen für Giro- und Tagesgeldkonto, Transformation und Speicherung in der Datenbank unter Nutzung der API-Transaktions-IDs zur Dublettenvermeidung[cite: 17].
+- [ ] **5.7 Nachgelagerte Services:** Automatische Ausführung des Regel-Gedächtnisses zur Kategorisierung, Zuordnung von E-Bons und Dokumentation des Vorgangs im Aktivitäts-Log[cite: 17].
+- [ ] **5.8 Visualisierung des manuellen Sync-Prozesses:** Die einzelnen Schritte des Sync-Prozes
 
 ---
 

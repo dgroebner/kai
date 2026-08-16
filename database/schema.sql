@@ -107,6 +107,9 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     FOREIGN KEY (matched_rule_id) REFERENCES bank_tag_rules(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE `bank_giro_transactions`
+    ADD UNIQUE KEY `uk_account_transaction` (`account_id`, `transaction_id`);
+
 -- 3. Kreditkarten-Kategorien (bestehend für Visa-Abrechnungen)
 CREATE TABLE IF NOT EXISTS bank_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -208,4 +211,10 @@ CREATE TABLE IF NOT EXISTS `kb_items` (
   KEY `receipt_id` (`receipt_id`),
   KEY `idx_category` (`category`),
   CONSTRAINT `kb_items_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `kb_receipts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `system_settings` (
+    `setting_key` VARCHAR(100) PRIMARY KEY,
+    `setting_value` TEXT NOT NULL,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
