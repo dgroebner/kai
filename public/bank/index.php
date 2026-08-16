@@ -8,6 +8,12 @@ use Kai\Tools\Shared\Security\Auth;
 // 1. Auth-Check — immer zuerst (AGENTS.md)
 Auth::requirePage();
 
+// AJAX-Check für flüssiges Nachladen von Tabelle & Paginierung
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    // Hier wird unten im HTML-Bereich das Fragment definiert, 
+    // aber wir müssen sicherstellen, dass nur der relevante Teil ausgegeben wird.
+}
+
 $logger = new Logger();
 
 // ----------------------------------------------------

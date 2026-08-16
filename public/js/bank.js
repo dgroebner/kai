@@ -138,6 +138,12 @@ document.addEventListener('click', (e) => {
     if (activePopover) {
         closePopover();
     }
+	
+	const paginationLink = e.target.closest('.pagination a');
+    if (paginationLink) {
+        e.preventDefault();
+        fetchAndReplaceContent(paginationLink.href);
+    }
 });
 
 // ----------------------------------------------------
@@ -403,29 +409,25 @@ function escapeRegex(str) {
 // ----------------------------------------------------
 // Client-Side Filtering & Popover (Bestehender Code)
 // ----------------------------------------------------
-
 function toggleTagFilter(tagId) {
     const urlParams = new URLSearchParams(window.location.search);
     const currentTagId = urlParams.get('tag_id');
 
     if (currentTagId === String(tagId)) {
-        // Wenn derselbe Filter nochmal geklickt wird -> aufheben
         urlParams.delete('tag_id');
     } else {
-        // Anderen Filter setzen und auf Seite 1 zurücksetzen
         urlParams.set('tag_id', tagId);
-        urlParams.set('page', '1');
+        urlParams.set('page', '1'); // Bei Filterwechsel auf Seite 1 zurück
     }
 
-    // Seite mit aktualisierten GET-Parametern neu laden
-    window.location.search = urlParams.toString();
+    fetchAndReplaceContent('index.php?' + urlParams.toString());
 }
 
 function resetTagFilter() {
     const urlParams = new URLSearchParams(window.location.search);
     urlParams.delete('tag_id');
     urlParams.delete('page');
-    window.location.search = urlParams.toString();
+    fetchAndReplaceContent('index.php?' + urlParams.toString());
 }
 
 function applyTableFilter() {
@@ -1074,4 +1076,53 @@ function openCcCategoryDropdown(badgeEl) {
         select.remove();
         badgeEl.style.display = 'inline-flex';
     });
+}
+
+async function fetchAndReplaceContent(targetUrl) {
+    try {
+        // Optional: Transaktions-Container leicht ausgrauen während des Ladens
+        const container = document.querySelector('main section.card');
+        if (container) container.style.opacity = '0.5';
+
+        const response = await fetch(targetUrl);
+        const htmlText = await response.text();
+
+        // HTML parsen
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+
+        // Neue Tabelle und Paginierung extrahieren
+        const newMainContent = doc.querySelector('main').innerHTML;
+        const newStatsSection = doc.querySelector('section.card'); // Falls sich die Statistik ändert
+
+        // Ins aktuelle DOM übernehmen
+        document.querySelector('main').innerHTML = newMainContent;
+        
+        // URL im Browser aktualisieren (ohne Reload)
+        window.history.pushState({ path: targetUrl }, '', targetUrl);
+
+        // Aktiv-Zustände der Kacheln im DOM aktualisieren
+        const urlParams = new URLSearchParams(targetUrl.split('?')[1]);
+        const activeTagId = urlParams.get('tag_id');
+        
+        document.querySelectorAll('.js-filter-tag-card').forEach(card => {
+            if (card.dataset.filterTagId === activeTagId) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
+
+        const resetBtn = document.getElementById('btn-reset-tag-filter');
+        if (resetBtn) {
+            resetBtn.classList.toggle('hidden', !activeTagId);
+        }
+
+        if (container) container.style.opacity = '1';
+
+    } catch (err) {
+        console.error('AJAX Ladefehler:', err);
+        // Fallback auf normalen Reload bei Netzwerkfehlern
+        window.location.href = targetUrl;
+    }
 }
