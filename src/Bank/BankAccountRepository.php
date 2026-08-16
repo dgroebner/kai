@@ -99,13 +99,13 @@ class BankAccountRepository
 		$createdAt = (int)$tokens['created_at'];
         $maxAge = 600; // Erlaubte Rest-Gültigkeit
 		
-		$expirationTime = createdAt + expiresIn;
+		$expirationTime = $createdAt + $expiresIn;
 		$currentTime = time();
-		$remainingTime = expirationTime - currentTime;
+		$remainingTime = $expirationTime - $currentTime;
 		
 		$this->logger->debug("BankAccountRepository.areTokensValid: $remainingTime > $bufferTime.");
 
         // Prüfen, ob das Zeitfenster überschritten wurde
-        return remainingTime > maxAge;
+        return $remainingTime > $maxAge;
     }
 }
