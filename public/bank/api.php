@@ -31,6 +31,10 @@ try {
 	// TODO Test code - replace with final code as soon as available
 	if ($action === 'save_dummy_tokens') {
         $accountId = 2; // Girokonto-ID
+        $accessId = trim((string)($data['access_id'] ?? ''));
+        $pin = trim((string)($data['pin'] ?? ''));
+
+        // Hier könntest du später mit $accessId und $pin den echten Comdirect OAuth-Call machen
         
         $dummyTokens = [
             'access_token'  => 'dummy_access_' . bin2hex(random_bytes(8)),
@@ -39,12 +43,17 @@ try {
             'created_at'    => time()
         ];
         
-		$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
-		$repo = new BankAccountRepository();
-		
-		$success = $repo->saveApiTokens($accountId, $dummyTokens, $encryptionService);
-		
-		echo json_encode(['success' => $success]);
+        try {
+            $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+            $repo = new BankAccountRepository();
+            
+            $success = $repo->saveApiTokens($accountId, $dummyTokens, $encryptionService);
+            
+            echo json_encode(['success' => $success]);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
         exit;
     }
 	
@@ -64,7 +73,7 @@ try {
     }
 	
 	if ($action === 'check_token_status') {
-		$accountId = 2; // ID deines Girokontos (z.B. 1)
+		$accountId = 2; // ID deines Girokontos (z.B. 1) TODO: replace with dynamic value
 		
 		$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
 		$repo = new BankAccountRepository();

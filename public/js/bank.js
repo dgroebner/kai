@@ -1240,14 +1240,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// Wenn der Nutzer neue Zugangsdaten eingibt und absendet
     btnSubmitCredentials.addEventListener('click', async () => {
-        if (accessIdInput.value.trim() === '' || pinInput.value.trim() === '') {
+        const accessId = accessIdInput.value.trim();
+        const pin = pinInput.value.trim();
+
+        if (accessId === '' || pin === '') {
             alert('Bitte Zugangsnummer und PIN eingeben.');
             return;
         }
 
         try {
-            // 1. Dummy-Token im Backend generieren und verschlüsselt in der DB speichern
-            const response = await KaiHttp.postJson('api.php', { action: 'save_dummy_tokens' });
+            // 1. Dummy-Token im Backend generieren und Zugangsdaten übergeben
+            const response = await KaiHttp.postJson('api.php', { 
+                action: 'save_dummy_tokens',
+                access_id: accessId,
+                pin: pin
+            });
             
             if (!response || !response.success) {
                 alert('Fehler beim Speichern der Token in der Datenbank.');
