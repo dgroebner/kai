@@ -56,7 +56,7 @@ if ($highlightTxId && !isset($_GET['page'])) {
             }
         }
     } catch (\Throwable $e) {
-        $this->logger->error("Bank->index.php - Fehler bei Einstiegspunktberechnung!", ['error' => $e->getMessage()]);
+        $logger->error("Bank->index.php - Fehler bei Einstiegspunktberechnung!", ['error' => $e->getMessage()]);
     }
 }
 
