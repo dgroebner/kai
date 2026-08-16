@@ -292,17 +292,25 @@ try {
 			</div>
 			
 			<div class="rule-modal-body">
-				<!-- Schritt 1: PIN Eingabe -->
-				<div id="sync-step-pin">
+				<!-- Schritt 1: Zugangsdaten (wird nur eingeblendet, wenn Token abgelaufen/leer sind) -->
+				<div id="sync-step-credentials" class="hidden">
 					<p class="subtitle" style="margin-bottom: 1rem;">
-						Bitte gib deine Sync-PIN ein, um die Zugangsdaten für diese Sitzung sicher zu entschlüsseln.
+						Die API-Zugangsdaten sind abgelaufen oder nicht vorhanden. Bitte gib deine Comdirect Zugangsdaten ein, um neue Tokens anzufordern.
 					</p>
 					
-					<input type="password" id="sync-pin-input" class="tag-search-input" placeholder="Sync-PIN (Dummy)" style="font-size: 1rem; padding: 0.6rem 0.8rem; margin-bottom: 1.5rem;">
+					<div style="margin-bottom: 0.8rem;">
+						<label class="chart-label" style="margin-bottom: 0.3rem;">Zugangsnummer:</label>
+						<input type="text" id="sync-access-id" class="tag-search-input" placeholder="Zugangsnummer" style="font-size: 0.95rem; padding: 0.6rem 0.8rem;">
+					</div>
+
+					<div style="margin-bottom: 1.2rem;">
+						<label class="chart-label" style="margin-bottom: 0.3rem;">PIN / Passwort:</label>
+						<input type="password" id="sync-pin-input" class="tag-search-input" placeholder="Banking PIN" style="font-size: 0.95rem; padding: 0.6rem 0.8rem;">
+					</div>
 					
 					<div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
 						<button type="button" id="btn-cancel-sync" class="btn btn-outline">Abbrechen</button>
-						<button type="button" id="btn-start-sync" class="btn">Sync starten</button>
+						<button type="button" id="btn-submit-credentials" class="btn">Token anfordern & Sync starten</button>
 					</div>
 				</div>
 

@@ -1128,17 +1128,19 @@ async function fetchAndReplaceContent(targetUrl) {
 }
 
 // ==========================================
-// Comdirect API Sync (Dummy-Simulation)
+// Comdirect API Sync (Token-Lifecycle & Simulation)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const btnOpenSync = document.getElementById('btn-open-sync');
     const syncModal = document.getElementById('sync-modal');
     const btnCancelSync = document.getElementById('btn-cancel-sync');
-    const btnStartSync = document.getElementById('btn-start-sync');
+    const btnCancelSyncX = document.getElementById('btn-cancel-sync-x');
+    const btnSubmitCredentials = document.getElementById('btn-submit-credentials');
     const btnCloseSync = document.getElementById('btn-close-sync');
     
-    const stepPin = document.getElementById('sync-step-pin');
+    const stepCredentials = document.getElementById('sync-step-credentials');
     const stepProgress = document.getElementById('sync-step-progress');
+    const accessIdInput = document.getElementById('sync-access-id');
     const pinInput = document.getElementById('sync-pin-input');
     const resultMsg = document.getElementById('sync-result-msg');
 
@@ -1152,14 +1154,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!btnOpenSync || !syncModal) return;
 
-    // Modal öffnen
-    btnOpenSync.addEventListener('click', () => {
-        stepPin.classList.remove('hidden');
-        stepProgress.classList.add('hidden');
-        btnCloseSync.classList.add('hidden');
-        pinInput.value = '';
+    const closeModal = () => {
+        syncModal.classList.add('hidden');
+        syncModal.style.display = 'none';
+    };
+
+    // Modal öffnen & Token-Status prüfen (Simulation)
+    btnOpenSync.addEventListener('click', async () => {
         resultMsg.innerText = '';
-        
+        accessIdInput.value = '';
+        pinInput.value = '';
+
         Object.values(tasks).forEach(el => {
             el.style.color = 'var(--text-muted)';
             el.innerText = '⏳ ' + el.innerText.substring(2);
@@ -1167,40 +1172,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         syncModal.classList.remove('hidden');
         syncModal.style.display = 'flex';
+
+        // HIER SPÄTER: Echter AJAX-Check gegen Backend (z.B. action: 'check_token_status')
+        // Für den Test simulieren wir: Angenommen die Tokens sind abgelaufen -> zeige Credentials-Formular
+        const tokensAreValid = false; // Zum Testen auf true oder false setzen
+
+        if (!tokensAreValid) {
+            // Zeige Eingabefeld für Comdirect Zugangsdaten
+            stepCredentials.classList.remove('hidden');
+            stepProgress.classList.add('hidden');
+        } else {
+            // Tokens sind gültig -> Direkt mit dem Sync-Fortschritt starten
+            stepCredentials.classList.add('hidden');
+            stepProgress.classList.remove('hidden');
+            runSyncProcess();
+        }
     });
 
-    // Modal schließen
-    btnCancelSync.addEventListener('click', () => {
-        syncModal.classList.add('hidden');
-        syncModal.style.display = 'none';
-    });
+    btnCancelSync.addEventListener('click', closeModal);
+    btnCancelSyncX.addEventListener('click', closeModal);
 
     // Nach erfolgreichem Sync die Seite neu laden
     btnCloseSync.addEventListener('click', () => {
         window.location.reload();
     });
 
-    // Hilfsfunktion: Setzt einen Task auf erledigt
     const completeTask = (taskKey, successText) => {
         const el = tasks[taskKey];
         el.style.color = 'var(--color-green, #10b981)';
         el.innerText = `✅ ${successText}`;
     };
 
-    // Sync Prozess starten (Dummy Simulation)
-    btnStartSync.addEventListener('click', () => {
-        if (pinInput.value.trim() === '') {
-            alert('Bitte gib (d)eine Sync-PIN ein.');
-            return;
-        }
-
-        stepPin.classList.add('hidden');
-        stepProgress.classList.remove('hidden');
-        
+    const runSyncProcess = () => {
         tasks.auth.style.color = 'var(--text-main, #1f2937)';
 
         setTimeout(() => {
-            completeTask('auth', 'Authentifizierung erfolgreich');
+            completeTask('auth', 'Authentifizierung erfolgreich (Tokens aktiv)');
             tasks.balance.style.color = 'var(--text-main)';
             
             setTimeout(() => {
@@ -1222,5 +1229,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 1500);
             }, 600);
         }, 1200);
+    };
+
+    // Wenn der Nutzer neue Zugangsdaten eingibt und absendet
+    btnSubmitCredentials.addEventListener('click', () => {
+        if (accessIdInput.value.trim() === '' || pinInput.value.trim() === '') {
+            alert('Bitte Zugangsnummer und PIN eingeben.');
+            return;
+        }
+
+        // Wechsle von Credentials-Eingabe zur Fortschrittsanzeige
+        stepCredentials.classList.add('hidden');
+        stepProgress.classList.remove('hidden');
+
+        // Starte den regulären Ablauf (nach Token-Generierung)
+        runSyncProcess();
     });
 });
