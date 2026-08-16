@@ -82,20 +82,25 @@ class BankAccountRepository
 	
 	/**
      * Prüft, ob gültige und nicht abgelaufene Tokens für das Konto existieren.
-     * Im Test-Szenario läuft ein Token nach 30 Minuten (1800 Sekunden) ab.
+     * Im Test-Szenario läuft ein Token nach 10 Minuten (600 Sekunden) ab.
      */
     public function areTokensValid(int $accountId, TokenEncryptionService $encryptionService): bool
     {
         $tokens = $this->getApiTokens($accountId, $encryptionService);
         
-        if (!$tokens || !isset($tokens['created_at'])) {
+        if (!$tokens || !isset($tokens['expires_in']) || !isset($tokens['created_at'])) {
             return false;
         }
 
-        $createdAt = (int)$tokens['created_at'];
-        $maxAge = 1800; // 30 Minuten Test-Gültigkeit
+        $expiresIn = (int)$tokens['expires_in'];
+		$createdAt = (int)$tokens['created_at'];
+        $maxAge = 600; // Erlaubte Rest-Gültigkeit
+		
+		$expirationTime = createdAt + expiresIn;
+		$currentTime = time();
+		$remainingTime = expirationTime - currentTime;
 
         // Prüfen, ob das Zeitfenster überschritten wurde
-        return (time() - $createdAt) < $maxAge;
+        return remainingTime > bufferTime;
     }
 }
