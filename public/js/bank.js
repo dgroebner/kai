@@ -1126,3 +1126,101 @@ async function fetchAndReplaceContent(targetUrl) {
         window.location.href = targetUrl;
     }
 }
+
+// ==========================================
+// Comdirect API Sync (Dummy-Simulation)
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const btnOpenSync = document.getElementById('btn-open-sync');
+    const syncModal = document.getElementById('sync-modal');
+    const btnCancelSync = document.getElementById('btn-cancel-sync');
+    const btnStartSync = document.getElementById('btn-start-sync');
+    const btnCloseSync = document.getElementById('btn-close-sync');
+    
+    const stepPin = document.getElementById('sync-step-pin');
+    const stepProgress = document.getElementById('sync-step-progress');
+    const pinInput = document.getElementById('sync-pin-input');
+    const resultMsg = document.getElementById('sync-result-msg');
+
+    // UI-Elemente für die Tasks
+    const tasks = {
+        auth: document.getElementById('task-auth'),
+        balance: document.getElementById('task-balance'),
+        tx: document.getElementById('task-tx'),
+        rules: document.getElementById('task-rules')
+    };
+
+    if (!btnOpenSync || !syncModal) return;
+
+    // Modal öffnen
+    btnOpenSync.addEventListener('click', () => {
+        stepPin.classList.remove('hidden');
+        stepProgress.classList.add('hidden');
+        btnCloseSync.classList.add('hidden');
+        pinInput.value = '';
+        resultMsg.innerText = '';
+        
+        Object.values(tasks).forEach(el => {
+            el.style.color = 'var(--text-muted)';
+            el.innerText = '⏳ ' + el.innerText.substring(2);
+        });
+
+        syncModal.classList.remove('hidden');
+        syncModal.style.display = 'flex';
+    });
+
+    // Modal schließen
+    btnCancelSync.addEventListener('click', () => {
+        syncModal.classList.add('hidden');
+        syncModal.style.display = 'none';
+    });
+
+    // Nach erfolgreichem Sync die Seite neu laden
+    btnCloseSync.addEventListener('click', () => {
+        window.location.reload();
+    });
+
+    // Hilfsfunktion: Setzt einen Task auf erledigt
+    const completeTask = (taskKey, successText) => {
+        const el = tasks[taskKey];
+        el.style.color = 'var(--color-green, #10b981)';
+        el.innerText = `✅ ${successText}`;
+    };
+
+    // Sync Prozess starten (Dummy Simulation)
+    btnStartSync.addEventListener('click', () => {
+        if (pinInput.value.trim() === '') {
+            alert('Bitte gib (d)eine Sync-PIN ein.');
+            return;
+        }
+
+        stepPin.classList.add('hidden');
+        stepProgress.classList.remove('hidden');
+        
+        tasks.auth.style.color = 'var(--text-main, #1f2937)';
+
+        setTimeout(() => {
+            completeTask('auth', 'Authentifizierung erfolgreich');
+            tasks.balance.style.color = 'var(--text-main)';
+            
+            setTimeout(() => {
+                completeTask('balance', 'Salden aktualisiert');
+                tasks.tx.style.color = 'var(--text-main)';
+                
+                setTimeout(() => {
+                    completeTask('tx', '4 neue Transaktionen importiert');
+                    tasks.rules.style.color = 'var(--text-main)';
+                    
+                    setTimeout(() => {
+                        completeTask('rules', '2 KI-Regeln angewendet');
+                        
+                        resultMsg.style.color = 'var(--color-green, #10b981)';
+                        resultMsg.innerText = 'Sync erfolgreich abgeschlossen!';
+                        btnCloseSync.classList.remove('hidden');
+
+                    }, 800);
+                }, 1500);
+            }, 600);
+        }, 1200);
+    });
+});

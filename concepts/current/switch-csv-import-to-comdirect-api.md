@@ -23,7 +23,7 @@
 
 ## 3. Konfiguration & Sichere Credential-Persistenz
 - [x] **3.1 Statische App-Konfiguration (`.env`):** Es werden *keine* Benutzerdaten oder Passwörter in der `.env` hinterlegt, sondern lediglich allgemeine App-Konfigurationen und Client-IDs (`COMDIRECT_CLIENT_ID`, `COMDIRECT_CLIENT_SECRET`).
-- [ ] **3.2 Token-basierte Persistenz & Sicherheit (Variante B):** 
+- [ ] **3.2 Token-basierte Persistenz & Sicherheit:** 
   - **Keine dauerhafte PIN-Speicherung:** Um das Risiko im Falle eines Datenlecks zu minimieren, werden die sensiblen Bank-Zugangsdaten (Zugangsnummer & PIN) *nicht* dauerhaft in der Datenbank gespeichert. Sie werden ausschließlich beim initialen Setup-Login im Arbeitsspeicher (RAM) verarbeitet, um den OAuth2-Flow und die photoTAN-Freigabe anzustoßen, und danach sofort verworfen.
   - **Verschlüsselte Token-Speicherung (`bank_accounts.api_credentials`):** Persistiert werden lediglich die dynamischen OAuth2-Tokens (`access_token` und `refresh_token`) als verschlüsselter JSON-Blob in der Datenbank. 
   - **Verschlüsselungsverfahren:** Die Tokens werden mittels moderner Kryptografie (Sodium/AES-256-GCM) geschützt. Der automatisierte Cron-Job nutzt im Alltag ausschließlich den `refresh_token`, um neue `access_tokens` abzurufen, ohne jemals Zugriff auf die PIN zu benötigen.
@@ -52,4 +52,3 @@
 ## 6. UI-Erweiterung für Multi-Konto-Banking (Giro & Tagesgeld)
 - [ ] **6.1 Dynamische Tabs:** Erweiterung der Banking-Oberfläche, um über ein dynamisches Tab-System (basierend auf den Einträgen in `bank_accounts`) nahtlos zwischen Girokonto und Tagesgeldkonto zu wechseln.
 - [ ] **6.2 Daten-Isolation:** Anpassung der Datenabfragen im Backend, sodass die Ansichten und Paginierungen strikt nach dem jeweils ausgewählten Konto gefiltert werden.
-- [ ] **6.3 System-Konfiguration** Umwandlung der "Aktivitäts-Log" in eine "System"-Karte mit dem bisherigen Aktivitäts-Log auf der Einstiegsseite, aber einen Reiterwechsel wie in der Bankseite für eine Setup-Maske. Hier als erstes Konfigurationssegment die Erfassung der comdirect Zugangsdaten und Sync-PIN Konfiguration hinterlegen.

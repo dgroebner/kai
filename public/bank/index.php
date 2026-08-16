@@ -273,10 +273,47 @@ try {
 <body>
 <div class="container" id="giro-container" data-tags='<?= htmlspecialchars(json_encode($availableTags, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>'>
 
-    <header class="page-header">
+<header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h1>🏦 Girokonto Umsätze</h1>
-        <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+        <div style="display: flex; gap: 1rem;">
+            <button type="button" id="btn-open-sync" class="btn" style="background-color: var(--color-blue); color: white;">
+                🔄 API Sync
+            </button>
+            <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
+        </div>
     </header>
+
+    <!-- START: Sync Modal Overlay -->
+    <div id="sync-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+        <div class="card" style="width: 100%; max-width: 450px; padding: 2rem;">
+            <h2 style="margin-top: 0; margin-bottom: 1rem;">Comdirect API Sync</h2>
+            
+            <!-- Schritt 1: PIN Eingabe -->
+            <div id="sync-step-pin">
+                <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.9rem;">
+                    Bitte gib deine Sync-PIN ein, um die Zugangsdaten für diese Sitzung sicher zu entschlüsseln.
+                </p>
+                <input type="password" id="sync-pin-input" class="form-control" placeholder="Sync-PIN (Dummy)" style="margin-bottom: 1rem; width: 100%;">
+                
+                <div style="display: flex; justify-content: space-between;">
+                    <button type="button" id="btn-cancel-sync" class="btn btn-outline">Abbrechen</button>
+                    <button type="button" id="btn-start-sync" class="btn">Sync starten</button>
+                </div>
+            </div>
+
+            <!-- Schritt 2: Fortschrittsanzeige -->
+            <div id="sync-step-progress" class="hidden">
+                <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.95rem; line-height: 2;">
+                    <li id="task-auth" style="color: var(--text-muted);">⏳ Authentifizierung & Token-Validierung...</li>
+                    <li id="task-balance" style="color: var(--text-muted);">⏳ Konten- & Salden-Abgleich...</li>
+                    <li id="task-tx" style="color: var(--text-muted);">⏳ Transaktions-Import...</li>
+                    <li id="task-rules" style="color: var(--text-muted);">⏳ KI-Regeln & Kategorisierung...</li>
+                </ul>
+                <div id="sync-result-msg" style="margin-bottom: 1rem; font-weight: bold; min-height: 1.5rem;"></div>
+                <button type="button" id="btn-close-sync" class="btn hidden" style="width: 100%;">Schließen & Neu laden</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Tab-Switcher (Girokonto / Kreditkarte) -->
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
