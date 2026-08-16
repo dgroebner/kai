@@ -13,6 +13,10 @@ class Logger {
             mkdir($this->logDir, 0755, true);
         }
     }
+	
+	public function debug(string $message, array $context = []) {
+        $this->writeLog('DEBUG', $message, $context);
+    }
 
     public function info(string $message, array $context = []) {
         $this->writeLog('INFO', $message, $context);

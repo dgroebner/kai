@@ -1,16 +1,19 @@
 <?php
 namespace Kai\Tools\Bank;
 
+use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Security\TokenEncryptionService;
 
 class BankAccountRepository
 {
     private \PDO $pdo;
+	private Logger $logger;
 
     public function __construct()
     {
         $this->pdo = Database::getInstance()->getConnection();
+		$this->logger = new Logger(14);
     }
 
     /**
@@ -101,6 +104,6 @@ class BankAccountRepository
 		$remainingTime = expirationTime - currentTime;
 
         // Prüfen, ob das Zeitfenster überschritten wurde
-        return remainingTime > bufferTime;
+        return remainingTime > maxAge;
     }
 }
