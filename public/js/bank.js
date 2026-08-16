@@ -405,18 +405,27 @@ function escapeRegex(str) {
 // ----------------------------------------------------
 
 function toggleTagFilter(tagId) {
-    if (activeFilterTagId === tagId) {
-        resetTagFilter();
-        return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentTagId = urlParams.get('tag_id');
+
+    if (currentTagId === String(tagId)) {
+        // Wenn derselbe Filter nochmal geklickt wird -> aufheben
+        urlParams.delete('tag_id');
+    } else {
+        // Anderen Filter setzen und auf Seite 1 zurücksetzen
+        urlParams.set('tag_id', tagId);
+        urlParams.set('page', '1');
     }
 
-    activeFilterTagId = tagId;
-    applyTableFilter();
+    // Seite mit aktualisierten GET-Parametern neu laden
+    window.location.search = urlParams.toString();
 }
 
 function resetTagFilter() {
-    activeFilterTagId = null;
-    applyTableFilter();
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.delete('tag_id');
+    urlParams.delete('page');
+    window.location.search = urlParams.toString();
 }
 
 function applyTableFilter() {
