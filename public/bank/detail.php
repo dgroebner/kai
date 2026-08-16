@@ -73,18 +73,18 @@ try {
             <div>
                 <h1>💳 Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?></h1>
                 <div style="margin-top: 0.4rem; display: flex; align-items: center; gap: 0.75rem;">
-                    <?php if (!empty($statement['giro_booking_date'])): ?>
-                        <span class="badge badge-success">
-                            🟢 Abgebucht am <?= date('d.m.Y', strtotime($statement['giro_booking_date'])) ?>
-                        </span>
-                        <a href="index.php?highlight_tx=<?= (int)$statement['bank_transaction_id'] ?>" class="btn-link" style="font-size: 0.85rem;">
-                            🔗 Zur Girokonto-Buchung &rarr;
-                        </a>
-                    <?php else: ?>
-                        <span class="badge badge-warning">
-                            🟡 Offen (Noch keine Girokonto-Abbuchung verknüpft)
-                        </span>
-                    <?php endif; ?>
+					<?php if (!empty($statement['giro_booking_date'])): ?>
+						<span class="badge badge-success">
+							🟢 Abgebucht am <?= date('d.m.Y', strtotime($statement['giro_booking_date'])) ?>
+						</span>
+						<a href="index.php?tx=<?= (int)$statement['bank_transaction_id'] ?>" class="btn-link" style="font-size: 0.85rem;">
+							🔗 Zur Girokonto-Buchung &rarr;
+						</a>
+					<?php else: ?>
+						<span class="badge badge-warning">
+							🟡 Offen (Noch keine Girokonto-Abbuchung verknüpft)
+						</span>
+					<?php endif; ?>
                 </div>
             </div>
             <a href="creditcard.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>

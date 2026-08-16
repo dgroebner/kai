@@ -11,14 +11,38 @@ Auth::requirePage();
 $logger = new Logger();
 
 // ----------------------------------------------------
+// 1.5 Direkter Transaktions-Sprung per ?tx=ID
+// ----------------------------------------------------
+$highlightTxId = isset($_GET['tx']) ? (int)$_GET['tx'] : null;
+if ($highlightTxId) {
+    try {
+        $pdo = Database::getInstance()->getConnection();
+        $stmtTxDate = $pdo->prepare("SELECT booking_date FROM bank_giro_transactions WHERE id = :id");
+        $stmtTxDate->execute([':id' => $highlightTxId]);
+        $txBookingDate = $stmtTxDate->fetchColumn();
+        
+        if ($txBookingDate) {
+            $type = 'monat';
+            $dateParam = $txBookingDate; // Springt exakt in den Monat der Buchung
+        }
+    } catch (\Throwable $e) {
+        // Fallback falls ID ungültig
+    }
+}
+
+// ----------------------------------------------------
 // 2. Zeitraum-Berechnung (Woche, Monat, Jahr)
 // ----------------------------------------------------
-$type = $_GET['type'] ?? 'monat';
+if (!isset($type)) {
+    $type = $_GET['type'] ?? 'monat';
+}
 if (!in_array($type, ['woche', 'monat', 'jahr'])) {
     $type = 'monat';
 }
 
-$dateParam = $_GET['date'] ?? date('Y-m-d');
+if (!isset($dateParam)) {
+    $dateParam = $_GET['date'] ?? date('Y-m-d');
+}
 $dateTime = DateTime::createFromFormat('Y-m-d', $dateParam);
 if (!$dateTime) {
     $dateTime = new DateTime();

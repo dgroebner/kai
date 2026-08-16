@@ -10,6 +10,7 @@
 - **AGENTS.MD:** Unbedingte Einhaltung der Regeln aus der AGENTS.MD Datei des Projektes.
 - **Datenbankanpassung:** Da die Datenbank bereits in Benutzung ist, werden manuelle Migrationsskripte im Ordner `database/` bereitgestellt. Die `schema.sql` wird so angepasst, dass ein vollständiges Initialsetup möglich ist (kein direkter Quellcode im Konzept, sondern rein konzeptionelle Beschreibung).
 - **comdirect API** Die comdirect API ist in der beiliegenden `comdirect_rest_api_swagger.json` dokumentiert.
+- **TAN-Verfahren** Das eingesetzte TAN-Verfahren ist photoTAN-Push. Nach 2 Fehlversuchen darf kein dritter Versuch erfolgen. Es muss der Hinweis bestätigt werden, dass eine erfolgreiche TAN-Bestätigung auf der comdirect-Webseite erfolgen muss um eine Kontosperrung zu verhindern.
 
 ---
 

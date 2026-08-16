@@ -17,6 +17,21 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         window.AVAILABLE_TAGS = [];
     }
+	
+	// 2. Transaktions-Highlight (bei Aufruf mit ?tx=ID)
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightTxId = urlParams.get('tx');
+    if (highlightTxId) {
+        const targetRow = document.querySelector(`tr[data-tx-id="${highlightTxId}"]`);
+        if (targetRow) {
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetRow.style.transition = 'background-color 0.5s ease';
+            targetRow.style.backgroundColor = 'color-mix(in srgb, var(--accent) 25%, transparent)';
+            setTimeout(() => {
+                targetRow.style.backgroundColor = '';
+            }, 2500);
+        }
+    }
 });
 
 // Globaler Klick-Dispatcher
