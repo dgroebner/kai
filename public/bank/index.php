@@ -13,20 +13,53 @@ $logger = new Logger();
 // ----------------------------------------------------
 // 1.5 Direkter Transaktions-Sprung per ?tx=ID
 // ----------------------------------------------------
+// ----------------------------------------------------
+// 1.5 Direkter Transaktions-Sprung per ?tx=ID & Seitenberechnung
+// ----------------------------------------------------
 $highlightTxId = isset($_GET['tx']) ? (int)$_GET['tx'] : null;
-if ($highlightTxId) {
+if ($highlightTxId && !isset($_GET['page'])) {
     try {
         $pdo = Database::getInstance()->getConnection();
-        $stmtTxDate = $pdo->prepare("SELECT booking_date FROM bank_giro_transactions WHERE id = :id");
-        $stmtTxDate->execute([':id' => $highlightTxId]);
-        $txBookingDate = $stmtTxDate->fetchColumn();
+        
+        // Datum und ID der Transaktion holen
+        $stmtTx = $pdo->prepare("SELECT booking_date FROM bank_giro_transactions WHERE id = :id");
+        $stmtTx->execute([':id' => $highlightTxId]);
+        $txBookingDate = $stmtTx->fetchColumn();
         
         if ($txBookingDate) {
             $type = 'monat';
-            $dateParam = $txBookingDate; // Springt exakt in den Monat der Buchung
+            $dateParam = $txBookingDate;
+            
+            // Monat-Start und Ende für den Zähl-Query bestimmen
+            $dateTime = DateTime::createFromFormat('Y-m-d', $txBookingDate);
+            $startDate = $dateTime->format('Y-m-01');
+            $endDate = $dateTime->format('Y-m-t');
+            
+            // Ermitteln, wie viele Transaktionen in diesem Monat *nach* unserer Ziel-Transaktion liegen (für den Offset/Seitenindex)
+            $stmtRank = $pdo->prepare("
+                SELECT COUNT(*) FROM bank_giro_transactions 
+                WHERE booking_date BETWEEN :start AND :end 
+                  AND (booking_date > :bdate OR (booking_date = :bdate AND id > :id))
+            ");
+            $stmtRank->execute([
+                ':start' => $startDate,
+                ':end' => $endDate,
+                ':bdate' => $txBookingDate,
+                ':id' => $highlightTxId
+            ]);
+            $position = (int)$stmtRank->fetchColumn();
+            
+            // Berechnen, auf welcher Seite (limit = 25) sich die Transaktion befindet
+            $targetPage = floor($position / 25) + 1;
+            
+            if ($targetPage > 1) {
+                // Auf die korrekte Seite weiterleiten
+                header("Location: index.php?type=monat&date={$dateParam}&page={$targetPage}&tx={$highlightTxId}#tx-{$highlightTxId}");
+                exit;
+            }
         }
     } catch (\Throwable $e) {
-        // Fallback falls ID ungültig
+        // Fallback bei Fehlern
     }
 }
 
