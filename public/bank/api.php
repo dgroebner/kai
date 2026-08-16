@@ -27,7 +27,35 @@ $action = $data['action'] ?? '';
 $pdo = Database::getInstance()->getConnection();
 
 try {
-    if ($action === 'add_tag_to_tx') {
+	
+	// TODO Test code - replace with final code as soon as available
+    if ($action === 'save_dummy_tokens') {
+		$accountId = 2; // ID deines Girokontos
+		
+		// 1. Token-Array mit aktuellem Timestamp erzeugen (für den 30-Minuten-Test)
+		$dummyTokens = [
+			'access_token'  => 'dummy_access_' . bin2hex(random_bytes(8)),
+			'refresh_token' => 'dummy_refresh_' . bin2hex(random_bytes(8)),
+			'expires_in'    => 1800,
+			'created_at'    => time() // Wichtig für die Gültigkeitsprüfung!
+		];
+		
+		try {
+			$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+			$repo = new BankAccountRepository();
+			
+			// 2. Verschlüsselt in der Datenbank speichern
+			$success = $repo->saveApiTokens($accountId, $dummyTokens, $encryptionService);
+			
+			echo json_encode(['success' => $success]);
+		} catch (\Throwable $e) {
+			http_response_code(500);
+			echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+		}
+		exit;
+	}
+	
+	if ($action === 'add_tag_to_tx') {
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
         $tagId = filter_var($data['tag_id'] ?? null, FILTER_VALIDATE_INT);
 

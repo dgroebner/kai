@@ -1238,18 +1238,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1200);
     };
 
-    // Wenn der Nutzer neue Zugangsdaten eingibt und absendet
-    btnSubmitCredentials.addEventListener('click', () => {
+	// Wenn der Nutzer neue Zugangsdaten eingibt und absendet
+    btnSubmitCredentials.addEventListener('click', async () => {
         if (accessIdInput.value.trim() === '' || pinInput.value.trim() === '') {
             alert('Bitte Zugangsnummer und PIN eingeben.');
             return;
         }
 
-        // Wechsle von Credentials-Eingabe zur Fortschrittsanzeige
-        stepCredentials.classList.add('hidden');
-        stepProgress.classList.remove('hidden');
+        try {
+            // 1. Dummy-Token im Backend generieren und verschlüsselt in der DB speichern
+            const response = await KaiHttp.postJson('api.php', { action: 'save_dummy_tokens' });
+            
+            if (!response || !response.success) {
+                alert('Fehler beim Speichern der Token in der Datenbank.');
+                return;
+            }
 
-        // Starte den regulären Ablauf (nach Token-Generierung)
-        runSyncProcess();
+            // 2. Wechsle von Credentials-Eingabe zur Fortschrittsanzeige
+            stepCredentials.classList.add('hidden');
+            stepProgress.classList.remove('hidden');
+
+            // 3. Starte den regulären Fortschritts-Ablauf
+            runSyncProcess();
+
+        } catch (err) {
+            console.error('Fehler beim Token-Request:', err);
+            alert('Netzwerkfehler beim Anfordern der Tokens.');
+        }
     });
 });
