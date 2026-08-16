@@ -96,9 +96,9 @@ try {
                                 <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
 								<td data-label="Zahlungsstatus">
 									<?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
-										<a href="../bank/index.php" class="badge badge-success" style="text-decoration: none;" title="Auf Girokonto verbucht">
+										<a href="../bank/index.php?tx=<?= (int)$stmtRow['bank_giro_transaction_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Auf Girokonto verbucht">
 											🟢 Girokonto
-										</a>
+										</a>										
 									<?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
 										<a href="../bank/detail.php?id=<?= (int)$receipt['cc_statement_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Über Kreditkarte verbucht">
 											🟢 Kreditkarte
