@@ -1159,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncModal.style.display = 'none';
     };
 
-    // Modal öffnen & Token-Status prüfen (Simulation)
+    // Modal öffnen & Token-Status live aus der Datenbank prüfen
     btnOpenSync.addEventListener('click', async () => {
         resultMsg.innerText = '';
         accessIdInput.value = '';
@@ -1173,19 +1173,26 @@ document.addEventListener('DOMContentLoaded', () => {
         syncModal.classList.remove('hidden');
         syncModal.style.display = 'flex';
 
-        // HIER SPÄTER: Echter AJAX-Check gegen Backend (z.B. action: 'check_token_status')
-        // Für den Test simulieren wir: Angenommen die Tokens sind abgelaufen -> zeige Credentials-Formular
-        const tokensAreValid = false; // Zum Testen auf true oder false setzen
+        try {
+            // Echter AJAX-Check gegen das Backend
+            const response = await KaiHttp.postJson('api.php', { action: 'check_token_status' });
+            const tokensAreValid = response && response.success && response.tokens_valid;
 
-        if (!tokensAreValid) {
-            // Zeige Eingabefeld für Comdirect Zugangsdaten
+            if (!tokensAreValid) {
+                // Tokens fehlen oder sind abgelaufen -> Credentials abfragen
+                stepCredentials.classList.remove('hidden');
+                stepProgress.classList.add('hidden');
+            } else {
+                // Gültiger Token vorhanden -> Direkt mit dem Sync-Fortschritt starten
+                stepCredentials.classList.add('hidden');
+                stepProgress.classList.remove('hidden');
+                runSyncProcess();
+            }
+        } catch (err) {
+            console.error('Fehler beim Token-Check:', err);
+            // Im Fehlerfall sicherheitshalber Credentials abfragen
             stepCredentials.classList.remove('hidden');
             stepProgress.classList.add('hidden');
-        } else {
-            // Tokens sind gültig -> Direkt mit dem Sync-Fortschritt starten
-            stepCredentials.classList.add('hidden');
-            stepProgress.classList.remove('hidden');
-            runSyncProcess();
         }
     });
 

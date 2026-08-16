@@ -4,6 +4,8 @@ require_once __DIR__ . '/../../bootstrap.php';
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Shared\Security\TokenEncryptionService;
+use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Bank\StatementMatcher;
 
@@ -39,6 +41,18 @@ try {
         echo json_encode(['success' => true]);
         exit;
     }
+	
+	if ($action === 'check_token_status') {
+		$accountId = 1; // ID deines Girokontos (z.B. 1)
+		
+		$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+		$repo = new BankAccountRepository();
+		
+		$isValid = $repo->areTokensValid($accountId, $encryptionService);
+		
+		echo json_encode(['success' => true, 'tokens_valid' => $isValid]);
+		exit;
+	}
 	
 	// Tag bearbeiten (Name & Farbe ändern)
     if ($action === 'update_tag') {
