@@ -36,12 +36,13 @@ if ($highlightTxId && !isset($_GET['page'])) {
             $stmtRank = $pdo->prepare("
                 SELECT COUNT(*) FROM bank_giro_transactions 
                 WHERE booking_date BETWEEN :start AND :end 
-                  AND (booking_date > :bdate OR (booking_date = :bdate AND id > :id))
+                  AND (booking_date > :bdate_min OR (booking_date = :bdate AND id > :id))
             ");
             $stmtRank->execute([
                 ':start' => $startDate,
                 ':end' => $endDate,
-                ':bdate' => $txBookingDate,
+                ':bdate_min' => $txBookingDate,
+				':bdate' => $txBookingDate,
                 ':id' => $highlightTxId
             ]);
             $position = (int)$stmtRank->fetchColumn();
