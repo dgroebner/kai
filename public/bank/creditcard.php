@@ -99,11 +99,8 @@ try {
 										</td>
                                         <td data-label="Status">
                                             <?php if (!empty($stmtRow['giro_booking_date'])): ?>
-                                                <span class="badge badge-success" title="Auf dem Girokonto verbucht">
+											    <a href="index.php?tx=<?= (int)$stmtRow['bank_transaction_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Auf Girokonto verbucht">
                                                     🟢 Abgebucht (<?= date('d.m.Y', strtotime($stmtRow['giro_booking_date'])) ?>)
-                                                </span>
-											    <a href="index.php?tx=<?= (int)$stmtRow['bank_transaction_id'] ?>" class="btn-link" style="font-size: 0.85rem;">
-							                        🔗 Zur Girokonto-Buchung &rarr;
 						                        </a>
                                             <?php else: ?>
                                                 <span class="badge badge-warning" title="Noch keine Abbuchung auf dem Girokonto gefunden">
