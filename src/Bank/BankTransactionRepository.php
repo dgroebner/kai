@@ -12,12 +12,17 @@ class BankTransactionRepository
         $this->pdo = Database::getInstance()->getConnection();
     }
 
+    /**
+     * Importiert Transaktionen.
+     * Unterstützt sowohl das alte CSV-Format (ohne account_id/transaction_id) 
+     * als auch das neue API-Format.
+     */
     public function importTransactions(array $transactions): array
     {
         $stmt = $this->pdo->prepare("
             INSERT IGNORE INTO bank_giro_transactions 
-            (tx_hash, booking_date, valuta_date, type, merchant_raw, amount) 
-            VALUES (:tx_hash, :booking_date, :valuta_date, :type, :merchant_raw, :amount)
+            (account_id, tx_hash, transaction_id, booking_date, valuta_date, type, merchant_raw, amount) 
+            VALUES (:account_id, :tx_hash, :transaction_id, :booking_date, :valuta_date, :type, :merchant_raw, :amount)
         ");
 
         $imported = 0;
@@ -25,12 +30,14 @@ class BankTransactionRepository
 
         foreach ($transactions as $tx) {
             $stmt->execute([
-                ':tx_hash'      => $tx['tx_hash'],
-                ':booking_date' => $tx['booking_date'],
-                ':valuta_date'  => $tx['valuta_date'],
-                ':type'         => $tx['type'],
-                ':merchant_raw' => $tx['raw_text'],
-                ':amount'       => $tx['amount'],
+                ':account_id'     => $tx['account_id'] ?? null,
+                ':tx_hash'        => $tx['tx_hash'],
+                ':transaction_id' => $tx['transaction_id'] ?? null,
+                ':booking_date'   => $tx['booking_date'],
+                ':valuta_date'    => $tx['valuta_date'],
+                ':type'           => $tx['type'] ?? null,
+                ':merchant_raw'   => $tx['raw_text'] ?? '',
+                ':amount'         => $tx['amount'],
             ]);
 
             if ($stmt->rowCount() > 0) {
@@ -44,6 +51,22 @@ class BankTransactionRepository
             'imported' => $imported,
             'ignored'  => $ignored
         ];
+    }
+
+    /**
+     * Hilfsmethode, um für alte Importe das Standard-Girokonto zu ermitteln.
+     */
+    public function getDefaultCheckingAccountId(): ?int
+    {
+        $stmt = $this->pdo->query("
+            SELECT id 
+            FROM bank_accounts 
+            WHERE account_type = 'checking' 
+            ORDER BY id ASC LIMIT 1
+        ");
+        
+        $result = $stmt->fetchColumn();
+        return $result !== false ? (int)$result : null;
     }
 
     /**

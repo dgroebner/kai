@@ -1,6 +1,8 @@
 <?php
 namespace Kai\Tools\Bank\Parser;
 
+use Kai\Tools\Bank\BankTransactionRepository;
+
 class BankCsvParser
 {
     /**
@@ -11,6 +13,9 @@ class BankCsvParser
      */
     public function parse(string $filePath): array
     {
+		$repository = new BankTransactionRepository();
+		$defaultAccountId = $repository->getDefaultCheckingAccountId();
+		
         $content = file_get_contents($filePath);
         if ($content === false) {
             return [];
@@ -52,6 +57,7 @@ class BankCsvParser
             $txHash      = hash('sha256', $rawPayload);
 
             $transactions[] = [
+			    'account_id'   => $defaultAccountId,
                 'tx_hash'      => $txHash,
                 'booking_date' => $bookingDate,
                 'valuta_date'  => $valutaDate,

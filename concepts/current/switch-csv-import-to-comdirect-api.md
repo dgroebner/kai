@@ -15,36 +15,36 @@
 ---
 
 ## 2. Datenbank-Anpassungen & Schema-Erweiterung
-- **Erweiterung von `bank_giro_transactions`:** Ergänzung um eine Account-Verknüpfung (`account_id`) sowie die API-eigene Transaktions-ID (`transaction_id`) als eindeutiger Schlüssel zur automatischen Dublettenvermeidung.
-- **Erweiterung von `bank_accounts`:** Hinzufügen von Spalten für die verschlüsselten Zugangsdaten sowie den aktuellen Kontostand (`current_balance`).
-- **Initialisierung:** Anlegen der Standard-Konten für Girokonto (`checking`) und Tagesgeld (`savings`) und Zuordnung der historischen Buchungen.
+- [x] **2.1 Erweiterung von `bank_giro_transactions`:** Ergänzung um eine Account-Verknüpfung (`account_id`) sowie die API-eigene Transaktions-ID (`transaction_id`) als eindeutiger Schlüssel zur automatischen Dublettenvermeidung.
+- [x] **2.2 Erweiterung von `bank_accounts`:** Hinzufügen von Spalten für die verschlüsselten Zugangsdaten sowie den aktuellen Kontostand (`current_balance`).
+- [x] **2.3 Initialisierung:** Anlegen der Standard-Konten für Girokonto (`checking`) und Tagesgeld (`savings`) und Zuordnung der historischen Buchungen.
 
 ---
 
 ## 3. Konfiguration & Sichere Credential-Persistenz (.env & Cache)
-- **Statische App-Konfiguration (`.env`):** Es werden *keine* Benutzerdaten oder Passwörter in der `.env` hinterlegt, sondern lediglich allgemeine App-Konfigurationen und Client-IDs (COMDIRECT_CLIENT_ID, COMDIRECT_CLIENT_SECRET) [cite: 1].
-- **Dynamische Tokens:** Speicherung von `access_token` und `refresh_token` in einer geschützten Cache-Datei (`storage/tokens.json`), um den OAuth2-Flow mit Token-Refresh abzusichern[cite: 3].
-- **Verschlüsselte Credentials:** Die Zugangsdaten (comdorect Zugangsnummer und Zugangs-pin) werden über eine Admin-/Setup-Maske mit einer geheimen Sync-PIN verschlüsselt (AES-256 / Sodium) in der Datenbank hinterlegt. Bei der Ausführung werden sie temporär in der PHP-Session gehalten und nach dem API-Aufruf sofort aus dem RAM gelöscht.
+- [ ] **3.1 Statische App-Konfiguration (`.env`):** Es werden *keine* Benutzerdaten oder Passwörter in der `.env` hinterlegt, sondern lediglich allgemeine App-Konfigurationen und Client-IDs (COMDIRECT_CLIENT_ID, COMDIRECT_CLIENT_SECRET) [cite: 1].
+- [ ] **3.2 Dynamische Tokens:** Speicherung von `access_token` und `refresh_token` in einer geschützten Cache-Datei (`storage/tokens.json`), um den OAuth2-Flow mit Token-Refresh abzusichern[cite: 3].
+- [ ] **3.3 Verschlüsselte Credentials:** Die Zugangsdaten (comdorect Zugangsnummer und Zugangs-pin) werden über eine Admin-/Setup-Maske mit einer geheimen Sync-PIN verschlüsselt (AES-256 / Sodium) in der Datenbank hinterlegt. Bei der Ausführung werden sie temporär in der PHP-Session gehalten und nach dem API-Aufruf sofort aus dem RAM gelöscht.
 
 ---
 
 ## 4. Bereinigungs-Plan (Code-Cleanup)
-- **Entfernung:** Löschung der Parser-Klasse für CSV-Dateien sowie aller dazugehörigen CSV-spezifischen Hilfsfunktionen[cite: 1].
-- **Entfernung:** Löschung des alten Datei-Upload-Endpunkts und der entsprechenden Frontend-Oberflächenelemente für den manuellen CSV-Import.
-- **Refactoring:** Das Transaktions-Repository wird von jeglichen Dateisystem-Abhängigkeiten befreit und ruft die Daten direkt über den neuen API-Client ab[cite: 1].
+- [ ] **4.1 Entfernung:** Löschung der Parser-Klasse für CSV-Dateien sowie aller dazugehörigen CSV-spezifischen Hilfsfunktionen[cite: 1].
+- [ ] **4.2 Entfernung:** Löschung des alten Datei-Upload-Endpunkts und der entsprechenden Frontend-Oberflächenelemente für den manuellen CSV-Import.
+- [ ] **4.3 Refactoring:** Das Transaktions-Repository wird von jeglichen Dateisystem-Abhängigkeiten befreit und ruft die Daten direkt über den neuen API-Client ab[cite: 1].
 
 ---
 
 ## 5. Ablauf des API-Syncs (Button-Auslösung)
-1. **Authentifizierung / Session:** Der Nutzer löst den Sync per Button aus und gibt die Sync-PIN ein. Der Client validiert die Tokens, führt bei Bedarf einen Refresh durch oder initialisiert den Login über den passwortbasierten Flow[cite: 3].
-2. **Konten- & Salden-Abgleich:** Abruf der Konten und Salden über die entsprechende API-Ressource und Aktualisierung der Salden in der Account-Tabelle[cite: 3].
-3. **Transaktions-Import:** Abruf der Transaktionen für Giro- und Tagesgeldkonto, Transformation und Speicherung in der Datenbank unter Nutzung der API-Transaktions-IDs zur Dublettenvermeidung[cite: 3].
-4. **Nachgelagerte Services:** Automatische Ausführung des Regel-Gedächtnisses zur Kategorisierung, Zuordnung von E-Bons und Dokumentation des Vorgangs im Aktivitäts-Log[cite: 1, 5].
-5. **Visualisierung des Sync-Prozesses** Die einzelnen Schritte des Sync-Prozesses sollen in der Sync-Maske dargestellt werden, dabei werden alle Punkte einzeln in einer Liste aufgeführt und bei Abschluss mit einem grünen Haken versehen. Bei Fehlern bricht der Syncprozess ab und der Schritt wird mit einem roten x versehen. Dadurch ist der Fortschritt des Syncprozesses transparent.
+- [ ] **5.1 Authentifizierung / Session:** Der Nutzer löst den Sync per Button aus und gibt die Sync-PIN ein. Der Client validiert die Tokens, führt bei Bedarf einen Refresh durch oder initialisiert den Login über den passwortbasierten Flow[cite: 3].
+- [ ] **5.2 Konten- & Salden-Abgleich:** Abruf der Konten und Salden über die entsprechende API-Ressource und Aktualisierung der Salden in der Account-Tabelle[cite: 3].
+- [ ] **5.3 Transaktions-Import:** Abruf der Transaktionen für Giro- und Tagesgeldkonto, Transformation und Speicherung in der Datenbank unter Nutzung der API-Transaktions-IDs zur Dublettenvermeidung[cite: 3].
+- [ ] **5.4 Nachgelagerte Services:** Automatische Ausführung des Regel-Gedächtnisses zur Kategorisierung, Zuordnung von E-Bons und Dokumentation des Vorgangs im Aktivitäts-Log[cite: 1, 5].
+- [ ] **5.5 Visualisierung des Sync-Prozesses** Die einzelnen Schritte des Sync-Prozesses sollen in der Sync-Maske dargestellt werden, dabei werden alle Punkte einzeln in einer Liste aufgeführt und bei Abschluss mit einem grünen Haken versehen. Bei Fehlern bricht der Syncprozess ab und der Schritt wird mit einem roten x versehen. Dadurch ist der Fortschritt des Syncprozesses transparent.
 
 ---
 
 ## 6. UI-Erweiterung für Multi-Konto-Banking (Giro & Tagesgeld)
-- **Dynamische Tabs:** Erweiterung der Banking-Oberfläche, um über ein dynamisches Tab-System (basierend auf den Einträgen in `bank_accounts`) nahtlos zwischen Girokonto und Tagesgeldkonto zu wechseln.
-- **Daten-Isolation:** Anpassung der Datenabfragen im Backend, sodass die Ansichten und Paginierungen strikt nach dem jeweils ausgewählten Konto gefiltert werden.
-- **System-Konfiguration** Umwandlung der "Aktivitäts-Log" in eine "System"-Karte mit dem bisherigen Aktivitäts-Log auf der Einstiegsseite, aber einen Reiterwechsel wie in der Bankseite für eine Setup-Maske. Hier als erstes Konfigurationssegment die Erfassung der comdirect Zugangsdaten und Sync-PIN Konfiguration hinterlegen.
+- [ ] **6.1 Dynamische Tabs:** Erweiterung der Banking-Oberfläche, um über ein dynamisches Tab-System (basierend auf den Einträgen in `bank_accounts`) nahtlos zwischen Girokonto und Tagesgeldkonto zu wechseln.
+- [ ] **6.2 Daten-Isolation:** Anpassung der Datenabfragen im Backend, sodass die Ansichten und Paginierungen strikt nach dem jeweils ausgewählten Konto gefiltert werden.
+- [ ] **6.3 System-Konfiguration** Umwandlung der "Aktivitäts-Log" in eine "System"-Karte mit dem bisherigen Aktivitäts-Log auf der Einstiegsseite, aber einen Reiterwechsel wie in der Bankseite für eine Setup-Maske. Hier als erstes Konfigurationssegment die Erfassung der comdirect Zugangsdaten und Sync-PIN Konfiguration hinterlegen.
