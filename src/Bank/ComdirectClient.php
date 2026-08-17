@@ -177,7 +177,7 @@ class ComdirectClient
             "Authorization: Bearer {$accessToken}"
         ];
 
-        $res = $this->request('GET', '/session/clients/user/v1/sessions', $headers);
+        $res = $this->request('GET', "/session/clients/{$this->clientId}/v1/sessions", $headers);
         if ($res['code'] !== 200) {
             throw new Exception("Abrufen der Session-ID fehlgeschlagen.");
         }
@@ -207,7 +207,7 @@ class ComdirectClient
         // Die Session-Daten für Validierung senden
         $body = json_encode($sessionObj);
 
-        $res = $this->request('POST', "/session/clients/user/v1/sessions/{$sessionId}/validate", $headers, $body);
+        $res = $this->request('POST', "/session/clients/{$this->clientId}/v1/sessions/{$sessionId}/validate", $headers, $body);
         if ($res['code'] !== 200) {
             throw new Exception("Session-Validierung fehlgeschlagen.");
         }
@@ -258,7 +258,7 @@ class ComdirectClient
 
         $body = json_encode($sessionObj);
 
-        $res = $this->request('PATCH', "/session/clients/user/v1/sessions/{$sessionId}", $headers, $body);
+        $res = $this->request('PATCH', "/session/clients/{$this->clientId}/v1/sessions/{$sessionId}", $headers, $body);
         
         // 200 bedeutet erfolgreich aktiviert
         if ($res['code'] === 200) {
@@ -389,7 +389,7 @@ class ComdirectClient
             "Authorization: Bearer {$accessToken}"
         ];
 
-        $res = $this->request('GET', '/banking/clients/user/v2/accounts/balances', $headers);
+        $res = $this->request('GET', "/banking/clients/{$this->clientId}/v2/accounts/balances", $headers);
         if ($res['code'] !== 200) {
             throw new Exception("Abrufen der Kontodaten fehlgeschlagen.");
         }
