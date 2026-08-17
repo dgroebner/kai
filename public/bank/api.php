@@ -30,11 +30,16 @@ try {
 	
 	// TODO Test code - replace with final code as soon as available
 	if ($action === 'save_dummy_tokens') {
-        $accountId = 2; // Girokonto-ID
+        // Dynamisches Ermitteln des Girokontos aus der Datenbank
+        $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
+        $accountId = $stmtAccount->fetchColumn();
+
+        if (!$accountId) {
+            Auth::sendJsonError(404, 'Kein Girokonto für den API-Sync gefunden.');
+        }
+
         $accessId = trim((string)($data['access_id'] ?? ''));
         $pin = trim((string)($data['pin'] ?? ''));
-
-        // Hier könntest du später mit $accessId und $pin den echten Comdirect OAuth-Call machen
         
         $dummyTokens = [
             'access_token'  => 'dummy_access_' . bin2hex(random_bytes(8)),
@@ -43,17 +48,12 @@ try {
             'created_at'    => time()
         ];
         
-        try {
-            $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
-            $repo = new BankAccountRepository();
-            
-            $success = $repo->saveApiTokens($accountId, $dummyTokens, $encryptionService);
-            
-            echo json_encode(['success' => $success]);
-        } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
+		$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+		$repo = new BankAccountRepository();
+		
+		$success = $repo->saveApiTokens((int)$accountId, $dummyTokens, $encryptionService);
+		
+		echo json_encode(['success' => $success]);
         exit;
     }
 	
@@ -73,16 +73,22 @@ try {
     }
 	
 	if ($action === 'check_token_status') {
-		$accountId = 2; // ID deines Girokontos (z.B. 1) TODO: replace with dynamic value
-		
-		$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
-		$repo = new BankAccountRepository();
-		
-		$isValid = $repo->areTokensValid($accountId, $encryptionService);
-		
-		echo json_encode(['success' => true, 'tokens_valid' => $isValid]);
-		exit;
-	}
+        // Dynamisches Ermitteln des Girokontos aus der Datenbank
+        $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
+        $accountId = $stmtAccount->fetchColumn();
+
+        if (!$accountId) {
+            Auth::sendJsonError(404, 'Kein Girokonto für den API-Sync gefunden.');
+        }
+        
+        $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+        $repo = new BankAccountRepository();
+        
+        $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
+        
+        echo json_encode(['success' => true, 'tokens_valid' => $isValid, 'account_id' => (int)$accountId]);
+        exit;
+    }
 	
 	// Tag bearbeiten (Name & Farbe ändern)
     if ($action === 'update_tag') {

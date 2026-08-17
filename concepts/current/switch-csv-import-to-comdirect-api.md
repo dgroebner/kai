@@ -23,7 +23,7 @@
 
 ## 3. Konfiguration & Sichere Credential-Persistenz
 - [x] **3.1 Statische App-Konfiguration (`.env`):** Es werden *keine* Benutzerdaten oder Passwörter in der `.env` hinterlegt, sondern lediglich allgemeine App-Konfigurationen und Client-IDs (`COMDIRECT_CLIENT_ID`, `COMDIRECT_CLIENT_SECRET`).
-- [ ] **3.2 Token-basierte Persistenz & Sicherheit:** 
+- [x] **3.2 Token-basierte Persistenz & Sicherheit:** 
   - **Keine dauerhafte PIN-Speicherung:** Um das Risiko im Falle eines Datenlecks zu minimieren, werden die sensiblen Bank-Zugangsdaten (Zugangsnummer & PIN) *nicht* dauerhaft in der Datenbank gespeichert. Sie werden ausschließlich beim initialen Setup-Login im Arbeitsspeicher (RAM) verarbeitet, um den OAuth2-Flow und die photoTAN-Freigabe anzustoßen, und danach sofort verworfen.
   - [x] **Verschlüsselte Token-Speicherung (`bank_accounts.api_credentials`):** Persistiert werden lediglich die dynamischen OAuth2-Tokens (`access_token` und `refresh_token`) als verschlüsselter JSON-Blob in der Datenbank. 
   - **Verschlüsselungsverfahren:** Die Tokens werden mittels moderner Kryptografie (Sodium/AES-256-GCM) geschützt. Der automatisierte Cron-Job nutzt im Alltag ausschließlich den `refresh_token`, um neue `access_tokens` abzurufen, ohne jemals Zugriff auf die PIN zu benötigen.
@@ -39,16 +39,16 @@
 
 ## 5. Ablauf des API-Syncs (Manuell & Automatisiert)
 - [ ] **5.1 Auslöser (Manuell & Cron-Job):** Generell besteht neben einem automatisierten Prozess (Cron-Job) stets die manuelle Sync-Möglichkeit per Button auf der Girokontoseite.
-- [ ] **5.2 Automatisierter Sync (Cron-Job):** Ein Cron-Job aktualisiert die Salden und Buchungen automatisch im Hintergrund. Dieser Job führt den Sync jedoch nur aus, solange der gespeicherte `refresh_token` noch gültig ist.
+- [ ] **5.2 Automatisierter Sync (Cron-Job):** Ein Cron-Job aktualisiert die Salden und Buchungen automatisch im Hintergrund. Dieser Job führt den Sync jedoch nur aus, solange der gespeicherte `refresh_token` noch gültig ist. Der Cronjob wird extern verwaltet. Stelle nur den API-Endpunkt mit GET und dem bereits vorhandenen API-Token aus der Umgebung bereit.
 - [ ] **5.3 Token-Ablauf & Fehlerbehandlung:** Nur bei einem gültigen Token wird der eigentliche Datenabruf gestartet. Läuft der `refresh_token` ab, bricht der Cron-Job ab und schreibt eine eindeutige Meldung in das Aktivitäts-Log (`activity_log`). Diese Meldung enthält einen direkten Link zur Setup-Maske, damit der Nutzer das Token per manuellem Login aktualisieren kann.
-- [ ] **5.4 Authentifizierung / Session (Manuell):** Der Nutzer löst den Sync per Button aus und gibt die Sync-PIN ein[cite: 17]. Der Client validiert die Tokens, führt bei Bedarf einen Refresh durch oder initialisiert den Login über den passwortbasierten Flow[cite: 17].
+- [ ] **5.4 Authentifizierung / Session (Manuell):** Der Nutzer löst den Sync per Button aus. Läuft das Refresh-Token innerhalb der nächsten 10 Minuten aus, wird die Erfassung der comdirect Zugangsdaten eingefordert[cite: 17]. Der Client validiert die Tokens, führt bei Bedarf einen Refresh durch oder initialisiert den Login über den passwortbasierten Flow[cite: 17].
 - [ ] **5.5 Konten- & Salden-Abgleich:** Abruf der Konten und Salden über die entsprechende API-Ressource und Aktualisierung der Salden in der Account-Tabelle[cite: 17].
-- [ ] **5.6 Transaktions-Import:** Abruf der Transaktionen für Giro- und Tagesgeldkonto, Transformation und Speicherung in der Datenbank unter Nutzung der API-Transaktions-IDs zur Dublettenvermeidung[cite: 17].
+- [ ] **5.6 Transaktions-Import:** Abruf der Transaktionen für Giro- und Tagesgeldkonto, Transformation und Speicherung in der Datenbank unter Nutzung der API-Transaktions-IDs zur Dublettenvermeidung[cite: 17]. Zur Vermeidung von Dubletten aus dem CSV-Import zu vermeiden, werden nur Transaktionen mit Buchungsdatum **nach dem 15.08.2026** über die API verarbeitet. Ältere Buchungen werden ignoriert.
 - [ ] **5.7 Nachgelagerte Services:** Automatische Ausführung des Regel-Gedächtnisses zur Kategorisierung, Zuordnung von E-Bons und Dokumentation des Vorgangs im Aktivitäts-Log[cite: 17].
-- [ ] **5.8 Visualisierung des manuellen Sync-Prozesses:** Die einzelnen Schritte des Sync-Prozes
+- [ ] **5.8 Visualisierung des manuellen Sync-Prozesses:** Die einzelnen Schritte des Sync-Prozess werden im modalen Dialag anhand einer Checkliste visualisiert.
 
 ---
 
 ## 6. UI-Erweiterung für Multi-Konto-Banking (Giro & Tagesgeld)
-- [ ] **6.1 Dynamische Tabs:** Erweiterung der Banking-Oberfläche, um über ein dynamisches Tab-System (basierend auf den Einträgen in `bank_accounts`) nahtlos zwischen Girokonto und Tagesgeldkonto zu wechseln.
+- [ ] **6.1 Dynamische Tabs:** Erweiterung der Banking-Oberfläche um eine Übersicht für das Tagesgeldkonto.
 - [ ] **6.2 Daten-Isolation:** Anpassung der Datenabfragen im Backend, sodass die Ansichten und Paginierungen strikt nach dem jeweils ausgewählten Konto gefiltert werden.

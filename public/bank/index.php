@@ -157,6 +157,10 @@ $totalTransactions = 0;
 
 try {
     $pdo = Database::getInstance()->getConnection();
+	
+	// Konten für die dynamische Navigation laden
+    $stmtAcc = $pdo->query("SELECT id, account_name, account_type FROM bank_accounts ORDER BY id ASC");
+	$accounts = $stmtAcc->fetchAll(PDO::FETCH_ASSOC);
 
     // Alle vorhandenen Tags für Popover & Auto-Suggest laden
     $stmtAllTags = $pdo->query("SELECT id, name, color FROM bank_tags ORDER BY name ASC");
