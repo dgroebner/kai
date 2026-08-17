@@ -123,8 +123,8 @@ class ComdirectClient
                 'created_at' => time()
             ];
         } else {
-            $maskedUsername = (strlen($username) > 1) ? $username . '...' . substr($username, -1) : $username;
-            $maskedPassword = (strlen($password) > 1) ? $password . '...' . substr($password, -1) : $password; 
+            $maskedUsername = (strlen($username) > 1) ? substr($username, 1, 1) . '...' . substr($username, -1) : $username;
+            $maskedPassword = (strlen($password) > 1) ? substr($password, 1, 1) . '...' . substr($password, -1) : $password; 
             $this->logger->debug("ComdirectClient: getAccessTokenWithPassword $maskedUsername / $maskedPassword");    
         }
 
