@@ -31,7 +31,7 @@ class ComdirectClient
         $url = "https://{$this->apiHost}{$path}";
         $ch = curl_init();
 		
-		$this->logger->debug("Comdirectclient curl request to : $method $url")
+		$this->logger->debug("Comdirectclient curl request to : $method $url");
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -96,10 +96,10 @@ class ComdirectClient
             'body' => $decodedBody,
             'headers' => $responseHeaders,
             'raw_body' => $responseBody
-        ]
+        ];
 		
-		$logBody = json_encode($ret)
-		$this->logger->debug("Comdirectclient curl response: $logBody", ['path' => $path]))
+		$logBody = json_encode($ret);
+		$this->logger->debug("Comdirectclient curl response: $logBody", ['path' => $path]);
 
         return $ret;
     }
