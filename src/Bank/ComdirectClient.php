@@ -114,7 +114,7 @@ class ComdirectClient
      */
     public function getAccessTokenWithPassword(string $username, string $password): array
     {
-        if ($this->simulationMode) {
+		if ($this->simulationMode) {
             $this->logger->info("ComdirectClient: [SIMULATION] getAccessTokenWithPassword");
             return [
                 'access_token' => 'sim_initial_access_' . bin2hex(random_bytes(16)),
@@ -123,10 +123,10 @@ class ComdirectClient
                 'created_at' => time()
             ];
         } else {
-			$maskedUsername = (strlen($username) > 1) ? $username . '...' . substr($username, -1) : $username;
-            $maskedPassword = (strlen($password) > 1) ? $password . '...' . substr($password, -1) : $password; 
-	        $this->logger->debug("ComdirectClient: getAccessTokenWithPassword $maskedUsername / $maskedPassword");	
-	    }
+            $maskedUsername = (strlen($username) > 1) ? $username . '...' . substr($username, -1) : $username;
+            $maskedPassword = (strlen($password) > 1) ? $password . '...' . substr($password, -1) : $password; 
+            $this->logger->debug("ComdirectClient: getAccessTokenWithPassword $maskedUsername / $maskedPassword");    
+        }
 
         $headers = [
             'Accept: application/json',
