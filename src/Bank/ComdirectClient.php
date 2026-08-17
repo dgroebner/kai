@@ -122,7 +122,11 @@ class ComdirectClient
                 'expires_in' => 1200,
                 'created_at' => time()
             ];
-        }
+        } else {
+			$maskedUsername = (strlen(username) > 1) ? username . '...' . substr(username, -1) : username;
+            $maskedPassword = (strlen(password) > 1) ? password . '...' . substr(password, -1) : password; 
+	        $this->logger->debug("ComdirectClient: getAccessTokenWithPassword $maskedUsername / $maskedPassword");	
+	    }
 
         $headers = [
             'Accept: application/json',
@@ -141,6 +145,8 @@ class ComdirectClient
             $msg = $res['body']['error_description'] ?? $res['body']['error'] ?? 'Unbekannter Fehler';
             throw new Exception("Login failed: " . $msg);
         }
+
+        $this->logger->debug("ComdirectClient: getAccessTokenWithPassword response: {$res['body']}");	
 
         $res['body']['created_at'] = time();
         return $res['body'];
