@@ -30,6 +30,8 @@ class ComdirectClient
     {
         $url = "https://{$this->apiHost}{$path}";
         $ch = curl_init();
+		
+		$this->logger->debug("Comdirectclient curl request to : $method $url")
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -44,7 +46,6 @@ class ComdirectClient
             }
         }
         
-        // FIX: $method === 'GET' wurde entfernt. 
         // Der Header wird nun auch für POST, PATCH etc. gesendet (außer bei /oauth/).
         if (!$hasRequestInfo && strpos($path, '/oauth/') === false) {
             $reqInfo = json_encode([
@@ -89,13 +90,18 @@ class ComdirectClient
         }
 
         $decodedBody = json_decode($responseBody, true) ?: [];
-
-        return [
+		
+		$ret = [
             'code' => $httpCode,
             'body' => $decodedBody,
             'headers' => $responseHeaders,
             'raw_body' => $responseBody
-        ];
+        ]
+		
+		$logBody = json_encode($ret)
+		$this->logger->debug("Comdirectclient curl response: $logBody", ['path' => $path]))
+
+        return $ret;
     }
 
     private function generateUuid(): string
