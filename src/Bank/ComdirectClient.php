@@ -152,8 +152,6 @@ class ComdirectClient
             throw new Exception("Login failed: " . $msg);
         }
 
-        $this->logger->debug("ComdirectClient: getAccessTokenWithPassword response: {$res['body']}");	
-
         $res['body']['created_at'] = time();
         return $res['body'];
     }
