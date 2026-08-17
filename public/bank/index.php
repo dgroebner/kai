@@ -272,6 +272,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Girokonto Umsätze – Kai</title>
+    <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
 <body>
@@ -315,6 +316,42 @@ try {
 					<div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
 						<button type="button" id="btn-cancel-sync" class="btn btn-outline">Abbrechen</button>
 						<button type="button" id="btn-submit-credentials" class="btn">Token anfordern & Sync starten</button>
+					</div>
+				</div>
+
+				<!-- Schritt 1b: photoTAN Freigabe (Achtung vor Sperrung) -->
+				<div id="sync-step-phototan" class="hidden">
+					<p class="subtitle" style="margin-bottom: 1rem; color: var(--color-yellow, #eab308); font-weight: bold;">
+						⚠️ WICHTIGER HINWEIS ZUR KONTOSPERRUNG
+					</p>
+					<p style="margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.4; color: var(--text-main);">
+						Bitte bestätige die photoTAN in der comdirect photoTAN-App auf deinem Smartphone.<br><br>
+						<strong>Achtung: Nach 2 Fehlversuchen darf kein dritter Versuch erfolgen!</strong><br>
+						Sollte die TAN-Bestätigung fehlschlagen, melde dich bitte zuerst auf der comdirect-Webseite an und führe dort eine erfolgreiche photoTAN-Bestätigung durch. Erst danach darfst du es hier erneut versuchen.
+					</p>
+					
+					<div id="phototan-lock-container" class="hidden" style="margin-bottom: 1rem; padding: 0.75rem; border: 1px solid var(--color-red, #ef4444); border-radius: 4px; background-color: rgba(239, 68, 68, 0.05);">
+						<p style="color: var(--color-red, #ef4444); font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: bold;">
+							🔒 ZUGANGSMETHODE GESPERRT (2 Fehlversuche)
+						</p>
+						<div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+							<input type="checkbox" id="sync-reset-lock-chk" style="margin-top: 0.2rem; cursor: pointer;">
+							<label for="sync-reset-lock-chk" style="font-size: 0.8rem; cursor: pointer; color: var(--text-main);">
+								Ich habe mich auf der comdirect-Webseite erfolgreich angemeldet und die Sperre dort aufgehoben / bestätigt.
+							</label>
+						</div>
+					</div>
+
+					<div style="margin-bottom: 1.2rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+						<input type="checkbox" id="sync-phototan-confirm" style="margin-top: 0.2rem; cursor: pointer;">
+						<label for="sync-phototan-confirm" style="font-size: 0.85rem; cursor: pointer; color: var(--text-main); user-select: none;">
+							Ich habe den Hinweis verstanden und die photoTAN in der App freigegeben.
+						</label>
+					</div>
+					
+					<div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+						<button type="button" id="btn-cancel-phototan-btn" class="btn btn-outline">Abbrechen</button>
+						<button type="button" id="btn-submit-phototan" class="btn" disabled>Sync fortsetzen</button>
 					</div>
 				</div>
 

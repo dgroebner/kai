@@ -22,11 +22,44 @@ class BankAccountRepository
     public function getAllAccounts(): array
     {
         $stmt = $this->pdo->query("
-            SELECT id, name, account_type, iban, current_balance 
+            SELECT id, account_name, account_type, iban, current_balance 
             FROM bank_accounts 
             ORDER BY id ASC
         ");
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Lädt ein Bankkonto nach Typ.
+     */
+    public function getAccountByType(string $type): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT id, account_name, account_type, iban, current_balance 
+            FROM bank_accounts 
+            WHERE account_type = :type AND is_active = 1 
+            LIMIT 1
+        ");
+        $stmt->execute([':type' => $type]);
+        $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $res ?: null;
+    }
+
+    /**
+     * Lädt ein Bankkonto nach IBAN.
+     */
+    public function getAccountByIban(string $iban): ?array
+    {
+        $normalizedIban = str_replace(' ', '', strtoupper($iban));
+        $stmt = $this->pdo->prepare("
+            SELECT id, account_name, account_type, iban, current_balance 
+            FROM bank_accounts 
+            WHERE REPLACE(iban, ' ', '') = :iban AND is_active = 1 
+            LIMIT 1
+        ");
+        $stmt->execute([':iban' => $normalizedIban]);
+        $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $res ?: null;
     }
 
     /**

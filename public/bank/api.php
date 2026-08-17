@@ -8,6 +8,13 @@ use Kai\Tools\Shared\Security\TokenEncryptionService;
 use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Bank\StatementMatcher;
+use Kai\Tools\Bank\ComdirectClient;
+use Kai\Tools\Bank\BankGiroService;
+use Kai\Tools\Bank\BankTransactionRepository;
+use Kai\Tools\Bank\CategoryMatcher;
+use Kai\Tools\Bank\AiTagClassifier;
+use Kai\Tools\Shared\AI\GeminiClient;
+use Kai\Tools\Bank\Parser\BankCsvParser;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -23,14 +30,156 @@ if (!is_array($data)) {
     Auth::sendJsonError(400, 'Ungültige Anfrage');
 }
 
+// 4. CSRF-Token-Check (AGENTS.md)
+Auth::requireCsrfToken($data);
+
 $action = $data['action'] ?? '';
 $pdo = Database::getInstance()->getConnection();
 
 try {
-	
-	// TODO Test code - replace with final code as soon as available
-	if ($action === 'save_dummy_tokens') {
-        // Dynamisches Ermitteln des Girokontos aus der Datenbank
+    
+    // Startet den Login- und photoTAN-Push Validierungs-Flow
+    if ($action === 'start_auth_flow') {
+        $accessId = trim((string)($data['access_id'] ?? ''));
+        $pin = trim((string)($data['pin'] ?? ''));
+
+        if ($accessId === '' || $pin === '') {
+            Auth::sendJsonError(400, 'Bitte Zugangsnummer und PIN eingeben.');
+        }
+
+        // photoTAN Fehlversuche checken (Sperrschutz nach 2 Fehlversuchen)
+        if (isset($_SESSION['phototan_failures']) && $_SESSION['phototan_failures'] >= 2) {
+            Auth::sendJsonError(403, 'photoTAN-Sperrschutz aktiv (2 Fehlversuche). Bitte erst auf der comdirect-Webseite anmelden/freigeben.');
+        }
+
+        try {
+            $client = new ComdirectClient();
+
+            // 1. Passwort-basierten Flow anstoßen
+            $tokens = $client->getAccessTokenWithPassword($accessId, $pin);
+
+            // 2. Session ermitteln
+            $sessions = $client->getSessions($tokens['access_token']);
+            if (empty($sessions)) {
+                throw new Exception("Keine aktive Session für diesen Benutzer gefunden.");
+            }
+            $sessionObj = $sessions[0];
+            $sessionId = (string)($sessionObj['id'] ?? $sessionObj['identifier'] ?? '');
+
+            // 3. photoTAN-Push initiieren
+            $tanInfo = $client->validateSession($tokens['access_token'], $sessionId, $sessionObj);
+
+            // Zähler zurücksetzen bei Simulation
+            if ($client->isSimulationMode()) {
+                $_SESSION['sim_phototan_polls'] = 0;
+            }
+
+            // Temporäre Auth-Daten in Session speichern
+            $_SESSION['comdirect_temp_auth'] = [
+                'access_token'  => $tokens['access_token'],
+                'refresh_token' => $tokens['refresh_token'],
+                'expires_in'    => $tokens['expires_in'],
+                'created_at'    => $tokens['created_at'],
+                'session_id'    => $sessionId,
+                'session_obj'   => $sessionObj,
+                'tan_info'      => $tanInfo
+            ];
+
+            echo json_encode([
+                'success' => true,
+                'status'  => 'pending',
+                'message' => 'photoTAN-Push wurde gesendet. Bitte in der App freigeben.'
+            ]);
+            exit;
+
+        } catch (\Throwable $e) {
+            (new Logger())->error('bank/api.php: start_auth_flow Fehler', ['error' => $e->getMessage()]);
+            Auth::sendJsonError(500, $e->getMessage());
+        }
+    }
+
+    // Prüft den photoTAN Push Status und führt das Upgrade durch
+    if ($action === 'check_phototan_status') {
+        // Falls Sperre zurückgesetzt werden soll (Nutzer hat Checkbox angeklickt)
+        $resetLock = isset($data['reset_lock']) && $data['reset_lock'] === true;
+        if ($resetLock) {
+            $_SESSION['phototan_failures'] = 0;
+        }
+
+        if (isset($_SESSION['phototan_failures']) && $_SESSION['phototan_failures'] >= 2) {
+            echo json_encode([
+                'success' => false,
+                'status'  => 'blocked',
+                'message' => 'photoTAN-Sperrschutz aktiv (2 Fehlversuche). Bitte erst auf der comdirect-Webseite erfolgreich anmelden/TAN-freigeben.'
+            ]);
+            exit;
+        }
+
+        $tempAuth = $_SESSION['comdirect_temp_auth'] ?? null;
+        if (!$tempAuth) {
+            Auth::sendJsonError(400, 'Keine laufende Authentifizierung gefunden. Bitte erneut einloggen.');
+        }
+
+        try {
+            $client = new ComdirectClient();
+
+            // Status prüfen / Session aktivieren
+            $activated = $client->activateSession(
+                $tempAuth['access_token'],
+                $tempAuth['session_id'],
+                $tempAuth['session_obj'],
+                $tempAuth['tan_info']
+            );
+
+            if (!$activated) {
+                echo json_encode(['success' => true, 'status' => 'pending']);
+                exit;
+            }
+
+            // Upgrade zu Secondary Token
+            $secondaryTokens = $client->getSecondaryToken($tempAuth['access_token']);
+
+            // In DB speichern
+            $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
+            $accountId = $stmtAccount->fetchColumn();
+            if (!$accountId) {
+                throw new Exception("Kein Girokonto zum Speichern der Tokens gefunden.");
+            }
+
+            $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+            $repo = new BankAccountRepository();
+            $repo->saveApiTokens((int)$accountId, $secondaryTokens, $encryptionService);
+
+            // Erfolg -> Zähler resetten & temp leeren
+            $_SESSION['phototan_failures'] = 0;
+            unset($_SESSION['comdirect_temp_auth']);
+
+            echo json_encode(['success' => true, 'status' => 'authenticated']);
+            exit;
+
+        } catch (\Throwable $e) {
+            if (!isset($_SESSION['phototan_failures'])) {
+                $_SESSION['phototan_failures'] = 0;
+            }
+            $_SESSION['phototan_failures']++;
+
+            $failures = $_SESSION['phototan_failures'];
+            (new Logger())->error("bank/api.php check_phototan_status error (Versuch $failures/2)", ['error' => $e->getMessage()]);
+
+            $isBlocked = $failures >= 2;
+            echo json_encode([
+                'success' => false,
+                'status'  => $isBlocked ? 'blocked' : 'error',
+                'message' => $isBlocked 
+                    ? 'photoTAN-Sperrschutz aktiv (2 Fehlversuche). Bitte erst auf der comdirect-Webseite erfolgreich anmelden/TAN-freigeben.'
+                    : 'Fehler bei TAN-Aktivierung: ' . $e->getMessage()
+            ]);
+            exit;
+        }
+    }
+
+    // Führt den eigentlichen Sync-Prozess aus
+    if ($action === 'run_sync') {
         $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
         $accountId = $stmtAccount->fetchColumn();
 
@@ -38,41 +187,54 @@ try {
             Auth::sendJsonError(404, 'Kein Girokonto für den API-Sync gefunden.');
         }
 
-        $accessId = trim((string)($data['access_id'] ?? ''));
-        $pin = trim((string)($data['pin'] ?? ''));
-        
-        $dummyTokens = [
-            'access_token'  => 'dummy_access_' . bin2hex(random_bytes(8)),
-            'refresh_token' => 'dummy_refresh_' . bin2hex(random_bytes(8)),
-            'expires_in'    => 1800,
-            'created_at'    => time()
-        ];
-        
-		$encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
-		$repo = new BankAccountRepository();
-		
-		$success = $repo->saveApiTokens((int)$accountId, $dummyTokens, $encryptionService);
-		
-		echo json_encode(['success' => $success]);
-        exit;
-    }
-	
-	if ($action === 'add_tag_to_tx') {
-        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
-        $tagId = filter_var($data['tag_id'] ?? null, FILTER_VALIDATE_INT);
+        $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
+        $repo = new BankAccountRepository();
 
-        if (!$txId || !$tagId) {
-            Auth::sendJsonError(400, 'Ungültige Parameter');
+        $tokens = $repo->getApiTokens((int)$accountId, $encryptionService);
+        if (!$tokens) {
+            Auth::sendJsonError(401, 'Keine Tokens gefunden. Bitte zuerst authentifizieren.');
         }
 
-        $stmt = $pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
-        $stmt->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
+        // Falls Token abläuft, versuchen wir ihn direkt über das Refresh-Token zu erneuern
+        $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
+        if (!$isValid) {
+            $client = new ComdirectClient();
+            try {
+                $refreshed = $client->refreshAccessToken($tokens['refresh_token']);
+                $repo->saveApiTokens((int)$accountId, $refreshed, $encryptionService);
+                $tokens = $refreshed;
+            } catch (\Throwable $e) {
+                (new Logger())->error("bank/api.php run_sync token refresh failed", ['error' => $e->getMessage()]);
+                Auth::sendJsonError(401, 'Tokens abgelaufen und Refresh fehlgeschlagen. Bitte erneut anmelden.');
+            }
+        }
 
-        echo json_encode(['success' => true]);
+        // Sync ausführen
+        $geminiClient = new GeminiClient();
+        $bankCsvParser = new BankCsvParser();
+        $bankRepo = new BankTransactionRepository();
+        $categoryMatcher = new CategoryMatcher();
+        $aiClassifier = new AiTagClassifier($geminiClient);
+
+        $bankGiroService = new BankGiroService(
+            $bankCsvParser,
+            $bankRepo,
+            $categoryMatcher,
+            $aiClassifier
+        );
+
+        $stats = $bankGiroService->syncWithComdirectApi($tokens);
+
+        echo json_encode([
+            'success' => true,
+            'imported' => $stats['imported'],
+            'ignored' => $stats['ignored'],
+            'tagged' => $stats['tagged']
+        ]);
         exit;
     }
-	
-	if ($action === 'check_token_status') {
+
+    if ($action === 'check_token_status') {
         // Dynamisches Ermitteln des Girokontos aus der Datenbank
         $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
         $accountId = $stmtAccount->fetchColumn();

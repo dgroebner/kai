@@ -1117,7 +1117,6 @@ async function fetchAndReplaceContent(targetUrl) {
         if (resetBtn) {
             resetBtn.classList.toggle('hidden', !activeTagId);
         }
-
         if (container) container.style.opacity = '1';
 
     } catch (err) {
@@ -1128,7 +1127,7 @@ async function fetchAndReplaceContent(targetUrl) {
 }
 
 // ==========================================
-// Comdirect API Sync (Token-Lifecycle & Simulation)
+// Comdirect API Sync (Token-Lifecycle & photoTAN)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const btnOpenSync = document.getElementById('btn-open-sync');
@@ -1137,140 +1136,274 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelSyncX = document.getElementById('btn-cancel-sync-x');
     const btnSubmitCredentials = document.getElementById('btn-submit-credentials');
     const btnCloseSync = document.getElementById('btn-close-sync');
-    
+
     const stepCredentials = document.getElementById('sync-step-credentials');
+    const stepPhototan = document.getElementById('sync-step-phototan');
     const stepProgress = document.getElementById('sync-step-progress');
     const accessIdInput = document.getElementById('sync-access-id');
     const pinInput = document.getElementById('sync-pin-input');
     const resultMsg = document.getElementById('sync-result-msg');
 
-    // UI-Elemente für die Tasks
+    const phototanConfirmChk = document.getElementById('sync-phototan-confirm');
+    const btnSubmitPhototan = document.getElementById('btn-submit-phototan');
+    const btnCancelPhototanBtn = document.getElementById('btn-cancel-phototan-btn');
+    const phototanLockContainer = document.getElementById('phototan-lock-container');
+    const resetLockChk = document.getElementById('sync-reset-lock-chk');
+
+    // UI-Elemente für die Aufgaben-Checkliste
     const tasks = {
-        auth: document.getElementById('task-auth'),
+        auth:    document.getElementById('task-auth'),
         balance: document.getElementById('task-balance'),
-        tx: document.getElementById('task-tx'),
-        rules: document.getElementById('task-rules')
+        tx:      document.getElementById('task-tx'),
+        rules:   document.getElementById('task-rules')
     };
 
     if (!btnOpenSync || !syncModal) return;
+
+    // --- Hilfsfunktionen ---
+
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const hideAllSteps = () => {
+        if (stepCredentials) stepCredentials.classList.add('hidden');
+        if (stepPhototan)    stepPhototan.classList.add('hidden');
+        if (stepProgress)    stepProgress.classList.add('hidden');
+    };
 
     const closeModal = () => {
         syncModal.classList.add('hidden');
         syncModal.style.display = 'none';
     };
 
-    // Modal öffnen & Token-Status live aus der Datenbank prüfen
-    btnOpenSync.addEventListener('click', async () => {
-        resultMsg.innerText = '';
-        accessIdInput.value = '';
-        pinInput.value = '';
-
+    const resetTaskList = () => {
         Object.values(tasks).forEach(el => {
+            if (!el) return;
             el.style.color = 'var(--text-muted)';
-            el.innerText = '⏳ ' + el.innerText.substring(2);
+            const stripped = el.innerText.replace(/^[✅❌⏳]\s*/, '');
+            el.innerText = '⏳ ' + stripped;
         });
+        if (resultMsg) resultMsg.innerText = '';
+        if (btnCloseSync) btnCloseSync.classList.add('hidden');
+    };
+
+    const setTaskActive = (key) => {
+        const el = tasks[key];
+        if (el) el.style.color = 'var(--text-main, #1f2937)';
+    };
+
+    const completeTask = (key, text) => {
+        const el = tasks[key];
+        if (!el) return;
+        el.style.color = 'var(--color-green, #10b981)';
+        el.innerText = `✅ ${text}`;
+    };
+
+    const failTask = (key, text) => {
+        const el = tasks[key];
+        if (!el) return;
+        el.style.color = 'var(--color-red, #ef4444)';
+        el.innerText = `❌ ${text}`;
+    };
+
+    // --- Modal öffnen & Token-Status prüfen ---
+
+    btnOpenSync.addEventListener('click', async () => {
+        resetTaskList();
+        if (accessIdInput) accessIdInput.value = '';
+        if (pinInput) pinInput.value = '';
 
         syncModal.classList.remove('hidden');
         syncModal.style.display = 'flex';
 
         try {
-            // Echter AJAX-Check gegen das Backend
             const response = await KaiHttp.postJson('api.php', { action: 'check_token_status' });
-            const tokensAreValid = response && response.success && response.tokens_valid;
+            const tokensValid = response && response.success && response.tokens_valid;
 
-            if (!tokensAreValid) {
-                // Tokens fehlen oder sind abgelaufen -> Credentials abfragen
-                stepCredentials.classList.remove('hidden');
-                stepProgress.classList.add('hidden');
-            } else {
-                // Gültiger Token vorhanden -> Direkt mit dem Sync-Fortschritt starten
-                stepCredentials.classList.add('hidden');
+            hideAllSteps();
+            if (tokensValid) {
                 stepProgress.classList.remove('hidden');
-                runSyncProcess();
+                await runSyncProcess();
+            } else {
+                stepCredentials.classList.remove('hidden');
             }
         } catch (err) {
-            console.error('Fehler beim Token-Check:', err);
-            // Im Fehlerfall sicherheitshalber Credentials abfragen
+            console.error('Token-Check Fehler:', err);
+            hideAllSteps();
             stepCredentials.classList.remove('hidden');
-            stepProgress.classList.add('hidden');
         }
     });
 
-    btnCancelSync.addEventListener('click', closeModal);
-    btnCancelSyncX.addEventListener('click', closeModal);
+    // Schließen-Handler
+    if (btnCancelSync)        btnCancelSync.addEventListener('click', closeModal);
+    if (btnCancelSyncX)       btnCancelSyncX.addEventListener('click', closeModal);
+    if (btnCancelPhototanBtn) btnCancelPhototanBtn.addEventListener('click', closeModal);
 
-    // Nach erfolgreichem Sync die Seite neu laden
-    btnCloseSync.addEventListener('click', () => {
-        window.location.reload();
-    });
+    btnCloseSync.addEventListener('click', () => window.location.reload());
 
-    const completeTask = (taskKey, successText) => {
-        const el = tasks[taskKey];
-        el.style.color = 'var(--color-green, #10b981)';
-        el.innerText = `✅ ${successText}`;
-    };
+    // Checkbox aktiviert "Sync fortsetzen"-Button
+    if (phototanConfirmChk && btnSubmitPhototan) {
+        phototanConfirmChk.addEventListener('change', () => {
+            btnSubmitPhototan.disabled = !phototanConfirmChk.checked;
+        });
+    }
 
-    const runSyncProcess = () => {
-        tasks.auth.style.color = 'var(--text-main, #1f2937)';
+    // --- Zugangsdaten absenden → Auth-Flow starten ---
 
-        setTimeout(() => {
-            completeTask('auth', 'Authentifizierung erfolgreich (Tokens aktiv)');
-            tasks.balance.style.color = 'var(--text-main)';
-            
-            setTimeout(() => {
-                completeTask('balance', 'Salden aktualisiert');
-                tasks.tx.style.color = 'var(--text-main)';
-                
-                setTimeout(() => {
-                    completeTask('tx', '4 neue Transaktionen importiert');
-                    tasks.rules.style.color = 'var(--text-main)';
-                    
-                    setTimeout(() => {
-                        completeTask('rules', '2 KI-Regeln angewendet');
-                        
-                        resultMsg.style.color = 'var(--color-green, #10b981)';
-                        resultMsg.innerText = 'Sync erfolgreich abgeschlossen!';
-                        btnCloseSync.classList.remove('hidden');
+    if (btnSubmitCredentials) {
+        btnSubmitCredentials.addEventListener('click', async () => {
+            const accessId = accessIdInput ? accessIdInput.value.trim() : '';
+            const pin      = pinInput      ? pinInput.value.trim()      : '';
 
-                    }, 800);
-                }, 1500);
-            }, 600);
-        }, 1200);
-    };
-
-	// Wenn der Nutzer neue Zugangsdaten eingibt und absendet
-    btnSubmitCredentials.addEventListener('click', async () => {
-        const accessId = accessIdInput.value.trim();
-        const pin = pinInput.value.trim();
-
-        if (accessId === '' || pin === '') {
-            alert('Bitte Zugangsnummer und PIN eingeben.');
-            return;
-        }
-
-        try {
-            // 1. Dummy-Token im Backend generieren und Zugangsdaten übergeben
-            const response = await KaiHttp.postJson('api.php', { 
-                action: 'save_dummy_tokens',
-                access_id: accessId,
-                pin: pin
-            });
-            
-            if (!response || !response.success) {
-                alert('Fehler beim Speichern der Token in der Datenbank.');
+            if (!accessId || !pin) {
+                alert('Bitte Zugangsnummer und PIN eingeben.');
                 return;
             }
 
-            // 2. Wechsle von Credentials-Eingabe zur Fortschrittsanzeige
-            stepCredentials.classList.add('hidden');
-            stepProgress.classList.remove('hidden');
+            btnSubmitCredentials.disabled  = true;
+            btnSubmitCredentials.innerText = 'Bitte warten...';
 
-            // 3. Starte den regulären Fortschritts-Ablauf
-            runSyncProcess();
+            try {
+                const response = await KaiHttp.postJson('api.php', {
+                    action:    'start_auth_flow',
+                    access_id: accessId,
+                    pin:       pin
+                });
+
+                if (!response || !response.success) {
+                    alert(response?.message || 'Fehler beim Starten des Auth-Flows.');
+                    btnSubmitCredentials.disabled  = false;
+                    btnSubmitCredentials.innerText = 'Token anfordern & Sync starten';
+                    return;
+                }
+
+                // photoTAN-Push gesendet → Hinweis-Schritt zeigen
+                hideAllSteps();
+                if (stepPhototan) {
+                    stepPhototan.classList.remove('hidden');
+                    if (phototanLockContainer) phototanLockContainer.classList.add('hidden');
+                    if (phototanConfirmChk)    phototanConfirmChk.checked = false;
+                    if (btnSubmitPhototan)     btnSubmitPhototan.disabled  = true;
+                }
+                btnSubmitCredentials.disabled  = false;
+                btnSubmitCredentials.innerText = 'Token anfordern & Sync starten';
+
+            } catch (err) {
+                console.error('Auth-Flow Fehler:', err);
+                alert('Netzwerkfehler beim Login. Bitte versuche es erneut.');
+                btnSubmitCredentials.disabled  = false;
+                btnSubmitCredentials.innerText = 'Token anfordern & Sync starten';
+            }
+        });
+    }
+
+    // --- photoTAN bestätigt → Aktivierungs-Check & Secondary-Token ---
+
+    if (btnSubmitPhototan) {
+        btnSubmitPhototan.addEventListener('click', async () => {
+            btnSubmitPhototan.disabled  = true;
+            btnSubmitPhototan.innerText = 'Prüfe Freigabe...';
+
+            const resetLock = resetLockChk ? resetLockChk.checked : false;
+
+            try {
+                const response = await KaiHttp.postJson('api.php', {
+                    action:     'check_phototan_status',
+                    reset_lock: resetLock
+                });
+
+                if (response && response.status === 'blocked') {
+                    if (phototanLockContainer) phototanLockContainer.classList.remove('hidden');
+                    if (phototanConfirmChk)    phototanConfirmChk.checked = false;
+                    btnSubmitPhototan.disabled  = true;
+                    btnSubmitPhototan.innerText = 'Sync fortsetzen';
+                    alert(response.message || 'photoTAN gesperrt. Bitte erst auf der comdirect-Webseite anmelden.');
+                    return;
+                }
+
+                if (response && response.status === 'pending') {
+                    btnSubmitPhototan.disabled  = false;
+                    btnSubmitPhototan.innerText = 'Sync fortsetzen';
+                    alert('Die photoTAN-Freigabe ist noch ausstehend. Bitte zuerst in der App bestätigen.');
+                    return;
+                }
+
+                if (response && response.status === 'authenticated') {
+                    hideAllSteps();
+                    stepProgress.classList.remove('hidden');
+                    await runSyncProcess();
+                    return;
+                }
+
+                // Sonstiger Fehler
+                const msg = response?.message || 'Unbekannter Fehler bei der TAN-Prüfung.';
+                if (phototanLockContainer && msg.toLowerCase().includes('gesperrt')) {
+                    phototanLockContainer.classList.remove('hidden');
+                }
+                alert(msg);
+                btnSubmitPhototan.disabled  = false;
+                btnSubmitPhototan.innerText = 'Sync fortsetzen';
+
+            } catch (err) {
+                console.error('photoTAN-Check Fehler:', err);
+                alert('Netzwerkfehler beim Prüfen der photoTAN.');
+                btnSubmitPhototan.disabled  = false;
+                btnSubmitPhototan.innerText = 'Sync fortsetzen';
+            }
+        });
+    }
+
+    // --- Eigentlicher Sync-Prozess mit Live-Checkliste ---
+
+    const runSyncProcess = async () => {
+        setTaskActive('auth');
+
+        try {
+            const syncResponse = await KaiHttp.postJson('api.php', { action: 'run_sync' });
+
+            if (!syncResponse || !syncResponse.success) {
+                failTask('auth', 'Authentifizierung/Sync fehlgeschlagen');
+                if (resultMsg) {
+                    resultMsg.style.color = 'var(--color-red, #ef4444)';
+                    resultMsg.innerText = syncResponse?.message || 'Sync fehlgeschlagen.';
+                }
+                btnCloseSync.classList.remove('hidden');
+                return;
+            }
+
+            completeTask('auth', 'Authentifizierung & Token-Validierung erfolgreich');
+            await delay(300);
+
+            setTaskActive('balance');
+            await delay(400);
+            completeTask('balance', 'Konten- & Salden-Abgleich abgeschlossen');
+            await delay(300);
+
+            setTaskActive('tx');
+            await delay(400);
+            const importedCount = syncResponse.imported ?? 0;
+            const ignoredCount  = syncResponse.ignored  ?? 0;
+            completeTask('tx', `${importedCount} neue Transaktion(en) importiert (${ignoredCount} Duplikate ignoriert)`);
+            await delay(300);
+
+            setTaskActive('rules');
+            await delay(400);
+            const taggedCount = syncResponse.tagged ?? 0;
+            completeTask('rules', `KI-Kategorisierung: ${taggedCount} Transaktion(en) getaggt`);
+
+            if (resultMsg) {
+                resultMsg.style.color = 'var(--color-green, #10b981)';
+                resultMsg.innerText = 'Sync erfolgreich abgeschlossen!';
+            }
+            btnCloseSync.classList.remove('hidden');
 
         } catch (err) {
-            console.error('Fehler beim Token-Request:', err);
-            alert('Netzwerkfehler beim Anfordern der Tokens.');
+            console.error('Sync-Prozess Fehler:', err);
+            failTask('auth', 'Netzwerkfehler beim Sync');
+            if (resultMsg) {
+                resultMsg.style.color = 'var(--color-red, #ef4444)';
+                resultMsg.innerText = 'Netzwerkfehler. Bitte versuche es erneut.';
+            }
+            btnCloseSync.classList.remove('hidden');
         }
-    });
+    };
 });
