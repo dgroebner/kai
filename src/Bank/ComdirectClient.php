@@ -43,7 +43,10 @@ class ComdirectClient
                 break;
             }
         }
-        if (!$hasRequestInfo && $method === 'GET' && strpos($path, '/oauth/') === false) {
+        
+        // FIX: $method === 'GET' wurde entfernt. 
+        // Der Header wird nun auch für POST, PATCH etc. gesendet (außer bei /oauth/).
+        if (!$hasRequestInfo && strpos($path, '/oauth/') === false) {
             $reqInfo = json_encode([
                 'clientRequestId' => [
                     'sessionId' => str_replace('-', '', $this->generateUuid()),
