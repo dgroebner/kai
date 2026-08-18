@@ -34,21 +34,19 @@ jobs:
         if: steps.composer-cache.outputs.cache-hit != 'true'
         run: composer install --no-dev --optimize-autoloader
 
-      - name: 🚀 Incremental Deploy via SFTP
-        env:
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PWD: ${{ secrets.FTP_PASSWORD }}
-          FTP_HOST: ${{ secrets.FTP_SERVER }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y lftp
-          lftp -u "$FTP_USER","$FTP_PWD" sftp://"$FTP_HOST" <<EOF
-          set sftp:auto-confirm yes
-          mirror --reverse --delete --only-newer --parallel=10 \
-                 --exclude-glob .git/ \
-                 --exclude-glob .github/ \
-                 --exclude-glob .env \
-                 --exclude-glob .ftpignore \
-                 --exclude-glob storage/ \
-                 --exclude-glob concepts/ \
-                 ./ ./
-          EOF
+      - name: 🚀 Deploy via rsync to /kai_root/
+        uses: Burnett01/rsync-deployments@v6
+        with:
+          switches: -rltgoDzvO 
+          path: ./
+          remote_path: /kai_root/
+          remote_host: ${{ secrets.FTP_SERVER }}
+          remote_user: ${{ secrets.FTP_USERNAME }}
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          exclude: |
+            .git*
+            .github*
+            .env
+            .ftpignore
+            storage/
+            concepts/
