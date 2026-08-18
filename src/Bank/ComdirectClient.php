@@ -260,9 +260,6 @@ class ComdirectClient
             'x-once-authentication-info: ' . json_encode($tanInfo)
         ];
 
-        // Bei photoTAN-Push bleibt x-once-authentication-code leer
-        $headers[] = 'x-once-authentication-code: ';
-
         $body = json_encode($sessionObj);
 
         $res = $this->request('PATCH', "/session/clients/user/v1/sessions/{$sessionId}", $headers, $body);
