@@ -64,7 +64,7 @@ try {
                 throw new Exception("Keine aktive Session für diesen Benutzer gefunden.");
             }
             $sessionObj = $sessions[0];
-            $sessionId = (string)($sessionObj['id'] ?? $sessionObj['identifier'] ?? '');
+            $sessionId = (string)($sessionObj['identifier'] ?? '');
 
             // 3. photoTAN-Push initiieren
             $tanInfo = $client->validateSession($tokens['access_token'], $sessionId, $sessionObj);
