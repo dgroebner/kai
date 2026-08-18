@@ -34,16 +34,16 @@ jobs:
         if: steps.composer-cache.outputs.cache-hit != 'true'
         run: composer install --no-dev --optimize-autoloader
 
-      - name: 🚀 Deploy via rsync (mit Passwort) to /kai_root/
+      - name: 🚀 Deploy via rsync (mit Passwort) to kai_root/
         env:
-          SSHPASS: ${{ secrets.FTP_PASSWORD }} # sshpass liest das Passwort automatisch aus dieser Variable
+          SSHPASS: ${{ secrets.FTP_PASSWORD }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
         run: |
           # Installiere sshpass für die Passwort-Übergabe
           sudo apt-get update && sudo apt-get install -y sshpass rsync
 
-          # Führe rsync aus
+          # Führe rsync aus (Zielpfad ohne führenden Slash!)
           sshpass -e rsync -rltgoDzvO -e "ssh -o StrictHostKeyChecking=no" \
             --exclude='.git*' \
             --exclude='.github*' \
@@ -51,4 +51,4 @@ jobs:
             --exclude='.ftpignore' \
             --exclude='storage/' \
             --exclude='concepts/' \
-            ./ ${FTP_USERNAME}@${FTP_SERVER}:/kai_root/
+            ./ ${FTP_USERNAME}@${FTP_SERVER}:kai_root/
