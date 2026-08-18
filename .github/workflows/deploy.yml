@@ -43,7 +43,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y lftp
           lftp -u "$FTP_USER","$FTP_PWD" sftp://"$FTP_HOST" <<EOF
           set sftp:auto-confirm yes
-          mirror --reverse --delete --only-newer --parallel=5 \
+          mirror --reverse --delete --only-newer --parallel=10 \
                  --exclude-glob .git/ \
                  --exclude-glob .github/ \
                  --exclude-glob .env \
