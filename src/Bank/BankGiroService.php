@@ -105,6 +105,13 @@ class BankGiroService
 
                 $transformed = [];
                 foreach ($apiTxList as $apiTx) {
+                    $bookingStatus = $apiTx['bookingStatus'] ?? 'BOOKED';
+                    
+                    // Aktuell sollen nur BOOKED-Buchungen berücksichtigt werden
+                    if ($bookingStatus !== 'BOOKED') {
+                        continue;
+                    }
+
                     $bookingDate = $apiTx['bookingDate'] ?? '';
                     
                     // Dublettenvermeidung: Buchungen bis einschließlich 15.08.2026 ignorieren
@@ -112,14 +119,55 @@ class BankGiroService
                         continue;
                     }
 
+                    // Eindeutige Referenz als ID-Ersatz nutzen (z.B. "6F2C29CH2F7RCCZ0/12729")
+                    $reference = $apiTx['reference'] ?? '';
+                    if (empty($reference)) {
+                        continue;
+                    }
+
+                    // Partner-Namen ermitteln (Remitter oder Creditor)
+                    $partnerName = $apiTx['remitter']['holderName'] 
+                        ?? $apiTx['creditor']['holderName'] 
+                        ?? '';
+
+                    // In Blöcke à 37 Zeichen zerlegen
+                    $chunks = str_split($rawRemittance, 37);
+                    if ($chunks) {
+                        foreach ($chunks as $chunk) {
+                            // Prüfen ob der Block mit einer zweistelligen Nummer beginnt
+                            if (preg_match('/^\d{2}(.*)$/', $chunk, $matches)) {
+                                $cleanedLine = trim($matches[1]);
+                                if (!empty($cleanedLine)) {
+                                    $lines[] = $cleanedLine;
+                                }
+                            }
+                        }
+                    }
+                    $cleanedRemittance = implode(' ', $lines);
+
+                    $txTypeText = $apiTx['transactionType']['text'] ?? '';
+
+                    // Kompatiblen raw_text aufbauen
+                    $rawTextParts = [];
+                    if (!empty($partnerName)) {
+                        $rawTextParts[] = "Auftraggeber: {$partnerName}";
+                    }
+                    if (!empty($txTypeText)) {
+                        $rawTextParts[] = "Buchungstext: {$cleanedRemittance}";
+                    }
+                    if (!empty($reference)) {
+                        $rawTextParts[] = "Ref. {$reference}";
+                    }
+                    $rawText = implode(' ', $rawTextParts);
+
                     $transformed[] = [
                         'account_id'     => $dbAccountId,
-                        'tx_hash'        => hash('sha256', 'comdirect_' . ($apiTx['transactionId'] ?? '')),
-                        'transaction_id' => $apiTx['transactionId'] ?? null,
+                        'tx_hash'        => hash('sha256', 'comdirect_' . $reference),
+                        'transaction_id' => $reference,
                         'booking_date'   => $bookingDate,
                         'valuta_date'    => $apiTx['valutaDate'] ?? $bookingDate,
-                        'type'           => $apiTx['bookingStatus'] ?? 'BOOKED',
-                        'raw_text'       => $apiTx['remittanceInfo'] ?? '',
+                        'type'           => $txTypeText,
+                        'raw_text'       => $rawText,
                         'amount'         => (float)($apiTx['amount']['value'] ?? 0.0),
                     ];
                 }

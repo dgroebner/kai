@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
     current_balance DECIMAL(12, 2) DEFAULT NULL,
     api_credentials TEXT DEFAULT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NULL,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Girokonto Transaktionen (CSV-Imports, E-Mail-Import & API)
