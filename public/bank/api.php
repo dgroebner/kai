@@ -67,6 +67,8 @@ try {
             $sessionId = (string)($sessionObj['identifier'] ?? '');
 
             // 3. photoTAN-Push initiieren
+			$sessionObj['sessionTanActive'] = true;
+		    $sessionObj['activated2FA'] = true;
             $tanInfo = $client->validateSession($tokens['access_token'], $sessionId, $sessionObj);
 
             // Zähler zurücksetzen bei Simulation

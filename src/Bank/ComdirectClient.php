@@ -210,8 +210,6 @@ class ComdirectClient
         ];
 
         // Die Session-Daten für Validierung senden
-		$sessionObj['sessionTanActive'] = true
-		$sessionObj['activated2FA'] = true
         $body = json_encode($sessionObj);
 		
 	    $this->logger->debug("ComdirectClient: validateSession request body: $body ");
