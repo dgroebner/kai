@@ -35,9 +35,9 @@ jobs:
         run: composer install --no-dev --optimize-autoloader
 
       - name: 🚀 Deploy via rsync to /kai_root/
-        uses: Burnett01/rsync-deployments@v6
+        uses: Burnett01/rsync-deployments@v9
         with:
-          switches: -rltgoDzvO 
+          switches: -rltgoDzvO
           path: ./
           remote_path: /kai_root/
           remote_host: ${{ secrets.FTP_SERVER }}
