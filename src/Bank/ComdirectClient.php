@@ -257,7 +257,7 @@ class ComdirectClient
             'Accept: application/json',
             'Content-Type: application/json',
             "Authorization: Bearer {$accessToken}",
-            'x-once-authentication-info: ' . json_encode($tanInfo)
+            'x-once-authentication-info: ' . json_encode(['id' => $tanInfo['id']])
         ];
 
         $body = json_encode($sessionObj);
