@@ -76,6 +76,19 @@ document.addEventListener('click', (e) => {
         toggleTagFilter(tagId);
         return;
     }
+	
+	const detailBtn = e.target.closest('.js-open-details');
+    if (detailBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            const tx = JSON.parse(detailBtn.dataset.tx);
+            showTxDetailsModal(tx);
+        } catch (err) {
+            console.error("Fehler beim Parsen der Transaktionsdaten:", err);
+        }
+        return;
+    }
 
     // C: Reset-Button für Filter
     const resetBtn = e.target.closest('#btn-reset-tag-filter');
@@ -1406,14 +1419,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btnCloseSync.classList.remove('hidden');
         }
     };
-});
-
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.js-open-details');
-    if (btn) {
-        const tx = JSON.parse(btn.dataset.tx);
-        showTxDetailsModal(tx);
-    }
 });
 
 function showTxDetailsModal(tx) {
