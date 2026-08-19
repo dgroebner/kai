@@ -24,7 +24,7 @@ class BankGiroService
 
     public function __construct(
         BankTransactionRepository $repository,
-		BankAccountRepository $$bankAccountRepository,
+		BankAccountRepository $bankAccountRepository,
         CategoryMatcher $matcher,
         AiTagClassifier $aiClassifier
     ) {
