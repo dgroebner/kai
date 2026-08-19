@@ -143,7 +143,7 @@ class BankAccountRepository
     }
 	
 	public function getLastSyncDate($accountId) {
-		$stmt = $this->db->prepare("SELECT updated_at FROM bank_accounts WHERE id = ?");
+		$stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = ?");
 		$stmt->execute([$accountId]);
 		$result = $stmt->fetchColumn();
 		
