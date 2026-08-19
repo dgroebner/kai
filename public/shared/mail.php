@@ -38,6 +38,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
 use Kai\Tools\Bank\CreditCardService;
 use Kai\Tools\Bank\BankTransactionRepository;
+use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\CategoryMatcher;
 use Kai\Tools\Bank\AiTagClassifier;
 use Kai\Tools\Bank\BankGiroService;
@@ -59,11 +60,13 @@ try {
 
     // 2. Giro Bank Services (NEU)
     $bankRepo = new BankTransactionRepository();
+	$bankAccountRepo = new BankAccountRepository();
     $categoryMatcher = new CategoryMatcher();
     $aiClassifier = new AiTagClassifier($geminiClient);
 
     $bankGiroService = new BankGiroService(
         $bankRepo,
+		$bankAccountRepo,
         $categoryMatcher,
         $aiClassifier
     );

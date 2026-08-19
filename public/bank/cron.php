@@ -79,6 +79,7 @@ try {
 
     $bankGiroService = new BankGiroService(
         $bankRepo,
+		$repo,
         $categoryMatcher,
         $aiClassifier
     );
