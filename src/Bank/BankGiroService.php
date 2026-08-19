@@ -15,7 +15,7 @@ use Exception;
 class BankGiroService
 {
     private BankTransactionRepository $repository;
-	private BankAccountRepository $bankAccountRepository
+	private BankAccountRepository $bankAccountRepository;
     private CategoryMatcher $matcher;
     private AiTagClassifier $aiClassifier;
     private Logger $logger;
