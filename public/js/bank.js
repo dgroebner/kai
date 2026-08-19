@@ -1425,8 +1425,8 @@ function showTxDetailsModal(tx) {
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
     
-    // Hilfsfunktion für optionales
-    const opt = (val) => val ? htmlspecialchars(val) : '<span class="text-muted">-</span>';
+    // Korrigiert: escapeHtml statt htmlspecialchars verwenden
+    const opt = (val) => val ? escapeHtml(val) : '<span class="text-muted">-</span>';
     
     overlay.innerHTML = `
         <div class="rule-modal-card">
@@ -1435,14 +1435,14 @@ function showTxDetailsModal(tx) {
                 <table style="width:100%; border-spacing: 10px;">
                     <tr><td>Referenz:</td><td>${opt(tx.transaction_id)}</td></tr>
                     <tr><td>Datum:</td><td>${tx.booking_date} (Valuta: ${tx.valuta_date})</td></tr>
-                    <tr><td>Typ:</td><td>${tx.type}</td></tr>
+                    <tr><td>Typ:</td><td>${escapeHtml(tx.type || '')}</td></tr>
                     <tr><td>Auftraggeber:</td><td>${opt(tx.remitter)}</td></tr>
                     <tr><td>Empfänger:</td><td>${opt(tx.creditor)}</td></tr>
                     <tr><td>Buchungstext:</td><td>${opt(tx.remittance_info)}</td></tr>
                     <tr><td>Betrag:</td><td class="${tx.amount < 0 ? 'text-danger' : 'text-success'}"><strong>${tx.amount} €</strong></td></tr>
-                    ${tx.end_to_end_reference ? `<tr><td>End-to-End:</td><td>${tx.end_to_end_reference}</td></tr>` : ''}
-                    ${tx.dc_creditor_id ? `<tr><td>Gläubiger-ID:</td><td>${tx.dc_creditor_id}</td></tr>` : ''}
-                    ${tx.dc_mandate_id ? `<tr><td>Mandatsref:</td><td>${tx.dc_mandate_id}</td></tr>` : ''}
+                    ${tx.end_to_end_reference ? `<tr><td>End-to-End:</td><td>${escapeHtml(tx.end_to_end_reference)}</td></tr>` : ''}
+                    ${tx.dc_creditor_id ? `<tr><td>Gläubiger-ID:</td><td>${escapeHtml(tx.dc_creditor_id)}</td></tr>` : ''}
+                    ${tx.dc_mandate_id ? `<tr><td>Mandatsref:</td><td>${escapeHtml(tx.dc_mandate_id)}</td></tr>` : ''}
                 </table>
             </div>
         </div>
