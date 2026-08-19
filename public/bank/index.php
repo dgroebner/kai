@@ -177,7 +177,7 @@ try {
         JOIN bank_transaction_tags tt ON t.id = tt.tag_id
         JOIN bank_giro_transactions bt ON tt.transaction_id = bt.id AND bt.account_id = 2
         WHERE bt.booking_date BETWEEN :start AND :end
-		  AND NOT t.id = 17  -- ignoriere Umbuchungen
+		  AND t.id <> 17  -- ignoriere Umbuchungen
         GROUP BY t.id, t.name, t.color
         ORDER BY tx_count DESC, t.name ASC
     ");
@@ -254,7 +254,7 @@ try {
             SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) AS total_income
         FROM bank_giro_transactions
         WHERE booking_date BETWEEN :start AND :end
-		  AND bt.account_id = 2
+		  AND account_id = 2
     ");
     $stmtPeriodTotals->execute([':start' => $startDate, ':end' => $endDate]);
     $periodTotals = $stmtPeriodTotals->fetch(PDO::FETCH_ASSOC);
