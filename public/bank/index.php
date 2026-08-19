@@ -555,18 +555,16 @@ try {
                                     <td data-label="Datum">
                                         <?= date('d.m.Y', strtotime($tx['booking_date'])) ?>
                                     </td>
-                                    <td data-label="Text">
-										<!-- Überschrift -->
+                                    <td data-label="Text" style="position: relative;">
 										<strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
 										
-										<!-- Remitter & Remittance -->
 										<div class="text-muted" style="font-size: 0.85rem; display: block; margin-top: 4px;">
 											Auftraggeber: <?= htmlspecialchars($tx['remitter'] ?? '-', ENT_QUOTES, 'UTF-8') ?><br>
-											<?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+											Buchungstext: <?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
 										</div>
 
-										<!-- Links (Optional) -->
-										<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px;">
+										<!-- Links -->
+										<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
 											<?php if (!empty($tx['linked_statement_id'])): ?>
 												<a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" class="badge badge-primary" style="font-size: 0.75rem;">💳 Kreditkarten-Abrechnung &rarr;</a>
 											<?php endif; ?>
@@ -575,6 +573,7 @@ try {
 											<?php endif; ?>
 										</div>
 
+										<!-- Neuer, dezenter Lupen-Button -->
 										<button type="button" class="btn-tx-details js-open-details" 
 												data-tx='<?= htmlspecialchars(json_encode($tx), ENT_QUOTES, 'UTF-8') ?>'
 												title="Details anzeigen">
