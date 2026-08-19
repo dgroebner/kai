@@ -95,8 +95,9 @@ class BankGiroService
                 // 3. Saldo in DB aktualisieren (Echtzeitsaldo)
                 $repoAcc->updateBalance($dbAccountId, $balanceVal);
 
-                // 4. Transaktionen für dieses Konto abrufen (nur nach dem 15.08.2026)
-                $txRes = $client->getTransactions($apiTokens['access_token'], $accountId, '2026-08-15');
+                // 4. Transaktionen für dieses Konto abrufen
+				$lastSync = $this->bankAccountRepository->getLastSyncDate($accountId);
+                $txRes = $client->getTransactions($apiTokens['access_token'], $accountId, $lastSync);
                 $apiTxList = $txRes['values'] ?? [];
 
                 $transformed = [];
@@ -126,6 +127,10 @@ class BankGiroService
                         ?? $apiTx['creditor']['holderName'] 
                         ?? '';
 
+					// Rohen Verwendungszweck aus den API-Daten holen (prüfe das genaue Feld in deiner API-Antwort, z.B. remittanceInfo oder text)
+                    $rawRemittance = $apiTx['remittanceInfo'] ?? '';
+                    
+                    $lines = [];
                     // In Blöcke à 37 Zeichen zerlegen
                     $chunks = str_split($rawRemittance, 37);
                     if ($chunks) {
@@ -139,7 +144,7 @@ class BankGiroService
                             }
                         }
                     }
-                    $cleanedRemittance = implode(' ', $lines);
+                    $cleanedRemittance = !empty($lines) ? implode(' ', $lines) : $rawRemittance;
 
                     $apiTxType = $apiTx['transactionType']['text'] ?? '';
 					$typeMapping = [

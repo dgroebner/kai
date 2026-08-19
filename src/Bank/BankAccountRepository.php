@@ -141,4 +141,13 @@ class BankAccountRepository
         // Prüfen, ob das Zeitfenster überschritten wurde
         return $remainingTime > $maxAge;
     }
+	
+	public function getLastSyncDate($accountId) {
+		$stmt = $this->db->prepare("SELECT updated_at FROM bank_accounts WHERE id = ?");
+		$stmt->execute([$accountId]);
+		$result = $stmt->fetchColumn();
+		
+		// Falls noch nie synchronisiert, nimm ein Standarddatum oder null
+		return $result ? date('Y-m-d', strtotime($result)) : '2026-01-01';
+	}
 }
