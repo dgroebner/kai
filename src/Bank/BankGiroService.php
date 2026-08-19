@@ -24,12 +24,12 @@ class BankGiroService
 
     public function __construct(
         BankTransactionRepository $repository,
-		BankAccountRepository $bankAccountRepository,
+        BankAccountRepository $bankAccountRepository,
         CategoryMatcher $matcher,
         AiTagClassifier $aiClassifier
     ) {
         $this->repository = $repository;
-		$this->bankAccountRepository = $bankAccountRepository;
+        $this->bankAccountRepository = $bankAccountRepository;
         $this->matcher = $matcher;
         $this->aiClassifier = $aiClassifier;
         $this->logger = new Logger(14);
