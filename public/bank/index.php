@@ -43,6 +43,7 @@ if ($highlightTxId && !isset($_GET['page'])) {
                 SELECT COUNT(*) FROM bank_giro_transactions 
                 WHERE booking_date BETWEEN :start AND :end 
                   AND (booking_date > :bdate_min OR (booking_date = :bdate AND id > :id))
+				  AND account_id = 2
             ");
             $stmtRank->execute([
                 ':start' => $startDate,
@@ -174,7 +175,7 @@ try {
             SUM(bt.amount) AS total_amount
         FROM bank_tags t
         JOIN bank_transaction_tags tt ON t.id = tt.tag_id
-        JOIN bank_giro_transactions bt ON tt.transaction_id = bt.id
+        JOIN bank_giro_transactions bt ON tt.transaction_id = bt.id AND bt.account_id = 2
         WHERE bt.booking_date BETWEEN :start AND :end
 		  AND NOT t.id = 17  -- ignoriere Umbuchungen
         GROUP BY t.id, t.name, t.color
@@ -184,7 +185,7 @@ try {
     $tagStats = $stmtStats->fetchAll(PDO::FETCH_ASSOC);
 
     // SQL-Filter vorbereiten
-    $whereClause = "WHERE bt.booking_date BETWEEN :start AND :end";
+    $whereClause = "WHERE bt.booking_date BETWEEN :start AND :end AND bt.account_id = 2";
     $params = [':start' => $startDate, ':end' => $endDate];
 
     if ($selectedTagId) {
@@ -253,6 +254,7 @@ try {
             SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) AS total_income
         FROM bank_giro_transactions
         WHERE booking_date BETWEEN :start AND :end
+		  AND bt.account_id = 2
     ");
     $stmtPeriodTotals->execute([':start' => $startDate, ':end' => $endDate]);
     $periodTotals = $stmtPeriodTotals->fetch(PDO::FETCH_ASSOC);

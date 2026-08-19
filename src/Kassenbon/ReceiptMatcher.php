@@ -45,6 +45,7 @@ class ReceiptMatcher
             FROM bank_giro_transactions 
             WHERE amount = :amount 
               AND booking_date BETWEEN :date_start AND :date_end
+			  AND account_id = 2
               AND (
                   remittance_info LIKE :merchant
                   OR (:has_short = 1 AND remittance_info LIKE :merchant_short)

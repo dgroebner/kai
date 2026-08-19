@@ -43,6 +43,7 @@ class StatementMatcher
             FROM bank_giro_transactions 
             WHERE amount = :amount 
               AND booking_date BETWEEN :date_start AND :date_end
+			  AND account_id = 2
               AND (
                   remittance_info REGEXP 'Solaris|ADAC|Kreditkarte.*Abrechnung'
                   OR remittance_info LIKE '%Abrechnung%'
