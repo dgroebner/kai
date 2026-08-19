@@ -36,7 +36,6 @@ use Kai\Tools\Shared\Mail\ImapClient;
 use Kai\Tools\Shared\Mail\MailDispatcher;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
-use Kai\Tools\Bank\Parser\BankCsvParser;
 use Kai\Tools\Bank\CreditCardService;
 use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Bank\CategoryMatcher;
@@ -59,13 +58,11 @@ try {
     $creditCardService = new CreditCardService($db, $visaParser);
 
     // 2. Giro Bank Services (NEU)
-    $bankCsvParser = new BankCsvParser();
     $bankRepo = new BankTransactionRepository();
     $categoryMatcher = new CategoryMatcher();
     $aiClassifier = new AiTagClassifier($geminiClient);
 
     $bankGiroService = new BankGiroService(
-        $bankCsvParser,
         $bankRepo,
         $categoryMatcher,
         $aiClassifier

@@ -14,8 +14,6 @@ class BankTransactionRepository
 
     /**
      * Importiert Transaktionen.
-     * Unterstützt sowohl das alte CSV-Format (ohne account_id/transaction_id) 
-     * als auch das neue API-Format.
      */
     public function importTransactions(array $transactions): array
     {

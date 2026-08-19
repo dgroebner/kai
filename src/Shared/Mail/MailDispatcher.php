@@ -90,27 +90,6 @@ class MailDispatcher
                     continue;
                 }
 
-                // 2. CSV-GIROKONTO UMSÄTZE (Neues Bank-Modul)
-                if ($extension === 'csv' || str_contains($mimeType, 'csv')) {
-                    $this->logger->info("MailDispatcher: CSV-Bankdatei erkannt ({$fileName}).");
-
-                    $tmpFilePath = sys_get_temp_dir() . '/' . uniqid('giro_') . '.csv';
-                    file_put_contents($tmpFilePath, $content);
-
-                    try {
-                        // Ein einziger Aufruf kümmert sich um Parsing, Deduplizierung, Regel-Matching & KI
-                        $stats = $this->bankGiroService->importCsv($tmpFilePath);
-                        $this->logger->info("MailDispatcher: Giro-Import erfolgreich ({$stats['imported']} neu, {$stats['ignored']} Dubletten, {$stats['tagged']} getaggt).");
-                    } catch (Exception $e) {
-                        $this->logger->error("MailDispatcher: Fehler beim Giro-Import: " . $e->getMessage());
-                    } finally {
-                        if (file_exists($tmpFilePath)) {
-                            @unlink($tmpFilePath);
-                        }
-                    }
-                    continue;
-                }
-
                 // 3. E-BONS & BELEGE (Kassenbon-Modul)
                 if (str_contains($mimeType, 'pdf') || str_contains($mimeType, 'image')) {
                     $this->logger->info("MailDispatcher: E-Bon/Beleg erkannt ({$fileName}).");

@@ -12,7 +12,6 @@ use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Bank\CategoryMatcher;
 use Kai\Tools\Bank\AiTagClassifier;
 use Kai\Tools\Shared\AI\GeminiClient;
-use Kai\Tools\Bank\Parser\BankCsvParser;
 use Kai\Tools\Bank\ComdirectClient;
 
 // 1. Cron-Token absichern (AGENTS.md)
@@ -74,13 +73,11 @@ try {
 
     // 5. Sync ausführen
     $geminiClient = new GeminiClient();
-    $bankCsvParser = new BankCsvParser();
     $bankRepo = new BankTransactionRepository();
     $categoryMatcher = new CategoryMatcher();
     $aiClassifier = new AiTagClassifier($geminiClient);
 
     $bankGiroService = new BankGiroService(
-        $bankCsvParser,
         $bankRepo,
         $categoryMatcher,
         $aiClassifier
