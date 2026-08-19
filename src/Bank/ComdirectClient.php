@@ -9,7 +9,6 @@ class ComdirectClient
 {
     private string $clientId;
     private string $clientSecret;
-    private bool $simulationMode;
     private Logger $logger;
     private string $apiHost = 'api.comdirect.de';
 
@@ -18,9 +17,6 @@ class ComdirectClient
         $this->logger = new Logger(14);
         $this->clientId = $_ENV['COMDIRECT_CLIENT_ID'] ?? '';
         $this->clientSecret = $_ENV['COMDIRECT_CLIENT_SECRET'] ?? '';
-        
-        $simConfig = $_ENV['COMDIRECT_SIMULATION_MODE'] ?? 'false';
-        $this->simulationMode = (strtolower($simConfig) === 'true') || empty($this->clientId) || empty($this->clientSecret);
     }
 
     /**
@@ -125,19 +121,9 @@ class ComdirectClient
      */
     public function getAccessTokenWithPassword(string $username, string $password): array
     {
-		if ($this->simulationMode) {
-            $this->logger->info("ComdirectClient: [SIMULATION] getAccessTokenWithPassword");
-            return [
-                'access_token' => 'sim_initial_access_' . bin2hex(random_bytes(16)),
-                'refresh_token' => 'sim_refresh_' . bin2hex(random_bytes(16)),
-                'expires_in' => 1200,
-                'created_at' => time()
-            ];
-        } else {
-            $maskedUsername = (strlen($username) > 1) ? substr($username, 1, 1) . '...' . substr($username, -1) : $username;
-            $maskedPassword = (strlen($password) > 1) ? substr($password, 1, 1) . '...' . substr($password, -1) : $password; 
-            $this->logger->debug("ComdirectClient: getAccessTokenWithPassword $maskedUsername / $maskedPassword");    
-        }
+		$maskedUsername = (strlen($username) > 1) ? substr($username, 1, 1) . '...' . substr($username, -1) : $username;
+		$maskedPassword = (strlen($password) > 1) ? substr($password, 1, 1) . '...' . substr($password, -1) : $password; 
+		$this->logger->debug("ComdirectClient: getAccessTokenWithPassword $maskedUsername / $maskedPassword");    
 
         $headers = [
             'Accept: application/json',
@@ -166,17 +152,6 @@ class ComdirectClient
      */
     public function getSessions(string $accessToken): array
     {
-        if ($this->simulationMode) {
-            return [
-                [
-                    'id' => 12345,
-                    'identifier' => 'mock-session-id-12345',
-                    'sessionTanActive' => false,
-                    'activated2FA' => false
-                ]
-            ];
-        }
-
         $headers = [
             'Accept: application/json',
             "Authorization: Bearer {$accessToken}"
@@ -195,14 +170,6 @@ class ComdirectClient
      */
     public function validateSession(string $accessToken, string $sessionId, array $sessionObj): array
     {
-        if ($this->simulationMode) {
-            $this->logger->info("ComdirectClient: [SIMULATION] validateSession");
-            return [
-                'tan_id' => 'sim-tan-id-' . bin2hex(random_bytes(8)),
-                'type' => 'P_TAN_PUSH'
-            ];
-        }
-
         $headers = [
             'Accept: application/json',
             'Content-Type: application/json',
@@ -237,22 +204,6 @@ class ComdirectClient
      */
     public function activateSession(string $accessToken, string $sessionId, array $sessionObj, array $tanInfo): bool
     {
-        if ($this->simulationMode) {
-            // Im Simulationsmodus prüfen wir den Poll-Zähler aus der Session, um photoTAN Push-Verhalten nachzuahmen
-            if (!isset($_SESSION['sim_phototan_polls'])) {
-                $_SESSION['sim_phototan_polls'] = 0;
-            }
-            $_SESSION['sim_phototan_polls']++;
-
-            $this->logger->debug("ComdirectClient: [SIMULATION] activateSession poll count: " . $_SESSION['sim_phototan_polls']);
-            
-            // Erst ab dem 2. Poll geben wir Erfolg zurück, um das Laden im Dialog zu simulieren
-            if ($_SESSION['sim_phototan_polls'] >= 2) {
-                return true;
-            }
-            return false; // simuliert PENDING/no-action
-        }
-
         $headers = [
             'Accept: application/json',
             'Content-Type: application/json',
@@ -278,16 +229,6 @@ class ComdirectClient
      */
     public function getSecondaryToken(string $initialAccessToken): array
     {
-        if ($this->simulationMode) {
-            $this->logger->info("ComdirectClient: [SIMULATION] getSecondaryToken");
-            return [
-                'access_token' => 'sim_secondary_access_' . bin2hex(random_bytes(16)),
-                'refresh_token' => 'sim_refresh_' . bin2hex(random_bytes(16)),
-                'expires_in' => 1800,
-                'created_at' => time()
-            ];
-        }
-
         $headers = [
             'Accept: application/json',
             'Content-Type: application/x-www-form-urlencoded',
@@ -315,16 +256,6 @@ class ComdirectClient
      */
     public function refreshAccessToken(string $refreshToken): array
     {
-        if ($this->simulationMode) {
-            $this->logger->info("ComdirectClient: [SIMULATION] refreshAccessToken");
-            return [
-                'access_token' => 'sim_refreshed_access_' . bin2hex(random_bytes(16)),
-                'refresh_token' => 'sim_refresh_' . bin2hex(random_bytes(16)),
-                'expires_in' => 1800,
-                'created_at' => time()
-            ];
-        }
-
         $headers = [
             'Accept: application/json',
             'Content-Type: application/x-www-form-urlencoded'
@@ -351,43 +282,6 @@ class ComdirectClient
      */
     public function getAccounts(string $accessToken): array
     {
-        if ($this->simulationMode) {
-            return [
-                'values' => [
-                    [
-                        'account' => [
-                            'accountId' => 'checking-uuid-1111',
-                            'accountDisplayId' => 'checking-display-1111',
-                            'iban' => 'DE12345678901234567890',
-                            'accountType' => [
-                                'key' => 'checking'
-                            ]
-                        ],
-                        'balance' => [
-                            'balance' => [
-                                'value' => 2450.75
-                            ]
-                        ]
-                    ],
-                    [
-                        'account' => [
-                            'accountId' => 'savings-uuid-2222',
-                            'accountDisplayId' => 'savings-display-2222',
-                            'iban' => 'DE98765432109876543210',
-                            'accountType' => [
-                                'key' => 'savings'
-                            ]
-                        ],
-                        'balance' => [
-                            'balance' => [
-                                'value' => 15000.00
-                            ]
-                        ]
-                    ]
-                ]
-            ];
-        }
-
         $headers = [
             'Accept: application/json',
             "Authorization: Bearer {$accessToken}"
@@ -406,71 +300,6 @@ class ComdirectClient
      */
     public function getTransactions(string $accessToken, string $accountId, ?string $minBookingDate = null): array
     {
-        if ($this->simulationMode) {
-            // Mock-Transaktionen nach dem 15.08.2026 generieren
-            $mockData = [];
-            if ($accountId === 'checking-uuid-1111') {
-                $mockData = [
-                    'values' => [
-                        [
-                            'transactionId' => 'api_tx_checking_001',
-                            'bookingDate' => '2026-08-16',
-                            'valutaDate' => '2026-08-16',
-                            'remittanceInfo' => 'REWE Supermarkt Filiale 42 Hamburg',
-                            'amount' => [
-                                'value' => -45.50
-                            ],
-                            'bookingStatus' => 'BOOKED'
-                        ],
-                        [
-                            'transactionId' => 'api_tx_checking_002',
-                            'bookingDate' => '2026-08-17',
-                            'valutaDate' => '2026-08-17',
-                            'remittanceInfo' => 'EDEKA-Aktiv-Markt Hamburg',
-                            'amount' => [
-                                'value' => -12.30
-                            ],
-                            'bookingStatus' => 'BOOKED'
-                        ],
-                        [
-                            'transactionId' => 'api_tx_checking_003',
-                            'bookingDate' => '2026-08-17',
-                            'valutaDate' => '2026-08-17',
-                            'remittanceInfo' => 'Gehaltszahlung Agent Smith GmbH',
-                            'amount' => [
-                                'value' => 2500.00
-                            ],
-                            'bookingStatus' => 'BOOKED'
-                        ]
-                    ]
-                ];
-            } elseif ($accountId === 'savings-uuid-2222') {
-                $mockData = [
-                    'values' => [
-                        [
-                            'transactionId' => 'api_tx_savings_001',
-                            'bookingDate' => '2026-08-16',
-                            'valutaDate' => '2026-08-16',
-                            'remittanceInfo' => 'Umbuchung von Girokonto',
-                            'amount' => [
-                                'value' => 500.00
-                            ],
-                            'bookingStatus' => 'BOOKED'
-                        ]
-                    ]
-                ];
-            }
-
-            // Filtern nach minBookingDate falls übergeben
-            if ($minBookingDate && isset($mockData['values'])) {
-                $mockData['values'] = array_values(array_filter($mockData['values'], function($tx) use ($minBookingDate) {
-                    return $tx['bookingDate'] > $minBookingDate;
-                }));
-            }
-
-            return $mockData;
-        }
-
         $path = "/banking/v1/accounts/{$accountId}/transactions";
 
         // Standardmäßig filtern nach booking-date-from falls minBookingDate gesetzt ist
@@ -492,10 +321,5 @@ class ComdirectClient
         }
 
         return $res['body'];
-    }
-
-    public function isSimulationMode(): bool
-    {
-        return $this->simulationMode;
     }
 }
