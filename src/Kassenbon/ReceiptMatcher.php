@@ -46,8 +46,8 @@ class ReceiptMatcher
             WHERE amount = :amount 
               AND booking_date BETWEEN :date_start AND :date_end
               AND (
-                  merchant_raw LIKE :merchant
-                  OR (:has_short = 1 AND merchant_raw LIKE :merchant_short)
+                  remittance_info LIKE :merchant
+                  OR (:has_short = 1 AND remittance_info LIKE :merchant_short)
               )
             ORDER BY booking_date ASC 
             LIMIT 1
@@ -145,7 +145,7 @@ class ReceiptMatcher
 
         // 1. Giro-Kandidaten (Suche über Betrag & Zeitraum, unabhängig vom exakten Händlertext)
         $stmtGiro = $this->pdo->prepare("
-            SELECT id, booking_date, amount, merchant_raw, 'giro' AS account_type
+            SELECT id, booking_date, amount, remittance_info, 'giro' AS account_type
             FROM bank_giro_transactions
             WHERE booking_date BETWEEN :date_start AND :date_end
               AND (amount = :amount OR amount BETWEEN :amount_min AND :amount_max)

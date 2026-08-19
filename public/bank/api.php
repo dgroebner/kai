@@ -329,12 +329,12 @@ try {
         }
 
         $matcher = new RuleMatcher($pdo);
-        $stmtAll = $pdo->query("SELECT id, merchant_raw FROM bank_giro_transactions");
+        $stmtAll = $pdo->query("SELECT id, remittance_info FROM bank_giro_transactions");
         $allTx = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
 
         $matchCount = 0;
         foreach ($allTx as $tx) {
-            if ($matcher->matchesRule($tx['merchant_raw'], $textPattern)) {
+            if ($matcher->matchesRule($tx['remittance_info'], $textPattern)) {
                 $matchCount++;
             }
         }

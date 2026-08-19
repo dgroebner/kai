@@ -556,35 +556,33 @@ try {
                                         <?= date('d.m.Y', strtotime($tx['booking_date'])) ?>
                                     </td>
                                     <td data-label="Text">
-                                        <strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
-                                        <span class="text-muted" style="font-size: 0.85rem; display: block;">
-                                            <?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>
-                                        </span>
+										<!-- Überschrift -->
+										<strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
+										
+										<!-- Remitter & Remittance -->
+										<div class="text-muted" style="font-size: 0.85rem; display: block; margin-top: 4px;">
+											Auftraggeber: <?= htmlspecialchars($tx['remitter'] ?? '-', ENT_QUOTES, 'UTF-8') ?><br>
+											Buchungstext: <?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+										</div>
 
-                                        <!-- Falls mit einer Kreditkarten-Abrechnung verknüpft -->
-                                        <?php if (!empty($tx['linked_statement_id'])): ?>
-                                            <div style="margin-top: 0.25rem;">
-                                                <a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" 
-                                                   class="badge badge-primary" 
-                                                   style="text-decoration: none; font-size: 0.75rem;" 
-                                                   title="Zur Kreditkarten-Abrechnung wechseln">
-                                                    💳 Kreditkarten-Abrechnung (<?= date('m/Y', strtotime($tx['linked_statement_date'])) ?>) &rarr;
-                                                </a>
-                                            </div>
-                                        <?php endif; ?>
+										<!-- Links (Optional) -->
+										<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px;">
+											<?php if (!empty($tx['linked_statement_id'])): ?>
+												<a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" class="badge badge-primary" style="font-size: 0.75rem;">💳 Kreditkarten-Abrechnung &rarr;</a>
+											<?php endif; ?>
+											<?php if (!empty($tx['linked_receipt_id'])): ?>
+												<a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>" class="badge badge-success" style="font-size: 0.75rem;">🧾 E-Bon vorhanden &rarr;</a>
+											<?php endif; ?>
+										</div>
 
-                                        <!-- Falls mit einem E-Bon verknüpft -->
-                                        <?php if (!empty($tx['linked_receipt_id'])): ?>
-                                            <div style="margin-top: 0.25rem;">
-                                                <a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>" 
-                                                   class="badge badge-success" 
-                                                   style="text-decoration: none; font-size: 0.75rem;" 
-                                                   title="Zum E-Bon wechseln">
-                                                    🧾 E-Bon vorhanden &rarr;
-                                                </a>
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
+										<!-- Lupen-Symbol (Rechtsbündig in der Zeile, oder unterhalb/absolut) -->
+										<div style="text-align: right; margin-top: -40px;">
+											<button type="button" class="btn-icon-only js-open-details" 
+													data-tx='<?= htmlspecialchars(json_encode($tx), ENT_QUOTES, 'UTF-8') ?>'>
+												🔍
+											</button>
+										</div>
+									</td>
 									<td data-label="Tags">
 										<!-- Regel-Indikator (Zauberstab / Blitz) -->
 										<?php if (!empty($tx['matched_rule_id'])): ?>

@@ -94,12 +94,21 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
 CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     account_id INT UNSIGNED DEFAULT NULL,
-    tx_hash VARCHAR(64) NOT NULL,
-    transaction_id VARCHAR(100) DEFAULT NULL,
+--    tx_hash VARCHAR(64) NOT NULL,
+    transaction_id VARCHAR(100) NOT NULL,
     booking_date DATE NOT NULL,
     valuta_date DATE NOT NULL,
     type VARCHAR(100) NULL,
-    merchant_raw TEXT NOT NULL,
+--    merchant_raw TEXT NOT NULL,
+-- new
+    remitter VARCHAR(100) NOT NULL,
+    debitor  VARCHAR(100) NULL,
+    creditor VARCHAR(100) NULL,
+    end_to_end_reference VARCHAR(50) NULL,
+    dc_creditor_id VARCHAR(50) NULL,
+    dc_mandate_id VARCHAR(50) NULL,
+    remittance_info VARCHAR(350) NOT NULL;
+	
     amount DECIMAL(10, 2) NOT NULL,
     matched_rule_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

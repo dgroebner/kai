@@ -21,8 +21,8 @@ class BankTransactionRepository
     {
         $stmt = $this->pdo->prepare("
             INSERT IGNORE INTO bank_giro_transactions 
-            (account_id, tx_hash, transaction_id, booking_date, valuta_date, type, merchant_raw, amount) 
-            VALUES (:account_id, :tx_hash, :transaction_id, :booking_date, :valuta_date, :type, :merchant_raw, :amount)
+            (account_id, transaction_id, booking_date, valuta_date, type, amount, remittance_info, remitter, debitor, creditor, end_to_end_reference, dc_creditor_id, dc_mandate_id) 
+            VALUES (:account_id, :transaction_id, :booking_date, :valuta_date, :type, :amount, :remittance_info, :remitter, :debitor, :creditor, :end_to_end_reference, :dc_creditor_id, :dc_mandate_id)
         ");
 
         $imported = 0;
@@ -30,14 +30,19 @@ class BankTransactionRepository
 
         foreach ($transactions as $tx) {
             $stmt->execute([
-                ':account_id'     => $tx['account_id'] ?? null,
-                ':tx_hash'        => $tx['tx_hash'],
-                ':transaction_id' => $tx['transaction_id'] ?? null,
-                ':booking_date'   => $tx['booking_date'],
-                ':valuta_date'    => $tx['valuta_date'],
-                ':type'           => $tx['type'] ?? null,
-                ':merchant_raw'   => $tx['raw_text'] ?? '',
-                ':amount'         => $tx['amount'],
+                ':account_id'           => $tx['account_id'] ?? null,
+                ':transaction_id'       => $tx['transaction_id'] ?? null,
+                ':booking_date'         => $tx['booking_date'],
+                ':valuta_date'          => $tx['valuta_date'],
+                ':type'                 => $tx['type'] ?? null,
+                ':remittance_info'      => $tx['remittance_info'] ?? '',
+                ':amount'               => $tx['amount'],
+			    ':remitter'             => $tx['remitter'],
+				':debitor'              => $tx['debitor'],
+				':creditor'             => $tx['creditor'],
+				':end_to_end_reference' => $tx['end_to_end_reference'],
+				':dc_creditor_id'       => $tx['dc_creditor_id'],
+				':dc_mandate_id'        => $tx['dc_mandate_id'],
             ]);
 
             if ($stmt->rowCount() > 0) {
@@ -75,7 +80,7 @@ class BankTransactionRepository
     public function getUntaggedTransactions(): array
     {
         $stmt = $this->pdo->query("
-            SELECT t.id, t.merchant_raw 
+            SELECT t.id, t.remittance_info 
             FROM bank_giro_transactions t
             LEFT JOIN bank_transaction_tags tt ON t.id = tt.transaction_id
             WHERE tt.transaction_id IS NULL

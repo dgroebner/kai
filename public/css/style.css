@@ -1514,4 +1514,10 @@ tr.is-today-row {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
 }
+
+.btn-icon-only:hover { color: var(--accent); }

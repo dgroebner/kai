@@ -102,7 +102,7 @@ class RuleMatcher
         if (empty($tagIds)) return 0;
 
         // Alle Transaktionen laden, die noch KEINER Regel zugewiesen sind
-        $stmtTx = $this->pdo->query("SELECT id, merchant_raw FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
+        $stmtTx = $this->pdo->query("SELECT id, remittance_info FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
         $unmatchedTx = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
 
         $matchedCount = 0;
@@ -110,7 +110,7 @@ class RuleMatcher
         $stmtInsertTag = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
 
         foreach ($unmatchedTx as $tx) {
-            if ($this->matchesRule($tx['merchant_raw'], $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
+            if ($this->matchesRule($tx['remittance_info'], $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
                 $stmtUpdateTx->execute([':rule_id' => $ruleId, ':tx_id' => $tx['id']]);
 
                 foreach ($tagIds as $tagId) {
@@ -133,7 +133,7 @@ class RuleMatcher
         $rules = $this->getAllRules();
         if (empty($rules)) return 0;
 
-        $stmtTx = $this->pdo->query("SELECT id, merchant_raw FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
+        $stmtTx = $this->pdo->query("SELECT id, remittance_info FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
         $unmatchedTx = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
 
         $matchedCount = 0;
@@ -141,7 +141,7 @@ class RuleMatcher
         $stmtInsertTag = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
 
         foreach ($unmatchedTx as $tx) {
-            $matchingRule = $this->findMatchingRule($tx['merchant_raw'], $rules);
+            $matchingRule = $this->findMatchingRule($tx['remittance_info'], $rules);
             if ($matchingRule) {
                 $stmtUpdateTx->execute([':rule_id' => $matchingRule['id'], ':tx_id' => $tx['id']]);
 

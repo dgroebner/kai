@@ -145,30 +145,41 @@ class BankGiroService
                     }
                     $cleanedRemittance = implode(' ', $lines);
 
-                    $txTypeText = $apiTx['transactionType']['text'] ?? '';
-
-                    // Kompatiblen raw_text aufbauen
-                    $rawTextParts = [];
-                    if (!empty($partnerName)) {
-                        $rawTextParts[] = "Auftraggeber: {$partnerName}";
-                    }
-                    if (!empty($txTypeText)) {
-                        $rawTextParts[] = "Buchungstext: {$cleanedRemittance}";
-                    }
-                    if (!empty($reference)) {
-                        $rawTextParts[] = "Ref. {$reference}";
-                    }
-                    $rawText = implode(' ', $rawTextParts);
+                    $apiTxType = $apiTx['transactionType']['text'] ?? '';
+					$typeMapping = [
+						'Saving Plan'            => 'Sparplan',
+						'Securities'             => 'Wertpapier',
+						'Investment Saving'      => 'Geldanlage',
+						'Bank fees'              => 'Bankgebühren',
+						'Miscellaneous'          => 'Sonstiges',
+						'Cash'                   => 'Bar',
+						'Interest / Dividends'   => 'Zinsen / Dividenden',
+						'Currency Exchange'      => 'Devisen',
+						'Cancellation'           => 'Storno',
+						'Cheque'                 => 'Scheck',
+						'Direct Debit'           => 'Lastschrift',
+						'Transfer'               => 'Überweisung',
+						'Card transaction'       => 'Kartenverfügung',
+						'Foreign Currency exchange' => 'Sorten (Kasse)',
+						'ATM Withdrawal'         => 'Geldautomat',
+						'Savings'                => 'Geldanlage',
+						'Standing Order'         => 'Dauerauftrag',
+					];
 
                     $transformed[] = [
-                        'account_id'     => $dbAccountId,
-                        'tx_hash'        => hash('sha256', 'comdirect_' . $reference),
-                        'transaction_id' => $reference,
-                        'booking_date'   => $bookingDate,
-                        'valuta_date'    => $apiTx['valutaDate'] ?? $bookingDate,
-                        'type'           => $txTypeText,
-                        'raw_text'       => $rawText,
-                        'amount'         => (float)($apiTx['amount']['value'] ?? 0.0),
+                        'account_id'            => $dbAccountId,
+                        'transaction_id'        => $reference,
+                        'booking_date'          => $bookingDate,
+                        'valuta_date'           => $apiTx['valutaDate'] ?? $bookingDate,
+                        'type'                  => $typeMapping,
+                        'remittance_info'       => $cleanedRemittance,
+                        'amount'                => (float)($apiTx['amount']['value'] ?? 0.0),
+						'remitter'              => $apiTx['remitter']['holderName'],
+						'debitor'               => $apiTx['deptor']['holderName'],
+						'creditor'              => $apiTx['creditor']['holderName'],
+						'end_to_end_reference'  => $apiTx['endToEndReference'],
+						'dc_creditor_id'        => $apiTx['directDebitCreditorId'],
+						'dc_mandate_id'         => $apiTx['directDebitMandateId'],
                     ];
                 }
 
@@ -199,7 +210,7 @@ class BankGiroService
                 foreach ($unprocessedTxs as $tx) {
                     $unmatchedForAi[] = [
                         'id'   => $tx['id'],
-                        'text' => $tx['merchant_raw']
+                        'text' => $tx['remittance_info']
                     ];
                 }
 
@@ -284,7 +295,7 @@ class BankGiroService
 		foreach ($unprocessedTxs as $tx) {
 			$unmatchedForAi[] = [
 				'id'   => $tx['id'],
-				'text' => $tx['merchant_raw']
+				'text' => $tx['remittance_info']
 			];
 		}
 

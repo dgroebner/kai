@@ -44,8 +44,8 @@ class StatementMatcher
             WHERE amount = :amount 
               AND booking_date BETWEEN :date_start AND :date_end
               AND (
-                  merchant_raw REGEXP 'Solaris|ADAC|Kreditkarte.*Abrechnung'
-                  OR merchant_raw LIKE '%Abrechnung%'
+                  remittance_info REGEXP 'Solaris|ADAC|Kreditkarte.*Abrechnung'
+                  OR remittance_info LIKE '%Abrechnung%'
               )
             ORDER BY booking_date ASC 
             LIMIT 1
