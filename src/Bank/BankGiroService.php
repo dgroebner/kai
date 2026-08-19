@@ -257,5 +257,4 @@ class BankGiroService
 
         return $stats;
     }
-
 }
