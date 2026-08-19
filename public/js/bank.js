@@ -1425,16 +1425,18 @@ function showTxDetailsModal(tx) {
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
     
-    // Korrigiert: escapeHtml statt htmlspecialchars verwenden
     const opt = (val) => val ? escapeHtml(val) : '<span class="text-muted">-</span>';
     
     overlay.innerHTML = `
         <div class="rule-modal-card">
-            <div class="rule-modal-header"><h3>🔍 Buchungsdetails</h3><button class="rule-modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button></div>
+            <div class="rule-modal-header">
+                <h3>🔍 Buchungsdetails</h3>
+                <button type="button" class="rule-modal-close js-close-details-modal">&times;</button>
+            </div>
             <div class="rule-modal-body">
                 <table style="width:100%; border-spacing: 10px;">
                     <tr><td>Referenz:</td><td>${opt(tx.transaction_id)}</td></tr>
-                    <tr><td>Datum:</td><td>${tx.booking_date} (Valuta: ${tx.valuta_date})</td></tr>
+                    <tr><td>Datum:</td><td>${escapeHtml(tx.booking_date || '')} (Valuta: ${escapeHtml(tx.valuta_date || '')})</td></tr>
                     <tr><td>Typ:</td><td>${escapeHtml(tx.type || '')}</td></tr>
                     <tr><td>Auftraggeber:</td><td>${opt(tx.remitter)}</td></tr>
                     <tr><td>Empfänger:</td><td>${opt(tx.creditor)}</td></tr>
@@ -1447,5 +1449,18 @@ function showTxDetailsModal(tx) {
             </div>
         </div>
     `;
+
+    // Schließen beim Klick auf den Schließen-Button
+    overlay.querySelector('.js-close-details-modal').addEventListener('click', () => {
+        overlay.remove();
+    });
+
+    // Schließen beim Klick auf den Hintergrund (Overlay)
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    });
+
     document.body.appendChild(overlay);
 }
