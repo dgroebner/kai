@@ -70,11 +70,6 @@ try {
 		    $sessionObj['activated2FA'] = true;
             $tanInfo = $client->validateSession($tokens['access_token'], $sessionId, $sessionObj);
 
-            // Zähler zurücksetzen bei Simulation
-            if ($client->isSimulationMode()) {
-                $_SESSION['sim_phototan_polls'] = 0;
-            }
-
             // Temporäre Auth-Daten in Session speichern
             $_SESSION['comdirect_temp_auth'] = [
                 'access_token'  => $tokens['access_token'],
