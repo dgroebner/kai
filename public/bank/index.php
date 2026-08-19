@@ -562,7 +562,7 @@ try {
 										<!-- Remitter & Remittance -->
 										<div class="text-muted" style="font-size: 0.85rem; display: block; margin-top: 4px;">
 											Auftraggeber: <?= htmlspecialchars($tx['remitter'] ?? '-', ENT_QUOTES, 'UTF-8') ?><br>
-											Buchungstext: <?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+											<?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
 										</div>
 
 										<!-- Links (Optional) -->
@@ -575,13 +575,11 @@ try {
 											<?php endif; ?>
 										</div>
 
-										<!-- Lupen-Symbol (Rechtsbündig in der Zeile, oder unterhalb/absolut) -->
-										<div style="text-align: right; margin-top: -40px;">
-											<button type="button" class="btn-icon-only js-open-details" 
-													data-tx='<?= htmlspecialchars(json_encode($tx), ENT_QUOTES, 'UTF-8') ?>'>
-												🔍
-											</button>
-										</div>
+										<button type="button" class="btn-tx-details js-open-details" 
+												data-tx='<?= htmlspecialchars(json_encode($tx), ENT_QUOTES, 'UTF-8') ?>'
+												title="Details anzeigen">
+											🔍
+										</button>
 									</td>
 									<td data-label="Tags">
 										<!-- Regel-Indikator (Zauberstab / Blitz) -->
