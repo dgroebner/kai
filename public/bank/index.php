@@ -565,44 +565,46 @@ try {
                                     <td data-label="Datum">
                                         <?= date('d.m.Y', strtotime($tx['booking_date'])) ?>
                                     </td>
-                                    <td data-label="Text" style="position: relative;">
-										<strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
-										
-										<?php
-										// Beteiligten je nach Buchungsrichtung anzeigen (Auftraggeber bzw. Empfänger)
-										$counterpartyLabel = 'Auftraggeber';
-										$counterparty = trim((string)($tx['remitter'] ?? ''));
-										if ($counterparty === '') {
-											$counterparty = trim((string)($tx['creditor'] ?? ''));
-											$counterpartyLabel = 'Empfänger';
-										}
-										if ($counterparty === '') {
-											$counterparty = trim((string)($tx['debitor'] ?? ''));
-											$counterpartyLabel = 'Zahlungspflichtiger';
-										}
-										?>
-										<div class="text-muted" style="font-size: 0.85rem; display: block; margin-top: 4px;">
-											<?= htmlspecialchars($counterpartyLabel, ENT_QUOTES, 'UTF-8') ?>: <?= htmlspecialchars($counterparty !== '' ? $counterparty : '-', ENT_QUOTES, 'UTF-8') ?><br>
-											Buchungstext: <?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
-										</div>
+                                    <td data-label="Text" style="position: relative; align-items: flex-start;">
+                                        <div style="flex: 1; min-width: 0; padding-right: 40px; text-align: left;">
+                                            <strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
 
-										<!-- Links -->
-										<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
-											<?php if (!empty($tx['linked_statement_id'])): ?>
-												<a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" class="badge badge-primary" style="font-size: 0.75rem;">💳 Kreditkarten-Abrechnung &rarr;</a>
-											<?php endif; ?>
-											<?php if (!empty($tx['linked_receipt_id'])): ?>
-												<a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>" class="badge badge-success" style="font-size: 0.75rem;">🧾 E-Bon vorhanden &rarr;</a>
-											<?php endif; ?>
-										</div>
+                                            <?php
+                                            // Beteiligten je nach Buchungsrichtung anzeigen (Auftraggeber bzw. Empfänger)
+                                            $counterpartyLabel = 'Auftraggeber';
+                                            $counterparty = trim((string)($tx['remitter'] ?? ''));
+                                            if ($counterparty === '') {
+                                                $counterparty = trim((string)($tx['creditor'] ?? ''));
+                                                $counterpartyLabel = 'Empfänger';
+                                            }
+                                            if ($counterparty === '') {
+                                                $counterparty = trim((string)($tx['debitor'] ?? ''));
+                                                $counterpartyLabel = 'Zahlungspflichtiger';
+                                            }
+                                            ?>
+                                            <div class="text-muted" style="font-size: 0.85rem; display: block; margin-top: 4px;">
+                                                <?= htmlspecialchars($counterpartyLabel, ENT_QUOTES, 'UTF-8') ?>: <?= htmlspecialchars($counterparty !== '' ? $counterparty : '-', ENT_QUOTES, 'UTF-8') ?><br>
+                                                Buchungstext: <?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+                                            </div>
 
-										<!-- Neuer, dezenter Lupen-Button -->
-										<button type="button" class="btn-tx-details js-open-details" 
-												data-tx='<?= htmlspecialchars(json_encode($tx), ENT_QUOTES, 'UTF-8') ?>'
-												title="Details anzeigen">
-											🔍
-										</button>
-									</td>
+                                            <!-- Links -->
+                                            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                                                <?php if (!empty($tx['linked_statement_id'])): ?>
+                                                    <a href="detail.php?id=<?= (int)$tx['linked_statement_id'] ?>" class="badge badge-primary" style="font-size: 0.75rem;">💳 Kreditkarten-Abrechnung &rarr;</a>
+                                                <?php endif; ?>
+                                                <?php if (!empty($tx['linked_receipt_id'])): ?>
+                                                    <a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>" class="badge badge-success" style="font-size: 0.75rem;">🧾 E-Bon vorhanden &rarr;</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Neuer, dezenter Lupen-Button (liegt absolut über dem Padding des Wrappers) -->
+                                        <button type="button" class="btn-tx-details js-open-details"
+                                                data-tx='<?= htmlspecialchars(json_encode($tx), ENT_QUOTES, 'UTF-8') ?>'
+                                                title="Details anzeigen">
+                                            🔍
+                                        </button>
+                                    </td>
 									<td data-label="Tags">
 										<!-- Regel-Indikator (Zauberstab / Blitz) -->
 										<?php if (!empty($tx['matched_rule_id'])): ?>
