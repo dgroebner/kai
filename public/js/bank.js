@@ -51,7 +51,7 @@ document.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         const tagId = tagBadge.dataset.tagId;
-        const tag = (window.AVAILABLE_TAGS || []).find(t => t.id == tagId);
+        const tag = (window.AVAILABLE_TAGS || []).find(t => t.id === tagId);
         if (tag) {
             openEditTagModal(tag);
         }
@@ -124,7 +124,7 @@ document.addEventListener('click', (e) => {
         e.stopPropagation();
         const txId = tagOption.dataset.txId;
         const tagId = tagOption.dataset.tagId;
-        const tag = (window.AVAILABLE_TAGS || []).find(t => t.id == tagId);
+        const tag = (window.AVAILABLE_TAGS || []).find(t => t.id === tagId);
         if (tag) {
             addExistingTagToTx(txId, tag);
         }
@@ -168,7 +168,7 @@ function openRuleBuilderModal(btn) {
 
     const txId = btn.dataset.txId;
     const ruleId = btn.dataset.ruleId || null;
-    const merchantRaw = btn.dataset.merchantRaw || '';
+    const remittanceInfo = btn.dataset.remittanceInfo || '';
     const initialPattern = btn.dataset.textPattern || '';
 
     // Aktuell an der Transaktion befindliche Tags auslesen (Vorselektion)
@@ -231,9 +231,9 @@ function openRuleBuilderModal(btn) {
     document.body.appendChild(overlay);
     activeRuleModal = overlay;
 
-    // Wort-Chips aus merchantRaw aufbauen
+    // Wort-Chips aus remittanceInfo aufbauen
     const wordsContainer = overlay.querySelector('.js-word-segments');
-    const words = merchantRaw.split(/(\s+)/).filter(w => w.trim().length > 0);
+    const words = remittanceInfo.split(/(\s+)/).filter(w => w.trim().length > 0);
     
     words.forEach(word => {
         const chip = document.createElement('span');
@@ -248,11 +248,9 @@ function openRuleBuilderModal(btn) {
             
             if (selectedChips.length > 0) {
                 // Ausgewählte Wörter escapen und mit .* verknüpfen
-                const combinedPattern = selectedChips
+                patternInput.value = selectedChips
                     .map(c => escapeRegex(c.textContent.trim()))
                     .join('.*');
-
-                patternInput.value = combinedPattern;
             } else {
                 patternInput.value = '';
             }
@@ -299,7 +297,7 @@ function openRuleBuilderModal(btn) {
     renderModalTagPicker(overlay.querySelector('.js-modal-tags-wrap'), selectedTagIds);
 
     // Initialen Live-Check ausführen
-    triggerLiveMatchCheck(patternInput.value || merchantRaw);
+    triggerLiveMatchCheck(patternInput.value || remittanceInfo);
 
     // Event Listener für Buttons im Footer & Close
     overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', closeRuleModal));
@@ -1105,11 +1103,8 @@ async function fetchAndReplaceContent(targetUrl) {
         const doc = parser.parseFromString(htmlText, 'text/html');
 
         // Neue Tabelle und Paginierung extrahieren
-        const newMainContent = doc.querySelector('main').innerHTML;
-        const newStatsSection = doc.querySelector('section.card'); // Falls sich die Statistik ändert
-
         // Ins aktuelle DOM übernehmen
-        document.querySelector('main').innerHTML = newMainContent;
+        document.querySelector('main').innerHTML = doc.querySelector('main').innerHTML;
         
         // URL im Browser aktualisieren (ohne Reload)
         window.history.pushState({ path: targetUrl }, '', targetUrl);

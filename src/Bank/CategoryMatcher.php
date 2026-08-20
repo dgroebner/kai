@@ -17,12 +17,12 @@ class CategoryMatcher
     /**
      * Prüft, ob für den Buchungstext passende Tag-IDs hinterlegt sind.
      *
-     * @param string $merchantRaw
+     * @param string $remittanceInfo
      * @return array|null Tag-IDs oder null
      */
-    public function match(string $merchantRaw): ?array
+    public function match(string $remittanceInfo): ?array
     {
-        $haystack = mb_strtolower($merchantRaw);
+        $haystack = mb_strtolower($remittanceInfo);
 
         foreach ($this->rules as $rule) {
             $payeeMatch = empty($rule['payee_pattern']) || str_contains($haystack, mb_strtolower($rule['payee_pattern']));

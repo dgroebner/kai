@@ -42,18 +42,18 @@ class RuleMatcher
      * Prüft eine einzelne Transaktion gegen eine Liste von Regeln
      * und gibt die erste matchende Regel zurück (First-Match-Wins).
      *
-     * @param string $merchantRaw Buchungstext / Empfänger
+     * @param string $remittanceInfo Buchungstext / Empfänger
      * @param array|null $rules Optionale Regel-Liste (sonst lädt die Methode alle aus der DB)
      * @return array|null Gibt die matchende Regel zurück oder null
      */
-    public function findMatchingRule(string $merchantRaw, ?array $rules = null): ?array
+    public function findMatchingRule(string $remittanceInfo, ?array $rules = null): ?array
     {
         if ($rules === null) {
             $rules = $this->getAllRules();
         }
 
         foreach ($rules as $rule) {
-            if ($this->matchesRule($merchantRaw, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
+            if ($this->matchesRule($remittanceInfo, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
                 return $rule;
             }
         }
@@ -64,18 +64,18 @@ class RuleMatcher
     /**
      * Führt den Regex sicher aus (fängt invalide Muster ab).
      */
-    public function matchesRule(string $merchantRaw, ?string $textPattern, ?string $payeePattern = null): bool
+    public function matchesRule(string $remittanceInfo, ?string $textPattern, ?string $payeePattern = null): bool
     {
         // 1. Text-Pattern prüfen
         if (!empty($textPattern)) {
-            if (!$this->evalRegex($textPattern, $merchantRaw)) {
+            if (!$this->evalRegex($textPattern, $remittanceInfo)) {
                 return false;
             }
         }
 
         // 2. Payee-Pattern prüfen
         if (!empty($payeePattern)) {
-            if (!$this->evalRegex($payeePattern, $merchantRaw)) {
+            if (!$this->evalRegex($payeePattern, $remittanceInfo)) {
                 return false;
             }
         }
@@ -185,7 +185,7 @@ class RuleMatcher
         }
         
         // Prüfen ob bereits Regex-Delimiter wie /.../i vorhanden sind
-        if (preg_match('/^(\/|#|~).+\1[a-z]*$/i', $pattern)) {
+        if (preg_match('%^([/#~]).+\1[a-z]*$%i', $pattern)) {
             return $pattern;
         }
 

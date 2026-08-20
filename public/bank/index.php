@@ -589,7 +589,7 @@ try {
 													class="btn-rule-indicator active js-open-rule-builder" 
 													data-tx-id="<?= $tx['id'] ?>" 
 													data-rule-id="<?= $tx['matched_rule_id'] ?>"
-													data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
+													data-remittance_info="<?= htmlspecialchars($tx['remittance_info'], ENT_QUOTES, 'UTF-8') ?>"
 													data-text-pattern="<?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
 													title="Regel aktiv: <?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?> (Klicken zum Bearbeiten)">
 												⚡
@@ -598,7 +598,7 @@ try {
 											<button type="button" 
 													class="btn-rule-indicator js-open-rule-builder" 
 													data-tx-id="<?= $tx['id'] ?>" 
-													data-merchant-raw="<?= htmlspecialchars($tx['merchant_raw'], ENT_QUOTES, 'UTF-8') ?>"
+													data-remittance_info="<?= htmlspecialchars($tx['remittance_info'], ENT_QUOTES, 'UTF-8') ?>"
 													title="Keine Regel verknüpft (Klicken zum Erstellen)">
 												🪄
 											</button>
