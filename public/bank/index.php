@@ -69,15 +69,6 @@ if ($highlightTxId && !isset($_GET['page'])) {
     }
 }
 
-// Salden abrufen (Girokonto & Sparkonto)
-$stmtBalances = $pdo->query("
-    SELECT account_type, current_balance 
-    FROM bank_accounts 
-    WHERE is_active = 1 
-      AND account_type IN ('checking', 'savings')
-");
-$accountBalances = $stmtBalances->fetchAll(PDO::FETCH_KEY_PAIR);
-
 // ----------------------------------------------------
 // 2. Zeitraum-Berechnung (Woche, Monat, Jahr)
 // ----------------------------------------------------
@@ -170,8 +161,19 @@ try {
     $pdo = Database::getInstance()->getConnection();
 	
 	// Konten für die dynamische Navigation laden
-    $stmtAcc = $pdo->query("SELECT id, account_name, account_type FROM bank_accounts ORDER BY id ASC");
+    $stmtAcc = $pdo->query("SELECT id, account_name, account_type, current_balance FROM bank_accounts ORDER BY id ASC");
 	$accounts = $stmtAcc->fetchAll(PDO::FETCH_ASSOC);
+
+    // Salden aus dem bereits geladenen $accounts-Array filtern
+    $checkingBalance = 0;
+    $savingsBalance = 0;
+    foreach ($accounts as $acc) {
+        if ($acc['account_type'] === 'checking') {
+            $checkingBalance = $acc['current_balance'];
+        } elseif ($acc['account_type'] === 'savings') {
+            $savingsBalance = $acc['current_balance'];
+        }
+    }
 
     // Alle vorhandenen Tags für Popover & Auto-Suggest laden
     $stmtAllTags = $pdo->query("SELECT id, name, color FROM bank_tags ORDER BY name ASC");
@@ -312,13 +314,13 @@ try {
         <div class="kpi-card" style="border: 1px solid var(--accent);">
             <div class="kpi-label">🏦 Girokonto</div>
             <div class="kpi-value" style="font-size: 1.5rem;">
-                <?= number_format((float)($accountBalances['checking'] ?? 0), 2, ',', '.') ?> €
+                <?= number_format((float)$checkingBalance, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">💰 Sparkonto</div>
             <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-green);">
-                <?= number_format((float)($accountBalances['savings'] ?? 0), 2, ',', '.') ?> €
+                <?= number_format((float)$savingsBalance, 2, ',', '.') ?> €
             </div>
         </div>
     </section>
