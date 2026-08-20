@@ -69,6 +69,15 @@ if ($highlightTxId && !isset($_GET['page'])) {
     }
 }
 
+// Salden abrufen (Girokonto & Sparkonto)
+$stmtBalances = $pdo->query("
+    SELECT account_type, current_balance 
+    FROM bank_accounts 
+    WHERE is_active = 1 
+      AND account_type IN ('checking', 'savings')
+");
+$accountBalances = $stmtBalances->fetchAll(PDO::FETCH_KEY_PAIR);
+
 // ----------------------------------------------------
 // 2. Zeitraum-Berechnung (Woche, Monat, Jahr)
 // ----------------------------------------------------
@@ -297,6 +306,22 @@ try {
             <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
         </div>
     </header>
+
+    <!-- Salden-Dashboard -->
+    <section class="kpi-grid" style="margin-bottom: 1.5rem;">
+        <div class="kpi-card" style="border: 1px solid var(--accent);">
+            <div class="kpi-label">🏦 Girokonto</div>
+            <div class="kpi-value" style="font-size: 1.5rem;">
+                <?= number_format((float)($accountBalances['checking'] ?? 0), 2, ',', '.') ?> €
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">💰 Sparkonto</div>
+            <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-green);">
+                <?= number_format((float)($accountBalances['savings'] ?? 0), 2, ',', '.') ?> €
+            </div>
+        </div>
+    </section>
 
 	<!-- START: Sync Modal Overlay -->
 	<div id="sync-modal" class="rule-modal-overlay hidden">
