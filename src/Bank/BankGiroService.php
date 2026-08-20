@@ -16,7 +16,6 @@ class BankGiroService
 {
     private BankTransactionRepository $repository;
 	private BankAccountRepository $bankAccountRepository;
-    private CategoryMatcher $matcher;
     private AiTagClassifier $aiClassifier;
     private Logger $logger;
     private \PDO $pdo;
@@ -25,12 +24,10 @@ class BankGiroService
     public function __construct(
         BankTransactionRepository $repository,
 		BankAccountRepository $bankAccountRepository,
-        CategoryMatcher $matcher,
         AiTagClassifier $aiClassifier
     ) {
         $this->repository = $repository;
         $this->bankAccountRepository = $bankAccountRepository; 
-        $this->matcher = $matcher;
         $this->aiClassifier = $aiClassifier;
         $this->logger = new Logger(14);
         $this->db = Database::getInstance();

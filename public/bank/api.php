@@ -11,7 +11,6 @@ use Kai\Tools\Bank\StatementMatcher;
 use Kai\Tools\Bank\ComdirectClient;
 use Kai\Tools\Bank\BankGiroService;
 use Kai\Tools\Bank\BankTransactionRepository;
-use Kai\Tools\Bank\CategoryMatcher;
 use Kai\Tools\Bank\AiTagClassifier;
 use Kai\Tools\Shared\AI\GeminiClient;
 
@@ -208,13 +207,11 @@ try {
         // Sync ausführen
         $geminiClient = new GeminiClient();
         $bankRepo = new BankTransactionRepository();
-        $categoryMatcher = new CategoryMatcher();
         $aiClassifier = new AiTagClassifier($geminiClient);
 
         $bankGiroService = new BankGiroService(
             $bankRepo,
 			$repo,
-            $categoryMatcher,
             $aiClassifier
         );
 

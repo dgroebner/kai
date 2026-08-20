@@ -9,7 +9,6 @@ use Kai\Tools\Shared\Security\TokenEncryptionService;
 use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\BankGiroService;
 use Kai\Tools\Bank\BankTransactionRepository;
-use Kai\Tools\Bank\CategoryMatcher;
 use Kai\Tools\Bank\AiTagClassifier;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Bank\ComdirectClient;
@@ -74,13 +73,11 @@ try {
     // 5. Sync ausführen
     $geminiClient = new GeminiClient();
     $bankRepo = new BankTransactionRepository();
-    $categoryMatcher = new CategoryMatcher();
     $aiClassifier = new AiTagClassifier($geminiClient);
 
     $bankGiroService = new BankGiroService(
         $bankRepo,
 		$repo,
-        $categoryMatcher,
         $aiClassifier
     );
 
