@@ -96,19 +96,19 @@ try {
                                 <td data-label="Händler" class="amount-bold"><?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
 								<td data-label="Zahlungsstatus">
 									<?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
-										<a href="../bank/index.php?tx=<?= (int)$receipt['bank_giro_transaction_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Auf Girokonto verbucht">
+										<a href="../bank/index.php?tx=<?= (int)$receipt['bank_giro_transaction_id'] ?>" class="badge badge-success badge-link" title="Auf Girokonto verbucht">
 											🟢 Girokonto
 										</a>										
 									<?php elseif (!empty($receipt['bank_cc_transaction_id'])): ?>
-										<a href="../bank/detail.php?id=<?= (int)$receipt['cc_statement_id'] ?>" class="badge badge-success" style="text-decoration: none;" title="Über Kreditkarte verbucht">
+										<a href="../bank/detail.php?id=<?= (int)$receipt['cc_statement_id'] ?>" class="badge badge-success badge-link" title="Über Kreditkarte verbucht">
 											🟢 Kreditkarte
 										</a>
 									<?php elseif ($receipt['candidate_count'] > 0): ?>
-										<button type="button" class="badge badge-warning js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>" style="cursor: pointer; border: none;">
+										<button type="button" class="badge badge-warning badge-button js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>">
 											🟡 <?= (int)$receipt['candidate_count'] ?> Kandidat(en)
 										</button>
 									<?php else: ?>
-										<button type="button" class="badge badge-warning js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>" style="cursor: pointer; border: none;">
+										<button type="button" class="badge badge-warning badge-button js-open-candidate-modal" data-receipt-id="<?= (int)$receipt['id'] ?>">
 											🟡 Offen
 										</button>
 									<?php endif; ?>

@@ -1,23 +1,48 @@
-document.addEventListener('DOMContentLoaded', () => {
-    document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.js-open-candidate-modal');
-        if (btn) {
-            e.preventDefault();
-            const receiptId = btn.dataset.receiptId;
-            openCandidateModal(receiptId);
-        }
-    });
+/**
+ * Modal zur manuellen Zuordnung eines Kassenbons zu einer Bankbuchung.
+ * Bindet alle Interaktionen per Event Delegation ein (CSP-konform).
+ */
+document.addEventListener('click', (e) => {
+    const openBtn = e.target.closest('.js-open-candidate-modal');
+    if (openBtn) {
+        e.preventDefault();
+        openCandidateModal(openBtn.dataset.receiptId);
+        return;
+    }
+
+    const overlay = document.getElementById('candidateModalOverlay');
+    if (!overlay) {
+        return;
+    }
+
+    if (e.target.closest('.js-close-candidate-modal') || e.target === overlay) {
+        overlay.remove();
+        return;
+    }
+
+    const linkBtn = e.target.closest('.js-link-tx');
+    if (linkBtn) {
+        e.preventDefault();
+        linkTransaction(linkBtn);
+    }
 });
 
 async function openCandidateModal(receiptId) {
+    const id = parseInt(receiptId, 10);
+    if (!Number.isInteger(id) || id <= 0) {
+        return;
+    }
+
     try {
         const data = await KaiHttp.postJson('api.php', {
             action: 'get_candidates',
-            receipt_id: parseInt(receiptId, 10)
+            receipt_id: id
         });
 
         if (data && data.success) {
-            showModal(receiptId, data.candidates);
+            showModal(id, data.candidates || {});
+        } else {
+            alert('Kandidaten konnten nicht geladen werden.');
         }
     } catch (err) {
         console.error('Fehler beim Laden der Kandidaten:', err);
@@ -25,67 +50,59 @@ async function openCandidateModal(receiptId) {
     }
 }
 
+async function linkTransaction(btn) {
+    if (btn.disabled) {
+        return;
+    }
+    btn.disabled = true;
+
+    try {
+        const res = await KaiHttp.postJson('api.php', {
+            action: 'link_manual',
+            receipt_id: parseInt(btn.dataset.receiptId, 10),
+            tx_id: parseInt(btn.dataset.txId, 10),
+            account_type: btn.dataset.accountType,
+            apply_cash_tag: btn.dataset.applyCash === '1'
+        });
+
+        if (res && res.success) {
+            window.location.reload();
+        } else {
+            btn.disabled = false;
+            alert('Verknüpfung fehlgeschlagen.');
+        }
+    } catch (err) {
+        btn.disabled = false;
+        console.error('Fehler bei manueller Verknüpfung:', err);
+        alert('Verknüpfung fehlgeschlagen.');
+    }
+}
+
 function showModal(receiptId, candidates) {
-    // Vorheriges Modal entfernen falls vorhanden
     document.getElementById('candidateModalOverlay')?.remove();
 
-    const giro = candidates.giro || [];
-    const cc = candidates.cc || [];
-    const totalCandidates = giro.length + cc.length;
+    const giro = Array.isArray(candidates.giro) ? candidates.giro : [];
+    const cc = Array.isArray(candidates.cc) ? candidates.cc : [];
+
+    let candidatesHtml;
+    if (giro.length + cc.length === 0) {
+        candidatesHtml = '<p class="candidate-empty">Keine passenden Buchungen im Zeitraum gefunden.</p>';
+    } else {
+        candidatesHtml = renderCandidateGroup(receiptId, giro, '🏦 Girokonto-Buchungen')
+            + renderCandidateGroup(receiptId, cc, '💳 Kreditkarten-Abrechnungen');
+    }
 
     const overlay = document.createElement('div');
     overlay.id = 'candidateModalOverlay';
     overlay.className = 'rule-modal-overlay';
-
-    let candidatesHtml = '';
-
-    if (totalCandidates === 0) {
-        candidatesHtml = `<p class="text-muted text-center" style="padding: 1.5rem 0;">Keine passenden Buchungen im Zeitraum gefunden.</p>`;
-    } else {
-        const renderList = (items, typeLabel) => {
-            if (items.length === 0) return '';
-            return `
-                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">${typeLabel}</h4>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    ${items.map(tx => {
-                        const txAmount = parseFloat(tx.amount);
-                        const absAmount = Math.abs(txAmount);
-                        return `
-                            <div style="background: var(--bg-surface-hover); padding: 0.75rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <strong style="display: block; font-size: 0.9rem;"><?= date('d.m.Y', strtotime(${tx.booking_date})) ?> – ${escapeHtml(tx.merchant_raw)}</strong>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Betrag: ${txAmount.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</span>
-                                </div>
-                                <div style="display: flex; gap: 0.4rem;">
-                                    <button type="button" class="btn btn-sm js-link-tx" data-receipt-id="${receiptId}" data-tx-id="${tx.id}" data-account-type="${tx.account_type}" data-apply-cash="0">
-                                        Verknüpfen
-                                    </button>
-                                    ${tx.account_type === 'giro' && txAmount < 0 ? `
-                                        <button type="button" class="btn btn-sm btn-outline js-link-tx" data-receipt-id="${receiptId}" data-tx-id="${tx.id}" data-account-type="${tx.account_type}" data-apply-cash="1" title="Verknüpfen und Bargeld-Tag zuweisen">
-                                            + Bargeld-Tag
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        };
-
-        candidatesHtml = renderList(giro, '🏦 Girokonto-Buchungen') + renderList(cc, '💳 Kreditkarten-Abrechnungen');
-    }
-
     overlay.innerHTML = `
-        <div class="rule-modal-card" style="max-width: 500px;">
+        <div class="rule-modal-card candidate-modal-card">
             <div class="rule-modal-header">
                 <h3>🔍 Zuordnungskandidaten</h3>
                 <button type="button" class="rule-modal-close js-close-candidate-modal">&times;</button>
             </div>
-            <div class="rule-modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Wähle die passende Bankabbuchung für diesen Kassenbon aus:
-                </p>
+            <div class="rule-modal-body candidate-modal-body">
+                <p class="candidate-hint">Wähle die passende Bankbuchung für diesen Kassenbon aus:</p>
                 ${candidatesHtml}
             </div>
             <div class="rule-modal-footer">
@@ -95,39 +112,57 @@ function showModal(receiptId, candidates) {
     `;
 
     document.body.appendChild(overlay);
-
-    overlay.querySelectorAll('.js-close-candidate-modal').forEach(el => {
-        el.addEventListener('click', () => overlay.remove());
-    });
-
-    overlay.querySelectorAll('.js-link-tx').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const rId = btn.dataset.receiptId;
-            const tId = btn.dataset.txId;
-            const accType = btn.dataset.accountType;
-            const applyCash = btn.dataset.applyCash === '1';
-
-            try {
-                const res = await KaiHttp.postJson('api.php', {
-                    action: 'link_manual',
-                    receipt_id: parseInt(rId, 10),
-                    tx_id: parseInt(tId, 10),
-                    account_type: accType,
-                    apply_cash_tag: applyCash
-                });
-
-                if (res && res.success) {
-                    window.location.reload();
-                } else {
-                    alert('Verknüpfung fehlgeschlagen.');
-                }
-            } catch (err) {
-                console.error('Fehler bei manueller Verknüpfung:', err);
-            }
-        });
-    });
 }
 
-function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function renderCandidateGroup(receiptId, items, groupLabel) {
+    if (!items.length) {
+        return '';
+    }
+
+    const rows = items.map((tx) => {
+        const amount = parseFloat(tx.amount) || 0;
+        const info = tx.info ? `<span class="candidate-meta">${escapeHtml(tx.info)}</span>` : '';
+        const cashButton = tx.account_type === 'giro' && tx.is_cash
+            ? `<button type="button" class="btn btn-sm btn-outline js-link-tx"
+                    data-receipt-id="${receiptId}" data-tx-id="${tx.id}"
+                    data-account-type="${escapeHtml(tx.account_type)}" data-apply-cash="1"
+                    title="Verknüpfen und Bargeld-Tag zuweisen">+ Bargeld-Tag</button>`
+            : '';
+
+        return `
+            <div class="candidate-item">
+                <div class="candidate-info">
+                    <strong class="candidate-title">${formatDate(tx.booking_date)} – ${escapeHtml(tx.merchant_raw)}</strong>
+                    <span class="candidate-meta">Betrag: ${formatAmount(amount)} €</span>
+                    ${info}
+                </div>
+                <div class="candidate-actions">
+                    <button type="button" class="btn btn-sm js-link-tx"
+                        data-receipt-id="${receiptId}" data-tx-id="${tx.id}"
+                        data-account-type="${escapeHtml(tx.account_type)}" data-apply-cash="0">Verknüpfen</button>
+                    ${cashButton}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `<h4 class="candidate-group-title">${groupLabel}</h4><div class="candidate-list">${rows}</div>`;
+}
+
+function formatDate(isoDate) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(isoDate ?? ''));
+    return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
+}
+
+function formatAmount(value) {
+    return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

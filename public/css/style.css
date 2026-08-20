@@ -1605,6 +1605,83 @@ tr.is-today-row {
     color: var(--accent);
     transform: scale(1.1);
 }
+/* Badges, die als Link oder Button dienen (z. B. Zahlungsstatus) */
+.badge-link,
+.badge-button {
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    font: inherit;
+}
+
+/* Modal zur manuellen Zuordnung von Kassenbons zu Bankbuchungen */
+.candidate-modal-card {
+    max-width: 500px;
+}
+
+.candidate-modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.candidate-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.candidate-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+.candidate-group-title {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.candidate-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.candidate-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    background: var(--bg-surface-hover);
+}
+
+.candidate-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.candidate-title {
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+
+.candidate-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    word-break: break-word;
+}
+
+.candidate-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
 /* Rule Builder: Beteiligten-Zeilen auf schmalen Displays stapeln */
 @media (max-width: 600px) {
     .rule-source-row {
@@ -1615,5 +1692,14 @@ tr.is-today-row {
     .rule-source-label {
         min-width: 0;
         padding-top: 0;
+    }
+
+    .candidate-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .candidate-actions {
+        justify-content: flex-end;
     }
 }
