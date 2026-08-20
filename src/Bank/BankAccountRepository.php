@@ -142,6 +142,19 @@ class BankAccountRepository
         return $remainingTime > $maxAge;
     }
 	
+	/**
+	 * Liefert den Zeitpunkt der letzten Aktualisierung eines Kontos (updated_at)
+	 * als DATETIME-String oder null, falls noch nie aktualisiert wurde.
+	 */
+	public function getUpdatedAt(int $accountId): ?string
+	{
+		$stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = :id");
+		$stmt->execute([':id' => $accountId]);
+		$result = $stmt->fetchColumn();
+
+		return $result !== false && $result !== null ? (string)$result : null;
+	}
+
 	public function getLastSyncDate($accountId) {
 		$stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = ?");
 		$stmt->execute([$accountId]);

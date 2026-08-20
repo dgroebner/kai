@@ -228,6 +228,13 @@ a:hover { color: var(--accent-hover); }
 }
 .btn-outline:hover { background-color: var(--bg-surface-hover); color: var(--text-main); }
 
+/* Blaue Aktions-Variante (z. B. Sync-Buttons) */
+.btn-blue {
+    background-color: var(--color-blue);
+    color: #fff;
+}
+.btn-blue:hover { background-color: var(--color-blue); filter: brightness(1.15); }
+
 .btn-link {
     color: var(--accent);
     cursor: pointer;

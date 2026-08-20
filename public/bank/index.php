@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Bank\BankAccountRepository;
 
 // 1. Auth-Check — immer zuerst (AGENTS.md)
 Auth::requirePage();
@@ -263,6 +264,9 @@ try {
     $realTotalExpenses = abs((float)($periodTotals['total_expenses'] ?? 0));
     $realTotalIncome   = (float)($periodTotals['total_income'] ?? 0);
 
+    // Zeitpunkt der letzten Kontoaktualisierung (Girokonto = account_id 2)
+    $accountLastUpdate = (new BankAccountRepository())->getUpdatedAt(2);
+
 } catch (\Throwable $e) {
     $logger->error("bank/index.php: Fehler beim Laden der Umsätze.", ['error' => $e->getMessage()]);
     http_response_code(500);
@@ -281,10 +285,13 @@ try {
 <body>
 <div class="container" id="giro-container" data-tags='<?= htmlspecialchars(json_encode($availableTags, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>'>
 
-<header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+<header class="page-header">
         <h1>🏦 Girokonto Umsätze</h1>
-        <div style="display: flex; gap: 1rem;">
-            <button type="button" id="btn-open-sync" class="btn" style="background-color: var(--color-blue); color: white;">
+        <div class="page-header-actions">
+            <?php if ($accountLastUpdate): ?>
+                <span class="last-update">Zuletzt aktualisiert: <?= htmlspecialchars(date('d.m.Y H:i', strtotime($accountLastUpdate)), ENT_QUOTES, 'UTF-8') ?> Uhr</span>
+            <?php endif; ?>
+            <button type="button" id="btn-open-sync" class="btn btn-blue">
                 🔄 API Sync
             </button>
             <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
