@@ -175,7 +175,7 @@ class BankGiroService
                         'transaction_id'        => $reference,
                         'booking_date'          => $bookingDate,
                         'valuta_date'           => $apiTx['valutaDate'] ?? $bookingDate,
-                        'type'                  => $typeMapping,
+                        'type'                  => $typeMapping[$apiTxType] ?? 'Unknown',
                         'remittance_info'       => $cleanedRemittance,
                         'amount'                => (float)($apiTx['amount']['value'] ?? 0.0),
 						'remitter'              => $apiTx['remitter']['holderName'],

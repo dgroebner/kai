@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
     api_credentials TEXT DEFAULT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	updated_at DATETIME NULL,
+	updated_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. Girokonto Transaktionen (CSV-Imports, E-Mail-Import & API)
@@ -101,24 +101,20 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     type VARCHAR(100) NULL,
 --    merchant_raw TEXT NOT NULL,
 -- new
-    remitter VARCHAR(100) NOT NULL,
+    remitter VARCHAR(100) NULL,
     debitor  VARCHAR(100) NULL,
     creditor VARCHAR(100) NULL,
     end_to_end_reference VARCHAR(50) NULL,
     dc_creditor_id VARCHAR(50) NULL,
     dc_mandate_id VARCHAR(50) NULL,
-    remittance_info VARCHAR(350) NOT NULL;
-	
+    remittance_info VARCHAR(350) NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     matched_rule_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_tx_hash (tx_hash),
+    UNIQUE KEY uk_account_transaction (account_id, transaction_id),
     FOREIGN KEY (account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE,
     FOREIGN KEY (matched_rule_id) REFERENCES bank_tag_rules(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-ALTER TABLE `bank_giro_transactions`
-    ADD UNIQUE KEY `uk_account_transaction` (`account_id`, `transaction_id`);
 
 -- 3. Kreditkarten-Kategorien (bestehend für Visa-Abrechnungen)
 CREATE TABLE IF NOT EXISTS bank_categories (
