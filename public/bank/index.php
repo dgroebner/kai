@@ -204,6 +204,7 @@ try {
         SELECT 
             bt.*,
             r.text_pattern AS matched_text_pattern,
+            r.payee_pattern AS matched_payee_pattern,
             s.id AS linked_statement_id,
             s.statement_date AS linked_statement_date,
             rec.id AS linked_receipt_id,
@@ -560,8 +561,21 @@ try {
                                     <td data-label="Text" style="position: relative;">
 										<strong style="display:block;"><?= htmlspecialchars($tx['type'] ?? 'Buchung', ENT_QUOTES, 'UTF-8') ?></strong>
 										
+										<?php
+										// Beteiligten je nach Buchungsrichtung anzeigen (Auftraggeber bzw. Empfänger)
+										$counterpartyLabel = 'Auftraggeber';
+										$counterparty = trim((string)($tx['remitter'] ?? ''));
+										if ($counterparty === '') {
+											$counterparty = trim((string)($tx['creditor'] ?? ''));
+											$counterpartyLabel = 'Empfänger';
+										}
+										if ($counterparty === '') {
+											$counterparty = trim((string)($tx['debitor'] ?? ''));
+											$counterpartyLabel = 'Zahlungspflichtiger';
+										}
+										?>
 										<div class="text-muted" style="font-size: 0.85rem; display: block; margin-top: 4px;">
-											Auftraggeber: <?= htmlspecialchars($tx['remitter'] ?? '-', ENT_QUOTES, 'UTF-8') ?><br>
+											<?= htmlspecialchars($counterpartyLabel, ENT_QUOTES, 'UTF-8') ?>: <?= htmlspecialchars($counterparty !== '' ? $counterparty : '-', ENT_QUOTES, 'UTF-8') ?><br>
 											Buchungstext: <?= htmlspecialchars($tx['remittance_info'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
 										</div>
 
@@ -585,20 +599,28 @@ try {
 									<td data-label="Tags">
 										<!-- Regel-Indikator (Zauberstab / Blitz) -->
 										<?php if (!empty($tx['matched_rule_id'])): ?>
+											<?php $ruleHint = trim(($tx['matched_text_pattern'] ?? '') . ' | ' . ($tx['matched_payee_pattern'] ?? ''), " |"); ?>
 											<button type="button" 
 													class="btn-rule-indicator active js-open-rule-builder" 
 													data-tx-id="<?= $tx['id'] ?>" 
 													data-rule-id="<?= $tx['matched_rule_id'] ?>"
-													data-remittance_info="<?= htmlspecialchars($tx['remittance_info'], ENT_QUOTES, 'UTF-8') ?>"
+													data-remittance-info="<?= htmlspecialchars($tx['remittance_info'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													data-remitter="<?= htmlspecialchars($tx['remitter'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													data-debitor="<?= htmlspecialchars($tx['debitor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													data-creditor="<?= htmlspecialchars($tx['creditor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
 													data-text-pattern="<?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-													title="Regel aktiv: <?= htmlspecialchars($tx['matched_text_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?> (Klicken zum Bearbeiten)">
+													data-payee-pattern="<?= htmlspecialchars($tx['matched_payee_pattern'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													title="Regel aktiv: <?= htmlspecialchars($ruleHint, ENT_QUOTES, 'UTF-8') ?> (Klicken zum Bearbeiten)">
 												⚡
 											</button>
 										<?php else: ?>
 											<button type="button" 
 													class="btn-rule-indicator js-open-rule-builder" 
 													data-tx-id="<?= $tx['id'] ?>" 
-													data-remittance_info="<?= htmlspecialchars($tx['remittance_info'], ENT_QUOTES, 'UTF-8') ?>"
+													data-remittance-info="<?= htmlspecialchars($tx['remittance_info'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													data-remitter="<?= htmlspecialchars($tx['remitter'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													data-debitor="<?= htmlspecialchars($tx['debitor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+													data-creditor="<?= htmlspecialchars($tx['creditor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
 													title="Keine Regel verknüpft (Klicken zum Erstellen)">
 												🪄
 											</button>

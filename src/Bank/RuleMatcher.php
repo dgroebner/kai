@@ -7,6 +7,16 @@ use Kai\Tools\Shared\Log\Logger;
 
 class RuleMatcher
 {
+    /**
+     * Spalten einer Transaktion, die für das Matching relevant sind.
+     * Der Buchungstext wird gegen text_pattern geprüft, die Beteiligten gegen payee_pattern.
+     */
+    public const TEXT_FIELD = 'remittance_info';
+    public const PAYEE_FIELDS = ['remitter', 'debitor', 'creditor'];
+
+    /** Spaltenliste für SELECTs auf bank_giro_transactions. */
+    private const TX_COLUMNS = 'id, remittance_info, remitter, debitor, creditor';
+
     private PDO $pdo;
     private Logger $logger;
 
@@ -42,18 +52,18 @@ class RuleMatcher
      * Prüft eine einzelne Transaktion gegen eine Liste von Regeln
      * und gibt die erste matchende Regel zurück (First-Match-Wins).
      *
-     * @param string $remittanceInfo Buchungstext / Empfänger
+     * @param array $transaction Transaktionsdaten (remittance_info, remitter, debitor, creditor)
      * @param array|null $rules Optionale Regel-Liste (sonst lädt die Methode alle aus der DB)
      * @return array|null Gibt die matchende Regel zurück oder null
      */
-    public function findMatchingRule(string $remittanceInfo, ?array $rules = null): ?array
+    public function findMatchingRule(array $transaction, ?array $rules = null): ?array
     {
         if ($rules === null) {
             $rules = $this->getAllRules();
         }
 
         foreach ($rules as $rule) {
-            if ($this->matchesRule($remittanceInfo, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
+            if ($this->matchesRule($transaction, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
                 return $rule;
             }
         }
@@ -62,29 +72,58 @@ class RuleMatcher
     }
 
     /**
-     * Führt den Regex sicher aus (fängt invalide Muster ab).
+     * Prüft eine Transaktion gegen ein Text- und/oder Empfänger-Muster.
+     * Beide Muster wirken als UND-Verknüpfung; leere Muster werden ignoriert.
+     *
+     * @param array $transaction Transaktionsdaten (remittance_info, remitter, debitor, creditor)
      */
-    public function matchesRule(string $remittanceInfo, ?string $textPattern, ?string $payeePattern = null): bool
+    public function matchesRule(array $transaction, ?string $textPattern, ?string $payeePattern = null): bool
     {
-        // 1. Text-Pattern prüfen
-        if (!empty($textPattern)) {
-            if (!$this->evalRegex($textPattern, $remittanceInfo)) {
+        $hasTextPattern  = $textPattern !== null && trim($textPattern) !== '';
+        $hasPayeePattern = $payeePattern !== null && trim($payeePattern) !== '';
+
+        // Ohne Muster darf niemals gematcht werden (sonst würde alles getaggt)
+        if (!$hasTextPattern && !$hasPayeePattern) {
+            return false;
+        }
+
+        // 1. Text-Pattern gegen den Buchungstext prüfen
+        if ($hasTextPattern) {
+            $subject = (string)($transaction[self::TEXT_FIELD] ?? '');
+            if (!$this->evalRegex($textPattern, $subject)) {
                 return false;
             }
         }
 
-        // 2. Payee-Pattern prüfen
-        if (!empty($payeePattern)) {
-            if (!$this->evalRegex($payeePattern, $remittanceInfo)) {
-                return false;
-            }
+        // 2. Payee-Pattern gegen Auftraggeber / Debitor / Kreditor prüfen (ein Treffer genügt)
+        if ($hasPayeePattern && !$this->matchesAnyPayeeField($transaction, $payeePattern)) {
+            return false;
         }
 
-        return !empty($textPattern) || !empty($payeePattern);
+        return true;
     }
 
     /**
-     * WENNDie Regel neu gespeichert oder verändert wurde:
+     * Prüft das Empfänger-Muster gegen alle Beteiligten-Felder einzeln,
+     * damit Anker wie ^ und $ pro Feld korrekt greifen.
+     */
+    private function matchesAnyPayeeField(array $transaction, string $payeePattern): bool
+    {
+        foreach (self::PAYEE_FIELDS as $field) {
+            $value = trim((string)($transaction[$field] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            if ($this->evalRegex($payeePattern, $value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * WENN die Regel neu gespeichert oder verändert wurde:
      * Wende sie retroaktiv auf ALLE bisher ungetaggten Transaktionen an.
      *
      * @param int $ruleId
@@ -102,7 +141,7 @@ class RuleMatcher
         if (empty($tagIds)) return 0;
 
         // Alle Transaktionen laden, die noch KEINER Regel zugewiesen sind
-        $stmtTx = $this->pdo->query("SELECT id, remittance_info FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
+        $stmtTx = $this->pdo->query("SELECT " . self::TX_COLUMNS . " FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
         $unmatchedTx = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
 
         $matchedCount = 0;
@@ -110,7 +149,7 @@ class RuleMatcher
         $stmtInsertTag = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
 
         foreach ($unmatchedTx as $tx) {
-            if ($this->matchesRule($tx['remittance_info'], $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
+            if ($this->matchesRule($tx, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
                 $stmtUpdateTx->execute([':rule_id' => $ruleId, ':tx_id' => $tx['id']]);
 
                 foreach ($tagIds as $tagId) {
@@ -133,7 +172,7 @@ class RuleMatcher
         $rules = $this->getAllRules();
         if (empty($rules)) return 0;
 
-        $stmtTx = $this->pdo->query("SELECT id, remittance_info FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
+        $stmtTx = $this->pdo->query("SELECT " . self::TX_COLUMNS . " FROM bank_giro_transactions WHERE matched_rule_id IS NULL");
         $unmatchedTx = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
 
         $matchedCount = 0;
@@ -141,7 +180,7 @@ class RuleMatcher
         $stmtInsertTag = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
 
         foreach ($unmatchedTx as $tx) {
-            $matchingRule = $this->findMatchingRule($tx['remittance_info'], $rules);
+            $matchingRule = $this->findMatchingRule($tx, $rules);
             if ($matchingRule) {
                 $stmtUpdateTx->execute([':rule_id' => $matchingRule['id'], ':tx_id' => $tx['id']]);
 
@@ -153,6 +192,30 @@ class RuleMatcher
         }
 
         return $matchedCount;
+    }
+
+    /**
+     * Zählt alle Transaktionen, auf die die übergebenen Muster zutreffen (Live-Test im Rule Builder).
+     *
+     * @return int Anzahl der Treffer
+     */
+    public function countMatchingTransactions(?string $textPattern, ?string $payeePattern = null): int
+    {
+        if (($textPattern === null || trim($textPattern) === '')
+            && ($payeePattern === null || trim($payeePattern) === '')) {
+            return 0;
+        }
+
+        $stmt = $this->pdo->query("SELECT " . self::TX_COLUMNS . " FROM bank_giro_transactions");
+
+        $count = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $tx) {
+            if ($this->matchesRule($tx, $textPattern, $payeePattern)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     /**

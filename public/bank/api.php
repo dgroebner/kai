@@ -311,23 +311,16 @@ try {
 
     // 1. Live-Test eines Regex-Musters
     if ($action === 'test_rule_pattern') {
-        $textPattern = trim((string)($data['text_pattern'] ?? ''));
-        
-        if ($textPattern === '') {
+        $textPattern  = trim((string)($data['text_pattern'] ?? ''));
+        $payeePattern = trim((string)($data['payee_pattern'] ?? ''));
+
+        if ($textPattern === '' && $payeePattern === '') {
             echo json_encode(['success' => true, 'match_count' => 0]);
             exit;
         }
 
         $matcher = new RuleMatcher($pdo);
-        $stmtAll = $pdo->query("SELECT id, remittance_info FROM bank_giro_transactions");
-        $allTx = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
-
-        $matchCount = 0;
-        foreach ($allTx as $tx) {
-            if ($matcher->matchesRule($tx['remittance_info'], $textPattern)) {
-                $matchCount++;
-            }
-        }
+        $matchCount = $matcher->countMatchingTransactions($textPattern, $payeePattern);
 
         echo json_encode(['success' => true, 'match_count' => $matchCount]);
         exit;
@@ -337,7 +330,7 @@ try {
     if ($action === 'save_rule') {
         $ruleId = filter_var($data['rule_id'] ?? null, FILTER_VALIDATE_INT);
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
-        $textPattern = trim((string)($data['text_pattern'] ?? ''));
+        $textPattern = trim((string)($data['text_pattern'] ?? '')) ?: null;
         $payeePattern = trim((string)($data['payee_pattern'] ?? '')) ?: null;
         $tagIds = is_array($data['tag_ids'] ?? null) ? array_map('intval', $data['tag_ids']) : [];
         $priority = filter_var($data['priority'] ?? 10, FILTER_VALIDATE_INT) ?: 10;

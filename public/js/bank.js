@@ -163,13 +163,26 @@ document.addEventListener('click', (e) => {
 // Visual Regex Builder Modal (Phase 3.2 - 3.4)
 // ----------------------------------------------------
 
+// ----------------------------------------------------
+// Visual Regex Builder Modal (Phase 3.2 - 3.4)
+// ----------------------------------------------------
+
 function openRuleBuilderModal(btn) {
     closeRuleModal();
 
     const txId = btn.dataset.txId;
     const ruleId = btn.dataset.ruleId || null;
+
+    // Quelldaten der Buchung: Buchungstext und Beteiligte (Auftraggeber / Debitor / Kreditor)
     const remittanceInfo = btn.dataset.remittanceInfo || '';
-    const initialPattern = btn.dataset.textPattern || '';
+    const payeeSources = [
+        { label: 'Auftraggeber', value: btn.dataset.remitter || '' },
+        { label: 'Zahlungspflichtiger', value: btn.dataset.debitor || '' },
+        { label: 'Empfänger', value: btn.dataset.creditor || '' }
+    ].filter(src => src.value.trim() !== '');
+
+    const initialTextPattern = btn.dataset.textPattern || '';
+    const initialPayeePattern = btn.dataset.payeePattern || '';
 
     // Aktuell an der Transaktion befindliche Tags auslesen (Vorselektion)
     const rowGroup = document.querySelector(`.js-tag-group[data-tx-id="${txId}"]`);
@@ -179,48 +192,75 @@ function openRuleBuilderModal(btn) {
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
 
+    const payeeSourceHtml = payeeSources.length
+        ? payeeSources.map(src => `
+            <div class="rule-source-row">
+                <span class="rule-source-label">${escapeHtml(src.label)}</span>
+                <div class="word-segment-wrap js-word-segments" data-source-value="${escapeHtml(src.value)}"></div>
+            </div>`).join('')
+        : '<p class="rule-empty-hint">Für diese Buchung sind keine Beteiligten hinterlegt.</p>';
+
     overlay.innerHTML = `
         <div class="rule-modal-card">
             <div class="rule-modal-header">
-                <h3>🪄 Rule Builder ${ruleId ? '(Regel bearbeiten)' : '(Neue Regel ersteller)'}</h3>
+                <h3>🪄 Rule Builder ${ruleId ? '(Regel bearbeiten)' : '(Neue Regel erstellen)'}</h3>
                 <button type="button" class="rule-modal-close js-close-modal">&times;</button>
             </div>
             
             <div class="rule-modal-body">
-                <div>
-                    <label class="chart-label" style="margin-bottom:0.3rem;">Buchungstext (Klickbar für Regex):</label>
-                    <div class="word-segment-wrap js-word-segments"></div>
+                <div class="rule-live-row">
+                    <span class="rule-group-label">Beide Muster werden UND-verknüpft geprüft.</span>
+                    <span class="live-match-pill js-live-match-pill">Prüfe Matches...</span>
                 </div>
 
-                <div>
-                    <label class="chart-label" style="margin-bottom:0.3rem;">Helper & Schnellbausteine:</label>
+                <div class="rule-pattern-group js-pattern-group" data-pattern-field="text">
+                    <label class="chart-label rule-group-label">Buchungstext (klickbar für Regex):</label>
+                    <div class="word-segment-wrap js-word-segments" data-source-value="${escapeHtml(remittanceInfo)}"></div>
+
                     <div class="helper-btn-group">
                         <button type="button" class="btn-helper js-helper-exact">🔤 Exakter Wortstamm</button>
                         <button type="button" class="btn-helper js-helper-start">^ Startet mit</button>
                         <button type="button" class="btn-helper js-helper-num">🔢 Zahlen durch \\d+ ersetzen</button>
                         <button type="button" class="btn-helper js-helper-wild">.* Wildcard</button>
+                        <button type="button" class="btn-helper js-helper-clear">✖ Leeren</button>
                     </div>
+
+                    <label class="chart-label rule-group-label">Muster für Buchungstext (Regex):</label>
+                    <input type="text" class="tag-search-input rule-pattern-input js-rule-pattern"
+                           value="${escapeHtml(initialTextPattern)}"
+                           placeholder="z. B. Miete oder ^DAUERAUFTRAG.*">
+                </div>
+
+                <div class="rule-pattern-group js-pattern-group" data-pattern-field="payee">
+                    <label class="chart-label rule-group-label">Beteiligte (klickbar für Regex):</label>
+                    ${payeeSourceHtml}
+
+                    <div class="helper-btn-group">
+                        <button type="button" class="btn-helper js-helper-exact">🔤 Exakter Wortstamm</button>
+                        <button type="button" class="btn-helper js-helper-start">^ Startet mit</button>
+                        <button type="button" class="btn-helper js-helper-num">🔢 Zahlen durch \\d+ ersetzen</button>
+                        <button type="button" class="btn-helper js-helper-wild">.* Wildcard</button>
+                        <button type="button" class="btn-helper js-helper-clear">✖ Leeren</button>
+                    </div>
+
+                    <label class="chart-label rule-group-label">Muster für Auftraggeber / Empfänger (Regex):</label>
+                    <input type="text" class="tag-search-input rule-pattern-input js-rule-pattern"
+                           value="${escapeHtml(initialPayeePattern)}"
+                           placeholder="z. B. REWE oder ^AMAZON.*">
+                    <p class="rule-empty-hint">Wird gegen Auftraggeber, Zahlungspflichtigen und Empfänger geprüft — ein Treffer genügt.</p>
                 </div>
 
                 <div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                        <label class="chart-label" style="margin-bottom:0;">Regel-Muster (Regex):</label>
-                        <span class="live-match-pill js-live-match-pill"> Prüfe Matches...</span>
-                    </div>
-                    <input type="text" class="tag-search-input js-rule-pattern" value="${escapeHtml(initialPattern)}" placeholder="z. B. REWE oder ^REWE.*" style="font-family:monospace; font-size:0.95rem;">
-                </div>
-
-                <div>
-                    <label class="chart-label" style="margin-bottom:0.3rem;">Zuweisende Tags:</label>
-                    <div class="tag-pill-group js-modal-tags-wrap" style="min-height:32px;"></div>
+                    <label class="chart-label rule-group-label">Zuweisende Tags:</label>
+                    <div class="tag-pill-group js-modal-tags-wrap"></div>
                 </div>
             </div>
 
             <div class="rule-modal-footer">
                 <div>
-                    ${ruleId ? `<button type="button" class="btn btn-outline js-delete-rule" style="border-color:var(--color-red); color:var(--color-red);">🗑 Regel löschen</button>` : ''}
+                    ${ruleId ? `<button type="button" class="btn btn-outline btn-danger-outline js-delete-rule">🗑 Regel löschen</button>` : ''}
                 </div>
-                <div style="display:flex; gap:0.5rem;">
+                <div class="rule-modal-actions">
                     <button type="button" class="btn btn-outline js-close-modal">Abbrechen</button>
                     <button type="button" class="btn js-save-rule">Speichern & Anwenden</button>
                 </div>
@@ -231,83 +271,24 @@ function openRuleBuilderModal(btn) {
     document.body.appendChild(overlay);
     activeRuleModal = overlay;
 
-    // Wort-Chips aus remittanceInfo aufbauen
-    const wordsContainer = overlay.querySelector('.js-word-segments');
-    const words = remittanceInfo.split(/(\s+)/).filter(w => w.trim().length > 0);
-    
-    words.forEach(word => {
-        const chip = document.createElement('span');
-        chip.className = 'word-chip';
-        chip.textContent = word;
-        
-        chip.addEventListener('click', () => {
-            chip.classList.toggle('selected');
-
-            // Alle aktuell ausgewählten Wort-Chips auslesen
-            const selectedChips = Array.from(wordsContainer.querySelectorAll('.word-chip.selected'));
-            
-            if (selectedChips.length > 0) {
-                // Ausgewählte Wörter escapen und mit .* verknüpfen
-                patternInput.value = selectedChips
-                    .map(c => escapeRegex(c.textContent.trim()))
-                    .join('.*');
-            } else {
-                patternInput.value = '';
-            }
-
-            triggerLiveMatchCheck(patternInput.value);
-        });
-
-        wordsContainer.appendChild(chip);
-    });
-
-    // Helper Buttons Event Binding
-    const patternInput = overlay.querySelector('.js-rule-pattern');
-
-    overlay.querySelector('.js-helper-exact').addEventListener('click', () => {
-        if (patternInput.value) {
-            patternInput.value = `\\b${patternInput.value.replace(/^\\b|\\b$/g, '')}\\b`;
-            triggerLiveMatchCheck(patternInput.value);
-        }
-    });
-
-    overlay.querySelector('.js-helper-start').addEventListener('click', () => {
-        if (patternInput.value && !patternInput.value.startsWith('^')) {
-            patternInput.value = `^${patternInput.value}`;
-            triggerLiveMatchCheck(patternInput.value);
-        }
-    });
-
-    overlay.querySelector('.js-helper-num').addEventListener('click', () => {
-        patternInput.value = patternInput.value.replace(/\d+/g, '\\d+');
-        triggerLiveMatchCheck(patternInput.value);
-    });
-
-    overlay.querySelector('.js-helper-wild').addEventListener('click', () => {
-        patternInput.value = patternInput.value + '.*';
-        triggerLiveMatchCheck(patternInput.value);
-    });
-
-    // Pattern Live-Input Handler
-    patternInput.addEventListener('input', (e) => {
-        triggerLiveMatchCheck(e.target.value);
-    });
+    // Beide Muster-Gruppen (Buchungstext & Beteiligte) identisch verdrahten
+    overlay.querySelectorAll('.js-pattern-group').forEach(group => setupPatternGroup(group, overlay));
 
     // Modal-Tag-Picker rendern
     renderModalTagPicker(overlay.querySelector('.js-modal-tags-wrap'), selectedTagIds);
 
     // Initialen Live-Check ausführen
-    triggerLiveMatchCheck(patternInput.value || remittanceInfo);
+    triggerLiveMatchCheck(overlay);
 
     // Event Listener für Buttons im Footer & Close
     overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', closeRuleModal));
     
     overlay.querySelector('.js-save-rule').addEventListener('click', async () => {
-        const textPattern = patternInput.value.trim();
-		const currentTagIds = Array.from(overlay.querySelectorAll('.js-modal-tag-chip.active')).map(c => parseInt(c.dataset.tagId, 10));
+        const { textPattern, payeePattern } = readRulePatterns(overlay);
+        const currentTagIds = Array.from(overlay.querySelectorAll('.js-modal-tag-chip.active')).map(c => parseInt(c.dataset.tagId, 10));
 
-        if (!textPattern) {
-            alert('Bitte ein Muster angeben.');
+        if (!textPattern && !payeePattern) {
+            alert('Bitte mindestens ein Muster (Buchungstext oder Beteiligte) angeben.');
             return;
         }
 
@@ -317,6 +298,7 @@ function openRuleBuilderModal(btn) {
                 rule_id: ruleId ? parseInt(ruleId, 10) : null,
                 tx_id: parseInt(txId, 10),
                 text_pattern: textPattern,
+                payee_pattern: payeePattern,
                 tag_ids: currentTagIds
             });
 
@@ -347,6 +329,102 @@ function openRuleBuilderModal(btn) {
         });
     }
 }
+
+/**
+ * Verdrahtet eine Muster-Gruppe: Wort-Chips, Helper-Buttons und Live-Prüfung.
+ */
+function setupPatternGroup(group, overlay) {
+    const patternInput = group.querySelector('.js-rule-pattern');
+    if (!patternInput) return;
+
+    // Wort-Chips aus allen Quellfeldern der Gruppe aufbauen
+    group.querySelectorAll('.js-word-segments').forEach(wordsContainer => {
+        const source = wordsContainer.dataset.sourceValue || '';
+        const words = source.split(/\s+/).filter(w => w.trim().length > 0);
+
+        if (words.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'rule-empty-hint';
+            empty.textContent = 'Keine Daten vorhanden';
+            wordsContainer.appendChild(empty);
+            return;
+        }
+
+        words.forEach(word => {
+            const chip = document.createElement('span');
+            chip.className = 'word-chip';
+            chip.textContent = word;
+
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('selected');
+
+                // Auswahl bleibt auf ein Quellfeld begrenzt, damit das Muster gegen ein Feld matcht
+                group.querySelectorAll('.js-word-segments').forEach(other => {
+                    if (other !== wordsContainer) {
+                        other.querySelectorAll('.word-chip.selected').forEach(c => c.classList.remove('selected'));
+                    }
+                });
+
+                // Alle in diesem Quellfeld ausgewählten Wort-Chips zu einem Muster verbinden
+                const selectedChips = Array.from(wordsContainer.querySelectorAll('.word-chip.selected'));
+                patternInput.value = selectedChips
+                    .map(c => escapeRegex(c.textContent.trim()))
+                    .join('.*');
+
+                triggerLiveMatchCheck(overlay);
+            });
+
+            wordsContainer.appendChild(chip);
+        });
+    });
+
+    // Helper Buttons wirken immer auf das Muster der eigenen Gruppe
+    group.querySelector('.js-helper-exact').addEventListener('click', () => {
+        if (patternInput.value) {
+            patternInput.value = `\\b${patternInput.value.replace(/^\\b|\\b$/g, '')}\\b`;
+            triggerLiveMatchCheck(overlay);
+        }
+    });
+
+    group.querySelector('.js-helper-start').addEventListener('click', () => {
+        if (patternInput.value && !patternInput.value.startsWith('^')) {
+            patternInput.value = `^${patternInput.value}`;
+            triggerLiveMatchCheck(overlay);
+        }
+    });
+
+    group.querySelector('.js-helper-num').addEventListener('click', () => {
+        patternInput.value = patternInput.value.replace(/\d+/g, '\\d+');
+        triggerLiveMatchCheck(overlay);
+    });
+
+    group.querySelector('.js-helper-wild').addEventListener('click', () => {
+        patternInput.value = patternInput.value + '.*';
+        triggerLiveMatchCheck(overlay);
+    });
+
+    group.querySelector('.js-helper-clear').addEventListener('click', () => {
+        patternInput.value = '';
+        group.querySelectorAll('.word-chip.selected').forEach(c => c.classList.remove('selected'));
+        triggerLiveMatchCheck(overlay);
+    });
+
+    patternInput.addEventListener('input', () => triggerLiveMatchCheck(overlay));
+}
+
+/**
+ * Liest beide Muster aus dem Dialog aus.
+ */
+function readRulePatterns(overlay) {
+    const textGroup = overlay.querySelector('.js-pattern-group[data-pattern-field="text"] .js-rule-pattern');
+    const payeeGroup = overlay.querySelector('.js-pattern-group[data-pattern-field="payee"] .js-rule-pattern');
+
+    return {
+        textPattern: textGroup ? textGroup.value.trim() : '',
+        payeePattern: payeeGroup ? payeeGroup.value.trim() : ''
+    };
+}
+
 
 function closeRuleModal() {
     if (activeRuleModal) {
@@ -391,17 +469,28 @@ function renderModalTagPicker(wrapEl, selectedIds) {
     });
 }
 
-function triggerLiveMatchCheck(pattern) {
+function triggerLiveMatchCheck(overlay) {
     if (liveTestTimeout) clearTimeout(liveTestTimeout);
-    
-    const pill = document.querySelector('.js-live-match-pill');
+
+    const modal = overlay || activeRuleModal;
+    if (!modal) return;
+
+    const pill = modal.querySelector('.js-live-match-pill');
     if (pill) pill.textContent = 'Prüfe...';
+
+    const { textPattern, payeePattern } = readRulePatterns(modal);
+
+    if (!textPattern && !payeePattern) {
+        if (pill) pill.textContent = '🎯 Gilt für 0 Buchungen';
+        return;
+    }
 
     liveTestTimeout = setTimeout(async () => {
         try {
             const data = await KaiHttp.postJson('api.php', {
                 action: 'test_rule_pattern',
-                text_pattern: pattern
+                text_pattern: textPattern,
+                payee_pattern: payeePattern
             });
 
             if (pill && data && data.success) {

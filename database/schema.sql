@@ -99,8 +99,6 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     booking_date DATE NOT NULL,
     valuta_date DATE NOT NULL,
     type VARCHAR(100) NULL,
---    merchant_raw TEXT NOT NULL,
--- new
     remitter VARCHAR(100) NULL,
     debitor  VARCHAR(100) NULL,
     creditor VARCHAR(100) NULL,

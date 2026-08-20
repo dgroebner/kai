@@ -1445,6 +1445,73 @@ tr.is-today-row {
     background: rgba(0, 0, 0, 0.1);
 }
 
+.rule-modal-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-danger-outline {
+    border-color: var(--color-red);
+    color: var(--color-red);
+}
+
+/* Muster-Gruppen im Rule Builder (Buchungstext & Beteiligte) */
+.rule-pattern-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.85rem;
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.rule-group-label {
+    margin-bottom: 0;
+}
+
+.rule-pattern-input {
+    font-family: monospace;
+    font-size: 0.95rem;
+}
+
+.rule-live-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.rule-source-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.rule-source-label {
+    flex: 0 0 auto;
+    min-width: 130px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding-top: 0.75rem;
+}
+
+.rule-source-row .word-segment-wrap {
+    flex: 1 1 auto;
+    margin-top: 0.3rem;
+}
+
+.rule-empty-hint {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.rule-modal-body .js-modal-tags-wrap {
+    min-height: 32px;
+}
+
 /* --- Activity Log Module --- */
 .activity-list {
     list-style: none;
@@ -1537,4 +1604,16 @@ tr.is-today-row {
     background: var(--bg-surface-hover);
     color: var(--accent);
     transform: scale(1.1);
+}
+/* Rule Builder: Beteiligten-Zeilen auf schmalen Displays stapeln */
+@media (max-width: 600px) {
+    .rule-source-row {
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .rule-source-label {
+        min-width: 0;
+        padding-top: 0;
+    }
 }
