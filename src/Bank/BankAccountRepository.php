@@ -104,6 +104,8 @@ class BankAccountRepository
      */
     public function updateBalance(int $accountId, float $balance): bool
     {
+        $this->logger->info("BankGiroService: Update balance for accountId $accountId to value $balance");
+
         $stmt = $this->pdo->prepare("
             UPDATE bank_accounts 
             SET current_balance = :balance, updated_at = CURRENT_TIMESTAMP
