@@ -237,9 +237,28 @@ try {
         
         $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
         $repo = new BankAccountRepository();
-        
+
         $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
-        
+
+        // Ist das Access-Token abgelaufen, zuerst einen Refresh über das gespeicherte
+        // Refresh-Token versuchen. Erst wenn das scheitert, wird die Credential-Abfrage nötig.
+        if (!$isValid) {
+            $tokens = $repo->getApiTokens((int)$accountId, $encryptionService);
+            if ($tokens && !empty($tokens['refresh_token'])) {
+                try {
+                    $client = new ComdirectClient();
+                    $refreshed = $client->refreshAccessToken($tokens['refresh_token']);
+                    $repo->saveApiTokens((int)$accountId, $refreshed, $encryptionService);
+                    $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
+                } catch (\Throwable $e) {
+                    (new Logger())->error(
+                        'bank/api.php check_token_status: Token-Refresh fehlgeschlagen.',
+                        ['error' => $e->getMessage()]
+                    );
+                }
+            }
+        }
+
         echo json_encode(['success' => true, 'tokens_valid' => $isValid, 'account_id' => (int)$accountId]);
         exit;
     }
