@@ -81,13 +81,9 @@ class ActivityLogger
 
     public function logBankDataImport(int $count = 0): void
     {
-        $message = $count > 0 
-            ? "Neue Bankdaten erfasst ({$count} Transaktionen)" 
-            : "Neue Bankdaten erfasst";
-
         $this->log(
             'bank_data_imported',
-            $message,
+            "Neue Bankdaten erfasst ({$count} Transaktionen)",
             "/bank/index.php"
         );
     }

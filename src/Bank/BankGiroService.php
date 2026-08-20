@@ -70,7 +70,7 @@ class BankGiroService
                 $accountId = $apiAcc['accountId'] ?? '';
                 $iban = $apiAcc['iban'] ?? '';
                 $typeKey = $apiAcc['accountType']['key'] ?? '';
-                $balanceVal = (float)($apiBal['balance']['value'] ?? 0.0);
+                $balanceVal = (float)($apiBal['value'] ?? 0.0);
 
                 if (empty($accountId)) {
                     continue;
@@ -244,9 +244,10 @@ class BankGiroService
             $receiptMatcher->syncUnlinkedReceipts();
 
             // Im Aktivitäts-Log festhalten
-            $activityLogger = new ActivityLogger($this->db);
-            $activityLogger->logBankDataImport(count($importedTransactions));
-
+            if ($stats['imported'] > 0) {
+                $activityLogger = new ActivityLogger($this->db);
+                $activityLogger->logBankDataImport($stats['imported']);
+            }
         } catch (Exception $e) {
             $this->logger->error("BankGiroService API-Sync fehlgeschlagen: " . $e->getMessage());
             throw $e;
