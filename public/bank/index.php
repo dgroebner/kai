@@ -309,22 +309,6 @@ try {
         </div>
     </header>
 
-    <!-- Salden-Dashboard -->
-    <section class="kpi-grid" style="margin-bottom: 1.5rem;">
-        <div class="kpi-card" style="border: 1px solid var(--accent);">
-            <div class="kpi-label">🏦 Girokonto</div>
-            <div class="kpi-value" style="font-size: 1.5rem;">
-                <?= number_format((float)$checkingBalance, 2, ',', '.') ?> €
-            </div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">💰 Sparkonto</div>
-            <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-green);">
-                <?= number_format((float)$savingsBalance, 2, ',', '.') ?> €
-            </div>
-        </div>
-    </section>
-
 	<!-- START: Sync Modal Overlay -->
 	<div id="sync-modal" class="rule-modal-overlay hidden">
 		<div class="rule-modal-card" style="max-width: 450px;">
@@ -413,6 +397,22 @@ try {
         <a href="index.php" class="btn">🏦 Girokonto</a>
         <a href="creditcard.php" class="btn btn-outline">💳 Kreditkarte</a>
     </div>
+
+    <!-- Salden-Dashboard -->
+    <section class="kpi-grid" style="margin-bottom: 1.5rem;">
+        <div class="kpi-card" style="border: 1px solid var(--accent);">
+            <div class="kpi-label">🏦 Girokonto</div>
+            <div class="kpi-value" style="font-size: 1.5rem;">
+                <?= number_format((float)$checkingBalance, 2, ',', '.') ?> €
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">💰 Sparkonto</div>
+            <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-green);">
+                <?= number_format((float)$savingsBalance, 2, ',', '.') ?> €
+            </div>
+        </div>
+    </section>
 
     <!-- Schnelleinstellungen (Typ) -->
     <div class="period-switcher">
