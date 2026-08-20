@@ -163,10 +163,6 @@ document.addEventListener('click', (e) => {
 // Visual Regex Builder Modal (Phase 3.2 - 3.4)
 // ----------------------------------------------------
 
-// ----------------------------------------------------
-// Visual Regex Builder Modal (Phase 3.2 - 3.4)
-// ----------------------------------------------------
-
 function openRuleBuilderModal(btn) {
     closeRuleModal();
 
