@@ -13,7 +13,7 @@ werden muss.
 mehrere unabhängige Werkzeuge (Domains) unter einer gemeinsamen Authentifizierungs-
 und Infrastrukturschicht.
 
-**Laufzeitumgebung:** PHP 8.2 · MySQL/MariaDB · Apache (Shared Hosting)  
+**Laufzeitumgebung:** PHP 8.4 · MySQL/MariaDB · Apache (Shared Hosting)
 **Deployment:** Automatisch via GitHub Actions → SFTP auf den Webserver  
 **Hosting:** Shared Hosting — Details nicht im Repo dokumentiert  
 **Authentifizierung:** Google OAuth 2.0 mit E-Mail-Allowlist (kein öffentlicher Zugang)

@@ -165,13 +165,7 @@ final class Auth
             $candidates[] = $_GET['token'] ?? null;
         }
 
-        foreach ($candidates as $candidate) {
-            if (is_string($candidate) && $candidate !== '') {
-                return $candidate;
-            }
-        }
-
-        return null;
+        return array_find($candidates, static fn($candidate): bool => is_string($candidate) && $candidate !== '');
     }
 
     /**

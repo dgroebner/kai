@@ -61,7 +61,7 @@ kai_root/
 ## 💻 Installation & Lokales Setup
 
 ### Voraussetzungen
-* PHP 8.2 oder höher mit den Erweiterungen `curl`, `pdo_mysql`, `mbstring`, `iconv`
+* PHP 8.4 oder höher mit den Erweiterungen `curl`, `pdo_mysql`, `mbstring`, `iconv`
 * MySQL oder MariaDB Datenbank
 * Composer zur Paketverwaltung
 * Google Cloud Console Projekt (für Google OAuth)

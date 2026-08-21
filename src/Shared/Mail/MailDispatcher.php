@@ -153,12 +153,9 @@ class MailDispatcher
         $lowerFilename = strtolower($filename);
         $headerChunk = strtolower(substr($content, 0, 2048));
 
-        foreach ($keywords as $keyword) {
-            if (str_contains($lowerFilename, $keyword) || str_contains($headerChunk, $keyword)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(
+            $keywords,
+            static fn(string $keyword): bool => str_contains($lowerFilename, $keyword) || str_contains($headerChunk, $keyword)
+        );
     }
 }

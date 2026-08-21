@@ -390,13 +390,8 @@ class ReceiptMatcher
     {
         $tokens = preg_split('/[^\p{L}\p{N}]+/u', $storeName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
-        foreach ($tokens as $token) {
-            if (mb_strlen($token) >= 4) {
-                return $token;
-            }
-        }
-
-        return mb_strlen($storeName) > 3 ? mb_substr($storeName, 0, 4) : '';
+        return array_find($tokens, static fn(string $token): bool => mb_strlen($token) >= 4)
+            ?? (mb_strlen($storeName) > 3 ? mb_substr($storeName, 0, 4) : '');
     }
 
     /**

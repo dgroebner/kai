@@ -58,17 +58,12 @@ class RuleMatcher
      */
     public function findMatchingRule(array $transaction, ?array $rules = null): ?array
     {
-        if ($rules === null) {
-            $rules = $this->getAllRules();
-        }
+        $rules ??= $this->getAllRules();
 
-        foreach ($rules as $rule) {
-            if ($this->matchesRule($transaction, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)) {
-                return $rule;
-            }
-        }
-
-        return null;
+        return array_find(
+            $rules,
+            fn(array $rule): bool => $this->matchesRule($transaction, $rule['text_pattern'] ?? null, $rule['payee_pattern'] ?? null)
+        );
     }
 
     /**
@@ -109,17 +104,13 @@ class RuleMatcher
      */
     private function matchesAnyPayeeField(array $transaction, string $payeePattern): bool
     {
-        foreach (self::PAYEE_FIELDS as $field) {
-            $value = trim((string)($transaction[$field] ?? ''));
-            if ($value === '') {
-                continue;
+        return array_any(
+            self::PAYEE_FIELDS,
+            function (string $field) use ($transaction, $payeePattern): bool {
+                $value = trim((string)($transaction[$field] ?? ''));
+                return $value !== '' && $this->evalRegex($payeePattern, $value);
             }
-            if ($this->evalRegex($payeePattern, $value)) {
-                return true;
-            }
-        }
-
-        return false;
+        );
     }
 
     /**
