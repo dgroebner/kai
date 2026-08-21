@@ -303,6 +303,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 - **PHP-Standard:** PSR-4 Autoloading, PSR-12 Coding Style (soweit praktikabel)
 - **Dateilänge:** Klassen mit mehr als ~200 Zeilen überdenken und ggf. aufteilen
 - Keine toten Code-Blöcke, keine auskommentierten Funktionen im Main-Branch
+- **Cleanup-Pflicht bei Refactoring**: Wenn bestehende Dateien umgebaut oder entfernt werden, sind die dazugehörigen, nicht mehr benötigten Klassen, Skripte oder Codeverweise zu entfernen, um Code-Müll zu vermeiden.
 
 ### 8.2 Benennung
 
@@ -340,6 +341,7 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
   - Responsive Breakpoints: Alle Media Queries (`@media (max-width: 768px)` / `< 600px`) werden zentral am Ende von `public/css/style.css` gepflegt und strikt abgekapselt.
 - **Erweiterungsprinzip:** Wenn neue Styles für ein Feature benötigt werden, dürfen diese nicht ad-hoc im Controller abgelegt werden. Sie müssen das zentrale Styleschema in `public/css/style.css` an geeigneter Stelle ergänzen und dokumentieren, sodass sie für zukünftige Entwicklungen im gesamten Projekt zur Verfügung stehen.
 - **Stack-Tabellen und data-labels** verwenden um die Tabellen in mobilen Ansichten übersichtlich darzustellen.
+- **Cleanup-Pflicht bei Refactoring**: Wenn bestehende Features oder PHP-Views umgebaut oder entfernt werden, sind die dazugehörigen, nicht mehr benötigten Klassen aus der public/css/style.css zu entfernen, um Code-Müll zu vermeiden.
 
 ---
 
