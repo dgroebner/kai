@@ -155,6 +155,13 @@ function getWeatherLabel(float $kwh): array
     return ['icon' => '🌧️', 'label' => 'Stark bewölkt'];
 }
 
+function getBatteryColorClass(int $soc): string
+{
+    if ($soc < 20) return 'text-danger';
+    if ($soc <= 50) return 'text-warning';
+    return 'text-success';
+}
+
 // Max watts für Skalierung des Balkendiagramms
 $maxWatts = empty($hourlyForecasts) ? 1 : max(array_column($hourlyForecasts, 'watts'));
 if ($maxWatts < 1) $maxWatts = 1;
@@ -222,8 +229,9 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Batterie (SoC & Power)</div>
-                <div class="kpi-value text-success" data-live="battery_soc">
-                    <?= isset($liveData['battery_soc_pct']) ? (int)$liveData['battery_soc_pct'] : '–' ?>
+                <?php $currentSoc = isset($liveData['battery_soc_pct']) ? (int)$liveData['battery_soc_pct'] : 0; ?>
+                <div class="kpi-value <?= getBatteryColorClass($currentSoc) ?>" data-live="battery_soc">
+                    <?= isset($liveData['battery_soc_pct']) ? $currentSoc : '–' ?>
                     <span class="kpi-unit">%</span>
                 </div>
                 <div class="kpi-note kpi-note-muted" data-live="battery_power">
@@ -419,7 +427,10 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                         </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($telemetryRecords as $row): ?>
+                        <?php foreach ($telemetryRecords as $row):
+                            $soc = (int)($row['battery_soc_pct'] ?? 0);
+                            $socColorClass = getBatteryColorClass($soc);
+                            ?>
                             <tr>
                                 <td data-label="Zeitpunkt"><?= htmlspecialchars($row['last_update'], ENT_QUOTES, 'UTF-8') ?></td>
                                 <td data-label="PV (W)"
@@ -431,7 +442,9 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                                 <td data-label="Netz (W)"
                                     class="text-right"><?= number_format((float)$row['grid_total_w'], 0, ',', '.') ?> W
                                 </td>
-                                <td data-label="SoC (%)" class="text-right"><?= (int)$row['battery_soc_pct'] ?> %</td>
+                                <td data-label="SoC (%)"
+                                    class="text-right <?= $socColorClass ?> amount-bold"><?= $soc ?> %
+                                </td>
                                 <td data-label="Bat (W)"
                                     class="text-right"><?= number_format((float)$row['battery_power_w'], 0, ',', '.') ?>
                                     W

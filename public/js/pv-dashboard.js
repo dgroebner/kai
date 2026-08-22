@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // 2. Automatischer Live-Daten-Reload alle 5 Sekunden
-    const liveContainer = document.querySelector('.section-title'); // oder ein spezifischer Container
+    const liveContainer = document.querySelector('.section-title');
     if (liveContainer) {
         setInterval(updateLiveValues, 5000);
     }
@@ -41,21 +41,38 @@ function updateLiveValues() {
             // Hilfsfunktion zum Formatieren von Zahlen (mit Tausendertrennzeichen)
             const fmt = (num) => Math.round(num).toLocaleString('de-DE');
 
-            // Elemente im Live-KPI-Grid aktualisieren (wir selektieren über die Label-Struktur)
+            // Standard-KPIs aktualisieren
             updateKpiValue('[data-live="pv_power"]', fmt(d.pv_power_w) + ' <span class="kpi-unit">W</span>');
             updateKpiValue('[data-live="house_load"]', fmt(d.house_load_w) + ' <span class="kpi-unit">W</span>');
             updateKpiValue('[data-live="grid_total"]', fmt(d.grid_total_w) + ' <span class="kpi-unit">W</span>');
-            updateKpiValue('[data-live="battery_soc"]', d.battery_soc_pct + ' <span class="kpi-unit">%</span>');
             updateKpiValue('[data-live="battery_power"]', '(' + fmt(d.battery_power_w) + ' W)');
 
-            // Header-Timestamp aktualisieren, falls gewünscht
+            // Batterie-SoC mit dynamischem Farbwechsel aktualisieren
+            const socEl = document.querySelector('[data-live="battery_soc"]');
+            if (socEl) {
+                const soc = parseInt(d.battery_soc_pct, 10);
+
+                // Wert und Einheit setzen
+                socEl.innerHTML = soc + ' <span class="kpi-unit">%</span>';
+
+                // Vorherige Farbklassen entfernen und basierend auf Schwellenwerten neu setzen
+                socEl.classList.remove('text-danger', 'text-warning', 'text-success');
+                if (soc < 20) {
+                    socEl.classList.add('text-danger');
+                } else if (soc <= 50) {
+                    socEl.classList.add('text-warning');
+                } else {
+                    socEl.classList.add('text-success');
+                }
+            }
+
+            // Header-Timestamp aktualisieren, falls vorhanden
             const timeSpan = document.querySelector('.last-update-live');
             if (timeSpan && d.last_update) {
                 timeSpan.textContent = 'Live-Daten: ' + d.last_update;
             }
         })
         .catch(error => {
-            // Stille Fehlerbehandlung bei temporären Netzwerkproblemen
             console.debug('Live-Update fehlgeschlagen:', error);
         });
 }
