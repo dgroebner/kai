@@ -207,40 +207,32 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
         <div class="section-title">Live-Energiefluss</div>
         <div class="energy-flow-card">
             <div class="energy-flow-container">
-                <!-- SVG Linien (ViewBox 650x260) -->
+                <!-- SVG Linien (Exakt Zentrum zu Zentrum der Grid-Spalten/Reihen) -->
                 <svg class="flow-svg" viewBox="0 0 650 260">
-                    <!-- Linie: PV (oben Mitte: 325, 45) zu Haus (Zentrum: 325, 195) -->
-                    <path id="line-pv-house" class="flow-line-animated" d="M 325 80 L 325 145" stroke="#f59e0b"/>
-                    <!-- Linie: Batterie (links: 108, 195) zu Haus (Zentrum: 260, 195) -->
-                    <path id="line-bat-house" class="flow-line-animated" d="M 175 195 L 260 195" stroke="#10b981"/>
-                    <!-- Linie: Netz (rechts: 541, 195) zu Haus (Zentrum: 390, 195) -->
-                    <path id="line-grid-house" class="flow-line-animated" d="M 475 195 L 390 195" stroke="#3b82f6"/>
+                    <path id="line-pv-house" class="flow-line" d="M 325 65 L 325 195" stroke="var(--bg-surface-hover)"/>
+                    <path id="line-bat-house" class="flow-line" d="M 108 195 L 325 195"
+                          stroke="var(--bg-surface-hover)"/>
+                    <path id="line-grid-house" class="flow-line" d="M 542 195 L 325 195"
+                          stroke="var(--bg-surface-hover)"/>
                 </svg>
 
                 <!-- PV Knoten -->
-                <div class="flow-node node-pv">
+                <div class="flow-node node-pv state-gray" id="node-pv">
                     <div class="flow-node-icon">☀️</div>
                     <div class="flow-node-title">Solar (PV)</div>
-                    <div class="flow-node-value text-warning" data-flow="pv_power">
-                        <?= isset($liveData['pv_power_w']) ? number_format($liveData['pv_power_w'], 0, ',', '.') : '0' ?>
-                        W
-                    </div>
+                    <div class="flow-node-value val-gray" data-flow="pv_power">0 W</div>
+                    <div class="flow-node-subtext"></div>
                 </div>
 
                 <!-- Batterie Knoten -->
-                <div class="flow-node node-battery">
+                <div class="flow-node node-battery state-gray" id="node-battery">
                     <div class="flow-node-icon">🔋</div>
-                    <div class="flow-node-title">Batterie (<span
-                                data-live="battery_soc"><?= isset($liveData['battery_soc_pct']) ? (int)$liveData['battery_soc_pct'] : 0 ?></span>%)
-                    </div>
-                    <div class="flow-node-value <?= getBatteryColorClass($liveData['battery_soc_pct'] ?? 0) ?>"
-                         data-flow="battery_power">
-                        <?= isset($liveData['battery_power_w']) ? number_format($liveData['battery_power_w'], 0, ',', '.') : '0' ?>
-                        W
-                    </div>
+                    <div class="flow-node-title">Batterie (<span data-live="battery_soc">0</span>%)</div>
+                    <div class="flow-node-value val-gray" data-flow="battery_power">0 W</div>
+                    <div class="flow-node-subtext" id="bat-subtext"></div>
                 </div>
 
-                <!-- Haus Knoten (Zentrum) -->
+                <!-- Haus Knoten (Zentrum, bleibt konstant blau) -->
                 <div class="flow-node node-house">
                     <div class="flow-node-icon">🏠</div>
                     <div class="flow-node-title">Hauslast</div>
@@ -251,13 +243,11 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                 </div>
 
                 <!-- Netz Knoten -->
-                <div class="flow-node node-grid">
+                <div class="flow-node node-grid state-gray" id="node-grid">
                     <div class="flow-node-icon">⚡</div>
                     <div class="flow-node-title">Öff. Netz</div>
-                    <div class="flow-node-value" data-flow="grid_total">
-                        <?= isset($liveData['grid_total_w']) ? number_format($liveData['grid_total_w'], 0, ',', '.') : '0' ?>
-                        W
-                    </div>
+                    <div class="flow-node-value val-gray" data-flow="grid_total">0 W</div>
+                    <div class="flow-node-subtext" id="grid-subtext"></div>
                 </div>
             </div>
         </div>
