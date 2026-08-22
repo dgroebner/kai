@@ -4,7 +4,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 define('APP_URL', rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/'));
 
 // Verhindert, dass JavaScript auf das Session-Cookie zugreifen kann (Schutz vor XSS)
@@ -37,13 +37,13 @@ session_start();
  * Der technische Fehler landet ausschließlich im internen Log, der Browser
  * erhält eine generische Meldung ohne Stacktrace oder Pfadangaben.
  */
-set_exception_handler(function (\Throwable $e): void {
+set_exception_handler(function (Throwable $e): void {
     try {
         (new Kai\Tools\Shared\Log\Logger())->error('Unbehandelte Ausnahme.', [
             'endpoint' => $_SERVER['SCRIPT_NAME'] ?? 'cli',
-            'error'    => $e->getMessage(),
+            'error' => $e->getMessage(),
         ]);
-    } catch (\Throwable $ignored) {
+    } catch (Throwable $ignored) {
         // Logging darf niemals selbst zu einer Ausgabe führen
     }
 
@@ -65,7 +65,8 @@ set_exception_handler(function (\Throwable $e): void {
     echo 'Interner Fehler. Bitte versuche es sp&auml;ter erneut.';
 });
 
-function getGoogleClient() {
+function getGoogleClient()
+{
     $client = new Google\Client();
     $client->setClientId($_ENV['GOOGLE_CLIENT_ID']);
     $client->setClientSecret($_ENV['GOOGLE_CLIENT_SECRET']);
