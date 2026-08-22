@@ -1,11 +1,14 @@
 <?php
+
 namespace Kai\Tools\Shared\Log;
 
-class Logger {
+class Logger
+{
     private string $logDir;
     private int $retentionDays;
 
-    public function __construct(?int $retentionDays = null) {
+    public function __construct(?int $retentionDays = null)
+    {
         $this->logDir = __DIR__ . '/../../../storage/logs';
         $this->retentionDays = $retentionDays ?? (int)($_ENV['LOG_RETENTION_DAYS'] ?? 14);
 
@@ -13,20 +16,14 @@ class Logger {
             mkdir($this->logDir, 0755, true);
         }
     }
-	
-	public function debug(string $message, array $context = []) {
+
+    public function debug(string $message, array $context = [])
+    {
         $this->writeLog('DEBUG', $message, $context);
     }
 
-    public function info(string $message, array $context = []) {
-        $this->writeLog('INFO', $message, $context);
-    }
-
-    public function error(string $message, array $context = []) {
-        $this->writeLog('ERROR', $message, $context);
-    }
-
-    private function writeLog(string $level, string $message, array $context = []) {
+    private function writeLog(string $level, string $message, array $context = [])
+    {
         $date = date('Y-m-d');
         $file = $this->logDir . "/app-{$date}.log";
 
@@ -53,10 +50,11 @@ class Logger {
         }
     }
 
-    private function cleanup(): void {
+    private function cleanup(): void
+    {
         $files = glob($this->logDir . '/app-*.log');
         $now = time();
-        
+
         foreach ($files as $file) {
             if (is_file($file)) {
                 // filemtime gibt den Zeitstempel der letzten Änderung zurück
@@ -65,5 +63,20 @@ class Logger {
                 }
             }
         }
+    }
+
+    public function info(string $message, array $context = [])
+    {
+        $this->writeLog('INFO', $message, $context);
+    }
+
+    public function warn(string $message, array $context = [])
+    {
+        $this->writeLog('WARN', $message, $context);
+    }
+
+    public function error(string $message, array $context = [])
+    {
+        $this->writeLog('ERROR', $message, $context);
     }
 }
