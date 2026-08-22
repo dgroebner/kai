@@ -2138,14 +2138,16 @@ tr.is-today-row {
 .battery-icon {
     display: inline-block;
     vertical-align: middle;
+    /* Übernimmt automatisch die Textfarbe des Elements oder der Status-Klassen */
     color: inherit;
 }
 
 .battery-level-fill {
     transform-origin: bottom;
-    /* Skaliert die Höhe des Füllstands basierend auf der CSS-Variablen --battery-fill */
     transform: scaleY(var(--battery-fill, 0));
-    transition: transform 0.4s ease-in-out;
+    transition: transform 0.4s ease-in-out, fill 0.3s ease;
+    /* Füllstand nutzt die aktuelle Textfarbe */
+    fill: currentColor;
 }
 
 .node-house {

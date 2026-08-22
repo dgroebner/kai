@@ -44,14 +44,24 @@ function updateLiveValues() {
                 const soc = parseInt(d.battery_soc_pct, 10);
                 socEl.textContent = soc;
                 socEl.className = '';
-                if (soc < 20) socEl.classList.add('soc-red');
-                else if (soc <= 50) socEl.classList.add('soc-yellow');
-                else socEl.classList.add('soc-green');
 
-                // SVG-Batterie Füllstand aktualisieren
+                let batteryColor = 'var(--pv-green)'; // Standard / Grün
+                if (soc < 20) {
+                    socEl.classList.add('soc-red');
+                    batteryColor = 'var(--color-red, #ef4444)';
+                } else if (soc <= 50) {
+                    socEl.classList.add('soc-yellow');
+                    batteryColor = 'var(--color-yellow, #f59e0b)';
+                } else {
+                    socEl.classList.add('soc-green');
+                    batteryColor = 'var(--pv-green, #10b981)';
+                }
+
+                // SVG-Batterie Füllstand und Farbe aktualisieren
                 const batterySvg = document.querySelector('.battery-icon');
                 if (batterySvg) {
                     batterySvg.style.setProperty('--battery-fill', (soc / 100));
+                    batterySvg.style.color = batteryColor;
                 }
             }
 
