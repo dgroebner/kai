@@ -33,7 +33,6 @@ try {
     $columns = array_keys($d);
     $values = array_values($d);
 
-    $logger->info("PV-Telemetrie: Import vom typ $type gestartet.");
     if ($type === 'live') {
         $service->upsertLiveData($columns, $values);
     } elseif ($type === 'telemetry') {
