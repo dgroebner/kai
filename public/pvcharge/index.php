@@ -278,14 +278,14 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
         <!-- Zusätzliche Live-KPIs unter dem Energiefluss -->
         <div class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-label">Ertrag Heute (Live)</div>
+                <div class="kpi-label">Ertrag Heute</div>
                 <div class="kpi-value text-warning">
                     <?= isset($liveData['yield_daily_kwh']) ? number_format((float)$liveData['yield_daily_kwh'], 2, ',', '.') : '0,00' ?>
                     <span class="kpi-unit">kWh</span>
                 </div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">Peak-Leistung (Heute Telemetrie)</div>
+                <div class="kpi-label">Peak-Leistung Heute</div>
                 <div class="kpi-value">
                     <?= number_format($todayPeakW, 0, ',', '.') ?>
                     <span class="kpi-unit">W</span>
