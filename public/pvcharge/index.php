@@ -148,7 +148,7 @@ if ($page > $totalPages) {
 $telemetryStmt = $db->prepare("
     SELECT * FROM pv_telemetry 
     WHERE $whereClause 
-    ORDER BY last_update ASC 
+    ORDER BY last_update DESC 
     LIMIT :limit OFFSET :offset
 ");
 $telemetryStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
