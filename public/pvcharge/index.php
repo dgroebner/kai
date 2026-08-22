@@ -246,7 +246,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                 <div class="flow-node node-grid state-gray" id="node-grid">
                     <div class="flow-node-icon">⚡</div>
                     <div class="flow-node-title">Öff. Netz</div>
-                    <div class="flow-node-value val-gray" data-flow="grid_total">0 W</div>
+                    <div class="flow-node-value val-gray" data-flow="grid_total_w">0 W</div>
                     <div class="flow-node-subtext" id="grid-subtext"></div>
                 </div>
             </div>

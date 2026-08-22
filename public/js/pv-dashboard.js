@@ -97,7 +97,7 @@ function updateLiveValues() {
                 gridRev = true;
             }
 
-            updateFlowNode('node-grid', '[data-flow="grid_total"]',
+            updateFlowNode('node-grid', '[data-flow="grid_total_w"]',
                 fmt(Math.abs(gridW)) + ' W',
                 gridState, 'line-grid-house', gridLineColor, gridRev, gridW !== 0, 'grid-subtext', gridSubtext
             );
