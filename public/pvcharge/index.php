@@ -203,23 +203,21 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
     <main>
 
-        <!-- Sektion 1: Live-Daten der PV-Anlage -->
-        <div class="section-title">Live-Systemstatus</div>
         <!-- Sektion 1: Live-Energiefluss-Diagramm -->
         <div class="section-title">Live-Energiefluss</div>
         <div class="energy-flow-card">
             <div class="energy-flow-container">
-                <!-- SVG Linien zwischen den Knoten -->
-                <svg class="flow-svg" viewBox="0 0 700 320">
-                    <!-- Linie: PV (350, 60) zu Haus (350, 160) -->
-                    <path id="line-pv-house" class="flow-line-animated" d="M 350 75 L 350 135" stroke="#f59e0b"/>
-                    <!-- Linie: Batterie (120, 160) zu Haus (350, 160) -->
-                    <path id="line-bat-house" class="flow-line-animated" d="M 115 160 L 310 160" stroke="#10b981"/>
-                    <!-- Linie: Netz (580, 160) zu Haus (350, 160) -->
-                    <path id="line-grid-house" class="flow-line-animated" d="M 585 160 L 390 160" stroke="#3b82f6"/>
+                <!-- SVG Linien (ViewBox 650x260) -->
+                <svg class="flow-svg" viewBox="0 0 650 260">
+                    <!-- Linie: PV (oben Mitte: 325, 45) zu Haus (Zentrum: 325, 195) -->
+                    <path id="line-pv-house" class="flow-line-animated" d="M 325 80 L 325 145" stroke="#f59e0b"/>
+                    <!-- Linie: Batterie (links: 108, 195) zu Haus (Zentrum: 260, 195) -->
+                    <path id="line-bat-house" class="flow-line-animated" d="M 175 195 L 260 195" stroke="#10b981"/>
+                    <!-- Linie: Netz (rechts: 541, 195) zu Haus (Zentrum: 390, 195) -->
+                    <path id="line-grid-house" class="flow-line-animated" d="M 475 195 L 390 195" stroke="#3b82f6"/>
                 </svg>
 
-                <!-- PV Knoten (Oben) -->
+                <!-- PV Knoten -->
                 <div class="flow-node node-pv">
                     <div class="flow-node-icon">☀️</div>
                     <div class="flow-node-title">Solar (PV)</div>
@@ -229,7 +227,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                     </div>
                 </div>
 
-                <!-- Batterie Knoten (Links) -->
+                <!-- Batterie Knoten -->
                 <div class="flow-node node-battery">
                     <div class="flow-node-icon">🔋</div>
                     <div class="flow-node-title">Batterie (<span
@@ -252,7 +250,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                     </div>
                 </div>
 
-                <!-- Netz Knoten (Rechts) -->
+                <!-- Netz Knoten -->
                 <div class="flow-node node-grid">
                     <div class="flow-node-icon">⚡</div>
                     <div class="flow-node-title">Öff. Netz</div>

@@ -2027,71 +2027,73 @@ tr.is-today-row {
 .energy-flow-container {
     position: relative;
     width: 100%;
-    max-width: 700px;
-    height: 320px;
+    max-width: 650px;
+    height: 260px;
     margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    justify-items: center;
 }
 
 .flow-node {
-    position: absolute;
     background: var(--bg-main);
     border: 2px solid var(--bg-surface-hover);
     border-radius: 12px;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.8rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: 110px;
+    width: 120px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 2;
     transition: border-color 0.3s ease;
 }
 
 .flow-node-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.2rem;
+    font-size: 1.3rem;
+    margin-bottom: 0.1rem;
 }
 
 .flow-node-title {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     color: var(--text-muted);
     font-weight: 600;
+    text-align: center;
 }
 
 .flow-node-value {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-main);
+    text-align: center;
 }
 
-/* Positionen der Knoten im SVG-Raum (700x320) */
+/* Grid-Plazierung der Knoten */
 .node-pv {
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    grid-column: 2;
+    grid-row: 1;
     border-color: var(--pv-yellow);
 }
 
 .node-battery {
-    top: 50%;
-    left: 10px;
-    transform: translateY(-50%);
+    grid-column: 1;
+    grid-row: 2;
 }
 
 .node-house {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    grid-column: 2;
+    grid-row: 2;
     border-color: var(--accent);
     background: var(--bg-surface-hover);
 }
 
 .node-grid {
-    top: 50%;
-    right: 10px;
-    transform: translateY(-50%);
+    grid-column: 3;
+    grid-row: 2;
 }
 
 /* SVG Verbindungslinien */
@@ -2112,7 +2114,6 @@ tr.is-today-row {
     opacity: 0.6;
 }
 
-/* Animierter Stromfluss-Effekt (Gold-Standard) */
 .flow-line-animated {
     fill: none;
     stroke-width: 4;
@@ -2127,7 +2128,6 @@ tr.is-today-row {
     }
 }
 
-/* Umgekehrte Animationsrichtung bei Energiefluss-Umkehr */
 .flow-line-animated-rev {
     fill: none;
     stroke-width: 4;
@@ -2144,16 +2144,14 @@ tr.is-today-row {
 
 @media (max-width: 600px) {
     .energy-flow-container {
-        height: 380px;
+        height: 320px;
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, auto);
+        gap: 1rem;
     }
 
     .flow-node {
-        min-width: 90px;
-        padding: 0.5rem;
-        font-size: 0.8rem;
-    }
-
-    .flow-node-icon {
-        font-size: 1.2rem;
+        width: 100%;
+        max-width: 180px;
     }
 }
