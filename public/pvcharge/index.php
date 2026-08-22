@@ -530,130 +530,18 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             <?php if (!empty($chartRows)): ?>
                 <div class="card u-mb-lg" style="padding: 1rem 1.5rem;">
                     <div style="position: relative; height:320px; width:100%;">
-                        <canvas id="telemetryChart"></canvas>
+                        <canvas id="telemetryChart"
+                                data-labels="<?= htmlspecialchars(json_encode($chartLabels), ENT_QUOTES, 'UTF-8') ?>"
+                                data-pv="<?= htmlspecialchars(json_encode($chartPv), ENT_QUOTES, 'UTF-8') ?>"
+                                data-house="<?= htmlspecialchars(json_encode($chartHouse), ENT_QUOTES, 'UTF-8') ?>"
+                                data-grid-import="<?= htmlspecialchars(json_encode($chartGridImport), ENT_QUOTES, 'UTF-8') ?>"
+                                data-grid-export="<?= htmlspecialchars(json_encode($chartGridExport), ENT_QUOTES, 'UTF-8') ?>"
+                                data-bat-charge="<?= htmlspecialchars(json_encode($chartBatCharge), ENT_QUOTES, 'UTF-8') ?>"
+                                data-bat-discharge="<?= htmlspecialchars(json_encode($chartBatDischarge), ENT_QUOTES, 'UTF-8') ?>"
+                                data-soc="<?= htmlspecialchars(json_encode($chartSoc), ENT_QUOTES, 'UTF-8') ?>">
+                        </canvas>
                     </div>
                 </div>
-
-                <script>
-                    document.addEventListener("DOMContentLoaded", function () {
-                        const ctx = document.getElementById('telemetryChart').getContext('2d');
-                        const telemetryChart = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: <?= json_encode($chartLabels) ?>,
-                                datasets: [
-                                    {
-                                        label: 'PV (W)',
-                                        data: <?= json_encode($chartPv) ?>,
-                                        borderColor: '#f59e0b',
-                                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        yAxisID: 'y'
-                                    },
-                                    {
-                                        label: 'Haus (W)',
-                                        data: <?= json_encode($chartHouse) ?>,
-                                        borderColor: '#3b82f6',
-                                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        yAxisID: 'y'
-                                    },
-                                    {
-                                        label: 'Netzbezug (W)',
-                                        data: <?= json_encode($chartGridImport) ?>,
-                                        borderColor: '#ef4444',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        yAxisID: 'y'
-                                    },
-                                    {
-                                        label: 'Netzeinspeisung (W)',
-                                        data: <?= json_encode($chartGridExport) ?>,
-                                        borderColor: '#10b981',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        yAxisID: 'y'
-                                    },
-                                    {
-                                        label: 'Batterieladung (W)',
-                                        data: <?= json_encode($chartBatCharge) ?>,
-                                        borderColor: '#06b6d4',
-                                        borderWidth: 1.5,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        hidden: true,
-                                        yAxisID: 'y'
-                                    },
-                                    {
-                                        label: 'Batterieentladung (W)',
-                                        data: <?= json_encode($chartBatDischarge) ?>,
-                                        borderColor: '#8b5cf6',
-                                        borderWidth: 1.5,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        hidden: true,
-                                        yAxisID: 'y'
-                                    },
-                                    {
-                                        label: 'SoC (%)',
-                                        data: <?= json_encode($chartSoc) ?>,
-                                        borderColor: '#ec4899',
-                                        borderWidth: 2,
-                                        pointRadius: 0,
-                                        tension: 0.2,
-                                        yAxisID: 'y1'
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                interaction: {
-                                    mode: 'index',
-                                    intersect: false,
-                                },
-                                plugins: {
-                                    legend: {
-                                        labels: {
-                                            color: '#94a3b8',
-                                            font: {size: 11}
-                                        }
-                                    }
-                                },
-                                scales: {
-                                    x: {
-                                        ticks: {color: '#94a3b8', maxTicksLimit: 8},
-                                        grid: {color: 'rgba(255, 255, 255, 0.05)'}
-                                    },
-                                    y: {
-                                        type: 'linear',
-                                        display: true,
-                                        position: 'left',
-                                        title: {display: true, text: 'Leistung (W)', color: '#94a3b8'},
-                                        ticks: {color: '#94a3b8'},
-                                        grid: {color: 'rgba(255, 255, 255, 0.05)'}
-                                    },
-                                    y1: {
-                                        type: 'linear',
-                                        display: true,
-                                        position: 'right',
-                                        min: 0,
-                                        max: 100,
-                                        title: {display: true, text: 'Batterie SoC (%)', color: '#94a3b8'},
-                                        ticks: {color: '#94a3b8'},
-                                        grid: {drawOnChartArea: false}
-                                    }
-                                }
-                            }
-                        });
-                    });
-                </script>
             <?php endif; ?>
 
             <?php if (!empty($telemetryRecords)): ?>

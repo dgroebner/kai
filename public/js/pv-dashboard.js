@@ -146,3 +146,139 @@ function updateFlowNode(nodeId, valSelector, valText, stateName, lineId, lineCol
         }
     }
 }
+
+// 3. Initialisierung des Telemetrie-Charts via data-Attributes
+document.addEventListener("DOMContentLoaded", function () {
+    const canvas = document.getElementById('telemetryChart');
+    if (!canvas) return;
+
+    try {
+        const labels = JSON.parse(canvas.dataset.labels || '[]');
+        const pvData = JSON.parse(canvas.dataset.pv || '[]');
+        const houseData = JSON.parse(canvas.dataset.house || '[]');
+        const gridImport = JSON.parse(canvas.dataset.gridImport || '[]');
+        const gridExport = JSON.parse(canvas.dataset.gridExport || '[]');
+        const batCharge = JSON.parse(canvas.dataset.batCharge || '[]');
+        const batDischarge = JSON.parse(canvas.dataset.batDischarge || '[]');
+        const socData = JSON.parse(canvas.dataset.soc || '[]');
+
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'PV (W)',
+                        data: pvData,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Haus (W)',
+                        data: houseData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Netzbezug (W)',
+                        data: gridImport,
+                        borderColor: '#ef4444',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Netzeinspeisung (W)',
+                        data: gridExport,
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Batterieladung (W)',
+                        data: batCharge,
+                        borderColor: '#06b6d4',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        hidden: true,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Batterieentladung (W)',
+                        data: batDischarge,
+                        borderColor: '#8b5cf6',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        hidden: true,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'SoC (%)',
+                        data: socData,
+                        borderColor: '#ec4899',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#94a3b8',
+                            font: {size: 11}
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {color: '#94a3b8', maxTicksLimit: 8},
+                        grid: {color: 'rgba(255, 255, 255, 0.05)'}
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {display: true, text: 'Leistung (W)', color: '#94a3b8'},
+                        ticks: {color: '#94a3b8'},
+                        grid: {color: 'rgba(255, 255, 255, 0.05)'}
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        min: 0,
+                        max: 100,
+                        title: {display: true, text: 'Batterie SoC (%)', color: '#94a3b8'},
+                        ticks: {color: '#94a3b8'},
+                        grid: {drawOnChartArea: false}
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Fehler beim Initialisieren des Telemetrie-Charts:', e);
+    }
+});
