@@ -205,38 +205,61 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
         <!-- Sektion 1: Live-Daten der PV-Anlage -->
         <div class="section-title">Live-Systemstatus</div>
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Aktuelle PV-Leistung</div>
-                <div class="kpi-value text-warning" data-live="pv_power">
-                    <?= isset($liveData['pv_power_w']) ? number_format($liveData['pv_power_w'], 0, ',', '.') : '–' ?>
-                    <span class="kpi-unit">W</span>
+        <!-- Sektion 1: Live-Energiefluss-Diagramm -->
+        <div class="section-title">Live-Energiefluss</div>
+        <div class="energy-flow-card">
+            <div class="energy-flow-container">
+                <!-- SVG Linien zwischen den Knoten -->
+                <svg class="flow-svg" viewBox="0 0 700 320">
+                    <!-- Linie: PV (350, 60) zu Haus (350, 160) -->
+                    <path id="line-pv-house" class="flow-line-animated" d="M 350 75 L 350 135" stroke="#f59e0b"/>
+                    <!-- Linie: Batterie (120, 160) zu Haus (350, 160) -->
+                    <path id="line-bat-house" class="flow-line-animated" d="M 115 160 L 310 160" stroke="#10b981"/>
+                    <!-- Linie: Netz (580, 160) zu Haus (350, 160) -->
+                    <path id="line-grid-house" class="flow-line-animated" d="M 585 160 L 390 160" stroke="#3b82f6"/>
+                </svg>
+
+                <!-- PV Knoten (Oben) -->
+                <div class="flow-node node-pv">
+                    <div class="flow-node-icon">☀️</div>
+                    <div class="flow-node-title">Solar (PV)</div>
+                    <div class="flow-node-value text-warning" data-flow="pv_power">
+                        <?= isset($liveData['pv_power_w']) ? number_format($liveData['pv_power_w'], 0, ',', '.') : '0' ?>
+                        W
+                    </div>
                 </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Hauslast</div>
-                <div class="kpi-value text-info" data-live="house_load">
-                    <?= isset($liveData['house_load_w']) ? number_format($liveData['house_load_w'], 0, ',', '.') : '–' ?>
-                    <span class="kpi-unit">W</span>
+
+                <!-- Batterie Knoten (Links) -->
+                <div class="flow-node node-battery">
+                    <div class="flow-node-icon">🔋</div>
+                    <div class="flow-node-title">Batterie (<span
+                                data-live="battery_soc"><?= isset($liveData['battery_soc_pct']) ? (int)$liveData['battery_soc_pct'] : 0 ?></span>%)
+                    </div>
+                    <div class="flow-node-value <?= getBatteryColorClass($liveData['battery_soc_pct'] ?? 0) ?>"
+                         data-flow="battery_power">
+                        <?= isset($liveData['battery_power_w']) ? number_format($liveData['battery_power_w'], 0, ',', '.') : '0' ?>
+                        W
+                    </div>
                 </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Netzstatus (Total)</div>
-                <div class="kpi-value" data-live="grid_total">
-                    <?= isset($liveData['grid_total_w']) ? number_format($liveData['grid_total_w'], 0, ',', '.') : '–' ?>
-                    <span class="kpi-unit">W</span>
+
+                <!-- Haus Knoten (Zentrum) -->
+                <div class="flow-node node-house">
+                    <div class="flow-node-icon">🏠</div>
+                    <div class="flow-node-title">Hauslast</div>
+                    <div class="flow-node-value text-info" data-flow="house_load">
+                        <?= isset($liveData['house_load_w']) ? number_format($liveData['house_load_w'], 0, ',', '.') : '0' ?>
+                        W
+                    </div>
                 </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Batterie (SoC & Power)</div>
-                <?php $currentSoc = isset($liveData['battery_soc_pct']) ? (int)$liveData['battery_soc_pct'] : 0; ?>
-                <div class="kpi-value <?= getBatteryColorClass($currentSoc) ?>" data-live="battery_soc">
-                    <?= isset($liveData['battery_soc_pct']) ? $currentSoc : '–' ?>
-                    <span class="kpi-unit">%</span>
-                </div>
-                <div class="kpi-note kpi-note-muted" data-live="battery_power">
-                    (<?= isset($liveData['battery_power_w']) ? number_format($liveData['battery_power_w'], 0, ',', '.') : '0' ?>
-                    W)
+
+                <!-- Netz Knoten (Rechts) -->
+                <div class="flow-node node-grid">
+                    <div class="flow-node-icon">⚡</div>
+                    <div class="flow-node-title">Öff. Netz</div>
+                    <div class="flow-node-value" data-flow="grid_total">
+                        <?= isset($liveData['grid_total_w']) ? number_format($liveData['grid_total_w'], 0, ',', '.') : '0' ?>
+                        W
+                    </div>
                 </div>
             </div>
         </div>

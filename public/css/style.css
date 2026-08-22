@@ -6,13 +6,13 @@
     --bg-main: #0f172a;
     --bg-surface: #1e293b;
     --bg-surface-hover: #334155;
-    
+
     /* Textfarben */
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    
+
     /* Akzent & Highlights */
-    --accent: #3b82f6;        
+    --accent: #3b82f6;
     --accent-hover: #2563eb;
     --glow-color: rgba(59, 130, 246, 0.5);
 
@@ -58,29 +58,74 @@ body {
     padding: 2rem;
 }
 
-h1, h2, h3 { font-weight: 600; margin-bottom: 0.5rem; }
-h1 { font-size: 2rem; }
-h2 { font-size: 1.5rem; margin-top: 1rem; }
-h3 { font-size: 1.25rem; }
-p { margin-bottom: 1rem; }
+h1, h2, h3 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin-top: 1rem;
+}
+
+h3 {
+    font-size: 1.25rem;
+}
+
+p {
+    margin-bottom: 1rem;
+}
 
 a {
     color: var(--accent);
     text-decoration: none;
     transition: color 0.2s;
 }
-a:hover { color: var(--accent-hover); }
+
+a:hover {
+    color: var(--accent-hover);
+}
 
 /* Utility Classes */
-.hidden { display: none !important; }
-.text-left { text-align: left; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-success { color: var(--color-green) !important; }
-.text-danger { color: var(--color-red) !important; }
-.text-warning { color: var(--color-orange) !important; }
-.text-info { color: var(--color-blue) !important; }
-.amount-bold { font-weight: 600; }
+.hidden {
+    display: none !important;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-success {
+    color: var(--color-green) !important;
+}
+
+.text-danger {
+    color: var(--color-red) !important;
+}
+
+.text-warning {
+    color: var(--color-orange) !important;
+}
+
+.text-info {
+    color: var(--color-blue) !important;
+}
+
+.amount-bold {
+    font-weight: 600;
+}
 
 /* ==========================================================================
    3. LAYOUT & CONTAINER
@@ -101,8 +146,19 @@ a:hover { color: var(--accent-hover); }
     padding-bottom: 1rem;
 }
 
-.page-header h1 { margin-bottom: 0; border: none; padding: 0; }
-.subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: -0.5rem; margin-bottom: 2rem; }
+.page-header h1 {
+    margin-bottom: 0;
+    border: none;
+    padding: 0;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: -0.5rem;
+    margin-bottom: 2rem;
+}
+
 .section-title {
     font-size: 1rem;
     font-weight: 600;
@@ -131,12 +187,18 @@ a:hover { color: var(--accent-hover); }
     border: 1px solid transparent;
     transition: all 0.2s ease-in-out;
 }
+
 .card:hover {
     border-color: var(--accent);
     transform: translateY(-2px);
     box-shadow: 0 0 15px var(--glow-color);
 }
-.card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+.card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
 
 /* KPI Grid (PVCharge, Car) */
 .kpi-grid {
@@ -165,10 +227,12 @@ a:hover { color: var(--accent-hover); }
     padding: 1.25rem 1.5rem;
     transition: all 0.2s;
 }
+
 .kpi-card:hover {
     border-color: var(--accent);
     box-shadow: 0 0 14px var(--glow-color);
 }
+
 .kpi-label {
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -176,6 +240,7 @@ a:hover { color: var(--accent-hover); }
     color: var(--text-muted);
     margin-bottom: 0.4rem;
 }
+
 .kpi-value {
     font-size: 2rem;
     font-weight: 700;
@@ -200,8 +265,17 @@ a:hover { color: var(--accent-hover); }
     flex-direction: column;
     gap: 0.25rem;
 }
-.tile-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-.tile-value { font-size: 1.1rem; font-weight: 700; }
+
+.tile-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.tile-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
 
 /* ==========================================================================
    5. BUTTONS, BADGES & INTERAKTIONS-ELEMENTE
@@ -219,28 +293,44 @@ a:hover { color: var(--accent-hover); }
     cursor: pointer;
     text-align: center;
 }
-.btn:hover { background-color: var(--accent-hover); box-shadow: 0 0 12px var(--glow-color); color: #fff; }
+
+.btn:hover {
+    background-color: var(--accent-hover);
+    box-shadow: 0 0 12px var(--glow-color);
+    color: #fff;
+}
 
 .btn-outline {
     background-color: transparent;
     border: 1px solid var(--bg-surface-hover);
     color: var(--text-muted);
 }
-.btn-outline:hover { background-color: var(--bg-surface-hover); color: var(--text-main); }
+
+.btn-outline:hover {
+    background-color: var(--bg-surface-hover);
+    color: var(--text-main);
+}
 
 /* Blaue Aktions-Variante (z. B. Sync-Buttons) */
 .btn-blue {
     background-color: var(--color-blue);
     color: #fff;
 }
-.btn-blue:hover { background-color: var(--color-blue); filter: brightness(1.15); }
+
+.btn-blue:hover {
+    background-color: var(--color-blue);
+    filter: brightness(1.15);
+}
 
 .btn-link {
     color: var(--accent);
     cursor: pointer;
     font-weight: 500;
 }
-.btn-link:hover { text-decoration: underline; }
+
+.btn-link:hover {
+    text-decoration: underline;
+}
 
 .btn.disabled, .btn:disabled, span.btn-outline.disabled {
     opacity: 0.4;
@@ -266,12 +356,30 @@ a:hover { color: var(--accent-hover); }
     border-color: currentColor;
     transition: transform 0.15s ease;
 }
-.clickable-badge:hover { transform: translateY(-1px); }
 
-.badge-primary { background-color: var(--color-blue-dim); color: var(--color-blue); }
-.badge-success { background-color: var(--color-green-dim); color: var(--color-green); }
-.badge-warning { background-color: var(--color-orange-dim); color: var(--color-orange); }
-.badge-danger { background-color: var(--color-red-dim); color: var(--color-red); }
+.clickable-badge:hover {
+    transform: translateY(-1px);
+}
+
+.badge-primary {
+    background-color: var(--color-blue-dim);
+    color: var(--color-blue);
+}
+
+.badge-success {
+    background-color: var(--color-green-dim);
+    color: var(--color-green);
+}
+
+.badge-warning {
+    background-color: var(--color-orange-dim);
+    color: var(--color-orange);
+}
+
+.badge-danger {
+    background-color: var(--color-red-dim);
+    color: var(--color-red);
+}
 
 .refund-badge {
     background-color: rgba(16, 185, 129, 0.15);
@@ -313,7 +421,9 @@ th {
     color: var(--text-muted);
 }
 
-tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+tbody tr:hover td {
+    background-color: rgba(255, 255, 255, 0.02);
+}
 
 .pagination {
     display: flex;
@@ -325,7 +435,11 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     border-top: 1px solid var(--bg-surface-hover);
     flex-wrap: wrap;
 }
-.page-info { color: var(--text-muted); font-size: 0.9em; }
+
+.page-info {
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
 
 /* ==========================================================================
    7. ANALYSE- & CHART-KOMPONENTEN
@@ -362,8 +476,14 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.legend-row { cursor: pointer; transition: background-color 0.2s ease; }
-.legend-row:hover, .legend-row.active { background-color: rgba(255, 255, 255, 0.05); }
+.legend-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.legend-row:hover, .legend-row.active {
+    background-color: rgba(255, 255, 255, 0.05);
+}
 
 .legend-dot, .category-color-dot {
     width: 10px;
@@ -372,8 +492,13 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     display: inline-block;
 }
 
-.legend-percent, .legend-value { text-align: right; }
-.legend-percent { font-weight: 600; }
+.legend-percent, .legend-value {
+    text-align: right;
+}
+
+.legend-percent {
+    font-weight: 600;
+}
 
 .chart-container {
     position: relative;
@@ -392,8 +517,16 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     display: flex;
     flex-direction: column;
 }
-.chart-center-text .label { font-size: 0.75rem; color: var(--text-muted); }
-.chart-center-text .value { font-size: 0.95rem; font-weight: 700; }
+
+.chart-center-text .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.chart-center-text .value {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
 
 /* ==========================================================================
    8. FORMULARE & INLINE-EDITING
@@ -436,11 +569,20 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
     max-height: 150px;
     overflow-y: auto;
     z-index: 100;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     display: none;
 }
-.autocomplete-list li { padding: 8px 12px; font-size: 0.85em; cursor: pointer; }
-.autocomplete-list li:hover { background: var(--bg-surface-hover); color: var(--accent); }
+
+.autocomplete-list li {
+    padding: 8px 12px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.autocomplete-list li:hover {
+    background: var(--bg-surface-hover);
+    color: var(--accent);
+}
 
 /* ==========================================================================
    9. MEDIA QUERIES (RESPONSIVE DESIGN)
@@ -455,7 +597,9 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
         gap: 1.5rem !important;
     }
 
-    .category-legend { width: 100% !important; }
+    .category-legend {
+        width: 100% !important;
+    }
 
     .chart-container {
         position: relative !important;
@@ -472,24 +616,45 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
 
 /* Smartphones (< 600px) */
 @media (max-width: 600px) {
-    body { padding: 1rem 0.5rem; }
-    
+    body {
+        padding: 1rem 0.5rem;
+    }
+
     .page-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.75rem;
     }
-    .page-header .btn { width: 100%; text-align: center; }
+
+    .page-header .btn {
+        width: 100%;
+        text-align: center;
+    }
 
     .kpi-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
     }
-    .kpi-card { padding: 0.75rem; }
-    .kpi-value { font-size: 1.2rem !important; }
 
-    .period-switcher { display: flex; width: 100%; margin-bottom: 1rem; }
-    .period-switcher .btn { text-align: center; padding: 0.5rem 0.25rem; font-size: 0.8rem; }
+    .kpi-card {
+        padding: 0.75rem;
+    }
+
+    .kpi-value {
+        font-size: 1.2rem !important;
+    }
+
+    .period-switcher {
+        display: flex;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .period-switcher .btn {
+        text-align: center;
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
 
     .period-navigation {
         flex-direction: column;
@@ -498,9 +663,20 @@ tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
         text-align: center;
     }
 
-    .pagination { gap: 8px; }
-    .pagination .btn { flex: 1 1 40%; text-align: center; }
-    .page-info { width: 100%; text-align: center; order: -1; }
+    .pagination {
+        gap: 8px;
+    }
+
+    .pagination .btn {
+        flex: 1 1 40%;
+        text-align: center;
+    }
+
+    .page-info {
+        width: 100%;
+        text-align: center;
+        order: -1;
+    }
 }
 
 /* ==========================================================================
@@ -625,12 +801,12 @@ tr.is-today-row {
     .category-table-container {
         width: 100%;
     }
-	
-	/* Tabellen-Struktur auflösen */
-    .stack-table, 
-    .stack-table thead, 
-    .stack-table tbody, 
-    .stack-table tr, 
+
+    /* Tabellen-Struktur auflösen */
+    .stack-table,
+    .stack-table thead,
+    .stack-table tbody,
+    .stack-table tr,
     .stack-table td {
         display: block;
         width: 100%;
@@ -680,12 +856,12 @@ tr.is-today-row {
         width: 100% !important;
         max-width: 200px;
     }
-	
-	.stack-table tbody tr.is-today-row {
+
+    .stack-table tbody tr.is-today-row {
         border: 1px solid var(--pv-yellow) !important;
         box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
     }
-	
+
 }
 
 /* ==========================================================================
@@ -853,12 +1029,29 @@ tr.is-today-row {
    ========================================================================== */
 
 /* Abstands-Utilities */
-.u-mt-sm { margin-top: 0.4rem; }
-.u-mt-md { margin-top: 1rem; }
-.u-mt-lg { margin-top: 1.5rem; }
-.u-mb-lg { margin-bottom: 1.5rem; }
-.u-nowrap { white-space: nowrap; }
-.u-muted { color: var(--text-muted); }
+.u-mt-sm {
+    margin-top: 0.4rem;
+}
+
+.u-mt-md {
+    margin-top: 1rem;
+}
+
+.u-mt-lg {
+    margin-top: 1.5rem;
+}
+
+.u-mb-lg {
+    margin-bottom: 1.5rem;
+}
+
+.u-nowrap {
+    white-space: nowrap;
+}
+
+.u-muted {
+    color: var(--text-muted);
+}
 
 /* Header-Bereich rechts: Meta-Information + Action-Button */
 .page-header-actions {
@@ -897,8 +1090,18 @@ tr.is-today-row {
     text-align: center;
     color: var(--text-muted);
 }
-.no-data small { display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; }
-.empty-state-text { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0; }
+
+.no-data small {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.empty-state-text {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 0;
+}
 
 /* Beschriftung über einem Diagramm oder einer Teil-Tabelle */
 .chart-label,
@@ -923,7 +1126,10 @@ tr.is-today-row {
     font-size: 0.7rem;
     color: var(--text-muted);
 }
-.chart-axis-labels.chart-axis-labels-lg { font-size: 0.75rem; }
+
+.chart-axis-labels.chart-axis-labels-lg {
+    font-size: 0.75rem;
+}
 
 /* Status-Pillen (Ladezustand, Schloss) — Farbe kommt dynamisch über --pill-color */
 .status-pill {
@@ -935,12 +1141,24 @@ tr.is-today-row {
     background: color-mix(in srgb, var(--pill-color, var(--accent)) 15%, transparent);
     color: var(--pill-color, var(--accent));
 }
-.status-pill-locked { --pill-color: var(--color-green); }
-.status-pill-unlocked { --pill-color: var(--color-red); }
+
+.status-pill-locked {
+    --pill-color: var(--color-green);
+}
+
+.status-pill-unlocked {
+    --pill-color: var(--color-red);
+}
 
 /* Farbige KPI-Werte / Zusatzzeilen — Farbe dynamisch über --value-color */
-.kpi-value-colored { color: var(--value-color, var(--text-main)); }
-.kpi-value-sm { font-size: 1.4rem; }
+.kpi-value-colored {
+    color: var(--value-color, var(--text-main));
+}
+
+.kpi-value-sm {
+    font-size: 1.4rem;
+}
+
 .kpi-note {
     font-size: 0.75rem;
     margin-top: 0.4rem;
@@ -948,10 +1166,17 @@ tr.is-today-row {
     white-space: nowrap;
     color: var(--value-color, var(--text-muted));
 }
-.kpi-note-muted { color: var(--text-muted); font-weight: 400; }
+
+.kpi-note-muted {
+    color: var(--text-muted);
+    font-weight: 400;
+}
 
 /* Ladebalken (SoC) — Breite und Farbe werden dynamisch gesetzt */
-.soc-bar-wrap { margin-top: 0.6rem; }
+.soc-bar-wrap {
+    margin-top: 0.6rem;
+}
+
 .soc-bar-bg {
     width: 100%;
     height: 6px;
@@ -959,12 +1184,18 @@ tr.is-today-row {
     border-radius: 999px;
     overflow: hidden;
 }
+
 .soc-bar-fill {
     height: 100%;
     border-radius: 999px;
     transition: width 0.3s ease;
 }
-.soc-target-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+.soc-target-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+}
 
 /* Inline-Editierfeld (z. B. Reichweite in der Telemetrie-Historie) */
 .inline-edit-cell {
@@ -972,6 +1203,7 @@ tr.is-today-row {
     align-items: center;
     gap: 5px;
 }
+
 .inline-range-input {
     width: 65px;
     padding: 2px 6px;
@@ -982,7 +1214,11 @@ tr.is-today-row {
     border-radius: 4px;
     text-align: right;
 }
-.input-unit { font-size: 0.8rem; color: var(--text-muted); }
+
+.input-unit {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
 
 /* Eingabefeld für erfasste Tageserträge (PV) */
 .yield-input {
@@ -1004,11 +1240,13 @@ tr.is-today-row {
     border-radius: var(--border-radius);
     font-weight: 600;
 }
+
 .alert-success {
     color: var(--color-green);
     background: var(--color-green-dim);
     border: 1px solid var(--color-green);
 }
+
 .alert-danger {
     color: var(--color-red);
     background: var(--color-red-dim);
@@ -1021,6 +1259,7 @@ tr.is-today-row {
     margin-top: 1.5rem;
     padding-bottom: 0.5rem;
 }
+
 .btn-save {
     background: var(--pv-yellow);
     color: #000;
@@ -1030,20 +1269,56 @@ tr.is-today-row {
     border-radius: var(--border-radius);
     cursor: pointer;
 }
-.btn-save:hover { filter: brightness(1.1); }
+
+.btn-save:hover {
+    filter: brightness(1.1);
+}
 
 /* Tabellen-Spaltenbreiten & Ausrichtung */
-.col-share { width: 60px; }
-.col-total { width: 90px; }
-.col-category { min-width: 180px; }
-.cell-strong { color: var(--text-main); font-weight: 500; }
-.cell-amount { text-align: right; font-weight: bold; color: var(--text-main); }
-.table-label-strong { color: var(--text-muted); font-size: 0.9em; display: block; margin-bottom: 5px; }
-.pagination-gap { font-size: 0.85rem; color: var(--text-muted); margin: 0 8px; }
+.col-share {
+    width: 60px;
+}
+
+.col-total {
+    width: 90px;
+}
+
+.col-category {
+    min-width: 180px;
+}
+
+.cell-strong {
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.cell-amount {
+    text-align: right;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.table-label-strong {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.pagination-gap {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0 8px;
+}
 
 /* Legenden-Beschriftung unter den Kombi-Charts */
-.legend-scale-eff { color: var(--color-green); }
-.legend-scale-temp { color: var(--color-orange); }
+.legend-scale-eff {
+    color: var(--color-green);
+}
+
+.legend-scale-temp {
+    color: var(--color-orange);
+}
 
 /* Farbcode für Domain "Car", ergänzend zu den bestehenden Aliassen */
 :root {
@@ -1062,15 +1337,31 @@ tr.is-today-row {
 }
 
 @media (max-width: 600px) {
-    .chart-axis-labels { font-size: 0.65rem; }
-    .form-actions { text-align: center; }
-    .btn-save { width: 100%; }
+    .chart-axis-labels {
+        font-size: 0.65rem;
+    }
+
+    .form-actions {
+        text-align: center;
+    }
+
+    .btn-save {
+        width: 100%;
+    }
 }
 
 /* Statusfarben für Inline-Editierfelder (durch JS gesetzte Klassen) */
-.inline-range-input.is-saving { border-color: var(--color-orange); }
-.inline-range-input.is-saved { border-color: var(--color-green); }
-.inline-range-input.is-error { border-color: var(--color-red); }
+.inline-range-input.is-saving {
+    border-color: var(--color-orange);
+}
+
+.inline-range-input.is-saved {
+    border-color: var(--color-green);
+}
+
+.inline-range-input.is-error {
+    border-color: var(--color-red);
+}
 
 /* ==========================================================================
    BANKING TAGS & MOBILE STACKING TABLE
@@ -1114,7 +1405,7 @@ tr.is-today-row {
     padding: 0.75rem;
     width: 240px;
     z-index: 1000;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
 .tag-search-input {
@@ -1161,7 +1452,7 @@ tr.is-today-row {
 }
 
 .tag-option-item:hover {
-    background: var(--bg-surface-hover, rgba(255,255,255,0.05));
+    background: var(--bg-surface-hover, rgba(255, 255, 255, 0.05));
 }
 
 .btn-rule-indicator {
@@ -1201,7 +1492,7 @@ tr.is-today-row {
 
 .tag-distribution-bar {
     width: 100%;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .tag-bar-segment {
@@ -1336,8 +1627,14 @@ tr.is-today-row {
 }
 
 @keyframes modalSlideIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .rule-modal-header {
@@ -1365,7 +1662,9 @@ tr.is-today-row {
     line-height: 1;
 }
 
-.rule-modal-close:hover { color: var(--text-main); }
+.rule-modal-close:hover {
+    color: var(--text-main);
+}
 
 .rule-modal-body {
     padding: 1.25rem;
@@ -1612,6 +1911,7 @@ tr.is-today-row {
     color: var(--accent);
     transform: scale(1.1);
 }
+
 /* Badges, die als Link oder Button dienen (z. B. Zahlungsstatus) */
 .badge-link,
 .badge-button {
@@ -1708,5 +2008,152 @@ tr.is-today-row {
 
     .candidate-actions {
         justify-content: flex-end;
+    }
+}
+
+/* ==========================================================================
+   ENERGIE-FLUSS-DIAGRAMM (LIVE)
+   ========================================================================== */
+.energy-flow-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.energy-flow-container {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    height: 320px;
+    margin: 0 auto;
+}
+
+.flow-node {
+    position: absolute;
+    background: var(--bg-main);
+    border: 2px solid var(--bg-surface-hover);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 110px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+    transition: border-color 0.3s ease;
+}
+
+.flow-node-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.flow-node-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.flow-node-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* Positionen der Knoten im SVG-Raum (700x320) */
+.node-pv {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-color: var(--pv-yellow);
+}
+
+.node-battery {
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+}
+
+.node-house {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-color: var(--accent);
+    background: var(--bg-surface-hover);
+}
+
+.node-grid {
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+}
+
+/* SVG Verbindungslinien */
+.flow-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.flow-line {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    opacity: 0.6;
+}
+
+/* Animierter Stromfluss-Effekt (Gold-Standard) */
+.flow-line-animated {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 8 12;
+    animation: dashAnimation 1.2s linear infinite;
+}
+
+@keyframes dashAnimation {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+/* Umgekehrte Animationsrichtung bei Energiefluss-Umkehr */
+.flow-line-animated-rev {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 8 12;
+    animation: dashAnimationRev 1.2s linear infinite;
+}
+
+@keyframes dashAnimationRev {
+    to {
+        stroke-dashoffset: 20;
+    }
+}
+
+@media (max-width: 600px) {
+    .energy-flow-container {
+        height: 380px;
+    }
+
+    .flow-node {
+        min-width: 90px;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .flow-node-icon {
+        font-size: 1.2rem;
     }
 }
