@@ -107,12 +107,13 @@ $hourlyForecasts = $hourlyStmt->fetchAll(PDO::FETCH_ASSOC);
 $hourlyLabels = [];
 $forecastValues = [];
 foreach ($hourlyForecasts as $row) {
-    $hourlyLabels[] = date('H:i', strtotime($row['forecast_time']));
+    // Schlüssel für den genauen Zeitstempel (z.B. "14:00" oder "14:30")
+    $timeKey = date('H:i', strtotime($row['forecast_time']));
+    $hourlyLabels[] = $timeKey;
     $forecastValues[] = (float)$row['watts'];
 }
 
-// --- Reale Telemetrie-Werte für heute (parallel zu den Prognose-Zeitpunkten gemappt) ---
-// Wir holen die Telemetrie-Werte des heutigen Tages chronologisch
+// --- Reale Telemetrie-Werte für heute passend zu den Prognose-Zeitpunkten holen ---
 $telemetryTodayStmt = $db->prepare("
     SELECT last_update, pv_power_w 
     FROM pv_telemetry 
@@ -122,17 +123,17 @@ $telemetryTodayStmt = $db->prepare("
 $telemetryTodayStmt->execute();
 $telemetryTodayRows = $telemetryTodayStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Map für schnellen Zugriff nach gerundeter Stunde/Minute oder wir mappen es direkt im Frontend / per Array
-$actualValues = [];
-// Einfaches Mapping: Wir legen die Realwerte anhand der exakten Zeit oder stündlich ab
+// Realwerte in eine Map nach "H:i" (auf die Minute genau oder nächste halbe Stunde) mappen
 $actualMap = [];
 foreach ($telemetryTodayRows as $tRow) {
-    // Schlüssel z.B. auf volle/halbe Stunde runden passend zur Prognose
-    $timeKey = date('H:i', round(strtotime($tRow['last_update']) / 1800) * 1800);
+    $timeKey = date('H:i', strtotime($tRow['last_update']));
     $actualMap[$timeKey] = (float)$tRow['pv_power_w'];
 }
 
+// Werte für das Chart exakt an den Labels ausrichten
+$actualValues = [];
 foreach ($hourlyLabels as $timeStr) {
+    // Wenn es einen exakten Treffer gibt, diesen nehmen, sonst prüfen ob es nah dran ist oder null
     $actualValues[] = $actualMap[$timeStr] ?? null;
 }
 
@@ -640,7 +641,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                                 borderColor: '#10b981',
                                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
                                 borderWidth: 2,
-                                pointRadius: 2,
+                                pointRadius: 3,
                                 tension: 0.3,
                                 fill: false,
                                 spanGaps: true
