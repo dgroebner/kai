@@ -32,7 +32,7 @@ class PvIngestService
         $houseIndex = array_search('house_load_w', $columns);
         if ($houseIndex !== false) {
             $houseLoad = (float)$values[$houseIndex];
-            if ($houseLoad < 100) {
+            if ($houseLoad < 10) {
                 $this->logger->warn("PvIngestService: Telemetrie-Messfehler ignoriert (Hauslast zu gering: {$houseLoad} W).");
                 return;
             }
@@ -66,7 +66,7 @@ class PvIngestService
             return;
         }
 
-        // Vorherigen SoC-Wert aus der DB abrufen (der zweitjüngste Eintrag, da der aktuelle gerade eingefügt wurde)
+        // Vorherigen SoC-Wert aus der DB abrufen
         $stmt = $this->dbCon->query("
             SELECT battery_soc_pct 
             FROM pv_telemetry 
@@ -123,8 +123,7 @@ class PvIngestService
             return;
         }
 
-        // Finalen Tagesertrag aus der Telemetrie berechnen (z.B. der maximale yield_daily_kwh des Tages oder Summe)
-        // Je nachdem, wie deine Tabelle aufgebaut ist, nehmen wir hier den tagesaktuellen Höchstwert der kWh und rechnen ihn in Wh um:
+        // Finalen Tagesertrag aus der Telemetrie berechnen
         $yieldStmt = $this->dbCon->query("
             SELECT MAX(yield_daily_kwh) 
             FROM pv_telemetry 
@@ -135,13 +134,16 @@ class PvIngestService
         if ($maxDailyKwh > 0) {
             $finalWh = (int)round($maxDailyKwh * 1000);
 
-            // In pv_forecast_daily eintragen (upsert, falls Zeile existiert)
+            // Eindeutige Platzhalter für Insert und On Duplicate Key Update verwendet, um den Fehler zu beheben
             $updateStmt = $this->dbCon->prepare("
                 INSERT INTO pv_forecast_daily (forecast_date, real_watt_hours_day, watt_hours_day)
-                VALUES (CURDATE(), :wh, 0)
-                ON DUPLICATE KEY UPDATE real_watt_hours_day = :wh
+                VALUES (CURDATE(), :wh1, 0)
+                ON DUPLICATE KEY UPDATE real_watt_hours_day = :wh2
             ");
-            $updateStmt->execute([':wh' => $finalWh]);
+            $updateStmt->execute([
+                ':wh1' => $finalWh,
+                ':wh2' => $finalWh
+            ]);
         }
     }
 
