@@ -338,21 +338,21 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
         <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-label">Ertrag Heute</div>
-                <div class="kpi-value text-warning">
+                <div class="kpi-value kpi-value-sm text-warning">
                     <?= isset($liveData['yield_daily_kwh']) ? number_format((float)$liveData['yield_daily_kwh'], 2, ',', '.') : '0,00' ?>
                     <span class="kpi-unit">kWh</span>
                 </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Peak-Leistung Heute</div>
-                <div class="kpi-value">
+                <div class="kpi-value kpi-value-sm">
                     <?= number_format($todayPeakW, 0, ',', '.') ?>
                     <span class="kpi-unit">W</span>
                 </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Netzbezug (Heute)</div>
-                <div class="kpi-value text-danger">
+                <div class="kpi-value kpi-value-sm text-danger">
                     <?= number_format($gridImportKwh, 2, ',', '.') ?> <span class="kpi-unit">kWh</span>
                 </div>
                 <div class="kpi-note kpi-note-muted">
@@ -361,7 +361,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Netzeinspeisung (Heute)</div>
-                <div class="kpi-value text-success">
+                <div class="kpi-value kpi-value-sm text-success">
                     <?= number_format($gridExportKwh, 2, ',', '.') ?> <span class="kpi-unit">kWh</span>
                 </div>
                 <div class="kpi-note kpi-note-muted">
@@ -375,7 +375,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
         <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-label">Prognose Heute</div>
-                <div class="kpi-value">
+                <div class="kpi-value kpi-value-sm">
                     <?php
                     $correctedTodayKwh = $todayKwh * $biasFactor;
                     echo $correctedTodayKwh > 0 ? number_format($correctedTodayKwh, 1, ',', '.') : '–';
@@ -390,7 +390,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Peak-Leistung Heute</div>
-                <div class="kpi-value">
+                <div class="kpi-value kpi-value-sm">
                     <?= $peakWatts > 0 ? number_format($peakWatts, 0, ',', '.') : '–' ?>
                     <span class="kpi-unit">W</span>
                 </div>
@@ -404,7 +404,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Systemabweichung</div>
-                <div class="kpi-value kpi-value-colored"
+                <div class="kpi-value kpi-value-sm kpi-value-colored"
                      style="--value-color: <?= $systemBias >= 0 ? 'var(--pv-green)' : 'var(--color-red)' ?>;">
                     <?= $systemBias !== null ? ($systemBias > 0 ? '+' : '') . number_format($systemBias, 1, ',', '.') : '–' ?>
                     <span class="kpi-unit">%</span>
