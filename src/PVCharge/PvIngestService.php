@@ -10,7 +10,7 @@ class PvIngestService
     private Database $db;
     private PDO $dbCon;
 
-    public function __construct(?string $apiUrl = null)
+    public function __construct()
     {
         $this->db = Database::getInstance();
         $this->dbCon = $this->db->getConnection();

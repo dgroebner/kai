@@ -30,10 +30,6 @@ try {
     $type = $payload['type'] ?? '';
     $d = $payload['data'] ?? [];
 
-    $pdo = new PDO('mysql:host=localhost;dbname=deine_db', 'user', 'password', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-
     $columns = array_keys($d);
     $values = array_values($d);
 
