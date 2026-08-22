@@ -4,17 +4,20 @@ namespace Kai\Tools\PVCharge;
 
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\ActivityLogger;
+use Kai\Tools\Shared\Log\Logger;
 use PDO;
 
 class PvIngestService
 {
     private Database $db;
     private PDO $dbCon;
+    private Logger $logger;
 
     public function __construct()
     {
         $this->db = Database::getInstance();
         $this->dbCon = $this->db->getConnection();
+        $this->logger = new Logger();
     }
 
 
@@ -25,6 +28,16 @@ class PvIngestService
      */
     public function insertTelemetryData(array $columns, mixed $values): void
     {
+        // --- Messfehler-Prüfung: Hauslast < 10 W ignorieren ---
+        $houseIndex = array_search('house_load_w', $columns);
+        if ($houseIndex !== false) {
+            $houseLoad = (float)$values[$houseIndex];
+            if ($houseLoad < 10) {
+                $this->logger->warn("PvIngestService: Telemetrie-Messfehler ignoriert (Hauslast zu gering: {$houseLoad} W).");
+                return;
+            }
+        }
+
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
         $colNames = implode(', ', $columns);
 
