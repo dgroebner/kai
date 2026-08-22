@@ -37,14 +37,16 @@ class PvIngestService
      * @param mixed $values
      * @return void
      */
-    function upsertLiveData(array $columns, mixed $values): void
+    public function upsertLiveData(array $columns, mixed $values): void
     {
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
         $colNames = implode(', ', $columns);
 
         $updateStmt = implode(', ', array_map(fn($col) => "$col=VALUES($col)", $columns));
+
         $sql = "INSERT INTO pv_live (id, $colNames) VALUES (1, $placeholders) ON DUPLICATE KEY UPDATE $updateStmt";
         $stmt = $this->dbCon->prepare($sql);
-        $stmt->execute(array_merge([1], $values));
+
+        $stmt->execute($values);
     }
 }
