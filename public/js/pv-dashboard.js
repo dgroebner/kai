@@ -152,6 +152,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const canvas = document.getElementById('telemetryChart');
     if (!canvas) return;
 
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js ist nicht geladen.');
+        return;
+    }
+
     try {
         const labels = JSON.parse(canvas.dataset.labels || '[]');
         const pvData = JSON.parse(canvas.dataset.pv || '[]');

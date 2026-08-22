@@ -238,8 +238,8 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Energie-Dashboard – Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
-    <!-- Chart.js CDN einbinden -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lokale Chart.js Einbindung konform zur 'self'-CSP -->
+    <script src="../js/chart.min.js?v=<?= APP_VERSION ?>"></script>
 </head>
 <body>
 <div class="container">
