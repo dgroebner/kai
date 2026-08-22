@@ -297,7 +297,20 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                 </div>
 
                 <div class="flow-node node-battery state-gray" id="node-battery">
-                    <div class="flow-node-icon">🔋</div>
+                    <div class="flow-node-icon">
+                        <!-- Dynamisches SVG-Batterie-Icon -->
+                        <svg class="battery-icon" viewBox="0 0 24 24" width="28" height="28"
+                             style="--battery-fill: 0%;">
+                            <!-- Äußerer Rahmen der Batterie -->
+                            <rect x="2" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor"
+                                  stroke-width="2"/>
+                            <!-- Batterie-Pol -->
+                            <path d="M 18 9 L 21 9 L 21 15 L 18 15 Z" fill="currentColor"/>
+                            <!-- Füllstand (Höhe/Y-Position passt sich dynamisch an) -->
+                            <rect class="battery-level-fill" x="4" y="7" width="12" height="10" rx="1"
+                                  fill="currentColor"/>
+                        </svg>
+                    </div>
                     <div class="flow-node-title">Batterie (<span data-live="battery_soc">0</span>%)</div>
                     <div class="flow-node-value val-gray" data-flow="battery_power">0 W</div>
                     <div class="flow-node-subtext" id="bat-subtext"></div>

@@ -38,7 +38,7 @@ function updateLiveValues() {
             const d = result.data;
             const fmt = (num) => Math.round(num).toLocaleString('de-DE');
 
-            // --- 1. Batterie SoC (%) einfärben ---
+            // --- 1. Batterie SoC (%) einfärben & Grafik anpassen ---
             const socEl = document.querySelector('[data-live="battery_soc"]');
             if (socEl) {
                 const soc = parseInt(d.battery_soc_pct, 10);
@@ -47,6 +47,12 @@ function updateLiveValues() {
                 if (soc < 20) socEl.classList.add('soc-red');
                 else if (soc <= 50) socEl.classList.add('soc-yellow');
                 else socEl.classList.add('soc-green');
+
+                // SVG-Batterie Füllstand aktualisieren
+                const batterySvg = document.querySelector('.battery-icon');
+                if (batterySvg) {
+                    batterySvg.style.setProperty('--battery-fill', (soc / 100));
+                }
             }
 
             // --- 2. Hauslast ---

@@ -2134,6 +2134,20 @@ tr.is-today-row {
     grid-row: 2;
 }
 
+/* Dynamische Batterie-Füllstandsanzeige */
+.battery-icon {
+    display: inline-block;
+    vertical-align: middle;
+    color: inherit;
+}
+
+.battery-level-fill {
+    transform-origin: bottom;
+    /* Skaliert die Höhe des Füllstands basierend auf der CSS-Variablen --battery-fill */
+    transform: scaleY(var(--battery-fill, 0));
+    transition: transform 0.4s ease-in-out;
+}
+
 .node-house {
     grid-column: 2;
     grid-row: 2;
