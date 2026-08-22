@@ -33,19 +33,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
         ");
 
         foreach ($yieldData as $date => $kwhValue) {
-            // Datum strikt validieren, bevor es in die Abfrage gelangt
             $dateObj = DateTime::createFromFormat('Y-m-d', (string)$date);
             if (!$dateObj || $dateObj->format('Y-m-d') !== (string)$date) {
                 continue;
             }
 
-            // Wenn das Feld leer gelassen wurde, tragen wir NULL ein
             if (!is_scalar($kwhValue) || trim((string)$kwhValue) === '') {
                 $updateStmt->execute([':real_wh' => null, ':date' => $date]);
                 continue;
             }
 
-            // Komma durch Punkt ersetzen und in Wattstunden umrechnen
             $kwh = (float)str_replace(',', '.', (string)$kwhValue);
             $wh = (int)round(max(0.0, $kwh) * 1000);
 
@@ -72,7 +69,6 @@ $todayPeakStmt = $db->query("SELECT MAX(pv_power_w) FROM pv_telemetry WHERE last
 $todayPeakW = (int)$todayPeakStmt->fetchColumn();
 
 // --- Netzbezug & Einspeisung heute aus Telemetrie berechnen ---
-// Da Telemetrie alle 5 Minuten erfolgt, nehmen wir den Durchschnitt der Leistung über 5/60 Stunden (= 1/12 kWh pro Messpunkt)
 $gridCalcStmt = $db->query("
     SELECT 
         SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) AS sum_import_w,
@@ -82,11 +78,8 @@ $gridCalcStmt = $db->query("
 ");
 $gridCalc = $gridCalcStmt->fetch(PDO::FETCH_ASSOC) ?: ['sum_import_w' => 0, 'sum_export_w' => 0];
 
-// Umrechnung von Watt-Summe von 5-Minuten-Intervallen in kWh: (Summe Watt / 12) / 1000 = kWh
 $gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
 $gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
-
-// Kosten / Einnahmen berechnen (Bezug: 26,89 ct = 0,2689 € | Einspeisung: 6,0 ct = 0,06 €)
 $gridImportCost = $gridImportKwh * 0.2689;
 $gridExportRevenue = $gridExportKwh * 0.06;
 
@@ -111,6 +104,20 @@ $hourlyStmt = $db->prepare("
 $hourlyStmt->execute();
 $hourlyForecasts = $hourlyStmt->fetchAll();
 
+// --- Stündliche Ist-Werte (Telemetrie) für heute ---
+$hourlyTelemetryStmt = $db->prepare("
+    SELECT HOUR(last_update) AS hour_val, AVG(pv_power_w) AS avg_watts 
+    FROM pv_telemetry 
+    WHERE DATE(last_update) = CURDATE() 
+    GROUP BY HOUR(last_update)
+");
+$hourlyTelemetryStmt->execute();
+$actualHourlyRaw = $hourlyTelemetryStmt->fetchAll(PDO::FETCH_ASSOC);
+$actualHourlyMap = [];
+foreach ($actualHourlyRaw as $row) {
+    $actualHourlyMap[(int)$row['hour_val']] = (float)$row['avg_watts'];
+}
+
 // --- Historische Telemetrie-Daten mit Filter & Paginierung ---
 $telemetryFilter = $_GET['tel_filter'] ?? 'tag';
 if (!in_array($telemetryFilter, ['tag', 'woche', 'monat'])) {
@@ -121,7 +128,6 @@ $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 15;
 $offset = ($page - 1) * $perPage;
 
-// Bedingung für den Zeitfilter
 $whereClause = "1=1";
 if ($telemetryFilter === 'tag') {
     $whereClause = "last_update >= CURDATE()";
@@ -131,7 +137,6 @@ if ($telemetryFilter === 'tag') {
     $whereClause = "last_update >= NOW() - INTERVAL 30 DAY";
 }
 
-// Gesamtanzahl für Paginierung ermitteln
 $countStmt = $db->query("SELECT COUNT(*) FROM pv_telemetry WHERE $whereClause");
 $totalTelemetryRecords = (int)$countStmt->fetchColumn();
 $totalPages = max(1, ceil($totalTelemetryRecords / $perPage));
@@ -140,11 +145,10 @@ if ($page > $totalPages) {
     $offset = ($page - 1) * $perPage;
 }
 
-// Telemetriedaten für die aktuelle Seite abrufen
 $telemetryStmt = $db->prepare("
     SELECT * FROM pv_telemetry 
     WHERE $whereClause 
-    ORDER BY last_update DESC 
+    ORDER BY last_update ASC 
     LIMIT :limit OFFSET :offset
 ");
 $telemetryStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
@@ -152,11 +156,45 @@ $telemetryStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $telemetryStmt->execute();
 $telemetryRecords = $telemetryStmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Datensätze für das Chart chronologisch aufbereiten (für den gesamten gefilterten Bereich ohne Paginierung-Limit fürs Chart)
+$chartQuery = $db->prepare("
+    SELECT last_update, pv_power_w, house_load_w, grid_total_w, battery_soc_pct, battery_power_w 
+    FROM pv_telemetry 
+    WHERE $whereClause 
+    ORDER BY last_update ASC
+");
+$chartQuery->execute();
+$chartRows = $chartQuery->fetchAll(PDO::FETCH_ASSOC);
+
+$chartLabels = [];
+$chartPv = [];
+$chartHouse = [];
+$chartGridImport = [];
+$chartGridExport = [];
+$chartSoc = [];
+$chartBatCharge = [];
+$chartBatDischarge = [];
+
+foreach ($chartRows as $r) {
+    $chartLabels[] = $r['last_update'];
+    $chartPv[] = (float)$r['pv_power_w'];
+    $chartHouse[] = (float)$r['house_load_w'];
+
+    $grid = (float)$r['grid_total_w'];
+    $chartGridImport[] = $grid > 0 ? $grid : 0;
+    $chartGridExport[] = $grid < 0 ? abs($grid) : 0;
+
+    $chartSoc[] = (int)$r['battery_soc_pct'];
+
+    $bat = (float)$r['battery_power_w'];
+    $chartBatCharge[] = $bat > 0 ? $bat : 0;
+    $chartBatDischarge[] = $bat < 0 ? abs($bat) : 0;
+}
+
 // --- Metadaten ---
 $lastUpdateStmt = $db->query("SELECT MAX(updated_at) FROM pv_forecast_daily");
 $lastUpdate = $lastUpdateStmt->fetchColumn();
 
-// Tagesgesamtertrag heute
 $todayWh = 0;
 foreach ($dailyForecasts as $day) {
     if ($day['forecast_date'] === date('Y-m-d')) {
@@ -165,11 +203,8 @@ foreach ($dailyForecasts as $day) {
     }
 }
 $todayKwh = round($todayWh / 1000, 2);
-
-// Peak-Leistung heute (Prognose)
 $peakWatts = empty($hourlyForecasts) ? 0 : max(array_column($hourlyForecasts, 'watts'));
 
-// Wetterzustand aus Ertrag ableiten
 function getWeatherLabel(float $kwh): array
 {
     if ($kwh > 16) return ['icon' => '☀️', 'label' => 'Sehr sonnig'];
@@ -185,11 +220,9 @@ function getBatteryColorClass(int $soc): string
     return 'text-success';
 }
 
-// Max watts für Skalierung des Balkendiagramms
 $maxWatts = empty($hourlyForecasts) ? 1 : max(array_column($hourlyForecasts, 'watts'));
 if ($maxWatts < 1) $maxWatts = 1;
 
-// --- Systemabweichung (Bias) ermitteln ---
 $biasStmt = $db->query("
     SELECT (SUM(real_watt_hours_day) / SUM(watt_hours_day) - 1) * 100 
     FROM pv_forecast_daily 
@@ -197,23 +230,6 @@ $biasStmt = $db->query("
 ");
 $systemBias = $biasStmt->fetchColumn();
 $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
-
-// --- Stündliche Ist-Werte (Telemetrie) für heute ermitteln ---
-$hourlyTelemetryStmt = $db->prepare("
-    SELECT HOUR(last_update) AS hour_val, AVG(pv_power_w) AS avg_watts 
-    FROM pv_telemetry 
-    WHERE DATE(last_update) = CURDATE() 
-    GROUP BY HOUR(last_update)
-");
-$hourlyTelemetryStmt->execute();
-$actualHourlyRaw = $hourlyTelemetryStmt->fetchAll(PDO::FETCH_ASSOC);
-
-// In ein leicht zugängliches Array im Format [Stunde => Watt] mappen
-$actualHourlyMap = [];
-foreach ($actualHourlyRaw as $row) {
-    $actualHourlyMap[(int)$row['hour_val']] = (float)$row['avg_watts'];
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -222,6 +238,8 @@ foreach ($actualHourlyRaw as $row) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Energie-Dashboard – Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
+    <!-- Chart.js CDN einbinden -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div class="container">
@@ -247,7 +265,6 @@ foreach ($actualHourlyRaw as $row) {
         <div class="section-title">Live-Energiefluss</div>
         <div class="energy-flow-card">
             <div class="energy-flow-container">
-                <!-- SVG Linien (Exakt Zentrum zu Zentrum der Grid-Spalten/Reihen) -->
                 <svg class="flow-svg" viewBox="0 0 650 260">
                     <path id="line-pv-house" class="flow-line" d="M 325 65 L 325 195" stroke="var(--bg-surface-hover)"/>
                     <path id="line-bat-house" class="flow-line" d="M 108 195 L 325 195"
@@ -256,7 +273,6 @@ foreach ($actualHourlyRaw as $row) {
                           stroke="var(--bg-surface-hover)"/>
                 </svg>
 
-                <!-- PV Knoten -->
                 <div class="flow-node node-pv state-gray" id="node-pv">
                     <div class="flow-node-icon">☀️</div>
                     <div class="flow-node-title">Solar (PV)</div>
@@ -264,7 +280,6 @@ foreach ($actualHourlyRaw as $row) {
                     <div class="flow-node-subtext"></div>
                 </div>
 
-                <!-- Batterie Knoten -->
                 <div class="flow-node node-battery state-gray" id="node-battery">
                     <div class="flow-node-icon">🔋</div>
                     <div class="flow-node-title">Batterie (<span data-live="battery_soc">0</span>%)</div>
@@ -272,7 +287,6 @@ foreach ($actualHourlyRaw as $row) {
                     <div class="flow-node-subtext" id="bat-subtext"></div>
                 </div>
 
-                <!-- Haus Knoten (Zentrum, bleibt konstant blau) -->
                 <div class="flow-node node-house">
                     <div class="flow-node-icon">🏠</div>
                     <div class="flow-node-title">Hauslast</div>
@@ -282,7 +296,6 @@ foreach ($actualHourlyRaw as $row) {
                     </div>
                 </div>
 
-                <!-- Netz Knoten -->
                 <div class="flow-node node-grid state-gray" id="node-grid">
                     <div class="flow-node-icon">⚡</div>
                     <div class="flow-node-title">Öff. Netz</div>
@@ -375,7 +388,6 @@ foreach ($actualHourlyRaw as $row) {
             <div class="section-title">Stündlicher Leistungsverlauf – Heute (Prognose vs. Real)</div>
 
             <?php if (!empty($hourlyForecasts)):
-                // Maximalen Wert für die Skalierung ermitteln (Bezugspunkt für beide Balkenarten)
                 $maxForecastWatts = max(array_column($hourlyForecasts, 'watts'));
                 $maxActualWatts = empty($actualHourlyMap) ? 0 : max($actualHourlyMap);
                 $chartMaxWatts = max($maxForecastWatts, $maxActualWatts, 1);
@@ -395,12 +407,10 @@ foreach ($actualHourlyRaw as $row) {
                         ?>
                         <div class="bar-col bar-col-dual">
                             <div class="bar-pair">
-                                <!-- Prognose-Balken -->
                                 <div class="bar-fill bar-forecast"
                                      style="height: <?= max($forecastHeight, 1) ?>%"
                                      data-watts="Prognose: <?= number_format($forecastWatts, 0, ',', '.') ?>">
                                 </div>
-                                <!-- Telemetrie-Balken (nur wenn Daten da sind) -->
                                 <?php if ($actualWatts !== null): ?>
                                     <div class="bar-fill bar-actual"
                                          style="height: <?= max($actualHeight, 1) ?>%"
@@ -470,14 +480,10 @@ foreach ($actualHourlyRaw as $row) {
                                     </td>
                                     <td data-label="Wetter"><?= $wx['icon'] ?> <?= $wx['label'] ?></td>
                                     <td data-label="Prognose" class="yield-value text-right u-nowrap">
-                                        <?php
-                                        $correctedKwh = $kwh * $biasFactor;
-                                        ?>
+                                        <?php $correctedKwh = $kwh * $biasFactor; ?>
                                         <strong><?= number_format($correctedKwh, 2, ',', '.') ?> kWh</strong>
                                         <?php if ($systemBias !== null): ?>
-                                            <span class="kpi-note kpi-note-muted">
-												(<?= number_format($kwh, 2, ',', '.') ?>)
-											</span>
+                                            <span class="kpi-note kpi-note-muted">(<?= number_format($kwh, 2, ',', '.') ?>)</span>
                                         <?php endif; ?>
                                     </td>
                                     <td data-label="Tatsächlich" class="text-right">
@@ -496,9 +502,7 @@ foreach ($actualHourlyRaw as $row) {
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-save">
-                            💾 Erträge speichern
-                        </button>
+                        <button type="submit" class="btn btn-save">💾 Erträge speichern</button>
                     </div>
                 </form>
             <?php else: ?>
@@ -509,11 +513,11 @@ foreach ($actualHourlyRaw as $row) {
             <?php endif; ?>
         </div>
 
-        <!-- Sektion 5: Historische Telemetrie-Daten -->
+        <!-- Sektion 5: Historische Telemetrie-Daten & Grafische Auswertung -->
         <div class="chart-section u-mt-lg">
-            <div class="section-title">Historische Telemetrie-Daten</div>
+            <div class="section-title">Historische Telemetrie-Daten & Verlauf</div>
 
-            <!-- Zeit-Filterbuttons analog zur Kassenbon-Auswertung -->
+            <!-- Zeit-Filterbuttons -->
             <div class="period-switcher">
                 <a href="?tel_filter=tag&page=1" class="btn <?= $telemetryFilter === 'tag' ? '' : 'btn-outline' ?>">Heute</a>
                 <a href="?tel_filter=woche&page=1" class="btn <?= $telemetryFilter === 'woche' ? '' : 'btn-outline' ?>">Letzte
@@ -521,6 +525,136 @@ foreach ($actualHourlyRaw as $row) {
                 <a href="?tel_filter=monat&page=1" class="btn <?= $telemetryFilter === 'monat' ? '' : 'btn-outline' ?>">Letzte
                     30 Tage</a>
             </div>
+
+            <!-- Grafische Chart-Auswertung -->
+            <?php if (!empty($chartRows)): ?>
+                <div class="card u-mb-lg" style="padding: 1rem 1.5rem;">
+                    <div style="position: relative; height:320px; width:100%;">
+                        <canvas id="telemetryChart"></canvas>
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        const ctx = document.getElementById('telemetryChart').getContext('2d');
+                        const telemetryChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: <?= json_encode($chartLabels) ?>,
+                                datasets: [
+                                    {
+                                        label: 'PV (W)',
+                                        data: <?= json_encode($chartPv) ?>,
+                                        borderColor: '#f59e0b',
+                                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                        borderWidth: 2,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'Haus (W)',
+                                        data: <?= json_encode($chartHouse) ?>,
+                                        borderColor: '#3b82f6',
+                                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                        borderWidth: 2,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'Netzbezug (W)',
+                                        data: <?= json_encode($chartGridImport) ?>,
+                                        borderColor: '#ef4444',
+                                        borderWidth: 2,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'Netzeinspeisung (W)',
+                                        data: <?= json_encode($chartGridExport) ?>,
+                                        borderColor: '#10b981',
+                                        borderWidth: 2,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'Batterieladung (W)',
+                                        data: <?= json_encode($chartBatCharge) ?>,
+                                        borderColor: '#06b6d4',
+                                        borderWidth: 1.5,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        hidden: true,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'Batterieentladung (W)',
+                                        data: <?= json_encode($chartBatDischarge) ?>,
+                                        borderColor: '#8b5cf6',
+                                        borderWidth: 1.5,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        hidden: true,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: 'SoC (%)',
+                                        data: <?= json_encode($chartSoc) ?>,
+                                        borderColor: '#ec4899',
+                                        borderWidth: 2,
+                                        pointRadius: 0,
+                                        tension: 0.2,
+                                        yAxisID: 'y1'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    mode: 'index',
+                                    intersect: false,
+                                },
+                                plugins: {
+                                    legend: {
+                                        labels: {
+                                            color: '#94a3b8',
+                                            font: {size: 11}
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        ticks: {color: '#94a3b8', maxTicksLimit: 8},
+                                        grid: {color: 'rgba(255, 255, 255, 0.05)'}
+                                    },
+                                    y: {
+                                        type: 'linear',
+                                        display: true,
+                                        position: 'left',
+                                        title: {display: true, text: 'Leistung (W)', color: '#94a3b8'},
+                                        ticks: {color: '#94a3b8'},
+                                        grid: {color: 'rgba(255, 255, 255, 0.05)'}
+                                    },
+                                    y1: {
+                                        type: 'linear',
+                                        display: true,
+                                        position: 'right',
+                                        min: 0,
+                                        max: 100,
+                                        title: {display: true, text: 'Batterie SoC (%)', color: '#94a3b8'},
+                                        ticks: {color: '#94a3b8'},
+                                        grid: {drawOnChartArea: false}
+                                    }
+                                }
+                            }
+                        });
+                    });
+                </script>
+            <?php endif; ?>
 
             <?php if (!empty($telemetryRecords)): ?>
                 <div class="table-responsive">
