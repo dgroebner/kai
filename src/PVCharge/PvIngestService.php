@@ -3,6 +3,7 @@
 namespace Kai\Tools\PVCharge;
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\ActivityLogger;
 use PDO;
 
 class PvIngestService
@@ -31,8 +32,48 @@ class PvIngestService
         $stmt = $this->dbCon->prepare($sql);
         $stmt->execute($values);
 
+        // --- Prüfung auf 100% Batterieladung ---
+        $this->checkBatteryFullyCharged($columns, $values);
+
         // --- Automatisches Setzen des finalen Tagesertrags ab 22:30 Uhr ---
         $this->checkAndFinalizeDailyYield();
+    }
+
+    private function checkBatteryFullyCharged(array $columns, mixed $values): void
+    {
+        $socIndex = array_search('battery_soc_pct', $columns);
+        if ($socIndex === false) {
+            return;
+        }
+
+        $currentSoc = (int)$values[$socIndex];
+
+        // Prüfen, ob der aktuelle Wert 100% beträgt
+        if ($currentSoc < 100) {
+            return;
+        }
+
+        // Vorherigen SoC-Wert aus der DB abrufen (der zweitjüngste Eintrag, da der aktuelle gerade eingefügt wurde)
+        $stmt = $this->dbCon->query("
+            SELECT battery_soc_pct 
+            FROM pv_telemetry 
+            ORDER BY last_update DESC, id DESC 
+            LIMIT 1 OFFSET 1
+        ");
+        $previousSoc = $stmt->fetchColumn();
+
+        // Wenn kein vorheriger Wert existiert oder dieser bereits bei 100% lag, nichts tun
+        if ($previousSoc === false || (int)$previousSoc >= 100) {
+            return;
+        }
+
+        // Aktivität loggen, da die Batterie von < 100% auf 100% gewechselt ist
+        $activityLogger = new ActivityLogger($this->db);
+        $activityLogger->log(
+            'battery_fully_charged',
+            'Die Batterie hat 100% Ladestand erreicht.',
+            '/pvcharge/index.php'
+        );
     }
 
     private function checkAndFinalizeDailyYield(): void
