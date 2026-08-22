@@ -32,7 +32,7 @@ class PvIngestService
         $houseIndex = array_search('house_load_w', $columns);
         if ($houseIndex !== false) {
             $houseLoad = (float)$values[$houseIndex];
-            if ($houseLoad < 10) {
+            if ($houseLoad < 100) {
                 $this->logger->warn("PvIngestService: Telemetrie-Messfehler ignoriert (Hauslast zu gering: {$houseLoad} W).");
                 return;
             }
