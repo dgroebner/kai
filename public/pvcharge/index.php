@@ -197,6 +197,23 @@ $biasStmt = $db->query("
 ");
 $systemBias = $biasStmt->fetchColumn();
 $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
+
+// --- Stündliche Ist-Werte (Telemetrie) für heute ermitteln ---
+$hourlyTelemetryStmt = $db->prepare("
+    SELECT HOUR(last_update) AS hour_val, AVG(pv_power_w) AS avg_watts 
+    FROM pv_telemetry 
+    WHERE DATE(last_update) = CURDATE() 
+    GROUP BY HOUR(last_update)
+");
+$hourlyTelemetryStmt->execute();
+$actualHourlyRaw = $hourlyTelemetryStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// In ein leicht zugängliches Array im Format [Stunde => Watt] mappen
+$actualHourlyMap = [];
+foreach ($actualHourlyRaw as $row) {
+    $actualHourlyMap[(int)$row['hour_val']] = (float)$row['avg_watts'];
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -355,20 +372,43 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
         <!-- Sektion 3: Tages-Leistungsverlauf (Stundenwerte) -->
         <div class="chart-section">
-            <div class="section-title">Stündlicher Leistungsverlauf – Heute</div>
+            <div class="section-title">Stündlicher Leistungsverlauf – Heute (Prognose vs. Real)</div>
 
-            <?php if (!empty($hourlyForecasts)): ?>
+            <?php if (!empty($hourlyForecasts)):
+                // Maximalen Wert für die Skalierung ermitteln (Bezugspunkt für beide Balkenarten)
+                $maxForecastWatts = max(array_column($hourlyForecasts, 'watts'));
+                $maxActualWatts = empty($actualHourlyMap) ? 0 : max($actualHourlyMap);
+                $chartMaxWatts = max($maxForecastWatts, $maxActualWatts, 1);
+                ?>
                 <div class="bar-chart">
                     <?php foreach ($hourlyForecasts as $row):
-                        $heightPct = ($maxWatts > 0) ? round($row['watts'] / $maxWatts * 100) : 0;
-                        $hour = date('H', strtotime($row['forecast_time']));
+                        $forecastWatts = (float)$row['watts'];
+                        $forecastHeight = round(($forecastWatts / $chartMaxWatts) * 100);
+
+                        $hourInt = (int)date('H', strtotime($row['forecast_time']));
+                        $actualWatts = $actualHourlyMap[$hourInt] ?? null;
+
+                        $actualHeight = 0;
+                        if ($actualWatts !== null) {
+                            $actualHeight = round(($actualWatts / $chartMaxWatts) * 100);
+                        }
                         ?>
-                        <div class="bar-col">
-                            <div class="bar-fill"
-                                 style="height: <?= max($heightPct, 1) ?>%"
-                                 data-watts="<?= number_format($row['watts'], 0, ',', '.') ?>">
+                        <div class="bar-col bar-col-dual">
+                            <div class="bar-pair">
+                                <!-- Prognose-Balken -->
+                                <div class="bar-fill bar-forecast"
+                                     style="height: <?= max($forecastHeight, 1) ?>%"
+                                     data-watts="Prognose: <?= number_format($forecastWatts, 0, ',', '.') ?>">
+                                </div>
+                                <!-- Telemetrie-Balken (nur wenn Daten da sind) -->
+                                <?php if ($actualWatts !== null): ?>
+                                    <div class="bar-fill bar-actual"
+                                         style="height: <?= max($actualHeight, 1) ?>%"
+                                         data-watts="Real: <?= number_format($actualWatts, 0, ',', '.') ?>">
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                            <div class="bar-label"><?= $hour ?></div>
+                            <div class="bar-label"><?= sprintf('%02d', $hourInt) ?></div>
                         </div>
                     <?php endforeach; ?>
                 </div>

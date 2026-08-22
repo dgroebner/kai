@@ -2245,3 +2245,51 @@ tr.is-today-row {
         padding: 0.75rem !important;
     }
 }
+
+/* ==========================================================================
+   DOPPELBALKEN FÜR STÜNDLICHEN LEISTUNGSVERLAUF
+   ========================================================================== */
+.bar-col-dual {
+    min-width: 36px !important;
+}
+
+.bar-pair {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    height: 100%;
+}
+
+.bar-pair .bar-fill {
+    flex: 1;
+    max-width: 14px;
+}
+
+/* Prognose-Balken (Standard-Gelbton) */
+.bar-forecast {
+    background: linear-gradient(180deg, var(--pv-yellow, #f59e0b) 0%, #f97316 100%);
+}
+
+/* Rechter Balken: Telemetrie / Real (Grün) */
+.bar-actual {
+    background: linear-gradient(180deg, var(--color-green, #10b981) 0%, #059669 100%);
+}
+
+/* Angepasstes Mouseover per data-watts */
+.bar-pair .bar-fill:hover::after {
+    content: attr(data-watts) ' W';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-surface-hover, #334155);
+    color: var(--text-main, #f8fafc);
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+}
