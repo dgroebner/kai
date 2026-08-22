@@ -2197,14 +2197,51 @@ tr.is-today-row {
 
 @media (max-width: 600px) {
     .energy-flow-container {
-        height: 320px;
-        grid-template-columns: 1fr;
-        grid-template-rows: repeat(4, auto);
-        gap: 1rem;
+        height: auto !important;
+        min-height: unset !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        grid-template-rows: auto auto auto !important;
+        gap: 0.75rem !important;
+        padding: 0.5rem 0 !important;
+    }
+
+    /* SVG-Verbindungslinien auf Mobilgeräten ausblenden, da dort Kacheln direkt aneinander grenzen */
+    .flow-svg {
+        display: none !important;
+    }
+
+    /* Saubere Anordnung im 2x2 Raster auf Smartphones */
+    .node-pv {
+        grid-column: 1 / 3 !important;
+        grid-row: 1 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .node-battery {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .node-grid {
+        grid-column: 2 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .node-house {
+        grid-column: 1 / 3 !important;
+        grid-row: 3 !important;
+        width: 100% !important;
+        max-width: none !important;
     }
 
     .flow-node {
-        width: 100%;
-        max-width: 180px;
+        width: 100% !important;
+        padding: 0.75rem !important;
     }
 }
