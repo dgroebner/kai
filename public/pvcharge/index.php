@@ -67,6 +67,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
 $liveStmt = $db->query("SELECT * FROM pv_live ORDER BY id DESC LIMIT 1");
 $liveData = $liveStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
+// --- Tages-Peak aus Telemetrie (heute) ermitteln ---
+$todayPeakStmt = $db->query("SELECT MAX(pv_power_w) FROM pv_telemetry WHERE last_update >= CURDATE()");
+$todayPeakW = (int)$todayPeakStmt->fetchColumn();
+
+// --- Netzbezug & Einspeisung heute aus Telemetrie berechnen ---
+// Da Telemetrie alle 5 Minuten erfolgt, nehmen wir den Durchschnitt der Leistung über 5/60 Stunden (= 1/12 kWh pro Messpunkt)
+$gridCalcStmt = $db->query("
+    SELECT 
+        SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) AS sum_import_w,
+        SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) AS sum_export_w
+    FROM pv_telemetry 
+    WHERE last_update >= CURDATE()
+");
+$gridCalc = $gridCalcStmt->fetch(PDO::FETCH_ASSOC) ?: ['sum_import_w' => 0, 'sum_export_w' => 0];
+
+// Umrechnung von Watt-Summe von 5-Minuten-Intervallen in kWh: (Summe Watt / 12) / 1000 = kWh
+$gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
+$gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
+
+// Kosten / Einnahmen berechnen (Bezug: 26,89 ct = 0,2689 € | Einspeisung: 6,0 ct = 0,06 €)
+$gridImportCost = $gridImportKwh * 0.2689;
+$gridExportRevenue = $gridExportKwh * 0.06;
+
 // --- Tagesprognosen (nächste 7 Tage) ---
 $dailyStmt = $db->prepare("
     SELECT forecast_date, watt_hours_day, real_watt_hours_day
@@ -143,7 +166,7 @@ foreach ($dailyForecasts as $day) {
 }
 $todayKwh = round($todayWh / 1000, 2);
 
-// Peak-Leistung heute
+// Peak-Leistung heute (Prognose)
 $peakWatts = empty($hourlyForecasts) ? 0 : max(array_column($hourlyForecasts, 'watts'));
 
 // Wetterzustand aus Ertrag ableiten
@@ -248,6 +271,42 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                     <div class="flow-node-title">Öff. Netz</div>
                     <div class="flow-node-value val-gray" data-flow="grid_total_w">0 W</div>
                     <div class="flow-node-subtext" id="grid-subtext"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zusätzliche Live-KPIs unter dem Energiefluss -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Ertrag Heute (Live)</div>
+                <div class="kpi-value text-warning">
+                    <?= isset($liveData['yield_daily_kwh']) ? number_format((float)$liveData['yield_daily_kwh'], 2, ',', '.') : '0,00' ?>
+                    <span class="kpi-unit">kWh</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Peak-Leistung (Heute Telemetrie)</div>
+                <div class="kpi-value">
+                    <?= number_format($todayPeakW, 0, ',', '.') ?>
+                    <span class="kpi-unit">W</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Netzbezug (Heute)</div>
+                <div class="kpi-value text-danger">
+                    <?= number_format($gridImportKwh, 2, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                </div>
+                <div class="kpi-note kpi-note-muted">
+                    (~<?= number_format($gridImportCost, 2, ',', '.') ?> €)
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Netzeinspeisung (Heute)</div>
+                <div class="kpi-value text-success">
+                    <?= number_format($gridExportKwh, 2, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                </div>
+                <div class="kpi-note kpi-note-muted">
+                    (~<?= number_format($gridExportRevenue, 2, ',', '.') ?> €)
                 </div>
             </div>
         </div>
