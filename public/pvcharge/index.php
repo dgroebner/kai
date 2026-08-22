@@ -94,28 +94,46 @@ $dailyStmt = $db->prepare("
 $dailyStmt->execute();
 $dailyForecasts = $dailyStmt->fetchAll();
 
-// --- Stündliche Prognosen für heute ---
+// --- Prognose-Daten für heute (Stunden/Halbstunden aufbereiten) ---
 $hourlyStmt = $db->prepare("
-    SELECT forecast_time, watts, watt_hours
-    FROM pv_forecast_hourly
-    WHERE DATE(forecast_time) = CURDATE()
-    ORDER BY forecast_time
+    SELECT forecast_time, watts 
+    FROM pv_forecast_hourly 
+    WHERE DATE(forecast_time) = CURDATE() 
+    ORDER BY forecast_time ASC
 ");
 $hourlyStmt->execute();
-$hourlyForecasts = $hourlyStmt->fetchAll();
+$hourlyForecasts = $hourlyStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// --- Stündliche Ist-Werte (Telemetrie) für heute ---
-$hourlyTelemetryStmt = $db->prepare("
-    SELECT HOUR(last_update) AS hour_val, AVG(pv_power_w) AS avg_watts 
+$hourlyLabels = [];
+$forecastValues = [];
+foreach ($hourlyForecasts as $row) {
+    $hourlyLabels[] = date('H:i', strtotime($row['forecast_time']));
+    $forecastValues[] = (float)$row['watts'];
+}
+
+// --- Reale Telemetrie-Werte für heute (parallel zu den Prognose-Zeitpunkten gemappt) ---
+// Wir holen die Telemetrie-Werte des heutigen Tages chronologisch
+$telemetryTodayStmt = $db->prepare("
+    SELECT last_update, pv_power_w 
     FROM pv_telemetry 
     WHERE DATE(last_update) = CURDATE() 
-    GROUP BY HOUR(last_update)
+    ORDER BY last_update ASC
 ");
-$hourlyTelemetryStmt->execute();
-$actualHourlyRaw = $hourlyTelemetryStmt->fetchAll(PDO::FETCH_ASSOC);
-$actualHourlyMap = [];
-foreach ($actualHourlyRaw as $row) {
-    $actualHourlyMap[(int)$row['hour_val']] = (float)$row['avg_watts'];
+$telemetryTodayStmt->execute();
+$telemetryTodayRows = $telemetryTodayStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Map für schnellen Zugriff nach gerundeter Stunde/Minute oder wir mappen es direkt im Frontend / per Array
+$actualValues = [];
+// Einfaches Mapping: Wir legen die Realwerte anhand der exakten Zeit oder stündlich ab
+$actualMap = [];
+foreach ($telemetryTodayRows as $tRow) {
+    // Schlüssel z.B. auf volle/halbe Stunde runden passend zur Prognose
+    $timeKey = date('H:i', round(strtotime($tRow['last_update']) / 1800) * 1800);
+    $actualMap[$timeKey] = (float)$tRow['pv_power_w'];
+}
+
+foreach ($hourlyLabels as $timeStr) {
+    $actualValues[] = $actualMap[$timeStr] ?? null;
 }
 
 // --- Historische Telemetrie-Daten mit Filter & Paginierung ---
@@ -156,7 +174,7 @@ $telemetryStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $telemetryStmt->execute();
 $telemetryRecords = $telemetryStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Datensätze für das Chart chronologisch aufbereiten (für den gesamten gefilterten Bereich ohne Paginierung-Limit fürs Chart)
+// Datensätze für das Chart chronologisch aufbereiten
 $chartQuery = $db->prepare("
     SELECT last_update, pv_power_w, house_load_w, grid_total_w, battery_soc_pct, battery_power_w 
     FROM pv_telemetry 
@@ -219,9 +237,6 @@ function getBatteryColorClass(int $soc): string
     if ($soc <= 50) return 'text-warning';
     return 'text-success';
 }
-
-$maxWatts = empty($hourlyForecasts) ? 1 : max(array_column($hourlyForecasts, 'watts'));
-if ($maxWatts < 1) $maxWatts = 1;
 
 $biasStmt = $db->query("
     SELECT (SUM(real_watt_hours_day) / SUM(watt_hours_day) - 1) * 100 
@@ -383,44 +398,19 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             </div>
         </div>
 
-        <!-- Sektion 3: Tages-Leistungsverlauf (Stundenwerte) -->
+        <!-- Sektion 3: Leistungsverlauf heute (Prognose vs. Real als Liniendiagramm) -->
         <div class="chart-section">
-            <div class="section-title">Stündlicher Leistungsverlauf – Heute (Prognose vs. Real)</div>
+            <div class="section-title">Leistungsverlauf – Heute (Prognose vs. Real)</div>
 
-            <?php if (!empty($hourlyForecasts)):
-                $maxForecastWatts = max(array_column($hourlyForecasts, 'watts'));
-                $maxActualWatts = empty($actualHourlyMap) ? 0 : max($actualHourlyMap);
-                $chartMaxWatts = max($maxForecastWatts, $maxActualWatts, 1);
-                ?>
-                <div class="bar-chart">
-                    <?php foreach ($hourlyForecasts as $row):
-                        $forecastWatts = (float)$row['watts'];
-                        $forecastHeight = round(($forecastWatts / $chartMaxWatts) * 100);
-
-                        $hourInt = (int)date('H', strtotime($row['forecast_time']));
-                        $actualWatts = $actualHourlyMap[$hourInt] ?? null;
-
-                        $actualHeight = 0;
-                        if ($actualWatts !== null) {
-                            $actualHeight = round(($actualWatts / $chartMaxWatts) * 100);
-                        }
-                        ?>
-                        <div class="bar-col bar-col-dual">
-                            <div class="bar-pair">
-                                <div class="bar-fill bar-forecast"
-                                     style="height: <?= max($forecastHeight, 1) ?>%"
-                                     data-watts="Prognose: <?= number_format($forecastWatts, 0, ',', '.') ?>">
-                                </div>
-                                <?php if ($actualWatts !== null): ?>
-                                    <div class="bar-fill bar-actual"
-                                         style="height: <?= max($actualHeight, 1) ?>%"
-                                         data-watts="Real: <?= number_format($actualWatts, 0, ',', '.') ?>">
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="bar-label"><?= sprintf('%02d', $hourInt) ?></div>
-                        </div>
-                    <?php endforeach; ?>
+            <?php if (!empty($hourlyForecasts)): ?>
+                <div class="card u-mb-lg" style="padding: 1rem 1.5rem;">
+                    <div style="position: relative; height:280px; width:100%;">
+                        <canvas id="todayComparisonChart"
+                                data-labels="<?= htmlspecialchars(json_encode($hourlyLabels), ENT_QUOTES, 'UTF-8') ?>"
+                                data-forecast="<?= htmlspecialchars(json_encode($forecastValues), ENT_QUOTES, 'UTF-8') ?>"
+                                data-actual="<?= htmlspecialchars(json_encode($actualValues), ENT_QUOTES, 'UTF-8') ?>">
+                        </canvas>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="no-data">
@@ -618,6 +608,84 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
     </main>
 </div>
+
+<!-- JavaScript für das heutige Vergleichs-Chart (Prognose vs. Real als Linie) -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const compCanvas = document.getElementById('todayComparisonChart');
+        if (compCanvas && typeof Chart !== 'undefined') {
+            try {
+                const labels = JSON.parse(compCanvas.dataset.labels || '[]');
+                const forecastData = JSON.parse(compCanvas.dataset.forecast || '[]');
+                const actualData = JSON.parse(compCanvas.dataset.actual || '[]');
+
+                new Chart(compCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Prognose (W)',
+                                data: forecastData,
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.3,
+                                fill: true
+                            },
+                            {
+                                label: 'Real (W)',
+                                data: actualData,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 2,
+                                tension: 0.3,
+                                fill: false,
+                                spanGaps: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#94a3b8',
+                                    font: {size: 11}
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {color: '#94a3b8', maxTicksLimit: 12},
+                                grid: {color: 'rgba(255, 255, 255, 0.05)'}
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {display: true, text: 'Leistung (W)', color: '#94a3b8'},
+                                ticks: {color: '#94a3b8'},
+                                grid: {color: 'rgba(255, 255, 255, 0.05)'},
+                                min: 0
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Fehler beim Initialisieren des Vergleichs-Charts:', e);
+            }
+        }
+    });
+</script>
+
 <script src="../js/pv-dashboard.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>
