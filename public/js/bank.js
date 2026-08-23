@@ -1820,24 +1820,6 @@ async function openContractModal(contract) {
         activeContractModal = null;
     }
 
-    const startInput = overlay.querySelector('#modal-contract-start');
-    const laufzeitInput = overlay.querySelector('#modal-contract-laufzeit');
-    const endInput = overlay.querySelector('#modal-contract-end');
-
-    const calculateEndDate = () => {
-        const startVal = startInput.value;
-        const monthsVal = parseInt(laufzeitInput.value, 10);
-        if (startVal && !isNaN(monthsVal) && monthsVal > 0) {
-            const date = new Date(startVal);
-            date.setMonth(date.getMonth() + monthsVal);
-            // Auf Format YYYY-MM-DD bringen
-            endInput.value = date.toISOString().split('T')[0];
-        }
-    };
-
-    startInput.addEventListener('change', calculateEndDate);
-    laufzeitInput.addEventListener('input', calculateEndDate);
-
     const isEdit = contract && contract.id;
     const cName = isEdit ? (contract.name || '') : '';
     const cType = isEdit ? (contract.type || 'fixkosten') : 'fixkosten';
@@ -1889,6 +1871,26 @@ async function openContractModal(contract) {
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
+                        <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                            <option value="vertrag" ${cType === 'vertrag' ? 'selected' : ''}>Vertrag</option>
+                            <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
+                            <option value="abgabe" ${cType === 'abgabe' ? 'selected' : ''}>Abgabe</option>
+                            <option value="kredit" ${cType === 'kredit' ? 'selected' : ''}>Kredit</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Status:</label>
+                        <select id="modal-contract-status" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                            <option value="aktiv" ${cStatus === 'aktiv' ? 'selected' : ''}>Aktiv</option>
+                            <option value="pausiert" ${cStatus === 'pausiert' ? 'selected' : ''}>Pausiert</option>
+                            <option value="gekuendigt" ${cStatus === 'gekuendigt' ? 'selected' : ''}>Gekündigt</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
                         <label class="chart-label" style="margin-bottom: 0.3rem;">Betrag (€):</label>
                         <input type="number" step="0.01" id="modal-contract-betrag" class="tag-search-input" value="${escapeHtml(cBetrag)}" placeholder="0.00">
                     </div>
@@ -1935,6 +1937,27 @@ async function openContractModal(contract) {
             </div>
         </div>
     `;
+
+    document.body.appendChild(overlay);
+    activeContractModal = overlay;
+
+    // --- Logik zur automatischen Enddatum-Berechnung (jetzt nach overlay-Erstellung) ---
+    const startInput = overlay.querySelector('#modal-contract-start');
+    const laufzeitInput = overlay.querySelector('#modal-contract-laufzeit');
+    const endInput = overlay.querySelector('#modal-contract-end');
+
+    const calculateEndDate = () => {
+        const startVal = startInput.value;
+        const monthsVal = parseInt(laufzeitInput.value, 10);
+        if (startVal && !isNaN(monthsVal) && monthsVal > 0) {
+            const date = new Date(startVal);
+            date.setMonth(date.getMonth() + monthsVal);
+            endInput.value = date.toISOString().split('T')[0];
+        }
+    };
+
+    startInput.addEventListener('change', calculateEndDate);
+    laufzeitInput.addEventListener('input', calculateEndDate);
 
     document.body.appendChild(overlay);
     activeContractModal = overlay;
