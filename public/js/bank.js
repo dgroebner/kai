@@ -166,6 +166,21 @@ document.addEventListener('click', (e) => {
         return;
     }
 
+    const editBtn = e.target.closest('.js-edit-contract');
+    if (editBtn) {
+        e.preventDefault();
+        const contractData = JSON.parse(editBtn.dataset.contract || '{}');
+        openContractModal(contractData);
+        return;
+    }
+
+    const addBtn = e.target.closest('#btn-add-contract');
+    if (addBtn) {
+        e.preventDefault();
+        openContractModal(null); // Modus: Neu anlegen
+        return;
+    }
+
     if (activePopover && activePopover.contains(e.target)) {
         return;
     }
@@ -1781,4 +1796,184 @@ function triggerContractLiveCheck(overlay, mandateId, creditorId) {
             if (pill) pill.textContent = '⚠️ Prüffehler';
         }
     }, 300);
+}
+
+// ----------------------------------------------------
+// Vertrags-Editor Modal (Erstellen & Bearbeiten)
+// ----------------------------------------------------
+
+let activeContractModal = null;
+
+function openContractModal(contract) {
+    if (activeContractModal) {
+        activeContractModal.remove();
+        activeContractModal = null;
+    }
+
+    const isEdit = contract && contract.id;
+    const cName = isEdit ? (contract.name || '') : '';
+    const cType = isEdit ? (contract.type || 'fixkosten') : 'fixkosten';
+    const cFrequenz = isEdit ? (contract.frequenz || 'monatlich') : 'monatlich';
+    const cBetrag = isEdit ? (contract.betrag || '') : '';
+    const cStatus = isEdit ? (contract.status || 'aktiv') : 'aktiv';
+    const cAuftraggeber = isEdit ? (contract.auftraggeber || '') : '';
+    const cMandat = isEdit ? (contract.mandatsnummer || '') : '';
+    const cVariabel = isEdit ? (contract.variabel == 1) : false;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'rule-modal-overlay';
+
+    overlay.innerHTML = `
+        <div class="rule-modal-card" style="max-width: 520px;">
+            <div class="rule-modal-header">
+                <h3>📑 Vertrag ${isEdit ? 'bearbeiten' : 'neu anlegen'}</h3>
+                <button type="button" class="rule-modal-close js-close-contract-modal">&times;</button>
+            </div>
+            
+            <div class="rule-modal-body" style="gap: 1rem;">
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Name des Vertrags / Abos:</label>
+                    <input type="text" id="modal-contract-name" class="tag-search-input" value="${escapeHtml(cName)}" placeholder="z. B. Netflix, Miete, Haftpflicht" style="font-weight: 600;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
+                        <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                            <option value="fixkosten" ${cType === 'fixkosten' ? 'selected' : ''}>Fixkosten</option>
+                            <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
+                            <option value="versicherung" ${cType === 'versicherung' ? 'selected' : ''}>Versicherung</option>
+                            <option value="miete" ${cType === 'miete' ? 'selected' : ''}>Miete</option>
+                            <option value="sonstiges" ${cType === 'sonstiges' ? 'selected' : ''}>Sonstiges</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Status:</label>
+                        <select id="modal-contract-status" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                            <option value="aktiv" ${cStatus === 'aktiv' ? 'selected' : ''}>Aktiv</option>
+                            <option value="pausiert" ${cStatus === 'pausiert' ? 'selected' : ''}>Pausiert</option>
+                            <option value="gekuendigt" ${cStatus === 'gekuendigt' ? 'selected' : ''}>Gekündigt</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Betrag (€):</label>
+                        <input type="number" step="0.01" id="modal-contract-betrag" class="tag-search-input" value="${escapeHtml(cBetrag)}" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Frequenz:</label>
+                        <select id="modal-contract-frequenz" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                            <option value="monatlich" ${cFrequenz === 'monatlich' ? 'selected' : ''}>Monatlich</option>
+                            <option value="vierteljaehrlich" ${cFrequenz === 'vierteljaehrlich' ? 'selected' : ''}>Vierteljährlich</option>
+                            <option value="halbjaehrlich" ${cFrequenz === 'halbjaehrlich' ? 'selected' : ''}>Halbjährlich</option>
+                            <option value="jaehrlich" ${cFrequenz === 'jaehrlich' ? 'selected' : ''}>Jährlich</option>
+                            <option value="einmalig" ${cFrequenz === 'einmalig' ? 'selected' : ''}>Einmalig</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Auftraggeber / Empfänger (optional):</label>
+                    <input type="text" id="modal-contract-auftraggeber" class="tag-search-input" value="${escapeHtml(cAuftraggeber)}" placeholder="Exakter Name aus Buchung">
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">SEPA-Mandatsnummer (optional):</label>
+                    <input type="text" id="modal-contract-mandat" class="tag-search-input" value="${escapeHtml(cMandat)}" placeholder="Mandatsreferenz">
+                </div>
+
+                <div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                        <input type="checkbox" id="modal-contract-variabel" ${cVariabel ? 'checked' : ''}>
+                        Variabler Betrag (Schwankungen erlaubt)
+                    </label>
+                </div>
+            </div>
+
+            <div class="rule-modal-footer">
+                <div>
+                    ${isEdit ? `<button type="button" class="btn btn-outline btn-danger-outline js-delete-contract">🗑 Löschen</button>` : ''}
+                </div>
+                <div class="rule-modal-actions">
+                    <button type="button" class="btn btn-outline js-close-contract-modal">Abbrechen</button>
+                    <button type="button" class="btn js-save-contract">Speichern</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    activeContractModal = overlay;
+
+    const closeModal = () => {
+        overlay.remove();
+        activeContractModal = null;
+    };
+
+    overlay.querySelectorAll('.js-close-contract-modal').forEach(b => b.addEventListener('click', closeModal));
+
+    // Speichern-Aktion
+    overlay.querySelector('.js-save-contract').addEventListener('click', async () => {
+        const name = overlay.querySelector('#modal-contract-name').value.trim();
+        const type = overlay.querySelector('#modal-contract-type').value;
+        const status = overlay.querySelector('#modal-contract-status').value;
+        const betrag = parseFloat(overlay.querySelector('#modal-contract-betrag').value || '0');
+        const frequenz = overlay.querySelector('#modal-contract-frequenz').value;
+        const auftraggeber = overlay.querySelector('#modal-contract-auftraggeber').value.trim();
+        const mandatsnummer = overlay.querySelector('#modal-contract-mandat').value.trim();
+        const variabel = overlay.querySelector('#modal-contract-variabel').checked ? 1 : 0;
+
+        if (!name) {
+            alert('Bitte einen Namen für den Vertrag eingeben.');
+            return;
+        }
+
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'save_contract_details',
+                contract_id: isEdit ? parseInt(contract.id, 10) : null,
+                name: name,
+                type: type,
+                status: status,
+                betrag: betrag,
+                frequenz: frequenz,
+                auftraggeber: auftraggeber,
+                mandatsnummer: mandatsnummer,
+                variabel: variabel
+            });
+
+            if (data && data.success) {
+                closeModal();
+                window.location.reload();
+            } else {
+                alert(data?.message || 'Fehler beim Speichern des Vertrags.');
+            }
+        } catch (err) {
+            console.error('Fehler beim Speichern des Vertrags:', err);
+        }
+    });
+
+    // Löschen-Aktion (falls im Bearbeitungsmodus)
+    if (isEdit) {
+        overlay.querySelector('.js-delete-contract').addEventListener('click', async () => {
+            if (!confirm('Diesen Vertrag wirklich löschen?')) return;
+            try {
+                const data = await KaiHttp.postJson('api.php', {
+                    action: 'delete_contract',
+                    contract_id: parseInt(contract.id, 10)
+                });
+
+                if (data && data.success) {
+                    closeModal();
+                    window.location.reload();
+                } else {
+                    alert(data?.message || 'Fehler beim Löschen.');
+                }
+            } catch (err) {
+                console.error('Fehler beim Löschen des Vertrags:', err);
+            }
+        });
+    }
 }

@@ -148,7 +148,7 @@ foreach ($contracts as $c) {
                                 </td>
                                 <td data-label="Aktionen" class="text-right">
                                     <button type="button" class="btn btn-outline js-edit-contract"
-                                            data-contract-id="<?= $c['id'] ?>"
+                                            data-contract='<?= htmlspecialchars(json_encode($c), ENT_QUOTES, 'UTF-8') ?>'
                                             style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">
                                         ✏️ Edit
                                     </button>
