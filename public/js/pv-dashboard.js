@@ -60,9 +60,19 @@ function updateLiveValues() {
                 // SVG-Batterie Füllstand und Farbe aktualisieren (gestuft in 25%-Schritten)
                 const batterySvg = document.querySelector('.battery-icon');
                 if (batterySvg) {
-                    const steppedSoc = Math.round(soc / 25) * 0.25;
-                    batterySvg.style.setProperty('--battery-fill', steppedSoc);
+                    const steppedSoc = Math.round(soc / 25) * 25; // Ergibt exakt 0, 25, 50, 75 oder 100
                     batterySvg.style.color = batteryColor;
+
+                    // Das innere Füll-Rechteck direkt ansteuern (Bezug auf das SVG-Template)
+                    const fillRect = batterySvg.querySelector('.battery-level-fill');
+                    if (fillRect) {
+                        // Bei einer Basis-Höhe von 10 Einheiten (gemäß viewBox) entspricht der Wert direkt den Pixeln/Einheiten
+                        const targetHeight = (steppedSoc / 100) * 10;
+                        fillRect.setAttribute('height', targetHeight);
+                        // Optional: Y-Position anpassen, damit es von unten nach oben füllt,
+                        // falls dein SVG bei y=7 startet (7 + (10 - targetHeight)):
+                        fillRect.setAttribute('y', 7 + (10 - targetHeight));
+                    }
                 }
             }
 
