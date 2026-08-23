@@ -607,6 +607,29 @@ try {
         exit;
     }
 
+    if ($action === 'get_contract_transactions') {
+        $contractId = (int)($input['contract_id'] ?? 0);
+        $limit = (int)($input['limit'] ?? 5);
+
+        if ($contractId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Ungültige Vertrags-ID']);
+            exit;
+        }
+
+        try {
+            // Beispiel-Aufruf über dein Repository (je nach interner Struktur anpassen)
+            $transactions = $contractRepo->getTransactionsForContract($contractId, $limit);
+
+            echo json_encode([
+                'success' => true,
+                'transactions' => $transactions
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
 } catch (Throwable $e) {
