@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Bank\AiTagClassifier;
 use Kai\Tools\Bank\BankAccountRepository;
+use Kai\Tools\Bank\BankContractRepository;
 use Kai\Tools\Bank\BankGiroService;
 use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Bank\ComdirectClient;
@@ -618,6 +619,7 @@ try {
 
         try {
             // Beispiel-Aufruf über dein Repository (je nach interner Struktur anpassen)
+            $contractRepo = new BankContractRepository();
             $transactions = $contractRepo->getTransactionsForContract($contractId, $limit);
 
             echo json_encode([

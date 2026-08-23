@@ -185,4 +185,17 @@ class BankContractRepository
         ");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function getTransactionsForContract(int $contractId, int $limit): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT c.*
+            FROM bank_giro_transactions c
+            WHERE c.contract_id = :id
+            ORDER BY c.booking_date DESC
+            LIMIT :limit
+        ");
+        $stmt->execute([':id' => $contractId, ':limit' => $limit]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
