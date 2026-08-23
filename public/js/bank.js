@@ -1857,11 +1857,10 @@ async function openContractModal(contract) {
                     <div>
                         <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
                         <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="fixkosten" ${cType === 'fixkosten' ? 'selected' : ''}>Fixkosten</option>
+                            <option value="vertrag" ${cType === 'vertrag' ? 'selected' : ''}>Vertrag</option>
                             <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
-                            <option value="versicherung" ${cType === 'versicherung' ? 'selected' : ''}>Versicherung</option>
-                            <option value="miete" ${cType === 'miete' ? 'selected' : ''}>Miete</option>
-                            <option value="sonstiges" ${cType === 'sonstiges' ? 'selected' : ''}>Sonstiges</option>
+                            <option value="abgabe" ${cType === 'abgabe' ? 'selected' : ''}>Abgabe</option>
+                            <option value="kredit" ${cType === 'kredit' ? 'selected' : ''}>Kredit</option>
                         </select>
                     </div>
                     <div>
