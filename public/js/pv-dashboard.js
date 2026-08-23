@@ -80,12 +80,12 @@ function updateLiveValues() {
             const batW = Math.round(d.battery_power_w);
             let batState = 'gray', batLineColor = '#334155', batSubtext = '', batRev = false;
 
-            if (batW > 0) { // Strom fließt weg vom Haus in Batterie -> isReverse = true
+            if (batW < 0) { // Strom fließt weg vom Haus in Batterie -> isReverse = true
                 batState = 'green';
                 batLineColor = '#10b981';
                 batSubtext = '(Laden)';
                 batRev = true;
-            } else if (batW < 0) { // Strom fließt ins Haus -> isReverse = false
+            } else if (batW > 0) { // Strom fließt ins Haus -> isReverse = false
                 batState = 'yellow';
                 batLineColor = '#f59e0b';
                 batSubtext = '(Entladen)';

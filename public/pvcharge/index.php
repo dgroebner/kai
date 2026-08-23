@@ -206,7 +206,7 @@ foreach ($chartRows as $r) {
     $chartSoc[] = (int)$r['battery_soc_pct'];
 
     $bat = (float)$r['battery_power_w'];
-    $chartBatCharge[] = min($bat, 0);
+    $chartBatCharge[] = $bat < 0 ? abs($bat) : 0;
     $chartBatDischarge[] = $bat > 0 ? abs($bat) : 0;
 }
 
