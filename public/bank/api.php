@@ -503,20 +503,25 @@ try {
 
         // Falls kein bestehender Vertrag gewählt wurde, legen wir einen neuen an
         if (!$contractId) {
-            $stmtTxInfo = $pdo->prepare("SELECT remittance_info, remitter, creditor, debitor, amount FROM bank_giro_transactions WHERE id = :id");
+            $stmtTxInfo = $pdo->prepare("SELECT remittance_info, remitter, creditor, debitor, dc_mandate_id, amount FROM bank_giro_transactions WHERE id = :id");
             $stmtTxInfo->execute([':id' => $txId]);
             $txInfo = $stmtTxInfo->fetch(PDO::FETCH_ASSOC);
 
-            $newName = $auftraggeberVal !== '' ? $auftraggeberVal : ($txInfo['remittance_info'] ?? 'Neuer Vertrag');
+            // Den besten Namen und Auftraggeber ermitteln
+            $extractedAuftraggeber = trim($txInfo['remitter'] ?: ($txInfo['creditor'] ?: ($txInfo['debitor'] ?? '')));
+            $newName = $auftraggeberVal !== '' ? $auftraggeberVal : ($extractedAuftraggeber !== '' ? $extractedAuftraggeber : ($txInfo['remittance_info'] ?? 'Neuer Vertrag'));
             $newAmount = abs((float)($txInfo['amount'] ?? 0));
+            $mandateId = $txInfo['dc_mandate_id'] ?? null;
 
             $stmtNewContract = $pdo->prepare("
-                INSERT INTO bank_contracts (name, type, betrag, frequenz, status) 
-                VALUES (:name, 'fixkosten', :betrag, 'monatlich', 'aktiv')
+                INSERT INTO bank_contracts (name, type, betrag, frequenz, status, auftraggeber, mandatsnummer) 
+                VALUES (:name, 'fixkosten', :betrag, 'monatlich', 'aktiv', :auftraggeber, :mandatsnummer)
             ");
             $stmtNewContract->execute([
                 ':name' => mb_substr($newName, 0, 100),
-                ':betrag' => $newAmount
+                ':betrag' => $newAmount,
+                ':auftraggeber' => $extractedAuftraggeber !== '' ? $extractedAuftraggeber : null,
+                ':mandatsnummer' => $mandateId
             ]);
             $contractId = (int)$pdo->lastInsertId();
         }
