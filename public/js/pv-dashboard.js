@@ -29,6 +29,57 @@ document.addEventListener("DOMContentLoaded", function () {
         updateLiveValues();
         setInterval(updateLiveValues, 5000);
     }
+
+    // Automatisches Polling alle 5 Minuten für Telemetrie & Charts
+    setInterval(async function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filter = urlParams.get('tel_filter') || 'tag';
+        const page = urlParams.get('page') || '1';
+
+        try {
+            const response = await fetch(`index.php?ajax=1&tel_filter=${filter}&page=${page}`);
+            if (!response.ok) return;
+            const data = await response.json();
+
+            // 1. Tabelle aktualisieren
+            const tbody = document.getElementById('telemetry-table-body');
+            if (tbody && data.records) {
+                let html = '';
+                data.records.forEach(row => {
+                    const soc = parseInt(row.battery_soc_pct || 0);
+                    let socClass = 'text-success';
+                    if (soc < 20) socClass = 'text-danger';
+                    else if (soc <= 50) socClass = 'text-warning';
+
+                    html += `<tr>
+                        <td data-label="Zeitpunkt">${row.last_update}</td>
+                        <td data-label="PV (W)" class="text-right">${Number(row.pv_power_w).toLocaleString('de-DE')} W</td>
+                        <td data-label="Haus (W)" class="text-right">${Number(row.house_load_w).toLocaleString('de-DE')} W</td>
+                        <td data-label="Netz (W)" class="text-right">${Number(row.grid_total_w).toLocaleString('de-DE')} W</td>
+                        <td data-label="SoC (%)" class="text-right ${socClass} amount-bold">${soc} %</td>
+                        <td data-label="Bat (W)" class="text-right">${Number(row.battery_power_w).toLocaleString('de-DE')} W</td>
+                        <td data-label="Tagesertrag" class="text-right">${Number(row.yield_daily_kwh).toLocaleString('de-DE', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })} kWh</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            }
+
+            // 2. Chart.js aktualisieren (falls Chart-Instanz existiert)
+            if (window.telemetryChartInstance && data.chart) {
+                window.telemetryChartInstance.data.labels = data.chart.map(r => r.last_update);
+                window.telemetryChartInstance.data.datasets[0].data = data.chart.map(r => Number(r.pv_power_w));
+                window.telemetryChartInstance.data.datasets[1].data = data.chart.map(r => Number(r.house_load_w));
+                // Weitere Datasets entsprechend mappen...
+                window.telemetryChartInstance.update('none'); // 'none' verhindert unschöne Animationen beim stündlichen/5-minütigen Update
+            }
+
+        } catch (e) {
+            console.error("Fehler beim Hintergrund-Update der Telemetrie:", e);
+        }
+    }, 300000);
 });
 
 function updateLiveValues() {

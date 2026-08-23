@@ -259,6 +259,59 @@ function getBatteryColorClass(int $soc): string
     return 'text-success';
 }
 
+// --- AJAX-Request Handler für Telemetrie-Updates ---
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    header('Content-Type: application/json');
+
+    $telemetryFilter = $_GET['tel_filter'] ?? 'tag';
+    if (!in_array($telemetryFilter, ['tag', 'woche', 'monat'])) {
+        $telemetryFilter = 'tag';
+    }
+
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $perPage = 15;
+    $offset = ($page - 1) * $perPage;
+
+    $whereClause = "1=1";
+    if ($telemetryFilter === 'tag') {
+        $whereClause = "last_update >= CURDATE()";
+    } elseif ($telemetryFilter === 'woche') {
+        $whereClause = "last_update >= NOW() - INTERVAL 7 DAY";
+    } elseif ($telemetryFilter === 'monat') {
+        $whereClause = "last_update >= NOW() - INTERVAL 30 DAY";
+    }
+
+    $db = Database::getInstance()->getConnection();
+
+    // Telemetrie-Einträge laden
+    $telemetryStmt = $db->prepare("
+        SELECT * FROM pv_telemetry 
+        WHERE $whereClause 
+        ORDER BY last_update DESC 
+        LIMIT :limit OFFSET :offset
+    ");
+    $telemetryStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $telemetryStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $telemetryStmt->execute();
+    $telemetryRecords = $telemetryStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Chart-Daten laden
+    $chartQuery = $db->prepare("
+        SELECT last_update, pv_power_w, house_load_w, grid_total_w, battery_soc_pct, battery_power_w 
+        FROM pv_telemetry 
+        WHERE $whereClause 
+        ORDER BY last_update ASC
+    ");
+    $chartQuery->execute();
+    $chartRows = $chartQuery->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+            'records' => $telemetryRecords,
+            'chart' => $chartRows
+    ]);
+    exit;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -578,7 +631,7 @@ function getBatteryColorClass(int $soc): string
                             <th class="text-right">Tagesertrag</th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="telemetry-table-body">
                         <?php foreach ($telemetryRecords as $row):
                             $soc = (int)($row['battery_soc_pct'] ?? 0);
                             $socColorClass = getBatteryColorClass($soc);
