@@ -68,14 +68,14 @@ foreach ($contracts as $c) {
     <!-- KPI / Übersichtskarte -->
     <section class="kpi-grid" style="margin-bottom: 1.5rem;">
         <div class="kpi-card" style="border: 1px solid var(--accent);">
-            <div class="kpi-label">📉 Fixkosten (ø Monatlich)</div>
-            <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-red);">
+            <div class="kpi-label">📉 Fixkosten (ø mtl.)</div>
+            <div class="kpi-value_sm" style="font-size: 1.5rem; color: var(--color-red);">
                 -<?= number_format($totalMonthly, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">📋 Aktive Verträge & Abos</div>
-            <div class="kpi-value" style="font-size: 1.5rem;">
+            <div class="kpi-value_sm" style="font-size: 1.5rem;">
                 <?= count(array_filter($contracts, fn($c) => $c['status'] === 'aktiv')) ?>
             </div>
         </div>
@@ -113,7 +113,7 @@ foreach ($contracts as $c) {
                             <th>Rhythmus</th>
                             <th>Kategorie</th>
                             <th class="text-right">Betrag</th>
-                            <th class="text-right" style="width: 100px;">Aktionen</th>
+                            <th class="text-right" style="width: 100px;">Akt.</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -150,7 +150,7 @@ foreach ($contracts as $c) {
                                     <button type="button" class="btn btn-outline js-edit-contract"
                                             data-contract='<?= htmlspecialchars(json_encode($c), ENT_QUOTES, 'UTF-8') ?>'
                                             style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">
-                                        ✏️ Edit
+                                        ✏️
                                     </button>
                                 </td>
                             </tr>

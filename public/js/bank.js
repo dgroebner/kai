@@ -1610,6 +1610,14 @@ async function openContractRuleBuilderModal(btn) {
             </div>
             
             <div class="rule-modal-body">
+                <!-- 1. Ziel-Vertrag auswählen oder neu anlegen -->
+                <div style="margin-bottom: 1.2rem;">
+                    <label class="chart-label rule-group-label">Ziel-Vertrag:</label>
+                    <select id="modal-contract-select" class="tag-search-input" style="width: 100%; padding: 0.6rem;">
+                        <option value="">-- Neuen Vertrag aus Buchung erstellen --</option>
+                    </select>
+                </div>
+            
                 <!-- Checkbox für Einmalzuordnung ohne Regel -->
                 <div style="margin-bottom: 1.2rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
                     <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
@@ -1622,14 +1630,6 @@ async function openContractRuleBuilderModal(btn) {
                 <div class="rule-live-row" style="margin-bottom: 1rem;">
                     <span class="rule-group-label">Kriterien werden kombiniert geprüft.</span>
                     <span class="live-match-pill js-live-match-pill">Prüfe Matches...</span>
-                </div>
-
-                <!-- 1. Ziel-Vertrag auswählen oder neu anlegen -->
-                <div style="margin-bottom: 1.2rem;">
-                    <label class="chart-label rule-group-label">Ziel-Vertrag:</label>
-                    <select id="modal-contract-select" class="tag-search-input" style="width: 100%; padding: 0.6rem;">
-                        <option value="">-- Neuen Vertrag aus Buchung erstellen --</option>
-                    </select>
                 </div>
 
                 <!-- 2. Primäre Kriterien: Mandat, Gläubiger-ID & Auftraggeber -->
