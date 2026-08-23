@@ -58,9 +58,9 @@ Auth::requirePage();
             </div>
 
             <div class="card">
-                <h3>📋 Aktivitäts-Log</h3>
-                <p>Übersicht aller System-Ereignisse: Neue Kassenbons, Bankdaten, Fahrzeug-Telemetrie und
-                    PV-Prognosen.</p>
+                <h3>⚙️ System & Verwaltung</h3>
+                <p>Übersicht aller System-Ereignisse (Aktivitäts-Log) sowie Konfiguration globaler Parameter wie
+                    Strompreise und Tarife.</p>
                 <a href="system/index.php" class="btn">Öffnen</a>
             </div>
 
