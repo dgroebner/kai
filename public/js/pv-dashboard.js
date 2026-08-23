@@ -57,10 +57,11 @@ function updateLiveValues() {
                     batteryColor = 'var(--pv-green, #10b981)';
                 }
 
-                // SVG-Batterie Füllstand und Farbe aktualisieren
+                // SVG-Batterie Füllstand und Farbe aktualisieren (gestuft in 25%-Schritten)
                 const batterySvg = document.querySelector('.battery-icon');
                 if (batterySvg) {
-                    batterySvg.style.setProperty('--battery-fill', (soc / 100));
+                    const steppedSoc = Math.round(soc / 25) * 0.25;
+                    batterySvg.style.setProperty('--battery-fill', steppedSoc);
                     batterySvg.style.color = batteryColor;
                 }
             }
