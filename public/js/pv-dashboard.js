@@ -321,6 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             const labels = JSON.parse(compCanvas.dataset.labels || '[]');
             const forecastData = JSON.parse(compCanvas.dataset.forecast || '[]');
+            const correctedForecastData = JSON.parse(compCanvas.dataset.correctedForecast || '[]'); // 1. Hier auslesen
             const actualData = JSON.parse(compCanvas.dataset.actual || '[]');
 
             new Chart(compCanvas.getContext('2d'), {
@@ -331,6 +332,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         {
                             label: 'Prognose (W)',
                             data: forecastData,
+                            borderColor: '#94a3b8', // Farbe etwas dezenter (z.B. Grau), da korrigierte Linie primär
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4], // Gestrichelte Linie zur Unterscheidung
+                            pointRadius: 0,
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Prognose korrigiert (W)', // 2. Neues Dataset hinzufügen
+                            data: correctedForecastData,
                             borderColor: '#f59e0b',
                             backgroundColor: 'rgba(245, 158, 11, 0.1)',
                             borderWidth: 2,

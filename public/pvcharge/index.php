@@ -78,6 +78,14 @@ $gridCalcStmt = $db->query("
 ");
 $gridCalc = $gridCalcStmt->fetch(PDO::FETCH_ASSOC) ?: ['sum_import_w' => 0, 'sum_export_w' => 0];
 
+$biasStmt = $db->query("
+    SELECT (SUM(real_watt_hours_day) / SUM(watt_hours_day) - 1) * 100 
+    FROM pv_forecast_daily 
+    WHERE real_watt_hours_day IS NOT NULL
+");
+$systemBias = $biasStmt->fetchColumn();
+$biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
+
 $gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
 $gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
 $gridImportCost = $gridImportKwh * 0.2689;
@@ -108,11 +116,17 @@ $hourlyForecasts = $hourlyStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $hourlyLabels = [];
 $forecastValues = [];
+$correctedForecastValues = []; // Neu: Korrigierte Prognosewerte
 foreach ($hourlyForecasts as $row) {
     // Schlüssel für den genauen Zeitstempel (z.B. "14:00" oder "14:30")
     $timeKey = date('H:i', strtotime($row['forecast_time']));
     $hourlyLabels[] = $timeKey;
-    $forecastValues[] = (float)$row['watts'];
+
+    $rawWatts = (float)$row['watts'];
+    $forecastValues[] = $rawWatts;
+
+    // Korrigierte Prognose mit Bias-Faktor berechnen
+    $correctedForecastValues[] = $rawWatts * $biasFactor;
 }
 
 // --- Reale Telemetrie-Werte für heute passend zu den Prognose-Zeitpunkten holen ---
@@ -241,13 +255,6 @@ function getBatteryColorClass(int $soc): string
     return 'text-success';
 }
 
-$biasStmt = $db->query("
-    SELECT (SUM(real_watt_hours_day) / SUM(watt_hours_day) - 1) * 100 
-    FROM pv_forecast_daily 
-    WHERE real_watt_hours_day IS NOT NULL
-");
-$systemBias = $biasStmt->fetchColumn();
-$biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -426,6 +433,7 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
                         <canvas id="todayComparisonChart"
                                 data-labels="<?= htmlspecialchars(json_encode($hourlyLabels), ENT_QUOTES, 'UTF-8') ?>"
                                 data-forecast="<?= htmlspecialchars(json_encode($forecastValues), ENT_QUOTES, 'UTF-8') ?>"
+                                data-corrected-forecast="<?= htmlspecialchars(json_encode($correctedForecastValues), ENT_QUOTES, 'UTF-8') ?>"
                                 data-actual="<?= htmlspecialchars(json_encode($actualValues), ENT_QUOTES, 'UTF-8') ?>">
                         </canvas>
                     </div>
