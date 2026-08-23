@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // 2. Automatischer Live-Daten-Reload alle 5 Sekunden
     const liveContainer = document.querySelector('.section-title');
     if (liveContainer) {
+        updateLiveValues();
         setInterval(updateLiveValues, 5000);
     }
 });
