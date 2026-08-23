@@ -206,8 +206,8 @@ foreach ($chartRows as $r) {
     $chartSoc[] = (int)$r['battery_soc_pct'];
 
     $bat = (float)$r['battery_power_w'];
-    $chartBatCharge[] = $bat > 0 ? $bat : 0;
-    $chartBatDischarge[] = $bat < 0 ? abs($bat) : 0;
+    $chartBatCharge[] = min($bat, 0);
+    $chartBatDischarge[] = $bat > 0 ? abs($bat) : 0;
 }
 
 // --- Metadaten ---
