@@ -483,6 +483,7 @@ try {
     if ($action === 'save_contract_rule') {
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
         $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
+        $assignOnly = !empty($data['assign_only']); // Prüfen ob nur einmalig verknüpft werden soll
 
         $useMandate = !empty($data['use_mandate']);
         $mandateId = trim((string)($data['mandate_id'] ?? ''));
@@ -507,11 +508,10 @@ try {
             $stmtTxInfo->execute([':id' => $txId]);
             $txInfo = $stmtTxInfo->fetch(PDO::FETCH_ASSOC);
 
-            // Den besten Namen und Auftraggeber ermitteln
             $extractedAuftraggeber = trim($txInfo['remitter'] ?: ($txInfo['creditor'] ?: ($txInfo['debitor'] ?? '')));
             $newName = $auftraggeberVal !== '' ? $auftraggeberVal : ($extractedAuftraggeber !== '' ? $extractedAuftraggeber : ($txInfo['remittance_info'] ?? 'Neuer Vertrag'));
             $newAmount = abs((float)($txInfo['amount'] ?? 0));
-            $mandateId = $txInfo['dc_mandate_id'] ?? null;
+            $mandateRef = $txInfo['dc_mandate_id'] ?? null;
 
             $stmtNewContract = $pdo->prepare("
                 INSERT INTO bank_contracts (name, type, betrag, frequenz, status, auftraggeber, mandatsnummer) 
@@ -521,45 +521,47 @@ try {
                 ':name' => mb_substr($newName, 0, 100),
                 ':betrag' => $newAmount,
                 ':auftraggeber' => $extractedAuftraggeber !== '' ? $extractedAuftraggeber : null,
-                ':mandatsnummer' => $mandateId
+                ':mandatsnummer' => $mandateRef
             ]);
             $contractId = (int)$pdo->lastInsertId();
         }
 
-        // Regeln anlegen, je nachdem was ausgewählt wurde
-        if ($useMandate && $mandateId !== '') {
-            $stmtRule = $pdo->prepare("
-                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                VALUES (:contract_id, 'exact_match', :pattern_value, 10)
-            ");
-            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $mandateId]);
+        // Regeln NUR anlegen, wenn "assign_only" nicht aktiv ist
+        if (!$assignOnly) {
+            if ($useMandate && $mandateId !== '') {
+                $stmtRule = $pdo->prepare("
+                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                    VALUES (:contract_id, 'exact_match', :pattern_value, 10)
+                ");
+                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $mandateId]);
+            }
+
+            if ($useCreditorId && $creditorId !== '') {
+                $stmtRule = $pdo->prepare("
+                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                    VALUES (:contract_id, 'exact_match', :pattern_value, 10)
+                ");
+                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $creditorId]);
+            }
+
+            if ($useAuftraggeber && $auftraggeberVal !== '') {
+                $stmtRule = $pdo->prepare("
+                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                    VALUES (:contract_id, 'substring', :pattern_value, 10)
+                ");
+                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $auftraggeberVal]);
+            }
+
+            if ($textPattern !== null && $textPattern !== '') {
+                $stmtRule = $pdo->prepare("
+                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                    VALUES (:contract_id, 'regex', :pattern_value, 10)
+                ");
+                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $textPattern]);
+            }
         }
 
-        if ($useCreditorId && $creditorId !== '') {
-            $stmtRule = $pdo->prepare("
-                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                VALUES (:contract_id, 'exact_match', :pattern_value, 10)
-            ");
-            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $creditorId]);
-        }
-
-        if ($useAuftraggeber && $auftraggeberVal !== '') {
-            $stmtRule = $pdo->prepare("
-                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                VALUES (:contract_id, 'substring', :pattern_value, 10)
-            ");
-            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $auftraggeberVal]);
-        }
-
-        if ($textPattern !== null && $textPattern !== '') {
-            $stmtRule = $pdo->prepare("
-                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                VALUES (:contract_id, 'regex', :pattern_value, 10)
-            ");
-            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $textPattern]);
-        }
-
-        // Transaktion direkt mit dem Vertrag verknüpfen
+        // Transaktion direkt mit dem Vertrag verknüpfen (passiert in jedem Fall)
         $stmtUpdateTx = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
         $stmtUpdateTx->execute([':contract_id' => $contractId, ':tx_id' => $txId]);
 

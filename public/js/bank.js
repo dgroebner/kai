@@ -1610,6 +1610,14 @@ async function openContractRuleBuilderModal(btn) {
             </div>
             
             <div class="rule-modal-body">
+                <!-- Checkbox für Einmalzuordnung ohne Regel -->
+                <div style="margin-bottom: 1.2rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                        <input type="checkbox" id="modal-assign-only">
+                        Nur diesen Umsatz zuordnen (keine automatische Regel erstellen)
+                    </label>
+                </div>
+            
                 <!-- Live-Trefferanzeige -->
                 <div class="rule-live-row" style="margin-bottom: 1rem;">
                     <span class="rule-group-label">Kriterien werden kombiniert geprüft.</span>
@@ -1732,6 +1740,7 @@ async function openContractRuleBuilderModal(btn) {
     // Speichern-Button Logik
     overlay.querySelector('.js-save-contract-rule').addEventListener('click', async () => {
         const contractId = overlay.querySelector('#modal-contract-select').value;
+        const assignOnly = overlay.querySelector('#modal-assign-only')?.checked || false;
         const useMandate = overlay.querySelector('#modal-use-mandate')?.checked || false;
         const useCreditorId = overlay.querySelector('#modal-use-creditor-id')?.checked || false;
         const useAuftraggeber = overlay.querySelector('#modal-use-auftraggeber')?.checked || false;
@@ -1743,6 +1752,7 @@ async function openContractRuleBuilderModal(btn) {
                 action: 'save_contract_rule',
                 tx_id: parseInt(txId, 10),
                 contract_id: contractId ? parseInt(contractId, 10) : null,
+                assign_only: assignOnly, // Neu übergeben
                 use_mandate: useMandate,
                 mandate_id: mandateId,
                 use_creditor_id: useCreditorId,
@@ -1757,7 +1767,7 @@ async function openContractRuleBuilderModal(btn) {
                 window.location.reload();
             }
         } catch (err) {
-            console.error('Fehler beim Speichern der Vertragsregel:', err);
+            console.error('Fehler beim Speichern der Vertragszuordnung:', err);
         }
     });
 }
