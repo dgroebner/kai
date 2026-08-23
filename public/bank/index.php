@@ -220,11 +220,14 @@ try {
             s.id AS linked_statement_id,
             s.statement_date AS linked_statement_date,
             rec.id AS linked_receipt_id,
+            c.id AS contract_id,
+            c.name AS contract_name,
             GROUP_CONCAT(CONCAT(t.id, ':', t.name, ':', t.color) SEPARATOR '||') AS tag_data
         FROM bank_giro_transactions bt
         LEFT JOIN bank_tag_rules r ON bt.matched_rule_id = r.id
         LEFT JOIN bank_cc_statements s ON bt.id = s.bank_transaction_id
         LEFT JOIN kb_receipts rec ON bt.id = rec.bank_giro_transaction_id
+        LEFT JOIN bank_contracts c ON bt.contract_id = c.id
         LEFT JOIN bank_transaction_tags tt ON bt.id = tt.transaction_id
         LEFT JOIN bank_tags t ON tt.tag_id = t.id
         {$whereClause}
@@ -663,6 +666,15 @@ try {
                                                 <a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>"
                                                    class="badge badge-success" style="font-size: 0.75rem;">🧾 E-Bon
                                                     vorhanden &rarr;</a>
+                                            <?php endif; ?>
+                                            <?php if (!empty($tx['contract_id'])): ?>
+                                                <a href="contracts.php?highlight=<?= (int)$tx['contract_id'] ?>"
+                                                   class="badge"
+                                                   style="font-size: 0.75rem; color: var(--accent); border-color: var(--accent); background: rgba(59, 130, 246, 0.05);">
+                                                    📑
+                                                    Vertrag: <?= htmlspecialchars($tx['contract_name'], ENT_QUOTES, 'UTF-8') ?>
+                                                    &rarr;
+                                                </a>
                                             <?php endif; ?>
                                         </div>
                                     </div>

@@ -114,10 +114,12 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     remittance_info VARCHAR(350) NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     matched_rule_id INT NULL,
+    contract_id INT UNSIGNED DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_account_transaction (account_id, transaction_id),
     FOREIGN KEY (account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE,
-    FOREIGN KEY (matched_rule_id) REFERENCES bank_tag_rules(id) ON DELETE SET NULL
+    FOREIGN KEY (matched_rule_id) REFERENCES bank_tag_rules(id) ON DELETE SET NULL,
+    FOREIGN KEY (fk_giro_contract) REFERENCES bank_contracts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Kreditkarten-Kategorien (bestehend für Visa-Abrechnungen)

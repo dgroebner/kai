@@ -553,8 +553,9 @@ try {
             $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $textPattern]);
         }
 
-        // Hinweis: Die direkte Zuweisung über die Spalte entfällt,
-        // da Verträge nun dynamisch über ContractRuleMatcher verknüpft werden.
+        // Transaktion direkt mit dem Vertrag verknüpfen
+        $stmtUpdateTx = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
+        $stmtUpdateTx->execute([':contract_id' => $contractId, ':tx_id' => $txId]);
 
         $pdo->commit();
 
