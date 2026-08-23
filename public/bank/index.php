@@ -413,7 +413,7 @@ try {
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
         <a href="index.php" class="btn">🏦 Girokonto</a>
         <a href="creditcard.php" class="btn btn-outline">💳 Kreditkarte</a>
-        <a href="contracts.php" class="btn">📑 Verträge</a>
+        <a href="contracts.php" class="btn btn-outline">📑 Verträge</a>
     </div>
 
     <!-- Salden-Dashboard -->
@@ -686,6 +686,7 @@ try {
                                                 data-mandate-id="<?= htmlspecialchars($tx['dc_mandate_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 data-remitter="<?= htmlspecialchars($tx['remitter'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 data-creditor="<?= htmlspecialchars($tx['creditor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-creditor-id="<?= htmlspecialchars($tx['dc_creditor_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 data-debitor="<?= htmlspecialchars($tx['debitor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 data-remittance-info="<?= htmlspecialchars($tx['remittance_info'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 title="Vertrag zuordnen">➕📑

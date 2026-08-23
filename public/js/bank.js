@@ -1569,18 +1569,26 @@ async function openContractRuleBuilderModal(btn) {
     const remitter = btn.dataset.remitter || '';
     const creditor = btn.dataset.creditor || '';
     const mandateId = btn.dataset.mandateId || '';
+    const creditorId = btn.dataset.creditorId || '';
 
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
 
     overlay.innerHTML = `
-        <div class="rule-modal-card" style="max-width: 550px;">
+        <div class="rule-modal-card" style="max-width: 580px;">
             <div class="rule-modal-header">
                 <h3>📑 Vertrag & Zuordnung festlegen</h3>
                 <button type="button" class="rule-modal-close js-close-modal">&times;</button>
             </div>
             
             <div class="rule-modal-body">
+                <!-- Live-Trefferanzeige -->
+                <div class="rule-live-row" style="margin-bottom: 1rem;">
+                    <span class="rule-group-label">Kriterien werden kombiniert geprüft.</span>
+                    <span class="live-match-pill js-live-match-pill">Prüfe Matches...</span>
+                </div>
+
+                <!-- 1. Ziel-Vertrag auswählen oder neu anlegen -->
                 <div style="margin-bottom: 1.2rem;">
                     <label class="chart-label rule-group-label">Ziel-Vertrag:</label>
                     <select id="modal-contract-select" class="tag-search-input" style="width: 100%; padding: 0.6rem;">
@@ -1588,30 +1596,41 @@ async function openContractRuleBuilderModal(btn) {
                     </select>
                 </div>
 
+                <!-- 2. Primäre Kriterien: Mandat, Gläubiger-ID & Auftraggeber -->
                 <div style="background: var(--bg-surface-hover); padding: 1rem; border-radius: 6px; margin-bottom: 1.2rem;">
                     <strong style="font-size: 0.9rem; display: block; margin-bottom: 0.6rem;">Primäre Identifikation (Empfohlen):</strong>
                     
                     ${mandateId ? `
                         <div style="margin-bottom: 0.6rem;">
                             <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
-                                <input type="checkbox" id="modal-use-mandate" checked>
-                                Über SEPA-Mandatsnummer matchen: <strong>${escapeHtml(mandateId)}</strong>
+                                <input type="checkbox" id="modal-use-mandate" checked class="js-contract-trigger">
+                                Über SEPA-Mandatsnummer: <strong style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(mandateId)}</strong>
+                            </label>
+                        </div>
+                    ` : ''}
+
+                    ${creditorId ? `
+                        <div style="margin-bottom: 0.6rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                                <input type="checkbox" id="modal-use-creditor-id" checked class="js-contract-trigger">
+                                Über Gläubiger-ID: <strong style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(creditorId)}</strong>
                             </label>
                         </div>
                     ` : ''}
 
                     <div>
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; margin-bottom: 0.3rem;">
-                            <input type="checkbox" id="modal-use-auftraggeber" checked>
-                            Über Auftraggeber / Empfänger matchen:
+                            <input type="checkbox" id="modal-use-auftraggeber" checked class="js-contract-trigger">
+                            Über Auftraggeber / Empfänger:
                         </label>
-                        <input type="text" id="modal-auftraggeber-val" class="tag-search-input" 
+                        <input type="text" id="modal-auftraggeber-val" class="tag-search-input js-contract-trigger" 
                                value="${escapeHtml(remitter || creditor)}" 
                                style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
                     </div>
                 </div>
 
-                <details style="margin-bottom: 1rem;">
+                <!-- 3. Sekundäre Option: Muster auf Buchungstext (Optional mit Chips) -->
+                <details style="margin-bottom: 1rem;" class="js-details-accordion">
                     <summary style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer; user-select: none;">
                         Erweiterte Optionen: Muster auf Buchungstext (Optional)
                     </summary>
@@ -1619,7 +1638,7 @@ async function openContractRuleBuilderModal(btn) {
                         <label class="chart-label rule-group-label">Buchungstext-Schnipsel (klickbar):</label>
                         <div class="word-segment-wrap js-word-segments" data-source-value="${escapeHtml(remittanceInfo)}" style="margin-bottom: 0.5rem;"></div>
                         
-                        <input type="text" id="modal-text-pattern" class="tag-search-input rule-pattern-input" 
+                        <input type="text" id="modal-text-pattern" class="tag-search-input rule-pattern-input js-contract-trigger" 
                                placeholder="z. B. Abrechnung Nr. ..." style="font-size: 0.85rem;">
                     </div>
                 </details>
@@ -1650,13 +1669,35 @@ async function openContractRuleBuilderModal(btn) {
         console.error('Fehler beim Laden der Verträge:', err);
     }
 
-    // Klick auf Wörter im Buchungstext
-    overlay.querySelectorAll('.word-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const input = overlay.querySelector('#modal-text-pattern');
-            if (input) input.value = chip.textContent.trim();
+    // Wort-Chips für den Buchungstext im Akkordeon aufbauen
+    const wordsContainer = overlay.querySelector('.js-word-segments');
+    if (wordsContainer) {
+        const words = remittanceInfo.split(/\s+/).filter(w => w.trim().length > 0);
+        words.forEach(word => {
+            const chip = document.createElement('span');
+            chip.className = 'word-chip';
+            chip.textContent = word;
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('selected');
+                const selectedChips = Array.from(wordsContainer.querySelectorAll('.word-chip.selected'));
+                const patternInput = overlay.querySelector('#modal-text-pattern');
+                if (patternInput) {
+                    patternInput.value = selectedChips.map(c => escapeRegex(c.textContent.trim())).join('.*');
+                    triggerContractLiveCheck(overlay, mandateId, creditorId);
+                }
+            });
+            wordsContainer.appendChild(chip);
         });
+    }
+
+    // Live-Check Trigger bei Eingabeänderungen
+    overlay.querySelectorAll('.js-contract-trigger').forEach(el => {
+        el.addEventListener('input', () => triggerContractLiveCheck(overlay, mandateId, creditorId));
+        el.addEventListener('change', () => triggerContractLiveCheck(overlay, mandateId, creditorId));
     });
+
+    // Initialen Check ausführen
+    triggerContractLiveCheck(overlay, mandateId, creditorId);
 
     overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', () => overlay.remove()));
 
@@ -1664,6 +1705,7 @@ async function openContractRuleBuilderModal(btn) {
     overlay.querySelector('.js-save-contract-rule').addEventListener('click', async () => {
         const contractId = overlay.querySelector('#modal-contract-select').value;
         const useMandate = overlay.querySelector('#modal-use-mandate')?.checked || false;
+        const useCreditorId = overlay.querySelector('#modal-use-creditor-id')?.checked || false;
         const useAuftraggeber = overlay.querySelector('#modal-use-auftraggeber')?.checked || false;
         const auftraggeberVal = overlay.querySelector('#modal-auftraggeber-val')?.value || '';
         const textPattern = overlay.querySelector('#modal-text-pattern')?.value || '';
@@ -1675,6 +1717,8 @@ async function openContractRuleBuilderModal(btn) {
                 contract_id: contractId ? parseInt(contractId, 10) : null,
                 use_mandate: useMandate,
                 mandate_id: mandateId,
+                use_creditor_id: useCreditorId,
+                creditor_id: creditorId,
                 use_auftraggeber: useAuftraggeber,
                 auftraggeber_val: auftraggeberVal,
                 text_pattern: textPattern
@@ -1688,4 +1732,40 @@ async function openContractRuleBuilderModal(btn) {
             console.error('Fehler beim Speichern der Vertragsregel:', err);
         }
     });
+}
+
+// Live-Check für Vertragsregeln (Zählt treffende Buchungen)
+let contractLiveTimeout = null;
+
+function triggerContractLiveCheck(overlay, mandateId, creditorId) {
+    if (contractLiveTimeout) clearTimeout(contractLiveTimeout);
+    const pill = overlay.querySelector('.js-live-match-pill');
+    if (pill) pill.textContent = 'Prüfe...';
+
+    const useMandate = overlay.querySelector('#modal-use-mandate')?.checked || false;
+    const useCreditorId = overlay.querySelector('#modal-use-creditor-id')?.checked || false;
+    const useAuftraggeber = overlay.querySelector('#modal-use-auftraggeber')?.checked || false;
+    const auftraggeberVal = overlay.querySelector('#modal-auftraggeber-val')?.value || '';
+    const textPattern = overlay.querySelector('#modal-text-pattern')?.value || '';
+
+    contractLiveTimeout = setTimeout(async () => {
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'test_contract_rule_pattern',
+                use_mandate: useMandate,
+                mandate_id: mandateId,
+                use_creditor_id: useCreditorId,
+                creditor_id: creditorId,
+                use_auftraggeber: useAuftraggeber,
+                auftraggeber_val: auftraggeberVal,
+                text_pattern: textPattern
+            });
+
+            if (pill && data && data.success) {
+                pill.textContent = `🎯 Gilt für ${data.match_count} Buchung${data.match_count === 1 ? '' : 'en'}`;
+            }
+        } catch (err) {
+            if (pill) pill.textContent = '⚠️ Prüffehler';
+        }
+    }, 300);
 }

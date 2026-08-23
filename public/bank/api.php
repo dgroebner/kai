@@ -555,6 +555,50 @@ try {
         exit;
     }
 
+    if ($action === 'test_contract_rule_pattern') {
+        $useMandate = !empty($data['use_mandate']);
+        $mandateId = trim((string)($data['mandate_id'] ?? ''));
+        $useCreditorId = !empty($data['use_creditor_id']);
+        $creditorId = trim((string)($data['creditor_id'] ?? ''));
+        $useAuftraggeber = !empty($data['use_auftraggeber']);
+        $auftraggeberVal = trim((string)($data['auftraggeber_val'] ?? ''));
+        $textPattern = trim((string)($data['text_pattern'] ?? ''));
+
+        $conditions = [];
+        $params = [];
+
+        if ($useMandate && $mandateId !== '') {
+            $conditions[] = "dc_mandate_id = :mandate_id";
+            $params[':mandate_id'] = $mandateId;
+        }
+        if ($useCreditorId && $creditorId !== '') {
+            $conditions[] = "dc_creditor_id = :creditor_id";
+            $params[':creditor_id'] = $creditorId;
+        }
+        if ($useAuftraggeber && $auftraggeberVal !== '') {
+            $conditions[] = "(remitter LIKE :auftraggeber OR creditor LIKE :auftraggeber_cred)";
+            $params[':auftraggeber'] = '%' . $auftraggeberVal . '%';
+            $params[':auftraggeber_cred'] = '%' . $auftraggeberVal . '%';
+        }
+        if ($textPattern !== '') {
+            $conditions[] = "remittance_info REGEXP :text_pattern";
+            $params[':text_pattern'] = $textPattern;
+        }
+
+        if (empty($conditions)) {
+            echo json_encode(['success' => true, 'match_count' => 0]);
+            exit;
+        }
+
+        $sql = "SELECT COUNT(*) FROM bank_giro_transactions WHERE " . implode(' AND ', $conditions);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $matchCount = (int)$stmt->fetchColumn();
+
+        echo json_encode(['success' => true, 'match_count' => $matchCount]);
+        exit;
+    }
+
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
 } catch (Throwable $e) {
