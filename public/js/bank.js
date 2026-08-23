@@ -1942,7 +1942,7 @@ async function openContractModal(contract) {
                             ${txRes.transactions.map(tx => `
                                 <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.3rem 0.5rem; border-radius: 4px;">
                                     <span>${escapeHtml(tx.booking_date)} – ${escapeHtml(tx.remitter || tx.creditor || tx.remittance_info || 'Buchung')}</span>
-                                    <strong class="${tx.amount < 0 ? 'text-danger' : 'text-success'}">${tx.amount} €</strong>
+                                    <strong class="amount-bold ${tx.amount < 0 ? 'text-danger' : 'text-success'}">${tx.amount} €</strong>
                                 </div>
                             `).join('')}
                         </div>
