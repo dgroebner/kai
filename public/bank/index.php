@@ -701,7 +701,7 @@ try {
                                                 data-creditor-id="<?= htmlspecialchars($tx['dc_creditor_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 data-debitor="<?= htmlspecialchars($tx['debitor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                 data-remittance-info="<?= htmlspecialchars($tx['remittance_info'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                                                title="Vertrag zuordnen">➕📑
+                                                title="Vertrag zuordnen">📑
                                         </button>
                                     <?php endif; ?>
                                 </td>
