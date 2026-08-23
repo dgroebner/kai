@@ -32,6 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2500);
         }
     }
+
+    // 3. Vertrags-Highlight (bei Aufruf mit Anker wie #contract-ID)
+    if (window.location.hash && window.location.hash.startsWith('#contract-')) {
+        const targetRow = document.querySelector(window.location.hash);
+        if (targetRow) {
+            targetRow.scrollIntoView({behavior: 'smooth', block: 'center'});
+            targetRow.style.transition = 'background-color 0.5s ease';
+            targetRow.style.backgroundColor = 'color-mix(in srgb, var(--accent) 25%, transparent)';
+            setTimeout(() => {
+                targetRow.style.backgroundColor = '';
+            }, 2500);
+        }
+    }
 });
 
 // Globaler Klick-Dispatcher
