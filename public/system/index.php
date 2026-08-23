@@ -104,8 +104,7 @@ function getEventIcon(string $eventType): string
             <!-- Tab 2: System-Einstellungen -->
             <section class="card">
                 <h2>System-Einstellungen konfigurieren</h2>
-                <p class="text-muted" style="margin-bottom: 1.5rem;">Hier können globale Parameter wie Strompreise und
-                    Tarife angepasst werden.</p>
+                <p class="text-muted" style="margin-bottom: 1.5rem;">Hier können globale Parameter angepasst werden.</p>
 
                 <form action="index.php?tab=settings" method="POST">
                     <input type="hidden" name="csrf_token"
