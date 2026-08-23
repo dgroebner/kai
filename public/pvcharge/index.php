@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\System\SystemSettingsService;
 
 // Auth-Check — immer zuerst
 Auth::requirePage();
@@ -86,12 +87,16 @@ $biasStmt = $db->query("
 $systemBias = $biasStmt->fetchColumn();
 $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
+$settingsService = new SystemSettingsService();
+$importPrice = $settingsService->getGridImportPrice();
+$exportPrice = $settingsService->getGridExportPrice();
+
 $gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
 $gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
-$gridImportCost = $gridImportKwh * 0.2689;
-$gridExportRevenue = $gridExportKwh * 0.06;
+$gridImportCost = $gridImportKwh * $importPrice;
+$gridExportRevenue = $gridExportKwh * $exportPrice;
 $yieldDailyKwh = isset($liveData['yield_daily_kwh']) ? (float)$liveData['yield_daily_kwh'] : 0.0;
-$yieldRevenue = $yieldDailyKwh * 0.2689;
+$yieldRevenue = $yieldDailyKwh * $importPrice;
 
 // --- Tagesprognosen (nächste 7 Tage) ---
 $dailyStmt = $db->prepare("
