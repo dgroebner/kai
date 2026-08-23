@@ -181,6 +181,49 @@ CREATE TABLE IF NOT EXISTS bank_tag_rules (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 8. Verträge, Abos, Abgaben und Kredite
+CREATE TABLE IF NOT EXISTS bank_contracts (
+                                              id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                                              name VARCHAR(255) NOT NULL,
+    type ENUM('vertrag', 'abo', 'abgabe', 'kredit') NOT NULL DEFAULT 'vertrag',
+    status ENUM('aktiv', 'pausiert', 'gekuendigt', 'beendet') NOT NULL DEFAULT 'aktiv',
+
+    -- Identifikation aus Buchungen
+    auftraggeber VARCHAR(255) NULL,
+    mandatsnummer VARCHAR(100) NULL,
+    iban VARCHAR(34) NULL,
+
+    -- Finanzielle Details & Rhythmus
+    betrag DECIMAL(10, 2) NOT NULL,
+    frequenz ENUM('monatlich', 'vierteljaehrlich', 'halbjaehrlich', 'jaehrlich', 'einmalig') NOT NULL DEFAULT 'monatlich',
+    variabel TINYINT(1) NOT NULL DEFAULT 0,
+
+    -- Zeitfenster & Prognose
+    start_datum DATE NULL,
+    end_datum DATE NULL,
+
+    -- Verknüpfung zu bestehenden Kategorien
+    category_id INT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (category_id) REFERENCES bank_categories(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Regeln zur automatischen/manuellen Zuordnung von Buchungen zu Verträgen
+CREATE TABLE IF NOT EXISTS bank_contract_rules (
+                                                   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                                                   contract_id INT UNSIGNED NOT NULL,
+                                                   pattern_type ENUM('regex', 'exact_match', 'substring') NOT NULL DEFAULT 'substring',
+    pattern_value VARCHAR(255) NOT NULL,
+    priority INT NOT NULL DEFAULT 10,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (contract_id) REFERENCES bank_contracts(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 CREATE TABLE IF NOT EXISTS `activity_log` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `event_type` VARCHAR(50) NOT NULL,

@@ -1,18 +1,18 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Bank\AiTagClassifier;
+use Kai\Tools\Bank\BankAccountRepository;
+use Kai\Tools\Bank\BankGiroService;
+use Kai\Tools\Bank\BankTransactionRepository;
+use Kai\Tools\Bank\ComdirectClient;
+use Kai\Tools\Bank\RuleMatcher;
+use Kai\Tools\Bank\StatementMatcher;
+use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Shared\Security\TokenEncryptionService;
-use Kai\Tools\Bank\BankAccountRepository;
-use Kai\Tools\Bank\RuleMatcher;
-use Kai\Tools\Bank\StatementMatcher;
-use Kai\Tools\Bank\ComdirectClient;
-use Kai\Tools\Bank\BankGiroService;
-use Kai\Tools\Bank\BankTransactionRepository;
-use Kai\Tools\Bank\AiTagClassifier;
-use Kai\Tools\Shared\AI\GeminiClient;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -35,7 +35,7 @@ $action = $data['action'] ?? '';
 $pdo = Database::getInstance()->getConnection();
 
 try {
-    
+
     // Startet den Login- und photoTAN-Push Validierungs-Flow
     if ($action === 'start_auth_flow') {
         $accessId = trim((string)($data['access_id'] ?? ''));
@@ -65,29 +65,29 @@ try {
             $sessionId = (string)($sessionObj['identifier'] ?? '');
 
             // 3. photoTAN-Push initiieren
-			$sessionObj['sessionTanActive'] = true;
-		    $sessionObj['activated2FA'] = true;
+            $sessionObj['sessionTanActive'] = true;
+            $sessionObj['activated2FA'] = true;
             $tanInfo = $client->validateSession($tokens['access_token'], $sessionId, $sessionObj);
 
             // Temporäre Auth-Daten in Session speichern
             $_SESSION['comdirect_temp_auth'] = [
-                'access_token'  => $tokens['access_token'],
+                'access_token' => $tokens['access_token'],
                 'refresh_token' => $tokens['refresh_token'],
-                'expires_in'    => $tokens['expires_in'],
-                'created_at'    => $tokens['created_at'],
-                'session_id'    => $sessionId,
-                'session_obj'   => $sessionObj,
-                'tan_info'      => $tanInfo
+                'expires_in' => $tokens['expires_in'],
+                'created_at' => $tokens['created_at'],
+                'session_id' => $sessionId,
+                'session_obj' => $sessionObj,
+                'tan_info' => $tanInfo
             ];
 
             echo json_encode([
                 'success' => true,
-                'status'  => 'pending',
+                'status' => 'pending',
                 'message' => 'photoTAN-Push wurde gesendet. Bitte in der App freigeben.'
             ]);
             exit;
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             (new Logger())->error('bank/api.php: start_auth_flow Fehler', ['error' => $e->getMessage()]);
             Auth::sendJsonError(500, $e->getMessage());
         }
@@ -104,7 +104,7 @@ try {
         if (isset($_SESSION['phototan_failures']) && $_SESSION['phototan_failures'] >= 2) {
             echo json_encode([
                 'success' => false,
-                'status'  => 'blocked',
+                'status' => 'blocked',
                 'message' => 'photoTAN-Sperrschutz aktiv (2 Fehlversuche). Bitte erst auf der comdirect-Webseite erfolgreich anmelden/TAN-freigeben.'
             ]);
             exit;
@@ -152,7 +152,7 @@ try {
             echo json_encode(['success' => true, 'status' => 'authenticated']);
             exit;
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if (!isset($_SESSION['phototan_failures'])) {
                 $_SESSION['phototan_failures'] = 0;
             }
@@ -164,8 +164,8 @@ try {
             $isBlocked = $failures >= 2;
             echo json_encode([
                 'success' => false,
-                'status'  => $isBlocked ? 'blocked' : 'error',
-                'message' => $isBlocked 
+                'status' => $isBlocked ? 'blocked' : 'error',
+                'message' => $isBlocked
                     ? 'photoTAN-Sperrschutz aktiv (2 Fehlversuche). Bitte erst auf der comdirect-Webseite erfolgreich anmelden/TAN-freigeben.'
                     : 'Fehler bei TAN-Aktivierung: ' . $e->getMessage()
             ]);
@@ -198,7 +198,7 @@ try {
                 $refreshed = $client->refreshAccessToken($tokens['refresh_token']);
                 $repo->saveApiTokens((int)$accountId, $refreshed, $encryptionService);
                 $tokens = $refreshed;
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 (new Logger())->error("bank/api.php run_sync token refresh failed", ['error' => $e->getMessage()]);
                 Auth::sendJsonError(401, 'Tokens abgelaufen und Refresh fehlgeschlagen. Bitte erneut anmelden.');
             }
@@ -211,7 +211,7 @@ try {
 
         $bankGiroService = new BankGiroService(
             $bankRepo,
-			$repo,
+            $repo,
             $aiClassifier
         );
 
@@ -234,7 +234,7 @@ try {
         if (!$accountId) {
             Auth::sendJsonError(404, 'Kein Girokonto für den API-Sync gefunden.');
         }
-        
+
         $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
         $repo = new BankAccountRepository();
 
@@ -250,7 +250,7 @@ try {
                     $refreshed = $client->refreshAccessToken($tokens['refresh_token']);
                     $repo->saveApiTokens((int)$accountId, $refreshed, $encryptionService);
                     $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     (new Logger())->error(
                         'bank/api.php check_token_status: Token-Refresh fehlgeschlagen.',
                         ['error' => $e->getMessage()]
@@ -262,8 +262,8 @@ try {
         echo json_encode(['success' => true, 'tokens_valid' => $isValid, 'account_id' => (int)$accountId]);
         exit;
     }
-	
-	// Tag bearbeiten (Name & Farbe ändern)
+
+    // Tag bearbeiten (Name & Farbe ändern)
     if ($action === 'update_tag') {
         $tagId = filter_var($data['tag_id'] ?? null, FILTER_VALIDATE_INT);
         $name = trim((string)($data['name'] ?? ''));
@@ -314,10 +314,10 @@ try {
         $stmtAssign->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
 
         echo json_encode([
-            'success' => true, 
+            'success' => true,
             'tag' => [
-                'id'    => $tagId,
-                'name'  => $name,
+                'id' => $tagId,
+                'name' => $name,
                 'color' => $color
             ]
         ]);
@@ -330,7 +330,7 @@ try {
 
     // 1. Live-Test eines Regex-Musters
     if ($action === 'test_rule_pattern') {
-        $textPattern  = trim((string)($data['text_pattern'] ?? ''));
+        $textPattern = trim((string)($data['text_pattern'] ?? ''));
         $payeePattern = trim((string)($data['payee_pattern'] ?? ''));
 
         if ($textPattern === '' && $payeePattern === '') {
@@ -369,11 +369,11 @@ try {
                 WHERE id = :id
             ");
             $stmt->execute([
-                ':text_pattern'  => $textPattern,
+                ':text_pattern' => $textPattern,
                 ':payee_pattern' => $payeePattern,
-                ':tag_ids'       => $jsonTagIds,
-                ':priority'      => $priority,
-                ':id'            => $ruleId
+                ':tag_ids' => $jsonTagIds,
+                ':priority' => $priority,
+                ':id' => $ruleId
             ]);
         } else {
             $stmt = $pdo->prepare("
@@ -381,10 +381,10 @@ try {
                 VALUES (:text_pattern, :payee_pattern, :tag_ids, :priority)
             ");
             $stmt->execute([
-                ':text_pattern'  => $textPattern,
+                ':text_pattern' => $textPattern,
                 ':payee_pattern' => $payeePattern,
-                ':tag_ids'       => $jsonTagIds,
-                ':priority'      => $priority
+                ':tag_ids' => $jsonTagIds,
+                ':priority' => $priority
             ]);
             $ruleId = (int)$pdo->lastInsertId();
         }
@@ -456,8 +456,8 @@ try {
         echo json_encode(['success' => true]);
         exit;
     }
-	
-	// Manuelles Synchronisieren/Matchen von Kreditkartenabrechnungen mit Girokonto-Umsätzen
+
+    // Manuelles Synchronisieren/Matchen von Kreditkartenabrechnungen mit Girokonto-Umsätzen
     if ($action === 'sync_cc_statements') {
         $matcher = new StatementMatcher($pdo);
         $linkedCount = $matcher->syncUnlinkedStatements();
@@ -469,9 +469,95 @@ try {
         exit;
     }
 
+    // Alle Verträge für das Modal-Dropdown laden
+    if ($action === 'get_contracts') {
+        $stmt = $pdo->query("SELECT id, name, type, status FROM bank_contracts ORDER BY name ASC");
+        $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode(['success' => true, 'contracts' => $contracts]);
+        exit;
+    }
+
+    // Vertragsregel speichern und Transaktion zuordnen
+    if ($action === 'save_contract_rule') {
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
+
+        $useMandate = !empty($data['use_mandate']);
+        $mandateId = trim((string)($data['mandate_id'] ?? ''));
+
+        $useAuftraggeber = !empty($data['use_auftraggeber']);
+        $auftraggeberVal = trim((string)($data['auftraggeber_val'] ?? ''));
+
+        $textPattern = trim((string)($data['text_pattern'] ?? '')) ?: null;
+
+        if (!$txId) {
+            Auth::sendJsonError(400, 'Ungültige Transaktions-ID.');
+        }
+
+        $pdo->beginTransaction();
+
+        // Falls kein bestehender Vertrag gewählt wurde, legen wir einen neuen an
+        if (!$contractId) {
+            // Transaktionsdetails für den neuen Vertrag holen
+            $stmtTxInfo = $pdo->prepare("SELECT remittance_info, remitter, creditor, debitor, amount FROM bank_giro_transactions WHERE id = :id");
+            $stmtTxInfo->execute([':id' => $txId]);
+            $txInfo = $stmtTxInfo->fetch(PDO::FETCH_ASSOC);
+
+            $newName = $auftraggeberVal !== '' ? $auftraggeberVal : ($txInfo['remittance_info'] ?? 'Neuer Vertrag');
+            $newAmount = abs((float)($txInfo['amount'] ?? 0));
+
+            $stmtNewContract = $pdo->prepare("
+                INSERT INTO bank_contracts (name, type, betrag, frequenz, status) 
+                VALUES (:name, 'fixkosten', :betrag, 'monatlich', 'aktiv')
+            ");
+            $stmtNewContract->execute([
+                ':name' => mb_substr($newName, 0, 100),
+                ':betrag' => $newAmount
+            ]);
+            $contractId = (int)$pdo->lastInsertId();
+        }
+
+        // Regel-Muster definieren (Primär über Mandat oder Auftraggeber)
+        $patternType = 'substring';
+        $patternValue = '';
+
+        if ($useMandate && $mandateId !== '') {
+            $patternType = 'exact_match';
+            $patternValue = $mandateId;
+        } elseif ($useAuftraggeber && $auftraggeberVal !== '') {
+            $patternType = 'substring';
+            $patternValue = $auftraggeberVal;
+        } elseif ($textPattern !== '') {
+            $patternType = 'substring';
+            $patternValue = $textPattern;
+        }
+
+        if ($patternValue !== '') {
+            $stmtRule = $pdo->prepare("
+                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                VALUES (:contract_id, :pattern_type, :pattern_value, 10)
+            ");
+            $stmtRule->execute([
+                ':contract_id' => $contractId,
+                ':pattern_type' => $patternType,
+                ':pattern_value' => $patternValue
+            ]);
+        }
+
+        // Transaktion direkt mit dem Vertrag verknüpfen
+        $stmtUpdateTx = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
+        $stmtUpdateTx->execute([':contract_id' => $contractId, ':tx_id' => $txId]);
+
+        $pdo->commit();
+
+        echo json_encode(['success' => true, 'contract_id' => $contractId]);
+        exit;
+    }
+
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }

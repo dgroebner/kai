@@ -17,14 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         window.AVAILABLE_TAGS = [];
     }
-	
-	// 2. Transaktions-Highlight (bei Aufruf mit ?tx=ID)
+
+    // 2. Transaktions-Highlight (bei Aufruf mit ?tx=ID)
     const urlParams = new URLSearchParams(window.location.search);
     const highlightTxId = urlParams.get('tx');
     if (highlightTxId) {
         const targetRow = document.querySelector(`tr[data-tx-id="${highlightTxId}"]`);
         if (targetRow) {
-            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetRow.scrollIntoView({behavior: 'smooth', block: 'center'});
             targetRow.style.transition = 'background-color 0.5s ease';
             targetRow.style.backgroundColor = 'color-mix(in srgb, var(--accent) 25%, transparent)';
             setTimeout(() => {
@@ -44,8 +44,8 @@ document.addEventListener('click', (e) => {
         openRuleBuilderModal(ruleBtn);
         return;
     }
-	
-	// Klick auf Tag-Badge in der Tabelle (zum Bearbeiten von Name & Farbe)
+
+    // Klick auf Tag-Badge in der Tabelle (zum Bearbeiten von Name & Farbe)
     const tagBadge = e.target.closest('.tag-badge.clickable-tag');
     if (tagBadge && !e.target.classList.contains('remove-tag-btn')) {
         e.preventDefault();
@@ -57,8 +57,8 @@ document.addEventListener('click', (e) => {
         }
         return;
     }
-	
-	// Klick auf Kreditkarten-Kategorie-Badge (Inline Category Editor)
+
+    // Klick auf Kreditkarten-Kategorie-Badge (Inline Category Editor)
     const ccCategoryBadge = e.target.closest('.category-badge.clickable-badge');
     if (ccCategoryBadge) {
         e.preventDefault();
@@ -76,8 +76,8 @@ document.addEventListener('click', (e) => {
         toggleTagFilter(tagId);
         return;
     }
-	
-	const detailBtn = e.target.closest('.js-open-details');
+
+    const detailBtn = e.target.closest('.js-open-details');
     if (detailBtn) {
         e.preventDefault();
         e.stopPropagation();
@@ -131,6 +131,15 @@ document.addEventListener('click', (e) => {
         return;
     }
 
+    // Klick auf Vertrags-Zuordnungs-Button
+    const contractBtn = e.target.closest('.js-open-contract-rule');
+    if (contractBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openContractRuleBuilderModal(contractBtn);
+        return;
+    }
+
     // G: Klick auf "Neu anlegen" im Popover
     const createOption = e.target.closest('.js-tag-create');
     if (createOption && activePopover) {
@@ -151,8 +160,8 @@ document.addEventListener('click', (e) => {
     if (activePopover) {
         closePopover();
     }
-	
-	const paginationLink = e.target.closest('.pagination a');
+
+    const paginationLink = e.target.closest('.pagination a');
     if (paginationLink) {
         e.preventDefault();
         fetchAndReplaceContent(paginationLink.href);
@@ -172,9 +181,9 @@ function openRuleBuilderModal(btn) {
     // Quelldaten der Buchung: Buchungstext und Beteiligte (Auftraggeber / Debitor / Kreditor)
     const remittanceInfo = btn.dataset.remittanceInfo || '';
     const payeeSources = [
-        { label: 'Auftraggeber', value: btn.dataset.remitter || '' },
-        { label: 'Zahlungspflichtiger', value: btn.dataset.debitor || '' },
-        { label: 'Empfänger', value: btn.dataset.creditor || '' }
+        {label: 'Auftraggeber', value: btn.dataset.remitter || ''},
+        {label: 'Zahlungspflichtiger', value: btn.dataset.debitor || ''},
+        {label: 'Empfänger', value: btn.dataset.creditor || ''}
     ].filter(src => src.value.trim() !== '');
 
     const initialTextPattern = btn.dataset.textPattern || '';
@@ -278,9 +287,9 @@ function openRuleBuilderModal(btn) {
 
     // Event Listener für Buttons im Footer & Close
     overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', closeRuleModal));
-    
+
     overlay.querySelector('.js-save-rule').addEventListener('click', async () => {
-        const { textPattern, payeePattern } = readRulePatterns(overlay);
+        const {textPattern, payeePattern} = readRulePatterns(overlay);
         const currentTagIds = Array.from(overlay.querySelectorAll('.js-modal-tag-chip.active')).map(c => parseInt(c.dataset.tagId, 10));
 
         if (!textPattern && !payeePattern) {
@@ -431,23 +440,23 @@ function closeRuleModal() {
 
 function renderModalTagPicker(wrapEl, selectedIds) {
     wrapEl.innerHTML = '';
-    
+
     (window.AVAILABLE_TAGS || []).forEach(tag => {
         const isSelected = selectedIds.includes(parseInt(tag.id, 10));
         const chip = document.createElement('span');
-        
+
         // Bei Selektion .active anhängen, sonst .inactive
         chip.className = `badge clickable-tag js-modal-tag-chip ${isSelected ? 'active' : 'inactive'}`;
         chip.dataset.tagId = tag.id;
         chip.style.cssText = `
             cursor: pointer;
             transition: all 0.15s ease;
-            ${isSelected 
-                ? `color: ${tag.color}; border-color: ${tag.color}; background-color: color-mix(in srgb, ${tag.color} 15%, transparent); box-shadow: 0 0 8px color-mix(in srgb, ${tag.color} 30%, transparent);` 
-                : 'color: var(--text-muted); border-color: rgba(255, 255, 255, 0.1); background-color: rgba(255, 255, 255, 0.02); opacity: 0.55;'
-            }
+            ${isSelected
+            ? `color: ${tag.color}; border-color: ${tag.color}; background-color: color-mix(in srgb, ${tag.color} 15%, transparent); box-shadow: 0 0 8px color-mix(in srgb, ${tag.color} 30%, transparent);`
+            : 'color: var(--text-muted); border-color: rgba(255, 255, 255, 0.1); background-color: rgba(255, 255, 255, 0.02); opacity: 0.55;'
+        }
         `;
-        
+
         chip.textContent = isSelected ? `✓ ${tag.name}` : tag.name;
 
         chip.addEventListener('click', () => {
@@ -474,7 +483,7 @@ function triggerLiveMatchCheck(overlay) {
     const pill = modal.querySelector('.js-live-match-pill');
     if (pill) pill.textContent = 'Prüfe...';
 
-    const { textPattern, payeePattern } = readRulePatterns(modal);
+    const {textPattern, payeePattern} = readRulePatterns(modal);
 
     if (!textPattern && !payeePattern) {
         if (pill) pill.textContent = '🎯 Gilt für 0 Buchungen';
@@ -574,7 +583,7 @@ function openTagPopover(anchorBtn, txId) {
 
     const popover = document.createElement('div');
     popover.className = 'tag-popover shadow-lg';
-    
+
     popover.innerHTML = `
         <input type="text" class="tag-search-input js-tag-search" placeholder="Tag suchen oder neu..." autofocus>
         
@@ -617,14 +626,14 @@ function openTagPopover(anchorBtn, txId) {
         const exactMatch = (window.AVAILABLE_TAGS || []).some(t => t.name.toLowerCase() === lowerQuery);
         if (query.length > 0 && !exactMatch) {
             colorRow.classList.remove('hidden');
-            
+
             const createBtn = document.createElement('div');
             createBtn.className = 'tag-option-create js-tag-create';
             createBtn.dataset.txId = txId;
             createBtn.dataset.tagName = query;
             createBtn.style.cssText = 'padding: 0.4rem 0.5rem; cursor: pointer; border-top: 1px dashed var(--bg-surface-hover); margin-top: 0.3rem; color: var(--accent); font-weight: 600; font-size: 0.85rem;';
             createBtn.innerHTML = `➕ "${escapeHtml(query)}" neu anlegen`;
-            
+
             tagListEl.appendChild(createBtn);
         } else {
             colorRow.classList.add('hidden');
@@ -701,11 +710,11 @@ function appendBadgeToUI(txId, tag) {
     if (group.querySelector(`[data-tag-id="${tag.id}"]`)) return;
 
     const openBtn = group.querySelector('.js-open-tag-popover');
-    
+
     const badge = document.createElement('span');
     badge.className = 'badge tag-badge clickable-tag';
     badge.dataset.tagId = tag.id;
-    
+
     const tagColor = tag.color || '#3b82f6';
     badge.style.color = tagColor;
     badge.style.borderColor = tagColor;
@@ -799,7 +808,10 @@ function updateTagStatsBar() {
             sorted.forEach(stat => {
                 const pct = totalAbs > 0 ? (stat.absTotal / totalAbs) * 100 : 0;
                 if (pct <= 0) return;
-                const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+                const formattedAmt = stat.absTotal.toLocaleString('de-DE', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) + ' €';
                 const seg = document.createElement('div');
                 seg.className = 'tag-bar-segment';
                 seg.style.width = `${pct.toFixed(2)}%`;
@@ -812,7 +824,10 @@ function updateTagStatsBar() {
         gridEl.innerHTML = '';
         sorted.forEach(stat => {
             const sign = isExpense ? '-' : '+';
-            const formattedAmt = stat.absTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            const formattedAmt = stat.absTotal.toLocaleString('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' €';
             const fillPct = maxAbs > 0 ? (stat.absTotal / maxAbs) * 100 : 0;
             const isActive = activeFilterTagId === stat.id;
 
@@ -852,7 +867,7 @@ function escapeHtml(str) {
 function openEditTagModal(tag) {
     // Vorherige Modals/Popups schließen
     closePopover();
-    
+
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
 
@@ -962,7 +977,7 @@ function initCreditCardDetail(appEl) {
 
     // Farbpalette für Kreditkarten-Kategorien
     const colorPalette = [
-        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
+        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
         '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#64748b'
     ];
 
@@ -972,7 +987,7 @@ function initCreditCardDetail(appEl) {
         const catName = tx.category_name || 'Sonstiges';
         const amt = Math.abs(parseFloat(tx.amount || '0'));
         if (!catMap[catName]) {
-            catMap[catName] = { name: catName, total: 0, count: 0 };
+            catMap[catName] = {name: catName, total: 0, count: 0};
         }
         catMap[catName].total += amt;
         catMap[catName].count += 1;
@@ -1007,7 +1022,10 @@ function initCreditCardDetail(appEl) {
         legendEl.innerHTML = '';
         sortedCats.forEach(cat => {
             const pct = totalAmount > 0 ? ((cat.total / totalAmount) * 100).toFixed(1) : 0;
-            const formattedAmt = cat.total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            const formattedAmt = cat.total.toLocaleString('de-DE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' €';
 
             const row = document.createElement('div');
             row.className = 'legend-row';
@@ -1070,11 +1088,11 @@ function initCreditCardDetail(appEl) {
                 maintainAspectRatio: false,
                 cutout: '75%',
                 plugins: {
-                    legend: { display: false },
+                    legend: {display: false},
                     tooltip: {
                         callbacks: {
-                            label: function(ctx) {
-                                return ` ${ctx.label}: ${ctx.raw.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €`;
+                            label: function (ctx) {
+                                return ` ${ctx.label}: ${ctx.raw.toLocaleString('de-DE', {minimumFractionDigits: 2})} €`;
                             }
                         }
                     }
@@ -1153,7 +1171,7 @@ function openCcCategoryDropdown(badgeEl) {
                     row.dataset.categoryName = selectedOptionText;
                     row.dataset.categoryId = newCatId;
                 }
-                
+
                 // Chart & Farbschema neu berechnen
                 if (ccApp) {
                     initCreditCardDetail(ccApp);
@@ -1190,14 +1208,14 @@ async function fetchAndReplaceContent(targetUrl) {
         // Neue Tabelle und Paginierung extrahieren
         // Ins aktuelle DOM übernehmen
         document.querySelector('main').innerHTML = doc.querySelector('main').innerHTML;
-        
+
         // URL im Browser aktualisieren (ohne Reload)
-        window.history.pushState({ path: targetUrl }, '', targetUrl);
+        window.history.pushState({path: targetUrl}, '', targetUrl);
 
         // Aktiv-Zustände der Kacheln im DOM aktualisieren
         const urlParams = new URLSearchParams(targetUrl.split('?')[1]);
         const activeTagId = urlParams.get('tag_id');
-        
+
         document.querySelectorAll('.js-filter-tag-card').forEach(card => {
             if (card.dataset.filterTagId === activeTagId) {
                 card.classList.add('active');
@@ -1245,10 +1263,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // UI-Elemente für die Aufgaben-Checkliste
     const tasks = {
-        auth:    document.getElementById('task-auth'),
+        auth: document.getElementById('task-auth'),
         balance: document.getElementById('task-balance'),
-        tx:      document.getElementById('task-tx'),
-        rules:   document.getElementById('task-rules')
+        tx: document.getElementById('task-tx'),
+        rules: document.getElementById('task-rules')
     };
 
     if (!btnOpenSync || !syncModal) return;
@@ -1259,8 +1277,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const hideAllSteps = () => {
         if (stepCredentials) stepCredentials.classList.add('hidden');
-        if (stepPhototan)    stepPhototan.classList.add('hidden');
-        if (stepProgress)    stepProgress.classList.add('hidden');
+        if (stepPhototan) stepPhototan.classList.add('hidden');
+        if (stepProgress) stepProgress.classList.add('hidden');
     };
 
     const closeModal = () => {
@@ -1309,7 +1327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncModal.style.display = 'flex';
 
         try {
-            const response = await KaiHttp.postJson('api.php', { action: 'check_token_status' });
+            const response = await KaiHttp.postJson('api.php', {action: 'check_token_status'});
             const tokensValid = response && response.success && response.tokens_valid;
 
             hideAllSteps();
@@ -1327,8 +1345,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Schließen-Handler
-    if (btnCancelSync)        btnCancelSync.addEventListener('click', closeModal);
-    if (btnCancelSyncX)       btnCancelSyncX.addEventListener('click', closeModal);
+    if (btnCancelSync) btnCancelSync.addEventListener('click', closeModal);
+    if (btnCancelSyncX) btnCancelSyncX.addEventListener('click', closeModal);
     if (btnCancelPhototanBtn) btnCancelPhototanBtn.addEventListener('click', closeModal);
 
     btnCloseSync.addEventListener('click', () => window.location.reload());
@@ -1345,26 +1363,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSubmitCredentials) {
         btnSubmitCredentials.addEventListener('click', async () => {
             const accessId = accessIdInput ? accessIdInput.value.trim() : '';
-            const pin      = pinInput      ? pinInput.value.trim()      : '';
+            const pin = pinInput ? pinInput.value.trim() : '';
 
             if (!accessId || !pin) {
                 alert('Bitte Zugangsnummer und PIN eingeben.');
                 return;
             }
 
-            btnSubmitCredentials.disabled  = true;
+            btnSubmitCredentials.disabled = true;
             btnSubmitCredentials.innerText = 'Bitte warten...';
 
             try {
                 const response = await KaiHttp.postJson('api.php', {
-                    action:    'start_auth_flow',
+                    action: 'start_auth_flow',
                     access_id: accessId,
-                    pin:       pin
+                    pin: pin
                 });
 
                 if (!response || !response.success) {
                     alert(response?.message || 'Fehler beim Starten des Auth-Flows.');
-                    btnSubmitCredentials.disabled  = false;
+                    btnSubmitCredentials.disabled = false;
                     btnSubmitCredentials.innerText = 'Token anfordern & Sync starten';
                     return;
                 }
@@ -1374,16 +1392,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (stepPhototan) {
                     stepPhototan.classList.remove('hidden');
                     if (phototanLockContainer) phototanLockContainer.classList.add('hidden');
-                    if (phototanConfirmChk)    phototanConfirmChk.checked = false;
-                    if (btnSubmitPhototan)     btnSubmitPhototan.disabled  = true;
+                    if (phototanConfirmChk) phototanConfirmChk.checked = false;
+                    if (btnSubmitPhototan) btnSubmitPhototan.disabled = true;
                 }
-                btnSubmitCredentials.disabled  = false;
+                btnSubmitCredentials.disabled = false;
                 btnSubmitCredentials.innerText = 'Token anfordern & Sync starten';
 
             } catch (err) {
                 console.error('Auth-Flow Fehler:', err);
                 alert('Netzwerkfehler beim Login. Bitte versuche es erneut.');
-                btnSubmitCredentials.disabled  = false;
+                btnSubmitCredentials.disabled = false;
                 btnSubmitCredentials.innerText = 'Token anfordern & Sync starten';
             }
         });
@@ -1393,28 +1411,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnSubmitPhototan) {
         btnSubmitPhototan.addEventListener('click', async () => {
-            btnSubmitPhototan.disabled  = true;
+            btnSubmitPhototan.disabled = true;
             btnSubmitPhototan.innerText = 'Prüfe Freigabe...';
 
             const resetLock = resetLockChk ? resetLockChk.checked : false;
 
             try {
                 const response = await KaiHttp.postJson('api.php', {
-                    action:     'check_phototan_status',
+                    action: 'check_phototan_status',
                     reset_lock: resetLock
                 });
 
                 if (response && response.status === 'blocked') {
                     if (phototanLockContainer) phototanLockContainer.classList.remove('hidden');
-                    if (phototanConfirmChk)    phototanConfirmChk.checked = false;
-                    btnSubmitPhototan.disabled  = true;
+                    if (phototanConfirmChk) phototanConfirmChk.checked = false;
+                    btnSubmitPhototan.disabled = true;
                     btnSubmitPhototan.innerText = 'Sync fortsetzen';
                     alert(response.message || 'photoTAN gesperrt. Bitte erst auf der comdirect-Webseite anmelden.');
                     return;
                 }
 
                 if (response && response.status === 'pending') {
-                    btnSubmitPhototan.disabled  = false;
+                    btnSubmitPhototan.disabled = false;
                     btnSubmitPhototan.innerText = 'Sync fortsetzen';
                     alert('Die photoTAN-Freigabe ist noch ausstehend. Bitte zuerst in der App bestätigen.');
                     return;
@@ -1433,13 +1451,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     phototanLockContainer.classList.remove('hidden');
                 }
                 alert(msg);
-                btnSubmitPhototan.disabled  = false;
+                btnSubmitPhototan.disabled = false;
                 btnSubmitPhototan.innerText = 'Sync fortsetzen';
 
             } catch (err) {
                 console.error('photoTAN-Check Fehler:', err);
                 alert('Netzwerkfehler beim Prüfen der photoTAN.');
-                btnSubmitPhototan.disabled  = false;
+                btnSubmitPhototan.disabled = false;
                 btnSubmitPhototan.innerText = 'Sync fortsetzen';
             }
         });
@@ -1451,7 +1469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTaskActive('auth');
 
         try {
-            const syncResponse = await KaiHttp.postJson('api.php', { action: 'run_sync' });
+            const syncResponse = await KaiHttp.postJson('api.php', {action: 'run_sync'});
 
             if (!syncResponse || !syncResponse.success) {
                 failTask('auth', 'Authentifizierung/Sync fehlgeschlagen');
@@ -1474,7 +1492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTaskActive('tx');
             await delay(400);
             const importedCount = syncResponse.imported ?? 0;
-            const ignoredCount  = syncResponse.ignored  ?? 0;
+            const ignoredCount = syncResponse.ignored ?? 0;
             completeTask('tx', `${importedCount} neue Transaktion(en) importiert (${ignoredCount} Duplikate ignoriert)`);
             await delay(300);
 
@@ -1504,9 +1522,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function showTxDetailsModal(tx) {
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
-    
+
     const opt = (val) => val ? escapeHtml(val) : '<span class="text-muted">-</span>';
-    
+
     overlay.innerHTML = `
         <div class="rule-modal-card">
             <div class="rule-modal-header">
@@ -1543,4 +1561,131 @@ function showTxDetailsModal(tx) {
     });
 
     document.body.appendChild(overlay);
+}
+
+async function openContractRuleBuilderModal(btn) {
+    const txId = btn.dataset.txId;
+    const remittanceInfo = btn.dataset.remittanceInfo || '';
+    const remitter = btn.dataset.remitter || '';
+    const creditor = btn.dataset.creditor || '';
+    const mandateId = btn.dataset.mandateId || '';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'rule-modal-overlay';
+
+    overlay.innerHTML = `
+        <div class="rule-modal-card" style="max-width: 550px;">
+            <div class="rule-modal-header">
+                <h3>📑 Vertrag & Zuordnung festlegen</h3>
+                <button type="button" class="rule-modal-close js-close-modal">&times;</button>
+            </div>
+            
+            <div class="rule-modal-body">
+                <div style="margin-bottom: 1.2rem;">
+                    <label class="chart-label rule-group-label">Ziel-Vertrag:</label>
+                    <select id="modal-contract-select" class="tag-search-input" style="width: 100%; padding: 0.6rem;">
+                        <option value="">-- Neuen Vertrag aus Buchung erstellen --</option>
+                    </select>
+                </div>
+
+                <div style="background: var(--bg-surface-hover); padding: 1rem; border-radius: 6px; margin-bottom: 1.2rem;">
+                    <strong style="font-size: 0.9rem; display: block; margin-bottom: 0.6rem;">Primäre Identifikation (Empfohlen):</strong>
+                    
+                    ${mandateId ? `
+                        <div style="margin-bottom: 0.6rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                                <input type="checkbox" id="modal-use-mandate" checked>
+                                Über SEPA-Mandatsnummer matchen: <strong>${escapeHtml(mandateId)}</strong>
+                            </label>
+                        </div>
+                    ` : ''}
+
+                    <div>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; margin-bottom: 0.3rem;">
+                            <input type="checkbox" id="modal-use-auftraggeber" checked>
+                            Über Auftraggeber / Empfänger matchen:
+                        </label>
+                        <input type="text" id="modal-auftraggeber-val" class="tag-search-input" 
+                               value="${escapeHtml(remitter || creditor)}" 
+                               style="font-size: 0.85rem; padding: 0.4rem 0.6rem;">
+                    </div>
+                </div>
+
+                <details style="margin-bottom: 1rem;">
+                    <summary style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer; user-select: none;">
+                        Erweiterte Optionen: Muster auf Buchungstext (Optional)
+                    </summary>
+                    <div style="margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <label class="chart-label rule-group-label">Buchungstext-Schnipsel (klickbar):</label>
+                        <div class="word-segment-wrap js-word-segments" data-source-value="${escapeHtml(remittanceInfo)}" style="margin-bottom: 0.5rem;"></div>
+                        
+                        <input type="text" id="modal-text-pattern" class="tag-search-input rule-pattern-input" 
+                               placeholder="z. B. Abrechnung Nr. ..." style="font-size: 0.85rem;">
+                    </div>
+                </details>
+            </div>
+
+            <div class="rule-modal-footer">
+                <button type="button" class="btn btn-outline js-close-modal">Abbrechen</button>
+                <button type="button" class="btn js-save-contract-rule">Speichern & Zuordnen</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Verträge async laden und Select befüllen
+    try {
+        const res = await KaiHttp.postJson('api.php', {action: 'get_contracts'});
+        if (res && res.success && res.contracts) {
+            const selectEl = overlay.querySelector('#modal-contract-select');
+            res.contracts.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.name} (${c.type})`;
+                selectEl.appendChild(opt);
+            });
+        }
+    } catch (err) {
+        console.error('Fehler beim Laden der Verträge:', err);
+    }
+
+    // Klick auf Wörter im Buchungstext
+    overlay.querySelectorAll('.word-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const input = overlay.querySelector('#modal-text-pattern');
+            if (input) input.value = chip.textContent.trim();
+        });
+    });
+
+    overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', () => overlay.remove()));
+
+    // Speichern-Button Logik
+    overlay.querySelector('.js-save-contract-rule').addEventListener('click', async () => {
+        const contractId = overlay.querySelector('#modal-contract-select').value;
+        const useMandate = overlay.querySelector('#modal-use-mandate')?.checked || false;
+        const useAuftraggeber = overlay.querySelector('#modal-use-auftraggeber')?.checked || false;
+        const auftraggeberVal = overlay.querySelector('#modal-auftraggeber-val')?.value || '';
+        const textPattern = overlay.querySelector('#modal-text-pattern')?.value || '';
+
+        try {
+            const data = await KaiHttp.postJson('api.php', {
+                action: 'save_contract_rule',
+                tx_id: parseInt(txId, 10),
+                contract_id: contractId ? parseInt(contractId, 10) : null,
+                use_mandate: useMandate,
+                mandate_id: mandateId,
+                use_auftraggeber: useAuftraggeber,
+                auftraggeber_val: auftraggeberVal,
+                text_pattern: textPattern
+            });
+
+            if (data && data.success) {
+                overlay.remove();
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error('Fehler beim Speichern der Vertragsregel:', err);
+        }
+    });
 }
