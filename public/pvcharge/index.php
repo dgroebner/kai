@@ -534,7 +534,7 @@ function getBatteryColorClass(int $soc): string
         </div>
 
         <!-- Sektion 5: Historische Telemetrie-Daten & Grafische Auswertung -->
-        <div class="chart-section u-mt-lg">
+        <div class="chart-section u-mt-lg" id="telemetry-section">
             <div class="section-title">Historische Telemetrie-Daten & Verlauf</div>
 
             <!-- Zeit-Filterbuttons -->
@@ -614,7 +614,8 @@ function getBatteryColorClass(int $soc): string
                 <!-- Paginierung -->
                 <div class="pagination">
                     <?php if ($page > 1): ?>
-                        <a href="?tel_filter=<?= $telemetryFilter ?>&page=<?= $page - 1 ?>" class="btn btn-outline">&larr;
+                        <a href="?tel_filter=<?= $telemetryFilter ?>&page=<?= $page - 1 ?>#telemetry-section"
+                           class="btn btn-outline">&larr;
                             Zurück</a>
                     <?php else: ?>
                         <span class="btn btn-outline disabled">&larr; Zurück</span>
@@ -623,7 +624,8 @@ function getBatteryColorClass(int $soc): string
                     <span class="page-info">Seite <?= $page ?> von <?= $totalPages ?></span>
 
                     <?php if ($page < $totalPages): ?>
-                        <a href="?tel_filter=<?= $telemetryFilter ?>&page=<?= $page + 1 ?>" class="btn btn-outline">Weiter
+                        <a href="?tel_filter=<?= $telemetryFilter ?>&page=<?= $page + 1 ?>#telemetry-section"
+                           class="btn btn-outline">Weiter
                             &rarr;</a>
                     <?php else: ?>
                         <span class="btn btn-outline disabled">Weiter &rarr;</span>
