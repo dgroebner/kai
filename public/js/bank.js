@@ -1818,7 +1818,7 @@ async function openContractModal(contract) {
     const cStatus = isEdit ? (contract.status || 'aktiv') : 'aktiv';
     const cAuftraggeber = isEdit ? (contract.auftraggeber || '') : '';
     const cMandat = isEdit ? (contract.mandatsnummer || '') : '';
-    const cVariabel = isEdit ? (contract.variabel == 1) : false;
+    const cVariabel = isEdit ? (contract.variabel === 1) : false;
 
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
@@ -1943,8 +1943,9 @@ async function openContractModal(contract) {
                 }
             }
         } catch (err) {
+            console.error('Fehler beim Laden der Buchungen:', err);
             const container = overlay.querySelector('.js-modal-recent-txs');
-            if (container) container.innerHTML = 'Fehler beim Laden der Buchungen.';
+            if (container) container.innerHTML = `<span style="color: var(--color-red);">Fehler: ${escapeHtml(err.message || 'Unbekannt')}</span>`;
         }
     }
 
