@@ -478,13 +478,16 @@ try {
         exit;
     }
 
-    // Vertragsregel speichern und Transaktion zuordnen
+    // Vertragsregel speichern und Regel anlegen
     if ($action === 'save_contract_rule') {
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
         $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
 
         $useMandate = !empty($data['use_mandate']);
         $mandateId = trim((string)($data['mandate_id'] ?? ''));
+
+        $useCreditorId = !empty($data['use_creditor_id']);
+        $creditorId = trim((string)($data['creditor_id'] ?? ''));
 
         $useAuftraggeber = !empty($data['use_auftraggeber']);
         $auftraggeberVal = trim((string)($data['auftraggeber_val'] ?? ''));
@@ -499,7 +502,6 @@ try {
 
         // Falls kein bestehender Vertrag gewählt wurde, legen wir einen neuen an
         if (!$contractId) {
-            // Transaktionsdetails für den neuen Vertrag holen
             $stmtTxInfo = $pdo->prepare("SELECT remittance_info, remitter, creditor, debitor, amount FROM bank_giro_transactions WHERE id = :id");
             $stmtTxInfo->execute([':id' => $txId]);
             $txInfo = $stmtTxInfo->fetch(PDO::FETCH_ASSOC);
@@ -518,36 +520,41 @@ try {
             $contractId = (int)$pdo->lastInsertId();
         }
 
-        // Regel-Muster definieren (Primär über Mandat oder Auftraggeber)
-        $patternType = 'substring';
-        $patternValue = '';
-
+        // Regeln anlegen, je nachdem was ausgewählt wurde
         if ($useMandate && $mandateId !== '') {
-            $patternType = 'exact_match';
-            $patternValue = $mandateId;
-        } elseif ($useAuftraggeber && $auftraggeberVal !== '') {
-            $patternType = 'substring';
-            $patternValue = $auftraggeberVal;
-        } elseif ($textPattern !== '') {
-            $patternType = 'substring';
-            $patternValue = $textPattern;
-        }
-
-        if ($patternValue !== '') {
             $stmtRule = $pdo->prepare("
                 INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                VALUES (:contract_id, :pattern_type, :pattern_value, 10)
+                VALUES (:contract_id, 'exact_match', :pattern_value, 10)
             ");
-            $stmtRule->execute([
-                ':contract_id' => $contractId,
-                ':pattern_type' => $patternType,
-                ':pattern_value' => $patternValue
-            ]);
+            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $mandateId]);
         }
 
-        // Transaktion direkt mit dem Vertrag verknüpfen
-        $stmtUpdateTx = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
-        $stmtUpdateTx->execute([':contract_id' => $contractId, ':tx_id' => $txId]);
+        if ($useCreditorId && $creditorId !== '') {
+            $stmtRule = $pdo->prepare("
+                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                VALUES (:contract_id, 'exact_match', :pattern_value, 10)
+            ");
+            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $creditorId]);
+        }
+
+        if ($useAuftraggeber && $auftraggeberVal !== '') {
+            $stmtRule = $pdo->prepare("
+                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                VALUES (:contract_id, 'substring', :pattern_value, 10)
+            ");
+            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $auftraggeberVal]);
+        }
+
+        if ($textPattern !== null && $textPattern !== '') {
+            $stmtRule = $pdo->prepare("
+                INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
+                VALUES (:contract_id, 'regex', :pattern_value, 10)
+            ");
+            $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $textPattern]);
+        }
+
+        // Hinweis: Die direkte Zuweisung über die Spalte entfällt,
+        // da Verträge nun dynamisch über ContractRuleMatcher verknüpft werden.
 
         $pdo->commit();
 
