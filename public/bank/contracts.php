@@ -118,7 +118,7 @@ foreach ($contracts as $c) {
                         </thead>
                         <tbody>
                         <?php foreach ($contracts as $c): ?>
-                            <tr>
+                            <tr id="contract-<?= $c['id'] ?>">
                                 <td data-label="Name">
                                     <strong><?= htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') ?></strong>
                                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">

@@ -668,7 +668,7 @@ try {
                                                     vorhanden &rarr;</a>
                                             <?php endif; ?>
                                             <?php if (!empty($tx['contract_id'])): ?>
-                                                <a href="contracts.php?highlight=<?= (int)$tx['contract_id'] ?>"
+                                                <a href="contracts.php?status=all#contract-<?= (int)$tx['contract_id'] ?>"
                                                    class="badge"
                                                    style="font-size: 0.75rem; color: var(--accent); border-color: var(--accent); background: rgba(59, 130, 246, 0.05);">
                                                     📑
