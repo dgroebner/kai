@@ -636,6 +636,59 @@ try {
         exit;
     }
 
+    // Vertragsdetails speichern (aus dem Modal-Editor)
+    if ($action === 'save_contract_details') {
+        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+        $name = trim((string)($data['name'] ?? ''));
+
+        if ($name === '') {
+            Auth::sendJsonError(400, 'Name des Vertrags darf nicht leer sein.');
+        }
+
+        try {
+            $contractRepo = new BankContractRepository();
+            $id = $contractRepo->saveContract($data, $contractId);
+
+            echo json_encode([
+                'success' => true,
+                'contract_id' => $id
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // Vertrag löschen
+    if ($action === 'delete_contract') {
+        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$contractId) {
+            Auth::sendJsonError(400, 'Ungültige Vertrags-ID');
+        }
+
+        try {
+            $pdo->beginTransaction();
+            // Verknüpfung in Transaktionen aufheben
+            $stmt = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = NULL WHERE contract_id = :id");
+            $stmt->execute([':id' => $contractId]);
+
+            // Vertrag selbst löschen (Regeln werden dank CASCADE automatisch mitgelöscht)
+            $stmtDel = $pdo->prepare("DELETE FROM bank_contracts WHERE id = :id");
+            $stmtDel->execute([':id' => $contractId]);
+
+            $pdo->commit();
+
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
 } catch (Throwable $e) {
