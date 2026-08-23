@@ -1611,7 +1611,7 @@ async function openContractRuleBuilderModal(btn) {
             
             <div class="rule-modal-body">
                 <!-- 1. Ziel-Vertrag auswählen oder neu anlegen -->
-                <div style="margin-bottom: 1.2rem;">
+                <div style="margin-bottom: 0.5rem;">
                     <label class="chart-label rule-group-label">Ziel-Vertrag:</label>
                     <select id="modal-contract-select" class="tag-search-input" style="width: 100%; padding: 0.6rem;">
                         <option value="">-- Neuen Vertrag aus Buchung erstellen --</option>
