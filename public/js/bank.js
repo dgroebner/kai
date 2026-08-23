@@ -1804,7 +1804,7 @@ function triggerContractLiveCheck(overlay, mandateId, creditorId) {
 
 let activeContractModal = null;
 
-function openContractModal(contract) {
+async function openContractModal(contract) {
     if (activeContractModal) {
         activeContractModal.remove();
         activeContractModal = null;
@@ -1822,6 +1822,13 @@ function openContractModal(contract) {
 
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
+
+    const recentTxsSection = isEdit ? `
+        <div style="margin-top: 0.5rem; border-top: 1px solid var(--bg-surface-hover); padding-top: 0.8rem;">
+            <label class="chart-label" style="margin-bottom: 0.5rem;">Letzte zugeordnete Buchungen:</label>
+            <div class="js-modal-recent-txs" style="font-size: 0.85rem; color: var(--text-muted);">Lade Buchungen...</div>
+        </div>
+    ` : '';
 
     overlay.innerHTML = `
         <div class="rule-modal-card" style="max-width: 520px;">
@@ -1890,6 +1897,8 @@ function openContractModal(contract) {
                         Variabler Betrag (Schwankungen erlaubt)
                     </label>
                 </div>
+
+                ${recentTxsSection}
             </div>
 
             <div class="rule-modal-footer">
@@ -1906,6 +1915,38 @@ function openContractModal(contract) {
 
     document.body.appendChild(overlay);
     activeContractModal = overlay;
+
+    // Asynchron die letzten Buchungen laden (falls Bearbeitungsmodus)
+    if (isEdit) {
+        try {
+            const txRes = await KaiHttp.postJson('api.php', {
+                action: 'get_contract_transactions',
+                contract_id: parseInt(contract.id, 10),
+                limit: 5
+            });
+
+            const container = overlay.querySelector('.js-modal-recent-txs');
+            if (container) {
+                if (txRes && txRes.success && txRes.transactions && txRes.transactions.length > 0) {
+                    container.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                            ${txRes.transactions.map(tx => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.3rem 0.5rem; border-radius: 4px;">
+                                    <span>${escapeHtml(tx.booking_date)} – ${escapeHtml(tx.remitter || tx.creditor || tx.remittance_info || 'Buchung')}</span>
+                                    <strong class="${tx.amount < 0 ? 'text-danger' : 'text-success'}">${tx.amount} €</strong>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = 'Keine zugeordneten Buchungen gefunden.';
+                }
+            }
+        } catch (err) {
+            const container = overlay.querySelector('.js-modal-recent-txs');
+            if (container) container.innerHTML = 'Fehler beim Laden der Buchungen.';
+        }
+    }
 
     const closeModal = () => {
         overlay.remove();
