@@ -20,7 +20,7 @@ class ContractRuleMatcher
     /**
      * Prüft eine Giro-Transaktion gegen alle aktiven Vertragsregeln.
      *
-     * @param array $transaction Giro-Transaktion (remittance_info, remitter, debitor, creditor)
+     * @param array $transaction Giro-Transaktion (remittance_info, remitter, debitor, creditor, dc_mandate_id, dc_creditor_id)
      * @return int|null Vertrags-ID bei Treffer, sonst null
      */
     public function matchGiroTransaction(array $transaction): ?int
@@ -28,10 +28,14 @@ class ContractRuleMatcher
         $rules = $this->getActiveRules();
 
         $subjectText = (string)($transaction['remittance_info'] ?? '');
+
+        // Alle relevanten Text- und Identifikationsfelder zusammenfassen
         $payees = [
             (string)($transaction['remitter'] ?? ''),
             (string)($transaction['debitor'] ?? ''),
-            (string)($transaction['creditor'] ?? '')
+            (string)($transaction['creditor'] ?? ''),
+            (string)($transaction['dc_mandate_id'] ?? ''),  // Mandatsnummer einbeziehen
+            (string)($transaction['dc_creditor_id'] ?? '')   // Gläubiger-ID einbeziehen
         ];
 
         foreach ($rules as $rule) {
