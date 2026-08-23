@@ -2143,8 +2143,7 @@ tr.is-today-row {
 }
 
 .battery-level-fill {
-    /* transform und transform-origin wurden entfernt, da JS die Attribute direkt steuert */
-    transition: height 0.4s ease-in-out, y 0.4s ease-in-out, fill 0.3s ease;
+    transition: width 0.4s ease-in-out, fill 0.3s ease;
     fill: currentColor;
 }
 

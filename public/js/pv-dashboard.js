@@ -63,16 +63,15 @@ function updateLiveValues() {
                     const steppedSoc = Math.round(soc / 25) * 25; // Ergibt exakt 0, 25, 50, 75 oder 100
                     batterySvg.style.color = batteryColor;
 
-                    // Das innere Füll-Rechteck direkt über SVG-Attribute ansteuern
+                    // Das innere Füll-Rechteck horizontal von links nach rechts steuern
                     const fillRect = batterySvg.querySelector('.battery-level-fill');
                     if (fillRect) {
-                        const maxHeight = 10; // Entspricht der maximalen Innenhöhe des SVGs
-                        const targetHeight = (steppedSoc / 100) * maxHeight;
-                        const targetY = 7 + (maxHeight - targetHeight);
+                        const maxWidth = 12; // Entspricht der maximalen Innenbreite des Rechtecks im SVG
+                        const targetWidth = (steppedSoc / 100) * maxWidth;
 
-                        // Explizites Casting als String (.toString()), um IDE-Fehler und Kompatibilitätsprobleme zu vermeiden
-                        fillRect.setAttribute('height', targetHeight.toString());
-                        fillRect.setAttribute('y', targetY.toString());
+                        fillRect.setAttribute('width', targetWidth.toString());
+                        // Die X-Position bleibt konstant bei 4 (Startpunkt des inneren Füllbereichs)
+                        fillRect.setAttribute('x', '4');
                     }
                 }
             }
