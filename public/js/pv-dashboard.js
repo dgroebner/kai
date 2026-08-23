@@ -76,6 +76,33 @@ document.addEventListener("DOMContentLoaded", function () {
                 window.telemetryChartInstance.update('none'); // 'none' verhindert unschöne Animationen beim stündlichen/5-minütigen Update
             }
 
+            // 3. KPIs aktualisieren
+            if (data.kpis) {
+                const formatNumber = (num, decimals = 2) => {
+                    return Number(num).toLocaleString('de-DE', {
+                        minimumFractionDigits: decimals,
+                        maximumFractionDigits: decimals
+                    });
+                };
+
+                const updateEl = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = value;
+                };
+
+                updateEl('kpi-yield-kwh', formatNumber(data.kpis.yieldDailyKwh));
+                updateEl('kpi-yield-rev', formatNumber(data.kpis.yieldRevenue));
+
+                // Peak hat keine Nachkommastellen
+                updateEl('kpi-peak-w', formatNumber(data.kpis.todayPeakW, 0));
+
+                updateEl('kpi-import-kwh', formatNumber(data.kpis.gridImportKwh));
+                updateEl('kpi-import-cost', formatNumber(data.kpis.gridImportCost));
+
+                updateEl('kpi-export-kwh', formatNumber(data.kpis.gridExportKwh));
+                updateEl('kpi-export-rev', formatNumber(data.kpis.gridExportRevenue));
+            }
+
         } catch (e) {
             console.error("Fehler beim Hintergrund-Update der Telemetrie:", e);
         }

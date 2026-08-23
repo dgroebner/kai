@@ -263,51 +263,51 @@ function getBatteryColorClass(int $soc): string
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     header('Content-Type: application/json');
 
-    $telemetryFilter = $_GET['tel_filter'] ?? 'tag';
-    if (!in_array($telemetryFilter, ['tag', 'woche', 'monat'])) {
-        $telemetryFilter = 'tag';
-    }
-
-    $page = max(1, (int)($_GET['page'] ?? 1));
-    $perPage = 15;
-    $offset = ($page - 1) * $perPage;
-
-    $whereClause = "1=1";
-    if ($telemetryFilter === 'tag') {
-        $whereClause = "last_update >= CURDATE()";
-    } elseif ($telemetryFilter === 'woche') {
-        $whereClause = "last_update >= NOW() - INTERVAL 7 DAY";
-    } elseif ($telemetryFilter === 'monat') {
-        $whereClause = "last_update >= NOW() - INTERVAL 30 DAY";
-    }
-
     $db = Database::getInstance()->getConnection();
 
-    // Telemetrie-Einträge laden
-    $telemetryStmt = $db->prepare("
-        SELECT * FROM pv_telemetry 
-        WHERE $whereClause 
-        ORDER BY last_update DESC 
-        LIMIT :limit OFFSET :offset
-    ");
-    $telemetryStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-    $telemetryStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $telemetryStmt->execute();
-    $telemetryRecords = $telemetryStmt->fetchAll(PDO::FETCH_ASSOC);
+    // ... [bisheriger Code für $telemetryFilter, $offset, $telemetryRecords, $chartRows] ...
 
-    // Chart-Daten laden
-    $chartQuery = $db->prepare("
-        SELECT last_update, pv_power_w, house_load_w, grid_total_w, battery_soc_pct, battery_power_w 
+    // NEU: KPIs für den aktuellen Tag live berechnen
+    $liveStmt = $db->query("SELECT * FROM pv_live ORDER BY id DESC LIMIT 1");
+    $liveData = $liveStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $todayPeakStmt = $db->query("SELECT MAX(pv_power_w) FROM pv_telemetry WHERE last_update >= CURDATE()");
+    $todayPeakW = (int)$todayPeakStmt->fetchColumn();
+
+    $gridCalcStmt = $db->query("
+        SELECT 
+            SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) AS sum_import_w,
+            SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) AS sum_export_w
         FROM pv_telemetry 
-        WHERE $whereClause 
-        ORDER BY last_update ASC
+        WHERE last_update >= CURDATE()
     ");
-    $chartQuery->execute();
-    $chartRows = $chartQuery->fetchAll(PDO::FETCH_ASSOC);
+    $gridCalc = $gridCalcStmt->fetch(PDO::FETCH_ASSOC) ?: ['sum_import_w' => 0, 'sum_export_w' => 0];
+
+    // Einstellungen laden, um die Kosten/Erlöse zu berechnen
+    $settingsService = new SystemSettingsService();
+    $importPrice = $settingsService->getGridImportPrice();
+    $exportPrice = $settingsService->getGridExportPrice();
+
+    $gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
+    $gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
+    $gridImportCost = $gridImportKwh * $importPrice;
+    $gridExportRevenue = $gridExportKwh * $exportPrice;
+
+    $yieldDailyKwh = isset($liveData['yield_daily_kwh']) ? (float)$liveData['yield_daily_kwh'] : 0.0;
+    $yieldRevenue = $yieldDailyKwh * $importPrice;
 
     echo json_encode([
             'records' => $telemetryRecords,
-            'chart' => $chartRows
+            'chart' => $chartRows,
+            'kpis' => [
+                    'yieldDailyKwh' => $yieldDailyKwh,
+                    'yieldRevenue' => $yieldRevenue,
+                    'todayPeakW' => $todayPeakW,
+                    'gridImportKwh' => $gridImportKwh,
+                    'gridImportCost' => $gridImportCost,
+                    'gridExportKwh' => $gridExportKwh,
+                    'gridExportRevenue' => $gridExportRevenue
+            ]
     ]);
     exit;
 }
@@ -400,40 +400,43 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         </div>
 
         <!-- Zusätzliche Live-KPIs unter dem Energiefluss -->
+        <!-- Zusätzliche Live-KPIs unter dem Energiefluss -->
         <div class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-label">Ertrag Heute</div>
                 <div class="kpi-value kpi-value-sm text-warning">
-                    <?= number_format($yieldDailyKwh, 2, ',', '.') ?>
+                    <span id="kpi-yield-kwh"><?= number_format($yieldDailyKwh, 2, ',', '.') ?></span>
                     <span class="kpi-unit">kWh</span>
                 </div>
                 <div class="kpi-note kpi-note-muted">
-                    (~<?= number_format($yieldRevenue, 2, ',', '.') ?> €)
+                    (~<span id="kpi-yield-rev"><?= number_format($yieldRevenue, 2, ',', '.') ?></span> €)
                 </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Peak-Leistung Heute</div>
                 <div class="kpi-value kpi-value-sm">
-                    <?= number_format($todayPeakW, 0, ',', '.') ?>
+                    <span id="kpi-peak-w"><?= number_format($todayPeakW, 0, ',', '.') ?></span>
                     <span class="kpi-unit">W</span>
                 </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Netzbezug (Heute)</div>
                 <div class="kpi-value kpi-value-sm text-danger">
-                    <?= number_format($gridImportKwh, 2, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                    <span id="kpi-import-kwh"><?= number_format($gridImportKwh, 2, ',', '.') ?></span> <span
+                            class="kpi-unit">kWh</span>
                 </div>
                 <div class="kpi-note kpi-note-muted">
-                    (~<?= number_format($gridImportCost, 2, ',', '.') ?> €)
+                    (~<span id="kpi-import-cost"><?= number_format($gridImportCost, 2, ',', '.') ?></span> €)
                 </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Netzeinspeisung (Heute)</div>
                 <div class="kpi-value kpi-value-sm text-success">
-                    <?= number_format($gridExportKwh, 2, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                    <span id="kpi-export-kwh"><?= number_format($gridExportKwh, 2, ',', '.') ?></span> <span
+                            class="kpi-unit">kWh</span>
                 </div>
                 <div class="kpi-note kpi-note-muted">
-                    (~<?= number_format($gridExportRevenue, 2, ',', '.') ?> €)
+                    (~<span id="kpi-export-rev"><?= number_format($gridExportRevenue, 2, ',', '.') ?></span> €)
                 </div>
             </div>
         </div>
