@@ -1820,6 +1820,24 @@ async function openContractModal(contract) {
         activeContractModal = null;
     }
 
+    const startInput = overlay.querySelector('#modal-contract-start');
+    const laufzeitInput = overlay.querySelector('#modal-contract-laufzeit');
+    const endInput = overlay.querySelector('#modal-contract-end');
+
+    const calculateEndDate = () => {
+        const startVal = startInput.value;
+        const monthsVal = parseInt(laufzeitInput.value, 10);
+        if (startVal && !isNaN(monthsVal) && monthsVal > 0) {
+            const date = new Date(startVal);
+            date.setMonth(date.getMonth() + monthsVal);
+            // Auf Format YYYY-MM-DD bringen
+            endInput.value = date.toISOString().split('T')[0];
+        }
+    };
+
+    startInput.addEventListener('change', calculateEndDate);
+    laufzeitInput.addEventListener('input', calculateEndDate);
+
     const isEdit = contract && contract.id;
     const cName = isEdit ? (contract.name || '') : '';
     const cType = isEdit ? (contract.type || 'fixkosten') : 'fixkosten';
@@ -1855,22 +1873,18 @@ async function openContractModal(contract) {
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
-                        <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="vertrag" ${cType === 'vertrag' ? 'selected' : ''}>Vertrag</option>
-                            <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
-                            <option value="abgabe" ${cType === 'abgabe' ? 'selected' : ''}>Abgabe</option>
-                            <option value="kredit" ${cType === 'kredit' ? 'selected' : ''}>Kredit</option>
-                        </select>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Start-Datum:</label>
+                        <input type="date" id="modal-contract-start" class="tag-search-input" value="${escapeHtml(contract?.start_datum || '')}">
                     </div>
                     <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Status:</label>
-                        <select id="modal-contract-status" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="aktiv" ${cStatus === 'aktiv' ? 'selected' : ''}>Aktiv</option>
-                            <option value="pausiert" ${cStatus === 'pausiert' ? 'selected' : ''}>Pausiert</option>
-                            <option value="gekuendigt" ${cStatus === 'gekuendigt' ? 'selected' : ''}>Gekündigt</option>
-                        </select>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Laufzeit (Monate):</label>
+                        <input type="number" id="modal-contract-laufzeit" class="tag-search-input" placeholder="z.B. 36 für Kredit" value="${escapeHtml(contract?.laufzeit_monate || '')}">
                     </div>
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">End-Datum (optional / autom. berechnet):</label>
+                    <input type="date" id="modal-contract-end" class="tag-search-input" value="${escapeHtml(contract?.end_datum || '')}">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1992,7 +2006,9 @@ async function openContractModal(contract) {
                 frequenz: frequenz,
                 auftraggeber: auftraggeber,
                 mandatsnummer: mandatsnummer,
-                variabel: variabel
+                variabel: variabel,
+                start_datum: overlay.querySelector('#modal-contract-start').value || null,
+                end_datum: overlay.querySelector('#modal-contract-end').value || null
             });
 
             if (data && data.success) {

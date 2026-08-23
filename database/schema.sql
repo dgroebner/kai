@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     end_to_end_reference VARCHAR(50) NULL,
     dc_creditor_id VARCHAR(50) NULL,
     dc_mandate_id VARCHAR(50) NULL,
-    remittance_info VARCHAR(350) NOT NULL,
+    remittance_info TEXT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     matched_rule_id INT NULL,
     contract_id INT UNSIGNED DEFAULT NULL,

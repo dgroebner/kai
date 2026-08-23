@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\Bank;
 
+use DateTime;
 use Kai\Tools\Shared\Db\Database;
 use PDO;
 
@@ -85,6 +86,13 @@ class BankContractRepository
      */
     public function saveContract(array $data, ?int $id = null): int
     {
+        // Wenn ein Startdatum und eine Laufzeit (in Monaten) übergeben wurden, Enddatum berechnen falls leer
+        if (!empty($data['start_datum']) && empty($data['end_datum']) && !empty($data['laufzeit_monate'])) {
+            $startDate = new DateTime($data['start_datum']);
+            $startDate->modify('+' . (int)$data['laufzeit_monate'] . ' months');
+            $data['end_datum'] = $startDate->format('Y-m-d');
+        }
+
         if ($id !== null && $id > 0) {
             // Update
             $stmt = $this->pdo->prepare("
