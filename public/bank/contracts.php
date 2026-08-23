@@ -163,5 +163,6 @@ foreach ($contracts as $c) {
     </main>
 
 </div>
+<script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>
