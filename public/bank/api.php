@@ -609,8 +609,8 @@ try {
     }
 
     if ($action === 'get_contract_transactions') {
-        $contractId = (int)($input['contract_id'] ?? 0);
-        $limit = (int)($input['limit'] ?? 5);
+        $contractId = (int)($data['contract_id'] ?? 0); // Hier von $input auf $data geändert
+        $limit = (int)($data['limit'] ?? 5);         // Hier von $input auf $data geändert
 
         if ($contractId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Ungültige Vertrags-ID']);
@@ -618,7 +618,6 @@ try {
         }
 
         try {
-            // Beispiel-Aufruf über dein Repository (je nach interner Struktur anpassen)
             $contractRepo = new BankContractRepository();
             $transactions = $contractRepo->getTransactionsForContract($contractId, $limit);
 
