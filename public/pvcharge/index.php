@@ -82,6 +82,8 @@ $gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
 $gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
 $gridImportCost = $gridImportKwh * 0.2689;
 $gridExportRevenue = $gridExportKwh * 0.06;
+$yieldDailyKwh = isset($liveData['yield_daily_kwh']) ? (float)$liveData['yield_daily_kwh'] : 0.0;
+$yieldRevenue = $yieldDailyKwh * 0.2689;
 
 // --- Tagesprognosen (nächste 7 Tage) ---
 $dailyStmt = $db->prepare("
@@ -338,8 +340,11 @@ $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
             <div class="kpi-card">
                 <div class="kpi-label">Ertrag Heute</div>
                 <div class="kpi-value kpi-value-sm text-warning">
-                    <?= isset($liveData['yield_daily_kwh']) ? number_format((float)$liveData['yield_daily_kwh'], 2, ',', '.') : '0,00' ?>
+                    <?= number_format($yieldDailyKwh, 2, ',', '.') ?>
                     <span class="kpi-unit">kWh</span>
+                </div>
+                <div class="kpi-note kpi-note-muted">
+                    (~<?= number_format($yieldRevenue, 2, ',', '.') ?> €)
                 </div>
             </div>
             <div class="kpi-card">
