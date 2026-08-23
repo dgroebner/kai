@@ -116,16 +116,15 @@ $hourlyForecasts = $hourlyStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $hourlyLabels = [];
 $forecastValues = [];
-$correctedForecastValues = []; // Neu: Korrigierte Prognosewerte
+$correctedForecastValues = []; // Neu: Korrigierte Prognose-Werte mit Bias-Faktor
 foreach ($hourlyForecasts as $row) {
-    // Schlüssel für den genauen Zeitstempel (z.B. "14:00" oder "14:30")
     $timeKey = date('H:i', strtotime($row['forecast_time']));
     $hourlyLabels[] = $timeKey;
 
     $rawWatts = (float)$row['watts'];
     $forecastValues[] = $rawWatts;
 
-    // Korrigierte Prognose mit Bias-Faktor berechnen
+    // Anwendung des Bias-Faktors (Aufschlag bei positivem Bias)
     $correctedForecastValues[] = $rawWatts * $biasFactor;
 }
 
