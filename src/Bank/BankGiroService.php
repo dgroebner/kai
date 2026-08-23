@@ -2,32 +2,30 @@
 
 namespace Kai\Tools\Bank;
 
-use Kai\Tools\Bank\ComdirectClient;
-use Kai\Tools\Bank\RuleMatcher;
-use Kai\Tools\Bank\StatementMatcher;
-use Kai\Tools\Kassenbon\ReceiptMatcher;
-use Kai\Tools\Shared\AI\GeminiClient;
-use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger;
-use Kai\Tools\Shared\Db\Database;
 use Exception;
+use Kai\Tools\Kassenbon\ReceiptMatcher;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\ActivityLogger;
+use Kai\Tools\Shared\Log\Logger;
+use PDO;
 
 class BankGiroService
 {
     private BankTransactionRepository $repository;
-	private BankAccountRepository $bankAccountRepository;
+    private BankAccountRepository $bankAccountRepository;
     private AiTagClassifier $aiClassifier;
     private Logger $logger;
-    private \PDO $pdo;
+    private PDO $pdo;
     private Database $db;
 
     public function __construct(
         BankTransactionRepository $repository,
-		BankAccountRepository $bankAccountRepository,
-        AiTagClassifier $aiClassifier
-    ) {
+        BankAccountRepository     $bankAccountRepository,
+        AiTagClassifier           $aiClassifier
+    )
+    {
         $this->repository = $repository;
-        $this->bankAccountRepository = $bankAccountRepository; 
+        $this->bankAccountRepository = $bankAccountRepository;
         $this->aiClassifier = $aiClassifier;
         $this->logger = new Logger(14);
         $this->db = Database::getInstance();
@@ -96,21 +94,21 @@ class BankGiroService
                 $repoAcc->updateBalance($dbAccountId, $balanceVal);
 
                 // 4. Transaktionen für dieses Konto abrufen
-				$lastSync = $this->bankAccountRepository->getLastSyncDate($accountId);
+                $lastSync = $this->bankAccountRepository->getLastSyncDate($accountId);
                 $txRes = $client->getTransactions($apiTokens['access_token'], $accountId, $lastSync);
                 $apiTxList = $txRes['values'] ?? [];
 
                 $transformed = [];
                 foreach ($apiTxList as $apiTx) {
                     $bookingStatus = $apiTx['bookingStatus'] ?? 'BOOKED';
-                    
+
                     // Aktuell sollen nur BOOKED-Buchungen berücksichtigt werden
                     if ($bookingStatus !== 'BOOKED') {
                         continue;
                     }
 
                     $bookingDate = $apiTx['bookingDate'] ?? '';
-                    
+
                     // Dublettenvermeidung: Buchungen bis einschließlich 15.08.2026 ignorieren
                     if (empty($bookingDate) || $bookingDate <= '2026-08-15') {
                         continue;
@@ -123,13 +121,13 @@ class BankGiroService
                     }
 
                     // Partner-Namen ermitteln (Remitter oder Creditor)
-                    $partnerName = $apiTx['remitter']['holderName'] 
-                        ?? $apiTx['creditor']['holderName'] 
+                    $partnerName = $apiTx['remitter']['holderName']
+                        ?? $apiTx['creditor']['holderName']
                         ?? '';
 
-					// Rohen Verwendungszweck aus den API-Daten holen (prüfe das genaue Feld in deiner API-Antwort, z.B. remittanceInfo oder text)
+                    // Rohen Verwendungszweck aus den API-Daten holen (prüfe das genaue Feld in deiner API-Antwort, z.B. remittanceInfo oder text)
                     $rawRemittance = $apiTx['remittanceInfo'] ?? '';
-                    
+
                     $lines = [];
                     // In Blöcke à 37 Zeichen zerlegen
                     $chunks = str_split($rawRemittance, 37);
@@ -147,40 +145,40 @@ class BankGiroService
                     $cleanedRemittance = !empty($lines) ? implode(' ', $lines) : $rawRemittance;
 
                     $apiTxType = $apiTx['transactionType']['text'] ?? '';
-					$typeMapping = [
-						'Saving Plan'            => 'Sparplan',
-						'Securities'             => 'Wertpapier',
-						'Investment Saving'      => 'Geldanlage',
-						'Bank fees'              => 'Bankgebühren',
-						'Miscellaneous'          => 'Sonstiges',
-						'Cash'                   => 'Bar',
-						'Interest / Dividends'   => 'Zinsen / Dividenden',
-						'Currency Exchange'      => 'Devisen',
-						'Cancellation'           => 'Storno',
-						'Cheque'                 => 'Scheck',
-						'Direct Debit'           => 'Lastschrift',
-						'Transfer'               => 'Überweisung',
-						'Card transaction'       => 'Kartenverfügung',
-						'Foreign Currency exchange' => 'Sorten (Kasse)',
-						'ATM Withdrawal'         => 'Geldautomat',
-						'Savings'                => 'Geldanlage',
-						'Standing Order'         => 'Dauerauftrag',
-					];
+                    $typeMapping = [
+                        'Saving Plan' => 'Sparplan',
+                        'Securities' => 'Wertpapier',
+                        'Investment Saving' => 'Geldanlage',
+                        'Bank fees' => 'Bankgebühren',
+                        'Miscellaneous' => 'Sonstiges',
+                        'Cash' => 'Bar',
+                        'Interest / Dividends' => 'Zinsen / Dividenden',
+                        'Currency Exchange' => 'Devisen',
+                        'Cancellation' => 'Storno',
+                        'Cheque' => 'Scheck',
+                        'Direct Debit' => 'Lastschrift',
+                        'Transfer' => 'Überweisung',
+                        'Card transaction' => 'Kartenverfügung',
+                        'Foreign Currency exchange' => 'Sorten (Kasse)',
+                        'ATM Withdrawal' => 'Geldautomat',
+                        'Savings' => 'Geldanlage',
+                        'Standing Order' => 'Dauerauftrag',
+                    ];
 
                     $transformed[] = [
-                        'account_id'            => $dbAccountId,
-                        'transaction_id'        => $reference,
-                        'booking_date'          => $bookingDate,
-                        'valuta_date'           => $apiTx['valutaDate'] ?? $bookingDate,
-                        'type'                  => $typeMapping[$apiTxType] ?? 'Unknown',
-                        'remittance_info'       => $cleanedRemittance,
-                        'amount'                => (float)($apiTx['amount']['value'] ?? 0.0),
-						'remitter'              => $apiTx['remitter']['holderName'],
-						'debitor'               => $apiTx['deptor']['holderName'],
-						'creditor'              => $apiTx['creditor']['holderName'],
-						'end_to_end_reference'  => $apiTx['endToEndReference'],
-						'dc_creditor_id'        => $apiTx['directDebitCreditorId'],
-						'dc_mandate_id'         => $apiTx['directDebitMandateId'],
+                        'account_id' => $dbAccountId,
+                        'transaction_id' => $reference,
+                        'booking_date' => $bookingDate,
+                        'valuta_date' => $apiTx['valutaDate'] ?? $bookingDate,
+                        'type' => $typeMapping[$apiTxType] ?? 'Unknown',
+                        'remittance_info' => $cleanedRemittance,
+                        'amount' => (float)($apiTx['amount']['value'] ?? 0.0),
+                        'remitter' => $apiTx['remitter']['holderName'],
+                        'debitor' => $apiTx['deptor']['holderName'],
+                        'creditor' => $apiTx['creditor']['holderName'],
+                        'end_to_end_reference' => $apiTx['endToEndReference'],
+                        'dc_creditor_id' => $apiTx['directDebitCreditorId'],
+                        'dc_mandate_id' => $apiTx['directDebitMandateId'],
                     ];
                 }
 
@@ -188,8 +186,8 @@ class BankGiroService
                     // 5. Transaktionen in DB importieren
                     $importRes = $this->repository->importTransactions($transformed);
                     $stats['imported'] += $importRes['imported'];
-                    $stats['ignored']  += $importRes['ignored'];
-                    
+                    $stats['ignored'] += $importRes['ignored'];
+
                     foreach ($transformed as $t) {
                         $importedTransactions[] = $t;
                     }
@@ -203,6 +201,18 @@ class BankGiroService
             if (empty($unprocessedTxs)) {
                 $stats['tagged'] = 0;
             } else {
+                //Automatische Vertragszuordnung für frisch importierte/ungetaggte Transaktionen prüfen
+                $contractMatcher = new ContractRuleMatcher($this->pdo);
+                $stmtUntaggedGiro = $this->pdo->query("SELECT id, remittance_info, remitter, debitor, creditor FROM bank_giro_transactions WHERE contract_id IS NULL");
+                while ($txRow = $stmtUntaggedGiro->fetch(PDO::FETCH_ASSOC)) {
+                    $matchedContractId = $contractMatcher->matchGiroTransaction($txRow);
+                    if ($matchedContractId) {
+                        $stmtUpd = $this->pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :cid WHERE id = :id");
+                        $stmtUpd->execute([':cid' => $matchedContractId, ':id' => $txRow['id']]);
+                    }
+                }
+
+                // Automatische Vertragszuordnung für frisch importierte/ungetaggte Transaktionen prüfen
                 $ruleMatcher = new RuleMatcher($this->pdo);
                 $taggedCount = $ruleMatcher->applyAllRulesToUntagged();
 
@@ -210,7 +220,7 @@ class BankGiroService
                 $unmatchedForAi = [];
                 foreach ($unprocessedTxs as $tx) {
                     $unmatchedForAi[] = [
-                        'id'   => $tx['id'],
+                        'id' => $tx['id'],
                         'text' => $tx['remittance_info']
                     ];
                 }
