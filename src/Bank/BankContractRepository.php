@@ -3,15 +3,18 @@
 namespace Kai\Tools\Bank;
 
 use Kai\Tools\Shared\Db\Database;
+use Monolog\Logger;
 use PDO;
 
 class BankContractRepository
 {
     private PDO $pdo;
+    private Logger $logger;
 
     public function __construct()
     {
         $this->pdo = Database::getInstance()->getConnection();
+        $this->logger = new Logger('BankContractRepository');
     }
 
     /**
@@ -188,6 +191,7 @@ class BankContractRepository
 
     public function getTransactionsForContract(int $contractId, int $limit): array
     {
+        $this->logger->debug("BankContractRepository => Fetching transactions for contract ID: {$contractId}");
         $stmt = $this->pdo->prepare("
             SELECT c.*
             FROM bank_giro_transactions c
