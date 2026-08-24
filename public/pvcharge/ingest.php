@@ -5,11 +5,12 @@ use Kai\Tools\PVCharge\PvIngestService;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
-Auth::requireCronToken('pvcharge/cron_forecast.php');
+Auth::requireCronToken('pvcharge/ingest.php');
 Auth::requireMethod('POST');
 
 header('Content-Type: application/json; charset=utf-8');
 $logger = new Logger();
+$type = '';
 
 try {
     $service = new PvIngestService();
@@ -17,35 +18,34 @@ try {
     $rawInput = file_get_contents('php://input');
     $payload = json_decode($rawInput, true);
 
-    if ($payload === null && json_last_error() !== JSON_ERROR_NONE) {
-        $logger->error("Car Telemetry API: Ungültiges JSON empfangen.", ['raw' => substr($rawInput, 0, 500)]);
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Bad Request: Invalid JSON body'
-        ]);
-        exit;
+    if (!is_array($payload)) {
+        $logger->error('pvcharge/ingest.php: Ungültiges JSON empfangen.', ['raw' => substr($rawInput, 0, 500)]);
+        Auth::sendJsonError(400, 'Bad Request: Invalid JSON body');
     }
 
-    $type = $payload['type'] ?? '';
-    $d = $payload['data'] ?? [];
+    $type = (string)($payload['type'] ?? '');
+    $data = $payload['data'] ?? null;
 
-    $columns = array_keys($d);
-    $values = array_values($d);
+    if (!in_array($type, ['live', 'telemetry'], true) || !is_array($data) || $data === []) {
+        $logger->error('pvcharge/ingest.php: Ungültiger Payload.', ['type' => $type]);
+        Auth::sendJsonError(400, 'Bad Request: Invalid payload');
+    }
+
+    $columns = array_keys($data);
+    $values = array_values($data);
 
     if ($type === 'live') {
         $service->upsertLiveData($columns, $values);
-    } elseif ($type === 'telemetry') {
+    } else {
         $service->insertTelemetryData($columns, $values);
     }
 
     echo json_encode(['status' => 'ok', 'type' => $type]);
 
 } catch (Throwable $e) {
-    $logger->error("PV-Telemetrie: Kritischer Fehler beim Ausführen des Imports vom typ $type!", [
+    $logger->error("PV-Telemetrie: Kritischer Fehler beim Ausführen des Imports vom Typ '$type'!", [
         'error' => $e->getMessage()
     ]);
 
-    http_response_code(500);
-    echo "FEHLER - Details im Log.";
+    Auth::sendJsonError(500, 'Interner Fehler');
 }

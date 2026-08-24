@@ -13,6 +13,7 @@ use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Shared\Security\Sanitizer;
 use Kai\Tools\Shared\Security\TokenEncryptionService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -90,7 +91,7 @@ try {
 
         } catch (Throwable $e) {
             (new Logger())->error('bank/api.php: start_auth_flow Fehler', ['error' => $e->getMessage()]);
-            Auth::sendJsonError(500, $e->getMessage());
+            Auth::sendJsonError(500, 'Anmeldung bei comdirect fehlgeschlagen.');
         }
     }
 
@@ -168,7 +169,7 @@ try {
                 'status' => $isBlocked ? 'blocked' : 'error',
                 'message' => $isBlocked
                     ? 'photoTAN-Sperrschutz aktiv (2 Fehlversuche). Bitte erst auf der comdirect-Webseite erfolgreich anmelden/TAN-freigeben.'
-                    : 'Fehler bei TAN-Aktivierung: ' . $e->getMessage()
+                    : 'Fehler bei TAN-Aktivierung. Bitte erneut versuchen.'
             ]);
             exit;
         }
@@ -268,7 +269,7 @@ try {
     if ($action === 'update_tag') {
         $tagId = filter_var($data['tag_id'] ?? null, FILTER_VALIDATE_INT);
         $name = trim((string)($data['name'] ?? ''));
-        $color = trim((string)($data['color'] ?? '#3b82f6'));
+        $color = Sanitizer::hexColor($data['color'] ?? null);
 
         if (!$tagId || $name === '' || mb_strlen($name) > 50) {
             Auth::sendJsonError(400, 'Ungültige Parameter');
@@ -299,7 +300,7 @@ try {
     if ($action === 'create_and_assign_tag') {
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
         $name = trim((string)($data['name'] ?? ''));
-        $color = trim((string)($data['color'] ?? '#3b82f6'));
+        $color = Sanitizer::hexColor($data['color'] ?? null);
 
         if (!$txId || $name === '' || mb_strlen($name) > 50) {
             Auth::sendJsonError(400, 'Name ungültig oder zu lang');
@@ -633,7 +634,8 @@ try {
                 'transactions' => $transactions
             ]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            (new Logger())->error('bank/api.php: get_contract_transactions fehlgeschlagen.', ['error' => $e->getMessage()]);
+            Auth::sendJsonError(500, 'Buchungen konnten nicht geladen werden.');
         }
         exit;
     }
@@ -656,7 +658,8 @@ try {
                 'contract_id' => $id
             ]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            (new Logger())->error('bank/api.php: save_contract_details fehlgeschlagen.', ['error' => $e->getMessage()]);
+            Auth::sendJsonError(500, 'Vertrag konnte nicht gespeichert werden.');
         }
         exit;
     }
@@ -686,7 +689,8 @@ try {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            (new Logger())->error('bank/api.php: delete_contract fehlgeschlagen.', ['error' => $e->getMessage()]);
+            Auth::sendJsonError(500, 'Vertrag konnte nicht gelöscht werden.');
         }
         exit;
     }

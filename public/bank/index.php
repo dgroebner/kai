@@ -5,15 +5,10 @@ use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Shared\Security\Sanitizer;
 
 // 1. Auth-Check — immer zuerst (AGENTS.md)
 Auth::requirePage();
-
-// AJAX-Check für flüssiges Nachladen von Tabelle & Paginierung
-if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
-    // Hier wird unten im HTML-Bereich das Fragment definiert, 
-    // aber wir müssen sicherstellen, dass nur der relevante Teil ausgegeben wird.
-}
 
 $logger = new Logger();
 
@@ -518,7 +513,7 @@ try {
                             if ($pct <= 0) continue;
                             ?>
                             <div class="tag-bar-segment"
-                                 style="width: <?= number_format($pct, 2, '.', '') ?>%; background-color: <?= $stat['color'] ?>;"
+                                 style="width: <?= number_format($pct, 2, '.', '') ?>%; background-color: <?= Sanitizer::hexColor($stat['color']) ?>;"
                                  title="<?= htmlspecialchars($stat['name']) ?>: <?= number_format($pct, 1, ',', '.') ?>% (<?= number_format($stat['abs_amount'], 2, ',', '.') ?> €)">
                             </div>
                         <?php endforeach; ?>
@@ -533,13 +528,13 @@ try {
                             ?>
                             <div class="tag-stat-card js-filter-tag-card <?= $isActive ? 'active' : '' ?>"
                                  data-filter-tag-id="<?= $stat['id'] ?>"
-                                 style="--tag-color: <?= $stat['color'] ?>; cursor: pointer;">
+                                 style="--tag-color: <?= Sanitizer::hexColor($stat['color']) ?>; cursor: pointer;">
                                 <div class="tag-stat-bg-bar"
                                      style="width: <?= number_format($fillPct, 1, '.', '') ?>%;"></div>
                                 <div class="tag-stat-content">
                                     <div class="tag-stat-header">
                                         <span class="tag-color-dot"
-                                              style="background-color: <?= $stat['color'] ?>;"></span>
+                                              style="background-color: <?= Sanitizer::hexColor($stat['color']) ?>;"></span>
                                         <span class="tag-stat-name"><?= htmlspecialchars($stat['name']) ?></span>
                                     </div>
                                     <div class="tag-stat-metrics">
@@ -568,7 +563,7 @@ try {
                             if ($pct <= 0) continue;
                             ?>
                             <div class="tag-bar-segment"
-                                 style="width: <?= number_format($pct, 2, '.', '') ?>%; background-color: <?= $stat['color'] ?>;"
+                                 style="width: <?= number_format($pct, 2, '.', '') ?>%; background-color: <?= Sanitizer::hexColor($stat['color']) ?>;"
                                  title="<?= htmlspecialchars($stat['name']) ?>: <?= number_format($pct, 1, ',', '.') ?>% (<?= number_format($stat['abs_amount'], 2, ',', '.') ?> €)">
                             </div>
                         <?php endforeach; ?>
@@ -583,13 +578,13 @@ try {
                             ?>
                             <div class="tag-stat-card js-filter-tag-card <?= $isActive ? 'active' : '' ?>"
                                  data-filter-tag-id="<?= $stat['id'] ?>"
-                                 style="--tag-color: <?= $stat['color'] ?>; cursor: pointer;">
+                                 style="--tag-color: <?= Sanitizer::hexColor($stat['color']) ?>; cursor: pointer;">
                                 <div class="tag-stat-bg-bar"
                                      style="width: <?= number_format($fillPct, 1, '.', '') ?>%;"></div>
                                 <div class="tag-stat-content">
                                     <div class="tag-stat-header">
                                         <span class="tag-color-dot"
-                                              style="background-color: <?= $stat['color'] ?>;"></span>
+                                              style="background-color: <?= Sanitizer::hexColor($stat['color']) ?>;"></span>
                                         <span class="tag-stat-name"><?= htmlspecialchars($stat['name']) ?></span>
                                     </div>
                                     <div class="tag-stat-metrics">
@@ -741,7 +736,7 @@ try {
                                         <?php foreach ($tx['tags'] as $tag): ?>
                                             <span class="badge tag-badge clickable-tag"
                                                   data-tag-id="<?= $tag['id'] ?>"
-                                                  style="color: <?= htmlspecialchars($tag['color']) ?>; border-color: <?= htmlspecialchars($tag['color']) ?>;">
+                                                  style="color: <?= Sanitizer::hexColor($tag['color']) ?>; border-color: <?= Sanitizer::hexColor($tag['color']) ?>;">
                                                     <?= htmlspecialchars($tag['name']) ?>
                                                     <span class="remove-tag-btn" data-tx-id="<?= $tx['id'] ?>"
                                                           data-tag-id="<?= $tag['id'] ?>">&times;</span>

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `pv_forecast_daily` (
     `real_watt_hours_day` INT DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE pv_telemetry (
+CREATE TABLE IF NOT EXISTS pv_telemetry (
                               id INT AUTO_INCREMENT PRIMARY KEY,
                               last_update DATETIME,
                               system_flag INT,
@@ -37,10 +37,11 @@ CREATE TABLE pv_telemetry (
                               grid_p2_w DECIMAL(8,2),
                               grid_p3_w DECIMAL(8,2),
                               grid_total_w DECIMAL(8,2),
-                              house_load_w DECIMAL(8,2)
-);
+                              house_load_w DECIMAL(8,2),
+                              INDEX idx_pv_telemetry_last_update (last_update)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE pv_live LIKE pv_telemetry;
+CREATE TABLE IF NOT EXISTS pv_live LIKE pv_telemetry;
 ALTER TABLE pv_live MODIFY id INT NOT NULL;
 
 -- Schema for VW ID.Buzz Car Telemetry
@@ -119,7 +120,7 @@ CREATE TABLE IF NOT EXISTS bank_giro_transactions (
     UNIQUE KEY uk_account_transaction (account_id, transaction_id),
     FOREIGN KEY (account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE,
     FOREIGN KEY (matched_rule_id) REFERENCES bank_tag_rules(id) ON DELETE SET NULL,
-    FOREIGN KEY (fk_giro_contract) REFERENCES bank_contracts(id) ON DELETE SET NULL
+    FOREIGN KEY (contract_id) REFERENCES bank_contracts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Kreditkarten-Kategorien (bestehend für Visa-Abrechnungen)

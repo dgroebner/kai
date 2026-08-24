@@ -58,7 +58,7 @@ function initKassenbonAnalysis() {
             row.className = 'legend-row';
             row.innerHTML = `
                 <span class="legend-dot" style="background-color:${color}"></span>
-                <span>${cat}</span>
+                <span>${KaiHtml.escape(cat)}</span>
                 <span class="legend-percent">${pct.replace('.', ',')}%</span>
                 <span class="legend-value">${sum.toFixed(2).replace('.', ',')} €</span>
             `;
@@ -138,7 +138,7 @@ function enableCategoryEdit(badgeElement, itemId) {
         datalist.id = 'catSuggestions';
         document.body.appendChild(datalist);
     }
-    datalist.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c}">`).join('');
+    datalist.innerHTML = ALL_CATEGORIES.map(c => `<option value="${KaiHtml.escape(c)}">`).join('');
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn-icon-action';

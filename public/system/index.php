@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\System\ActivityLogRepository;
 use Kai\Tools\System\SystemSettingsRepository;
@@ -21,13 +22,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($tab === 'settings' || isset($_POS
         http_response_code(403);
         $errorMessage = "Ungültiger CSRF-Token.";
     } else {
-        $settingsData = $_POST['settings'] ?? [];
+        $settingsData = is_array($_POST['settings'] ?? null) ? $_POST['settings'] : [];
+        // Nur bereits existierende Schlüssel dürfen überschrieben werden,
+        // damit über den Formular-POST keine beliebigen Einträge angelegt werden.
+        $knownKeys = array_column($settingsRepo->getAll(), 'setting_key');
+
         try {
             foreach ($settingsData as $key => $value) {
+                if (!in_array((string)$key, $knownKeys, true) || !is_scalar($value)) {
+                    continue;
+                }
                 $settingsRepo->set((string)$key, trim((string)$value));
             }
             $successMessage = "Einstellungen erfolgreich gespeichert.";
         } catch (Throwable $e) {
+            (new Logger())->error('system/index.php: Fehler beim Speichern der Einstellungen.', ['error' => $e->getMessage()]);
             $errorMessage = "Fehler beim Speichern der Einstellungen.";
         }
     }

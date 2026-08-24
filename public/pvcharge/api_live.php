@@ -2,12 +2,13 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
-// Auth-Check (auch für API-Requests)
-Auth::requirePage();
-
 header('Content-Type: application/json; charset=utf-8');
+
+// Auth-Check — JSON-Endpunkt, deshalb 401 statt Redirect
+Auth::requireApi();
 
 try {
     $db = Database::getInstance()->getConnection();
@@ -33,6 +34,6 @@ try {
         ]
     ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Datenbankfehler']);
+    (new Logger())->error('pvcharge/api_live.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    Auth::sendJsonError(500, 'Interner Fehler');
 }

@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     else if (soc <= 50) socClass = 'text-warning';
 
                     html += `<tr>
-                        <td data-label="Zeitpunkt">${row.last_update}</td>
+                        <td data-label="Zeitpunkt">${KaiHtml.escape(row.last_update)}</td>
                         <td data-label="PV (W)" class="text-right">${Number(row.pv_power_w).toLocaleString('de-DE')} W</td>
                         <td data-label="Haus (W)" class="text-right">${Number(row.house_load_w).toLocaleString('de-DE')} W</td>
                         <td data-label="Netz (W)" class="text-right">${Number(row.grid_total_w).toLocaleString('de-DE')} W</td>
@@ -124,7 +124,7 @@ function updateLiveValues() {
                 socEl.textContent = soc;
                 socEl.className = '';
 
-                let batteryColor = 'var(--pv-green)'; // Standard / Grün
+                let batteryColor; // Standard / Grün
                 if (soc < 20) {
                     socEl.classList.add('soc-red');
                     batteryColor = 'var(--color-red, #ef4444)';

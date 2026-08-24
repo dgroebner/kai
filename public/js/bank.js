@@ -480,7 +480,7 @@ function renderModalTagPicker(wrapEl, selectedIds) {
             cursor: pointer;
             transition: all 0.15s ease;
             ${isSelected
-            ? `color: ${tag.color}; border-color: ${tag.color}; background-color: color-mix(in srgb, ${tag.color} 15%, transparent); box-shadow: 0 0 8px color-mix(in srgb, ${tag.color} 30%, transparent);`
+            ? `color: ${KaiHtml.hexColor(tag.color)}; border-color: ${KaiHtml.hexColor(tag.color)}; background-color: color-mix(in srgb, ${KaiHtml.hexColor(tag.color)} 15%, transparent); box-shadow: 0 0 8px color-mix(in srgb, ${KaiHtml.hexColor(tag.color)} 30%, transparent);`
             : 'color: var(--text-muted); border-color: rgba(255, 255, 255, 0.1); background-color: rgba(255, 255, 255, 0.02); opacity: 0.55;'
         }
         `;
@@ -645,7 +645,7 @@ function openTagPopover(anchorBtn, txId) {
             item.dataset.tagId = tag.id;
             item.style.cssText = 'padding: 0.35rem 0.5rem; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;';
             item.innerHTML = `
-                <span style="width: 10px; height: 10px; border-radius: 50%; background: ${tag.color}; display: inline-block;"></span>
+                <span style="width: 10px; height: 10px; border-radius: 50%; background: ${KaiHtml.hexColor(tag.color)}; display: inline-block;"></span>
                 <span>${escapeHtml(tag.name)}</span>
             `;
             tagListEl.appendChild(item);
@@ -869,7 +869,7 @@ function updateTagStatsBar() {
                 <div class="tag-stat-bg-bar" style="width: ${fillPct.toFixed(1)}%;"></div>
                 <div class="tag-stat-content">
                     <div class="tag-stat-header">
-                        <span class="tag-color-dot" style="background-color: ${stat.color};"></span>
+                        <span class="tag-color-dot" style="background-color: ${KaiHtml.hexColor(stat.color)};"></span>
                         <span class="tag-stat-name">${escapeHtml(stat.name)}</span>
                     </div>
                     <div class="tag-stat-metrics">
@@ -889,7 +889,7 @@ function updateTagStatsBar() {
 }
 
 function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return KaiHtml.escape(str);
 }
 
 function openEditTagModal(tag) {
@@ -915,8 +915,8 @@ function openEditTagModal(tag) {
                 <div>
                     <label class="chart-label" style="margin-bottom: 0.3rem;">Farbe:</label>
                     <div style="display: flex; align-items: center; gap: 0.8rem;">
-                        <input type="color" class="js-edit-tag-color" value="${tag.color || '#3b82f6'}" style="border: none; width: 42px; height: 42px; cursor: pointer; background: transparent; padding: 0;">
-                        <span class="js-color-hex-label" style="font-family: monospace; font-size: 0.9rem; color: var(--text-muted);">${tag.color || '#3b82f6'}</span>
+                        <input type="color" class="js-edit-tag-color" value="${KaiHtml.hexColor(tag.color)}" style="border: none; width: 42px; height: 42px; cursor: pointer; background: transparent; padding: 0;">
+                        <span class="js-color-hex-label" style="font-family: monospace; font-size: 0.9rem; color: var(--text-muted);">${KaiHtml.hexColor(tag.color)}</span>
                     </div>
                 </div>
             </div>

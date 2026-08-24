@@ -9,6 +9,36 @@ use PDO;
 
 class PvIngestService
 {
+    /**
+     * Whitelist aller Spalten, die per Telemetrie-Ingest beschrieben werden dürfen.
+     * Spaltennamen können nicht als Prepared-Statement-Parameter gebunden werden,
+     * deshalb ist die Allowlist die einzige zulässige Absicherung gegen SQL-Injection.
+     */
+    private const ALLOWED_COLUMNS = [
+        'last_update',
+        'system_flag',
+        'comm_status',
+        'battery_status',
+        'pv_power_w',
+        'yield_daily_kwh',
+        'yield_total_kwh',
+        'battery_soc_pct',
+        'battery_soh_pct',
+        'battery_power_w',
+        'battery_voltage_v',
+        'battery_current_a',
+        'battery_temp_c',
+        'battery_max_charge_a',
+        'battery_max_discharge_a',
+        'battery_energy_in_kwh',
+        'battery_energy_out_kwh',
+        'grid_p1_w',
+        'grid_p2_w',
+        'grid_p3_w',
+        'grid_total_w',
+        'house_load_w',
+    ];
+
     private Database $db;
     private PDO $dbCon;
     private Logger $logger;
@@ -22,14 +52,51 @@ class PvIngestService
 
 
     /**
+     * Filtert die übergebenen Spalten/Werte gegen die Allowlist.
+     * Unbekannte Spaltennamen werden verworfen und protokolliert.
+     *
+     * @return array{0: string[], 1: list<mixed>}
+     */
+    private function filterAllowedColumns(array $columns, array $values): array
+    {
+        $safeColumns = [];
+        $safeValues = [];
+        $rejected = [];
+
+        foreach (array_values($columns) as $index => $column) {
+            if (in_array($column, self::ALLOWED_COLUMNS, true)) {
+                $safeColumns[] = $column;
+                $safeValues[] = array_values($values)[$index] ?? null;
+            } else {
+                $rejected[] = (string)$column;
+            }
+        }
+
+        if ($rejected !== []) {
+            $this->logger->warn('PvIngestService: Unbekannte Spalten im Payload verworfen.', [
+                'columns' => $rejected,
+            ]);
+        }
+
+        return [$safeColumns, $safeValues];
+    }
+
+    /**
      * @param array $columns
-     * @param mixed $values
+     * @param array $values
      * @return void
      */
-    public function insertTelemetryData(array $columns, mixed $values): void
+    public function insertTelemetryData(array $columns, array $values): void
     {
+        [$columns, $values] = $this->filterAllowedColumns($columns, $values);
+
+        if ($columns === []) {
+            $this->logger->warn('PvIngestService: Telemetrie-Payload ohne gültige Spalten verworfen.');
+            return;
+        }
+
         // --- Messfehler-Prüfung: Hauslast < 10 W ignorieren ---
-        $houseIndex = array_search('house_load_w', $columns);
+        $houseIndex = array_search('house_load_w', $columns, true);
         if ($houseIndex !== false) {
             $houseLoad = (float)$values[$houseIndex];
             if ($houseLoad < 10) {
@@ -52,9 +119,9 @@ class PvIngestService
         $this->checkAndFinalizeDailyYield();
     }
 
-    private function checkBatteryFullyCharged(array $columns, mixed $values): void
+    private function checkBatteryFullyCharged(array $columns, array $values): void
     {
-        $socIndex = array_search('battery_soc_pct', $columns);
+        $socIndex = array_search('battery_soc_pct', $columns, true);
         if ($socIndex === false) {
             return;
         }
@@ -149,11 +216,18 @@ class PvIngestService
 
     /**
      * @param array $columns
-     * @param mixed $values
+     * @param array $values
      * @return void
      */
-    public function upsertLiveData(array $columns, mixed $values): void
+    public function upsertLiveData(array $columns, array $values): void
     {
+        [$columns, $values] = $this->filterAllowedColumns($columns, $values);
+
+        if ($columns === []) {
+            $this->logger->warn('PvIngestService: Live-Payload ohne gültige Spalten verworfen.');
+            return;
+        }
+
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
         $colNames = implode(', ', $columns);
 
