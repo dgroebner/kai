@@ -193,7 +193,7 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
     </main>
 
 </div>
-<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
+<?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>

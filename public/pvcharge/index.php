@@ -555,7 +555,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     </main>
 </div>
 
-<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/pv-dashboard.js?v=<?= APP_VERSION ?>" defer></script>
+<?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>

@@ -629,8 +629,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
     </main>
 </div>
 
-<!-- Inline-Editing Logik für Reichweite -->
-<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/telemetry.js?v=<?= APP_VERSION ?>" defer></script>
+<?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>

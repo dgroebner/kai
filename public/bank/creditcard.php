@@ -134,5 +134,6 @@ try {
         </section>
     </main>
 </div>
+<?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>

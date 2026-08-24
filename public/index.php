@@ -67,5 +67,7 @@ Auth::requirePage();
         </div>
     </main>
 </div>
+<script src="js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="js/system.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>

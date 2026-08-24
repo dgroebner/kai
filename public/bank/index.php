@@ -49,11 +49,11 @@ if ($highlightTxId && !isset($_GET['page'])) {
 
             // Ermitteln, wie viele Transaktionen in diesem Monat *nach* unserer Ziel-Transaktion liegen (für den Offset/Seitenindex)
             $position = $giroRepository->countTransactionsBefore(
-                $accountId,
-                $startDate,
-                $endDate,
-                $txBookingDate,
-                $highlightTxId
+                    $accountId,
+                    $startDate,
+                    $endDate,
+                    $txBookingDate,
+                    $highlightTxId
             );
 
             // Berechnen, auf welcher Seite sich die Transaktion befindet
@@ -185,12 +185,12 @@ try {
 
     // Umsätze mit zugewiesenen Tags, Regel-Informationen, Kreditkartenabrechnung & E-Bons laden
     $transactions = $giroRepository->getTransactions(
-        $accountId,
-        $startDate,
-        $endDate,
-        $selectedTagId,
-        $limit,
-        $offset
+            $accountId,
+            $startDate,
+            $endDate,
+            $selectedTagId,
+            $limit,
+            $offset
     );
 
     // Echte Gesamtsummen direkt aus den Transaktionen ermitteln (ohne Tag-Doppelzählungen)
@@ -709,7 +709,7 @@ try {
 
 </div>
 
-<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/bank.js?v=<?= APP_VERSION ?>" defer></script>
+<?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>
