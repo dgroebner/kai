@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Bank\CreditCardRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
@@ -17,17 +17,9 @@ if ($id === false || $id === null || $id <= 0) {
 }
 
 try {
-    $db = Database::getInstance()->getConnection();
+    $creditCardRepository = new CreditCardRepository();
 
-    $stmtInfo = $db->prepare("
-        SELECT s.*, 
-               g.booking_date AS giro_booking_date
-        FROM bank_cc_statements s
-        LEFT JOIN bank_giro_transactions g ON s.bank_transaction_id = g.id
-        WHERE s.id = :id
-    ");
-    $stmtInfo->execute([':id' => $id]);
-    $statement = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+    $statement = $creditCardRepository->getStatementById($id);
 
     if (!$statement) {
         http_response_code(404);
@@ -35,23 +27,10 @@ try {
     }
 
     // Transaktionen & verknüpfte E-Bons laden
-    $stmtTx = $db->prepare("
-        SELECT 
-            t.*, 
-            c.name AS category_name,
-            rec.id AS linked_receipt_id
-        FROM bank_cc_transactions t
-        LEFT JOIN bank_categories c ON t.category_id = c.id
-        LEFT JOIN kb_receipts rec ON t.id = rec.bank_cc_transaction_id
-        WHERE t.statement_id = :id
-        ORDER BY t.booking_date DESC
-    ");
-    $stmtTx->execute([':id' => $id]);
-    $transactions = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
+    $transactions = $creditCardRepository->getTransactionsForStatement($id);
 
     // Alle verfügbaren Kategorien für das Inline-Dropdown laden
-    $stmtCats = $db->query("SELECT id, name FROM bank_categories ORDER BY name");
-    $allCategories = $stmtCats->fetchAll(PDO::FETCH_ASSOC);
+    $allCategories = $creditCardRepository->getAllCategories();
 } catch (\Throwable $e) {
     (new Logger())->error('bank/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);

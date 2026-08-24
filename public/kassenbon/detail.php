@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Kassenbon\ReceiptQueryRepository;
+use Kai\Tools\Kassenbon\ReceiptRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
@@ -17,34 +18,20 @@ if ($id === false || $id === null || $id <= 0) {
 }
 
 try {
-    $pdo = Database::getInstance()->getConnection();
+    $receiptQueryRepository = new ReceiptQueryRepository();
 
     // Bon inkl. Verknüpfung zu Girokonto oder Kreditkarte laden
-    $stmt = $pdo->prepare("
-        SELECT 
-            r.*,
-            gt.booking_date AS giro_booking_date,
-            ct.booking_date AS cc_booking_date,
-            ct.statement_id AS cc_statement_id
-        FROM kb_receipts r
-        LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
-        LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
-        WHERE r.id = :id
-    ");
-    $stmt->execute([':id' => $id]);
-    $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
+    $receipt = $receiptQueryRepository->getReceiptById($id);
 
     if (!$receipt) {
         http_response_code(404);
         exit('Kassenbon nicht gefunden.');
     }
 
-    $stmtItems = $pdo->prepare("SELECT * FROM kb_items WHERE receipt_id = :id ORDER BY id");
-    $stmtItems->execute([':id' => $id]);
-    $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+    $items = $receiptQueryRepository->getItemsForReceipt($id);
 
-    $stmtCats = $pdo->query("SELECT DISTINCT category FROM kb_items WHERE category IS NOT NULL AND category != '' ORDER BY category");
-    $allCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
+    // Bereits vergebene Kategorien für das Inline-Dropdown
+    $allCategories = (new ReceiptRepository())->getKnownCategories();
 } catch (\Throwable $e) {
     (new Logger())->error('kassenbon/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);

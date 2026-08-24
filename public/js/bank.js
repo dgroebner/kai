@@ -1822,7 +1822,7 @@ async function openContractModal(contract) {
 
     const isEdit = contract && contract.id;
     const cName = isEdit ? (contract.name || '') : '';
-    const cType = isEdit ? (contract.type || 'fixkosten') : 'fixkosten';
+    const cType = isEdit ? (contract.type || 'vertrag') : 'vertrag';
     const cFrequenz = isEdit ? (contract.frequenz || 'monatlich') : 'monatlich';
     const cBetrag = isEdit ? (contract.betrag || '') : '';
     const cStatus = isEdit ? (contract.status || 'aktiv') : 'aktiv';

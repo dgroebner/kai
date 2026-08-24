@@ -5,12 +5,15 @@ use Kai\Tools\Bank\AiTagClassifier;
 use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\BankContractRepository;
 use Kai\Tools\Bank\BankGiroService;
+use Kai\Tools\Bank\BankTagRepository;
+use Kai\Tools\Bank\BankTagService;
 use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Bank\ComdirectClient;
+use Kai\Tools\Bank\ContractAssignmentService;
+use Kai\Tools\Bank\CreditCardRepository;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Bank\StatementMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
-use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Shared\Security\Sanitizer;
@@ -34,7 +37,18 @@ if (!is_array($data)) {
 Auth::requireCsrfToken($data);
 
 $action = $data['action'] ?? '';
-$pdo = Database::getInstance()->getConnection();
+
+/**
+ * Ermittelt die ID des aktiven Girokontos oder bricht mit einer Fehlerantwort ab.
+ */
+$requireCheckingAccountId = static function (BankAccountRepository $repository): int {
+    $account = $repository->getAccountByType('checking');
+    if ($account === null) {
+        Auth::sendJsonError(404, 'Kein Girokonto gefunden.');
+    }
+
+    return (int)$account['id'];
+};
 
 try {
 
@@ -137,15 +151,11 @@ try {
             $secondaryTokens = $client->getSecondaryToken($tempAuth['access_token']);
 
             // In DB speichern
-            $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
-            $accountId = $stmtAccount->fetchColumn();
-            if (!$accountId) {
-                throw new Exception("Kein Girokonto zum Speichern der Tokens gefunden.");
-            }
+            $accountRepository = new BankAccountRepository();
+            $accountId = $requireCheckingAccountId($accountRepository);
 
             $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
-            $repo = new BankAccountRepository();
-            $repo->saveApiTokens((int)$accountId, $secondaryTokens, $encryptionService);
+            $accountRepository->saveApiTokens($accountId, $secondaryTokens, $encryptionService);
 
             // Erfolg -> Zähler resetten & temp leeren
             $_SESSION['phototan_failures'] = 0;
@@ -177,28 +187,22 @@ try {
 
     // Führt den eigentlichen Sync-Prozess aus
     if ($action === 'run_sync') {
-        $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
-        $accountId = $stmtAccount->fetchColumn();
-
-        if (!$accountId) {
-            Auth::sendJsonError(404, 'Kein Girokonto für den API-Sync gefunden.');
-        }
-
         $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
         $repo = new BankAccountRepository();
+        $accountId = $requireCheckingAccountId($repo);
 
-        $tokens = $repo->getApiTokens((int)$accountId, $encryptionService);
+        $tokens = $repo->getApiTokens($accountId, $encryptionService);
         if (!$tokens) {
             Auth::sendJsonError(401, 'Keine Tokens gefunden. Bitte zuerst authentifizieren.');
         }
 
         // Falls Token abläuft, versuchen wir ihn direkt über das Refresh-Token zu erneuern
-        $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
+        $isValid = $repo->areTokensValid($accountId, $encryptionService);
         if (!$isValid) {
             $client = new ComdirectClient();
             try {
                 $refreshed = $client->refreshAccessToken($tokens['refresh_token']);
-                $repo->saveApiTokens((int)$accountId, $refreshed, $encryptionService);
+                $repo->saveApiTokens($accountId, $refreshed, $encryptionService);
                 $tokens = $refreshed;
             } catch (Throwable $e) {
                 (new Logger())->error("bank/api.php run_sync token refresh failed", ['error' => $e->getMessage()]);
@@ -230,28 +234,22 @@ try {
 
     if ($action === 'check_token_status') {
         // Dynamisches Ermitteln des Girokontos aus der Datenbank
-        $stmtAccount = $pdo->query("SELECT id FROM bank_accounts WHERE account_type = 'checking' LIMIT 1");
-        $accountId = $stmtAccount->fetchColumn();
-
-        if (!$accountId) {
-            Auth::sendJsonError(404, 'Kein Girokonto für den API-Sync gefunden.');
-        }
-
         $encryptionService = new TokenEncryptionService($_ENV['BANK_ENCRYPTION_KEY']);
         $repo = new BankAccountRepository();
+        $accountId = $requireCheckingAccountId($repo);
 
-        $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
+        $isValid = $repo->areTokensValid($accountId, $encryptionService);
 
         // Ist das Access-Token abgelaufen, zuerst einen Refresh über das gespeicherte
         // Refresh-Token versuchen. Erst wenn das scheitert, wird die Credential-Abfrage nötig.
         if (!$isValid) {
-            $tokens = $repo->getApiTokens((int)$accountId, $encryptionService);
+            $tokens = $repo->getApiTokens($accountId, $encryptionService);
             if ($tokens && !empty($tokens['refresh_token'])) {
                 try {
                     $client = new ComdirectClient();
                     $refreshed = $client->refreshAccessToken($tokens['refresh_token']);
-                    $repo->saveApiTokens((int)$accountId, $refreshed, $encryptionService);
-                    $isValid = $repo->areTokensValid((int)$accountId, $encryptionService);
+                    $repo->saveApiTokens($accountId, $refreshed, $encryptionService);
+                    $isValid = $repo->areTokensValid($accountId, $encryptionService);
                 } catch (Throwable $e) {
                     (new Logger())->error(
                         'bank/api.php check_token_status: Token-Refresh fehlgeschlagen.',
@@ -261,7 +259,7 @@ try {
             }
         }
 
-        echo json_encode(['success' => true, 'tokens_valid' => $isValid, 'account_id' => (int)$accountId]);
+        echo json_encode(['success' => true, 'tokens_valid' => $isValid, 'account_id' => $accountId]);
         exit;
     }
 
@@ -275,8 +273,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        $stmt = $pdo->prepare("UPDATE bank_tags SET name = :name, color = :color WHERE id = :id");
-        $stmt->execute([':name' => $name, ':color' => $color, ':id' => $tagId]);
+        (new BankTagRepository())->updateTag($tagId, $name, $color);
 
         echo json_encode(['success' => true]);
         exit;
@@ -290,8 +287,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        $stmt = $pdo->prepare("DELETE FROM bank_transaction_tags WHERE transaction_id = :tx_id AND tag_id = :tag_id");
-        $stmt->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
+        (new BankTagRepository())->removeTagFromTransaction($txId, $tagId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -306,14 +302,7 @@ try {
             Auth::sendJsonError(400, 'Name ungültig oder zu lang');
         }
 
-        // Tag anlegen falls nicht vorhanden
-        $stmtCreate = $pdo->prepare("INSERT INTO bank_tags (name, color) VALUES (:name, :color) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)");
-        $stmtCreate->execute([':name' => $name, ':color' => $color]);
-        $tagId = (int)$pdo->lastInsertId();
-
-        // Tag zuweisen
-        $stmtAssign = $pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
-        $stmtAssign->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
+        $tagId = (new BankTagService())->createAndAssignTag($txId, $name, $color);
 
         echo json_encode([
             'success' => true,
@@ -340,7 +329,7 @@ try {
             exit;
         }
 
-        $matcher = new RuleMatcher($pdo);
+        $matcher = new RuleMatcher();
         $matchCount = $matcher->countMatchingTransactions($textPattern, $payeePattern);
 
         echo json_encode(['success' => true, 'match_count' => $matchCount]);
@@ -349,67 +338,31 @@ try {
 
     // 2. Regel speichern oder aktualisieren
     if ($action === 'save_rule') {
-        $ruleId = filter_var($data['rule_id'] ?? null, FILTER_VALIDATE_INT);
-        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+        $ruleId = filter_var($data['rule_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
         $textPattern = trim((string)($data['text_pattern'] ?? '')) ?: null;
         $payeePattern = trim((string)($data['payee_pattern'] ?? '')) ?: null;
         $tagIds = is_array($data['tag_ids'] ?? null) ? array_map('intval', $data['tag_ids']) : [];
         $priority = filter_var($data['priority'] ?? 10, FILTER_VALIDATE_INT) ?: 10;
 
-        if (empty($textPattern) && empty($payeePattern)) {
+        if ($textPattern === null && $payeePattern === null) {
             Auth::sendJsonError(400, 'Mindestens ein Muster (Text oder Empfänger) muss angegeben werden.');
         }
 
-        $jsonTagIds = json_encode($tagIds);
+        $result = (new BankTagService())->saveRuleAndApply(
+            $ruleId,
+            $txId,
+            $textPattern,
+            $payeePattern,
+            $tagIds,
+            $priority
+        );
 
-        $pdo->beginTransaction();
-
-        if ($ruleId) {
-            $stmt = $pdo->prepare("
-                UPDATE bank_tag_rules 
-                SET text_pattern = :text_pattern, payee_pattern = :payee_pattern, tag_ids = :tag_ids, priority = :priority 
-                WHERE id = :id
-            ");
-            $stmt->execute([
-                ':text_pattern' => $textPattern,
-                ':payee_pattern' => $payeePattern,
-                ':tag_ids' => $jsonTagIds,
-                ':priority' => $priority,
-                ':id' => $ruleId
-            ]);
-        } else {
-            $stmt = $pdo->prepare("
-                INSERT INTO bank_tag_rules (text_pattern, payee_pattern, tag_ids, priority) 
-                VALUES (:text_pattern, :payee_pattern, :tag_ids, :priority)
-            ");
-            $stmt->execute([
-                ':text_pattern' => $textPattern,
-                ':payee_pattern' => $payeePattern,
-                ':tag_ids' => $jsonTagIds,
-                ':priority' => $priority
-            ]);
-            $ruleId = (int)$pdo->lastInsertId();
-        }
-
-        // 1. Für die spezifische Transaktion sofort zuweisen
-        if ($txId) {
-            $stmtTx = $pdo->prepare("UPDATE bank_giro_transactions SET matched_rule_id = :rule_id WHERE id = :tx_id");
-            $stmtTx->execute([':rule_id' => $ruleId, ':tx_id' => $txId]);
-
-            $pdo->prepare("DELETE FROM bank_transaction_tags WHERE transaction_id = :tx_id")->execute([':tx_id' => $txId]);
-            $stmtTag = $pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
-            foreach ($tagIds as $tId) {
-                $stmtTag->execute([':tx_id' => $txId, ':tag_id' => $tId]);
-            }
-        }
-
-        $pdo->commit();
-
-        // 2. RETROAKTIV: Auf alle verbleibenden regel-losen Umsätze in der DB anwenden!
-        $matcher = new RuleMatcher($pdo);
-        $matchedCount = $matcher->applyRuleToAllTransactions($ruleId);
-
-        echo json_encode(['success' => true, 'rule_id' => $ruleId, 'retroactive_matches' => $matchedCount]);
+        echo json_encode([
+            'success' => true,
+            'rule_id' => $result['rule_id'],
+            'retroactive_matches' => $result['retroactive_matches']
+        ]);
         exit;
     }
 
@@ -421,24 +374,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Rule-ID');
         }
 
-        $pdo->beginTransaction();
-
-        // A: Transaktionen ermitteln, die mit dieser Regel verknüpft waren
-        $stmtTxs = $pdo->prepare("SELECT id FROM bank_giro_transactions WHERE matched_rule_id = :rule_id");
-        $stmtTxs->execute([':rule_id' => $ruleId]);
-        $affectedTxIds = $stmtTxs->fetchAll(PDO::FETCH_COLUMN);
-
-        // B: Regel löschen (Setzt matched_rule_id durch FK ON DELETE SET NULL automatisch auf NULL)
-        $stmt = $pdo->prepare("DELETE FROM bank_tag_rules WHERE id = :id");
-        $stmt->execute([':id' => $ruleId]);
-
-        // C: Tags bei vormals getaggten Umsätzen der Regel entfernen
-        if (!empty($affectedTxIds)) {
-            $inClause = implode(',', array_map('intval', $affectedTxIds));
-            $pdo->exec("DELETE FROM bank_transaction_tags WHERE transaction_id IN ($inClause)");
-        }
-
-        $pdo->commit();
+        (new BankTagService())->deleteRuleAndCleanup($ruleId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -452,8 +388,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        $stmt = $pdo->prepare("UPDATE bank_cc_transactions SET category_id = :cat_id WHERE id = :tx_id");
-        $stmt->execute([':cat_id' => $categoryId, ':tx_id' => $txId]);
+        (new CreditCardRepository())->updateTransactionCategory($txId, $categoryId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -461,7 +396,7 @@ try {
 
     // Manuelles Synchronisieren/Matchen von Kreditkartenabrechnungen mit Girokonto-Umsätzen
     if ($action === 'sync_cc_statements') {
-        $matcher = new StatementMatcher($pdo);
+        $matcher = new StatementMatcher();
         $linkedCount = $matcher->syncUnlinkedStatements();
 
         echo json_encode([
@@ -473,8 +408,7 @@ try {
 
     // Alle Verträge für das Modal-Dropdown laden
     if ($action === 'get_contracts') {
-        $stmt = $pdo->query("SELECT id, name, type, status FROM bank_contracts ORDER BY name ASC");
-        $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $contracts = (new BankContractRepository())->getContractOptions();
 
         echo json_encode(['success' => true, 'contracts' => $contracts]);
         exit;
@@ -483,90 +417,22 @@ try {
     // Vertragsregel speichern und Regel anlegen
     if ($action === 'save_contract_rule') {
         $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
-        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
-        $assignOnly = !empty($data['assign_only']); // Prüfen ob nur einmalig verknüpft werden soll
-
-        $useMandate = !empty($data['use_mandate']);
-        $mandateId = trim((string)($data['mandate_id'] ?? ''));
-
-        $useCreditorId = !empty($data['use_creditor_id']);
-        $creditorId = trim((string)($data['creditor_id'] ?? ''));
-
-        $useAuftraggeber = !empty($data['use_auftraggeber']);
-        $auftraggeberVal = trim((string)($data['auftraggeber_val'] ?? ''));
-
-        $textPattern = trim((string)($data['text_pattern'] ?? '')) ?: null;
+        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
 
         if (!$txId) {
             Auth::sendJsonError(400, 'Ungültige Transaktions-ID.');
         }
 
-        $pdo->beginTransaction();
-
-        // Falls kein bestehender Vertrag gewählt wurde, legen wir einen neuen an
-        if (!$contractId) {
-            $stmtTxInfo = $pdo->prepare("SELECT remittance_info, remitter, creditor, debitor, dc_mandate_id, amount FROM bank_giro_transactions WHERE id = :id");
-            $stmtTxInfo->execute([':id' => $txId]);
-            $txInfo = $stmtTxInfo->fetch(PDO::FETCH_ASSOC);
-
-            $extractedAuftraggeber = trim($txInfo['remitter'] ?: ($txInfo['creditor'] ?: ($txInfo['debitor'] ?? '')));
-            $newName = $auftraggeberVal !== '' ? $auftraggeberVal : ($extractedAuftraggeber !== '' ? $extractedAuftraggeber : ($txInfo['remittance_info'] ?? 'Neuer Vertrag'));
-            $newAmount = abs((float)($txInfo['amount'] ?? 0));
-            $mandateRef = $txInfo['dc_mandate_id'] ?? null;
-
-            $stmtNewContract = $pdo->prepare("
-                INSERT INTO bank_contracts (name, type, betrag, frequenz, status, auftraggeber, mandatsnummer) 
-                VALUES (:name, 'fixkosten', :betrag, 'monatlich', 'aktiv', :auftraggeber, :mandatsnummer)
-            ");
-            $stmtNewContract->execute([
-                ':name' => mb_substr($newName, 0, 100),
-                ':betrag' => $newAmount,
-                ':auftraggeber' => $extractedAuftraggeber !== '' ? $extractedAuftraggeber : null,
-                ':mandatsnummer' => $mandateRef
-            ]);
-            $contractId = (int)$pdo->lastInsertId();
-        }
-
-        // Regeln NUR anlegen, wenn "assign_only" nicht aktiv ist
-        if (!$assignOnly) {
-            if ($useMandate && $mandateId !== '') {
-                $stmtRule = $pdo->prepare("
-                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                    VALUES (:contract_id, 'exact_match', :pattern_value, 10)
-                ");
-                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $mandateId]);
-            }
-
-            if ($useCreditorId && $creditorId !== '') {
-                $stmtRule = $pdo->prepare("
-                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                    VALUES (:contract_id, 'exact_match', :pattern_value, 10)
-                ");
-                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $creditorId]);
-            }
-
-            if ($useAuftraggeber && $auftraggeberVal !== '') {
-                $stmtRule = $pdo->prepare("
-                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                    VALUES (:contract_id, 'substring', :pattern_value, 10)
-                ");
-                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $auftraggeberVal]);
-            }
-
-            if ($textPattern !== null && $textPattern !== '') {
-                $stmtRule = $pdo->prepare("
-                    INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority) 
-                    VALUES (:contract_id, 'regex', :pattern_value, 10)
-                ");
-                $stmtRule->execute([':contract_id' => $contractId, ':pattern_value' => $textPattern]);
-            }
-        }
-
-        // Transaktion direkt mit dem Vertrag verknüpfen (passiert in jedem Fall)
-        $stmtUpdateTx = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
-        $stmtUpdateTx->execute([':contract_id' => $contractId, ':tx_id' => $txId]);
-
-        $pdo->commit();
+        $contractId = (new ContractAssignmentService())->assignTransactionToContract($txId, $contractId, [
+            'assign_only'     => !empty($data['assign_only']),
+            'payee'           => trim((string)($data['auftraggeber_val'] ?? '')),
+            'use_payee'       => !empty($data['use_auftraggeber']),
+            'mandate_id'      => trim((string)($data['mandate_id'] ?? '')),
+            'use_mandate'     => !empty($data['use_mandate']),
+            'creditor_id'     => trim((string)($data['creditor_id'] ?? '')),
+            'use_creditor_id' => !empty($data['use_creditor_id']),
+            'text_pattern'    => trim((string)($data['text_pattern'] ?? '')),
+        ]);
 
         echo json_encode(['success' => true, 'contract_id' => $contractId]);
         exit;
@@ -574,69 +440,34 @@ try {
 
     if ($action === 'test_contract_rule_pattern') {
         $useMandate = !empty($data['use_mandate']);
-        $mandateId = trim((string)($data['mandate_id'] ?? ''));
         $useCreditorId = !empty($data['use_creditor_id']);
-        $creditorId = trim((string)($data['creditor_id'] ?? ''));
         $useAuftraggeber = !empty($data['use_auftraggeber']);
-        $auftraggeberVal = trim((string)($data['auftraggeber_val'] ?? ''));
-        $textPattern = trim((string)($data['text_pattern'] ?? ''));
 
-        $conditions = [];
-        $params = [];
-
-        if ($useMandate && $mandateId !== '') {
-            $conditions[] = "dc_mandate_id = :mandate_id";
-            $params[':mandate_id'] = $mandateId;
-        }
-        if ($useCreditorId && $creditorId !== '') {
-            $conditions[] = "dc_creditor_id = :creditor_id";
-            $params[':creditor_id'] = $creditorId;
-        }
-        if ($useAuftraggeber && $auftraggeberVal !== '') {
-            $conditions[] = "(remitter LIKE :auftraggeber OR creditor LIKE :auftraggeber_cred)";
-            $params[':auftraggeber'] = '%' . $auftraggeberVal . '%';
-            $params[':auftraggeber_cred'] = '%' . $auftraggeberVal . '%';
-        }
-        if ($textPattern !== '') {
-            $conditions[] = "remittance_info REGEXP :text_pattern";
-            $params[':text_pattern'] = $textPattern;
-        }
-
-        if (empty($conditions)) {
-            echo json_encode(['success' => true, 'match_count' => 0]);
-            exit;
-        }
-
-        $sql = "SELECT COUNT(*) FROM bank_giro_transactions WHERE " . implode(' AND ', $conditions);
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $matchCount = (int)$stmt->fetchColumn();
+        $matchCount = (new BankTransactionRepository())->countMatchingContractPatterns(
+            $useMandate ? trim((string)($data['mandate_id'] ?? '')) : null,
+            $useCreditorId ? trim((string)($data['creditor_id'] ?? '')) : null,
+            $useAuftraggeber ? trim((string)($data['auftraggeber_val'] ?? '')) : null,
+            trim((string)($data['text_pattern'] ?? ''))
+        );
 
         echo json_encode(['success' => true, 'match_count' => $matchCount]);
         exit;
     }
 
     if ($action === 'get_contract_transactions') {
-        $contractId = (int)($data['contract_id'] ?? 0); // Hier von $input auf $data geändert
-        $limit = (int)($data['limit'] ?? 5);         // Hier von $input auf $data geändert
+        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
+        $limit = filter_var($data['limit'] ?? 5, FILTER_VALIDATE_INT) ?: 5;
 
-        if ($contractId <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Ungültige Vertrags-ID']);
-            exit;
+        if (!$contractId) {
+            Auth::sendJsonError(400, 'Ungültige Vertrags-ID');
         }
 
-        try {
-            $contractRepo = new BankContractRepository();
-            $transactions = $contractRepo->getTransactionsForContract($contractId, $limit);
+        $transactions = (new BankContractRepository())->getTransactionsForContract($contractId, min($limit, 100));
 
-            echo json_encode([
-                'success' => true,
-                'transactions' => $transactions
-            ]);
-        } catch (Exception $e) {
-            (new Logger())->error('bank/api.php: get_contract_transactions fehlgeschlagen.', ['error' => $e->getMessage()]);
-            Auth::sendJsonError(500, 'Buchungen konnten nicht geladen werden.');
-        }
+        echo json_encode([
+            'success' => true,
+            'transactions' => $transactions
+        ]);
         exit;
     }
 
@@ -649,18 +480,12 @@ try {
             Auth::sendJsonError(400, 'Name des Vertrags darf nicht leer sein.');
         }
 
-        try {
-            $contractRepo = new BankContractRepository();
-            $id = $contractRepo->saveContract($data, $contractId);
+        $id = (new BankContractRepository())->saveContract($data, $contractId);
 
-            echo json_encode([
-                'success' => true,
-                'contract_id' => $id
-            ]);
-        } catch (Exception $e) {
-            (new Logger())->error('bank/api.php: save_contract_details fehlgeschlagen.', ['error' => $e->getMessage()]);
-            Auth::sendJsonError(500, 'Vertrag konnte nicht gespeichert werden.');
-        }
+        echo json_encode([
+            'success' => true,
+            'contract_id' => $id
+        ]);
         exit;
     }
 
@@ -672,35 +497,15 @@ try {
             Auth::sendJsonError(400, 'Ungültige Vertrags-ID');
         }
 
-        try {
-            $pdo->beginTransaction();
-            // Verknüpfung in Transaktionen aufheben
-            $stmt = $pdo->prepare("UPDATE bank_giro_transactions SET contract_id = NULL WHERE contract_id = :id");
-            $stmt->execute([':id' => $contractId]);
+        (new ContractAssignmentService())->deleteContract($contractId);
 
-            // Vertrag selbst löschen (Regeln werden dank CASCADE automatisch mitgelöscht)
-            $stmtDel = $pdo->prepare("DELETE FROM bank_contracts WHERE id = :id");
-            $stmtDel->execute([':id' => $contractId]);
-
-            $pdo->commit();
-
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            (new Logger())->error('bank/api.php: delete_contract fehlgeschlagen.', ['error' => $e->getMessage()]);
-            Auth::sendJsonError(500, 'Vertrag konnte nicht gelöscht werden.');
-        }
+        echo json_encode(['success' => true]);
         exit;
     }
 
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
 } catch (Throwable $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
     (new Logger())->error('bank/api.php: Fehler bei API-Aktion', ['error' => $e->getMessage()]);
     Auth::sendJsonError(500, 'Interner Fehler');
 }

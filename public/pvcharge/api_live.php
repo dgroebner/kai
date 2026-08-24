@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\PVCharge\PvTelemetryRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
@@ -11,13 +11,10 @@ header('Content-Type: application/json; charset=utf-8');
 Auth::requireApi();
 
 try {
-    $db = Database::getInstance()->getConnection();
-
     // Neueste Live-Daten abrufen
-    $liveStmt = $db->query("SELECT * FROM pv_live ORDER BY id DESC LIMIT 1");
-    $liveData = $liveStmt->fetch(PDO::FETCH_ASSOC);
+    $liveData = (new PvTelemetryRepository())->getLatestLiveData();
 
-    if (!$liveData) {
+    if ($liveData === []) {
         echo json_encode(['success' => false, 'error' => 'Keine Live-Daten gefunden']);
         exit;
     }

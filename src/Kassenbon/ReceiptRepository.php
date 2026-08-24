@@ -152,4 +152,12 @@ class ReceiptRepository {
         }
         return $result;
     }
+
+    /**
+     * Ändert die Kategorie einer einzelnen Bon-Position.
+     */
+    public function updateItemCategory(int $itemId, string $categoryName): void {
+        $stmt = $this->db->prepare("UPDATE kb_items SET category = :cat WHERE id = :id");
+        $stmt->execute([':cat' => $categoryName, ':id' => $itemId]);
+    }
 }

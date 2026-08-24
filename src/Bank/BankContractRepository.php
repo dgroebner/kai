@@ -194,6 +194,24 @@ class BankContractRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Lädt eine schlanke Vertragsliste für Auswahlfelder.
+     */
+    public function getContractOptions(): array
+    {
+        $stmt = $this->pdo->query("SELECT id, name, type, status FROM bank_contracts ORDER BY name ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Löscht einen Vertrag. Die zugehörigen Regeln entfernt der Fremdschlüssel (CASCADE).
+     */
+    public function deleteContract(int $contractId): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM bank_contracts WHERE id = :id");
+        $stmt->execute([':id' => $contractId]);
+    }
+
     public function getTransactionsForContract(int $contractId, int $limit): array
     {
         $stmt = $this->pdo->prepare("

@@ -133,4 +133,103 @@ class BankTransactionRepository
 
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
+
+    /**
+     * Lädt die für Vertragserkennung relevanten Felder eines Umsatzes.
+     */
+    public function getTransactionById(int $transactionId): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT id, remittance_info, remitter, creditor, debitor, dc_mandate_id, dc_creditor_id, amount
+            FROM bank_giro_transactions
+            WHERE id = :id
+        ");
+        $stmt->execute([':id' => $transactionId]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    /**
+     * Setzt (oder entfernt) die getroffene Tagging-Regel eines Umsatzes.
+     */
+    public function setMatchedRule(int $transactionId, ?int $ruleId): void
+    {
+        $stmt = $this->pdo->prepare("UPDATE bank_giro_transactions SET matched_rule_id = :rule_id WHERE id = :tx_id");
+        $stmt->execute([':rule_id' => $ruleId, ':tx_id' => $transactionId]);
+    }
+
+    /**
+     * Ermittelt alle Umsatz-IDs, die einer bestimmten Tagging-Regel zugeordnet sind.
+     *
+     * @return int[]
+     */
+    public function getTransactionIdsByRule(int $ruleId): array
+    {
+        $stmt = $this->pdo->prepare("SELECT id FROM bank_giro_transactions WHERE matched_rule_id = :rule_id");
+        $stmt->execute([':rule_id' => $ruleId]);
+
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    /**
+     * Verknüpft einen Umsatz mit einem Vertrag (oder löst die Verknüpfung mit null).
+     */
+    public function assignContract(int $transactionId, ?int $contractId): void
+    {
+        $stmt = $this->pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
+        $stmt->execute([':contract_id' => $contractId, ':tx_id' => $transactionId]);
+    }
+
+    /**
+     * Hebt die Vertragszuordnung aller Umsätze eines Vertrags auf.
+     */
+    public function unlinkContract(int $contractId): void
+    {
+        $stmt = $this->pdo->prepare("UPDATE bank_giro_transactions SET contract_id = NULL WHERE contract_id = :id");
+        $stmt->execute([':id' => $contractId]);
+    }
+
+    /**
+     * Zählt die Umsätze, auf die die übergebenen Vertragsmuster zutreffen (Live-Test im Regel-Editor).
+     * Alle angegebenen Kriterien wirken als UND-Verknüpfung; leere Kriterien werden ignoriert.
+     */
+    public function countMatchingContractPatterns(
+        ?string $mandateId = null,
+        ?string $creditorId = null,
+        ?string $payee = null,
+        ?string $textPattern = null
+    ): int {
+        $conditions = [];
+        $params = [];
+
+        if ($mandateId !== null && $mandateId !== '') {
+            $conditions[] = "dc_mandate_id = :mandate_id";
+            $params[':mandate_id'] = $mandateId;
+        }
+        if ($creditorId !== null && $creditorId !== '') {
+            $conditions[] = "dc_creditor_id = :creditor_id";
+            $params[':creditor_id'] = $creditorId;
+        }
+        if ($payee !== null && $payee !== '') {
+            $conditions[] = "(remitter LIKE :payee_remitter OR creditor LIKE :payee_creditor)";
+            $params[':payee_remitter'] = '%' . $payee . '%';
+            $params[':payee_creditor'] = '%' . $payee . '%';
+        }
+        if ($textPattern !== null && $textPattern !== '') {
+            $conditions[] = "remittance_info REGEXP :text_pattern";
+            $params[':text_pattern'] = $textPattern;
+        }
+
+        if ($conditions === []) {
+            return 0;
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM bank_giro_transactions WHERE " . implode(' AND ', $conditions)
+        );
+        $stmt->execute($params);
+
+        return (int)$stmt->fetchColumn();
+    }
 }

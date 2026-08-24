@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Car\VehicleDashboardRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
@@ -41,31 +41,7 @@ if (strlen($vin) !== 17 || $carCapturedAt === '' || strtotime($carCapturedAt) ==
 }
 
 try {
-    $db = Database::getInstance()->getConnection();
-
-    // 1. In vehicle_telemetry_log aktualisieren
-    $stmtLog = $db->prepare("
-        UPDATE vehicle_telemetry_log 
-        SET range_km = :range_km 
-        WHERE vin = :vin AND car_captured_at = :car_captured_at
-    ");
-    $stmtLog->execute([
-        ':range_km' => $rangeKm,
-        ':vin' => $vin,
-        ':car_captured_at' => $carCapturedAt
-    ]);
-
-    // 2. Falls es der aktuellste Eintrag ist, auch vehicle_state aktualisieren
-    $stmtState = $db->prepare("
-        UPDATE vehicle_state 
-        SET range_km = COALESCE(:range_km, range_km)
-        WHERE vin = :vin AND car_captured_at = :car_captured_at
-    ");
-    $stmtState->execute([
-        ':range_km' => $rangeKm,
-        ':vin' => $vin,
-        ':car_captured_at' => $carCapturedAt
-    ]);
+    (new VehicleDashboardRepository())->updateRange($vin, $carCapturedAt, $rangeKm);
 
     echo json_encode(['success' => true]);
 

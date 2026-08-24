@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Kassenbon\CategoryAnalyzer;
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Kassenbon\ReceiptQueryRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
@@ -92,20 +92,7 @@ $analysis = [];
 $categoryColorMap = [];
 
 try {
-    $pdo = Database::getInstance()->getConnection();
-    
-    $stmtItems = $pdo->prepare("
-        SELECT i.*, r.purchase_date 
-        FROM kb_items i
-        JOIN kb_receipts r ON i.receipt_id = r.id
-        WHERE r.purchase_date BETWEEN :start AND :end
-        ORDER BY r.purchase_date DESC, r.id DESC, i.id
-    ");
-    $stmtItems->execute([
-        ':start' => $startDate,
-        ':end' => $endDate
-    ]);
-    $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+    $items = (new ReceiptQueryRepository())->getItemsForPeriod($startDate, $endDate);
     
     $analysis = $categoryAnalyzer->analyze($items);
     

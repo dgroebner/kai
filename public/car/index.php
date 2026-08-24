@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Car\VehicleDashboardRepository;
 use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check — immer zuerst
@@ -9,7 +9,7 @@ Auth::requirePage();
 
 $csrfToken = Auth::csrfToken();
 
-$db = Database::getInstance()->getConnection();
+$vehicleDashboardRepository = new VehicleDashboardRepository();
 
 // ----------------------------------------------------
 // Hilfsfunktionen (inkl. Zeitzonenkonvertierung)
@@ -53,13 +53,7 @@ function chargingLabel(string $state): array
 // ----------------------------------------------------
 // 1. Live-Fahrzeugstatus (Unabhängig vom Zeitraum)
 // ----------------------------------------------------
-$stateStmt = $db->query("
-    SELECT *
-    FROM vehicle_state
-    ORDER BY updated_at DESC
-    LIMIT 1
-");
-$state = $stateStmt ? $stateStmt->fetch() : null;
+$state = $vehicleDashboardRepository->getLatestState();
 
 // Aktuellen Effizienz-Index für das KPI-Widget berechnen
 $currentEff = null;
@@ -158,45 +152,17 @@ $endDateUtc = $endDtUtc->format('Y-m-d H:i:s');
 // ----------------------------------------------------
 
 // Zeitreihe für gefilterten Zeitraum (SoC-Verlauf Chart)
-$historyStmt = $db->prepare("
-    SELECT car_captured_at, soc_percent, range_km, charge_power_kw, outdoor_temp_c
-    FROM vehicle_telemetry_log
-    WHERE car_captured_at BETWEEN :start AND :end
-    ORDER BY car_captured_at
-");
-$historyStmt->execute([
-        ':start' => $startDateUtc,
-        ':end' => $endDateUtc
-]);
-$history = $historyStmt->fetchAll();
+$history = $vehicleDashboardRepository->getTelemetryHistory($startDateUtc, $endDateUtc);
 
 // Paginierung der Telemetrielog-Tabelle
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $perPage = 15;
 $offset = ($page - 1) * $perPage;
 
-$countStmt = $db->prepare("
-    SELECT COUNT(*) 
-    FROM vehicle_telemetry_log 
-    WHERE car_captured_at BETWEEN :start AND :end
-");
-$countStmt->execute([':start' => $startDateUtc, ':end' => $endDateUtc]);
-$totalEntries = (int)$countStmt->fetchColumn();
+$totalEntries = $vehicleDashboardRepository->countTelemetryEntries($startDateUtc, $endDateUtc);
 $totalPages = max(1, ceil($totalEntries / $perPage));
 
-$logStmt = $db->prepare("
-    SELECT car_captured_at, soc_percent, range_km, mileage_km, charge_power_kw, outdoor_temp_c
-    FROM vehicle_telemetry_log
-    WHERE car_captured_at BETWEEN :start AND :end
-    ORDER BY car_captured_at DESC
-    LIMIT :limit OFFSET :offset
-");
-$logStmt->bindValue(':start', $startDateUtc);
-$logStmt->bindValue(':end', $endDateUtc);
-$logStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-$logStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$logStmt->execute();
-$recentLog = $logStmt->fetchAll();
+$recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDateUtc, $perPage, $offset);
 
 ?>
 <!DOCTYPE html>

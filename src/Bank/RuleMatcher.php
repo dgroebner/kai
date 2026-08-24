@@ -3,6 +3,7 @@
 namespace Kai\Tools\Bank;
 
 use PDO;
+use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 
 class RuleMatcher
@@ -20,9 +21,9 @@ class RuleMatcher
     private PDO $pdo;
     private Logger $logger;
 
-    public function __construct(PDO $pdo)
+    public function __construct(?PDO $pdo = null)
     {
-        $this->pdo = $pdo;
+        $this->pdo = $pdo ?? Database::getInstance()->getConnection();
         $this->logger = new Logger();
     }
 

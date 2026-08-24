@@ -2,7 +2,8 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Bank\BankAccountRepository;
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Bank\BankTagRepository;
+use Kai\Tools\Bank\GiroOverviewRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Shared\Security\Sanitizer;
@@ -12,18 +13,30 @@ Auth::requirePage();
 
 $logger = new Logger();
 
+// Anzahl der Umsätze pro Seite (auch für die Sprungberechnung per ?tx=ID)
+const TRANSACTIONS_PER_PAGE = 25;
+
+$accountRepository = new BankAccountRepository();
+$giroRepository = new GiroOverviewRepository();
+$tagRepository = new BankTagRepository();
+
+// Girokonto dynamisch auflösen — alle Abfragen dieser Seite beziehen sich darauf
+$checkingAccount = $accountRepository->getAccountByType('checking');
+if ($checkingAccount === null) {
+    $logger->error('bank/index.php: Kein aktives Girokonto gefunden.');
+    http_response_code(500);
+    exit("Kein Girokonto konfiguriert.");
+}
+$accountId = (int)$checkingAccount['id'];
+
 // ----------------------------------------------------
 // 1.5 Direkter Transaktions-Sprung per ?tx=ID & Seitenberechnung
 // ----------------------------------------------------
 $highlightTxId = isset($_GET['tx']) ? (int)$_GET['tx'] : null;
 if ($highlightTxId && !isset($_GET['page'])) {
     try {
-        $pdo = Database::getInstance()->getConnection();
-
-        // Datum und ID der Transaktion holen
-        $stmtTx = $pdo->prepare("SELECT booking_date FROM bank_giro_transactions WHERE id = :id");
-        $stmtTx->execute([':id' => $highlightTxId]);
-        $txBookingDate = $stmtTx->fetchColumn();
+        // Datum der Transaktion holen
+        $txBookingDate = $giroRepository->getBookingDate($highlightTxId);
 
         if ($txBookingDate) {
             $type = 'monat';
@@ -35,23 +48,16 @@ if ($highlightTxId && !isset($_GET['page'])) {
             $endDate = $dateTime->format('Y-m-t');
 
             // Ermitteln, wie viele Transaktionen in diesem Monat *nach* unserer Ziel-Transaktion liegen (für den Offset/Seitenindex)
-            $stmtRank = $pdo->prepare("
-                SELECT COUNT(*) FROM bank_giro_transactions 
-                WHERE booking_date BETWEEN :start AND :end 
-                  AND (booking_date > :bdate_min OR (booking_date = :bdate AND id > :id))
-				  AND account_id = 2
-            ");
-            $stmtRank->execute([
-                    ':start' => $startDate,
-                    ':end' => $endDate,
-                    ':bdate_min' => $txBookingDate,
-                    ':bdate' => $txBookingDate,
-                    ':id' => $highlightTxId
-            ]);
-            $position = (int)$stmtRank->fetchColumn();
+            $position = $giroRepository->countTransactionsBefore(
+                $accountId,
+                $startDate,
+                $endDate,
+                $txBookingDate,
+                $highlightTxId
+            );
 
-            // Berechnen, auf welcher Seite (limit = 25) sich die Transaktion befindet
-            $targetPage = floor($position / 25) + 1;
+            // Berechnen, auf welcher Seite sich die Transaktion befindet
+            $targetPage = floor($position / TRANSACTIONS_PER_PAGE) + 1;
 
             if ($targetPage > 1) {
                 // Auf die korrekte Seite weiterleiten
@@ -142,7 +148,7 @@ if ($type === 'woche') {
 // 3. Paginierung & Filter-Parameter
 // ----------------------------------------------------
 $page = max(1, (int)($_GET['page'] ?? 1));
-$limit = 25;
+$limit = TRANSACTIONS_PER_PAGE;
 $offset = ($page - 1) * $limit;
 $selectedTagId = isset($_GET['tag_id']) ? (int)$_GET['tag_id'] : null;
 
@@ -153,11 +159,8 @@ $totalPages = 1;
 $totalTransactions = 0;
 
 try {
-    $pdo = Database::getInstance()->getConnection();
-
     // Konten für die dynamische Navigation laden
-    $stmtAcc = $pdo->query("SELECT id, account_name, account_type, current_balance FROM bank_accounts ORDER BY id ASC");
-    $accounts = $stmtAcc->fetchAll(PDO::FETCH_ASSOC);
+    $accounts = $accountRepository->getAllAccounts();
 
     // Salden aus dem bereits geladenen $accounts-Array filtern
     $checkingBalance = 0;
@@ -171,110 +174,32 @@ try {
     }
 
     // Alle vorhandenen Tags für Popover & Auto-Suggest laden
-    $stmtAllTags = $pdo->query("SELECT id, name, color FROM bank_tags ORDER BY name ASC");
-    $availableTags = $stmtAllTags->fetchAll(PDO::FETCH_ASSOC);
+    $availableTags = $tagRepository->getAllTags();
 
     // Tag-Statistik für den Zeitraum ermitteln (Summen & Häufigkeit)
-    $stmtStats = $pdo->prepare("
-        SELECT 
-            t.id, t.name, t.color,
-            COUNT(DISTINCT bt.id) AS tx_count,
-            SUM(bt.amount) AS total_amount
-        FROM bank_tags t
-        JOIN bank_transaction_tags tt ON t.id = tt.tag_id
-        JOIN bank_giro_transactions bt ON tt.transaction_id = bt.id AND bt.account_id = 2
-        WHERE bt.booking_date BETWEEN :start AND :end
-		  AND t.id <> 17  -- ignoriere Umbuchungen
-        GROUP BY t.id, t.name, t.color
-        ORDER BY tx_count DESC, t.name ASC
-    ");
-    $stmtStats->execute([':start' => $startDate, ':end' => $endDate]);
-    $tagStats = $stmtStats->fetchAll(PDO::FETCH_ASSOC);
-
-    // SQL-Filter vorbereiten
-    $whereClause = "WHERE bt.booking_date BETWEEN :start AND :end AND bt.account_id = 2";
-    $params = [':start' => $startDate, ':end' => $endDate];
-
-    if ($selectedTagId) {
-        $whereClause .= " AND bt.id IN (SELECT transaction_id FROM bank_transaction_tags WHERE tag_id = :tag_id)";
-        $params[':tag_id'] = $selectedTagId;
-    }
+    $tagStats = $tagRepository->getTagStatistics($accountId, $startDate, $endDate);
 
     // Gesamtzahl für Paginierung
-    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM bank_giro_transactions bt {$whereClause}");
-    $stmtCount->execute($params);
-    $totalTransactions = (int)$stmtCount->fetchColumn();
+    $totalTransactions = $giroRepository->countTransactions($accountId, $startDate, $endDate, $selectedTagId);
     $totalPages = max(1, (int)ceil($totalTransactions / $limit));
 
     // Umsätze mit zugewiesenen Tags, Regel-Informationen, Kreditkartenabrechnung & E-Bons laden
-    $stmtTx = $pdo->prepare("
-        SELECT 
-            bt.*,
-            r.text_pattern AS matched_text_pattern,
-            r.payee_pattern AS matched_payee_pattern,
-            s.id AS linked_statement_id,
-            s.statement_date AS linked_statement_date,
-            rec.id AS linked_receipt_id,
-            c.id AS contract_id,
-            c.name AS contract_name,
-            GROUP_CONCAT(CONCAT(t.id, ':', t.name, ':', t.color) SEPARATOR '||') AS tag_data
-        FROM bank_giro_transactions bt
-        LEFT JOIN bank_tag_rules r ON bt.matched_rule_id = r.id
-        LEFT JOIN bank_cc_statements s ON bt.id = s.bank_transaction_id
-        LEFT JOIN kb_receipts rec ON bt.id = rec.bank_giro_transaction_id
-        LEFT JOIN bank_contracts c ON bt.contract_id = c.id
-        LEFT JOIN bank_transaction_tags tt ON bt.id = tt.transaction_id
-        LEFT JOIN bank_tags t ON tt.tag_id = t.id
-        {$whereClause}
-        GROUP BY bt.id
-        ORDER BY bt.booking_date DESC, bt.id DESC
-        LIMIT :limit OFFSET :offset
-    ");
-
-    foreach ($params as $key => $val) {
-        $stmtTx->bindValue($key, $val);
-    }
-    $stmtTx->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmtTx->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmtTx->execute();
-
-    $rawTxs = $stmtTx->fetchAll(PDO::FETCH_ASSOC);
-
-    // Tags pro Transaktion strukturiert aufbereiten
-    foreach ($rawTxs as $row) {
-        $tags = [];
-        if (!empty($row['tag_data'])) {
-            $tagParts = explode('||', $row['tag_data']);
-            foreach ($tagParts as $part) {
-                list($tId, $tName, $tColor) = explode(':', $part);
-                $tags[] = [
-                        'id' => (int)$tId,
-                        'name' => $tName,
-                        'color' => $tColor ?: '#3b82f6'
-                ];
-            }
-        }
-        $row['tags'] = $tags;
-        $transactions[] = $row;
-    }
+    $transactions = $giroRepository->getTransactions(
+        $accountId,
+        $startDate,
+        $endDate,
+        $selectedTagId,
+        $limit,
+        $offset
+    );
 
     // Echte Gesamtsummen direkt aus den Transaktionen ermitteln (ohne Tag-Doppelzählungen)
-    $stmtPeriodTotals = $pdo->prepare("
-        SELECT 
-            SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END) AS total_expenses,
-            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) AS total_income
-        FROM bank_giro_transactions
-        WHERE booking_date BETWEEN :start AND :end
-		  AND account_id = 2
-    ");
-    $stmtPeriodTotals->execute([':start' => $startDate, ':end' => $endDate]);
-    $periodTotals = $stmtPeriodTotals->fetch(PDO::FETCH_ASSOC);
+    $periodTotals = $giroRepository->getPeriodTotals($accountId, $startDate, $endDate);
+    $realTotalExpenses = $periodTotals['expenses'];
+    $realTotalIncome = $periodTotals['income'];
 
-    $realTotalExpenses = abs((float)($periodTotals['total_expenses'] ?? 0));
-    $realTotalIncome = (float)($periodTotals['total_income'] ?? 0);
-
-    // Zeitpunkt der letzten Kontoaktualisierung (Girokonto = account_id 2)
-    $accountLastUpdate = (new BankAccountRepository())->getUpdatedAt(2);
+    // Zeitpunkt der letzten Kontoaktualisierung
+    $accountLastUpdate = $accountRepository->getUpdatedAt($accountId);
 
 } catch (Throwable $e) {
     $logger->error("bank/index.php: Fehler beim Laden der Umsätze.", ['error' => $e->getMessage()]);

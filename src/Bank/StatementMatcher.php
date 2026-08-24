@@ -36,6 +36,14 @@ class StatementMatcher
             return 0;
         }
 
+        // Girokonto dynamisch auflösen, statt die ID fest zu verdrahten
+        $checkingAccount = (new BankAccountRepository())->getAccountByType('checking');
+        if ($checkingAccount === null) {
+            $this->logger->error('StatementMatcher: Kein aktives Girokonto gefunden.');
+            return 0;
+        }
+        $accountId = (int)$checkingAccount['id'];
+
         $linkedCount = 0;
 
         $stmtFindGiroTx = $this->pdo->prepare("
@@ -43,7 +51,7 @@ class StatementMatcher
             FROM bank_giro_transactions 
             WHERE amount = :amount 
               AND booking_date BETWEEN :date_start AND :date_end
-			  AND account_id = 2
+			  AND account_id = :account_id
               AND (
                   remittance_info REGEXP 'Solaris|ADAC|Kreditkarte.*Abrechnung'
                   OR remittance_info LIKE '%Abrechnung%'
@@ -73,6 +81,7 @@ class StatementMatcher
                 ':amount'     => $expectedGiroAmount,
                 ':date_start' => $dateStart,
                 ':date_end'   => $dateEnd,
+                ':account_id' => $accountId,
             ]);
 
             $giroTxId = $stmtFindGiroTx->fetchColumn();

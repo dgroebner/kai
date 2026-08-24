@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Bank\CreditCardRepository;
 use Kai\Tools\Bank\StatementMatcher;
-use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
@@ -15,34 +15,19 @@ $limit = 10;
 $offset = ($page - 1) * $limit;
 
 try {
-    $db = Database::getInstance()->getConnection();
-
     // Automatischen Abgleich für evtl. neu eingetroffene Abrechnungen ausführen
-    $statementMatcher = new StatementMatcher($db);
-    $statementMatcher->syncUnlinkedStatements();
+    (new StatementMatcher())->syncUnlinkedStatements();
+
+    $creditCardRepository = new CreditCardRepository();
 
     // Gesamtzahl für Paginierung ermitteln
-    $totalStatements = (int)$db->query("SELECT COUNT(*) FROM bank_cc_statements")->fetchColumn();
+    $totalStatements = $creditCardRepository->countStatements();
     $totalPages = max(1, (int)ceil($totalStatements / $limit));
 
     // Abrechnungen inklusive Abbuchungsstatus vom Girokonto laden
-    $stmt = $db->prepare("
-        SELECT s.*, 
-               COUNT(t.id) AS tx_count,
-               g.booking_date AS giro_booking_date
-        FROM bank_cc_statements s
-        LEFT JOIN bank_cc_transactions t ON s.id = t.statement_id
-        LEFT JOIN bank_giro_transactions g ON s.bank_transaction_id = g.id
-        GROUP BY s.id
-        ORDER BY s.statement_date DESC
-        LIMIT :limit OFFSET :offset
-    ");
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmt->execute();
-    $statements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $statements = $creditCardRepository->getStatements($limit, $offset);
 } catch (Throwable $e) {
-    (new Logger())->error('bank/index.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    (new Logger())->error('bank/creditcard.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);
     exit('Interner Fehler. Bitte versuche es später erneut.');
 }

@@ -1,10 +1,10 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Kassenbon\ReceiptMatcher;
+use Kai\Tools\Kassenbon\ReceiptRepository;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -77,9 +77,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        $pdo = Database::getInstance()->getConnection();
-        $stmt = $pdo->prepare("UPDATE kb_items SET category = :cat WHERE id = :id");
-        $stmt->execute([':cat' => $categoryName, ':id' => $itemId]);
+        (new ReceiptRepository())->updateItemCategory($itemId, $categoryName);
 
         echo json_encode(['success' => true]);
         exit;

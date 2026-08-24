@@ -1,10 +1,11 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\PVCharge\PvDashboardService;
+use Kai\Tools\PVCharge\PvForecastRepository;
+use Kai\Tools\PVCharge\PvTelemetryRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
-use Kai\Tools\System\SystemSettingsService;
 
 // Auth-Check — immer zuerst
 Auth::requirePage();
@@ -14,7 +15,9 @@ $logger = new Logger();
 // CSRF-Token für das Formular bereitstellen
 $csrfToken = Auth::csrfToken();
 
-$db = Database::getInstance()->getConnection();
+$telemetryRepository = new PvTelemetryRepository();
+$forecastRepository = new PvForecastRepository();
+$dashboardService = new PvDashboardService($telemetryRepository);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_real_yield') {
     // CSRF-Token prüfen
@@ -25,99 +28,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
 
     $yieldData = is_array($_POST['real_yield'] ?? null) ? $_POST['real_yield'] : [];
 
-    $db->beginTransaction();
     try {
-        $updateStmt = $db->prepare("
-            UPDATE pv_forecast_daily 
-            SET real_watt_hours_day = :real_wh 
-            WHERE forecast_date = :date
-        ");
-
-        foreach ($yieldData as $date => $kwhValue) {
-            $dateObj = DateTime::createFromFormat('Y-m-d', (string)$date);
-            if (!$dateObj || $dateObj->format('Y-m-d') !== (string)$date) {
-                continue;
-            }
-
-            if (!is_scalar($kwhValue) || trim((string)$kwhValue) === '') {
-                $updateStmt->execute([':real_wh' => null, ':date' => $date]);
-                continue;
-            }
-
-            $kwh = (float)str_replace(',', '.', (string)$kwhValue);
-            $wh = (int)round(max(0.0, $kwh) * 1000);
-
-            $updateStmt->execute([
-                    ':real_wh' => $wh,
-                    ':date' => $date
-            ]);
-        }
-        $db->commit();
+        $forecastRepository->saveRealYields($yieldData);
         $successMessage = "Tatsächliche Erträge erfolgreich gespeichert.";
     } catch (Throwable $e) {
-        $db->rollBack();
         $logger->error("PVCharge index.php: Fehler beim Speichern der echten Erträge.", ['error' => $e->getMessage()]);
         $errorMessage = "Fehler beim Speichern. Bitte versuche es später erneut.";
     }
 }
 
-// --- Live-Daten aus pv_live abrufen ---
-$liveStmt = $db->query("SELECT * FROM pv_live ORDER BY id DESC LIMIT 1");
-$liveData = $liveStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+// --- Live-Daten & Tages-Kennzahlen ---
+$dashboardData = $dashboardService->getDashboardData();
+$liveData = $dashboardData['live'];
+$todayPeakW = $dashboardData['kpis']['todayPeakW'];
+$gridImportKwh = $dashboardData['kpis']['gridImportKwh'];
+$gridImportCost = $dashboardData['kpis']['gridImportCost'];
+$gridExportKwh = $dashboardData['kpis']['gridExportKwh'];
+$gridExportRevenue = $dashboardData['kpis']['gridExportRevenue'];
+$yieldDailyKwh = $dashboardData['kpis']['yieldDailyKwh'];
+$yieldRevenue = $dashboardData['kpis']['yieldRevenue'];
 
-// --- Tages-Peak aus Telemetrie (heute) ermitteln ---
-$todayPeakStmt = $db->query("SELECT MAX(pv_power_w) FROM pv_telemetry WHERE last_update >= CURDATE()");
-$todayPeakW = (int)$todayPeakStmt->fetchColumn();
-
-// --- Netzbezug & Einspeisung heute aus Telemetrie berechnen ---
-$gridCalcStmt = $db->query("
-    SELECT 
-        SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) AS sum_import_w,
-        SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) AS sum_export_w
-    FROM pv_telemetry 
-    WHERE last_update >= CURDATE()
-");
-$gridCalc = $gridCalcStmt->fetch(PDO::FETCH_ASSOC) ?: ['sum_import_w' => 0, 'sum_export_w' => 0];
-
-$biasStmt = $db->query("
-    SELECT (SUM(real_watt_hours_day) / SUM(watt_hours_day) - 1) * 100 
-    FROM pv_forecast_daily 
-    WHERE real_watt_hours_day IS NOT NULL
-");
-$systemBias = $biasStmt->fetchColumn();
+// --- Systemabweichung zwischen Prognose und Realertrag ---
+$systemBias = $forecastRepository->getSystemBiasPercent();
 $biasFactor = ($systemBias !== null) ? (1 + ($systemBias / 100)) : 1.0;
 
-$settingsService = new SystemSettingsService();
-$importPrice = $settingsService->getGridImportPrice();
-$exportPrice = $settingsService->getGridExportPrice();
-
-$gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
-$gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
-$gridImportCost = $gridImportKwh * $importPrice;
-$gridExportRevenue = $gridExportKwh * $exportPrice;
-$yieldDailyKwh = isset($liveData['yield_daily_kwh']) ? (float)$liveData['yield_daily_kwh'] : 0.0;
-$yieldRevenue = $yieldDailyKwh * $importPrice;
-
 // --- Tagesprognosen (nächste 7 Tage) ---
-$dailyStmt = $db->prepare("
-    SELECT forecast_date, watt_hours_day, real_watt_hours_day
-    FROM pv_forecast_daily
-    WHERE forecast_date >= CURDATE() - INTERVAL 3 DAY
-    ORDER BY forecast_date
-    LIMIT 10
-");
-$dailyStmt->execute();
-$dailyForecasts = $dailyStmt->fetchAll();
+$dailyForecasts = $forecastRepository->getDailyForecasts();
 
 // --- Prognose-Daten für heute (Stunden/Halbstunden aufbereiten) ---
-$hourlyStmt = $db->prepare("
-    SELECT forecast_time, watts 
-    FROM pv_forecast_hourly 
-    WHERE DATE(forecast_time) = CURDATE() 
-    ORDER BY forecast_time ASC
-");
-$hourlyStmt->execute();
-$hourlyForecasts = $hourlyStmt->fetchAll(PDO::FETCH_ASSOC);
+$hourlyForecasts = $forecastRepository->getTodayHourlyForecasts();
 
 $hourlyLabels = [];
 $forecastValues = [];
@@ -134,14 +73,7 @@ foreach ($hourlyForecasts as $row) {
 }
 
 // --- Reale Telemetrie-Werte für heute passend zu den Prognose-Zeitpunkten holen ---
-$telemetryTodayStmt = $db->prepare("
-    SELECT last_update, pv_power_w 
-    FROM pv_telemetry 
-    WHERE DATE(last_update) = CURDATE() 
-    ORDER BY last_update ASC
-");
-$telemetryTodayStmt->execute();
-$telemetryTodayRows = $telemetryTodayStmt->fetchAll(PDO::FETCH_ASSOC);
+$telemetryTodayRows = $telemetryRepository->getTodayPowerCurve();
 
 // Realwerte in eine Map nach "H:i" (auf die Minute genau oder nächste halbe Stunde) mappen
 $actualMap = [];
@@ -158,52 +90,20 @@ foreach ($hourlyLabels as $timeStr) {
 }
 
 // --- Historische Telemetrie-Daten mit Filter & Paginierung ---
-$telemetryFilter = $_GET['tel_filter'] ?? 'tag';
-if (!in_array($telemetryFilter, ['tag', 'woche', 'monat'])) {
-    $telemetryFilter = 'tag';
-}
+$telemetryFilter = PvTelemetryRepository::normalizeFilter($_GET['tel_filter'] ?? null);
 
 $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 15;
+
+$totalTelemetryRecords = $telemetryRepository->countRecords($telemetryFilter);
+$totalPages = max(1, (int)ceil($totalTelemetryRecords / $perPage));
+$page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-$whereClause = "1=1";
-if ($telemetryFilter === 'tag') {
-    $whereClause = "last_update >= CURDATE()";
-} elseif ($telemetryFilter === 'woche') {
-    $whereClause = "last_update >= NOW() - INTERVAL 7 DAY";
-} elseif ($telemetryFilter === 'monat') {
-    $whereClause = "last_update >= NOW() - INTERVAL 30 DAY";
-}
-
-$countStmt = $db->query("SELECT COUNT(*) FROM pv_telemetry WHERE $whereClause");
-$totalTelemetryRecords = (int)$countStmt->fetchColumn();
-$totalPages = max(1, ceil($totalTelemetryRecords / $perPage));
-if ($page > $totalPages) {
-    $page = $totalPages;
-    $offset = ($page - 1) * $perPage;
-}
-
-$telemetryStmt = $db->prepare("
-    SELECT * FROM pv_telemetry 
-    WHERE $whereClause 
-    ORDER BY last_update DESC 
-    LIMIT :limit OFFSET :offset
-");
-$telemetryStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-$telemetryStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$telemetryStmt->execute();
-$telemetryRecords = $telemetryStmt->fetchAll(PDO::FETCH_ASSOC);
+$telemetryRecords = $telemetryRepository->getRecords($telemetryFilter, $perPage, $offset);
 
 // Datensätze für das Chart chronologisch aufbereiten
-$chartQuery = $db->prepare("
-    SELECT last_update, pv_power_w, house_load_w, grid_total_w, battery_soc_pct, battery_power_w 
-    FROM pv_telemetry 
-    WHERE $whereClause 
-    ORDER BY last_update ASC
-");
-$chartQuery->execute();
-$chartRows = $chartQuery->fetchAll(PDO::FETCH_ASSOC);
+$chartRows = $telemetryRepository->getChartRows($telemetryFilter);
 
 $chartLabels = [];
 $chartPv = [];
@@ -231,8 +131,7 @@ foreach ($chartRows as $r) {
 }
 
 // --- Metadaten ---
-$lastUpdateStmt = $db->query("SELECT MAX(updated_at) FROM pv_forecast_daily");
-$lastUpdate = $lastUpdateStmt->fetchColumn();
+$lastUpdate = $forecastRepository->getLastForecastUpdate();
 
 $todayWh = 0;
 foreach ($dailyForecasts as $day) {
@@ -263,51 +162,10 @@ function getBatteryColorClass(int $soc): string
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     header('Content-Type: application/json');
 
-    $db = Database::getInstance()->getConnection();
-
-    // ... [bisheriger Code für $telemetryFilter, $offset, $telemetryRecords, $chartRows] ...
-
-    // NEU: KPIs für den aktuellen Tag live berechnen
-    $liveStmt = $db->query("SELECT * FROM pv_live ORDER BY id DESC LIMIT 1");
-    $liveData = $liveStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-    $todayPeakStmt = $db->query("SELECT MAX(pv_power_w) FROM pv_telemetry WHERE last_update >= CURDATE()");
-    $todayPeakW = (int)$todayPeakStmt->fetchColumn();
-
-    $gridCalcStmt = $db->query("
-        SELECT 
-            SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) AS sum_import_w,
-            SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) AS sum_export_w
-        FROM pv_telemetry 
-        WHERE last_update >= CURDATE()
-    ");
-    $gridCalc = $gridCalcStmt->fetch(PDO::FETCH_ASSOC) ?: ['sum_import_w' => 0, 'sum_export_w' => 0];
-
-    // Einstellungen laden, um die Kosten/Erlöse zu berechnen
-    $settingsService = new SystemSettingsService();
-    $importPrice = $settingsService->getGridImportPrice();
-    $exportPrice = $settingsService->getGridExportPrice();
-
-    $gridImportKwh = ((float)$gridCalc['sum_import_w']) / 12000;
-    $gridExportKwh = ((float)$gridCalc['sum_export_w']) / 12000;
-    $gridImportCost = $gridImportKwh * $importPrice;
-    $gridExportRevenue = $gridExportKwh * $exportPrice;
-
-    $yieldDailyKwh = isset($liveData['yield_daily_kwh']) ? (float)$liveData['yield_daily_kwh'] : 0.0;
-    $yieldRevenue = $yieldDailyKwh * $importPrice;
-
     echo json_encode([
             'records' => $telemetryRecords,
             'chart' => $chartRows,
-            'kpis' => [
-                    'yieldDailyKwh' => $yieldDailyKwh,
-                    'yieldRevenue' => $yieldRevenue,
-                    'todayPeakW' => $todayPeakW,
-                    'gridImportKwh' => $gridImportKwh,
-                    'gridImportCost' => $gridImportCost,
-                    'gridExportKwh' => $gridExportKwh,
-                    'gridExportRevenue' => $gridExportRevenue
-            ]
+            'kpis' => $dashboardData['kpis']
     ]);
     exit;
 }
