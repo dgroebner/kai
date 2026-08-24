@@ -137,7 +137,10 @@ document.addEventListener('click', (e) => {
         e.stopPropagation();
         const txId = tagOption.dataset.txId;
         const tagId = tagOption.dataset.tagId;
-        const tag = (window.AVAILABLE_TAGS || []).find(t => t.id === tagId);
+
+        // Korrektur: .find() statt .filter() nutzen, damit ein einzelnes Objekt übergeben wird
+        const tag = (window.AVAILABLE_TAGS || []).find(t => String(t.id) === String(tagId));
+
         if (tag) {
             addExistingTagToTx(txId, tag);
         }
