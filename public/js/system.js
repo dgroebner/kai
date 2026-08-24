@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Letzte bekannte ID initialisieren (kann beim Laden z.B. von einem data-Attribut im Body kommen oder bei 0 starten)
+    // Letzte bekannte ID initialisieren
     let lastActivityId = parseInt(document.body.dataset.lastActivityId || 0, 10);
 
     function pollNewActivities() {
@@ -18,10 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.success && data.activities && data.activities.length > 0) {
                     data.activities.forEach(activity => {
-                        // Bubble anzeigen
                         showNotificationBubble(activity.message, activity.link_url);
 
-                        // Höchste ID merken, damit wir sie nicht doppelt abfragen
                         if (activity.id > lastActivityId) {
                             lastActivityId = parseInt(activity.id, 10);
                         }
@@ -29,13 +27,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             })
             .catch(error => {
-                // Fehler im Hintergrund unauffällig behandeln (z.B. bei temporärem Offline-Status)
                 console.debug('Activity Polling Info:', error);
             });
     }
 
     function showNotificationBubble(text, link) {
-        // Container für Bubbles sicherstellen
         let container = document.getElementById('activity-toast-container');
         if (!container) {
             container = document.createElement('div');
@@ -44,28 +40,51 @@ document.addEventListener('DOMContentLoaded', function () {
             document.body.appendChild(container);
         }
 
-        // Bubble-Element erstellen
+        // Bubble-Element im Look & Feel der KPI-Karten
         const bubble = document.createElement('div');
-        bubble.style.cssText = 'background: #212529; color: #fff; padding: 12px 16px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.9rem; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(10px);';
+        bubble.style.cssText = `
+            background-color: #1a1d24; 
+            color: #ffffff; 
+            padding: 16px; 
+            border-radius: 10px; 
+            border: 1px solid #1b4b8a; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            font-size: 0.9rem; 
+            opacity: 0; 
+            transition: opacity 0.3s ease, transform 0.3s ease; 
+            transform: translateY(10px);
+        `;
 
-        // Nutzung des zentralen Sanitizers aus http.js (mit Fallback falls http.js mal fehlen sollte)
         const escape = window.KaiHtml && window.KaiHtml.escape ? window.KaiHtml.escape : (str => String(str ?? ''));
 
-        let content = `<div>${escape(text)}</div>`;
-        if (link) {
-            content += `<div style="margin-top: 6px;"><a href="${escape(link)}" style="color: #6ea8fe; text-decoration: underline; font-size: 0.85rem;">Details ansehen &rarr;</a></div>`;
-        }
-        bubble.innerHTML = content;
+        // Kleiner KPI-ähnlicher Header ("AKTIVITÄT") gefolgt vom Text
+        let content = `
+            <div style="font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; color: #8a9ba8; margin-bottom: 6px; text-transform: uppercase;">
+                Aktivität
+            </div>
+            <div style="color: #e2e8f0; line-height: 1.4;">
+                ${escape(text)}
+            </div>
+        `;
 
+        if (link) {
+            content += `
+                <div style="margin-top: 10px; font-size: 0.85rem;">
+                    <a href="${escape(link)}" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
+                        Details ansehen &rarr;
+                    </a>
+                </div>
+            `;
+        }
+
+        bubble.innerHTML = content;
         container.appendChild(bubble);
 
-        // Einblenden-Animation
         requestAnimationFrame(() => {
             bubble.style.opacity = '1';
             bubble.style.transform = 'translateY(0)';
         });
 
-        // Nach 6 Sekunden automatisch ausblenden und entfernen
         setTimeout(() => {
             bubble.style.opacity = '0';
             bubble.style.transform = 'translateY(10px)';
@@ -73,6 +92,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 6000);
     }
 
-    // Alle 10 Sekunden das Polling ausführen
     setInterval(pollNewActivities, 10000);
 });
