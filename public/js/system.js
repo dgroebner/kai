@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Letzte bekannte ID initialisieren
-    let lastActivityId = parseInt(document.body.dataset.lastActivityId || 0, 10);
+    let lastActivityId = parseInt(window.KaiInitialActivityId || 0, 10);
 
     function pollNewActivities() {
         fetch(`/system/api.php?last_id=${lastActivityId}`, {
