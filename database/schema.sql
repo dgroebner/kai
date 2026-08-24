@@ -188,7 +188,8 @@ CREATE TABLE IF NOT EXISTS bank_tag_rules (
 CREATE TABLE IF NOT EXISTS bank_contracts (
                                               id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                                               name VARCHAR(255) NOT NULL,
-    type ENUM('vertrag', 'abo', 'abgabe', 'kredit') NOT NULL DEFAULT 'vertrag',
+    direction ENUM('expense', 'income') NOT NULL DEFAULT 'expense',
+    type ENUM('vertrag', 'abo', 'abgabe', 'kredit', 'arbeitsvertrag', 'kindergeld', 'unterhalt') NOT NULL DEFAULT 'vertrag',
     status ENUM('aktiv', 'pausiert', 'gekuendigt', 'beendet') NOT NULL DEFAULT 'aktiv',
 
     -- Identifikation aus Buchungen

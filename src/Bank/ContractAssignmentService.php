@@ -5,6 +5,7 @@ namespace Kai\Tools\Bank;
 use Kai\Tools\Shared\Db\Database;
 use PDO;
 use RuntimeException;
+use Throwable;
 
 /**
  * Orchestriert die Zuordnung von Girokonto-Umsätzen zu Verträgen inklusive
@@ -23,9 +24,10 @@ class ContractAssignmentService
     private BankTransactionRepository $transactionRepository;
 
     public function __construct(
-        ?BankContractRepository $contractRepository = null,
+        ?BankContractRepository    $contractRepository = null,
         ?BankTransactionRepository $transactionRepository = null
-    ) {
+    )
+    {
         $this->pdo = Database::getInstance()->getConnection();
         $this->contractRepository = $contractRepository ?? new BankContractRepository();
         $this->transactionRepository = $transactionRepository ?? new BankTransactionRepository();
@@ -69,7 +71,7 @@ class ContractAssignmentService
             $this->transactionRepository->assignContract($transactionId, $contractId);
 
             $this->pdo->commit();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
@@ -80,23 +82,12 @@ class ContractAssignmentService
     }
 
     /**
-     * Löscht einen Vertrag und hebt zuvor die Verknüpfung aller zugeordneten Umsätze auf.
+     * Normalisiert einen Musterwert auf einen getrimmten String oder null.
      */
-    public function deleteContract(int $contractId): void
+    private function normalize(?string $value): ?string
     {
-        $this->pdo->beginTransaction();
-
-        try {
-            $this->transactionRepository->unlinkContract($contractId);
-            $this->contractRepository->deleteContract($contractId);
-
-            $this->pdo->commit();
-        } catch (\Throwable $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
-            throw $e;
-        }
+        $value = trim((string)$value);
+        return $value !== '' ? $value : null;
     }
 
     /**
@@ -110,21 +101,27 @@ class ContractAssignmentService
         }
 
         $extractedPayee = trim((string)(
-            $transaction['remitter'] ?: ($transaction['creditor'] ?: ($transaction['debitor'] ?? ''))
+        $transaction['remitter'] ?: ($transaction['creditor'] ?: ($transaction['debitor'] ?? ''))
         ));
 
         $name = $payeeOverride
             ?? ($extractedPayee !== '' ? $extractedPayee : (string)($transaction['remittance_info'] ?? ''));
         $name = trim($name) !== '' ? $name : 'Neuer Vertrag';
 
+        $amount = (float)($transaction['amount'] ?? 0);
+
+        // Richtung und Typ basierend auf dem Betrag (positiv = Einnahme, negativ = Ausgabe) bestimmen
+        $direction = $amount >= 0 ? 'income' : 'expense';
+
         return $this->contractRepository->saveContract([
-            'name'          => mb_substr($name, 0, self::MAX_CONTRACT_NAME_LENGTH),
-            'type'          => 'vertrag',
-            'status'        => 'aktiv',
-            'auftraggeber'  => $extractedPayee !== '' ? $extractedPayee : null,
+            'name' => mb_substr($name, 0, self::MAX_CONTRACT_NAME_LENGTH),
+            'direction' => $direction,
+            'type' => 'vertrag', // Oder bei Bedarf via UI steuerbar machen
+            'status' => 'aktiv',
+            'auftraggeber' => $extractedPayger ?? ($extractedPayee !== '' ? $extractedPayee : null),
             'mandatsnummer' => $transaction['dc_mandate_id'] ?? null,
-            'betrag'        => abs((float)($transaction['amount'] ?? 0)),
-            'frequenz'      => 'monatlich',
+            'betrag' => abs($amount),
+            'frequenz' => 'monatlich',
         ]);
     }
 
@@ -149,11 +146,22 @@ class ContractAssignmentService
     }
 
     /**
-     * Normalisiert einen Musterwert auf einen getrimmten String oder null.
+     * Löscht einen Vertrag und hebt zuvor die Verknüpfung aller zugeordneten Umsätze auf.
      */
-    private function normalize(?string $value): ?string
+    public function deleteContract(int $contractId): void
     {
-        $value = trim((string)$value);
-        return $value !== '' ? $value : null;
+        $this->pdo->beginTransaction();
+
+        try {
+            $this->transactionRepository->unlinkContract($contractId);
+            $this->contractRepository->deleteContract($contractId);
+
+            $this->pdo->commit();
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 }

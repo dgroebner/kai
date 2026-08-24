@@ -1829,6 +1829,7 @@ async function openContractModal(contract) {
     const cAuftraggeber = isEdit ? (contract.auftraggeber || '') : '';
     const cMandat = isEdit ? (contract.mandatsnummer || '') : '';
     const cVariabel = isEdit ? (contract.variabel === 1) : false;
+    const cDirection = isEdit ? (contract.direction || 'expense') : 'expense';
 
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
@@ -1871,12 +1872,22 @@ async function openContractModal(contract) {
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div>
+                        <label class="chart-label" style="margin-bottom: 0.3rem;">Richtung:</label>
+                        <select id="modal-contract-direction" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                            <option value="expense" ${cDirection === 'expense' ? 'selected' : ''}>Ausgabe (Kosten)</option>
+                            <option value="income" ${cDirection === 'income' ? 'selected' : ''}>Einnahme</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
                         <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
                             <option value="vertrag" ${cType === 'vertrag' ? 'selected' : ''}>Vertrag</option>
                             <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
                             <option value="abgabe" ${cType === 'abgabe' ? 'selected' : ''}>Abgabe</option>
                             <option value="kredit" ${cType === 'kredit' ? 'selected' : ''}>Kredit</option>
+                            <option value="arbeitsvertrag" ${cType === 'arbeitsvertrag' ? 'selected' : ''}>Arbeitsvertrag</option>
+                            <option value="kindergeld" ${cType === 'kindergeld' ? 'selected' : ''}>Kindergeld</option>
+                            <option value="unterhalt" ${cType === 'unterhalt' ? 'selected' : ''}>Unterhalt</option>
                         </select>
                     </div>
                     <div>
@@ -2004,6 +2015,7 @@ async function openContractModal(contract) {
 
     // Speichern-Aktion
     overlay.querySelector('.js-save-contract').addEventListener('click', async () => {
+        const direction = overlay.querySelector('#modal-contract-direction').value;
         const name = overlay.querySelector('#modal-contract-name').value.trim();
         const type = overlay.querySelector('#modal-contract-type').value;
         const status = overlay.querySelector('#modal-contract-status').value;
@@ -2022,6 +2034,7 @@ async function openContractModal(contract) {
             const data = await KaiHttp.postJson('api.php', {
                 action: 'save_contract_details',
                 contract_id: isEdit ? parseInt(contract.id, 10) : null,
+                direction: direction,
                 name: name,
                 type: type,
                 status: status,

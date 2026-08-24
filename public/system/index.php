@@ -71,6 +71,7 @@ function getEventIcon(string $eventType): string
         'receipt_created' => '🧾',
         'bank_data_imported' => '🏦',
         'creditcard_statement_created' => '💳',
+        'battery_fully_charged' => '🔋',
         default => '📌',
     };
 }

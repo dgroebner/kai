@@ -14,30 +14,42 @@ $contractRepo = new BankContractRepository();
 $statusFilter = $_GET['status'] ?? 'aktiv';
 $contracts = $contractRepo->getAllContracts($statusFilter !== 'all' ? $statusFilter : null);
 
-// Berechnung von monatlichen / jährlichen Gesamtsummen für aktive Verträge
-$totalMonthly = 0;
+// Berechnung von monatlichen Gesamtsummen für aktive Verträge (getrennt nach Einnahmen und Ausgaben)
+$totalMonthlyExpenses = 0;
+$totalMonthlyIncome = 0;
+
 foreach ($contracts as $c) {
     if ($c['status'] === 'aktiv') {
         $amount = (float)$c['betrag'];
+        $monthlyFactor = 0;
+
         switch ($c['frequenz']) {
             case 'monatlich':
-                $totalMonthly += $amount;
+                $monthlyFactor = 1;
                 break;
             case 'vierteljaehrlich':
-                $totalMonthly += $amount / 3;
+                $monthlyFactor = 1 / 3;
                 break;
             case 'halbjaehrlich':
-                $totalMonthly += $amount / 6;
+                $monthlyFactor = 1 / 6;
                 break;
             case 'jaehrlich':
-                $totalMonthly += $amount / 12;
+                $monthlyFactor = 1 / 12;
                 break;
             case 'einmalig':
-                // Einmalige fließen hier nicht in die monatliche Fixkosten-Summe ein
+                // Einmalige fließen hier nicht in die monatliche Summe ein
                 break;
+        }
+
+        if (($c['direction'] ?? 'expense') === 'income') {
+            $totalMonthlyIncome += $amount * $monthlyFactor;
+        } else {
+            $totalMonthlyExpenses += $amount * $monthlyFactor;
         }
     }
 }
+
+$netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -66,16 +78,30 @@ foreach ($contracts as $c) {
     </div>
 
     <!-- KPI / Übersichtskarte -->
-    <section class="kpi-grid" style="margin-bottom: 1.5rem;">
-        <div class="kpi-card" style="border: 1px solid var(--accent);">
+    <section class="kpi-grid"
+             style="margin-bottom: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="kpi-card" style="border: 1px solid var(--color-green, #10b981);">
+            <div class="kpi-label">📈 Fix-Einnahmen (ø mtl.)</div>
+            <div class="kpi-value_sm" style="font-size: 1.3rem; color: var(--color-green, #10b981);">
+                +<?= number_format($totalMonthlyIncome, 2, ',', '.') ?> €
+            </div>
+        </div>
+        <div class="kpi-card" style="border: 1px solid var(--color-red, #ef4444);">
             <div class="kpi-label">📉 Fixkosten (ø mtl.)</div>
-            <div class="kpi-value_sm" style="font-size: 1.5rem; color: var(--color-red);">
-                -<?= number_format($totalMonthly, 2, ',', '.') ?> €
+            <div class="kpi-value_sm" style="font-size: 1.3rem; color: var(--color-red, #ef4444);">
+                -<?= number_format($totalMonthlyExpenses, 2, ',', '.') ?> €
+            </div>
+        </div>
+        <div class="kpi-card" style="border: 1px solid var(--accent);">
+            <div class="kpi-label">💰 Netto-Cashflow (mtl.)</div>
+            <div class="kpi-value_sm"
+                 style="font-size: 1.3rem; color: <?= $netMonthlyCashflow >= 0 ? 'var(--color-green, #10b981)' : 'var(--color-red, #ef4444)' ?>;">
+                <?= $netMonthlyCashflow >= 0 ? '+' : '' ?><?= number_format($netMonthlyCashflow, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">📋 Aktive Verträge & Abos</div>
-            <div class="kpi-value_sm" style="font-size: 1.5rem;">
+            <div class="kpi-label">📋 Aktive Verträge</div>
+            <div class="kpi-value_sm" style="font-size: 1.3rem;">
                 <?= count(array_filter($contracts, fn($c) => $c['status'] === 'aktiv')) ?>
             </div>
         </div>
@@ -117,7 +143,9 @@ foreach ($contracts as $c) {
                         </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($contracts as $c): ?>
+                        <?php foreach ($contracts as $c):
+                            $isIncome = ($c['direction'] ?? 'expense') === 'income';
+                            ?>
                             <tr id="contract-<?= $c['id'] ?>">
                                 <td data-label="Name">
                                     <strong><?= htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') ?></strong>
@@ -143,8 +171,10 @@ foreach ($contracts as $c) {
                                 <td data-label="Kategorie" style="font-size: 0.85rem;">
                                     <?= htmlspecialchars($c['category_name'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
                                 </td>
-                                <td data-label="Betrag" class="text-right amount-bold text-danger">
-                                    -<?= number_format((float)$c['betrag'], 2, ',', '.') ?> €
+                                <td data-label="Betrag"
+                                    class="text-right amount-bold <?= $isIncome ? 'text-success' : 'text-danger' ?>">
+                                    <?= $isIncome ? '+' : '-' ?><<?= number_format((float)$c['betrag'], 2, ',', '.') ?>
+                                    €
                                 </td>
                                 <td data-label="Aktionen" class="text-right">
                                     <button type="button" class="btn btn-outline js-edit-contract"

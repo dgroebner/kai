@@ -98,6 +98,7 @@ class BankContractRepository
             $stmt = $this->pdo->prepare("
                 UPDATE bank_contracts SET
                     name = :name,
+                    direction = :direction,
                     type = :type,
                     status = :status,
                     auftraggeber = :auftraggeber,
@@ -119,9 +120,9 @@ class BankContractRepository
             // Insert
             $stmt = $this->pdo->prepare("
                 INSERT INTO bank_contracts 
-                (name, type, status, auftraggeber, mandatsnummer, iban, betrag, frequenz, variabel, start_datum, end_datum, category_id)
+                (name, direction, type, status, auftraggeber, mandatsnummer, iban, betrag, frequenz, variabel, start_datum, end_datum, category_id)
                 VALUES 
-                (:name, :type, :status, :auftraggeber, :mandatsnummer, :iban, :betrag, :frequenz, :variabel, :start_datum, :end_datum, :category_id)
+                (:name, :direction, :type, :status, :auftraggeber, :mandatsnummer, :iban, :betrag, :frequenz, :variabel, :start_datum, :end_datum, :category_id)
             ");
             $stmt->execute($this->mapContractParams($data));
             return (int)$this->pdo->lastInsertId();
@@ -132,6 +133,7 @@ class BankContractRepository
     {
         $params = [
             ':name' => $data['name'] ?? '',
+            ':direction' => $data['direction'] ?? 'expense',
             ':type' => $data['type'] ?? 'vertrag',
             ':status' => $data['status'] ?? 'aktiv',
             ':auftraggeber' => $data['auftraggeber'] ?? null,
@@ -199,7 +201,7 @@ class BankContractRepository
      */
     public function getContractOptions(): array
     {
-        $stmt = $this->pdo->query("SELECT id, name, type, status FROM bank_contracts ORDER BY name ASC");
+        $stmt = $this->pdo->query("SELECT id, name, direction, type, status FROM bank_contracts ORDER BY name ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
