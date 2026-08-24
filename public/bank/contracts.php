@@ -173,7 +173,7 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
                                 </td>
                                 <td data-label="Betrag"
                                     class="text-right amount-bold <?= $isIncome ? 'text-success' : 'text-danger' ?>">
-                                    <?= $isIncome ? '+' : '-' ?><<?= number_format((float)$c['betrag'], 2, ',', '.') ?>
+                                    <?= $isIncome ? '+' : '-' ?><?= number_format((float)$c['betrag'], 2, ',', '.') ?>
                                     €
                                 </td>
                                 <td data-label="Aktionen" class="text-right">
