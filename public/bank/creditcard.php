@@ -40,7 +40,7 @@ try {
     <title>Kreditkarten - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <!-- Header mit Titel links und Button rechts oben -->
     <header class="page-header">

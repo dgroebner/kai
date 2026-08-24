@@ -14,7 +14,7 @@ Auth::requirePage();
     <title>Kai's Dashboard</title>
     <link rel="stylesheet" href="css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
         <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></h1>

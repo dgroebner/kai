@@ -85,7 +85,7 @@ function getEventIcon(string $eventType): string
     <title>System & Aktivitäts-Log - KAI Tools</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
         <h1>⚙️ System & Verwaltung</h1>

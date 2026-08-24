@@ -47,7 +47,7 @@ try {
     <title>eBon <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
         <div>

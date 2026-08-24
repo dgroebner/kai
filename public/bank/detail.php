@@ -46,7 +46,7 @@ try {
     <title>Abrechnung vom <?= date('d.m.Y', strtotime($statement['statement_date'])) ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
         <div>

@@ -176,7 +176,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
           content="Live-Übersicht des Fahrzeugstatus, Batterieladestand und Telemetrie-Historie des VW ID.Buzz.">
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
 
     <header>

@@ -181,7 +181,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     <!-- Lokale Chart.js Einbindung konform zur 'self'-CSP -->
     <script src="../js/chart.min.js?v=<?= APP_VERSION ?>"></script>
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
 
     <header>

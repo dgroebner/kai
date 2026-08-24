@@ -216,7 +216,7 @@ try {
     <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
 </head>
-<body>
+<?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container" id="giro-container"
      data-tags='<?= htmlspecialchars(json_encode($availableTags, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>'>
 
