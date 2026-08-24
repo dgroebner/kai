@@ -10,7 +10,11 @@
     "vlucas/phpdotenv": "^5.6",
     "webklex/php-imap": "^6.2",
     "ext-json": "*",
-    "ext-pdo": "*"
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*",
+    "ext-curl": "*",
+    "ext-mbstring": "*",
+    "ext-sodium": "*"
   },
   "autoload": {
     "psr-4": {

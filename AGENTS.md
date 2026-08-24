@@ -14,9 +14,11 @@ mehrere unabhängige Werkzeuge (Domains) unter einer gemeinsamen Authentifizieru
 und Infrastrukturschicht.
 
 **Laufzeitumgebung:** PHP 8.4 · MySQL/MariaDB · Apache (Shared Hosting)
-**Deployment:** Automatisch via GitHub Actions → SFTP auf den Webserver  
+**Deployment:** Automatisch via GitHub Actions → rsync über SSH auf den Webserver  
 **Hosting:** Shared Hosting — Details nicht im Repo dokumentiert  
 **Authentifizierung:** Google OAuth 2.0 mit E-Mail-Allowlist (kein öffentlicher Zugang)
+**Tests/Linting:** Keine automatisierte Testsuite. Prüfung über `php -l <datei>` und
+`node --check public/js/<datei>.js`
 
 ---
 
@@ -29,23 +31,26 @@ kai_root/
 │   ├── index.php
 │   ├── login.php
 │   ├── css/
-│   ├── js/
+│   ├── js/          ← http.js stellt KaiHttp (CSRF-POST) und KaiHtml (Escaping) bereit
 │   ├── shared/      ← Domainübergreifende Endpunkte (z. B. Cron-Trigger mail.php)
 │   ├── bank/        ← Öffentliche Einstiegspunkte der Domain "Bank"
 │   ├── car/         ← Öffentliche Einstiegspunkte der Domain "Car"
 │   ├── kassenbon/   ← Öffentliche Einstiegspunkte der Domain "Kassenbon"
-│   └── pvcharge/    ← Öffentliche Einstiegspunkte der Domain "PVCharge"
+│   ├── pvcharge/    ← Öffentliche Einstiegspunkte der Domain "PVCharge"
+│   └── system/      ← Öffentliche Einstiegspunkte der Domain "System"
 │
 ├── src/             ← Servercode (nicht öffentlich erreichbar, PSR-4 autoloaded)
 │   ├── Shared/      ← Domainübergreifende Infrastruktur
-│   │   ├── AI/      ← GeminiClient
-│   │   ├── Db/      ← Database (PDO Singleton)
-│   │   ├── Log/     ← Logger
-│   │   └── Mail/    ← IMAP-Zugriff
+│   │   ├── AI/        ← GeminiClient
+│   │   ├── Db/        ← Database (PDO Singleton)
+│   │   ├── Log/       ← Logger (Datei-Log), ActivityLogger (Aktivitäts-Log in der DB)
+│   │   ├── Mail/      ← IMAP-Zugriff
+│   │   └── Security/  ← Auth, Sanitizer, TokenEncryptionService
 │   ├── Bank/        ← Business-Logik der Domain "Bank" (inkl. Parser/)
 │   ├── Car/         ← Business-Logik der Domain "Car"
 │   ├── Kassenbon/   ← Business-Logik der Domain "Kassenbon"
-│   └── PVCharge/    ← Business-Logik der Domain "PVCharge"
+│   ├── PVCharge/    ← Business-Logik der Domain "PVCharge"
+│   └── System/      ← Business-Logik der Domain "System" (Aktivitäts-Log, Einstellungen)
 │
 ├── database/
 │   └── schema.sql   ← Datenbankschema (versioniert, kein Migrations-Tool)
@@ -129,14 +134,41 @@ Jede fachliche Domäne ist ein eigenständiges Modul mit klaren Grenzen:
 - **Public-Verzeichnis:** `public/{domainname}/`
 
 Domains **dürfen nicht** direkt in die Klassen einer anderen Domain importieren.
-Geteilte Funktionalität (DB, Logger, AI) wird ausschließlich über `src/Shared/` bezogen.
+Geteilte Funktionalität (DB, Logger, AI, Security) wird ausschließlich über `src/Shared/` bezogen.
+
+#### Erlaubte Integrationspunkte (Ausnahmen)
+
+Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentiert. Sie sind die
+**einzigen** zulässigen Ausnahmen — jede weitere Kopplung ist neu zu begründen und hier zu ergänzen:
+
+| Stelle | Zugriff auf | Begründung |
+|---|---|---|
+| `Shared\Mail\MailDispatcher` | `Bank\*`, `Kassenbon\*` | Orchestrator: verteilt eingehende Mails an die zuständige Domain. Alle Abhängigkeiten werden **per Konstruktor injiziert**, nicht selbst instanziiert. |
+| `Bank\BankGiroService` | `Kassenbon\ReceiptMatcher` | Nach dem Import neuer Umsätze werden offene Kassenbons den Buchungen zugeordnet. |
+| `Bank\CreditCardService` | `Kassenbon\ReceiptMatcher` | Analog für importierte Kreditkartenabrechnungen. |
+| `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
+
+Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System);
+Rückwärts- oder Zirkelbezüge sind unzulässig.
+
+### Aktuelle Domains
+
+| Domain | Namespace | Src | Public |
+|---|---|---|---|
+| Bank | `Kai\Tools\Bank\` | `src/Bank/` (inkl. `Parser/`) | `public/bank/` |
+| Car | `Kai\Tools\Car\` | `src/Car/` | `public/car/` |
+| Kassenbon | `Kai\Tools\Kassenbon\` | `src/Kassenbon/` | `public/kassenbon/` |
+| PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
+| System | `Kai\Tools\System\` | `src/System/` | `public/system/` |
 
 ### Neue Domain anlegen
 
 1. `src/NewDomain/` erstellen mit mindestens einem Repository und ggf. einem Service
 2. `public/newdomain/index.php` als Controller anlegen
-3. Namespace `Kai\Tools\NewDomain\` in `composer.json` unter `autoload.psr-4` eintragen
-4. Tabellen in `database/schema.sql` hinzufügen (mit `CREATE TABLE IF NOT EXISTS`)
+3. Tabellen in `database/schema.sql` hinzufügen (mit `CREATE TABLE IF NOT EXISTS`)
+
+> `composer.json` benötigt **keinen** neuen Eintrag: Der PSR-4-Prefix `Kai\Tools\ → src/`
+> deckt alle Domains ab. Nach dem Anlegen genügt `composer dump-autoload`.
 
 ---
 
@@ -148,9 +180,12 @@ Shared-Klassen sind die einzige Stelle für domainübergreifende Infrastruktur.
 |---|---|
 | `Kai\Tools\Shared\Db\Database` | PDO-Singleton. Aufruf: `Database::getInstance()->getConnection()` |
 | `Kai\Tools\Shared\AI\GeminiClient` | Google Gemini API. Konstruktor akzeptiert optionales Modell |
-| `Kai\Tools\Shared\Log\Logger` | Dateibasierter Logger. Methoden: `->info()`, `->error()` |
+| `Kai\Tools\Shared\Log\Logger` | Dateibasierter Logger. Methoden: `->info()`, `->warn()`, `->error()`, `->debug()` |
+| `Kai\Tools\Shared\Log\ActivityLogger` | Schreibt fachliche Ereignisse in die Tabelle `activity_log` (Anzeige unter `public/system/`) |
 | `Kai\Tools\Shared\Mail\*` | IMAP-Zugriff für E-Mail-Verarbeitung |
 | `Kai\Tools\Shared\Security\Auth` | Zugriffskontrolle für alle `public/`-Endpunkte (Session, CSRF, Cron-Token) |
+| `Kai\Tools\Shared\Security\Sanitizer` | Whitelist-Normalisierung von Werten für HTML-Attribute (aktuell `hexColor()`) |
+| `Kai\Tools\Shared\Security\TokenEncryptionService` | Ver-/Entschlüsselung von API-Tokens (XChaCha20-Poly1305 via libsodium) |
 
 ### 5.1 Verbindliche Nutzung von `Auth`
 
@@ -175,6 +210,9 @@ benötigt wird. Einzeldomänen-Utilities bleiben in der jeweiligen Domain.
 ### 5.2 Globale Systemparameter
 
 Globale Systemparameter können in der Tabelle `system_settings` abgelegt werden. Diese dient als globaler Key-Value-Store.
+Der Zugriff erfolgt über die Domain "System": `System\SystemSettingsRepository` (roher Key-Value-Zugriff)
+bzw. `System\SystemSettingsService` (typisierte Getter, z. B. `getGridImportPrice()`).
+Gepflegt werden die Werte im UI unter `public/system/index.php` (Tab „Einstellungen").
 
 ---
 
@@ -202,6 +240,11 @@ $stmt->execute([':id' => $id]);
 // ❌ Falsch — SQL Injection möglich
 $pdo->query("SELECT * FROM receipts WHERE id = $id");
 ```
+
+- Tabellen- und Spaltennamen lassen sich **nicht** als Parameter binden. Wo sie dynamisch sein
+  müssen, ist eine **Allowlist** die einzige zulässige Absicherung — niemals der Rohwert aus dem
+  Request. Referenzimplementierung: `PvIngestService::ALLOWED_COLUMNS`
+  (Spalten aus dem Ingest-Payload) und `ReceiptMatcher::transactionExists()` (Tabellenwahl).
 
 ### 6.3 Input-Validierung
 
@@ -239,6 +282,8 @@ $pdo->query("SELECT * FROM receipts WHERE id = $id");
 ### 6.6 Ausgabe & XSS
 
 - Alle Werte, die in HTML ausgegeben werden, müssen mit `htmlspecialchars($value, ENT_QUOTES, 'UTF-8')` escaped werden
+- **In JavaScript:** Werte, die in `innerHTML`-Templates oder HTML-Attribute eingesetzt werden, laufen ausschließlich über `KaiHtml.escape()` aus `public/js/http.js`. Jede Seite, die ein Modul-Skript lädt, muss `http.js` **davor** einbinden (beide mit `defer`).
+- **Farbwerte** aus der Datenbank oder von Nutzereingaben landen in `style`- bzw. `value`-Attributen, wo `htmlspecialchars()` keine ausreichende Absicherung ist. Sie werden per Whitelist normalisiert: `Sanitizer::hexColor()` (PHP) bzw. `KaiHtml.hexColor()` (JS) — sowohl beim Schreiben in die DB als auch bei der Ausgabe.
 - **Keine Inline-Event-Handler:** Event-Handler wie `onclick="..."`, `onchange="..."` oder `<script>`-Blöcke im HTML-Body sind **verboten**, da sie von der Content Security Policy (`script-src-attr`) blockiert werden.
 - **Event Delegation:** Interaktionen (z. B. Inline-Editing, Tooltips) müssen ausschließlich über externe JavaScript-Dateien in `public/js/` per Event Delegation (`document.addEventListener(...)`) eingebunden werden.
 - `echo $variable` ohne Escaping ist verboten, wenn die Variable aus externen Quellen stammt
@@ -285,7 +330,9 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | Dienst | Zweck | Datenweitergabe |
 |---|---|---|
 | Google OAuth | Authentifizierung | E-Mail-Adresse, Name |
-| Google Gemini API | KI-Analyse (Kassenbons, PV-Planung) | Kassenboninhalt, Energiedaten |
+| Google Gemini API | KI-Analyse (Kassenbons, Kreditkarten-PDFs, Tag-Klassifizierung) | Kassenboninhalt, Abrechnungsinhalt, Buchungstexte |
+| comdirect REST API | Abruf von Girokonto-Umsätzen und Kontostand | Zugangsnummer & PIN beim Login, photoTAN-Freigabe; API-Tokens werden verschlüsselt gespeichert |
+| IMAP-Postfach | Eingang von E-Bons und Abrechnungen | E-Mail-Inhalte und Anhänge |
 | Hosting-Anbieter | Server & Datenbank | Alle gespeicherten Daten |
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten (falls konfiguriert) |
 
@@ -348,7 +395,8 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
 ## 9. Deployment-Pipeline
 
 Die CI/CD-Pipeline (`/.github/workflows/deploy.yml`) deployt automatisch bei jedem
-Push auf `main` via SFTP auf den Produktiv-Webserver.
+Push auf `main` per **rsync über SSH** (`sshpass`) in das Verzeichnis `kai_root/` des
+Produktiv-Webservers. Durch `--delete` werden serverseitig entfernte Dateien mitgelöscht.
 
 ### Was deployed wird
 
@@ -378,18 +426,21 @@ Alle Credentials sind als **GitHub Secrets** hinterlegt:
 Bevor ein neues Feature als fertig gilt, müssen folgende Punkte erfüllt sein:
 
 - [ ] Kein Secret oder Credential im Quellcode
-- [ ] Alle DB-Zugriffe über Prepared Statements
+- [ ] Alle DB-Zugriffe über Prepared Statements; dynamische Tabellen-/Spaltennamen nur über eine Allowlist
 - [ ] Alle `public/`-Endpunkte prüfen Auth als erstes
 - [ ] Alle HTML-Ausgaben sind mit `htmlspecialchars()` escaped
-- [ ] Fehler werden geloggt, nicht an den Browser weitergegeben
+- [ ] Werte in JS-`innerHTML`-Templates laufen über `KaiHtml.escape()`, Farbwerte über `Sanitizer::hexColor()` / `KaiHtml.hexColor()`
+- [ ] Fehler werden geloggt, nicht an den Browser weitergegeben (`$e->getMessage()` niemals in der Antwort)
 - [ ] Neue Tabellen in `schema.sql` dokumentiert
 - [ ] Neue Drittanbieter in AGENTS.md Abschnitt 7.3 eingetragen
 - [ ] JavaScript enthält keine serverseitigen Credentials oder Logik
-- [ ] Domain-Grenzen eingehalten (kein domainübergreifender direkter Klassenimport)
+- [ ] Domain-Grenzen eingehalten (kein neuer domainübergreifender Klassenimport außerhalb der in Abschnitt 4 dokumentierten Ausnahmen)
 - [ ] Keine redundanten `<style>`-Blöcke oder Inline-Styles verwendet (zentrales Styleschema aus `public/css/style.css` genutzt oder erweitert)
 - [ ] Minorversion in der APP_VERSION Variable der bootstrap.php erhöhen wenn CSS- oder JS-Dateien geändert worden sind.
 - [ ] APP_VERSION ist an alle CSS- und JS-Referenzen angehängt: `?v=<?= APP_VERSION ?>`
+- [ ] `http.js` wird vor jedem Modul-Skript eingebunden, das `KaiHttp`/`KaiHtml` verwendet
 - [ ] Keine Inline-JavaScript-Event-Handler (`onclick` etc.) oder `<script>`-Blöcke in HTML/PHP verwendet (CSP-Konformität).
 - [ ] Externe JS-Logik bindet Events über Event Delegation (`e.target.closest(...)`) ein.
 - [ ] Keine `<style>`-Blöcke in PHP-Dateien verwendet — alle Layout-Klassen sind zentral in `public/css/style.css` organisiert.
 - [ ] Standard-Layouts (`.page-header`, `.kpi-grid`, `.table-responsive`) für konsistentes Look & Feel eingehalten.
+- [ ] Geänderte PHP-Dateien mit `php -l` und geänderte JS-Dateien mit `node --check` geprüft.
