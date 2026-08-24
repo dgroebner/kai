@@ -104,7 +104,7 @@ try {
             exit;
 
         } catch (Throwable $e) {
-            (new Logger())->error('bank/api.php: start_auth_flow Fehler', ['error' => $e->getMessage()]);
+            new Logger()->error('bank/api.php: start_auth_flow Fehler', ['error' => $e->getMessage()]);
             Auth::sendJsonError(500, 'Anmeldung bei comdirect fehlgeschlagen.');
         }
     }
@@ -171,7 +171,7 @@ try {
             $_SESSION['phototan_failures']++;
 
             $failures = $_SESSION['phototan_failures'];
-            (new Logger())->error("bank/api.php check_phototan_status error (Versuch $failures/2)", ['error' => $e->getMessage()]);
+            new Logger()->error("bank/api.php check_phototan_status error (Versuch $failures/2)", ['error' => $e->getMessage()]);
 
             $isBlocked = $failures >= 2;
             echo json_encode([
@@ -205,7 +205,7 @@ try {
                 $repo->saveApiTokens($accountId, $refreshed, $encryptionService);
                 $tokens = $refreshed;
             } catch (Throwable $e) {
-                (new Logger())->error("bank/api.php run_sync token refresh failed", ['error' => $e->getMessage()]);
+                new Logger()->error("bank/api.php run_sync token refresh failed", ['error' => $e->getMessage()]);
                 Auth::sendJsonError(401, 'Tokens abgelaufen und Refresh fehlgeschlagen. Bitte erneut anmelden.');
             }
         }
@@ -251,7 +251,7 @@ try {
                     $repo->saveApiTokens($accountId, $refreshed, $encryptionService);
                     $isValid = $repo->areTokensValid($accountId, $encryptionService);
                 } catch (Throwable $e) {
-                    (new Logger())->error(
+                    new Logger()->error(
                         'bank/api.php check_token_status: Token-Refresh fehlgeschlagen.',
                         ['error' => $e->getMessage()]
                     );
@@ -273,7 +273,21 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        (new BankTagRepository())->updateTag($tagId, $name, $color);
+        new BankTagRepository()->updateTag($tagId, $name, $color);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    if ($action === 'add_tag_to_tx') {
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+        $tagId = filter_var($data['tag_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$txId || !$tagId) {
+            Auth::sendJsonError(400, 'Ungültige Parameter');
+        }
+
+        new BankTagRepository()->assignTagToTransaction($txId, $tagId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -287,7 +301,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        (new BankTagRepository())->removeTagFromTransaction($txId, $tagId);
+        new BankTagRepository()->removeTagFromTransaction($txId, $tagId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -302,7 +316,7 @@ try {
             Auth::sendJsonError(400, 'Name ungültig oder zu lang');
         }
 
-        $tagId = (new BankTagService())->createAndAssignTag($txId, $name, $color);
+        $tagId = new BankTagService()->createAndAssignTag($txId, $name, $color);
 
         echo json_encode([
             'success' => true,
@@ -349,7 +363,7 @@ try {
             Auth::sendJsonError(400, 'Mindestens ein Muster (Text oder Empfänger) muss angegeben werden.');
         }
 
-        $result = (new BankTagService())->saveRuleAndApply(
+        $result = new BankTagService()->saveRuleAndApply(
             $ruleId,
             $txId,
             $textPattern,
@@ -374,7 +388,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Rule-ID');
         }
 
-        (new BankTagService())->deleteRuleAndCleanup($ruleId);
+        new BankTagService()->deleteRuleAndCleanup($ruleId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -388,7 +402,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        (new CreditCardRepository())->updateTransactionCategory($txId, $categoryId);
+        new CreditCardRepository()->updateTransactionCategory($txId, $categoryId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -408,7 +422,7 @@ try {
 
     // Alle Verträge für das Modal-Dropdown laden
     if ($action === 'get_contracts') {
-        $contracts = (new BankContractRepository())->getContractOptions();
+        $contracts = new BankContractRepository()->getContractOptions();
 
         echo json_encode(['success' => true, 'contracts' => $contracts]);
         exit;
@@ -423,15 +437,15 @@ try {
             Auth::sendJsonError(400, 'Ungültige Transaktions-ID.');
         }
 
-        $contractId = (new ContractAssignmentService())->assignTransactionToContract($txId, $contractId, [
-            'assign_only'     => !empty($data['assign_only']),
-            'payee'           => trim((string)($data['auftraggeber_val'] ?? '')),
-            'use_payee'       => !empty($data['use_auftraggeber']),
-            'mandate_id'      => trim((string)($data['mandate_id'] ?? '')),
-            'use_mandate'     => !empty($data['use_mandate']),
-            'creditor_id'     => trim((string)($data['creditor_id'] ?? '')),
+        $contractId = new ContractAssignmentService()->assignTransactionToContract($txId, $contractId, [
+            'assign_only' => !empty($data['assign_only']),
+            'payee' => trim((string)($data['auftraggeber_val'] ?? '')),
+            'use_payee' => !empty($data['use_auftraggeber']),
+            'mandate_id' => trim((string)($data['mandate_id'] ?? '')),
+            'use_mandate' => !empty($data['use_mandate']),
+            'creditor_id' => trim((string)($data['creditor_id'] ?? '')),
             'use_creditor_id' => !empty($data['use_creditor_id']),
-            'text_pattern'    => trim((string)($data['text_pattern'] ?? '')),
+            'text_pattern' => trim((string)($data['text_pattern'] ?? '')),
         ]);
 
         echo json_encode(['success' => true, 'contract_id' => $contractId]);
@@ -443,7 +457,7 @@ try {
         $useCreditorId = !empty($data['use_creditor_id']);
         $useAuftraggeber = !empty($data['use_auftraggeber']);
 
-        $matchCount = (new BankTransactionRepository())->countMatchingContractPatterns(
+        $matchCount = new BankTransactionRepository()->countMatchingContractPatterns(
             $useMandate ? trim((string)($data['mandate_id'] ?? '')) : null,
             $useCreditorId ? trim((string)($data['creditor_id'] ?? '')) : null,
             $useAuftraggeber ? trim((string)($data['auftraggeber_val'] ?? '')) : null,
@@ -462,7 +476,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Vertrags-ID');
         }
 
-        $transactions = (new BankContractRepository())->getTransactionsForContract($contractId, min($limit, 100));
+        $transactions = new BankContractRepository()->getTransactionsForContract($contractId, min($limit, 100));
 
         echo json_encode([
             'success' => true,
@@ -480,7 +494,7 @@ try {
             Auth::sendJsonError(400, 'Name des Vertrags darf nicht leer sein.');
         }
 
-        $id = (new BankContractRepository())->saveContract($data, $contractId);
+        $id = new BankContractRepository()->saveContract($data, $contractId);
 
         echo json_encode([
             'success' => true,
@@ -497,7 +511,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Vertrags-ID');
         }
 
-        (new ContractAssignmentService())->deleteContract($contractId);
+        new ContractAssignmentService()->deleteContract($contractId);
 
         echo json_encode(['success' => true]);
         exit;
@@ -506,6 +520,6 @@ try {
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
 } catch (Throwable $e) {
-    (new Logger())->error('bank/api.php: Fehler bei API-Aktion', ['error' => $e->getMessage()]);
+    new Logger()->error('bank/api.php: Fehler bei API-Aktion', ['error' => $e->getMessage()]);
     Auth::sendJsonError(500, 'Interner Fehler');
 }
