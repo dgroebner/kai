@@ -17,6 +17,7 @@ und Infrastrukturschicht.
 **Deployment:** Automatisch via GitHub Actions → rsync über SSH auf den Webserver  
 **Hosting:** Shared Hosting — Details nicht im Repo dokumentiert  
 **Authentifizierung:** Google OAuth 2.0 mit E-Mail-Allowlist (kein öffentlicher Zugang)
+**PWA:** Progressive Web App — installierbar auf Desktop und Mobilgeräten (Service Worker, manifest.json)
 **Tests/Linting:** Keine automatisierte Testsuite. Prüfung über `php -l <datei>` und
 `node --check public/js/<datei>.js`
 
@@ -30,9 +31,14 @@ kai_root/
 │   ├── .htaccess
 │   ├── index.php
 │   ├── login.php
+│   ├── manifest.json    ← PWA Web App Manifest (Name, Icons, Theme-Farbe)
+│   ├── sw.js            ← PWA Service Worker (Caching, Offline-Fallback)
+│   ├── offline.html     ← PWA Offline-Fallback-Seite
 │   ├── css/
 │   ├── js/          ← http.js stellt KaiHttp (CSRF-POST) und KaiHtml (Escaping) bereit
+│   │                   pwa-register.js registriert den Service Worker
 │   ├── shared/      ← Domainübergreifende Endpunkte (z. B. Cron-Trigger mail.php)
+│   │                   head-pwa.php: zentraler PWA-Head-Include für alle Seiten
 │   ├── bank/        ← Öffentliche Einstiegspunkte der Domain "Bank"
 │   ├── car/         ← Öffentliche Einstiegspunkte der Domain "Car"
 │   ├── kassenbon/   ← Öffentliche Einstiegspunkte der Domain "Kassenbon"
@@ -392,7 +398,111 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
 
 ---
 
-## 9. Deployment-Pipeline
+## 9. Progressive Web App (PWA)
+
+**kai** ist als PWA implementiert und kann auf Desktop- und Mobilgeräten installiert
+werden. Die PWA-Eigenschaft basiert auf drei Kerndateien in `public/`:
+
+| Datei | Zweck |
+|---|---|
+| `manifest.json` | App-Metadaten (Name, Icons, Theme-Farbe, `start_url`) |
+| `sw.js` | Service Worker: Caching-Strategie und Offline-Fallback |
+| `offline.html` | Gestaltete Fehlerseite bei fehlender Netzwerkverbindung |
+| `js/pwa-register.js` | Registriert den Service Worker beim Seitenaufruf |
+| `shared/head-pwa.php` | Zentraler Include: Manifest-Link, Theme-Color, iOS-Meta-Tags |
+
+### 9.1 Caching-Strategie des Service Workers
+
+| Anfrage-Typ | Strategie | Begründung |
+|---|---|---|
+| HTML-Seiten (PHP) | **Network-First** | Seiten sind serverseitig gerendert, Daten müssen aktuell sein |
+| CSS / JS / Bilder | **Cache-First** | Statische Assets ändern sich selten, Cache-Busting via `APP_VERSION` |
+| POST-Requests | **Kein Caching** | Schreibzugriffe dürfen niemals im Cache landen |
+| API-Endpunkte (`/api*`, `/ingest*`, `/cron_*`) | **Network-Only** (Bypass) | Immer Live-Daten erforderlich |
+| Andere Origins (Google OAuth) | **Network-Only** (Bypass) | Fremde Origins liegen außerhalb des Service-Worker-Scopes |
+
+### 9.2 Regeln für Weiterentwicklungen
+
+> **Diese Regeln müssen bei jeder Änderung, die neue Seiten oder Assets einführt,
+> beachtet werden, um die PWA-Eigenschaft nicht zu beschädigen.**
+
+#### Neue HTML-Seite (PHP-Datei mit `<head>`) anlegen
+
+1. Den PWA-Head-Include **direkt nach dem `<link rel="stylesheet">`-Tag** einbinden:
+   ```php
+   <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
+   <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
+   </head>
+   ```
+   Für Root-Seiten (`public/*.php`) lautet der Pfad `'/shared/head-pwa.php'` (ohne `/../`).
+
+2. Der Include muss auf **jeder** Seite vorhanden sein, die als eigenständige View
+   im Browser-Tab geöffnet werden kann (auch Login-Seite).
+
+#### Neue statische Asset-Typen (z. B. Webfonts, neue Icon-Formate)
+
+- Den MIME-Type in `.htaccess` ergänzen (Abschnitt `mod_mime.c`), falls er noch nicht
+  gesetzt ist.
+- Sicherstellen, dass der Service Worker (`sw.js`) den Dateityp in seinem
+  `isStaticAsset`-Regex erfasst:
+  ```javascript
+  const isStaticAsset = url.pathname.match(/\.(css|js|png|jpg|jpeg|svg|ico|webp|woff2?)$/);
+  ```
+  Neue Endungen dort ergänzen.
+
+#### Neue API-Endpunkte in `public/`
+
+- POST-Requests werden automatisch vom Service Worker durchgereicht (kein Caching).
+- GET-API-Endpunkte (z. B. neue `/api_*.php`-Dateien) müssen **explizit** in der
+  Bypass-Bedingung des Service Workers berücksichtigt sein, falls sie keine gecachten
+  Antworten vertragen:
+  ```javascript
+  if (url.pathname.includes('/api') || url.pathname.includes('/ingest') || ...) {
+      return; // direkt ans Netzwerk
+  }
+  ```
+
+#### CSS oder JS-Dateien ändern
+
+- `APP_VERSION` in `bootstrap.php` auf die nächste Minorversion erhöhen (z. B.
+  `1.5.0` → `1.5.1`). Der Service Worker erkennt am geänderten Cache-Namen
+  (`kai-v1`) **keine** automatische Invalidierung — der Cache-Busting-Mechanismus
+  über den Query-Parameter `?v=APP_VERSION` in den HTML-Links ist der einzige
+  Mechanismus, der sicherstellt, dass Nutzer die aktuellen Dateien erhalten.
+- Werden komplett neue CSS/JS-Dateien hinzugefügt, die bereits beim App-Start
+  benötigt werden: die Datei in die `PRECACHE_ASSETS`-Liste in `sw.js` aufnehmen.
+
+#### Service Worker (`sw.js`) selbst ändern
+
+- `sw.js` ist in `.htaccess` mit `Cache-Control: no-cache, no-store, must-revalidate`
+  konfiguriert. Änderungen am Service Worker werden beim nächsten Seitenaufruf
+  **sofort** vom Browser erkannt und nach `skipWaiting()` aktiviert.
+- Den `CACHE_VERSION`-String in `sw.js` (z. B. `'v1'` → `'v2'`) erhöhen, wenn die
+  Caching-Strategie grundlegend geändert wird. Dadurch werden alle alten Caches
+  beim `activate`-Event automatisch gelöscht.
+
+#### Icons oder Manifest-Metadaten ändern
+
+- Icons liegen direkt in `public/` als `android-chrome-192x192.png` (192 × 192 px)
+  und `android-chrome-512x512.png` (512 × 512 px). Ein `apple-touch-icon.png` ist
+  ebenfalls vorhanden.
+- Änderungen an `manifest.json` (z. B. neuer `name`, neue `theme_color`) werden
+  von installierten PWAs erst beim nächsten Browser-Start oder nach einer Neuinstallation
+  übernommen.
+
+### 9.3 Nicht erlaubte Muster
+
+| Muster | Begründung |
+|---|---|
+| PWA-Meta-Tags direkt in einzelnen PHP-Dateien statt via `head-pwa.php` | Erzeugt Redundanz und führt zu inkonsistentem Verhalten beim Installieren |
+| `site.webmanifest` als Alternative zu `manifest.json` | Wurde durch `manifest.json` ersetzt; darf nicht wiederhergestellt werden |
+| Schreibzugriffe (POST/PUT/DELETE) in den SW-Cache aufnehmen | Sicherheitsrisiko und funktionale Fehler |
+| `sw.js` selbst in die `PRECACHE_ASSETS`-Liste aufnehmen | Browser verwalten Service-Worker-Updates eigenständig |
+
+---
+
+## 10. Deployment-Pipeline
+
 
 Die CI/CD-Pipeline (`/.github/workflows/deploy.yml`) deployt automatisch bei jedem
 Push auf `main` per **rsync über SSH** (`sshpass`) in das Verzeichnis `kai_root/` des
@@ -421,7 +531,7 @@ Alle Credentials sind als **GitHub Secrets** hinterlegt:
 
 ---
 
-## 10. Checkliste für neue Features
+## 11. Checkliste für neue Features
 
 Bevor ein neues Feature als fertig gilt, müssen folgende Punkte erfüllt sein:
 
@@ -444,3 +554,7 @@ Bevor ein neues Feature als fertig gilt, müssen folgende Punkte erfüllt sein:
 - [ ] Keine `<style>`-Blöcke in PHP-Dateien verwendet — alle Layout-Klassen sind zentral in `public/css/style.css` organisiert.
 - [ ] Standard-Layouts (`.page-header`, `.kpi-grid`, `.table-responsive`) für konsistentes Look & Feel eingehalten.
 - [ ] Geänderte PHP-Dateien mit `php -l` und geänderte JS-Dateien mit `node --check` geprüft.
+- [ ] Bei neuen HTML-Seiten (PHP-Dateien) wurde `shared/head-pwa.php` direkt nach dem Stylesheet eingebunden.
+- [ ] Bei neuen GET-API-Endpunkten wurde geprüft, ob sie in der Bypass-Bedingung von `sw.js` eingetragen werden müssen.
+- [ ] Neue Asset-Typen (z. B. Webfonts) wurden in `sw.js` (Regex `isStaticAsset`) und falls nötig in `.htaccess` (MIME-Type) hinterlegt.
+

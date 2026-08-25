@@ -59,6 +59,7 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
     <title>Verträge & Fixkosten – Kai</title>
     <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
+    <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">

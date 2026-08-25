@@ -13,6 +13,7 @@ Auth::requirePage();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kai's Dashboard</title>
     <link rel="stylesheet" href="css/style.css?v=<?= APP_VERSION ?>">
+    <?php include __DIR__ . '/shared/head-pwa.php'; ?>
 </head>
 <?php include __DIR__ . '/shared/body-tag.php'; ?>
 <div class="container">

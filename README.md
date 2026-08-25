@@ -29,6 +29,31 @@ Diese Endpunkte besitzen keine Benutzersession und werden über den `CRON_TOKEN`
 
 ---
 
+## 📱 Progressive Web App (PWA)
+
+**kai** ist als Progressive Web App (PWA) konzipiert und kann auf Mobilgeräten (iOS/Android) sowie auf dem Desktop (Chrome/Edge/Safari) als eigenständige App installiert werden.
+
+### PWA-Features & Architektur
+- **Web App Manifest (`public/manifest.json`):** Steuert die App-Darstellung (Name, Farben, Icons).
+- **Service Worker (`public/sw.js`):**
+  - **Network-First** für PHP/HTML-Seiten (für stets aktuelle Serverdaten).
+  - **Cache-First** für statische Assets (CSS, JS, Icons) zur Minimierung von Ladezeiten.
+  - **Offline-Fallback:** Zeigt bei fehlender Internetverbindung die Seite `offline.html` an.
+  - **Bypass:** API-Endpunkte (`/api`, `/ingest`, `/cron_`) und POST-Requests werden immer direkt an das Netzwerk durchgeleitet.
+- **Zentraler Include (`public/shared/head-pwa.php`):** Bindet die Meta-Tags und das Registrierungsskript in alle HTML-Header ein.
+
+### Richtlinien für Weiterentwicklungen
+1. **Neue Seiten:** Jede neue PHP-Datei, die ein vollständiges HTML-Dokument rendert, muss im `<head>` den Include `head-pwa.php` direkt nach dem `<link rel="stylesheet">`-Tag laden:
+   ```php
+   <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
+   <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
+   ```
+2. **Versions-Updates:** Bei Änderungen an CSS- oder JS-Dateien muss die `APP_VERSION` in `bootstrap.php` erhöht werden, um das Cache-Busting zu aktivieren.
+3. **Neue GET-API-Endpunkte:** Müssen in `public/sw.js` im Bypass-Bereich (Fetch-Event-Listener) eingetragen werden, damit sie nicht versehentlich gecacht werden.
+4. **Icons & Styling:** Icons liegen im Root-Verzeichnis von `public/`. Im Stylesheet (`public/css/style.css`) wird die iOS-Statusleiste über `padding-top: env(safe-area-inset-top)` kompensiert.
+
+---
+
 ## 🛠️ Systemarchitektur & Verzeichnisstruktur
 
 Das Projekt folgt einer strikten Trennung zwischen öffentlich erreichbarem Code und geschützter Server-Logik:
@@ -39,10 +64,15 @@ kai_root/
 │   ├── .htaccess            ← Erzwingt HTTPS und setzt Security-Header (CSP, HSTS)
 │   ├── index.php            ← Haupt-Dashboard (Kachel-Übersicht aller Module)
 │   ├── login.php            ← Google OAuth Login-Controller (inkl. Logout & state-Prüfung)
+│   ├── manifest.json        ← PWA Web App Manifest (Name, Icons, Theme-Farbe)
+│   ├── sw.js                ← PWA Service Worker (Caching, Offline-Fallback)
+│   ├── offline.html         ← PWA Offline-Fallback-Seite
 │   ├── css/                 ← Zentrales Styleschema (style.css)
 │   ├── js/                  ← Frontend-Logik je Modul (Event Delegation, keine Secrets)
 │   │                          http.js stellt KaiHttp (CSRF-POST) und KaiHtml (Escaping) bereit
+│   │                          pwa-register.js zur Service-Worker-Registrierung
 │   ├── shared/              ← Domainübergreifende Endpunkte (mail.php als Cron-Trigger)
+│   │                          head-pwa.php als zentraler Include für PWA-Meta-Tags
 │   ├── bank/                ← Controller für Giro, Kreditkarte, Verträge und die Bank-API
 │   ├── car/                 ← Controller für das VW ID.Buzz Modul
 │   │   └── telemetry/       ← JSON-Endpunkt zur Entgegennahme der Fahrzeug-Telemetrie
