@@ -164,10 +164,9 @@ function updateLiveValues() {
             let pvSubtext = '';
 
             const now = new Date();
-            const currentHourKey = String(now.getHours()).padStart(2, '0'); // z. B. "14"
+            const currentHourKey = String(now.getHours()).padStart(2, '0');
             const isDaytime = now.getHours() >= 6 && now.getHours() < 21;
 
-            // Prognose-Wert für die aktuelle Stunde aus dem DOM auslesen
             const pvNodeEl = document.getElementById('node-pv');
             let expectedWatts = 0;
             if (pvNodeEl && pvNodeEl.dataset.forecast) {
@@ -180,33 +179,21 @@ function updateLiveValues() {
             }
 
             if (pvW === 0) {
-                if (!isDaytime) {
-                    pvIcon = '🌙';
-                    pvSubtext = '(Nacht)';
-                } else {
-                    pvIcon = '☁️';
-                    pvSubtext = '(Kein Ertrag)';
-                }
+                pvIcon = !isDaytime ? '🌙' : '☁️';
+                pvSubtext = !isDaytime ? '(Nacht)' : '(Kein Ertrag)';
             } else if (expectedWatts > 200) {
-                // Wir haben einen Prognosewert für diese Stunde -> Verhältnis Soll vs. Ist prüfen
                 const ratio = pvW / expectedWatts;
                 if (ratio < 0.35) {
-                    pvIcon = '☁️'; // Stark bewölkt / Leistung bricht ein
+                    pvIcon = '☁️';
                     pvSubtext = '(Dichte Wolken)';
                 } else if (ratio < 0.70) {
-                    pvIcon = '⛅'; // Leicht bewölkt / Schleierwolken
+                    pvIcon = '⛅';
                     pvSubtext = '(Leicht bewölkt)';
-                } else {
-                    pvIcon = '☀️'; // Voller Ertrag / Erwartung erfüllt
-                    pvSubtext = '';
                 }
             } else {
-                // Randstunden (Früh/Spät) mit geringem Sollwert
                 pvIcon = pvW > 150 ? '🌤️' : '🌅';
-                pvSubtext = '';
             }
 
-            // Icon im DOM aktualisieren
             const pvIconEl = document.getElementById('pv-icon');
             if (pvIconEl) pvIconEl.textContent = pvIcon;
 
