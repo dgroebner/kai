@@ -2,6 +2,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Letzte bekannte ID initialisieren
     let lastActivityId = parseInt(document.body.dataset.lastActivityId || 0, 10);
 
+    // PWA-Systembenachrichtigungen: Berechtigung anfragen, falls unterstuetzt und noch nicht entschieden
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            console.log('PWA: Benachrichtigungsberechtigung:', permission);
+        });
+    }
+
     function pollNewActivities() {
         fetch(`/system/api.php?last_id=${lastActivityId}`, {
             method: 'GET',
@@ -32,6 +39,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showNotificationBubble(text, link) {
+        // Native Systembenachrichtigung triggern, falls berechtigt
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                const title = "Kai Aktivität";
+                const n = new Notification(title, {
+                    body: text,
+                    icon: '/android-chrome-192x192.png',
+                    tag: 'kai-activity' // Verhindert Spam, indem alte Benachrichtigungen ueberschrieben werden
+                });
+                if (link) {
+                    n.onclick = function(e) {
+                        e.preventDefault();
+                        window.focus();
+                        window.location.href = link;
+                    };
+                }
+            } catch (err) {
+                console.warn('PWA: Fehler beim Anzeigen der nativen Benachrichtigung:', err);
+            }
+        }
+
         let container = document.getElementById('activity-toast-container');
         if (!container) {
             container = document.createElement('div');
