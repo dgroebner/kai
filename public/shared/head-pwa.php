@@ -1,9 +1,9 @@
-﻿<?php
+<?php
 // public/shared/head-pwa.php
 // Zentraler PWA-Head-Include fuer alle Seiten.
 // Einbinden direkt nach dem <head>-Tag mit:
-//   <?php include __DIR__ . '/../shared/head-pwa.php'; ?>  (Domain-Unterseiten)
-//   <?php include __DIR__ . '/shared/head-pwa.php'; ?>     (Root-Seiten)
+//   include __DIR__ . '/../shared/head-pwa.php' (Domain-Unterseiten)
+//   include __DIR__ . '/shared/head-pwa.php'    (Root-Seiten)
 ?>
 <!-- PWA Manifest & Theme Color -->
 <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
