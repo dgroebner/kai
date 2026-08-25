@@ -223,7 +223,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 }
                 ?>
                 <div class="flow-node node-pv state-gray" id="node-pv"
-                     data-forecast='<?= htmlspecialchars(json_encode($frontendForecastMap), ENT_QUOTES, 'UTF-8') ?>">
+                     data-forecast="<?= htmlspecialchars(json_encode($frontendForecastMap), ENT_QUOTES, 'UTF-8') ?>">
                     <div class="flow-node-icon" id="pv-icon">☀️</div>
                     <div class="flow-node-title">Solar (PV)</div>
                     <div class="flow-node-value val-gray" data-flow="pv_power">0 W</div>
