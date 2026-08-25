@@ -67,6 +67,10 @@ Auth::requirePage();
 
         </div>
     </main>
+    <!-- Globaler App Footer -->
+    <footer class="app-footer">
+        <div>kai v<?= APP_VERSION ?></div>
+    </footer>
 </div>
 <script src="js/http.js?v=<?= APP_VERSION ?>"></script>
 <script src="js/system.js?v=<?= APP_VERSION ?>"></script>

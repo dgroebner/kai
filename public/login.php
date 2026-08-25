@@ -99,5 +99,9 @@ $loginUrl = $client->createAuthUrl();
         <p>Bitte melde dich an, um fortzufahren.</p>
         <a href="<?= htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn login-btn">Login mit Google</a>
     </div>
+    <!-- Globaler App Footer -->
+    <footer class="app-footer" style="border-top: none; margin-top: 20px;">
+        <div>kai v<?= APP_VERSION ?></div>
+    </footer>
 </body>
 </html>

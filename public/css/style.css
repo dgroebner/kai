@@ -2319,4 +2319,16 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-}
+}
+
+/* Globaler App Footer */
+.app-footer {
+    text-align: center;
+    padding: 20px 0;
+    font-size: 0.8rem;
+    color: var(--text-muted, #94a3b8);
+    border-top: 1px solid #1e293b;
+    margin-top: 40px;
+    clear: both;
+}
+
