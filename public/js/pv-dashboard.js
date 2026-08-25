@@ -158,12 +158,63 @@ function updateLiveValues() {
             // --- 2. Hauslast ---
             updateFlowValue('[data-flow="house_load"]', fmt(d.house_load_w) + ' W');
 
-            // --- 3. PV Anlage (Grün bei Produktion, sonst Grau) ---
+            // --- 3. PV Anlage (Dynamisches Icon je nach Tageszeit, Ertrag & Prognose-Soll) ---
             const pvW = Math.round(d.pv_power_w);
+            let pvIcon = '☀️';
+            let pvSubtext = '';
+
+            const now = new Date();
+            const currentHourKey = String(now.getHours()).padStart(2, '0'); // z. B. "14"
+            const isDaytime = now.getHours() >= 6 && now.getHours() < 21;
+
+            // Prognose-Wert für die aktuelle Stunde aus dem DOM auslesen
+            const pvNodeEl = document.getElementById('node-pv');
+            let expectedWatts = 0;
+            if (pvNodeEl && pvNodeEl.dataset.forecast) {
+                try {
+                    const forecastMap = JSON.parse(pvNodeEl.dataset.forecast);
+                    expectedWatts = forecastMap[currentHourKey] || 0;
+                } catch (e) {
+                    console.debug('Konnte PV-Prognose nicht parsen', e);
+                }
+            }
+
+            if (pvW === 0) {
+                if (!isDaytime) {
+                    pvIcon = '🌙';
+                    pvSubtext = '(Nacht)';
+                } else {
+                    pvIcon = '☁️';
+                    pvSubtext = '(Kein Ertrag)';
+                }
+            } else if (expectedWatts > 200) {
+                // Wir haben einen Prognosewert für diese Stunde -> Verhältnis Soll vs. Ist prüfen
+                const ratio = pvW / expectedWatts;
+                if (ratio < 0.35) {
+                    pvIcon = '☁️'; // Stark bewölkt / Leistung bricht ein
+                    pvSubtext = '(Dichte Wolken)';
+                } else if (ratio < 0.70) {
+                    pvIcon = '⛅'; // Leicht bewölkt / Schleierwolken
+                    pvSubtext = '(Leicht bewölkt)';
+                } else {
+                    pvIcon = '☀️'; // Voller Ertrag / Erwartung erfüllt
+                    pvSubtext = '';
+                }
+            } else {
+                // Randstunden (Früh/Spät) mit geringem Sollwert
+                pvIcon = pvW > 150 ? '🌤️' : '🌅';
+                pvSubtext = '';
+            }
+
+            // Icon im DOM aktualisieren
+            const pvIconEl = document.getElementById('pv-icon');
+            if (pvIconEl) pvIconEl.textContent = pvIcon;
+
             updateFlowNode('node-pv', '[data-flow="pv_power"]',
                 fmt(pvW) + ' W',
                 pvW > 0 ? 'green' : 'gray',
-                'line-pv-house', pvW > 0 ? '#10b981' : '#334155', false, pvW > 0
+                'line-pv-house', pvW > 0 ? '#10b981' : '#334155', false, pvW > 0,
+                'pv-subtext', pvSubtext
             );
 
             // --- 4. Batterie (Grün = Laden, Gelb = Entladen, Grau = 0) ---
@@ -244,11 +295,11 @@ function updateFlowNode(nodeId, valSelector, valText, stateName, lineId, lineCol
 
     const line = document.getElementById(lineId);
     if (line) {
-        line.setAttribute('stroke', lineColor);
+        line.setAttribute('stroke', lineColor); //
         if (isAnimated) {
-            line.className.baseVal = isReverse ? 'flow-line-animated-rev' : 'flow-line-animated';
+            line.setAttribute('class', isReverse ? 'flow-line-animated-rev' : 'flow-line-animated');
         } else {
-            line.className.baseVal = 'flow-line';
+            line.setAttribute('class', 'flow-line');
         }
     }
 }
