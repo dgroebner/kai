@@ -196,7 +196,7 @@ class ReceiptMatcher
      */
     public function getCandidatesForReceipt(int $receiptId): array
     {
-        $stmt = $this->pdo->prepare("SELECT purchase_date, total FROM kb_receipts WHERE id = :id");
+        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store FROM kb_receipts WHERE id = :id");
         $stmt->execute([':id' => $receiptId]);
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -209,23 +209,48 @@ class ReceiptMatcher
         $cashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
         $ccCashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CREDITCARD_LOOKBACK_DAYS . ' days'));
         $totalAmount = abs((float)$receipt['total']);
+        $store = trim((string)($receipt['store'] ?? ''));
 
         return [
-            'giro' => $this->findGiroCandidates(-$totalAmount, $purchaseDate, $dateEnd, $cashStart),
-            'cc' => $this->findCcCandidates($totalAmount, $ccCashStart, $dateEnd)
+            'giro' => $this->findGiroCandidates(-$totalAmount, $cashStart, $dateEnd, $store),
+            'cc' => $this->findCcCandidates($totalAmount, $ccCashStart, $dateEnd, $store)
         ];
     }
 
     /**
      * Giro-Kandidaten: Betragsgleiche Abbuchungen oder Buchungen mit möglicher
      * Bargeldauszahlung (Abbuchung > Bon-Summe) bzw. Rabatten (Abbuchung < Bon-Summe)
-     * im relevanten Zeitfenster.
+     * im relevanten Zeitfenster, optional gefiltert nach Händler-Tokens.
      */
-    private function findGiroCandidates(float $expectedAmount, string $dateStart, string $dateEnd, string $cashStart): array
+    private function findGiroCandidates(
+        float  $expectedAmount,
+        string $cashStart,
+        string $dateEnd,
+        string $store = ''
+    ): array
     {
         $receiptTotal = abs($expectedAmount);
         $minAmount = -($receiptTotal + self::CASH_TOLERANCE);
         $maxAmount = -max(0.01, $receiptTotal - self::DISCOUNT_TOLERANCE);
+
+        $storeTokens = $store !== '' ? $this->getStoreTokens($store) : [];
+        $storeConditions = [];
+        $params = [
+            ':date_start' => $cashStart,
+            ':date_end' => $dateEnd,
+            ':min_amount' => $minAmount,
+            ':max_amount' => $maxAmount
+        ];
+
+        if (!empty($storeTokens)) {
+            foreach ($storeTokens as $i => $token) {
+                $paramKey = ':store_tok_' . $i;
+                $storeConditions[] = self::GIRO_PARTNER_EXPRESSION . " LIKE {$paramKey}";
+                $params[$paramKey] = '%' . $this->escapeLike($token) . '%';
+            }
+        }
+
+        $storeSql = !empty($storeConditions) ? ' AND (' . implode(' OR ', $storeConditions) . ')' : '';
 
         $stmt = $this->pdo->prepare("
             SELECT t.id,
@@ -244,15 +269,11 @@ class ReceiptMatcher
               )
               AND t.booking_date BETWEEN :date_start AND :date_end
               AND t.amount BETWEEN :min_amount AND :max_amount
+              {$storeSql}
             ORDER BY t.booking_date ASC
         ");
 
-        $stmt->execute([
-            ':date_start' => $cashStart,
-            ':date_end' => $dateEnd,
-            ':min_amount' => $minAmount,
-            ':max_amount' => $maxAmount
-        ]);
+        $stmt->execute($params);
 
         $candidates = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -299,12 +320,76 @@ class ReceiptMatcher
     }
 
     /**
-     * Kreditkarten-Kandidaten: Betrag mit kleiner Toleranz im Buchungsfenster.
+     * Extrahiert aussagekräftige Wort-Tokens aus dem Händlernamen (leerzeichengetrennt).
+     *
+     * @return array<int, string>
+     */
+    private function getStoreTokens(string $storeName): array
+    {
+        $rawTokens = preg_split('/\s+/u', trim($storeName), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $cleanedTokens = [];
+
+        foreach ($rawTokens as $rawToken) {
+            $token = trim($rawToken, " \t\n\r\0\x0B.,;:!?()[]{}\"'`/-");
+            if ($token !== '') {
+                $cleanedTokens[] = $token;
+            }
+        }
+
+        if (empty($cleanedTokens)) {
+            return [];
+        }
+
+        $stopWords = [
+            'gmbh', 'ag', 'kg', 'ug', 'se', 'ek', 'e.k.', 'co', 'co.', 'ohg', 'gbr', 'kgaa',
+            'ltd', 'inc', 'corp', 'markt', 'filiale', 'supermarkt', 'deutschland', 'germany',
+            'und', '&', 'der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einer',
+            'in', 'am', 'an', 'im', 'von', 'zu', 'zur', 'zum', 'sb', 'store', 'shop'
+        ];
+
+        $filteredTokens = array_values(array_filter($cleanedTokens, static function (string $token) use ($stopWords): bool {
+            return mb_strlen($token) >= 2 && !in_array(mb_strtolower($token), $stopWords, true);
+        }));
+
+        if (empty($filteredTokens)) {
+            $filteredTokens = array_values(array_filter($cleanedTokens, static fn(string $t): bool => mb_strlen($t) >= 2));
+        }
+
+        return !empty($filteredTokens) ? array_values(array_unique($filteredTokens)) : array_values(array_unique($cleanedTokens));
+    }
+
+    /**
+     * Kreditkarten-Kandidaten: Betrag mit kleiner Toleranz im Buchungsfenster,
+     * optional gefiltert nach Händler-Tokens.
      * Das Vorzeichen wird ignoriert, da Abrechnungen je nach Import positiv
      * oder negativ geführt werden.
      */
-    private function findCcCandidates(float $expectedAmount, string $dateStart, string $dateEnd): array
+    private function findCcCandidates(
+        float  $expectedAmount,
+        string $dateStart,
+        string $dateEnd,
+        string $store = ''
+    ): array
     {
+        $storeTokens = $store !== '' ? $this->getStoreTokens($store) : [];
+        $storeConditions = [];
+        $params = [
+            ':date_start' => $dateStart,
+            ':date_end' => $dateEnd,
+            ':amount_min' => max(0.0, $expectedAmount - self::CC_TOLERANCE),
+            ':amount_max' => $expectedAmount + self::CC_TOLERANCE
+        ];
+
+        if (!empty($storeTokens)) {
+            foreach ($storeTokens as $i => $token) {
+                $paramKey = ':store_tok_' . $i;
+                $storeConditions[] = "t.merchant_name LIKE {$paramKey}";
+                $params[$paramKey] = '%' . $this->escapeLike($token) . '%';
+            }
+        }
+
+        $storeSql = !empty($storeConditions) ? ' AND (' . implode(' OR ', $storeConditions) . ')' : '';
+
         $stmt = $this->pdo->prepare("
             SELECT t.id, t.booking_date, t.amount, t.merchant_name, t.card_number_suffix
             FROM bank_cc_transactions t
@@ -313,14 +398,10 @@ class ReceiptMatcher
               AND t.id NOT IN (
                   SELECT bank_cc_transaction_id FROM kb_receipts WHERE bank_cc_transaction_id IS NOT NULL
               )
+              {$storeSql}
             ORDER BY t.booking_date ASC
         ");
-        $stmt->execute([
-            ':date_start' => $dateStart,
-            ':date_end' => $dateEnd,
-            ':amount_min' => max(0.0, $expectedAmount - self::CC_TOLERANCE),
-            ':amount_max' => $expectedAmount + self::CC_TOLERANCE
-        ]);
+        $stmt->execute($params);
 
         $candidates = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
