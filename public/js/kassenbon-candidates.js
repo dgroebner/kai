@@ -122,6 +122,7 @@ function renderCandidateGroup(receiptId, items, groupLabel) {
     const rows = items.map((tx) => {
         const amount = parseFloat(tx.amount) || 0;
         const info = tx.info ? `<span class="candidate-meta">${escapeHtml(tx.info)}</span>` : '';
+        const hint = tx.hint ? `<span class="candidate-meta candidate-hint-meta">${escapeHtml(tx.hint)}</span>` : '';
         const cashButton = tx.account_type === 'giro' && tx.is_cash
             ? `<button type="button" class="btn btn-sm btn-outline js-link-tx"
                     data-receipt-id="${receiptId}" data-tx-id="${tx.id}"
@@ -134,6 +135,7 @@ function renderCandidateGroup(receiptId, items, groupLabel) {
                 <div class="candidate-info">
                     <strong class="candidate-title">${formatDate(tx.booking_date)} – ${escapeHtml(tx.merchant_raw)}</strong>
                     <span class="candidate-meta">Betrag: ${formatAmount(amount)} €</span>
+                    ${hint}
                     ${info}
                 </div>
                 <div class="candidate-actions">
@@ -155,7 +157,7 @@ function formatDate(isoDate) {
 }
 
 function formatAmount(value) {
-    return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
 function escapeHtml(value) {

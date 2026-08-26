@@ -1985,6 +1985,11 @@ tr.is-today-row {
     word-break: break-word;
 }
 
+.candidate-hint-meta {
+    color: var(--color-orange);
+    font-weight: 500;
+}
+
 .candidate-actions {
     display: flex;
     gap: 0.4rem;
@@ -2332,4 +2337,4 @@ body {
     margin-top: 30px;
     clear: both;
 }
-
+

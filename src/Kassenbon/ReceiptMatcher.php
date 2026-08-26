@@ -20,11 +20,11 @@ class ReceiptMatcher
     /** Maximaler Betrag, um den eine Bargeldabhebung über der Bonsumme liegen darf. */
     private const CASH_TOLERANCE = 200.00;
 
+    /** Maximale Differenz nach unten für Rabatt- oder Treuesysteme. */
+    private const DISCOUNT_TOLERANCE = 50.00;
+
     /** Toleranz für Kreditkartenbuchungen (z. B. Sofortrabatte, Trinkgeld). */
     private const CC_TOLERANCE = 10.00;
-
-    /** Buchungsarten (Spalte `type`), die einer Bargeldverfügung entsprechen. */
-    private const CASH_TYPES = ['Geldautomat', 'Bar', 'Sorten (Kasse)'];
 
     /** Alle Textfelder einer Giro-Buchung, in denen der Händlername stehen kann. */
     private const GIRO_PARTNER_EXPRESSION = "CONCAT_WS(' ', t.remittance_info, t.creditor, t.remitter, t.debitor)";
@@ -217,23 +217,15 @@ class ReceiptMatcher
     }
 
     /**
-     * Giro-Kandidaten: betragsgleiche Abbuchungen im Buchungsfenster oder
-     * Bargeldabhebungen, die den Bon abdecken (auch vor dem Kaufdatum).
+     * Giro-Kandidaten: Betragsgleiche Abbuchungen oder Buchungen mit möglicher
+     * Bargeldauszahlung (Abbuchung > Bon-Summe) bzw. Rabatten (Abbuchung < Bon-Summe)
+     * im relevanten Zeitfenster.
      */
     private function findGiroCandidates(float $expectedAmount, string $dateStart, string $dateEnd, string $cashStart): array
     {
-        // Zwei getrennte Platzhaltersätze, da native Prepared Statements einen
-        // Namensplatzhalter nicht mehrfach binden können.
-        $cashParams = [];
-        $selectPlaceholders = [];
-        $wherePlaceholders = [];
-
-        foreach (array_values(self::CASH_TYPES) as $index => $cashType) {
-            $selectPlaceholders[] = ':cash_type_sel_' . $index;
-            $wherePlaceholders[] = ':cash_type_flt_' . $index;
-            $cashParams[':cash_type_sel_' . $index] = $cashType;
-            $cashParams[':cash_type_flt_' . $index] = $cashType;
-        }
+        $receiptTotal = abs($expectedAmount);
+        $minAmount = -($receiptTotal + self::CASH_TOLERANCE);
+        $maxAmount = -max(0.01, $receiptTotal - self::DISCOUNT_TOLERANCE);
 
         $stmt = $this->pdo->prepare("
             SELECT t.id,
@@ -241,8 +233,7 @@ class ReceiptMatcher
                    t.amount,
                    t.type,
                    " . self::GIRO_COUNTERPARTY_EXPRESSION . " AS counterparty,
-                   t.remittance_info,
-                   (t.type IN (" . implode(', ', $selectPlaceholders) . ")) AS is_cash
+                   t.remittance_info
             FROM bank_giro_transactions t
             JOIN bank_accounts a ON a.id = t.account_id
             WHERE a.account_type = 'checking'
@@ -251,33 +242,25 @@ class ReceiptMatcher
               AND t.id NOT IN (
                   SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
               )
-              AND (
-                  (t.amount = :amount AND t.booking_date BETWEEN :date_start AND :date_end)
-                  OR (
-                      t.type IN (" . implode(', ', $wherePlaceholders) . ")
-                      AND t.amount <= :cash_amount
-                      AND t.amount >= :cash_min
-                      AND t.booking_date BETWEEN :cash_start AND :cash_end
-                  )
-              )
+              AND t.booking_date BETWEEN :date_start AND :date_end
+              AND t.amount BETWEEN :min_amount AND :max_amount
             ORDER BY t.booking_date ASC
         ");
 
-        $stmt->execute($cashParams + [
-                ':amount' => $expectedAmount,
-                ':date_start' => $dateStart,
-                ':date_end' => $dateEnd,
-                ':cash_amount' => $expectedAmount,
-                ':cash_min' => $expectedAmount - self::CASH_TOLERANCE,
-                ':cash_start' => $cashStart,
-                ':cash_end' => $dateEnd
-            ]);
+        $stmt->execute([
+            ':date_start' => $cashStart,
+            ':date_end' => $dateEnd,
+            ':min_amount' => $minAmount,
+            ':max_amount' => $maxAmount
+        ]);
 
         $candidates = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $counterparty = trim((string)($row['counterparty'] ?? ''));
             $remittance = trim((string)($row['remittance_info'] ?? ''));
             $type = trim((string)($row['type'] ?? ''));
+            $txAmount = abs((float)$row['amount']);
+            $diff = round($txAmount - $receiptTotal, 2);
 
             // Fällt kein Partnername an, dient der Verwendungszweck als Anzeigename.
             $displayName = $counterparty !== '' ? $counterparty : ($remittance !== '' ? $remittance : 'Unbekannte Buchung');
@@ -286,6 +269,19 @@ class ReceiptMatcher
                 $counterparty !== '' ? $remittance : ''
             ], static fn(string $part): bool => $part !== '');
 
+            // Bargeld- & Rabatt-Erkennung anhand des Betrags
+            $isCash = false;
+            $hint = '';
+
+            if ($diff > 0.00) {
+                // Abgebuchter Betrag höher als Bonsumme -> wahrscheinlich Bargeldauszahlung an der Kasse
+                $isCash = true;
+                $hint = 'Mögliche Bargeldauszahlung: +' . number_format($diff, 2, ',', '.') . ' €';
+            } elseif ($diff < 0.00) {
+                // Abgebuchter Betrag kleiner als Bonsumme -> Rabatt- oder Treuesystem
+                $hint = 'Rabatt- / Treuesystem: -' . number_format(abs($diff), 2, ',', '.') . ' €';
+            }
+
             $candidates[] = [
                 'id' => (int)$row['id'],
                 'booking_date' => (string)$row['booking_date'],
@@ -293,7 +289,9 @@ class ReceiptMatcher
                 'merchant_raw' => $displayName,
                 'info' => implode(' · ', $infoParts),
                 'account_type' => 'giro',
-                'is_cash' => (bool)$row['is_cash']
+                'is_cash' => $isCash,
+                'hint' => $hint,
+                'diff' => $diff
             ];
         }
 
@@ -328,6 +326,15 @@ class ReceiptMatcher
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $merchant = trim((string)$row['merchant_name']);
             $suffix = trim((string)($row['card_number_suffix'] ?? ''));
+            $txAmount = abs((float)$row['amount']);
+            $diff = round($txAmount - $expectedAmount, 2);
+
+            $hint = '';
+            if ($diff < 0.00) {
+                $hint = 'Rabatt- / Treuesystem: -' . number_format(abs($diff), 2, ',', '.') . ' €';
+            } elseif ($diff > 0.00) {
+                $hint = 'Abweichung (z. B. Trinkgeld): +' . number_format($diff, 2, ',', '.') . ' €';
+            }
 
             $candidates[] = [
                 'id' => (int)$row['id'],
@@ -336,7 +343,9 @@ class ReceiptMatcher
                 'merchant_raw' => $merchant !== '' ? $merchant : 'Unbekannte Buchung',
                 'info' => $suffix !== '' ? 'Karte ' . $suffix : '',
                 'account_type' => 'cc',
-                'is_cash' => false
+                'is_cash' => false,
+                'hint' => $hint,
+                'diff' => $diff
             ];
         }
 
