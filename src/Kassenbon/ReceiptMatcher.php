@@ -14,6 +14,9 @@ class ReceiptMatcher
     /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
     private const CASH_LOOKBACK_DAYS = 14;
 
+    /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
+    private const CREDITCARD_LOOKBACK_DAYS = 3;
+
     /** Maximaler Betrag, um den eine Bargeldabhebung über der Bonsumme liegen darf. */
     private const CASH_TOLERANCE = 200.00;
 
@@ -204,11 +207,12 @@ class ReceiptMatcher
         $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
         $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
         $cashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
+        $ccCashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CREDITCARD_LOOKBACK_DAYS . ' days'));
         $totalAmount = abs((float)$receipt['total']);
 
         return [
             'giro' => $this->findGiroCandidates(-$totalAmount, $purchaseDate, $dateEnd, $cashStart),
-            'cc' => $this->findCcCandidates($totalAmount, $cashStart, $dateEnd)
+            'cc' => $this->findCcCandidates($totalAmount, $ccCashStart, $dateEnd)
         ];
     }
 
