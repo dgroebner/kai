@@ -2,9 +2,9 @@
 
 namespace Kai\Tools\Kassenbon;
 
-use PDO;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use PDO;
 
 class ReceiptMatcher
 {
@@ -100,36 +100,36 @@ class ReceiptMatcher
         ");
 
         $stmtUpdateGiro = $this->pdo->prepare("UPDATE kb_receipts SET bank_giro_transaction_id = :tx_id WHERE id = :receipt_id");
-        $stmtUpdateCc   = $this->pdo->prepare("UPDATE kb_receipts SET bank_cc_transaction_id = :tx_id WHERE id = :receipt_id");
+        $stmtUpdateCc = $this->pdo->prepare("UPDATE kb_receipts SET bank_cc_transaction_id = :tx_id WHERE id = :receipt_id");
 
         foreach ($unlinkedReceipts as $receipt) {
-            $receiptId    = (int)$receipt['id'];
+            $receiptId = (int)$receipt['id'];
             $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
-            $totalAmount  = (float)$receipt['total'];
-            $storeName    = trim((string)$receipt['store']);
+            $totalAmount = (float)$receipt['total'];
+            $storeName = trim((string)$receipt['store']);
 
             if ($storeName === '' || abs($totalAmount) < 0.01) {
                 continue;
             }
 
             $expectedGiroAmount = -abs($totalAmount);
-            $expectedCcAmount   = abs($totalAmount);
+            $expectedCcAmount = abs($totalAmount);
 
             $dateStart = $purchaseDate;
-            $dateEnd   = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
+            $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
 
             $merchantParam = '%' . $this->escapeLike($storeName) . '%';
-            $shortToken    = $this->buildStoreToken($storeName);
-            $hasShort      = $shortToken !== '' ? 1 : 0;
+            $shortToken = $this->buildStoreToken($storeName);
+            $hasShort = $shortToken !== '' ? 1 : 0;
             $merchantShort = $hasShort ? '%' . $this->escapeLike($shortToken) . '%' : '';
 
             // 1. Erst auf dem Girokonto suchen
             $stmtFindGiro->execute([
-                ':amount'         => $expectedGiroAmount,
-                ':date_start'     => $dateStart,
-                ':date_end'       => $dateEnd,
-                ':merchant'       => $merchantParam,
-                ':has_short'      => $hasShort,
+                ':amount' => $expectedGiroAmount,
+                ':date_start' => $dateStart,
+                ':date_end' => $dateEnd,
+                ':merchant' => $merchantParam,
+                ':has_short' => $hasShort,
                 ':merchant_short' => $merchantShort
             ]);
             $giroTxId = $stmtFindGiro->fetchColumn();
@@ -143,12 +143,12 @@ class ReceiptMatcher
 
             // 2. Falls nicht auf Giro, auf Kreditkarte suchen
             $stmtFindCc->execute([
-                ':amount'         => $expectedCcAmount,
-                ':amount_neg'     => -$expectedCcAmount,
-                ':date_start'     => $dateStart,
-                ':date_end'       => $dateEnd,
-                ':merchant'       => $merchantParam,
-                ':has_short'      => $hasShort,
+                ':amount' => $expectedCcAmount,
+                ':amount_neg' => -$expectedCcAmount,
+                ':date_start' => $dateStart,
+                ':date_end' => $dateEnd,
+                ':merchant' => $merchantParam,
+                ':has_short' => $hasShort,
                 ':merchant_short' => $merchantShort
             ]);
             $ccTxId = $stmtFindCc->fetchColumn();
@@ -161,6 +161,26 @@ class ReceiptMatcher
         }
 
         return ['giro' => $linkedGiro, 'cc' => $linkedCc];
+    }
+
+    /**
+     * Maskiert LIKE-Sonderzeichen, damit Händlernamen wörtlich gesucht werden.
+     */
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
+    }
+
+    /**
+     * Ermittelt ein kurzes, aussagekräftiges Suchtoken aus dem Händlernamen
+     * (z. B. "REWE Markt GmbH" -> "REWE").
+     */
+    private function buildStoreToken(string $storeName): string
+    {
+        $tokens = preg_split('/[^\p{L}\p{N}]+/u', $storeName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return array_find($tokens, static fn(string $token): bool => mb_strlen($token) >= 4)
+            ?? (mb_strlen($storeName) > 3 ? mb_substr($storeName, 0, 4) : '');
     }
 
     /**
@@ -182,13 +202,13 @@ class ReceiptMatcher
         }
 
         $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
-        $dateEnd      = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
-        $cashStart    = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
-        $totalAmount  = abs((float)$receipt['total']);
+        $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
+        $cashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
+        $totalAmount = abs((float)$receipt['total']);
 
         return [
             'giro' => $this->findGiroCandidates(-$totalAmount, $purchaseDate, $dateEnd, $cashStart),
-            'cc'   => $this->findCcCandidates($totalAmount, $purchaseDate, $dateEnd)
+            'cc' => $this->findCcCandidates($totalAmount, $cashStart, $dateEnd)
         ];
     }
 
@@ -206,7 +226,7 @@ class ReceiptMatcher
 
         foreach (array_values(self::CASH_TYPES) as $index => $cashType) {
             $selectPlaceholders[] = ':cash_type_sel_' . $index;
-            $wherePlaceholders[]  = ':cash_type_flt_' . $index;
+            $wherePlaceholders[] = ':cash_type_flt_' . $index;
             $cashParams[':cash_type_sel_' . $index] = $cashType;
             $cashParams[':cash_type_flt_' . $index] = $cashType;
         }
@@ -240,36 +260,36 @@ class ReceiptMatcher
         ");
 
         $stmt->execute($cashParams + [
-            ':amount'      => $expectedAmount,
-            ':date_start'  => $dateStart,
-            ':date_end'    => $dateEnd,
-            ':cash_amount' => $expectedAmount,
-            ':cash_min'    => $expectedAmount - self::CASH_TOLERANCE,
-            ':cash_start'  => $cashStart,
-            ':cash_end'    => $dateEnd
-        ]);
+                ':amount' => $expectedAmount,
+                ':date_start' => $dateStart,
+                ':date_end' => $dateEnd,
+                ':cash_amount' => $expectedAmount,
+                ':cash_min' => $expectedAmount - self::CASH_TOLERANCE,
+                ':cash_start' => $cashStart,
+                ':cash_end' => $dateEnd
+            ]);
 
         $candidates = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $counterparty = trim((string)($row['counterparty'] ?? ''));
-            $remittance   = trim((string)($row['remittance_info'] ?? ''));
-            $type         = trim((string)($row['type'] ?? ''));
+            $remittance = trim((string)($row['remittance_info'] ?? ''));
+            $type = trim((string)($row['type'] ?? ''));
 
             // Fällt kein Partnername an, dient der Verwendungszweck als Anzeigename.
             $displayName = $counterparty !== '' ? $counterparty : ($remittance !== '' ? $remittance : 'Unbekannte Buchung');
-            $infoParts   = array_filter([
+            $infoParts = array_filter([
                 $type !== '' && $type !== 'Unknown' ? $type : '',
                 $counterparty !== '' ? $remittance : ''
             ], static fn(string $part): bool => $part !== '');
 
             $candidates[] = [
-                'id'           => (int)$row['id'],
+                'id' => (int)$row['id'],
                 'booking_date' => (string)$row['booking_date'],
-                'amount'       => (float)$row['amount'],
+                'amount' => (float)$row['amount'],
                 'merchant_raw' => $displayName,
-                'info'         => implode(' · ', $infoParts),
+                'info' => implode(' · ', $infoParts),
                 'account_type' => 'giro',
-                'is_cash'      => (bool)$row['is_cash']
+                'is_cash' => (bool)$row['is_cash']
             ];
         }
 
@@ -295,7 +315,7 @@ class ReceiptMatcher
         ");
         $stmt->execute([
             ':date_start' => $dateStart,
-            ':date_end'   => $dateEnd,
+            ':date_end' => $dateEnd,
             ':amount_min' => max(0.0, $expectedAmount - self::CC_TOLERANCE),
             ':amount_max' => $expectedAmount + self::CC_TOLERANCE
         ]);
@@ -303,16 +323,16 @@ class ReceiptMatcher
         $candidates = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $merchant = trim((string)$row['merchant_name']);
-            $suffix   = trim((string)($row['card_number_suffix'] ?? ''));
+            $suffix = trim((string)($row['card_number_suffix'] ?? ''));
 
             $candidates[] = [
-                'id'           => (int)$row['id'],
+                'id' => (int)$row['id'],
                 'booking_date' => (string)$row['booking_date'],
-                'amount'       => (float)$row['amount'],
+                'amount' => (float)$row['amount'],
                 'merchant_raw' => $merchant !== '' ? $merchant : 'Unbekannte Buchung',
-                'info'         => $suffix !== '' ? 'Karte ' . $suffix : '',
+                'info' => $suffix !== '' ? 'Karte ' . $suffix : '',
                 'account_type' => 'cc',
-                'is_cash'      => false
+                'is_cash' => false
             ];
         }
 
@@ -380,25 +400,5 @@ class ReceiptMatcher
         // Verknüpfung in bank_transaction_tags herstellen (Ignore falls bereits verknüpft)
         $stmtLink = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
         $stmtLink->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
-    }
-
-    /**
-     * Ermittelt ein kurzes, aussagekräftiges Suchtoken aus dem Händlernamen
-     * (z. B. "REWE Markt GmbH" -> "REWE").
-     */
-    private function buildStoreToken(string $storeName): string
-    {
-        $tokens = preg_split('/[^\p{L}\p{N}]+/u', $storeName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-
-        return array_find($tokens, static fn(string $token): bool => mb_strlen($token) >= 4)
-            ?? (mb_strlen($storeName) > 3 ? mb_substr($storeName, 0, 4) : '');
-    }
-
-    /**
-     * Maskiert LIKE-Sonderzeichen, damit Händlernamen wörtlich gesucht werden.
-     */
-    private function escapeLike(string $value): string
-    {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
     }
 }
