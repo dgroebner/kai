@@ -9,10 +9,10 @@ use PDO;
 class ReceiptMatcher
 {
     /** Wie viele Tage nach dem Kauf eine Buchung noch als Zahlung gilt. */
-    private const BOOKING_DELAY_DAYS = 14;
+    private const BOOKING_DELAY_DAYS = 5;
 
     /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
-    private const CASH_LOOKBACK_DAYS = 14;
+    private const CASH_LOOKBACK_DAYS = 5;
 
     /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
     private const CREDITCARD_LOOKBACK_DAYS = 3;
