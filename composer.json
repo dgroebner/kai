@@ -14,7 +14,8 @@
     "ext-pdo_mysql": "*",
     "ext-curl": "*",
     "ext-mbstring": "*",
-    "ext-sodium": "*"
+    "ext-sodium": "*",
+    "smalot/pdfparser": "^2.12"
   },
   "autoload": {
     "psr-4": {

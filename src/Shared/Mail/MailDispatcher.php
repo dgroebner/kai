@@ -2,35 +2,34 @@
 
 namespace Kai\Tools\Shared\Mail;
 
-use Kai\Tools\Bank\CreditCardService;
-use Kai\Tools\Bank\BankGiroService;
-use Kai\Tools\Kassenbon\ReceiptAnalyzer;
-use Kai\Tools\Kassenbon\ReceiptRepository;
-use Kai\Tools\Kassenbon\ReceiptMatcher;
-use Kai\Tools\Shared\Db\Database;
-use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger;
 use Exception;
+use Kai\Tools\Bank\CreditCardService;
+use Kai\Tools\Kassenbon\ReceiptAnalyzer;
+use Kai\Tools\Kassenbon\ReceiptMatcher;
+use Kai\Tools\Kassenbon\ReceiptRepository;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\ActivityLogger;
+use Kai\Tools\Shared\Log\Logger;
+use Smalot\PdfParser\Parser;
+use Throwable;
 
 class MailDispatcher
 {
     private ImapClient $imapClient;
     private CreditCardService $creditCardService;
-    private BankGiroService $bankGiroService;
     private ReceiptAnalyzer $receiptAnalyzer;
     private ReceiptRepository $receiptRepository;
     private Logger $logger;
 
     public function __construct(
-        ImapClient $imapClient,
+        ImapClient        $imapClient,
         CreditCardService $creditCardService,
-        BankGiroService $bankGiroService, // <-- KORREKTER TYP-HINT
-        ReceiptAnalyzer $receiptAnalyzer,
+        ReceiptAnalyzer   $receiptAnalyzer,
         ReceiptRepository $receiptRepository
-    ) {
+    )
+    {
         $this->imapClient = $imapClient;
         $this->creditCardService = $creditCardService;
-        $this->bankGiroService = $bankGiroService; // <-- FEHLENDE ZUWEISUNG
         $this->receiptAnalyzer = $receiptAnalyzer;
         $this->receiptRepository = $receiptRepository;
         $this->logger = new Logger(14);
@@ -72,7 +71,7 @@ class MailDispatcher
                 // 1. KREDITKARTEN-PDF (Bank-Modul)
                 if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
                     $this->logger->info("MailDispatcher: Kreditkartenabrechnung erkannt ({$fileName}).");
-                    
+
                     $tmpFilePath = sys_get_temp_dir() . '/' . uniqid('visa_') . '.pdf';
                     file_put_contents($tmpFilePath, $content);
 
@@ -117,13 +116,13 @@ class MailDispatcher
                             unset($item);
 
                             $receiptId = $this->receiptRepository->saveReceipt($receiptData, $fileHash);
-							
-							$activityLogger = new ActivityLogger(Database::getInstance());
-							$activityLogger->logReceipt($receiptId, $receiptData['store']);
-							
-							$matcher = new ReceiptMatcher();
+
+                            $activityLogger = new ActivityLogger(Database::getInstance());
+                            $activityLogger->logReceipt($receiptId, $receiptData['store']);
+
+                            $matcher = new ReceiptMatcher();
                             $matcher->syncUnlinkedReceipts();
-				
+
                             $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
                         }
                     }
@@ -146,16 +145,41 @@ class MailDispatcher
             explode(',', (string)($_ENV['MAIL_BANK_KEYWORDS'] ?? ''))
         ));
 
+        // Wenn keine Keywords definiert sind, greft standardmäßig kein Match
         if (empty($keywords)) {
             return false;
         }
 
-        $lowerFilename = strtolower($filename);
-        $headerChunk = strtolower(substr($content, 0, 2048));
+        // PDF temporär speichern, um sie mit dem Parser zu lesen
+        $tmpPdf = sys_get_temp_dir() . '/' . uniqid('check_') . '.pdf';
+        file_put_contents($tmpPdf, $content);
 
-        return array_any(
-            $keywords,
-            static fn(string $keyword): bool => str_contains($lowerFilename, $keyword) || str_contains($headerChunk, $keyword)
-        );
+        try {
+            $parser = new Parser();
+            $pdf = $parser->parseFile($tmpPdf);
+
+            // Wir prüfen primär die erste Seite (Kopfbereich)
+            $pages = $pdf->getPages();
+            $text = !empty($pages) ? $pages[0]->getText() : $pdf->getText();
+            $lowerText = strtolower($text);
+
+            // Auch den Dateinamen einbeziehen, falls dort Keywords stehen
+            $lowerFilename = strtolower($filename);
+            $combinedSearchSpace = $lowerText . ' ' . $lowerFilename;
+
+            // Prüfen, ob ALLE Keywords im Text oder Dateinamen enthalten sind (AND-Verknüpfung)
+            // Sobald ein Keyword fehlt, ist es kein Treffer
+            return array_all($keywords, fn($kw) => str_contains($combinedSearchSpace, $kw));
+
+            // Alle Keywords wurden gefunden
+
+        } catch (Throwable $e) {
+            $this->logger->error("Fehler beim Parsen der PDF-Vorschau: " . $e->getMessage());
+            return false;
+        } finally {
+            if (file_exists($tmpPdf)) {
+                @unlink($tmpPdf);
+            }
+        }
     }
 }

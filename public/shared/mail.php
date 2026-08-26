@@ -1,6 +1,18 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Bank\AiTagClassifier;
+use Kai\Tools\Bank\BankAccountRepository;
+use Kai\Tools\Bank\BankTransactionRepository;
+use Kai\Tools\Bank\CreditCardService;
+use Kai\Tools\Bank\Parser\VisaPdfParser;
+use Kai\Tools\Kassenbon\ReceiptAnalyzer;
+use Kai\Tools\Kassenbon\ReceiptRepository;
+use Kai\Tools\Shared\AI\GeminiClient;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Mail\ImapClient;
+use Kai\Tools\Shared\Mail\MailDispatcher;
 use Kai\Tools\Shared\Security\Auth;
 
 Auth::requireCronToken('shared/mail.php');
@@ -30,20 +42,6 @@ if (function_exists('fastcgi_finish_request')) {
 // AB HIER LÄUFT DER PROZESS ASYNCHRON IM HINTERGRUND WEITER
 // -------------------------------------------------------------------------
 
-use Kai\Tools\Shared\Db\Database;
-use Kai\Tools\Shared\AI\GeminiClient;
-use Kai\Tools\Shared\Mail\ImapClient;
-use Kai\Tools\Shared\Mail\MailDispatcher;
-use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Bank\Parser\VisaPdfParser;
-use Kai\Tools\Bank\CreditCardService;
-use Kai\Tools\Bank\BankTransactionRepository;
-use Kai\Tools\Bank\BankAccountRepository;
-use Kai\Tools\Bank\AiTagClassifier;
-use Kai\Tools\Bank\BankGiroService;
-use Kai\Tools\Kassenbon\ReceiptAnalyzer;
-use Kai\Tools\Kassenbon\ReceiptRepository;
-
 $logger = new Logger(14);
 
 try {
@@ -59,14 +57,8 @@ try {
 
     // 2. Giro Bank Services (NEU)
     $bankRepo = new BankTransactionRepository();
-	$bankAccountRepo = new BankAccountRepository();
+    $bankAccountRepo = new BankAccountRepository();
     $aiClassifier = new AiTagClassifier($geminiClient);
-
-    $bankGiroService = new BankGiroService(
-        $bankRepo,
-		$bankAccountRepo,
-        $aiClassifier
-    );
 
     // 3. Kassenbon-Services
     $receiptAnalyzer = new ReceiptAnalyzer();
@@ -76,7 +68,6 @@ try {
     $dispatcher = new MailDispatcher(
         $imapClient,
         $creditCardService,
-        $bankGiroService, // <-- KORREKTES 3. ARGUMENT
         $receiptAnalyzer,
         $receiptRepository
     );
@@ -85,7 +76,7 @@ try {
 
     $logger->info("Cronjob (mail.php): MailDispatcher im Hintergrund erfolgreich beendet.");
 
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [
         'error' => $e->getMessage()
     ]);
