@@ -276,3 +276,16 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
 	`label` VARCHAR(100) NULL,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================================================
+-- DOMAIN: USER PROFILES & NOTIFICATIONS (Benutzer & Benachrichtigungen)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `user_profiles` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_email` VARCHAR(255) NOT NULL UNIQUE,
+    `notification_preferences` JSON DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_user_email` (`user_email`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

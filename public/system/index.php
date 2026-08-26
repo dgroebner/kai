@@ -5,42 +5,69 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\System\ActivityLogRepository;
 use Kai\Tools\System\SystemSettingsRepository;
+use Kai\Tools\System\UserProfileRepository;
 
 Auth::requirePage();
 
 $activityRepo = new ActivityLogRepository();
 $settingsRepo = new SystemSettingsRepository();
+$userProfileRepo = new UserProfileRepository();
 
+$currentUserEmail = $_SESSION['user_email'] ?? '';
 $tab = $_GET['tab'] ?? 'activity';
 $successMessage = null;
 $errorMessage = null;
 
-// Handle POST request for updating settings
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($tab === 'settings' || isset($_POST['settings']))) {
-    $tab = 'settings';
+// Handle POST request for updating settings or notification preferences
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Auth::isValidCsrfToken($_POST['csrf_token'] ?? null)) {
         http_response_code(403);
         $errorMessage = "Ungültiger CSRF-Token.";
     } else {
-        $settingsData = is_array($_POST['settings'] ?? null) ? $_POST['settings'] : [];
-        // Nur bereits existierende Schlüssel dürfen überschrieben werden,
-        // damit über den Formular-POST keine beliebigen Einträge angelegt werden.
-        $knownKeys = array_column($settingsRepo->getAll(), 'setting_key');
+        if ($tab === 'settings' || isset($_POST['settings'])) {
+            $tab = 'settings';
+            $settingsData = is_array($_POST['settings'] ?? null) ? $_POST['settings'] : [];
+            $knownKeys = array_column($settingsRepo->getAll(), 'setting_key');
 
-        try {
-            foreach ($settingsData as $key => $value) {
-                if (!in_array((string)$key, $knownKeys, true) || !is_scalar($value)) {
-                    continue;
+            try {
+                foreach ($settingsData as $key => $value) {
+                    if (!in_array((string)$key, $knownKeys, true) || !is_scalar($value)) {
+                        continue;
+                    }
+                    $settingsRepo->set((string)$key, trim((string)$value));
                 }
-                $settingsRepo->set((string)$key, trim((string)$value));
+                $successMessage = "Einstellungen erfolgreich gespeichert.";
+            } catch (Throwable $e) {
+                (new Logger())->error('system/index.php: Fehler beim Speichern der Einstellungen.', ['error' => $e->getMessage()]);
+                $errorMessage = "Fehler beim Speichern der Einstellungen.";
             }
-            $successMessage = "Einstellungen erfolgreich gespeichert.";
-        } catch (Throwable $e) {
-            (new Logger())->error('system/index.php: Fehler beim Speichern der Einstellungen.', ['error' => $e->getMessage()]);
-            $errorMessage = "Fehler beim Speichern der Einstellungen.";
+        } elseif ($tab === 'notifications' || isset($_POST['notifications'])) {
+            $tab = 'notifications';
+            $rawPreferences = $_POST['notifications'] ?? [];
+
+            // Erlaubte Keys aus dem ActivityLogger / Defaults
+            $currentPrefs = $userProfileRepo->getPreferences($currentUserEmail);
+            $updatedPrefs = [];
+
+            foreach ($currentPrefs as $key => $defaultValue) {
+                // Checkbox gesetzt -> true, ansonsten false
+                $updatedPrefs[$key] = isset($rawPreferences[$key]) && (string)$rawPreferences[$key] === '1';
+            }
+
+            try {
+                $userProfileRepo->updatePreferences($currentUserEmail, $updatedPrefs);
+                $successMessage = "Benachrichtigungseinstellungen erfolgreich gespeichert.";
+            } catch (Throwable $e) {
+                (new Logger())->error('system/index.php: Fehler beim Speichern der Benachrichtigungsprofile.', ['error' => $e->getMessage()]);
+                $errorMessage = "Fehler beim Speichern der Benachrichtigungen.";
+            }
         }
     }
 }
+
+// Daten für die jeweiligen Tabs laden
+$settings = $settingsRepo->getAll();
+$userPreferences = $userProfileRepo->getPreferences($currentUserEmail);
 
 // Paginierung für Aktivitäten konfigurieren
 $limit = 20;
@@ -55,13 +82,10 @@ if ($page > $totalPages) {
 $offset = ($page - 1) * $limit;
 $activities = $activityRepo->getLatestActivities($limit, $offset);
 
-// Einstellungen laden
-$settings = $settingsRepo->getAll();
-
 $csrfToken = Auth::csrfToken();
 
 /**
- * Mapping von Event-Typen zu Emojis
+ * Mapping von Event-Typen zu Emojis & Lesbaren Bezeichnungen
  */
 function getEventIcon(string $eventType): string
 {
@@ -73,6 +97,18 @@ function getEventIcon(string $eventType): string
         'creditcard_statement_created' => '💳',
         'battery_fully_charged' => '🔋',
         default => '📌',
+    };
+}
+
+function getEventLabel(string $eventType): string
+{
+    return match ($eventType) {
+        'receipt_created' => 'Neuer E-Bon erfasst',
+        'creditcard_statement_created' => 'Neue Kreditkartenabrechnung erfasst',
+        'bank_data_imported' => 'Neue Bankdaten importiert',
+        'pv_forecast_loaded' => 'Neue PV-Prognose geladen',
+        'car_telemetry_loaded' => 'Neue Fahrzeugdaten geladen',
+        default => ucfirst(str_replace('_', ' ', $eventType)),
     };
 }
 
@@ -97,6 +133,8 @@ function getEventIcon(string $eventType): string
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
         <a href="index.php?tab=activity" class="btn <?= $tab === 'activity' ? '' : 'btn-outline' ?>">📋
             Aktivitäts-Log</a>
+        <a href="index.php?tab=notifications" class="btn <?= $tab === 'notifications' ? '' : 'btn-outline' ?>">🔔
+            Benachrichtigungen</a>
         <a href="index.php?tab=settings" class="btn <?= $tab === 'settings' ? '' : 'btn-outline' ?>">🛠️
             System-Einstellungen</a>
     </div>
@@ -111,7 +149,54 @@ function getEventIcon(string $eventType): string
                  style="margin-bottom: 1rem;"><?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
-        <?php if ($tab === 'settings'): ?>
+        <?php if ($tab === 'notifications'): ?>
+            <!-- Tab: Benachrichtigungseinstellungen -->
+            <section class="card">
+                <h2>Benachrichtigungseinstellungen</h2>
+                <p class="text-muted" style="margin-bottom: 1.5rem;">Legen Sie fest, für welche Aktivitäts-Kategorien
+                    Sie Benachrichtigungen erhalten möchten.</p>
+
+                <form action="index.php?tab=notifications" method="POST">
+                    <input type="hidden" name="csrf_token"
+                           value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+
+                    <div class="table-responsive">
+                        <table class="data-table stack-table">
+                            <thead>
+                            <tr>
+                                <th>Kategorie / Event</th>
+                                <th style="width: 120px; text-align: center;">Aktiviert</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($userPreferences as $eventType => $isEnabled): ?>
+                                <tr>
+                                    <td data-label="Kategorie">
+                                        <span style="font-size: 1.2rem; margin-right: 0.5rem;"><?= getEventIcon($eventType) ?></span>
+                                        <strong><?= htmlspecialchars(getEventLabel($eventType), ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <br><small
+                                                class="text-muted"><?= htmlspecialchars($eventType, ENT_QUOTES, 'UTF-8') ?></small>
+                                    </td>
+                                    <td data-label="Aktiviert" style="text-align: center;">
+                                        <input type="checkbox"
+                                               name="notifications[<?= htmlspecialchars($eventType, ENT_QUOTES, 'UTF-8') ?>]"
+                                               value="1"
+                                                <?= $isEnabled ? 'checked' : '' ?>
+                                               style="transform: scale(1.3);">
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-save">💾 Benachrichtigungen speichern</button>
+                    </div>
+                </form>
+            </section>
+
+        <?php elseif ($tab === 'settings'): ?>
             <!-- Tab 2: System-Einstellungen -->
             <section class="card">
                 <h2>System-Einstellungen konfigurieren</h2>

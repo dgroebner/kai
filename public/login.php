@@ -3,6 +3,7 @@ require_once __DIR__ . '/../bootstrap.php';
 
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\System\UserProfileRepository;
 
 $logger = new Logger();
 $client = getGoogleClient();
@@ -47,14 +48,25 @@ if (isset($_GET['code'])) {
 
         // Autorisierung prüfen — Allowlist aus der Umgebung, normalisiert
         $allowedUsers = array_filter(array_map(
-            static fn($entry) => strtolower(trim($entry)),
-            explode(',', (string)($_ENV['ALLOWED_USERS'] ?? ''))
+                static fn($entry) => strtolower(trim($entry)),
+                explode(',', (string)($_ENV['ALLOWED_USERS'] ?? ''))
         ));
 
         if (in_array(strtolower($email), $allowedUsers, true)) {
             session_regenerate_id(true);
             $_SESSION['user_email'] = $email;
             $_SESSION['user_name'] = $name;
+
+            // --- BENUTZERPROFIL PRÜFEN / ANLEGEN ÜBER DOMÄNEN-REPOSITORY ---
+            try {
+                $profileRepo = new UserProfileRepository();
+                $profileRepo->ensureProfileExists($email);
+            } catch (Throwable $e) {
+                // Login nicht blockieren, aber Fehler ins System-Log schreiben
+                $logger->error('login.php: Fehler beim Auto-Provisioning des Benutzerprofils.', ['error' => $e->getMessage()]);
+            }
+            // -------------------------------------------------------------
+
             // Frischen CSRF-Token für die neue Session erzeugen
             unset($_SESSION['csrf_token']);
             Auth::csrfToken();
@@ -66,7 +78,7 @@ if (isset($_GET['code'])) {
         $logger->error('login.php: Zugriff für nicht autorisierte E-Mail-Adresse abgelehnt.');
         http_response_code(403);
         exit('Zugriff verweigert. E-Mail-Adresse nicht autorisiert.');
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $logger->error('login.php: Fehler beim OAuth-Callback.', ['error' => $e->getMessage()]);
         http_response_code(500);
         exit('Anmeldung fehlgeschlagen. Bitte erneut versuchen.');
@@ -94,14 +106,14 @@ $loginUrl = $client->createAuthUrl();
     <?php include __DIR__ . '/shared/head-pwa.php'; ?>
 </head>
 <body class="login-body">
-    <div class="card login-card">
-        <h2>Privates Tool-Set</h2>
-        <p>Bitte melde dich an, um fortzufahren.</p>
-        <a href="<?= htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn login-btn">Login mit Google</a>
-    </div>
-    <!-- Globaler App Footer -->
-    <footer class="app-footer">
-        <div>kai v<?= APP_VERSION ?></div>
-    </footer>
+<div class="card login-card">
+    <h2>Privates Tool-Set</h2>
+    <p>Bitte melde dich an, um fortzufahren.</p>
+    <a href="<?= htmlspecialchars($loginUrl, ENT_QUOTES, 'UTF-8') ?>" class="btn login-btn">Login mit Google</a>
+</div>
+<!-- Globaler App Footer -->
+<footer class="app-footer">
+    <div>kai v<?= APP_VERSION ?></div>
+</footer>
 </body>
 </html>
