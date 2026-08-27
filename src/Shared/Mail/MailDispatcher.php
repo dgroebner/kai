@@ -35,6 +35,9 @@ class MailDispatcher
         $this->logger = new Logger(14);
     }
 
+    /**
+     * @throws Exception
+     */
     public function dispatch(): void
     {
         $this->logger->info("MailDispatcher: Starte E-Mail-Prüfung...");
@@ -70,7 +73,7 @@ class MailDispatcher
 
                 // 1. KREDITKARTEN-PDF (Bank-Modul)
                 if ($extension === 'pdf' && $this->isCreditCardStatement($content, $fileName)) {
-                    $this->logger->info("MailDispatcher: Kreditkartenabrechnung erkannt ({$fileName}).");
+                    $this->logger->info("MailDispatcher: Kreditkartenabrechnung erkannt ($fileName).");
 
                     $tmpFilePath = sys_get_temp_dir() . '/' . uniqid('visa_') . '.pdf';
                     file_put_contents($tmpFilePath, $content);
@@ -91,14 +94,14 @@ class MailDispatcher
 
                 // 3. E-BONS & BELEGE (Kassenbon-Modul)
                 if (str_contains($mimeType, 'pdf') || str_contains($mimeType, 'image')) {
-                    $this->logger->info("MailDispatcher: E-Bon/Beleg erkannt ({$fileName}).");
+                    $this->logger->info("MailDispatcher: E-Bon/Beleg erkannt ($fileName).");
                     $base64Data = base64_encode($content);
 
                     if ($base64Data) {
                         $fileHash = hash('sha256', $base64Data);
 
                         if ($this->receiptRepository->receiptExists($fileHash)) {
-                            $this->logger->info("MailDispatcher: Bon-Hash {$fileHash} existiert bereits.");
+                            $this->logger->info("MailDispatcher: Bon-Hash $fileHash existiert bereits.");
                             continue;
                         }
 

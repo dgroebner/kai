@@ -2,19 +2,16 @@
 
 namespace Kai\Tools\Bank;
 
-use Kai\Tools\Shared\Log\Logger;
 use PDO;
 use Throwable;
 
 class ContractRuleMatcher
 {
     private PDO $pdo;
-    private Logger $logger;
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
-        $this->logger = new Logger();
     }
 
     /**
@@ -84,13 +81,8 @@ class ContractRuleMatcher
         }
 
         // 2. Prüfen ob einer der Beteiligten passt
-        foreach ($payees as $payee) {
-            if ($payee !== '' && $this->evaluateSinglePattern($type, $pattern, $payee)) {
-                return true;
-            }
-        }
+        return array_any($payees, fn($payee) => $payee !== '' && $this->evaluateSinglePattern($type, $pattern, $payee));
 
-        return false;
     }
 
     /**
@@ -102,19 +94,12 @@ class ContractRuleMatcher
             return false;
         }
 
-        switch ($type) {
-            case 'exact_match':
-                return strcasecmp(trim($pattern), trim($subject)) === 0;
-
-            case 'substring':
-                return mb_stripos($subject, $pattern) !== false;
-
-            case 'regex':
-                return $this->evalRegex($pattern, $subject);
-
-            default:
-                return false;
-        }
+        return match ($type) {
+            'exact_match' => strcasecmp(trim($pattern), trim($subject)) === 0,
+            'substring' => mb_stripos($subject, $pattern) !== false,
+            'regex' => $this->evalRegex($pattern, $subject),
+            default => false,
+        };
     }
 
     /**
@@ -130,7 +115,7 @@ class ContractRuleMatcher
                 return false;
             }
             return $result === 1;
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             return false;
         }
     }

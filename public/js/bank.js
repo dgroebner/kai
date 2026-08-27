@@ -1069,7 +1069,7 @@ function initCreditCardDetail(appEl) {
                 <span class="legend-value">${formattedAmt}</span>
             `;
 
-            // Klick auf Legendenzeile -> Tabelle nach Kategorie filtern
+            // Klick auf Legendenzeile → Tabelle nach Kategorie filtern
             row.addEventListener('click', () => {
                 const isAlreadyActive = row.classList.contains('active');
 

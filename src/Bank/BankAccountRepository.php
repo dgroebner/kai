@@ -1,19 +1,21 @@
 <?php
+
 namespace Kai\Tools\Bank;
 
-use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\TokenEncryptionService;
+use PDO;
 
 class BankAccountRepository
 {
-    private \PDO $pdo;
-	private Logger $logger;
+    private PDO $pdo;
+    private Logger $logger;
 
     public function __construct()
     {
         $this->pdo = Database::getInstance()->getConnection();
-		$this->logger = new Logger(14);
+        $this->logger = new Logger(14);
     }
 
     /**
@@ -26,7 +28,7 @@ class BankAccountRepository
             FROM bank_accounts 
             ORDER BY id ASC
         ");
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -41,7 +43,7 @@ class BankAccountRepository
             LIMIT 1
         ");
         $stmt->execute([':type' => $type]);
-        $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
         return $res ?: null;
     }
 
@@ -58,7 +60,7 @@ class BankAccountRepository
             LIMIT 1
         ");
         $stmt->execute([':iban' => $normalizedIban]);
-        $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
         return $res ?: null;
     }
 
@@ -77,26 +79,8 @@ class BankAccountRepository
 
         return $stmt->execute([
             ':api_credentials' => $encryptedBase64,
-            ':id'              => $accountId
+            ':id' => $accountId
         ]);
-    }
-
-    /**
-     * Lädt und entschlüsselt die OAuth-Tokens für ein bestimmtes Konto.
-     * Gibt das Token-Array zurück oder null, falls keine Tokens existieren 
-     * oder die Entschlüsselung fehlschlägt.
-     */
-    public function getApiTokens(int $accountId, TokenEncryptionService $encryptionService): ?array
-    {
-        $stmt = $this->pdo->prepare("SELECT api_credentials FROM bank_accounts WHERE id = :id");
-        $stmt->execute([':id' => $accountId]);
-        $encryptedBase64 = $stmt->fetchColumn();
-
-        if (empty($encryptedBase64)) {
-            return null;
-        }
-
-        return $encryptionService->decryptTokens($encryptedBase64);
     }
 
     /**
@@ -114,55 +98,74 @@ class BankAccountRepository
 
         return $stmt->execute([
             ':balance' => $balance,
-            ':id'      => $accountId
+            ':id' => $accountId
         ]);
     }
-	
-	/**
+
+    /**
      * Prüft, ob gültige und nicht abgelaufene Tokens für das Konto existieren.
      * Im Test-Szenario läuft ein Token nach 10 Minuten (600 Sekunden) ab.
      */
     public function areTokensValid(int $accountId, TokenEncryptionService $encryptionService): bool
     {
         $tokens = $this->getApiTokens($accountId, $encryptionService);
-        
+
         if (!$tokens || !isset($tokens['expires_in']) || !isset($tokens['created_at'])) {
             return false;
         }
 
         $expiresIn = (int)$tokens['expires_in'];
-		$createdAt = (int)$tokens['created_at'];
+        $createdAt = (int)$tokens['created_at'];
         $maxAge = 600; // Erlaubte Rest-Gültigkeit
-		
-		$expirationTime = $createdAt + $expiresIn;
-		$currentTime = time();
-		$remainingTime = $expirationTime - $currentTime;
-		
-		$this->logger->debug("BankAccountRepository.areTokensValid: Remaining time $remainingTime seconds.", ['remaining' => $remainingTime]);
+
+        $expirationTime = $createdAt + $expiresIn;
+        $currentTime = time();
+        $remainingTime = $expirationTime - $currentTime;
+
+        $this->logger->debug("BankAccountRepository.areTokensValid: Remaining time $remainingTime seconds.", ['remaining' => $remainingTime]);
 
         // Prüfen, ob das Zeitfenster überschritten wurde
         return $remainingTime > $maxAge;
     }
-	
-	/**
-	 * Liefert den Zeitpunkt der letzten Aktualisierung eines Kontos (updated_at)
-	 * als DATETIME-String oder null, falls noch nie aktualisiert wurde.
-	 */
-	public function getUpdatedAt(int $accountId): ?string
-	{
-		$stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = :id");
-		$stmt->execute([':id' => $accountId]);
-		$result = $stmt->fetchColumn();
 
-		return $result !== false && $result !== null ? (string)$result : null;
-	}
+    /**
+     * Lädt und entschlüsselt die OAuth-Tokens für ein bestimmtes Konto.
+     * Gibt das Token-Array zurück oder null, falls keine Tokens existieren
+     * oder die Entschlüsselung fehlschlägt.
+     */
+    public function getApiTokens(int $accountId, TokenEncryptionService $encryptionService): ?array
+    {
+        $stmt = $this->pdo->prepare("SELECT api_credentials FROM bank_accounts WHERE id = :id");
+        $stmt->execute([':id' => $accountId]);
+        $encryptedBase64 = $stmt->fetchColumn();
 
-	public function getLastSyncDate($accountId) {
-		$stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = ?");
-		$stmt->execute([$accountId]);
-		$result = $stmt->fetchColumn();
-		
-		// Falls noch nie synchronisiert, nimm ein Standarddatum oder null
-		return $result ? date('Y-m-d', strtotime($result)) : '2026-01-01';
-	}
+        if (empty($encryptedBase64)) {
+            return null;
+        }
+
+        return $encryptionService->decryptTokens($encryptedBase64);
+    }
+
+    /**
+     * Liefert den Zeitpunkt der letzten Aktualisierung eines Kontos (updated_at)
+     * als DATETIME-String oder null, falls noch nie aktualisiert wurde.
+     */
+    public function getUpdatedAt(int $accountId): ?string
+    {
+        $stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = :id");
+        $stmt->execute([':id' => $accountId]);
+        $result = $stmt->fetchColumn();
+
+        return $result !== false && $result !== null ? (string)$result : null;
+    }
+
+    public function getLastSyncDate($accountId): string
+    {
+        $stmt = $this->pdo->prepare("SELECT updated_at FROM bank_accounts WHERE id = ?");
+        $stmt->execute([$accountId]);
+        $result = $stmt->fetchColumn();
+
+        // Falls noch nie synchronisiert, nimm ein Standarddatum oder null
+        return $result ? date('Y-m-d', strtotime($result)) : '2026-01-01';
+    }
 }

@@ -39,7 +39,7 @@ if ($validationError !== null) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'message' => "Bad Request: Missing or invalid payload field: {$validationError}"
+        'message' => "Bad Request: Missing or invalid payload field: $validationError"
     ]);
     exit;
 }
@@ -47,7 +47,7 @@ if ($validationError !== null) {
 // 4. Speichern der Telemetriedaten
 try {
     $repo = new TelemetryRepository();
-    
+
     // Prüfen, ob SoC Telemetrie enthalten ist
     $hasTelemetry = (isset($data['battery']['soc']) && $data['battery']['soc'] > 0);
 
@@ -64,7 +64,7 @@ try {
         'success' => true,
         'message' => $hasTelemetry ? 'Telemetry log & state updated' : 'Keep-alive state updated'
     ]);
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     $logger->error("Car Telemetry API: Fehler beim Speichern der Telemetriedaten.", ['error' => $e->getMessage()]);
     http_response_code(500);
     echo json_encode([
@@ -77,7 +77,8 @@ try {
  * Validiert die Grundstruktur des empfangenen Telemetrie-Payloads.
  * Feldern in battery/status ist NULL nun gestattet (Partial Updates).
  */
-function validatePayload($data): ?string {
+function validatePayload($data): ?string
+{
     if (!is_array($data)) {
         return 'root';
     }
@@ -97,14 +98,14 @@ function validatePayload($data): ?string {
     // Validierung der Batterie-Werte (dürfen auch null sein)
     foreach (['soc', 'target_soc', 'charge_power_kw', 'max_temp_c', 'min_temp_c'] as $key) {
         if (array_key_exists($key, $data['battery']) && $data['battery'][$key] !== null && !is_numeric($data['battery'][$key])) {
-            return "battery.{$key}";
+            return "battery.$key";
         }
     }
 
     // Validierung der Status-Werte (dürfen auch null sein)
     foreach (['mileage_km', 'range_km', 'outdoor_temp_c'] as $key) {
         if (array_key_exists($key, $data['status']) && $data['status'][$key] !== null && !is_numeric($data['status'][$key])) {
-            return "status.{$key}";
+            return "status.$key";
         }
     }
 

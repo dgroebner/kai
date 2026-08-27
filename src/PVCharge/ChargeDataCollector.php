@@ -1,16 +1,20 @@
 <?php
+
 namespace Kai\Tools\PVCharge;
 
-use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Db\Database;
 use DateTime;
-use Exception;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\Logger;
+use PDO;
+use Throwable;
 
-class ChargeDataCollector {
+class ChargeDataCollector
+{
     private Logger $logger;
-    private \PDO $db;
+    private PDO $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->logger = new Logger();
         $this->db = Database::getInstance()->getConnection();
     }
@@ -21,22 +25,23 @@ class ChargeDataCollector {
      *
      * @return array Array of forecast data grouped by date
      */
-    public function getWeatherAndSolarForecast(): array {
+    public function getWeatherAndSolarForecast(): array
+    {
         $this->logger->info("ChargeDataCollector: Sammle PV- und Wetterprognose für die nächsten 4 Tage aus der Datenbank.");
-        
+
         $forecast = [];
         $currentDate = new DateTime();
-        
+
         for ($i = 0; $i < 4; $i++) {
             $dateStr = $currentDate->format('Y-m-d');
-            
+
             // Query database for daily total in Wh
             $wh = false;
             try {
                 $stmt = $this->db->prepare("SELECT watt_hours_day FROM pv_forecast_daily WHERE forecast_date = :date");
                 $stmt->execute([':date' => $dateStr]);
                 $wh = $stmt->fetchColumn();
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // If table doesn't exist yet or connection fails, we catch it and use fallback
                 $this->logger->error("ChargeDataCollector: Fehler beim Abruf von Tagesprognose für {$dateStr}: " . $e->getMessage());
             }
@@ -44,7 +49,7 @@ class ChargeDataCollector {
             // Convert Wh to kWh or use fallback
             if ($wh !== false && $wh !== null) {
                 $kwh = round((float)$wh / 1000.0, 2);
-                
+
                 // Estimate weather summary based on predicted yield of the 4.2 kWp plant
                 if ($kwh > 16.0) {
                     $summary = 'Sehr sonnig, hohe Ausbeute';
@@ -61,13 +66,13 @@ class ChargeDataCollector {
                 $kwh = $fallbackYields[$i] ?? 10.0;
                 $summary = 'Keine Live-Daten (Fallback)';
             }
-            
+
             $forecast[$dateStr] = [
                 'date' => $dateStr,
                 'predicted_pv_yield_kwh' => $kwh,
                 'weather_summary' => $summary
             ];
-            
+
             $currentDate->modify('+1 day');
         }
 
@@ -80,16 +85,17 @@ class ChargeDataCollector {
      *
      * @return array List of calendar events matching long-distance patterns
      */
-    public function getGoogleCalendarEvents(): array {
+    public function getGoogleCalendarEvents(): array
+    {
         $this->logger->info("ChargeDataCollector: Prüfe Google Calendar auf Langstrecken-Fahrten in den nächsten 7 Tagen.");
-        
+
         $events = [];
         $currentDate = new DateTime();
-        
+
         // Let's mock a long-distance trip on day 3
         $tripDate = clone $currentDate;
         $tripDate->modify('+3 days');
-        
+
         $events[] = [
             'summary' => 'Fahrt nach Hamburg (Familienbesuch)',
             'start_time' => $tripDate->format('Y-m-d') . ' 08:00:00',
@@ -120,17 +126,18 @@ class ChargeDataCollector {
      * @param float $weeklyBaseDemandKwh The standard target demand (defaults to 15 kWh)
      * @return array Structured array of charging status and remaining demand
      */
-    public function getCarChargingDemand(float $weeklyBaseDemandKwh = 15.0): array {
+    public function getCarChargingDemand(float $weeklyBaseDemandKwh = 15.0): array
+    {
         $this->logger->info("ChargeDataCollector: Berechne verbleibenden Ladebedarf des Fahrzeugs.");
 
         $batteryCapacity = 86.0; // 86 kWh Netto
-        
+
         // Mock current State of Charge (SoC) and weekly charging status
         $currentSocPercent = 40.0; // 40% battery remaining
         $alreadyChargedThisWeekKwh = 5.0; // 5 kWh already charged this week
 
         $currentEnergyKwh = ($currentSocPercent / 100.0) * $batteryCapacity;
-        
+
         // Remaining demand for the current week
         $remainingWeeklyBaseDemandKwh = max(0.0, $weeklyBaseDemandKwh - $alreadyChargedThisWeekKwh);
 

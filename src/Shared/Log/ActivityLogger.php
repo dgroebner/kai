@@ -21,7 +21,7 @@ class ActivityLogger
     public function logReceipt(int $receiptId, string $storeName = ''): void
     {
         $message = $storeName !== ''
-            ? "Neuer E-Bon erfasst ({$storeName})"
+            ? "Neuer E-Bon erfasst ($storeName)"
             : "Neuer E-Bon erfasst";
 
         $this->log(
@@ -62,55 +62,6 @@ class ActivityLogger
         $this->dispatchPushNotification($eventType, $message, $linkUrl);
     }
 
-    public function logCreditCardStatement(int $statementId, string $period = ''): void
-    {
-        $message = $period !== ''
-            ? "Neue Kreditkartenabrechnung erfasst ({$period})"
-            : "Neue Kreditkartenabrechnung erfasst";
-
-        $this->log(
-            'creditcard_statement_created',
-            $message,
-            "/bank/creditcard.php?id=" . $statementId,
-            $statementId
-        );
-    }
-
-    public function logBankDataImport(int $count = 0): void
-    {
-        $this->log(
-            'bank_data_imported',
-            "Neue Bankdaten erfasst ({$count} Transaktionen)",
-            "/bank/index.php"
-        );
-    }
-
-    public function logPvForecastLoaded(?string $date = null): void
-    {
-        $message = $date
-            ? "Neue PV-Prognose geladen ({$date})"
-            : "Neue PV-Prognose geladen";
-
-        $this->log(
-            'pv_forecast_loaded',
-            $message,
-            "/pvcharge/index.php"
-        );
-    }
-
-    public function logCarTelemetryLoaded(?string $carModel = null): void
-    {
-        $message = $carModel
-            ? "Neue Fahrzeugdaten geladen ({$carModel})"
-            : "Neue Fahrzeugdaten geladen";
-
-        $this->log(
-            'car_telemetry_loaded',
-            $message,
-            "/car/index.php"
-        );
-    }
-
     /**
      * Sendet eine Web-Push-Benachrichtigung an den aktuell eingeloggten Benutzer,
      * sofern er für diesen Event-Typ Push-Benachrichtigungen aktiviert hat.
@@ -134,15 +85,64 @@ class ActivityLogger
             $preferences = $profileRepo->getPreferences($userEmail);
 
             // Nur senden, wenn für diesen Event-Typ Push aktiviert
-            if (isset($preferences[$eventType]) && $preferences[$eventType] === false) {
+            if (isset($preferences[$eventType]) && !$preferences[$eventType]) {
                 return;
             }
 
             $url = !empty($linkUrl) ? (rtrim(APP_URL, '/') . $linkUrl) : APP_URL;
 
-            (new WebPushService())->sendToUser($userEmail, 'Kai – Neue Aktivität', $message, $url);
+            new WebPushService()->sendToUser($userEmail, 'Kai – Neue Aktivität', $message, $url);
         } catch (Exception $e) {
             $this->logger->error("ActivityLogger: Fehler beim Web-Push-Versand.", ['error' => $e->getMessage()]);
         }
+    }
+
+    public function logCreditCardStatement(int $statementId, string $period = ''): void
+    {
+        $message = $period !== ''
+            ? "Neue Kreditkartenabrechnung erfasst ($period)"
+            : "Neue Kreditkartenabrechnung erfasst";
+
+        $this->log(
+            'creditcard_statement_created',
+            $message,
+            "/bank/creditcard.php?id=" . $statementId,
+            $statementId
+        );
+    }
+
+    public function logBankDataImport(int $count = 0): void
+    {
+        $this->log(
+            'bank_data_imported',
+            "Neue Bankdaten erfasst ($count Transaktionen)",
+            "/bank/index.php"
+        );
+    }
+
+    public function logPvForecastLoaded(?string $date = null): void
+    {
+        $message = $date
+            ? "Neue PV-Prognose geladen ($date)"
+            : "Neue PV-Prognose geladen";
+
+        $this->log(
+            'pv_forecast_loaded',
+            $message,
+            "/pvcharge/index.php"
+        );
+    }
+
+    public function logCarTelemetryLoaded(?string $carModel = null): void
+    {
+        $message = $carModel
+            ? "Neue Fahrzeugdaten geladen ($carModel)"
+            : "Neue Fahrzeugdaten geladen";
+
+        $this->log(
+            'car_telemetry_loaded',
+            $message,
+            "/car/index.php"
+        );
     }
 }

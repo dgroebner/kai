@@ -24,7 +24,7 @@ class ActivityLogRepository
         try {
             $stmt = $dbCon->query("SELECT COUNT(*) FROM activity_log");
             return (int)$stmt->fetchColumn();
-        } catch (Exception $e) {
+        } catch (Exception) {
             return 0;
         }
     }
@@ -48,7 +48,7 @@ class ActivityLogRepository
             $stmt->execute();
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Exception $e) {
+        } catch (Exception) {
             return [];
         }
     }
@@ -71,7 +71,7 @@ class ActivityLogRepository
             $stmt->execute();
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Exception $e) {
+        } catch (Exception) {
             return [];
         }
     }

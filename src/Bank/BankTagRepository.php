@@ -15,7 +15,7 @@ class BankTagRepository
      * Tags, die nicht in die Zeitraum-Statistik einfließen sollen.
      * ID 17 = „Umbuchungen" (Übertrag zwischen eigenen Konten, kein echter Umsatz).
      */
-    private const STATISTICS_EXCLUDED_TAG_IDS = [17];
+    private const array STATISTICS_EXCLUDED_TAG_IDS = [17];
 
     private PDO $pdo;
 
@@ -86,6 +86,29 @@ class BankTagRepository
     }
 
     /**
+     * Ersetzt sämtliche Tags eines Umsatzes durch die übergebene Liste.
+     *
+     * @param int[] $tagIds
+     */
+    public function replaceTagsOfTransaction(int $transactionId, array $tagIds): void
+    {
+        $this->removeAllTagsFromTransaction($transactionId);
+
+        foreach ($tagIds as $tagId) {
+            $this->assignTagToTransaction($transactionId, $tagId);
+        }
+    }
+
+    /**
+     * Entfernt alle Tag-Zuweisungen eines Umsatzes.
+     */
+    public function removeAllTagsFromTransaction(int $transactionId): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM bank_transaction_tags WHERE transaction_id = :tx_id");
+        $stmt->execute([':tx_id' => $transactionId]);
+    }
+
+    /**
      * Verknüpft ein Tag mit einem Umsatz (doppelte Zuweisungen werden ignoriert).
      */
     public function assignTagToTransaction(int $transactionId, int $tagId): void
@@ -98,20 +121,6 @@ class BankTagRepository
     }
 
     /**
-     * Ersetzt sämtliche Tags eines Umsatzes durch die übergebene Liste.
-     *
-     * @param int[] $tagIds
-     */
-    public function replaceTagsOfTransaction(int $transactionId, array $tagIds): void
-    {
-        $this->removeAllTagsFromTransaction($transactionId);
-
-        foreach ($tagIds as $tagId) {
-            $this->assignTagToTransaction($transactionId, (int)$tagId);
-        }
-    }
-
-    /**
      * Entfernt eine einzelne Tag-Zuweisung von einem Umsatz.
      */
     public function removeTagFromTransaction(int $transactionId, int $tagId): void
@@ -121,15 +130,6 @@ class BankTagRepository
             WHERE transaction_id = :tx_id AND tag_id = :tag_id
         ");
         $stmt->execute([':tx_id' => $transactionId, ':tag_id' => $tagId]);
-    }
-
-    /**
-     * Entfernt alle Tag-Zuweisungen eines Umsatzes.
-     */
-    public function removeAllTagsFromTransaction(int $transactionId): void
-    {
-        $stmt = $this->pdo->prepare("DELETE FROM bank_transaction_tags WHERE transaction_id = :tx_id");
-        $stmt->execute([':tx_id' => $transactionId]);
     }
 
     /**

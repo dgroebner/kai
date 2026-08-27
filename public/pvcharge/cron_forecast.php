@@ -11,10 +11,10 @@ $logger = new Logger();
 
 try {
     $logger->info("Cronjob (SolarForecast): Starte Abruf der Solar-Prognose...");
-    
+
     $service = new SolarForecastService();
     $success = $service->fetchAndStoreForecast();
-    
+
     if ($success) {
         $logger->info("Cronjob (SolarForecast): Abruf erfolgreich abgeschlossen.");
         echo "OK - Solar-Prognose erfolgreich aktualisiert.";
@@ -23,11 +23,11 @@ try {
         http_response_code(500);
         echo "FEHLER - Abruf fehlgeschlagen.";
     }
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     $logger->error("Cronjob (SolarForecast): Kritischer Fehler beim Ausführen des Imports!", [
         'error' => $e->getMessage()
     ]);
-    
+
     http_response_code(500);
     echo "FEHLER - Details im Log.";
 }

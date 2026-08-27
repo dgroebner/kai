@@ -2,7 +2,9 @@
 
 namespace Kai\Tools\Shared\Security;
 
+use JetBrains\PhpStorm\NoReturn;
 use Kai\Tools\Shared\Log\Logger;
+use Random\RandomException;
 
 /**
  * Zentrale Zugriffskontrolle für alle Einstiegspunkte in public/.
@@ -12,8 +14,6 @@ use Kai\Tools\Shared\Log\Logger;
  */
 final class Auth
 {
-    /** Name des Request-Headers, über den AJAX-Aufrufe den CSRF-Token übermitteln. */
-    public const CSRF_HEADER = 'X-CSRF-Token';
 
     private function __construct()
     {
@@ -51,6 +51,7 @@ final class Auth
     /**
      * Beendet den Request mit einer generischen JSON-Fehlerantwort.
      */
+    #[NoReturn]
     public static function sendJsonError(int $status, string $message): void
     {
         if (!headers_sent()) {
@@ -74,6 +75,7 @@ final class Auth
 
     /**
      * Liefert den CSRF-Token der aktuellen Session und erzeugt ihn bei Bedarf.
+     * @throws RandomException
      */
     public static function csrfToken(): string
     {
@@ -106,7 +108,7 @@ final class Auth
         }
 
         if (!self::isValidCsrfToken(is_string($token) ? $token : null)) {
-            (new Logger())->error('Auth: CSRF-Prüfung fehlgeschlagen.', [
+            new Logger()->error('Auth: CSRF-Prüfung fehlgeschlagen.', [
                 'endpoint' => $_SERVER['SCRIPT_NAME'] ?? 'unbekannt',
             ]);
             self::sendJsonError(403, 'Ungültiger CSRF-Token');
@@ -133,7 +135,7 @@ final class Auth
     public static function requireCronToken(?string $context = null): void
     {
         if (!self::cronTokenMatches()) {
-            (new Logger())->error('Auth: Unbefugter Zugriff auf geschützten Endpunkt.', [
+            new Logger()->error('Auth: Unbefugter Zugriff auf geschützten Endpunkt.', [
                 'endpoint' => $context ?? ($_SERVER['SCRIPT_NAME'] ?? 'unbekannt'),
             ]);
             http_response_code(403);

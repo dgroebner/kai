@@ -43,8 +43,8 @@ if (isset($_GET['code'])) {
         $client->setAccessToken($token['access_token']);
         $googleOauth = new Google\Service\Oauth2($client);
         $accountInfo = $googleOauth->userinfo->get();
-        $email = (string)$accountInfo->email;
-        $name = (string)$accountInfo->name;
+        $email = $accountInfo->email;
+        $name = $accountInfo->name;
 
         // Autorisierung prüfen — Allowlist aus der Umgebung, normalisiert
         $allowedUsers = array_filter(array_map(

@@ -16,7 +16,7 @@ $offset = ($page - 1) * $limit;
 
 try {
     // Automatischen Abgleich für evtl. neu eingetroffene Abrechnungen ausführen
-    (new StatementMatcher())->syncUnlinkedStatements();
+    new StatementMatcher()->syncUnlinkedStatements();
 
     $creditCardRepository = new CreditCardRepository();
 
@@ -27,7 +27,7 @@ try {
     // Abrechnungen inklusive Abbuchungsstatus vom Girokonto laden
     $statements = $creditCardRepository->getStatements($limit, $offset);
 } catch (Throwable $e) {
-    (new Logger())->error('bank/creditcard.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    new Logger()->error('bank/creditcard.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);
     exit('Interner Fehler. Bitte versuche es später erneut.');
 }

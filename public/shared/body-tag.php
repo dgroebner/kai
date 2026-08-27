@@ -4,7 +4,7 @@ use Kai\Tools\System\ActivityLogRepository;
 
 $latestActivityId = 0;
 try {
-    $latestEntries = new ActivityLogRepository()->getLatestActivities(1, 0);
+    $latestEntries = new ActivityLogRepository()->getLatestActivities(1);
     if (!empty($latestEntries)) {
         $latestActivityId = (int)($latestEntries[0]['id'] ?? 0);
     }

@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\Shared\Push;
 
+use ErrorException;
 use Kai\Tools\Shared\Log\Logger;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -18,17 +19,21 @@ class WebPushService
     private PushSubscriptionRepository $subscriptionRepo;
     private Logger $logger;
 
+    /**
+     * @throws ErrorException
+     */
     public function __construct(
         ?PushSubscriptionRepository $subscriptionRepo = null,
-        ?Logger $logger = null
-    ) {
+        ?Logger                     $logger = null
+    )
+    {
         $this->subscriptionRepo = $subscriptionRepo ?? new PushSubscriptionRepository();
         $this->logger = $logger ?? new Logger();
 
         $auth = [
             'VAPID' => [
-                'subject'    => $_ENV['VAPID_SUBJECT'] ?? ('mailto:' . ($_ENV['ALLOWED_USERS'] ?? 'admin@localhost')),
-                'publicKey'  => $_ENV['VAPID_PUBLIC_KEY'] ?? '',
+                'subject' => $_ENV['VAPID_SUBJECT'] ?? ('mailto:' . ($_ENV['ALLOWED_USERS'] ?? 'admin@localhost')),
+                'publicKey' => $_ENV['VAPID_PUBLIC_KEY'] ?? '',
                 'privateKey' => $_ENV['VAPID_PRIVATE_KEY'] ?? '',
             ],
         ];
@@ -41,10 +46,10 @@ class WebPushService
     /**
      * Sendet eine Push-Benachrichtigung an alle Geräte eines Benutzers.
      *
-     * @param string      $userEmail Empfänger-E-Mail (muss push_subscriptions-Eintrag haben)
-     * @param string      $title     Benachrichtigungstitel
-     * @param string      $body      Benachrichtigungstext
-     * @param string|null $url       Optionaler Link, der beim Klick geöffnet wird
+     * @param string $userEmail Empfänger-E-Mail (muss push_subscriptions-Eintrag haben)
+     * @param string $title Benachrichtigungstitel
+     * @param string $body Benachrichtigungstext
+     * @param string|null $url Optionaler Link, der beim Klick geöffnet wird
      */
     public function sendToUser(string $userEmail, string $title, string $body, ?string $url = null): void
     {
@@ -60,10 +65,10 @@ class WebPushService
 
         $payload = json_encode([
             'title' => $title,
-            'body'  => $body,
-            'icon'  => '/android-chrome-192x192.png',
+            'body' => $body,
+            'icon' => '/android-chrome-192x192.png',
             'badge' => '/android-chrome-192x192.png',
-            'url'   => $url ?? '/',
+            'url' => $url ?? '/',
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
         $expiredEndpoints = [];
@@ -71,9 +76,9 @@ class WebPushService
         foreach ($subscriptions as $sub) {
             $subscription = Subscription::create([
                 'endpoint' => $sub['endpoint'],
-                'keys'     => [
+                'keys' => [
                     'p256dh' => $sub['p256dh'],
-                    'auth'   => $sub['auth'],
+                    'auth' => $sub['auth'],
                 ],
             ]);
 
@@ -90,9 +95,9 @@ class WebPushService
                     $expiredEndpoints[] = $endpoint;
                 } else {
                     $this->logger->warn('WebPushService: Push fehlgeschlagen.', [
-                        'endpoint'    => substr($endpoint, 0, 100),
+                        'endpoint' => substr($endpoint, 0, 100),
                         'status_code' => $statusCode,
-                        'reason'      => $report->getReason(),
+                        'reason' => $report->getReason(),
                     ]);
                 }
             }

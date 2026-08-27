@@ -1,113 +1,60 @@
 <?php
+
 namespace Kai\Tools\Car;
 
-use Kai\Tools\Shared\Db\Database;
-use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Log\ActivityLogger;
-use PDO;
-use Exception;
 use DateTime;
+use Exception;
+use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Log\ActivityLogger;
+use Kai\Tools\Shared\Log\Logger;
+use PDO;
 
-class TelemetryRepository {
-	private Database $db;
+class TelemetryRepository
+{
+    private Database $db;
     private PDO $dbCon;
     private Logger $logger;
 
-    public function __construct() {
-		$this->db = Database::getInstance();
+    public function __construct()
+    {
+        $this->db = Database::getInstance();
         $this->dbCon = $this->db->getConnection();
         $this->logger = new Logger(14);
     }
 
     /**
-     * Schätzt die Reichweite basierend auf historischen Daten.
-     * Berücksichtigt bevorzugt Datenpunkte in einem ähnlichen Temperaturbereich (±5°C).
+     * Speichert / aktualisiert den Live-Status in vehicle_state.
      */
-    private function calculateInterpolatedRange(string $vin, int $socPercent, ?float $outdoorTempC = null): int {
-        if ($socPercent <= 0) {
-            return 0;
-        }
-
+    public function saveState(array $data): bool
+    {
         try {
-            $avgFactor = null;
+            $vin = $data['vin'];
+            $capturedAtObj = new DateTime($data['captured_at']);
+            $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
-            // 1. Wenn eine Außentemperatur vorliegt, primär im Fenster ±5°C suchen
-            if ($outdoorTempC !== null) {
-                $stmtTemp = $this->dbCon->prepare("
-                    SELECT AVG(range_km / soc_percent) as avg_factor
-                    FROM vehicle_telemetry_log
-                    WHERE vin = :vin 
-                      AND range_km IS NOT NULL 
-                      AND range_km > 0 
-                      AND soc_percent > 0
-                      AND outdoor_temp_c BETWEEN :temp_min AND :temp_max
-                ");
-                $stmtTemp->execute([
-                    ':vin'      => $vin,
-                    ':temp_min' => $outdoorTempC - 5.0,
-                    ':temp_max' => $outdoorTempC + 5.0
-                ]);
-                $avgFactor = $stmtTemp->fetchColumn();
+            $socPercent = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
+            $targetSoc = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
+            $chargePowerKw = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
+            $batteryTempMax = isset($data['battery']['max_temp_c']) ? (float)$data['battery']['max_temp_c'] : null;
+            $batteryTempMin = isset($data['battery']['min_temp_c']) ? (float)$data['battery']['min_temp_c'] : null;
+            $estimatedFinishAt = $data['battery']['estimated_finish_at'] ?? null;
+
+            $chargingState = $data['status']['charging_state'] ?? null;
+            $plugConnected = isset($data['status']['plug_connected']) ? ($data['status']['plug_connected'] ? 1 : 0) : null;
+            $isLocked = isset($data['status']['is_locked']) ? ($data['status']['is_locked'] ? 1 : 0) : null;
+            $mileageKm = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
+            $outdoorTempC = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
+
+            // Reichweite ermitteln / interpolieren
+            $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
+                ? (int)$data['status']['range_km']
+                : null;
+
+            if ($rangeKm === null && $socPercent !== null) {
+                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
             }
 
-            // 2. Fallback: Wenn noch keine Logs im Temperaturbereich existieren, globalen Durchschnitt nehmen
-            if (!$avgFactor || $avgFactor <= 0) {
-                $stmtGlobal = $this->dbCon->prepare("
-                    SELECT AVG(range_km / soc_percent) as avg_factor
-                    FROM vehicle_telemetry_log
-                    WHERE vin = :vin 
-                      AND range_km IS NOT NULL 
-                      AND range_km > 0 
-                      AND soc_percent > 0
-                ");
-                $stmtGlobal->execute([':vin' => $vin]);
-                $avgFactor = $stmtGlobal->fetchColumn();
-            }
-
-            // 3. Fallback: Harter Standardwert (ca. 3.8 km / % SoC), falls die DB noch komplett leer ist
-            if (!$avgFactor || $avgFactor <= 0) {
-                $avgFactor = 3.8;
-            }
-
-            return (int)round($socPercent * $avgFactor);
-
-        } catch (Exception $e) {
-            return (int)round($socPercent * 3.8);
-        }
-    }
-
-	 /**
-		 * Speichert / aktualisiert den Live-Status in vehicle_state.
-		 */
-		public function saveState(array $data): bool {
-			try {
-				$vin = $data['vin'];
-				$capturedAtObj = new DateTime($data['captured_at']);
-				$carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
-
-				$socPercent        = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
-				$targetSoc         = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
-				$chargePowerKw     = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
-				$batteryTempMax    = isset($data['battery']['max_temp_c']) ? (float)$data['battery']['max_temp_c'] : null;
-				$batteryTempMin    = isset($data['battery']['min_temp_c']) ? (float)$data['battery']['min_temp_c'] : null;
-				$estimatedFinishAt = $data['battery']['estimated_finish_at'] ?? null;
-
-				$chargingState  = $data['status']['charging_state'] ?? null;
-				$plugConnected  = isset($data['status']['plug_connected']) ? ($data['status']['plug_connected'] ? 1 : 0) : null;
-				$isLocked       = isset($data['status']['is_locked']) ? ($data['status']['is_locked'] ? 1 : 0) : null;
-				$mileageKm      = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
-				$outdoorTempC   = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
-
-				// Reichweite ermitteln / interpolieren
-				$rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
-						   ? (int)$data['status']['range_km']
-						   : null;
-
-				if ($rangeKm === null && $socPercent !== null) {
-					$rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
-				}
-
-				$stmtState = $this->dbCon->prepare("
+            $stmtState = $this->dbCon->prepare("
 					INSERT INTO `vehicle_state` (
 						`vin`, 
 						`car_captured_at`, 
@@ -154,35 +101,94 @@ class TelemetryRepository {
 						`updated_at`          = CURRENT_TIMESTAMP
 				");
 
-				// Exakt 14 Parameter im Execute-Array (muss genau zu den 14 Named Parameters oben passen)
-				$stmtState->execute([
-					':vin'                 => $vin,
-					':car_captured_at'     => $carCapturedAt,
-					':soc_percent'         => $socPercent,
-					':target_soc'          => $targetSoc,
-					':charge_power_kw'     => $chargePowerKw,
-					':battery_temp_max'    => $batteryTempMax,
-					':battery_temp_min'    => $batteryTempMin,
-					':charging_state'      => $chargingState,
-					':plug_connected'      => $plugConnected,
-					':is_locked'           => $isLocked,
-					':mileage_km'          => $mileageKm,
-					':range_km'            => $rangeKm,
-					':outdoor_temp_c'      => $outdoorTempC,
-					':estimated_finish_at' => $estimatedFinishAt
-				]);
+            // Exakt 14 Parameter im Execute-Array (muss genau zu den 14 Named Parameters oben passen)
+            $stmtState->execute([
+                ':vin' => $vin,
+                ':car_captured_at' => $carCapturedAt,
+                ':soc_percent' => $socPercent,
+                ':target_soc' => $targetSoc,
+                ':charge_power_kw' => $chargePowerKw,
+                ':battery_temp_max' => $batteryTempMax,
+                ':battery_temp_min' => $batteryTempMin,
+                ':charging_state' => $chargingState,
+                ':plug_connected' => $plugConnected,
+                ':is_locked' => $isLocked,
+                ':mileage_km' => $mileageKm,
+                ':range_km' => $rangeKm,
+                ':outdoor_temp_c' => $outdoorTempC,
+                ':estimated_finish_at' => $estimatedFinishAt
+            ]);
 
-				return true;
-			} catch (Exception $e) {
-				$this->logger->error("TelemetryRepository: Fehler bei saveState.", ['error' => $e->getMessage()]);
-				throw $e;
-			}
-		}
+            return true;
+        } catch (Exception $e) {
+            $this->logger->error("TelemetryRepository: Fehler bei saveState.", ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Schätzt die Reichweite basierend auf historischen Daten.
+     * Berücksichtigt bevorzugt Datenpunkte in einem ähnlichen Temperaturbereich (±5°C).
+     */
+    private function calculateInterpolatedRange(string $vin, int $socPercent, ?float $outdoorTempC = null): int
+    {
+        if ($socPercent <= 0) {
+            return 0;
+        }
+
+        try {
+            $avgFactor = null;
+
+            // 1. Wenn eine Außentemperatur vorliegt, primär im Fenster ±5°C suchen
+            if ($outdoorTempC !== null) {
+                $stmtTemp = $this->dbCon->prepare("
+                    SELECT AVG(range_km / soc_percent) as avg_factor
+                    FROM vehicle_telemetry_log
+                    WHERE vin = :vin 
+                      AND range_km IS NOT NULL 
+                      AND range_km > 0 
+                      AND soc_percent > 0
+                      AND outdoor_temp_c BETWEEN :temp_min AND :temp_max
+                ");
+                $stmtTemp->execute([
+                    ':vin' => $vin,
+                    ':temp_min' => $outdoorTempC - 5.0,
+                    ':temp_max' => $outdoorTempC + 5.0
+                ]);
+                $avgFactor = $stmtTemp->fetchColumn();
+            }
+
+            // 2. Fallback: Wenn noch keine Logs im Temperaturbereich existieren, globalen Durchschnitt nehmen
+            if (!$avgFactor || $avgFactor <= 0) {
+                $stmtGlobal = $this->dbCon->prepare("
+                    SELECT AVG(range_km / soc_percent) as avg_factor
+                    FROM vehicle_telemetry_log
+                    WHERE vin = :vin 
+                      AND range_km IS NOT NULL 
+                      AND range_km > 0 
+                      AND soc_percent > 0
+                ");
+                $stmtGlobal->execute([':vin' => $vin]);
+                $avgFactor = $stmtGlobal->fetchColumn();
+            }
+
+            // 3. Fallback: Harter Standardwert (ca. 3.8 km / % SoC), falls die DB noch komplett leer ist
+            if (!$avgFactor || $avgFactor <= 0) {
+                $avgFactor = 3.8;
+            }
+
+            return (int)round($socPercent * $avgFactor);
+
+        } catch (Exception) {
+            return (int)round($socPercent * 3.8);
+        }
+    }
 
     /**
      * Schreibt einen Log-Eintrag in vehicle_telemetry_log.
      */
-    public function saveLog(array $data): bool {
+    public function saveLog(array $data): bool
+    {
         try {
             $vin = $data['vin'];
             $capturedAtObj = new DateTime($data['captured_at']);
@@ -196,27 +202,27 @@ class TelemetryRepository {
             $stmtCurrent->execute([':vin' => $vin]);
             $currentState = $stmtCurrent->fetch(PDO::FETCH_ASSOC) ?: [];
 
-            $socPercent    = (int)($data['battery']['soc'] ?? 0);
+            $socPercent = (int)($data['battery']['soc'] ?? 0);
             $chargePowerKw = (float)($data['battery']['charge_power_kw'] ?? 0.0);
-            
-            $mileageKm     = isset($data['status']['mileage_km']) && $data['status']['mileage_km'] !== null
-                             ? (int)$data['status']['mileage_km']
-                             : (int)($currentState['mileage_km'] ?? 0);
 
-			// Reichweite bestimmen / interpolieren
+            $mileageKm = isset($data['status']['mileage_km'])
+                ? (int)$data['status']['mileage_km']
+                : (int)($currentState['mileage_km'] ?? 0);
+
+            // Reichweite bestimmen / interpolieren
             $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
-                       ? (int)$data['status']['range_km']
-                       : null;
+                ? (int)$data['status']['range_km']
+                : null;
 
             if ($rangeKm === null || $rangeKm === 0) {
                 $rangeKm = (int)($currentState['range_km'] ?? 0);
             }
 
-            $outdoorTempC  = isset($data['status']['outdoor_temp_c']) && $data['status']['outdoor_temp_c'] !== null
-                             ? (float)$data['status']['outdoor_temp_c']
-                             : (float)($currentState['outdoor_temp_c'] ?? 0.0);
+            $outdoorTempC = isset($data['status']['outdoor_temp_c'])
+                ? (float)$data['status']['outdoor_temp_c']
+                : (float)($currentState['outdoor_temp_c'] ?? 0.0);
 
-            $rawPayload    = json_encode($data);
+            $rawPayload = json_encode($data);
 
             $stmtLog = $this->dbCon->prepare("
                 INSERT INTO `vehicle_telemetry_log` (
@@ -246,22 +252,22 @@ class TelemetryRepository {
             ");
 
             $stmtLog->execute([
-                ':vin'             => $vin,
+                ':vin' => $vin,
                 ':car_captured_at' => $carCapturedAt,
-                ':soc_percent'     => $socPercent,
+                ':soc_percent' => $socPercent,
                 ':charge_power_kw' => $chargePowerKw,
-                ':range_km'        => $rangeKm,
-                ':mileage_km'      => $mileageKm,
-                ':outdoor_temp_c'  => $outdoorTempC,
-                ':raw_payload'     => $rawPayload
+                ':range_km' => $rangeKm,
+                ':mileage_km' => $mileageKm,
+                ':outdoor_temp_c' => $outdoorTempC,
+                ':raw_payload' => $rawPayload
             ]);
-			
-			$affectedRows = $stmtLog->rowCount();
-			if ($affectedRows === 1) {
-				$capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
-		        $activityLogger = new ActivityLogger($this->db);
-		        $activityLogger->logCarTelemetryLoaded("ID.Buzz Stand: {$capturedAt} Uhr");
-			}
+
+            $affectedRows = $stmtLog->rowCount();
+            if ($affectedRows === 1) {
+                $capturedAt = date('d.m.Y H:i', strtotime($data['captured_at']));
+                $activityLogger = new ActivityLogger($this->db);
+                $activityLogger->logCarTelemetryLoaded("ID.Buzz Stand: $capturedAt Uhr");
+            }
 
             return true;
         } catch (Exception $e) {

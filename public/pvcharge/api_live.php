@@ -12,7 +12,7 @@ Auth::requireApi();
 
 try {
     // Neueste Live-Daten abrufen
-    $liveData = (new PvTelemetryRepository())->getLatestLiveData();
+    $liveData = new PvTelemetryRepository()->getLatestLiveData();
 
     if ($liveData === []) {
         echo json_encode(['success' => false, 'error' => 'Keine Live-Daten gefunden']);
@@ -31,6 +31,6 @@ try {
         ]
     ]);
 } catch (Throwable $e) {
-    (new Logger())->error('pvcharge/api_live.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    new Logger()->error('pvcharge/api_live.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     Auth::sendJsonError(500, 'Interner Fehler');
 }

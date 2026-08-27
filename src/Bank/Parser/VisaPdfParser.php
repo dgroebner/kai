@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\Bank\Parser;
 
+use Exception;
 use Kai\Tools\Shared\AI\GeminiClient;
 use RuntimeException;
 
@@ -15,18 +16,17 @@ class VisaPdfParser
     }
 
     /**
-     * @param string $pdfFilePath
-     * @param array $availableCategories Optional: Array von Kategorienamen aus deiner DB
+     * @throws Exception
      */
     public function parsePdf(string $pdfFilePath, array $availableCategories = []): array
     {
         if (!file_exists($pdfFilePath)) {
-            throw new RuntimeException("PDF-Datei nicht gefunden: {$pdfFilePath}");
+            throw new RuntimeException("PDF-Datei nicht gefunden: $pdfFilePath");
         }
 
         $fileBytes = file_get_contents($pdfFilePath);
         if ($fileBytes === false) {
-            throw new RuntimeException("Konnte PDF-Datei nicht lesen: {$pdfFilePath}");
+            throw new RuntimeException("Konnte PDF-Datei nicht lesen: $pdfFilePath");
         }
         $base64Data = base64_encode($fileBytes);
 
@@ -52,10 +52,9 @@ class VisaPdfParser
 
     private function getSystemPrompt(array $categories = []): string
     {
-        $categoryInstruction = "";
         if (!empty($categories)) {
             $catList = implode(', ', $categories);
-            $categoryInstruction = "- category: Ordne dem Händler die am besten passende Kategorie zu. Nutze AUSSCHLIESSLICH eine dieser vorgegebenen Kategorien: [{$catList}].";
+            $categoryInstruction = "- category: Ordne dem Händler die am besten passende Kategorie zu. Nutze AUSSCHLIESSLICH eine dieser vorgegebenen Kategorien: [$catList].";
         } else {
             $categoryInstruction = "- category: Ordne dem Händler eine allgemeine, passende Kategorie zu (z.B. Supermarkt, Tankstelle, Gastronomie, Online-Shopping, Drogerie, Unterhaltung).";
         }

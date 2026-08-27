@@ -31,9 +31,9 @@ try {
     $items = $receiptQueryRepository->getItemsForReceipt($id);
 
     // Bereits vergebene Kategorien für das Inline-Dropdown
-    $allCategories = (new ReceiptRepository())->getKnownCategories();
+    $allCategories = new ReceiptRepository()->getKnownCategories();
 } catch (Throwable $e) {
-    (new Logger())->error('kassenbon/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    new Logger()->error('kassenbon/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);
     exit('Interner Fehler. Bitte versuche es später erneut.');
 }

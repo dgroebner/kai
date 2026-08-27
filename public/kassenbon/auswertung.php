@@ -92,7 +92,7 @@ $analysis = [];
 $categoryColorMap = [];
 
 try {
-    $items = (new ReceiptQueryRepository())->getItemsForPeriod($startDate, $endDate);
+    $items = new ReceiptQueryRepository()->getItemsForPeriod($startDate, $endDate);
 
     $analysis = $categoryAnalyzer->analyze($items);
 

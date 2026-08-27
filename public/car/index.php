@@ -28,7 +28,7 @@ function formatToLocalTime(?string $utcTimeString, string $format = 'd.m.Y H:i')
         $dt = new DateTime($utcTimeString, new DateTimeZone('UTC'));
         $dt->setTimezone(new DateTimeZone('Europe/Berlin'));
         return $dt->format($format);
-    } catch (Exception $e) {
+    } catch (Exception) {
         return $utcTimeString;
     }
 }
@@ -365,7 +365,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
                             $soc = (int)$row['soc_percent'];
                             $y = round($padT + $chartH * (1 - $soc / 100), 1);
 
-                            $points[] = "{$x},{$y}";
+                            $points[] = "$x,$y";
                             $timeFormatted = formatToLocalTime($row['car_captured_at'], 'd.m. H:i');
                             $dataNodes[] = [
                                     'x' => $x, 'y' => $y,
@@ -420,7 +420,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
                         </svg>
 
                         <div class="chart-axis-labels"
-                             style="--chart-pad-left: <?= (int)$padL ?>px; --chart-pad-right: <?= (int)$padR ?>px;">
+                             style="--chart-pad-left: <?= $padL ?>px; --chart-pad-right: <?= $padR ?>px;">
                             <span><?= $firstTs ?> Uhr</span>
                             <span><?= $count ?> Datenpunkte</span>
                             <span><?= $lastTs ?> Uhr</span>
@@ -478,10 +478,10 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
                             $x = ($countEff > 1) ? round($padL + ($i / ($countEff - 1)) * $chartW, 1) : $padL + ($chartW / 2);
 
                             $yEff = round($padT + $chartH * (1 - ($d['km_per_percent'] - $minEff) / $rangeEff), 1);
-                            $pointsEff[] = "{$x},{$yEff}";
+                            $pointsEff[] = "$x,$yEff";
 
                             $yTemp = round($padT + $chartH * (1 - ($d['temp'] - $minTemp) / $rangeTemp), 1);
-                            $pointsTemp[] = "{$x},{$yTemp}";
+                            $pointsTemp[] = "$x,$yTemp";
 
                             $nodesEff[] = [
                                     'x' => $x, 'yEff' => $yEff, 'yTemp' => $yTemp,
@@ -510,7 +510,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
                                   font-weight="600"><?= round($minTemp) ?>°C
                             </text>
 
-                            <!-- Temperatur Linie (Orange gestrichelt) -->
+                            <!-- Temperatur-Linie (Orange gestrichelt) -->
                             <polyline points="<?= implode(' ', $pointsTemp) ?>" fill="none" stroke="#f59e0b"
                                       stroke-width="2" stroke-dasharray="4"/>
                             <!-- Effizienz Linie (Grün durchgezogen) -->

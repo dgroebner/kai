@@ -37,7 +37,7 @@ try {
     unset($receipt);
 
 } catch (Throwable $e) {
-    (new Logger())->error('kassenbon/index.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    new Logger()->error('kassenbon/index.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);
     exit('Interner Fehler. Bitte versuche es später erneut.');
 }

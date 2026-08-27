@@ -35,7 +35,7 @@ $repo = new PushSubscriptionRepository();
 try {
     if ($action === 'subscribe') {
         $p256dh = trim((string)($input['p256dh'] ?? ''));
-        $auth   = trim((string)($input['auth'] ?? ''));
+        $auth = trim((string)($input['auth'] ?? ''));
 
         if (empty($p256dh) || empty($auth)) {
             Auth::sendJsonError(400, 'Fehlende Schlüssel (p256dh / auth).');
@@ -51,6 +51,6 @@ try {
         echo json_encode(['success' => true, 'message' => 'Subscription entfernt.']);
     }
 } catch (Throwable $e) {
-    (new Logger())->error('push_subscribe.php: Fehler.', ['error' => $e->getMessage()]);
+    new Logger()->error('push_subscribe.php: Fehler.', ['error' => $e->getMessage()]);
     Auth::sendJsonError(500, 'Interner Fehler.');
 }

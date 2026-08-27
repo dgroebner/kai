@@ -1,9 +1,9 @@
 // public/js/push.js
-// Web-Push-Subscription-Verwaltung fuer die kai PWA
+// Web-Push-Subscription-Verwaltung für die kai PWA
 // Voraussetzung: http.js muss vor diesem Skript geladen sein (KaiHttp)
 
 /**
- * Konvertiert einen Base64url-String in ein Uint8Array (benoetigt fuer applicationServerKey).
+ * Konvertiert einen Base64url-String in ein Uint8Array (benötigt für applicationServerKey).
  * @param {string} base64String
  * @returns {Uint8Array}
  */
@@ -15,7 +15,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 /**
- * Gibt den VAPID Public Key vom Server zurueck.
+ * Gibt den VAPID Public Key vom Server zurück.
  * @returns {Promise<string|null>}
  */
 async function fetchVapidPublicKey() {
@@ -52,12 +52,12 @@ async function sendSubscriptionToServer(action, subscription) {
 }
 
 /**
- * Aktiviert Web-Push fuer diesen Browser und speichert die Subscription auf dem Server.
+ * Aktiviert Web-Push für diesen Browser und speichert die Subscription auf dem Server.
  * @returns {Promise<boolean>} true bei Erfolg
  */
 async function subscribeToPush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('push.js: Web Push wird von diesem Browser nicht unterstuetzt.');
+        console.warn('push.js: Web Push wird von diesem Browser nicht unterstützt.');
         return false;
     }
 
@@ -70,7 +70,7 @@ async function subscribeToPush() {
 
     const vapidPublicKey = await fetchVapidPublicKey();
     if (!vapidPublicKey) {
-        console.warn('push.js: VAPID Public Key nicht verfuegbar.');
+        console.warn('push.js: VAPID Public Key nicht verfügbar.');
         return false;
     }
 
@@ -88,7 +88,7 @@ async function subscribeToPush() {
 }
 
 /**
- * Deaktiviert Web-Push fuer diesen Browser und entfernt die Subscription vom Server.
+ * Deaktiviert Web-Push für diesen Browser und entfernt die Subscription vom Server.
  * @returns {Promise<boolean>} true bei Erfolg
  */
 async function unsubscribeFromPush() {
@@ -111,7 +111,7 @@ async function unsubscribeFromPush() {
 }
 
 /**
- * Prueft, ob dieser Browser aktuell eine aktive Push-Subscription hat.
+ * Prüft, ob dieser Browser aktuell eine aktive Push-Subscription hat.
  * @returns {Promise<boolean>}
  */
 async function isPushSubscribed() {
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!toggleBtn) return;
 
-    // Push-faehigkeit pruefen
+    // Push-Fähigkeit prüfen
     const pushSupported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
 
     if (!pushSupported) {
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Initalen Zustand setzen
+    // Initialen Zustand setzen
     async function updateButtonState() {
         const subscribed = await isPushSubscribed();
         const permissionDenied = Notification.permission === 'denied';

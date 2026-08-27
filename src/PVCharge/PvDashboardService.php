@@ -15,7 +15,7 @@ class PvDashboardService
      * die Summe von Watt-Messpunkten wird deshalb durch 12 (Messungen pro Stunde)
      * und 1000 (Wh -> kWh) geteilt.
      */
-    private const WATT_SUM_TO_KWH_DIVISOR = 12000;
+    private const int WATT_SUM_TO_KWH_DIVISOR = 12000;
 
     private PvTelemetryRepository $telemetryRepository;
     private SystemSettingsService $settingsService;
@@ -23,7 +23,8 @@ class PvDashboardService
     public function __construct(
         ?PvTelemetryRepository $telemetryRepository = null,
         ?SystemSettingsService $settingsService = null
-    ) {
+    )
+    {
         $this->telemetryRepository = $telemetryRepository ?? new PvTelemetryRepository();
         $this->settingsService = $settingsService ?? new SystemSettingsService();
     }
@@ -49,12 +50,12 @@ class PvDashboardService
         return [
             'live' => $liveData,
             'kpis' => [
-                'yieldDailyKwh'     => $yieldDailyKwh,
-                'yieldRevenue'      => $yieldDailyKwh * $importPrice,
-                'todayPeakW'        => $this->telemetryRepository->getTodayPeakPowerW(),
-                'gridImportKwh'     => $gridImportKwh,
-                'gridImportCost'    => $gridImportKwh * $importPrice,
-                'gridExportKwh'     => $gridExportKwh,
+                'yieldDailyKwh' => $yieldDailyKwh,
+                'yieldRevenue' => $yieldDailyKwh * $importPrice,
+                'todayPeakW' => $this->telemetryRepository->getTodayPeakPowerW(),
+                'gridImportKwh' => $gridImportKwh,
+                'gridImportCost' => $gridImportKwh * $importPrice,
+                'gridExportKwh' => $gridExportKwh,
                 'gridExportRevenue' => $gridExportKwh * $exportPrice,
             ],
         ];

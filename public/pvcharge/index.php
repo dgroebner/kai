@@ -120,7 +120,7 @@ foreach ($chartRows as $r) {
     $chartHouse[] = (float)$r['house_load_w'];
 
     $grid = (float)$r['grid_total_w'];
-    $chartGridImport[] = $grid > 0 ? $grid : 0;
+    $chartGridImport[] = max($grid, 0);
     $chartGridExport[] = $grid < 0 ? abs($grid) : 0;
 
     $chartSoc[] = (int)$r['battery_soc_pct'];
@@ -415,7 +415,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                                 $weekday = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][(int)$dateObj->format('w')];
 
                                 $realKwh = '';
-                                if (isset($day['real_watt_hours_day']) && $day['real_watt_hours_day'] !== null) {
+                                if (isset($day['real_watt_hours_day'])) {
                                     $realKwh = number_format($day['real_watt_hours_day'] / 1000, 2, ',', '');
                                 }
                                 ?>

@@ -1,5 +1,5 @@
 ﻿// public/js/pwa-register.js
-// Registriert den Service Worker fuer die kai PWA
+// Registriert den Service Worker für die kai PWA
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

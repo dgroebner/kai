@@ -1,10 +1,10 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\Log\Logger;
-use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Kassenbon\ReceiptMatcher;
 use Kai\Tools\Kassenbon\ReceiptRepository;
+use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -77,7 +77,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter');
         }
 
-        (new ReceiptRepository())->updateItemCategory($itemId, $categoryName);
+        new ReceiptRepository()->updateItemCategory($itemId, $categoryName);
 
         echo json_encode(['success' => true]);
         exit;
@@ -85,8 +85,8 @@ try {
 
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
-} catch (\Throwable $e) {
-    (new Logger())->error('kassenbon/api.php: Fehler bei Ausführung.', [
+} catch (Throwable $e) {
+    new Logger()->error('kassenbon/api.php: Fehler bei Ausführung.', [
         'error' => $e->getMessage(),
     ]);
     Auth::sendJsonError(500, 'Interner Fehler');

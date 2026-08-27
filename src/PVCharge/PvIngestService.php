@@ -14,7 +14,7 @@ class PvIngestService
      * Spaltennamen können nicht als Prepared-Statement-Parameter gebunden werden,
      * deshalb ist die Allowlist die einzige zulässige Absicherung gegen SQL-Injection.
      */
-    private const ALLOWED_COLUMNS = [
+    private const array ALLOWED_COLUMNS = [
         'last_update',
         'system_flag',
         'comm_status',
@@ -50,6 +50,43 @@ class PvIngestService
         $this->logger = new Logger();
     }
 
+    /**
+     * @param array $columns
+     * @param array $values
+     * @return void
+     */
+    public function insertTelemetryData(array $columns, array $values): void
+    {
+        [$columns, $values] = $this->filterAllowedColumns($columns, $values);
+
+        if ($columns === []) {
+            $this->logger->warn('PvIngestService: Telemetrie-Payload ohne gültige Spalten verworfen.');
+            return;
+        }
+
+        // --- Messfehler-Prüfung: Hauslast < 10 W ignorieren ---
+        $houseIndex = array_search('house_load_w', $columns, true);
+        if ($houseIndex !== false) {
+            $houseLoad = (float)$values[$houseIndex];
+            if ($houseLoad < 10) {
+                $this->logger->warn("PvIngestService: Telemetrie-Messfehler ignoriert (Hauslast zu gering: $houseLoad W).");
+                return;
+            }
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+        $colNames = implode(', ', $columns);
+
+        $sql = "INSERT INTO pv_telemetry ($colNames) VALUES ($placeholders)";
+        $stmt = $this->dbCon->prepare($sql);
+        $stmt->execute($values);
+
+        // --- Prüfung auf 100% Batterieladung ---
+        $this->checkBatteryFullyCharged($columns, $values);
+
+        // --- Automatisches Setzen des finalen Tagesertrags ab 22:30 Uhr ---
+        $this->checkAndFinalizeDailyYield();
+    }
 
     /**
      * Filtert die übergebenen Spalten/Werte gegen die Allowlist.
@@ -79,44 +116,6 @@ class PvIngestService
         }
 
         return [$safeColumns, $safeValues];
-    }
-
-    /**
-     * @param array $columns
-     * @param array $values
-     * @return void
-     */
-    public function insertTelemetryData(array $columns, array $values): void
-    {
-        [$columns, $values] = $this->filterAllowedColumns($columns, $values);
-
-        if ($columns === []) {
-            $this->logger->warn('PvIngestService: Telemetrie-Payload ohne gültige Spalten verworfen.');
-            return;
-        }
-
-        // --- Messfehler-Prüfung: Hauslast < 10 W ignorieren ---
-        $houseIndex = array_search('house_load_w', $columns, true);
-        if ($houseIndex !== false) {
-            $houseLoad = (float)$values[$houseIndex];
-            if ($houseLoad < 10) {
-                $this->logger->warn("PvIngestService: Telemetrie-Messfehler ignoriert (Hauslast zu gering: {$houseLoad} W).");
-                return;
-            }
-        }
-
-        $placeholders = implode(', ', array_fill(0, count($columns), '?'));
-        $colNames = implode(', ', $columns);
-
-        $sql = "INSERT INTO pv_telemetry ($colNames) VALUES ($placeholders)";
-        $stmt = $this->dbCon->prepare($sql);
-        $stmt->execute($values);
-
-        // --- Prüfung auf 100% Batterieladung ---
-        $this->checkBatteryFullyCharged($columns, $values);
-
-        // --- Automatisches Setzen des finalen Tagesertrags ab 22:30 Uhr ---
-        $this->checkAndFinalizeDailyYield();
     }
 
     private function checkBatteryFullyCharged(array $columns, array $values): void

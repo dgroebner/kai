@@ -37,6 +37,7 @@ class BankGiroService
      *
      * @param array $apiTokens Die aktuellen OAuth-Tokens
      * @return array Sync-Statistik
+     * @throws Exception
      */
     public function syncWithComdirectApi(array $apiTokens): array
     {
@@ -58,8 +59,6 @@ class BankGiroService
                 $this->logger->info("BankGiroService: Keine Kontodaten von comdirect empfangen.");
                 return $stats;
             }
-
-            $importedTransactions = [];
 
             foreach ($apiAccounts as $item) {
                 $apiAcc = $item['account'] ?? [];
@@ -119,11 +118,6 @@ class BankGiroService
                     if (empty($reference)) {
                         continue;
                     }
-
-                    // Partner-Namen ermitteln (Remitter oder Creditor)
-                    $partnerName = $apiTx['remitter']['holderName']
-                        ?? $apiTx['creditor']['holderName']
-                        ?? '';
 
                     // Rohen Verwendungszweck aus den API-Daten holen (prüfe das genaue Feld in deiner API-Antwort, z.B. remittanceInfo oder text)
                     $rawRemittance = $apiTx['remittanceInfo'] ?? '';
@@ -187,10 +181,6 @@ class BankGiroService
                     $importRes = $this->repository->importTransactions($transformed);
                     $stats['imported'] += $importRes['imported'];
                     $stats['ignored'] += $importRes['ignored'];
-
-                    foreach ($transformed as $t) {
-                        $importedTransactions[] = $t;
-                    }
                 }
             }
 
@@ -246,7 +236,7 @@ class BankGiroService
             $statementMatcher = new StatementMatcher($this->pdo);
             $linkedStatementsCount = $statementMatcher->syncUnlinkedStatements();
             if ($linkedStatementsCount > 0) {
-                $this->logger->info("BankGiroService: {$linkedStatementsCount} Kreditkartenabrechnung(en) verknüpft.");
+                $this->logger->info("BankGiroService: $linkedStatementsCount Kreditkartenabrechnung(en) verknüpft.");
             }
 
             // E-Bons verknüpfen

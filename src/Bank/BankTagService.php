@@ -4,6 +4,7 @@ namespace Kai\Tools\Bank;
 
 use Kai\Tools\Shared\Db\Database;
 use PDO;
+use Throwable;
 
 /**
  * Orchestriert die mehrstufigen Tagging-Abläufe (Regel speichern, Regel löschen)
@@ -17,10 +18,11 @@ class BankTagService
     private BankTransactionRepository $transactionRepository;
 
     public function __construct(
-        ?BankTagRepository $tagRepository = null,
-        ?BankTagRuleRepository $ruleRepository = null,
+        ?BankTagRepository         $tagRepository = null,
+        ?BankTagRuleRepository     $ruleRepository = null,
         ?BankTransactionRepository $transactionRepository = null
-    ) {
+    )
+    {
         $this->pdo = Database::getInstance()->getConnection();
         $this->tagRepository = $tagRepository ?? new BankTagRepository();
         $this->ruleRepository = $ruleRepository ?? new BankTagRuleRepository();
@@ -44,15 +46,17 @@ class BankTagService
      *
      * @param int[] $tagIds
      * @return array{rule_id: int, retroactive_matches: int}
+     * @throws Throwable
      */
     public function saveRuleAndApply(
-        ?int $ruleId,
-        ?int $transactionId,
+        ?int    $ruleId,
+        ?int    $transactionId,
         ?string $textPattern,
         ?string $payeePattern,
-        array $tagIds,
-        int $priority = 10
-    ): array {
+        array   $tagIds,
+        int     $priority = 10
+    ): array
+    {
         $this->pdo->beginTransaction();
 
         try {
@@ -65,7 +69,7 @@ class BankTagService
             }
 
             $this->pdo->commit();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
@@ -77,13 +81,14 @@ class BankTagService
         $retroactiveMatches = $matcher->applyRuleToAllTransactions($ruleId);
 
         return [
-            'rule_id'             => $ruleId,
+            'rule_id' => $ruleId,
             'retroactive_matches' => $retroactiveMatches,
         ];
     }
 
     /**
      * Löscht eine Regel und entfernt die Tags der zuvor durch sie getaggten Umsätze.
+     * @throws Throwable
      */
     public function deleteRuleAndCleanup(int $ruleId): void
     {
@@ -97,7 +102,7 @@ class BankTagService
             $this->tagRepository->removeAllTagsFromTransactions($affectedTransactionIds);
 
             $this->pdo->commit();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }

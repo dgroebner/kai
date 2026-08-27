@@ -12,14 +12,14 @@ use PDO;
 class PvTelemetryRepository
 {
     /** Standard-Zeitfilter für die Telemetrie-Historie. */
-    public const DEFAULT_FILTER = 'tag';
+    public const string DEFAULT_FILTER = 'tag';
 
     /**
      * Whitelist der erlaubten Zeitfilter. Die Bedingungen sind fest im Code
      * hinterlegt; Benutzereingaben werden ausschließlich als Schlüssel verwendet.
      */
-    private const FILTER_CONDITIONS = [
-        'tag'   => 'last_update >= CURDATE()',
+    private const array FILTER_CONDITIONS = [
+        'tag' => 'last_update >= CURDATE()',
         'woche' => 'last_update >= NOW() - INTERVAL 7 DAY',
         'monat' => 'last_update >= NOW() - INTERVAL 30 DAY',
     ];
@@ -29,16 +29,6 @@ class PvTelemetryRepository
     public function __construct()
     {
         $this->pdo = Database::getInstance()->getConnection();
-    }
-
-    /**
-     * Reduziert eine beliebige Benutzereingabe auf einen erlaubten Zeitfilter.
-     */
-    public static function normalizeFilter(mixed $filter): string
-    {
-        $filter = is_string($filter) ? $filter : '';
-
-        return isset(self::FILTER_CONDITIONS[$filter]) ? $filter : self::DEFAULT_FILTER;
     }
 
     /**
@@ -120,6 +110,25 @@ class PvTelemetryRepository
     }
 
     /**
+     * Löst einen Filterschlüssel in die fest hinterlegte SQL-Bedingung auf.
+     * Unbekannte Schlüssel fallen auf den Standardfilter zurück.
+     */
+    private function conditionFor(string $filter): string
+    {
+        return self::FILTER_CONDITIONS[self::normalizeFilter($filter)];
+    }
+
+    /**
+     * Reduziert eine beliebige Benutzereingabe auf einen erlaubten Zeitfilter.
+     */
+    public static function normalizeFilter(mixed $filter): string
+    {
+        $filter = is_string($filter) ? $filter : '';
+
+        return isset(self::FILTER_CONDITIONS[$filter]) ? $filter : self::DEFAULT_FILTER;
+    }
+
+    /**
      * Lädt eine Seite der Telemetrie-Historie (neueste zuerst).
      */
     public function getRecords(string $filter, int $limit, int $offset): array
@@ -151,14 +160,5 @@ class PvTelemetryRepository
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * Löst einen Filterschlüssel in die fest hinterlegte SQL-Bedingung auf.
-     * Unbekannte Schlüssel fallen auf den Standardfilter zurück.
-     */
-    private function conditionFor(string $filter): string
-    {
-        return self::FILTER_CONDITIONS[self::normalizeFilter($filter)];
     }
 }

@@ -1,11 +1,13 @@
 <?php
+
 namespace Kai\Tools\Bank;
 
 use Kai\Tools\Shared\Db\Database;
+use PDO;
 
 class BankTransactionRepository
 {
-    private \PDO $pdo;
+    private PDO $pdo;
 
     public function __construct()
     {
@@ -24,23 +26,23 @@ class BankTransactionRepository
         ");
 
         $imported = 0;
-        $ignored  = 0;
+        $ignored = 0;
 
         foreach ($transactions as $tx) {
             $stmt->execute([
-                ':account_id'           => $tx['account_id'] ?? null,
-                ':transaction_id'       => $tx['transaction_id'] ?? null,
-                ':booking_date'         => $tx['booking_date'],
-                ':valuta_date'          => $tx['valuta_date'],
-                ':type'                 => $tx['type'] ?? null,
-                ':remittance_info'      => $tx['remittance_info'] ?? '',
-                ':amount'               => $tx['amount'],
-			    ':remitter'             => $tx['remitter'],
-				':debitor'              => $tx['debitor'],
-				':creditor'             => $tx['creditor'],
-				':end_to_end_reference' => $tx['end_to_end_reference'],
-				':dc_creditor_id'       => $tx['dc_creditor_id'],
-				':dc_mandate_id'        => $tx['dc_mandate_id'],
+                ':account_id' => $tx['account_id'] ?? null,
+                ':transaction_id' => $tx['transaction_id'] ?? null,
+                ':booking_date' => $tx['booking_date'],
+                ':valuta_date' => $tx['valuta_date'],
+                ':type' => $tx['type'] ?? null,
+                ':remittance_info' => $tx['remittance_info'] ?? '',
+                ':amount' => $tx['amount'],
+                ':remitter' => $tx['remitter'],
+                ':debitor' => $tx['debitor'],
+                ':creditor' => $tx['creditor'],
+                ':end_to_end_reference' => $tx['end_to_end_reference'],
+                ':dc_creditor_id' => $tx['dc_creditor_id'],
+                ':dc_mandate_id' => $tx['dc_mandate_id'],
             ]);
 
             if ($stmt->rowCount() > 0) {
@@ -52,7 +54,7 @@ class BankTransactionRepository
 
         return [
             'imported' => $imported,
-            'ignored'  => $ignored
+            'ignored' => $ignored
         ];
     }
 
@@ -67,7 +69,7 @@ class BankTransactionRepository
             WHERE account_type = 'checking' 
             ORDER BY id ASC LIMIT 1
         ");
-        
+
         $result = $stmt->fetchColumn();
         return $result !== false ? (int)$result : null;
     }
@@ -84,7 +86,7 @@ class BankTransactionRepository
             WHERE tt.transaction_id IS NULL
         ");
 
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -104,7 +106,7 @@ class BankTransactionRepository
         foreach ($tagIds as $tagId) {
             $stmt->execute([
                 ':transaction_id' => $transactionId,
-                ':tag_id'         => (int)$tagId
+                ':tag_id' => (int)$tagId
             ]);
         }
     }
@@ -115,7 +117,7 @@ class BankTransactionRepository
     public function getAllTagNames(): array
     {
         $stmt = $this->pdo->query("SELECT name FROM bank_tags");
-        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
     /**
@@ -131,7 +133,7 @@ class BankTransactionRepository
         $stmt = $this->pdo->prepare("SELECT id FROM bank_tags WHERE name IN ($placeholders)");
         $stmt->execute($tagNames);
 
-        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
     /**
@@ -145,7 +147,7 @@ class BankTransactionRepository
             WHERE id = :id
         ");
         $stmt->execute([':id' => $transactionId]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row ?: null;
     }
@@ -169,7 +171,7 @@ class BankTransactionRepository
         $stmt = $this->pdo->prepare("SELECT id FROM bank_giro_transactions WHERE matched_rule_id = :rule_id");
         $stmt->execute([':rule_id' => $ruleId]);
 
-        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**
@@ -199,7 +201,8 @@ class BankTransactionRepository
         ?string $creditorId = null,
         ?string $payee = null,
         ?string $textPattern = null
-    ): int {
+    ): int
+    {
         $conditions = [];
         $params = [];
 

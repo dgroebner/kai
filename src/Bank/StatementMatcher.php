@@ -2,9 +2,9 @@
 
 namespace Kai\Tools\Bank;
 
-use PDO;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use PDO;
 
 class StatementMatcher
 {
@@ -37,7 +37,7 @@ class StatementMatcher
         }
 
         // Girokonto dynamisch auflösen, statt die ID fest zu verdrahten
-        $checkingAccount = (new BankAccountRepository())->getAccountByType('checking');
+        $checkingAccount = new BankAccountRepository()->getAccountByType('checking');
         if ($checkingAccount === null) {
             $this->logger->error('StatementMatcher: Kein aktives Girokonto gefunden.');
             return 0;
@@ -69,18 +69,18 @@ class StatementMatcher
         foreach ($unlinkedStatements as $statement) {
             $statementId = (int)$statement['id'];
             $statementDate = $statement['statement_date'];
-            
+
             // Girokonto-Abbuchungen sind negativ -> Betrag invertieren
             $expectedGiroAmount = -abs((float)$statement['total_amount']);
 
             // Zeitfenster: statement_date bis 14 Tage danach
             $dateStart = $statementDate;
-            $dateEnd   = date('Y-m-d', strtotime($statementDate . ' +14 days'));
+            $dateEnd = date('Y-m-d', strtotime($statementDate . ' +14 days'));
 
             $stmtFindGiroTx->execute([
-                ':amount'     => $expectedGiroAmount,
+                ':amount' => $expectedGiroAmount,
                 ':date_start' => $dateStart,
-                ':date_end'   => $dateEnd,
+                ':date_end' => $dateEnd,
                 ':account_id' => $accountId,
             ]);
 
@@ -88,11 +88,11 @@ class StatementMatcher
 
             if ($giroTxId) {
                 $stmtUpdateStatement->execute([
-                    ':giro_id'       => (int)$giroTxId,
-                    ':statement_id'  => $statementId,
+                    ':giro_id' => (int)$giroTxId,
+                    ':statement_id' => $statementId,
                 ]);
                 $linkedCount++;
-                $this->logger->info("StatementMatcher: Abrechnung #{$statementId} erfolgreich mit Giro-Transaktion #{$giroTxId} verknüpft.");
+                $this->logger->info("StatementMatcher: Abrechnung #$statementId erfolgreich mit Giro-Transaktion #$giroTxId verknüpft.");
             }
         }
 

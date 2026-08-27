@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $successMessage = "Einstellungen erfolgreich gespeichert.";
             } catch (Throwable $e) {
-                (new Logger())->error('system/index.php: Fehler beim Speichern der Einstellungen.', ['error' => $e->getMessage()]);
+                new Logger()->error('system/index.php: Fehler beim Speichern der Einstellungen.', ['error' => $e->getMessage()]);
                 $errorMessage = "Fehler beim Speichern der Einstellungen.";
             }
         } elseif ($tab === 'notifications' || isset($_POST['notifications'])) {
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $userProfileRepo->updatePreferences($currentUserEmail, $updatedPrefs);
                 $successMessage = "Benachrichtigungseinstellungen erfolgreich gespeichert.";
             } catch (Throwable $e) {
-                (new Logger())->error('system/index.php: Fehler beim Speichern der Benachrichtigungsprofile.', ['error' => $e->getMessage()]);
+                new Logger()->error('system/index.php: Fehler beim Speichern der Benachrichtigungsprofile.', ['error' => $e->getMessage()]);
                 $errorMessage = "Fehler beim Speichern der Benachrichtigungen.";
             }
         }

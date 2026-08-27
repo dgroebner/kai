@@ -14,10 +14,10 @@ use Throwable;
 class ContractAssignmentService
 {
     /** Priorität, mit der aus einem Umsatz abgeleitete Regeln angelegt werden. */
-    private const DEFAULT_RULE_PRIORITY = 10;
+    private const int DEFAULT_RULE_PRIORITY = 10;
 
     /** Maximale Länge des automatisch abgeleiteten Vertragsnamens. */
-    private const MAX_CONTRACT_NAME_LENGTH = 100;
+    private const int MAX_CONTRACT_NAME_LENGTH = 100;
 
     private PDO $pdo;
     private BankContractRepository $contractRepository;
@@ -51,6 +51,7 @@ class ContractAssignmentService
      *     text_pattern?: ?string
      * } $patterns Muster, aus denen Erkennungsregeln erzeugt werden
      * @return int ID des verknüpften Vertrags
+     * @throws Throwable
      */
     public function assignTransactionToContract(int $transactionId, ?int $contractId, array $patterns = []): int
     {
@@ -147,6 +148,7 @@ class ContractAssignmentService
 
     /**
      * Löscht einen Vertrag und hebt zuvor die Verknüpfung aller zugeordneten Umsätze auf.
+     * @throws Throwable
      */
     public function deleteContract(int $contractId): void
     {

@@ -9,9 +9,11 @@ namespace Kai\Tools\Shared\Security;
 final class Sanitizer
 {
     /** Fallback-Farbe, wenn ein Wert kein gültiger Hex-Code ist. */
-    public const DEFAULT_COLOR = '#3b82f6';
+    public const string DEFAULT_COLOR = '#3b82f6';
 
-    private function __construct() {}
+    private function __construct()
+    {
+    }
 
     /**
      * Normalisiert eine Farbangabe auf ein sicheres Hex-Format (#rrggbb).

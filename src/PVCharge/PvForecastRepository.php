@@ -5,6 +5,7 @@ namespace Kai\Tools\PVCharge;
 use DateTime;
 use Kai\Tools\Shared\Db\Database;
 use PDO;
+use Throwable;
 
 /**
  * Datenbankzugriffe auf die Ertragsprognosen der PV-Anlage
@@ -86,6 +87,7 @@ class PvForecastRepository
      *
      * @param array<string, mixed> $yieldsKwh Zuordnung Datum (Y-m-d) => Ertrag in kWh
      * @return int Anzahl der verarbeiteten Datensätze
+     * @throws Throwable
      */
     public function saveRealYields(array $yieldsKwh): int
     {
@@ -101,14 +103,13 @@ class PvForecastRepository
             $saved = 0;
 
             foreach ($yieldsKwh as $date => $kwhValue) {
-                $date = (string)$date;
                 if (!$this->isValidDate($date)) {
                     continue;
                 }
 
                 $stmt->execute([
                     ':real_wh' => $this->toWattHours($kwhValue),
-                    ':date'    => $date,
+                    ':date' => $date,
                 ]);
                 $saved++;
             }
@@ -116,12 +117,22 @@ class PvForecastRepository
             $this->pdo->commit();
 
             return $saved;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
             throw $e;
         }
+    }
+
+    /**
+     * Prüft, ob ein String ein gültiges Datum im Format Y-m-d ist.
+     */
+    private function isValidDate(string $date): bool
+    {
+        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+
+        return $dateObj !== false && $dateObj->format('Y-m-d') === $date;
     }
 
     /**
@@ -136,15 +147,5 @@ class PvForecastRepository
         $kwh = (float)str_replace(',', '.', (string)$kwhValue);
 
         return (int)round(max(0.0, $kwh) * 1000);
-    }
-
-    /**
-     * Prüft, ob ein String ein gültiges Datum im Format Y-m-d ist.
-     */
-    private function isValidDate(string $date): bool
-    {
-        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
-
-        return $dateObj !== false && $dateObj->format('Y-m-d') === $date;
     }
 }

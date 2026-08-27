@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\System;
 
+use JsonException;
 use Kai\Tools\Shared\Db\Database;
 use PDO;
 
@@ -17,6 +18,7 @@ class UserProfileRepository
     /**
      * Prüft, ob ein Benutzerprofil existiert, und legt es bei Bedarf
      * mit den Standard-Benachrichtigungseinstellungen an.
+     * @throws JsonException
      */
     public function ensureProfileExists(string $email): void
     {
@@ -74,6 +76,7 @@ class UserProfileRepository
 
     /**
      * Speichert die Benachrichtigungseinstellungen eines Benutzers.
+     * @throws JsonException
      */
     public function updatePreferences(string $email, array $preferences): void
     {

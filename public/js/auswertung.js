@@ -1,5 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
-    
+document.addEventListener('DOMContentLoaded', function () {
+
     const container = document.getElementById('auswertung-container');
     if (!container) return;
 
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const color = row.getAttribute('data-color') || '#64748b';
             const percentage = parseFloat(row.getAttribute('data-percentage')) || 0;
             const total = parseFloat(row.getAttribute('data-total')) || 0;
-            categories.push({ name, percentage, total, color, row });
+            categories.push({name, percentage, total, color, row});
         });
 
         if (categories.length === 0) {
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const innerR = 48; // Donut hole radius
 
         let svgHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="100%" height="100%" style="max-width: ${size}px; display: block; margin: 0 auto; overflow: visible;">`;
-        
+
         // Glow Filter Definition
         svgHtml += `
           <defs>
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const dx = Math.cos(bisectorRad) * 6;
             const dy = Math.sin(bisectorRad) * 6;
 
-            let pathD = '';
+            let pathD;
             if (cat.percentage >= 99.9) {
                 // Voller Kreis
                 pathD = `
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         // Formatierung des Gesamtpreises in der Mitte des Donuts
-        const formattedTotal = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(grandTotal);
+        const formattedTotal = new Intl.NumberFormat('de-DE', {style: 'currency', currency: 'EUR'}).format(grandTotal);
         svgHtml += `
             <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="500">Gesamt</text>
             <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--text-main)" font-size="13" font-weight="bold">${formattedTotal}</text>
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================
     function renderItemsTable() {
         const activeFilter = container.getAttribute('data-active-filter');
-        
+
         // 1. Alle Zeilen filtern, die dem aktiven Kategoriefilter entsprechen
         const filteredRows = [];
         itemRows.forEach(row => {
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
             prevBtn.addEventListener('click', () => {
                 currentPage--;
                 renderItemsTable();
-                paginationContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                paginationContainer.scrollIntoView({behavior: 'smooth', block: 'nearest'});
             });
         }
 
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
             nextBtn.addEventListener('click', () => {
                 currentPage++;
                 renderItemsTable();
-                paginationContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                paginationContainer.scrollIntoView({behavior: 'smooth', block: 'nearest'});
             });
         }
     }
@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Click Delegation für Kategorietabellen-Zeilen
-    container.addEventListener('click', function(e) {
+    container.addEventListener('click', function (e) {
         const row = e.target.closest('.js-category-row');
         if (!row) return;
         const catName = row.getAttribute('data-category');
@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Hover Delegation (mouseover) für Kategorietabellen-Zeilen
-    container.addEventListener('mouseover', function(e) {
+    container.addEventListener('mouseover', function (e) {
         const row = e.target.closest('.js-category-row');
         if (!row) return;
         const catName = row.getAttribute('data-category');
@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Hover Delegation (mouseout) für Kategorietabellen-Zeilen
-    container.addEventListener('mouseout', function(e) {
+    container.addEventListener('mouseout', function (e) {
         const row = e.target.closest('.js-category-row');
         if (!row) return;
         const catName = row.getAttribute('data-category');

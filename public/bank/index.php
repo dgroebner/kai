@@ -61,7 +61,7 @@ if ($highlightTxId && !isset($_GET['page'])) {
 
             if ($targetPage > 1) {
                 // Auf die korrekte Seite weiterleiten
-                header("Location: index.php?type=monat&date={$dateParam}&page={$targetPage}&tx={$highlightTxId}#tx-{$highlightTxId}");
+                header("Location: index.php?type=monat&date=$dateParam&page=$targetPage&tx=$highlightTxId#tx-$highlightTxId");
                 exit;
             }
         }
@@ -246,8 +246,8 @@ try {
                 <!-- Schritt 1: Zugangsdaten (wird nur eingeblendet, wenn Token abgelaufen/leer sind) -->
                 <div id="sync-step-credentials" class="hidden">
                     <p class="subtitle" style="margin-bottom: 1rem;">
-                        Die API-Zugangsdaten sind abgelaufen oder nicht vorhanden. Bitte gib deine Comdirect
-                        Zugangsdaten ein, um neue Tokens anzufordern.
+                        Die API-Zugangsdaten sind abgelaufen oder nicht vorhanden. Bitte gib deine
+                        Comdirect-Zugangsdaten ein, um neue Tokens anzufordern.
                     </p>
 
                     <div style="margin-bottom: 0.8rem;">
@@ -331,7 +331,7 @@ try {
             </div>
         </div>
     </div>
-    <!-- ENDE: Sync Modal Overlay -->
+    <!-- ENDE: Sync modal Overlay -->
 
     <!-- Tab-Switcher (Girokonto / Kreditkarte) -->
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">

@@ -9,28 +9,28 @@ use PDO;
 class ReceiptMatcher
 {
     /** Wie viele Tage nach dem Kauf eine Buchung noch als Zahlung gilt. */
-    private const BOOKING_DELAY_DAYS = 5;
+    private const int BOOKING_DELAY_DAYS = 5;
 
     /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
-    private const CASH_LOOKBACK_DAYS = 5;
+    private const int CASH_LOOKBACK_DAYS = 5;
 
     /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
-    private const CREDITCARD_LOOKBACK_DAYS = 3;
+    private const int CREDITCARD_LOOKBACK_DAYS = 3;
 
     /** Maximaler Betrag, um den eine Bargeldabhebung über der Bonsumme liegen darf. */
-    private const CASH_TOLERANCE = 200.00;
+    private const float CASH_TOLERANCE = 200.00;
 
     /** Maximale Differenz nach unten für Rabatt- oder Treuesysteme. */
-    private const DISCOUNT_TOLERANCE = 50.00;
+    private const float DISCOUNT_TOLERANCE = 50.00;
 
     /** Toleranz für Kreditkartenbuchungen (z. B. Sofortrabatte, Trinkgeld). */
-    private const CC_TOLERANCE = 10.00;
+    private const float CC_TOLERANCE = 10.00;
 
     /** Alle Textfelder einer Giro-Buchung, in denen der Händlername stehen kann. */
-    private const GIRO_PARTNER_EXPRESSION = "CONCAT_WS(' ', t.remittance_info, t.creditor, t.remitter, t.debitor)";
+    private const string GIRO_PARTNER_EXPRESSION = "CONCAT_WS(' ', t.remittance_info, t.creditor, t.remitter, t.debitor)";
 
     /** Bevorzugter Anzeigename des Buchungspartners. */
-    private const GIRO_COUNTERPARTY_EXPRESSION = "COALESCE(NULLIF(t.creditor, ''), NULLIF(t.remitter, ''), NULLIF(t.debitor, ''))";
+    private const string GIRO_COUNTERPARTY_EXPRESSION = "COALESCE(NULLIF(t.creditor, ''), NULLIF(t.remitter, ''), NULLIF(t.debitor, ''))";
 
     private PDO $pdo;
     private Logger $logger;
@@ -140,7 +140,7 @@ class ReceiptMatcher
             if ($giroTxId) {
                 $stmtUpdateGiro->execute([':tx_id' => $giroTxId, ':receipt_id' => $receiptId]);
                 $linkedGiro++;
-                $this->logger->info("ReceiptMatcher: Kassenbon #{$receiptId} mit Giro-Transaktion #{$giroTxId} verknüpft.");
+                $this->logger->info("ReceiptMatcher: Kassenbon #$receiptId mit Giro-Transaktion #$giroTxId verknüpft.");
                 continue;
             }
 
@@ -159,7 +159,7 @@ class ReceiptMatcher
             if ($ccTxId) {
                 $stmtUpdateCc->execute([':tx_id' => $ccTxId, ':receipt_id' => $receiptId]);
                 $linkedCc++;
-                $this->logger->info("ReceiptMatcher: Kassenbon #{$receiptId} mit KK-Transaktion #{$ccTxId} verknüpft.");
+                $this->logger->info("ReceiptMatcher: Kassenbon #$receiptId mit KK-Transaktion #$ccTxId verknüpft.");
             }
         }
 
@@ -245,7 +245,7 @@ class ReceiptMatcher
         if (!empty($storeTokens)) {
             foreach ($storeTokens as $i => $token) {
                 $paramKey = ':store_tok_' . $i;
-                $storeConditions[] = self::GIRO_PARTNER_EXPRESSION . " LIKE {$paramKey}";
+                $storeConditions[] = self::GIRO_PARTNER_EXPRESSION . " LIKE $paramKey";
                 $params[$paramKey] = '%' . $this->escapeLike($token) . '%';
             }
         }
@@ -383,7 +383,7 @@ class ReceiptMatcher
         if (!empty($storeTokens)) {
             foreach ($storeTokens as $i => $token) {
                 $paramKey = ':store_tok_' . $i;
-                $storeConditions[] = "t.merchant_name LIKE {$paramKey}";
+                $storeConditions[] = "t.merchant_name LIKE $paramKey";
                 $params[$paramKey] = '%' . $this->escapeLike($token) . '%';
             }
         }
@@ -443,7 +443,7 @@ class ReceiptMatcher
         }
 
         if (!$this->transactionExists($txId, $accountType)) {
-            $this->logger->error("ReceiptMatcher: Transaktion #{$txId} ({$accountType}) existiert nicht.");
+            $this->logger->error("ReceiptMatcher: Transaktion #$txId ($accountType) existiert nicht.");
             return false;
         }
 
@@ -459,7 +459,7 @@ class ReceiptMatcher
             $stmt->execute([':tx_id' => $txId, ':receipt_id' => $receiptId]);
         }
 
-        $this->logger->info("ReceiptMatcher: Kassenbon #{$receiptId} manuell mit {$accountType}-Transaktion #{$txId} verknüpft.");
+        $this->logger->info("ReceiptMatcher: Kassenbon #$receiptId manuell mit $accountType-Transaktion #$txId verknüpft.");
         return true;
     }
 
@@ -469,7 +469,7 @@ class ReceiptMatcher
     private function transactionExists(int $txId, string $accountType): bool
     {
         $table = $accountType === 'giro' ? 'bank_giro_transactions' : 'bank_cc_transactions';
-        $stmt = $this->pdo->prepare("SELECT 1 FROM {$table} WHERE id = :id LIMIT 1");
+        $stmt = $this->pdo->prepare("SELECT 1 FROM $table WHERE id = :id LIMIT 1");
         $stmt->execute([':id' => $txId]);
 
         return (bool)$stmt->fetchColumn();

@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\Bank;
 
+use Exception;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
 use Kai\Tools\Kassenbon\ReceiptMatcher;
 use Kai\Tools\Shared\Db\Database;
@@ -27,6 +28,9 @@ class CreditCardService
         $this->parser = $parser;
     }
 
+    /**
+     * @throws Exception
+     */
     public function importStatementPdf(string $pdfFilePath, string $savedFileName): int
     {
         // 1. Kategorien aus bank_categories laden

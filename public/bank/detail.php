@@ -32,7 +32,7 @@ try {
     // Alle verfügbaren Kategorien für das Inline-Dropdown laden
     $allCategories = $creditCardRepository->getAllCategories();
 } catch (Throwable $e) {
-    (new Logger())->error('bank/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
+    new Logger()->error('bank/detail.php: Datenbankfehler.', ['error' => $e->getMessage()]);
     http_response_code(500);
     exit('Interner Fehler. Bitte versuche es später erneut.');
 }

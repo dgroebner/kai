@@ -2,9 +2,9 @@
 
 namespace Kai\Tools\Bank;
 
+use Exception;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
-use Exception;
 
 class AiTagClassifier
 {
@@ -44,7 +44,7 @@ class AiTagClassifier
             );
 
             if (!is_array($parsed)) {
-                $this->logger->warning('AiTagClassifier: Gemini lieferte kein gültiges Array zurück.');
+                $this->logger->warn('AiTagClassifier: Gemini lieferte kein gültiges Array zurück.');
                 return [];
             }
 
@@ -70,7 +70,7 @@ class AiTagClassifier
         return <<<TEXT
 Ordne den folgenden Bank-Transaktionen passende Tags aus der Liste der verfügbaren Tags zu.
 
-Verfügbare Tags: [{$tagList}]
+Verfügbare Tags: [$tagList]
 
 Regeln:
 1. Wähle pro Transaktion 1 bis max. 3 passende Tags aus der Liste der verfügbaren Tags.

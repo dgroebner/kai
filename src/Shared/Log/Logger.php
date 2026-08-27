@@ -17,22 +17,22 @@ class Logger
         }
     }
 
-    public function debug(string $message, array $context = [])
+    public function debug(string $message, array $context = []): void
     {
         $this->writeLog('DEBUG', $message, $context);
     }
 
-    private function writeLog(string $level, string $message, array $context = [])
+    private function writeLog(string $level, string $message, array $context = []): void
     {
         $date = date('Y-m-d');
-        $file = $this->logDir . "/app-{$date}.log";
+        $file = $this->logDir . "/app-$date.log";
 
         if (!is_dir($this->logDir)) {
             @mkdir($this->logDir, 0755, true);
         }
 
         $contextString = !empty($context) ? ' ' . json_encode($context) : '';
-        $logEntry = "[{$date} " . date('H:i:s') . "] [{$level}] {$message}{$contextString}" . PHP_EOL;
+        $logEntry = "[$date " . date('H:i:s') . "] [$level] $message$contextString" . PHP_EOL;
 
         @file_put_contents($file, $logEntry, FILE_APPEND | LOCK_EX);
 
@@ -65,17 +65,17 @@ class Logger
         }
     }
 
-    public function info(string $message, array $context = [])
+    public function info(string $message, array $context = []): void
     {
         $this->writeLog('INFO', $message, $context);
     }
 
-    public function warn(string $message, array $context = [])
+    public function warn(string $message, array $context = []): void
     {
         $this->writeLog('WARN', $message, $context);
     }
 
-    public function error(string $message, array $context = [])
+    public function error(string $message, array $context = []): void
     {
         $this->writeLog('ERROR', $message, $context);
     }

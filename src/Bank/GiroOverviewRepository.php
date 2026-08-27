@@ -12,11 +12,11 @@ use PDO;
 class GiroOverviewRepository
 {
     /** Trennzeichen, mit denen die Tags eines Umsatzes per GROUP_CONCAT zusammengefasst werden. */
-    private const TAG_SEPARATOR = '||';
-    private const TAG_FIELD_SEPARATOR = ':';
+    private const string TAG_SEPARATOR = '||';
+    private const string TAG_FIELD_SEPARATOR = ':';
 
     /** Standardfarbe für Tags ohne hinterlegten Farbwert. */
-    private const DEFAULT_TAG_COLOR = '#3b82f6';
+    private const string DEFAULT_TAG_COLOR = '#3b82f6';
 
     private PDO $pdo;
 
@@ -42,12 +42,13 @@ class GiroOverviewRepository
      * vor dem angegebenen Umsatz liegen. Ergibt dessen Position für die Seitenberechnung.
      */
     public function countTransactionsBefore(
-        int $accountId,
+        int    $accountId,
         string $startDate,
         string $endDate,
         string $bookingDate,
-        int $transactionId
-    ): int {
+        int    $transactionId
+    ): int
+    {
         $stmt = $this->pdo->prepare("
             SELECT COUNT(*) FROM bank_giro_transactions
             WHERE booking_date BETWEEN :start AND :end
@@ -55,12 +56,12 @@ class GiroOverviewRepository
               AND (booking_date > :bdate_min OR (booking_date = :bdate AND id > :id))
         ");
         $stmt->execute([
-            ':start'      => $startDate,
-            ':end'        => $endDate,
+            ':start' => $startDate,
+            ':end' => $endDate,
             ':account_id' => $accountId,
-            ':bdate_min'  => $bookingDate,
-            ':bdate'      => $bookingDate,
-            ':id'         => $transactionId,
+            ':bdate_min' => $bookingDate,
+            ':bdate' => $bookingDate,
+            ':id' => $transactionId,
         ]);
 
         return (int)$stmt->fetchColumn();
@@ -73,10 +74,32 @@ class GiroOverviewRepository
     {
         [$whereClause, $params] = $this->buildFilter($accountId, $startDate, $endDate, $tagId);
 
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM bank_giro_transactions bt {$whereClause}");
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM bank_giro_transactions bt $whereClause");
         $stmt->execute($params);
 
         return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * Baut die WHERE-Bedingung der Umsatzliste. Alle Werte werden als Parameter gebunden.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function buildFilter(int $accountId, string $startDate, string $endDate, ?int $tagId): array
+    {
+        $whereClause = "WHERE bt.booking_date BETWEEN :start AND :end AND bt.account_id = :account_id";
+        $params = [
+            ':start' => $startDate,
+            ':end' => $endDate,
+            ':account_id' => $accountId,
+        ];
+
+        if ($tagId !== null && $tagId > 0) {
+            $whereClause .= " AND bt.id IN (SELECT transaction_id FROM bank_transaction_tags WHERE tag_id = :tag_id)";
+            $params[':tag_id'] = $tagId;
+        }
+
+        return [$whereClause, $params];
     }
 
     /**
@@ -84,13 +107,14 @@ class GiroOverviewRepository
      * verknüpfter Kreditkartenabrechnung, E-Bon und Vertrag.
      */
     public function getTransactions(
-        int $accountId,
+        int    $accountId,
         string $startDate,
         string $endDate,
-        ?int $tagId,
-        int $limit,
-        int $offset
-    ): array {
+        ?int   $tagId,
+        int    $limit,
+        int    $offset
+    ): array
+    {
         [$whereClause, $params] = $this->buildFilter($accountId, $startDate, $endDate, $tagId);
 
         $stmt = $this->pdo->prepare("
@@ -104,7 +128,7 @@ class GiroOverviewRepository
                 c.id AS contract_id,
                 c.name AS contract_name,
                 GROUP_CONCAT(CONCAT(t.id, '" . self::TAG_FIELD_SEPARATOR . "', t.name, '"
-                    . self::TAG_FIELD_SEPARATOR . "', t.color) SEPARATOR '" . self::TAG_SEPARATOR . "') AS tag_data
+            . self::TAG_FIELD_SEPARATOR . "', t.color) SEPARATOR '" . self::TAG_SEPARATOR . "') AS tag_data
             FROM bank_giro_transactions bt
             LEFT JOIN bank_tag_rules r ON bt.matched_rule_id = r.id
             LEFT JOIN bank_cc_statements s ON bt.id = s.bank_transaction_id
@@ -135,6 +159,32 @@ class GiroOverviewRepository
     }
 
     /**
+     * Zerlegt die per GROUP_CONCAT zusammengefassten Tags eines Umsatzes.
+     */
+    private function parseTagData(?string $tagData): array
+    {
+        if ($tagData === null || $tagData === '') {
+            return [];
+        }
+
+        $tags = [];
+        foreach (explode(self::TAG_SEPARATOR, $tagData) as $part) {
+            $fields = explode(self::TAG_FIELD_SEPARATOR, $part);
+            if (count($fields) < 2) {
+                continue;
+            }
+
+            $tags[] = [
+                'id' => (int)$fields[0],
+                'name' => $fields[1],
+                'color' => ($fields[2] ?? '') ?: self::DEFAULT_TAG_COLOR,
+            ];
+        }
+
+        return $tags;
+    }
+
+    /**
      * Ermittelt Ausgaben- und Einnahmesumme des Zeitraums direkt aus den Umsätzen
      * (ohne Doppelzählung durch mehrfach getaggte Buchungen).
      *
@@ -155,55 +205,7 @@ class GiroOverviewRepository
 
         return [
             'expenses' => abs((float)($totals['total_expenses'] ?? 0)),
-            'income'   => (float)($totals['total_income'] ?? 0),
+            'income' => (float)($totals['total_income'] ?? 0),
         ];
-    }
-
-    /**
-     * Baut die WHERE-Bedingung der Umsatzliste. Alle Werte werden als Parameter gebunden.
-     *
-     * @return array{0: string, 1: array<string, mixed>}
-     */
-    private function buildFilter(int $accountId, string $startDate, string $endDate, ?int $tagId): array
-    {
-        $whereClause = "WHERE bt.booking_date BETWEEN :start AND :end AND bt.account_id = :account_id";
-        $params = [
-            ':start'      => $startDate,
-            ':end'        => $endDate,
-            ':account_id' => $accountId,
-        ];
-
-        if ($tagId !== null && $tagId > 0) {
-            $whereClause .= " AND bt.id IN (SELECT transaction_id FROM bank_transaction_tags WHERE tag_id = :tag_id)";
-            $params[':tag_id'] = $tagId;
-        }
-
-        return [$whereClause, $params];
-    }
-
-    /**
-     * Zerlegt die per GROUP_CONCAT zusammengefassten Tags eines Umsatzes.
-     */
-    private function parseTagData(?string $tagData): array
-    {
-        if ($tagData === null || $tagData === '') {
-            return [];
-        }
-
-        $tags = [];
-        foreach (explode(self::TAG_SEPARATOR, $tagData) as $part) {
-            $fields = explode(self::TAG_FIELD_SEPARATOR, $part);
-            if (count($fields) < 2) {
-                continue;
-            }
-
-            $tags[] = [
-                'id'    => (int)$fields[0],
-                'name'  => $fields[1],
-                'color' => ($fields[2] ?? '') ?: self::DEFAULT_TAG_COLOR,
-            ];
-        }
-
-        return $tags;
     }
 }
