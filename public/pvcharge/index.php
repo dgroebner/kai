@@ -176,6 +176,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
     <title>Energie-Dashboard – Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
@@ -316,9 +317,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 <div class="kpi-label">Prognose Heute</div>
                 <div class="kpi-value kpi-value-sm">
                     <?php
-                     $correctedTodayKwh = $todayKwh * $biasFactor;
-                     echo $correctedTodayKwh > 0 ? number_format($correctedTodayKwh, 1, ',', '.') : '–';
-                     ?>
+                    $correctedTodayKwh = $todayKwh * $biasFactor;
+                    echo $correctedTodayKwh > 0 ? number_format($correctedTodayKwh, 1, ',', '.') : '–';
+                    ?>
                     <span class="kpi-unit">kWh</span>
                 </div>
                 <?php if ($systemBias !== null): ?>
@@ -386,9 +387,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             <?php endif; ?>
 
             <?php if (!empty($dailyForecasts)):
-                         $maxDayWh = max(array_column($dailyForecasts, 'watt_hours_day'));
-                         if ($maxDayWh < 1) $maxDayWh = 1;
-                         ?>
+                $maxDayWh = max(array_column($dailyForecasts, 'watt_hours_day'));
+                if ($maxDayWh < 1) $maxDayWh = 1;
+                ?>
                 <form action="" method="POST">
                     <input type="hidden" name="action" value="save_real_yield">
                     <input type="hidden" name="csrf_token"
@@ -406,18 +407,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                             </thead>
                             <tbody>
                             <?php foreach ($dailyForecasts as $day):
-                         $kwh = round($day['watt_hours_day'] / 1000, 2);
-                         $isToday = ($day['forecast_date'] === date('Y-m-d'));
-                         $barPct = round($day['watt_hours_day'] / $maxDayWh * 100);
-                         $wx = getWeatherLabel($kwh);
-                         $dateObj = DateTime::createFromFormat('Y-m-d', $day['forecast_date']);
-                         $weekday = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][(int)$dateObj->format('w')];
+                                $kwh = round($day['watt_hours_day'] / 1000, 2);
+                                $isToday = ($day['forecast_date'] === date('Y-m-d'));
+                                $barPct = round($day['watt_hours_day'] / $maxDayWh * 100);
+                                $wx = getWeatherLabel($kwh);
+                                $dateObj = DateTime::createFromFormat('Y-m-d', $day['forecast_date']);
+                                $weekday = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][(int)$dateObj->format('w')];
 
-                         $realKwh = '';
-                         if (isset($day['real_watt_hours_day']) && $day['real_watt_hours_day'] !== null) {
-                             $realKwh = number_format($day['real_watt_hours_day'] / 1000, 2, ',', '');
-                         }
-                         ?>
+                                $realKwh = '';
+                                if (isset($day['real_watt_hours_day']) && $day['real_watt_hours_day'] !== null) {
+                                    $realKwh = number_format($day['real_watt_hours_day'] / 1000, 2, ',', '');
+                                }
+                                ?>
                                 <tr class="<?= $isToday ? 'is-today-row' : '' ?>">
                                     <td data-label="Datum">
                                         <strong><?= $weekday ?>, <?= $dateObj->format('d.m.') ?></strong>
@@ -504,9 +505,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                         </thead>
                         <tbody id="telemetry-table-body">
                         <?php foreach ($telemetryRecords as $row):
-                         $soc = (int)($row['battery_soc_pct'] ?? 0);
-                         $socColorClass = getBatteryColorClass($soc);
-                         ?>
+                            $soc = (int)($row['battery_soc_pct'] ?? 0);
+                            $socColorClass = getBatteryColorClass($soc);
+                            ?>
                             <tr>
                                 <td data-label="Zeitpunkt"><?= htmlspecialchars($row['last_update'], ENT_QUOTES, 'UTF-8') ?></td>
                                 <td data-label="PV (W)"

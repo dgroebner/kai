@@ -20,7 +20,7 @@ function urlBase64ToUint8Array(base64String) {
  */
 async function fetchVapidPublicKey() {
     try {
-        const res = await fetch('/system/push_vapid_key.php', { headers: { Accept: 'application/json' } });
+        const res = await fetch('/system/push_vapid_key.php', {headers: {Accept: 'application/json'}});
         if (!res.ok) return null;
         const data = await res.json();
         return data.publicKey || null;
@@ -40,9 +40,10 @@ async function sendSubscriptionToServer(action, subscription) {
     try {
         const data = await window.KaiHttp.postJson('/system/push_subscribe.php', {
             action,
+            csrf_token: window.KaiHttp?.getCsrfToken ? window.KaiHttp.getCsrfToken() : undefined,
             endpoint: subJson.endpoint,
-            p256dh:   subJson.keys?.p256dh  ?? '',
-            auth:     subJson.keys?.auth    ?? '',
+            p256dh: subJson.keys?.p256dh ?? '',
+            auth: subJson.keys?.auth ?? '',
         });
         return data?.success === true;
     } catch (_) {

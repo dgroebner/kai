@@ -1,4 +1,5 @@
 <?php
+
 namespace Kai\Tools\Shared\Security;
 
 use Kai\Tools\Shared\Log\Logger;
@@ -14,14 +15,8 @@ final class Auth
     /** Name des Request-Headers, über den AJAX-Aufrufe den CSRF-Token übermitteln. */
     public const CSRF_HEADER = 'X-CSRF-Token';
 
-    private function __construct() {}
-
-    /**
-     * Prüft, ob eine authentifizierte Session existiert.
-     */
-    public static function isAuthenticated(): bool
+    private function __construct()
     {
-        return isset($_SESSION['user_email']) && $_SESSION['user_email'] !== '';
     }
 
     /**
@@ -36,6 +31,14 @@ final class Auth
     }
 
     /**
+     * Prüft, ob eine authentifizierte Session existiert.
+     */
+    public static function isAuthenticated(): bool
+    {
+        return isset($_SESSION['user_email']) && $_SESSION['user_email'] !== '';
+    }
+
+    /**
      * Schützt JSON-Endpunkte: antwortet mit 401 statt einer Weiterleitung.
      */
     public static function requireApi(): void
@@ -43,6 +46,19 @@ final class Auth
         if (!self::isAuthenticated()) {
             self::sendJsonError(401, 'Nicht angemeldet');
         }
+    }
+
+    /**
+     * Beendet den Request mit einer generischen JSON-Fehlerantwort.
+     */
+    public static function sendJsonError(int $status, string $message): void
+    {
+        if (!headers_sent()) {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['success' => false, 'message' => $message, 'error' => $message]);
+        exit;
     }
 
     /**
@@ -69,25 +85,21 @@ final class Auth
     }
 
     /**
-     * Prüft einen übergebenen CSRF-Token zeitkonstant gegen die Session.
-     */
-    public static function isValidCsrfToken(?string $token): bool
-    {
-        $sessionToken = $_SESSION['csrf_token'] ?? '';
-
-        return is_string($token)
-            && $token !== ''
-            && $sessionToken !== ''
-            && hash_equals($sessionToken, $token);
-    }
-
-    /**
      * Erzwingt einen gültigen CSRF-Token für state-verändernde JSON-Endpunkte.
      * Der Token wird aus dem Header X-CSRF-Token oder dem JSON-Body gelesen.
      */
     public static function requireCsrfToken(?array $payload = null): void
     {
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+
+        if ($token === null && function_exists('getallheaders')) {
+            foreach ((array)getallheaders() as $name => $value) {
+                if (strtolower((string)$name) === 'x-csrf-token' && is_string($value) && $value !== '') {
+                    $token = $value;
+                    break;
+                }
+            }
+        }
 
         if ($token === null && is_array($payload)) {
             $token = $payload['csrf_token'] ?? null;
@@ -102,16 +114,16 @@ final class Auth
     }
 
     /**
-     * Prüft zeitkonstant, ob der übermittelte Cron-/API-Token gültig ist.
-     *
-     * @param bool $allowQueryParam Ob der Token auch als ?token=… akzeptiert wird.
+     * Prüft einen übergebenen CSRF-Token zeitkonstant gegen die Session.
      */
-    public static function cronTokenMatches(bool $allowQueryParam = true): bool
+    public static function isValidCsrfToken(?string $token): bool
     {
-        $expected = (string)($_ENV['CRON_TOKEN'] ?? '');
-        $received = self::extractCronToken($allowQueryParam);
+        $sessionToken = $_SESSION['csrf_token'] ?? '';
 
-        return $expected !== '' && $received !== null && hash_equals($expected, $received);
+        return is_string($token)
+            && $token !== ''
+            && $sessionToken !== ''
+            && hash_equals($sessionToken, $token);
     }
 
     /**
@@ -131,6 +143,19 @@ final class Auth
             echo "Zugriff verweigert.\n";
             exit;
         }
+    }
+
+    /**
+     * Prüft zeitkonstant, ob der übermittelte Cron-/API-Token gültig ist.
+     *
+     * @param bool $allowQueryParam Ob der Token auch als ?token=… akzeptiert wird.
+     */
+    public static function cronTokenMatches(bool $allowQueryParam = true): bool
+    {
+        $expected = (string)($_ENV['CRON_TOKEN'] ?? '');
+        $received = self::extractCronToken($allowQueryParam);
+
+        return $expected !== '' && $received !== null && hash_equals($expected, $received);
     }
 
     /**
@@ -166,18 +191,5 @@ final class Auth
         }
 
         return array_find($candidates, static fn($candidate): bool => is_string($candidate) && $candidate !== '');
-    }
-
-    /**
-     * Beendet den Request mit einer generischen JSON-Fehlerantwort.
-     */
-    public static function sendJsonError(int $status, string $message): void
-    {
-        if (!headers_sent()) {
-            http_response_code($status);
-            header('Content-Type: application/json; charset=utf-8');
-        }
-        echo json_encode(['success' => false, 'message' => $message, 'error' => $message]);
-        exit;
     }
 }
