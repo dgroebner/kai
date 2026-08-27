@@ -2,6 +2,9 @@
   "config": {
     "platform": {
       "php": "8.4.0"
+    },
+    "allow-plugins": {
+      "php-http/discovery": true
     }
   },
   "require": {
@@ -15,7 +18,8 @@
     "ext-curl": "*",
     "ext-mbstring": "*",
     "ext-sodium": "*",
-    "smalot/pdfparser": "^2.12"
+    "smalot/pdfparser": "^2.12",
+    "minishlink/web-push": "^11.0"
   },
   "autoload": {
     "psr-4": {

@@ -2,7 +2,7 @@
 // Service Worker fuer die kai PWA
 // Strategie: Network-First fuer HTML-Seiten, Cache-First fuer statische Assets
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `kai-${CACHE_VERSION}`;
 
 // Statische Assets, die beim Install gecacht werden
@@ -57,8 +57,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API-Endpunkte immer ans Netzwerk (api.php, ingest.php, api_live.php etc.)
-    if (url.pathname.includes('/api') || url.pathname.includes('/ingest') || url.pathname.includes('/cron_')) {
+    // API-Endpunkte immer ans Netzwerk (api.php, ingest.php, api_live.php, push_*.php etc.)
+    if (url.pathname.includes('/api') || url.pathname.includes('/ingest') || url.pathname.includes('/cron_') || url.pathname.includes('/push_')) {
         return;
     }
 
@@ -84,5 +84,52 @@ self.addEventListener('fetch', (event) => {
         fetch(request)
             .then((response) => response)
             .catch(() => caches.match('/offline.html'))
+    );
+});
+
+// --- Push: Web-Push-Benachrichtigung empfangen ---
+self.addEventListener('push', (event) => {
+    let data = { title: 'Kai', body: 'Neue Aktivität', icon: '/android-chrome-192x192.png', url: '/' };
+
+    if (event.data) {
+        try {
+            data = { ...data, ...JSON.parse(event.data.text()) };
+        } catch (_) {
+            data.body = event.data.text();
+        }
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, {
+            body:    data.body,
+            icon:    data.icon,
+            badge:   data.badge || '/android-chrome-192x192.png',
+            tag:     'kai-activity',
+            renotify: true,
+            data:    { url: data.url },
+        })
+    );
+});
+
+// --- Notificationclick: Klick auf Benachrichtigung ---
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const targetUrl = event.notification.data?.url || '/';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            // Bereits offenes Fenster fokussieren, wenn vorhanden
+            for (const client of windowClients) {
+                const clientUrl = new URL(client.url);
+                if (clientUrl.origin === self.location.origin) {
+                    client.focus();
+                    client.navigate(targetUrl);
+                    return;
+                }
+            }
+            // Kein offenes Fenster — neues öffnen
+            return clients.openWindow(targetUrl);
+        })
     );
 });

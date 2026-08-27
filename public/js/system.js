@@ -2,13 +2,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Letzte bekannte ID initialisieren
     let lastActivityId = parseInt(document.body.dataset.lastActivityId || 0, 10);
 
-    // PWA-Systembenachrichtigungen: Berechtigung anfragen, falls unterstuetzt und noch nicht entschieden
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().then(permission => {
-            console.log('PWA: Benachrichtigungsberechtigung:', permission);
-        });
-    }
-
     function pollNewActivities() {
         fetch(`/system/api.php?last_id=${lastActivityId}`, {
             method: 'GET',
@@ -25,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.success && data.activities && data.activities.length > 0) {
                     data.activities.forEach(activity => {
-                        showNotificationBubble(activity.message, activity.link_url);
+                        showActivityToast(activity.message, activity.link_url);
 
                         if (activity.id > lastActivityId) {
                             lastActivityId = parseInt(activity.id, 10);
@@ -38,28 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    function showNotificationBubble(text, link) {
-        // Native Systembenachrichtigung triggern, falls berechtigt
-        if ('Notification' in window && Notification.permission === 'granted') {
-            try {
-                const title = "Kai Aktivität";
-                const n = new Notification(title, {
-                    body: text,
-                    icon: '/android-chrome-192x192.png',
-                    tag: 'kai-activity' // Verhindert Spam, indem alte Benachrichtigungen ueberschrieben werden
-                });
-                if (link) {
-                    n.onclick = function(e) {
-                        e.preventDefault();
-                        window.focus();
-                        window.location.href = link;
-                    };
-                }
-            } catch (err) {
-                console.warn('PWA: Fehler beim Anzeigen der nativen Benachrichtigung:', err);
-            }
-        }
-
+    function showActivityToast(text, link) {
         let container = document.getElementById('activity-toast-container');
         if (!container) {
             container = document.createElement('div');
@@ -68,7 +40,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.body.appendChild(container);
         }
 
-        // Bubble-Element im Look & Feel der KPI-Karten
         const bubble = document.createElement('div');
         bubble.style.cssText = `
             background-color: #1a1d24; 
@@ -85,7 +56,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const escape = window.KaiHtml && window.KaiHtml.escape ? window.KaiHtml.escape : (str => String(str ?? ''));
 
-        // Kleiner KPI-ähnlicher Header ("AKTIVITÄT") gefolgt vom Text
         let content = `
             <div style="font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; color: #8a9ba8; margin-bottom: 6px; text-transform: uppercase;">
                 Aktivität

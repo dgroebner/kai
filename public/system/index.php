@@ -152,7 +152,19 @@ function getEventLabel(string $eventType): string
         <?php if ($tab === 'notifications'): ?>
             <!-- Tab: Benachrichtigungseinstellungen -->
             <section class="card">
-                <h2>Benachrichtigungseinstellungen</h2>
+                <h2>Web Push</h2>
+                <p class="text-muted" style="margin-bottom: 1rem;">
+                    Web Push ermöglicht native Benachrichtigungen – auch wenn die App gerade nicht geöffnet ist.
+                    Die Aktivierung gilt nur für <strong>dieses Gerät / diesen Browser</strong>.
+                </p>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <button id="push-toggle-btn" class="btn" type="button">🔔 Web Push aktivieren</button>
+                    <span id="push-status-text" class="text-muted" style="font-size: 0.9rem;"></span>
+                </div>
+            </section>
+
+            <section class="card" style="margin-top: 1.5rem;">
+                <h2>Benachrichtigungsklassen</h2>
                 <p class="text-muted" style="margin-bottom: 1.5rem;">Legen Sie fest, für welche Aktivitäts-Kategorien
                     Sie Benachrichtigungen erhalten möchten.</p>
 

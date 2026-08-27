@@ -341,6 +341,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | IMAP-Postfach | Eingang von E-Bons und Abrechnungen | E-Mail-Inhalte und Anhänge |
 | Hosting-Anbieter | Server & Datenbank | Alle gespeicherten Daten |
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten (falls konfiguriert) |
+| Push-Dienst des Browsers (FCM/APNs) | Web-Push-Benachrichtigungen (via VAPID/RFC 8292) | Endpoint-URL der Subscription; kein Nachrichteninhalt – dieser wird Ende-zu-Ende verschlüsselt übermittelt |
 
 > **Neue Drittanbieter** müssen in dieser Tabelle dokumentiert werden, bevor sie
 > in den Code integriert werden.

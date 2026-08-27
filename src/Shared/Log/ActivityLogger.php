@@ -4,6 +4,8 @@ namespace Kai\Tools\Shared\Log;
 
 use Exception;
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Push\WebPushService;
+use Kai\Tools\System\UserProfileRepository;
 
 class ActivityLogger
 {
@@ -33,7 +35,8 @@ class ActivityLogger
     // --- Spezifische Helper-Methoden ---
 
     /**
-     * Allgemeiner Log-Eintrag
+     * Allgemeiner Log-Eintrag — schreibt in activity_log und versendet eine Web-Push-Benachrichtigung,
+     * wenn der Benutzer für diesen Event-Typ Push aktiviert hat.
      */
     public function log(string $eventType, string $message, ?string $linkUrl = null, ?int $entityId = null): void
     {
@@ -54,6 +57,9 @@ class ActivityLogger
         } catch (Exception $e) {
             $this->logger->error("ActivityLogger: Fehler bei save log.", ['error' => $e->getMessage()]);
         }
+
+        // Web-Push-Benachrichtigung versenden, wenn VAPID konfiguriert und Benutzer eingeloggt
+        $this->dispatchPushNotification($eventType, $message, $linkUrl);
     }
 
     public function logCreditCardStatement(int $statementId, string $period = ''): void
@@ -103,5 +109,40 @@ class ActivityLogger
             $message,
             "/car/index.php"
         );
+    }
+
+    /**
+     * Sendet eine Web-Push-Benachrichtigung an den aktuell eingeloggten Benutzer,
+     * sofern er für diesen Event-Typ Push-Benachrichtigungen aktiviert hat.
+     * Fehler beim Push-Versand werden geloggt, aber nie nach außen weitergegeben.
+     */
+    private function dispatchPushNotification(string $eventType, string $message, ?string $linkUrl): void
+    {
+        // Nur wenn VAPID konfiguriert ist
+        if (empty($_ENV['VAPID_PUBLIC_KEY']) || empty($_ENV['VAPID_PRIVATE_KEY'])) {
+            return;
+        }
+
+        // Benutzer-E-Mail aus Session — kann auch in Cron-Kontexten fehlen
+        $userEmail = $_SESSION['user_email'] ?? '';
+        if (empty($userEmail)) {
+            return;
+        }
+
+        try {
+            $profileRepo = new UserProfileRepository();
+            $preferences = $profileRepo->getPreferences($userEmail);
+
+            // Nur senden, wenn für diesen Event-Typ Push aktiviert
+            if (isset($preferences[$eventType]) && $preferences[$eventType] === false) {
+                return;
+            }
+
+            $url = !empty($linkUrl) ? (rtrim(APP_URL, '/') . $linkUrl) : APP_URL;
+
+            (new WebPushService())->sendToUser($userEmail, 'Kai – Neue Aktivität', $message, $url);
+        } catch (Exception $e) {
+            $this->logger->error("ActivityLogger: Fehler beim Web-Push-Versand.", ['error' => $e->getMessage()]);
+        }
     }
 }

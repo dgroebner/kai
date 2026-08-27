@@ -289,3 +289,15 @@ CREATE TABLE IF NOT EXISTS `user_profiles` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_user_email` (`user_email`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `push_subscriptions` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_email` VARCHAR(255) NOT NULL,
+    `endpoint`   VARCHAR(2048) NOT NULL,
+    `p256dh`     VARCHAR(512) NOT NULL,
+    `auth`       VARCHAR(256) NOT NULL,
+    `user_agent` VARCHAR(512) DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_push_user_email` (`user_email`),
+    UNIQUE KEY `uq_push_endpoint` (`endpoint`(500))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
