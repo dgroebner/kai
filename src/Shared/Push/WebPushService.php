@@ -3,9 +3,11 @@
 namespace Kai\Tools\Shared\Push;
 
 use ErrorException;
+use JsonException;
 use Kai\Tools\Shared\Log\Logger;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
+use Random\RandomException;
 
 /**
  * Sendet Web-Push-Benachrichtigungen via VAPID (RFC 8292).
@@ -50,6 +52,9 @@ class WebPushService
      * @param string $title Benachrichtigungstitel
      * @param string $body Benachrichtigungstext
      * @param string|null $url Optionaler Link, der beim Klick geöffnet wird
+     * @throws ErrorException
+     * @throws RandomException
+     * @throws JsonException
      */
     public function sendToUser(string $userEmail, string $title, string $body, ?string $url = null): void
     {

@@ -2,7 +2,7 @@
 // Service Worker für die kai PWA
 // Strategie: Network-First für HTML-Seiten, Cache-First für statische Assets
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `kai-${CACHE_VERSION}`;
 
 // Statische Assets, die beim Install gecacht werden
@@ -115,20 +115,29 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
-    const targetUrl = event.notification.data?.url || '/';
+    // Nimmt die URL direkt aus den Benachrichtigungsdaten (sollte dank Backend absolut sein)
+    const rawUrl = event.notification.data?.url || '/';
+    // Zur Sicherheit absolut auflösen (falls doch mal nur ein relativer Pfad ankommt)
+    const targetUrl = new URL(rawUrl, self.location.origin).href;
 
     event.waitUntil(
         clients.matchAll({type: 'window', includeUncontrolled: true}).then((windowClients) => {
-            // Bereits offenes Fenster fokussieren, wenn vorhanden
+            // Versuchen, ein passendes offenes Fenster zu finden
             for (const client of windowClients) {
                 const clientUrl = new URL(client.url);
                 if (clientUrl.origin === self.location.origin) {
-                    client.focus();
-                    client.navigate(targetUrl);
-                    return;
+                    // Auf dem Handy ist clients.openWindow oft stabiler als client.navigate,
+                    // aber wir versuchen erst den Fokus + openWindow im Kontext
+                    return client.focus().then(() => {
+                        // Wenn client.navigate unterstützt wird, nutzen, sonst openWindow fallback
+                        if ('navigate' in client) {
+                            return client.navigate(targetUrl).catch(() => clients.openWindow(targetUrl));
+                        }
+                        return clients.openWindow(targetUrl);
+                    });
                 }
             }
-            // Kein offenes Fenster — neues öffnen
+            // Kein offenes Fenster vorhanden -> Neues Fenster öffnen
             return clients.openWindow(targetUrl);
         })
     );
