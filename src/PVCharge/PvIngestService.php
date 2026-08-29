@@ -189,11 +189,10 @@ class PvIngestService
             return;
         }
 
-        // Finalen Tagesertrag aus der Telemetrie berechnen
+        // Finalen Tagesertrag aus den live daten übernehmen
         $yieldStmt = $this->dbCon->query("
-            SELECT MAX(yield_daily_kwh) 
-            FROM pv_telemetry 
-            WHERE DATE(last_update) = CURDATE()
+            SELECT yield_daily_kwh
+            FROM pv_live 
         ");
         $maxDailyKwh = (float)$yieldStmt->fetchColumn();
 
