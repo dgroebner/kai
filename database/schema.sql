@@ -301,3 +301,69 @@ CREATE TABLE IF NOT EXISTS `push_subscriptions` (
     INDEX `idx_push_user_email` (`user_email`),
     UNIQUE KEY `uq_push_endpoint` (`endpoint`(500))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================================================
+-- DOMAIN: EINKAUFSLISTE (Intelligente Einkaufsliste mit 2-Märkte-Splitting)
+-- ==========================================================================
+
+-- 1. Markt- und Gang-Sortierung
+CREATE TABLE IF NOT EXISTS `market_categories` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `market` VARCHAR(50) NOT NULL,
+    `category_name` VARCHAR(100) NOT NULL,
+    `sort_order` INT NOT NULL DEFAULT 0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_market_cat` (`market`, `category_name`),
+    INDEX `idx_market_sort` (`market`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Artikelstamm & Markt-Zuordnung (Lernendes System)
+CREATE TABLE IF NOT EXISTS `product_master` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `preferred_market` VARCHAR(50) NOT NULL DEFAULT 'Rewe',
+    `default_category` VARCHAR(100) NULL,
+    `default_unit` VARCHAR(50) DEFAULT 'Stück',
+    `avg_interval_days` DECIMAL(5, 1) NULL,
+    `last_purchased_at` DATE NULL,
+    `holiday_factor` DECIMAL(3, 2) NOT NULL DEFAULT 1.00,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_product_name` (`name`),
+    INDEX `idx_preferred_market` (`preferred_market`),
+    INDEX `idx_last_purchased` (`last_purchased_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Aktive Einkaufsliste
+CREATE TABLE IF NOT EXISTS `shopping_list_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `quantity` DECIMAL(8, 2) NOT NULL DEFAULT 1.00,
+    `unit` VARCHAR(50) NULL DEFAULT 'Stück',
+    `market` VARCHAR(50) NOT NULL DEFAULT 'Rewe',
+    `category` VARCHAR(100) NULL,
+    `is_spontaneous` TINYINT(1) NOT NULL DEFAULT 0,
+    `source` ENUM('manual', 'suggestion', 'recipe', 'spontaneous') NOT NULL DEFAULT 'manual',
+    `is_checked` TINYINT(1) NOT NULL DEFAULT 0,
+    `checked_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `product_master`(`id`) ON DELETE SET NULL,
+    INDEX `idx_market_checked` (`market`, `is_checked`),
+    INDEX `idx_checked` (`is_checked`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Sächsische Schulferien (zur automatischen Anpassung von Bedarfs- und Mengenvorschlägen)
+CREATE TABLE IF NOT EXISTS `school_holidays` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `state_code` VARCHAR(10) NOT NULL DEFAULT 'SN',
+    `year` INT NOT NULL,
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_holiday_period` (`state_code`, `name`, `start_date`),
+    INDEX `idx_holiday_dates` (`state_code`, `start_date`, `end_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

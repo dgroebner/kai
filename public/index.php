@@ -30,6 +30,13 @@ Auth::requirePage();
         <div class="tool-grid">
 
             <div class="card">
+                <h3>📝 Einkaufsliste</h3>
+                <p>Intelligente Einkaufsliste mit 2-Märkte-Splitting (Rewe & Globus), Gang-Sortierung und
+                    KI-Rezept-Assistent.</p>
+                <a href="einkaufsliste/index.php" class="btn">Öffnen</a>
+            </div>
+
+            <div class="card">
                 <h3>🛒 eBons</h3>
                 <p>Automatische KI-Auswertung der Haushalts-Kassenbons und Einzelpreise für die Küchenplanung.</p>
                 <a href="kassenbon/index.php" class="btn">Öffnen</a>

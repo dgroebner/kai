@@ -1,0 +1,45 @@
+opencollection: 1.0.0
+
+info:
+  name: kai
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  auth:
+    type: oauth2
+    flow: authorization_code
+    authorizationUrl: https://google.com
+    accessTokenUrl: https://googleapis.com
+    callbackUrl: http://localhost:3000
+    credentials:
+      clientId: "{{GoogleAuthClientId}}"
+      clientSecret: "{{GoogleAuthClientSecret}}"
+      placement: body
+    scope: https://googleapis.com
+    pkce: {}
+    tokenConfig:
+      id: credentials
+      placement:
+        header: Bearer
+      source: access_token
+    settings:
+      autoFetchToken: true
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
+    presets:
+      request:
+        type: http

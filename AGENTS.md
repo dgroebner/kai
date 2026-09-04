@@ -163,6 +163,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 |---|---|---|---|
 | Bank | `Kai\Tools\Bank\` | `src/Bank/` (inkl. `Parser/`) | `public/bank/` |
 | Car | `Kai\Tools\Car\` | `src/Car/` | `public/car/` |
+| Einkaufsliste | `Kai\Tools\Einkaufsliste\` | `src/Einkaufsliste/` | `public/einkaufsliste/` |
 | Kassenbon | `Kai\Tools\Kassenbon\` | `src/Kassenbon/` | `public/kassenbon/` |
 | PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
 | System | `Kai\Tools\System\` | `src/System/` | `public/system/` |

@@ -145,4 +145,15 @@ class ActivityLogger
             "/car/index.php"
         );
     }
+
+    public function logShoppingCompleted(int $itemCount = 0, string $market = 'Einkauf'): void
+    {
+        $message = "Einkauf abgeschlossen ({$market}, {$itemCount} Artikel)";
+        $this->log(
+            'shopping_completed',
+            $message,
+            "/einkaufsliste/index.php"
+        );
+    }
 }
+
