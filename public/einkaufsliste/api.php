@@ -349,15 +349,19 @@ try {
                 : 1.00;
 
             if ($id) {
-                $success = $productRepo->updateMaster($id, [
+                // Build update data, include is_ignored only if present in request
+                $updateData = [
                     'custom_label' => $customLabel,
-                    'is_ignored' => $isIgnored,
                     'preferred_market' => $market,
                     'default_category' => $category,
                     'default_unit' => $unit,
                     'avg_interval_days' => $interval,
                     'holiday_factor' => $holidayFactor,
-                ]);
+                ];
+                if (array_key_exists('is_ignored', $input)) {
+                    $updateData['is_ignored'] = $isIgnored;
+                }
+                $success = $productRepo->updateMaster($id, $updateData);
                 $productId = $id;
             } else {
                 if ($name === '') {
