@@ -596,9 +596,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // fetch product data
             const res = await KaiHttp.postJson(API_URL, {action: 'get_product_master', id});
             if (res.success) {
-                document.getElementById('modal-product-id').value = id;
-                document.getElementById('modal-custom-label').value = res.data.custom_label ?? '';
-                document.getElementById('modal-ignore-checkbox').checked = !!res.data.is_ignored;
+                const product = res.product;
+                document.getElementById('modal-product-id').value = product.id;
+                document.getElementById('modal-custom-label').value = product.custom_label ?? '';
+                document.getElementById('modal-ignore-checkbox').checked = !!product.is_ignored;
                 document.getElementById('product-edit-modal').classList.remove('hidden');
             } else {
                 showToast(res.message || 'Fehler beim Laden', true);
