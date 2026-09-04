@@ -64,8 +64,7 @@ class HolidayService
         $checkDate = $date ?? date('Y-m-d');
 
         $stmt = $this->pdo->prepare("
-            SELECT name, start_date, end_date, year,
-                   DATEDIFF(start_date, :check_date) AS days_until
+            SELECT name, start_date, end_date, year
             FROM school_holidays
             WHERE state_code = 'SN'
               AND start_date > :check_date
@@ -79,7 +78,9 @@ class HolidayService
             return null;
         }
 
-        $row['days_until'] = (int)$row['days_until'];
+        $start = new DateTimeImmutable($row['start_date']);
+        $check = new DateTimeImmutable($checkDate);
+        $row['days_until'] = (int)$check->diff($start)->format('%r%a');
         return $row;
     }
 

@@ -89,7 +89,7 @@ class SuggestionService
                     'urgency_percent' => max(0, min(200, (int)$urgencyPercent)),
                     'is_overdue' => $daysUntilDue < 0,
                     'holiday_adapted' => $holidayAdapted,
-                    'holiday_badge' => $holidayAdapted ? "Ferienanpassung (+{round(($holidayFactor - 1) * 100)}% Bedarf)" : null,
+                    'holiday_badge' => $holidayAdapted ? 'Ferienanpassung (+' . (int)round(($holidayFactor - 1) * 100) . '% Bedarf)' : null,
                 ];
             }
         }
