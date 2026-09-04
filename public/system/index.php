@@ -96,6 +96,7 @@ function getEventIcon(string $eventType): string
         'bank_data_imported' => '🏦',
         'creditcard_statement_created' => '💳',
         'battery_fully_charged' => '🔋',
+        'shopping_completed' => '🛒',
         default => '📌',
     };
 }
@@ -108,6 +109,7 @@ function getEventLabel(string $eventType): string
         'bank_data_imported' => 'Neue Bankdaten importiert',
         'pv_forecast_loaded' => 'Neue PV-Prognose geladen',
         'car_telemetry_loaded' => 'Neue Fahrzeugdaten geladen',
+        'shopping_completed' => 'Einkauf abgeschlossen',
         default => ucfirst(str_replace('_', ' ', $eventType)),
     };
 }
