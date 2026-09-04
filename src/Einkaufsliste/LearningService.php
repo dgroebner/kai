@@ -137,14 +137,25 @@ class LearningService
             }
 
             // Artikelstamm aktualisieren / ergänzen
-            $this->productRepo->saveOrUpdate([
+            $updateData = [
                 'name' => $name,
                 'preferred_market' => $preferredMarket,
                 'default_category' => $dominantCategory,
                 'default_unit' => 'Stück',
                 'avg_interval_days' => $avgInterval,
                 'last_purchased_at' => $lastPurchased,
-            ]);
+            ];
+
+            // Wenn neuer Artikel und Muster für Rabatt/Pfand erkannt: initial auf ignoriert setzen
+            $existing = $this->productRepo->findByName($name);
+            if (!$existing && $this->isNonProduct($name)) {
+                $updateData['is_ignored'] = 1;
+                if (!$dominantCategory) {
+                    $updateData['default_category'] = 'Sonstiges';
+                }
+            }
+
+            $this->productRepo->saveOrUpdate($updateData);
 
             $updatedCount++;
         }
@@ -160,5 +171,27 @@ class LearningService
             'unique_products' => count($products),
             'products_updated' => $updatedCount,
         ];
+    }
+
+    /**
+     * Prüft, ob ein Kassenbon-Eintrag typischerweise kein kaufbarer Artikel ist
+     * (z. B. Rabatte, Aktionen, Pfand, Leergut).
+     */
+    private function isNonProduct(string $name): bool
+    {
+        $lower = mb_strtolower($name, 'UTF-8');
+        $keywords = [
+            'rabatt', 'coupon', 'aktionsnachlass', 'gutschein', 'treuepunkt',
+            'bonus', 'ersparnis', 'nachlass', 'leergut', 'pfand', 'rückgabe',
+            'spende', 'aufrund'
+        ];
+
+        foreach ($keywords as $kw) {
+            if (str_contains($lower, $kw)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -61,12 +61,18 @@ try {
             $source = $isSpontaneous ? 'spontaneous' : 'manual';
 
             // Prüfen, ob der Artikel im Artikelstamm existiert, ansonsten verknüpfen/anlegen
-            $master = $productRepo->findByName($name);
+            $master = $productRepo->findByLabelOrName($name);
             $productId = null;
+            $effectiveName = $name;
+
             if ($master) {
                 $productId = (int)$master['id'];
                 if ($category === '' && !empty($master['default_category'])) {
                     $category = $master['default_category'];
+                }
+                // Vorrangiges Label nutzen, falls vorhanden
+                if (!empty($master['custom_label'])) {
+                    $effectiveName = $master['custom_label'];
                 }
             } else {
                 $productId = $productRepo->saveOrUpdate([
@@ -83,7 +89,7 @@ try {
 
             $itemId = $listRepo->addItem([
                 'product_id' => $productId,
-                'name' => $name,
+                'name' => $effectiveName,
                 'quantity' => $quantity,
                 'unit' => $unit,
                 'market' => $market,
@@ -323,16 +329,16 @@ try {
 
         // --- 12. Artikelstamm-Eintrag speichern / anpassen ---
         case 'save_product_master':
+            $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
             $name = trim((string)($input['name'] ?? ''));
-            if ($name === '') {
-                Auth::sendJsonError(400, 'Artikelname darf nicht leer sein');
-            }
 
             $market = trim((string)($input['preferred_market'] ?? 'Rewe'));
             if (!in_array($market, ['Rewe', 'Globus'], true)) {
                 $market = 'Rewe';
             }
 
+            $customLabel = isset($input['custom_label']) ? trim((string)$input['custom_label']) : null;
+            $isIgnored = !empty($input['is_ignored']) ? 1 : 0;
             $category = trim((string)($input['default_category'] ?? 'Sonstiges'));
             $unit = trim((string)($input['default_unit'] ?? 'Stück'));
             $interval = isset($input['avg_interval_days']) && $input['avg_interval_days'] !== ''
@@ -342,26 +348,91 @@ try {
                 ? max(0.5, min(5.0, (float)$input['holiday_factor']))
                 : 1.00;
 
-            $productId = $productRepo->saveOrUpdate([
-                'name' => $name,
-                'preferred_market' => $market,
-                'default_category' => $category,
-                'default_unit' => $unit,
-                'avg_interval_days' => $interval,
-                'holiday_factor' => $holidayFactor,
-            ]);
+            if ($id) {
+                $success = $productRepo->updateMaster($id, [
+                    'custom_label' => $customLabel,
+                    'is_ignored' => $isIgnored,
+                    'preferred_market' => $market,
+                    'default_category' => $category,
+                    'default_unit' => $unit,
+                    'avg_interval_days' => $interval,
+                    'holiday_factor' => $holidayFactor,
+                ]);
+                $productId = $id;
+            } else {
+                if ($name === '') {
+                    Auth::sendJsonError(400, 'Artikelname darf nicht leer sein');
+                }
+                $productId = $productRepo->saveOrUpdate([
+                    'name' => $name,
+                    'custom_label' => $customLabel,
+                    'preferred_market' => $market,
+                    'default_category' => $category,
+                    'default_unit' => $unit,
+                    'avg_interval_days' => $interval,
+                    'holiday_factor' => $holidayFactor,
+                    'is_ignored' => $isIgnored,
+                ]);
+                $success = $productId > 0;
+            }
+
+            $stats = $productRepo->getStats();
+            $updatedProduct = $productRepo->findById($productId);
 
             echo json_encode([
-                'success' => true,
+                'success' => $success,
                 'product_id' => $productId,
+                'product' => $updatedProduct,
+                'stats' => $stats,
                 'message' => 'Artikelstamm gespeichert',
             ]);
             break;
 
-        // --- 13. Artikelstamm durchsuchen (Autocomplete) ---
+        // --- 13. Einzelnen Artikel laden (für Modal) ---
+        case 'get_product_master':
+            $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$id) {
+                Auth::sendJsonError(400, 'Ungültige Artikel-ID');
+            }
+
+            $product = $productRepo->findById($id);
+            if (!$product) {
+                Auth::sendJsonError(404, 'Artikel nicht gefunden');
+            }
+
+            echo json_encode([
+                'success' => true,
+                'product' => $product,
+            ]);
+            break;
+
+        // --- 14. Artikel ignorieren / wiederherstellen (1-Klick) ---
+        case 'toggle_product_ignore':
+            $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$id) {
+                Auth::sendJsonError(400, 'Ungültige Artikel-ID');
+            }
+
+            $force = isset($input['is_ignored']) ? (bool)$input['is_ignored'] : null;
+            $newStatus = $productRepo->toggleIgnore($id, $force);
+            if ($newStatus === null) {
+                Auth::sendJsonError(404, 'Artikel nicht gefunden');
+            }
+
+            $stats = $productRepo->getStats();
+            echo json_encode([
+                'success' => true,
+                'is_ignored' => $newStatus,
+                'stats' => $stats,
+                'message' => $newStatus ? 'Artikel wird künftig ignoriert' : 'Artikel wieder aktiviert',
+            ]);
+            break;
+
+        // --- 15. Artikelstamm durchsuchen (Autocomplete) ---
         case 'search_products':
             $query = trim((string)($input['query'] ?? ''));
-            $results = $productRepo->search($query, 10);
+            $activeOnly = !isset($input['active_only']) || (bool)$input['active_only'];
+            $results = $productRepo->search($query, 10, $activeOnly);
             echo json_encode([
                 'success' => true,
                 'results' => $results,

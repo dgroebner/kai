@@ -378,6 +378,13 @@ a:hover {
 }
 
 .badge-danger {
+}
+
+/* Added for ignored product rows */
+.row-ignored {
+    opacity: 0.5;
+    background-color: var(--bg-surface-hover);
+}
     background-color: var(--color-red-dim);
     color: var(--color-red);
 }

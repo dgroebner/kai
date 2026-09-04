@@ -47,10 +47,12 @@ class SuggestionService
         $suggestions = [];
 
         foreach ($predictableProducts as $product) {
+            $displayName = !empty($product['custom_label']) ? trim($product['custom_label']) : $product['name'];
             $normName = mb_strtolower(trim($product['name']), 'UTF-8');
+            $normLabel = !empty($product['custom_label']) ? mb_strtolower(trim($product['custom_label']), 'UTF-8') : null;
 
-            // Bereits offene Artikel in der Einkaufsliste überspringen
-            if (in_array($normName, $activeItemNames, true)) {
+            // Bereits offene Artikel in der Einkaufsliste überspringen (nach Originalname oder Label)
+            if (in_array($normName, $activeItemNames, true) || ($normLabel !== null && in_array($normLabel, $activeItemNames, true))) {
                 continue;
             }
 
@@ -76,7 +78,9 @@ class SuggestionService
 
                 $suggestions[] = [
                     'product_id' => (int)$product['id'],
-                    'name' => $product['name'],
+                    'name' => $displayName,
+                    'original_name' => $product['name'],
+                    'custom_label' => $product['custom_label'] ?? null,
                     'preferred_market' => $product['preferred_market'] ?? 'Rewe',
                     'default_category' => $product['default_category'] ?? 'Sonstiges',
                     'default_unit' => $product['default_unit'] ?? 'Stück',
@@ -110,9 +114,11 @@ class SuggestionService
             return 0;
         }
 
+        $displayName = !empty($product['custom_label']) ? trim($product['custom_label']) : $product['name'];
+
         return $this->listRepo->addItem([
             'product_id' => $product['id'],
-            'name' => $product['name'],
+            'name' => $displayName,
             'quantity' => $quantity ?? 1.00,
             'unit' => $product['default_unit'] ?? 'Stück',
             'market' => $market ?? $product['preferred_market'] ?? 'Rewe',

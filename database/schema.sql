@@ -321,17 +321,20 @@ CREATE TABLE IF NOT EXISTS `market_categories` (
 CREATE TABLE IF NOT EXISTS `product_master` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
+    `custom_label` VARCHAR(255) NULL DEFAULT NULL,
     `preferred_market` VARCHAR(50) NOT NULL DEFAULT 'Rewe',
     `default_category` VARCHAR(100) NULL,
     `default_unit` VARCHAR(50) DEFAULT 'Stück',
     `avg_interval_days` DECIMAL(5, 1) NULL,
     `last_purchased_at` DATE NULL,
     `holiday_factor` DECIMAL(3, 2) NOT NULL DEFAULT 1.00,
+    `is_ignored` TINYINT(1) NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_product_name` (`name`),
     INDEX `idx_preferred_market` (`preferred_market`),
-    INDEX `idx_last_purchased` (`last_purchased_at`)
+    INDEX `idx_last_purchased` (`last_purchased_at`),
+    INDEX `idx_is_ignored` (`is_ignored`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Aktive Einkaufsliste

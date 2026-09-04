@@ -522,14 +522,15 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                             <th>Kaufintervall</th>
                             <th>Ferienfaktor</th>
                             <th>Letzter Kauf</th>
+                                                    <th class="text-right">Aktion</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php if (empty($allProducts)): ?>
-                            <tr><td colspan="6" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze „Aus eBons lernen" im Tab Vorschläge.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze „Aus eBons lernen" im Tab Vorschläge.</td></tr>
                         <?php else: ?>
                             <?php foreach ($allProducts as $p): ?>
-                                <tr>
+                                <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
                                     <td data-label="Artikel"><strong><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                                     <td data-label="Bevorzugter Markt">
                                         <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
@@ -546,6 +547,12 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                     <td data-label="Letzter Kauf">
                                         <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
                                     </td>
+                                    <td class="text-right">
+                                        <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>" title="Editieren">✏️</button>
+                                        <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>" data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>" title="Ignorieren">
+                                            <?= $p['is_ignored'] ? '🚫' : '👁️' ?>
+                                        </button>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -559,6 +566,28 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 
 <!-- Modal / Toast Alert Container -->
 <div id="shopping-toast" class="shopping-toast hidden"></div>
+<div id="product-edit-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 450px;">
+        <div class="rule-modal-header">
+            <h3>Produkt bearbeiten</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-product-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <input type="hidden" id="modal-product-id">
+            <div class="form-group">
+                <label for="modal-custom-label">Label</label>
+                <input type="text" id="modal-custom-label" class="tag-search-input" placeholder="Eigenes Label">
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="modal-ignore-checkbox"> Ignorieren</label>
+            </div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-primary" id="btn-save-product">Speichern</button>
+            <button type="button" class="btn btn-outline" id="btn-cancel-product">Abbrechen</button>
+        </div>
+    </div>
+</div>
 
 <script src="../js/einkaufsliste.js?v=<?= APP_VERSION ?>" defer></script>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>

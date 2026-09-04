@@ -587,4 +587,78 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+// --- Produkt-Master bearbeiten (Edit & Ignore) ---
+    document.addEventListener('click', async (e) => {
+        // Edit button
+        const editBtn = e.target.closest('.js-edit-product-btn');
+        if (editBtn) {
+            const id = editBtn.dataset.id;
+            // fetch product data
+            const res = await KaiHttp.postJson(API_URL, {action: 'get_product_master', id});
+            if (res.success) {
+                document.getElementById('modal-product-id').value = id;
+                document.getElementById('modal-custom-label').value = res.data.custom_label ?? '';
+                document.getElementById('modal-ignore-checkbox').checked = !!res.data.is_ignored;
+                document.getElementById('product-edit-modal').classList.remove('hidden');
+            } else {
+                showToast(res.message || 'Fehler beim Laden', true);
+            }
+            return;
+        }
+
+        // Toggle ignore button
+        const ignoreBtn = e.target.closest('.js-toggle-ignore-btn');
+        if (ignoreBtn) {
+            const id = ignoreBtn.dataset.id;
+            const res = await KaiHttp.postJson(API_URL, {action: 'toggle_product_ignore', id});
+            if (res.success) {
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if (row) row.classList.toggle('row-ignored');
+                // toggle icon and data attribute
+                if (ignoreBtn.dataset.ignored === '1') {
+                    ignoreBtn.innerHTML = '👁️';
+                    ignoreBtn.dataset.ignored = '0';
+                } else {
+                    ignoreBtn.innerHTML = '🚫';
+                    ignoreBtn.dataset.ignored = '1';
+                }
+                showToast(res.message || 'Ignorier‑Status aktualisiert');
+            } else {
+                showToast(res.message || 'Fehler beim Umschalten', true);
+            }
+            return;
+        }
+    });
+
+    // Save button in modal
+    const btnSaveProduct = document.getElementById('btn-save-product');
+    if (btnSaveProduct) {
+        btnSaveProduct.addEventListener('click', async () => {
+            const id = document.getElementById('modal-product-id').value;
+            const label = document.getElementById('modal-custom-label').value.trim();
+            const ignore = document.getElementById('modal-ignore-checkbox').checked ? 1 : 0;
+            const payload = {action: 'save_product_master', id, custom_label: label, is_ignored: ignore};
+            const res = await KaiHttp.postJson(API_URL, payload);
+            if (res.success) {
+                showToast(res.message || 'Produkt gespeichert');
+                window.location.reload();
+            } else {
+                showToast(res.message || 'Fehler beim Speichern', true);
+            }
+        });
+    }
+
+    // Modal close / cancel
+    const closeModal = () => {
+        const modal = document.getElementById('product-edit-modal');
+        if (modal) modal.classList.add('hidden');
+    };
+    const closeBtn = document.querySelector('#product-edit-modal .rule-modal-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+    const cancelBtn = document.getElementById('btn-cancel-product');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeModal);
+    }
 });
