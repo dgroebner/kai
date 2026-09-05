@@ -8,7 +8,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-const APP_VERSION = '1.6.3';
+const APP_VERSION = '1.6.4';
 define('APP_URL', rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/'));
 
 // Verhindert, dass JavaScript auf das Session-Cookie zugreifen kann (Schutz vor XSS)

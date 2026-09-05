@@ -45,10 +45,11 @@ class WeatherService
 
         $stmt = $this->pdo->prepare("
             INSERT INTO weather_cache (data_type, payload, updated_at)
-            VALUES ('open_meteo_forecast', :payload, NOW())
-            ON DUPLICATE KEY UPDATE payload = :payload, updated_at = NOW()
+            VALUES ('open_meteo_forecast', :payload1, NOW())
+            ON DUPLICATE KEY UPDATE payload = :payload2, updated_at = NOW()
         ");
-        $stmt->execute([':payload' => json_encode($data)]);
+        $json = json_encode($data);
+        $stmt->execute([':payload1' => $json, ':payload2' => $json]);
 
         return $data;
     }
@@ -93,10 +94,10 @@ class WeatherService
             $payloadJson = json_encode(['error_limit' => true, 'expires_at' => $expires]);
             $stmt = $this->pdo->prepare("
                 INSERT INTO weather_cache (data_type, payload, updated_at)
-                VALUES ('open_meteo_forecast', :payload, NOW())
-                ON DUPLICATE KEY UPDATE payload = :payload, updated_at = NOW()
+                VALUES ('open_meteo_forecast', :payload1, NOW())
+                ON DUPLICATE KEY UPDATE payload = :payload2, updated_at = NOW()
             ");
-            $stmt->execute([':payload' => $payloadJson]);
+            $stmt->execute([':payload1' => $payloadJson, ':payload2' => $payloadJson]);
             return null;
         }
 
