@@ -370,3 +370,22 @@ CREATE TABLE IF NOT EXISTS `school_holidays` (
     INDEX `idx_holiday_dates` (`state_code`, `start_date`, `end_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ==========================================================================
+-- DOMAIN: WEATHER (Wettermodul)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `weather_cache` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `data_type` VARCHAR(50) NOT NULL,
+    `payload` JSON NOT NULL,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_data_type` (`data_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weather_sensor_live` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `temperature_c` DECIMAL(4,1) NULL,
+    `soil_moisture_pct` INT NULL,
+    `wind_kmh` DECIMAL(4,1) NULL,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

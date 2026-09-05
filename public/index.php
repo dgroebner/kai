@@ -30,6 +30,12 @@ Auth::requirePage();
         <div class="tool-grid">
 
             <div class="card">
+                <h3>🌤️ Wetter & Garten</h3>
+                <p>Tagesaktuelle Entscheidungshilfe für Leipzig-Holzhausen inkl. Garten-Bewässerung.</p>
+                <a href="weather/index.php" class="btn">Öffnen</a>
+            </div>
+
+            <div class="card">
                 <h3>📝 Einkaufsliste</h3>
                 <p>Intelligente Einkaufsliste mit 2-Märkte-Splitting (Rewe & Globus), Gang-Sortierung und
                     KI-Rezept-Assistent.</p>
