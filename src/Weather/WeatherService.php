@@ -59,18 +59,23 @@ class WeatherService
         $stmt->execute();
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
+        $now = time();
+
         if ($row && !$forceRefresh) {
             $updatedAt = strtotime($row['updated_at']);
             $payload = json_decode($row['payload'], true);
             
-            // Negativer Cache bei HTTP 429 etc. (15 Minuten Pause erzwingen)
-            if (isset($payload['error_limit']) && time() - $updatedAt < 900) {
-                return null;
-            }
-            
-            // Normaler Cache (60 Minuten gültig)
-            if (!isset($payload['error_limit']) && time() - $updatedAt < 3600) {
-                return $payload;
+            // Negativer Cache
+            if (isset($payload['error_limit'])) {
+                $expiresAt = $payload['expires_at'] ?? 0;
+                if ($now < $expiresAt) {
+                    return null;
+                }
+            } else {
+                // Normaler Cache (60 Minuten gültig)
+                if ($now - $updatedAt < 3600) {
+                    return $payload;
+                }
             }
         }
 
@@ -83,13 +88,15 @@ class WeatherService
                 return json_decode($row['payload'], true);
             }
             
-            // Keinerlei Daten vorhanden, API ist blockiert -> negativen Cache setzen
+            // Keinerlei Daten vorhanden, API ist blockiert -> negativen Cache für 15 Min setzen
+            $expires = $now + 900;
+            $payloadJson = json_encode(['error_limit' => true, 'expires_at' => $expires]);
             $stmt = $this->pdo->prepare("
                 INSERT INTO weather_cache (data_type, payload, updated_at)
-                VALUES ('open_meteo_forecast', '{\"error_limit\":true}', NOW())
-                ON DUPLICATE KEY UPDATE payload = '{\"error_limit\":true}', updated_at = NOW()
+                VALUES ('open_meteo_forecast', :payload, NOW())
+                ON DUPLICATE KEY UPDATE payload = :payload, updated_at = NOW()
             ");
-            $stmt->execute();
+            $stmt->execute([':payload' => $payloadJson]);
             return null;
         }
 
