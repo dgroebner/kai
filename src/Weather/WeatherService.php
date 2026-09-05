@@ -61,13 +61,39 @@ class WeatherService
 
         if ($row && !$forceRefresh) {
             $updatedAt = strtotime($row['updated_at']);
-            // Cache fuer 60 Minuten gueltig
-            if (time() - $updatedAt < 3600) {
-                return json_decode($row['payload'], true);
+            $payload = json_decode($row['payload'], true);
+            
+            // Negativer Cache bei HTTP 429 etc. (15 Minuten Pause erzwingen)
+            if (isset($payload['error_limit']) && time() - $updatedAt < 900) {
+                return null;
+            }
+            
+            // Normaler Cache (60 Minuten gültig)
+            if (!isset($payload['error_limit']) && time() - $updatedAt < 3600) {
+                return $payload;
             }
         }
 
-        return $this->fetchAndCacheForecast();
+        $freshData = $this->fetchAndCacheForecast();
+        
+        if (!$freshData) {
+            if ($row && !isset(json_decode($row['payload'], true)['error_limit'])) {
+                // Fallback auf abgelaufene (stale) Daten, API wird für 30 Minuten pausiert
+                $this->pdo->query("UPDATE weather_cache SET updated_at = NOW() WHERE data_type = 'open_meteo_forecast'");
+                return json_decode($row['payload'], true);
+            }
+            
+            // Keinerlei Daten vorhanden, API ist blockiert -> negativen Cache setzen
+            $stmt = $this->pdo->prepare("
+                INSERT INTO weather_cache (data_type, payload, updated_at)
+                VALUES ('open_meteo_forecast', '{\"error_limit\":true}', NOW())
+                ON DUPLICATE KEY UPDATE payload = '{\"error_limit\":true}', updated_at = NOW()
+            ");
+            $stmt->execute();
+            return null;
+        }
+
+        return $freshData;
     }
     
     public function saveSensorData(float $temp, int $soil, float $wind): void
