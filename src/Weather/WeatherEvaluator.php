@@ -96,12 +96,48 @@ class WeatherEvaluator
             $wateringText = 'Check mal den Garten, könnte trocken sein.';
         }
 
+        // 6. Wäsche
+        $rain6h = false;
+        $rain12h = false;
+        $rain24h = false;
+
+        for ($i = 0; $i < count($hourlyTime); $i++) {
+            $t = strtotime($hourlyTime[$i]);
+            if ($t >= $now && $t <= $now + (24 * 3600)) {
+                $prob = $hourlyPrecipProb[$i] ?? 0;
+                $precip = $hourlyPrecip[$i] ?? 0;
+                
+                // Kriterien für Wäsche: >30% Wahrscheinlichkeit oder >0.1mm Regen
+                if ($prob > 30 || $precip > 0.1) {
+                    if ($t <= $now + (6 * 3600)) $rain6h = true;
+                    if ($t <= $now + (12 * 3600)) $rain12h = true;
+                    if ($t <= $now + (24 * 3600)) $rain24h = true;
+                }
+            }
+        }
+
+        $laundry = false;
+        if ($rain6h) {
+            $laundry = false;
+            $laundryText = 'Besser nicht: Regen in den nächsten 6h.';
+        } elseif ($rain12h) {
+            $laundry = true;
+            $laundryText = 'Safe für 6h, aber Regen in 6-12h.';
+        } elseif ($rain24h) {
+            $laundry = true;
+            $laundryText = 'Safe für 12h, Regen in 12-24h.';
+        } else {
+            $laundry = true;
+            $laundryText = 'Perfekt! Nächste 24h komplett trocken.';
+        }
+
         return [
             'umbrella' => ['status' => $umbrella, 'text' => $umbrellaText],
             'jacket' => ['status' => $jacket, 'text' => $jacketText],
             'winter' => ['status' => $winterGear, 'text' => $winterText],
             'pool' => ['status' => $pool, 'text' => $poolText],
             'watering' => ['status' => $watering, 'text' => $wateringText],
+            'laundry' => ['status' => $laundry, 'text' => $laundryText],
         ];
     }
 }

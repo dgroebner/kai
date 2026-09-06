@@ -295,7 +295,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             'jacket' => '🧥',
                             'winter' => '🧣',
                             'pool' => '🏊',
-                            'watering' => '🌱'
+                            'watering' => '🌱',
+                            'laundry' => '👕'
                     ];
                     foreach ($eval as $key => $info):
                         $activeClass = $info['status'] ? 'active-yes' : 'active-no';
