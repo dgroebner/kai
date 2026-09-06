@@ -64,6 +64,26 @@ class WeatherService
         return $forecast;
     }
     
+    
+    public function getHistoricalHourlyData(string $filter): array
+    {
+        $where = "forecast_time < NOW()";
+        if ($filter === 'tag') {
+            $where .= " AND DATE(forecast_time) = CURDATE()";
+        } elseif ($filter === 'letzter_tag') {
+            $where .= " AND forecast_time >= (NOW() - INTERVAL 1 DAY)";
+        } elseif ($filter === 'woche') {
+            $where .= " AND forecast_time >= (NOW() - INTERVAL 7 DAY)";
+        } elseif ($filter === 'monat') {
+            $where .= " AND forecast_time >= (NOW() - INTERVAL 30 DAY)";
+        } else {
+            $where .= " AND DATE(forecast_time) = CURDATE()";
+        }
+
+        $stmt = $this->pdo->query("SELECT forecast_time, temperature_2m, precipitation, wind_speed_10m FROM weather_forecast_hourly WHERE $where ORDER BY forecast_time ASC");
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
     public function saveSensorData(float $temp, int $soil, float $wind): void
     {
         $stmt = $this->pdo->prepare("

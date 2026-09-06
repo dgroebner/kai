@@ -9,6 +9,24 @@ Auth::requirePage();
 try {
     $weatherService = new WeatherService();
     $forecast = $weatherService->getForecastFromDb();
+
+// --- Historische Wetterdaten ---
+$historyFilter = $_GET['hist_filter'] ?? 'tag';
+$validFilters = ['tag', 'letzter_tag', 'woche', 'monat'];
+if (!in_array($historyFilter, $validFilters)) {
+    $historyFilter = 'tag';
+}
+$histRows = $weatherService->getHistoricalHourlyData($historyFilter);
+
+$chartLabels = [];
+$chartTemp = [];
+$chartPrecip = [];
+foreach ($histRows as $r) {
+    $chartLabels[] = date('d.m. H:i', strtotime($r['forecast_time']));
+    $chartTemp[] = (float)$r['temperature_2m'];
+    $chartPrecip[] = (float)$r['precipitation'];
+}
+
     $sensorData = $weatherService->getLatestSensorData();
 } catch (Exception $e) {
     $forecast = null;
@@ -64,6 +82,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
     <title>Wetter Diorama</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
+    <script src="../js/chart.min.js?v=<?= APP_VERSION ?>"></script>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
@@ -81,10 +100,10 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
     </header>
 
     <main>
-        <div class="period-switcher"
-             style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+                <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
             <button class="btn" id="btn-tab-diorama" data-tab="diorama">Diorama</button>
             <button class="btn btn-outline" id="btn-tab-dashboard" data-tab="dashboard">Dashboard</button>
+            <button class="btn btn-outline" id="btn-tab-history" data-tab="history">Historie</button>
         </div>
         <?php if (!$forecast): ?>
             <p>Fehler beim Laden der Wetterdaten.</p>
@@ -465,6 +484,38 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     </table>
                 </div>
             </div> <!-- End tab-dashboard -->
+
+            <div id="tab-history" class="hidden">
+                <div class="chart-section u-mt-lg" id="history-section">
+                    <h3 style="margin-bottom: 1rem;">Historische Wetterdaten</h3>
+                    
+                    <!-- Zeit-Filterbuttons -->
+                    <div class="period-switcher" style="margin-bottom: 1.5rem;">
+                        <a href="?tab=history&hist_filter=tag#history-section" class="btn <?= $historyFilter === 'tag' ? '' : 'btn-outline' ?>">Heute</a>
+                        <a href="?tab=history&hist_filter=letzter_tag#history-section" class="btn <?= $historyFilter === 'letzter_tag' ? '' : 'btn-outline' ?>">Letzter Tag</a>
+                        <a href="?tab=history&hist_filter=woche#history-section" class="btn <?= $historyFilter === 'woche' ? '' : 'btn-outline' ?>">Letzte 7 Tage</a>
+                        <a href="?tab=history&hist_filter=monat#history-section" class="btn <?= $historyFilter === 'monat' ? '' : 'btn-outline' ?>">Letzte 30 Tage</a>
+                    </div>
+                    
+                    <!-- Grafische Chart-Auswertung -->
+                    <?php if (!empty($histRows)): ?>
+                        <div class="card u-mb-lg" style="padding: 1rem 1.5rem;">
+                            <div style="position: relative; height:320px; width:100%;">
+                                <canvas id="weatherHistoryChart"
+                                        data-labels="<?= htmlspecialchars(json_encode($chartLabels), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-temp="<?= htmlspecialchars(json_encode($chartTemp), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-precip="<?= htmlspecialchars(json_encode($chartPrecip), ENT_QUOTES, 'UTF-8') ?>">
+                                </canvas>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-data" style="text-align: center; opacity: 0.6;">
+                            Keine historischen Wetterdaten für den ausgewählten Zeitraum gefunden.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div> <!-- End tab-history -->
+
         <?php endif; ?>
     </main>
 </div>
