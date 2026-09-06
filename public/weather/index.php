@@ -184,23 +184,39 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
                         <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg"
                              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                            <?php
+                            $moonPhase = $forecast['daily']['moon_phase'][0] ?? 0.5;
+                            $isNewMoon = ($moonPhase < 0.03 || $moonPhase > 0.97);
+                            $isFullMoon = ($moonPhase >= 0.47 && $moonPhase <= 0.53);
+                            
+                            if ($moonPhase <= 0.5) {
+                                $maskOffsetPx = -80 * ($moonPhase / 0.5);
+                            } else {
+                                $maskOffsetPx = 80 * ((1.0 - $moonPhase) / 0.5);
+                            }
+                            ?>
                             <defs>
                                 <linearGradient id="goldenGrad" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stop-color="#fb923c"/>
                                     <stop offset="50%" stop-color="#fcd34d"/>
                                     <stop offset="100%" stop-color="#f87171"/>
                                 </linearGradient>
+                                <?php if (!$isFullMoon && !$isNewMoon): ?>
                                 <mask id="moonMask">
                                     <rect width="100%" height="100%" fill="white"/>
-                                    <circle cx="90%" cy="5%" r="35" fill="black"/>
+                                    <!-- Moon has r=40, mask moves left (-px) for waxing, right (+px) for waning -->
+                                    <circle cx="calc(92% + <?= $maskOffsetPx ?>px)" cy="7%" r="40" fill="black"/>
                                 </mask>
+                                <?php endif; ?>
                             </defs>
 
                             <?php if ($isNight): ?>
                                 <!-- Nacht-Verdunkelung -->
                                 <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
                                 <!-- Mond -->
-                                <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" mask="url(#moonMask)"/>
+                                <?php if (!$isNewMoon): ?>
+                                <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" <?= (!$isFullMoon) ? 'mask="url(#moonMask)"' : '' ?>/>
+                                <?php endif; ?>
                             <?php endif; ?>
 
                             <?php if ($isGoldenHour && !$isNight): ?>
