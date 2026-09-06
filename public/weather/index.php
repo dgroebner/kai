@@ -302,10 +302,10 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 $cloudPositions = [
                                     ['x' => -20, 'y' => 10,  's' => 1.4], // Links aussen
                                     ['x' => 150, 'y' => 30,  's' => 1.2], // Links mitte
-                                    ['x' => 350, 'y' => -10, 's' => 1.3], // Links ans Dach ran
-                                    ['x' => 950, 'y' => 20,  's' => 1.1], // Rechts ans Dach ran
-                                    ['x' => 1150,'y' => 0,   's' => 1.3], // Rechts mitte
-                                    ['x' => 1350,'y' => 40,  's' => 1.4], // Rechts aussen
+                                    ['x' => 320, 'y' => -10, 's' => 1.0], // Links ans Dach ran
+                                    ['x' => 1080,'y' => 20,  's' => 1.0], // Rechts ans Dach ran
+                                    ['x' => 1250,'y' => 0,   's' => 1.2], // Rechts mitte
+                                    ['x' => 1420,'y' => 40,  's' => 1.3], // Rechts aussen
                                 ];
                             ?>
                                 <g fill="<?= $cColor ?>" opacity="0.85">
