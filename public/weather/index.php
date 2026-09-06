@@ -62,18 +62,17 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
     <header class="page-header">
         <h1>Wetter Leipzig-Holzhausen</h1>
         <div class="page-header-actions">
+            <?php
+                $updatedAtStr = $forecast['current']['updated_at'] ?? null;
+                if ($updatedAtStr):
+            ?>
+                <span class="last-update">Stand: <?= date('d.m.Y H:i', strtotime($updatedAtStr)) ?> Uhr</span>
+            <?php endif; ?>
             <a href="../index.php" class="btn btn-outline">Zurück</a>
         </div>
     </header>
 
     <main>
-        <?php
-            $updatedAtStr = $forecast['current']['updated_at'] ?? null;
-            $stand = $updatedAtStr ? 'Stand: ' . date('d.m.Y H:i', strtotime($updatedAtStr)) . ' Uhr' : 'Stand: Unbekannt';
-        ?>
-        <div style="text-align: center; margin-top: -0.5rem; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
-            <?= $stand ?>
-        </div>
         <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
             <button class="btn" id="btn-tab-diorama" data-tab="diorama">Diorama</button>
             <button class="btn btn-outline" id="btn-tab-dashboard" data-tab="dashboard">Dashboard</button>
@@ -432,6 +431,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
 </body>
 </html>
+
 
 
 
