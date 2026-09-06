@@ -27,6 +27,13 @@ $currentWeatherCode = $forecast['current']['weather_code'] ?? 0;
 $isWinter = date('n') >= 11 || date('n') <= 2;
 $isSummer = date('n') >= 6 && date('n') <= 8;
 
+function getWindDirectionText($deg) {
+    if ($deg === null || $deg === '--') return '--';
+    $val = intval(($deg / 22.5) + .5);
+    $arr = ["N", "NNO", "NO", "ONO", "O", "OSO", "SO", "SSO", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+    return $arr[($val % 16)];
+}
+
 function getWeatherIconAndText($code)
 {
     if ($code === null || $code === '') return ['icon' => '❓', 'text' => 'Unbekannt'];
