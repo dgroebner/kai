@@ -464,11 +464,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 
             <!-- Zeit-Filterbuttons -->
             <div class="period-switcher">
-                <a href="?tel_filter=tag&page=1" class="btn <?= $telemetryFilter === 'tag' ? '' : 'btn-outline' ?>">Heute</a>
-                <a href="?tel_filter=letzter_tag&page=1" class="btn <?= $telemetryFilter === 'letzter_tag' ? '' : 'btn-outline' ?>">Letzter Tag</a>
-                <a href="?tel_filter=woche&page=1" class="btn <?= $telemetryFilter === 'woche' ? '' : 'btn-outline' ?>">Letzte
+                <a href="?tel_filter=tag&page=1#telemetry-section" class="btn <?= $telemetryFilter === 'tag' ? '' : 'btn-outline' ?>">Heute</a>
+                <a href="?tel_filter=letzter_tag&page=1#telemetry-section" class="btn <?= $telemetryFilter === 'letzter_tag' ? '' : 'btn-outline' ?>">Letzter Tag</a>
+                <a href="?tel_filter=woche&page=1#telemetry-section" class="btn <?= $telemetryFilter === 'woche' ? '' : 'btn-outline' ?>">Letzte
                     7 Tage</a>
-                <a href="?tel_filter=monat&page=1" class="btn <?= $telemetryFilter === 'monat' ? '' : 'btn-outline' ?>">Letzte
+                <a href="?tel_filter=monat&page=1#telemetry-section" class="btn <?= $telemetryFilter === 'monat' ? '' : 'btn-outline' ?>">Letzte
                     30 Tage</a>
             </div>
 
