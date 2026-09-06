@@ -365,6 +365,39 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     <path d="M 800 100 Q 1100 50 1300 200 T 1800 100"/>
                                 </g>
                             <?php endif; ?>
+                            
+                            <?php if (!$isNight && !$isWinter && !$isRaining && !$isSnowing && !$isStorm): ?>
+                                <!-- Bienen im Vordergrund -->
+                                <g>
+                                    <?php 
+                                    // 8 Bienen schwirren um die Blumen (unten links und unten rechts)
+                                    for($b = 0; $b < 8; $b++): 
+                                        if (rand(0, 1)) {
+                                            $baseX = rand(50, 300); // Pool / Blumen links
+                                        } else {
+                                            $baseX = rand(1000, 1500); // Grill / Baum rechts
+                                        }
+                                        $baseY = rand(780, 880);
+                                        $dur = rand(40, 90) / 10; // 4.0s bis 9.0s
+                                        
+                                        $points = [];
+                                        for($p = 0; $p < 5; $p++) {
+                                            $px = $baseX + rand(-60, 60);
+                                            $py = $baseY + rand(-40, 40);
+                                            $points[] = "$px $py";
+                                        }
+                                        $points[] = $points[0]; // Loop schliessen
+                                    ?>
+                                        <g>
+                                            <animateTransform attributeName="transform" type="translate" values="<?= implode(';', $points) ?>" dur="<?= $dur ?>s" repeatCount="indefinite" />
+                                            <!-- Bienenkörper -->
+                                            <ellipse cx="0" cy="0" rx="3.5" ry="2.5" fill="#facc15" />
+                                            <!-- Schwarzer Streifen -->
+                                            <rect x="-1" y="-2.5" width="2" height="5" fill="#1f2937" />
+                                        </g>
+                                    <?php endfor; ?>
+                                </g>
+                            <?php endif; ?>
                         </svg>
                     </div>
                 </div>
