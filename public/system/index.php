@@ -1,9 +1,12 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\System\ActivityLogRepository;
+use Kai\Tools\System\GroupRepository;
+use Kai\Tools\System\PermissionService;
 use Kai\Tools\System\SystemSettingsRepository;
 use Kai\Tools\System\UserProfileRepository;
 
@@ -26,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (isset($_POST['action']) && $_POST['action'] === 'save_roles' && Auth::hasPermission('system_write')) {
             $tab = 'roles';
-            $groupRepo = new \Kai\Tools\System\GroupRepository();
-            
+            $groupRepo = new GroupRepository();
+
             try {
                 // Update Group Permissions
                 if (isset($_POST['group_permissions']) && is_array($_POST['group_permissions'])) {
@@ -46,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $groupRepo->updateGroupPermissions((int)$groupId, array_unique($processedPermissions));
                     }
                 }
-                
+
                 // Empty permissions for groups that are not in the POST array
                 if (isset($_POST['all_group_ids']) && is_array($_POST['all_group_ids'])) {
                     foreach ($_POST['all_group_ids'] as $groupId) {
@@ -64,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $groupRepo->updateUserGroups($email, $validIds);
                     }
                 }
-                
+
                 // Empty user groups for users that are not in the POST array
                 if (isset($_POST['all_user_emails']) && is_array($_POST['all_user_emails'])) {
                     foreach ($_POST['all_user_emails'] as $email) {
@@ -81,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif (isset($_POST['action']) && $_POST['action'] === 'create_group' && Auth::hasPermission('system_write')) {
             $tab = 'roles';
-            $groupRepo = new \Kai\Tools\System\GroupRepository();
+            $groupRepo = new GroupRepository();
             $groupName = trim($_POST['new_group_name'] ?? '');
             if ($groupName !== '') {
                 try {
@@ -103,11 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['temp_group_id'] = (int)$tempGroupId;
                     $successMessage = "Temporär als Gruppe " . (int)$tempGroupId . " angemeldet.";
                 }
-                
+
                 // Reload permissions in session
-                $permissionService = new \Kai\Tools\System\PermissionService();
+                $permissionService = new PermissionService();
                 // We don't have the method public, so let's just do it manually here for temp switch
-                $dbCon = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection();
+                $dbCon = Database::getInstance()->getConnection();
                 if (!empty($_SESSION['temp_group_id'])) {
                     $stmt = $dbCon->prepare("SELECT permission FROM group_permissions WHERE group_id = :group_id");
                     $stmt->execute(["group_id" => $_SESSION['temp_group_id']]);
@@ -167,10 +170,10 @@ $users = [];
 $groupPermissions = [];
 $userGroups = [];
 if ($tab === 'roles' && Auth::hasPermission('system_write')) {
-    $groupRepo = new \Kai\Tools\System\GroupRepository();
+    $groupRepo = new GroupRepository();
     $groups = $groupRepo->getAllGroups();
     $users = $groupRepo->getAllUsers();
-    
+
     foreach ($groups as $group) {
         $groupPermissions[$group['id']] = $groupRepo->getGroupPermissions($group['id']);
     }
@@ -380,47 +383,55 @@ function getEventLabel(string $eventType): string
             $isAdmin = $adminEmail && strtolower($_SESSION['user_email'] ?? '') === strtolower($adminEmail);
             ?>
             <?php if ($isAdmin): ?>
-            <section class="card" style="margin-bottom: 2rem;">
-                <h2>Temporärer Gruppenwechsel (Admin-Testing)</h2>
-                <p class="text-muted">Simuliere die Rechte einer anderen Gruppe. Beim nächsten Login wird dies zurückgesetzt.</p>
-                <form action="index.php?tab=roles" method="POST" style="display: flex; gap: 1rem; align-items: flex-end;">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-                    <input type="hidden" name="action" value="switch_temp_group">
-                    <div style="flex-grow: 1;">
-                        <label for="temp_group_id" style="display: block; margin-bottom: 0.5rem;">Gruppe:</label>
-                        <select name="temp_group_id" id="temp_group_id" class="yield-input">
-                            <option value="">(Admin / Normal)</option>
-                            <?php foreach ($groups as $group): ?>
-                                <option value="<?= $group['id'] ?>" <?= ($_SESSION['temp_group_id'] ?? '') == $group['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($group['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-save">Wechseln</button>
-                </form>
-            </section>
+                <section class="card" style="margin-bottom: 2rem;">
+                    <h2>Temporärer Gruppenwechsel (Admin-Testing)</h2>
+                    <p class="text-muted">Simuliere die Rechte einer anderen Gruppe. Beim nächsten Login wird dies
+                        zurückgesetzt.</p>
+                    <form action="index.php?tab=roles" method="POST"
+                          style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <input type="hidden" name="csrf_token"
+                               value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="action" value="switch_temp_group">
+                        <div style="flex-grow: 1;">
+                            <label for="temp_group_id" style="display: block; margin-bottom: 0.5rem;">Gruppe:</label>
+                            <select name="temp_group_id" id="temp_group_id" class="yield-input"
+                                    style="width: 100%; max-width: 300px;">
+                                <option value="">(Admin / Normal)</option>
+                                <?php foreach ($groups as $group): ?>
+                                    <option value="<?= $group['id'] ?>" <?= ($_SESSION['temp_group_id'] ?? '') == $group['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($group['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-save">Wechseln</button>
+                    </form>
+                </section>
             <?php endif; ?>
             <section class="card" style="margin-bottom: 2rem;">
                 <h2>Neue Gruppe erstellen</h2>
-                <form action="index.php?tab=roles" method="POST" style="display: flex; gap: 1rem; align-items: flex-end;">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                <form action="index.php?tab=roles" method="POST"
+                      style="display: flex; gap: 1rem; align-items: flex-end;">
+                    <input type="hidden" name="csrf_token"
+                           value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="action" value="create_group">
                     <div style="flex-grow: 1;">
                         <label for="new_group_name" style="display: block; margin-bottom: 0.5rem;">Gruppenname:</label>
-                        <input type="text" id="new_group_name" name="new_group_name" class="yield-input" required>
+                        <input type="text" id="new_group_name" name="new_group_name" class="yield-input"
+                               style="width: 100%; max-width: 300px;" required>
                     </div>
-                    <button type="submit" class="btn btn-save">Gruppe hinzufügen</button>
+                    <button type=" submit" class="btn btn-save">Gruppe hinzufügen</button>
                 </form>
             </section>
-            
+
             <form action="index.php?tab=roles" method="POST">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="action" value="save_roles">
-                
+
                 <section class="card" style="margin-bottom: 2rem;">
                     <h2>Rechte-Matrix (Gruppen)</h2>
-                    <p class="text-muted">Hinweis: Wer Schreibrechte (_write) erhält, benötigt meist auch Leserechte (_read).</p>
+                    <p class="text-muted">Hinweis: Wer Schreibrechte (_write) erhält, benötigt meist auch Leserechte
+                        (_read).</p>
                     <div class="table-responsive">
                         <table class="data-table stack-table">
                             <thead>
@@ -435,23 +446,26 @@ function getEventLabel(string $eventType): string
                             </tr>
                             </thead>
                             <tbody>
-                            <?php 
+                            <?php
                             // Standard-Rechte sammeln, damit das UI nicht leer ist
                             $availablePermissions = [
-                                'system_read', 'system_write',
-                                'finance_read', 'finance_write',
-                                'ebon_read', 'ebon_write',
-                                'pv_read', 'pv_write',
-                                'car_read', 'car_write',
-                                'shopping_read', 'shopping_write'
+                                    'system_read', 'system_write',
+                                    'finance_read', 'finance_write',
+                                    'ebon_read', 'ebon_write',
+                                    'pv_read', 'pv_write',
+                                    'car_read', 'car_write',
+                                    'shopping_read', 'shopping_write'
                             ];
                             ?>
                             <?php foreach ($availablePermissions as $perm): ?>
                                 <tr>
                                     <td data-label="Recht"><strong><?= htmlspecialchars($perm) ?></strong></td>
                                     <?php foreach ($groups as $group): ?>
-                                        <td data-label="<?= htmlspecialchars($group['name']) ?>" style="text-align: center;">
-                                            <input type="checkbox" name="group_permissions[<?= $group['id'] ?>][]" value="<?= htmlspecialchars($perm) ?>" <?= in_array($perm, $groupPermissions[$group['id']] ?? []) ? 'checked' : '' ?> style="transform: scale(1.3);">
+                                        <td data-label="<?= htmlspecialchars($group['name']) ?>"
+                                            style="text-align: center;">
+                                            <input type="checkbox" name="group_permissions[<?= $group['id'] ?>][]"
+                                                   value="<?= htmlspecialchars($perm) ?>" <?= in_array($perm, $groupPermissions[$group['id']] ?? []) ? 'checked' : '' ?>
+                                                   style="transform: scale(1.3);">
                                         </td>
                                     <?php endforeach; ?>
                                 </tr>
@@ -460,7 +474,7 @@ function getEventLabel(string $eventType): string
                         </table>
                     </div>
                 </section>
-                
+
                 <section class="card">
                     <h2>Benutzer-Zuordnung</h2>
                     <div class="table-responsive">
@@ -477,16 +491,19 @@ function getEventLabel(string $eventType): string
                                     <td data-label="Benutzer">
                                         <strong><?= htmlspecialchars($user['name'] ?? $user['email']) ?></strong><br>
                                         <small class="text-muted"><?= htmlspecialchars($user['email']) ?></small>
-                                        <input type="hidden" name="all_user_emails[]" value="<?= htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') ?>">
+                                        <input type="hidden" name="all_user_emails[]"
+                                               value="<?= htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') ?>">
                                     </td>
                                     <td data-label="Gruppen">
                                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                        <?php foreach ($groups as $group): ?>
-                                            <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
-                                                <input type="checkbox" name="user_groups[<?= htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') ?>][]" value="<?= $group['id'] ?>" <?= in_array($group['id'], $userGroups[$user['email']] ?? []) ? 'checked' : '' ?>>
-                                                <?= htmlspecialchars($group['name']) ?>
-                                            </label>
-                                        <?php endforeach; ?>
+                                            <?php foreach ($groups as $group): ?>
+                                                <label style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                                                    <input type="checkbox"
+                                                           name="user_groups[<?= htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') ?>][]"
+                                                           value="<?= $group['id'] ?>" <?= in_array($group['id'], $userGroups[$user['email']] ?? []) ? 'checked' : '' ?>>
+                                                    <?= htmlspecialchars($group['name']) ?>
+                                                </label>
+                                            <?php endforeach; ?>
                                         </div>
                                     </td>
                                 </tr>
