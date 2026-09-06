@@ -19,7 +19,7 @@ class WeatherIngestService
     public function processForecast(array $data): void
     {
         $modelStr = $data['metadata']['model'] ?? '';
-        $isIcon = (str_contains(strtolower($modelStr), 'icon') || $modelStr == '23');
+        $isIcon = (str_contains(strtolower($modelStr), 'icon') || $modelStr == '23' || $modelStr == '1' || $modelStr == 'best_match');
         $isEcmwf = (str_contains(strtolower($modelStr), 'ecmwf') || $modelStr == '30');
 
         if (!$isIcon && !$isEcmwf) {
@@ -76,7 +76,7 @@ class WeatherIngestService
                 $time = strtotime($row['date']);
                 $daysDiff = ($time - $now) / 86400;
                 if (($isIcon && $daysDiff <= 2.0) || ($isEcmwf && $daysDiff > 2.0)) {
-                    $this->insertDaily($row);
+                    $this->insertDaily($row, $isEcmwf, $limit48h);
                 }
             }
         }
@@ -85,7 +85,7 @@ class WeatherIngestService
             foreach ($data['hourly'] as $row) {
                 $time = strtotime($row['date']);
                 if (($isIcon && $time <= $limit48h) || ($isEcmwf && $time > $limit48h)) {
-                    $this->insertHourly($row);
+                    $this->insertHourly($row, $isEcmwf, $limit48h);
                 }
             }
         }
@@ -152,9 +152,16 @@ class WeatherIngestService
         $stmt->execute($binds);
     }
 
-    private function insertHourly(array $row): void
+    private function insertHourly(array $row, bool $isEcmwf, int $limit48h): void
     {
-        $dt = date('Y-m-d H:i:s', strtotime($row['date']));
+        $time = strtotime($row['date']);
+        
+        // ECMWF darf die ersten 48 Stunden NICHT überschreiben (ICON-D2 hat Vorrang)
+        if ($isEcmwf && $time < $limit48h) {
+            return;
+        }
+        
+        $dt = date('Y-m-d H:i:s', $time);
         $stmt = $this->pdo->prepare("
             INSERT INTO weather_forecast_hourly (forecast_time, temperature_2m, relative_humidity_2m, dew_point_2m, apparent_temperature, precipitation_probability, precipitation, rain, showers, snowfall, snow_depth, weather_code, cloud_cover, surface_pressure, visibility, evapotranspiration, wind_speed_10m, wind_direction_10m, wind_gusts_10m, soil_temperature_0cm, soil_moisture_0_to_1cm, uv_index, sunshine_duration, total_column_integrated_water_vapour, cape, lifted_index, convective_inhibition, freezing_level_height)
             VALUES (:ft, :temperature_2m, :relative_humidity_2m, :dew_point_2m, :apparent_temperature, :precipitation_probability, :precipitation, :rain, :showers, :snowfall, :snow_depth, :weather_code, :cloud_cover, :surface_pressure, :visibility, :evapotranspiration, :wind_speed_10m, :wind_direction_10m, :wind_gusts_10m, :soil_temperature_0cm, :soil_moisture_0_to_1cm, :uv_index, :sunshine_duration, :total_column_integrated_water_vapour, :cape, :lifted_index, :convective_inhibition, :freezing_level_height)
