@@ -170,11 +170,36 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         <?php endif; ?>
                         
                         <?php if ($isCloudy): ?>
-                            <!-- Wolken-Ebene (halbtransparent) -->
-                            <g fill="#ffffff" opacity="0.3">
-                                <path d="M200 150 Q300 50 450 150 Q600 50 700 200 Q500 250 200 150 Z" />
-                                <path d="M1000 200 Q1100 100 1300 200 Q1450 100 1500 250 Q1200 350 1000 200 Z" opacity="0.7"/>
-                                <path d="M600 100 Q750 0 900 120 Q1050 50 1100 180 Q800 220 600 100 Z" opacity="0.5"/>
+                            <!-- Wolken-Ebene (Top-Left Bereich) -->
+                            <g fill="#ffffff">
+                                <!-- Grosse Wolke -->
+                                <g transform="translate(100, 50) scale(1.5)" opacity="0.8">
+                                    <circle cx="100" cy="80" r="40"/>
+                                    <circle cx="150" cy="50" r="60"/>
+                                    <circle cx="210" cy="70" r="50"/>
+                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                </g>
+                                <!-- Mittlere Wolke Rand links -->
+                                <g transform="translate(-20, -10) scale(1.3)" opacity="0.6">
+                                    <circle cx="100" cy="80" r="40"/>
+                                    <circle cx="150" cy="50" r="60"/>
+                                    <circle cx="210" cy="70" r="50"/>
+                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                </g>
+                                <!-- Kleine Wolke weiter rechts -->
+                                <g transform="translate(450, 80) scale(1.0)" opacity="0.7">
+                                    <circle cx="100" cy="80" r="40"/>
+                                    <circle cx="150" cy="50" r="60"/>
+                                    <circle cx="210" cy="70" r="50"/>
+                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                </g>
+                                <!-- Sehr hohe, kleine Wolke -->
+                                <g transform="translate(300, -20) scale(0.9)" opacity="0.6">
+                                    <circle cx="100" cy="80" r="40"/>
+                                    <circle cx="150" cy="50" r="60"/>
+                                    <circle cx="210" cy="70" r="50"/>
+                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                </g>
                             </g>
                         <?php endif; ?>
                         
@@ -431,6 +456,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
 </body>
 </html>
+
 
 
 
