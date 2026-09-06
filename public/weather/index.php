@@ -53,109 +53,102 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
         <?php if (!$forecast): ?>
             <p>Fehler beim Laden der Wetterdaten.</p>
         <?php else: ?>
+            <?php
+                $m = (int)date('n');
+                if ($m >= 3 && $m <= 5) $season = 'spring.jpeg';
+                elseif ($m >= 6 && $m <= 8) $season = 'summer.jpeg';
+                elseif ($m >= 9 && $m <= 11) $season = 'autmn.jpeg';
+                else $season = 'winter.jpeg';
+                $bgUrl = "../assets/weather/" . $season;
+
+                $windSpeed = $forecast['current']['wind_speed_10m'] ?? 0;
+                $rain = $forecast['current']['rain'] ?? 0;
+                $showers = $forecast['current']['showers'] ?? 0;
+                $precip = $forecast['current']['precipitation'] ?? 0;
+                $isNight = isset($forecast['current']['is_day']) && $forecast['current']['is_day'] == 0;
+
+                $isRaining = ($rain > 0 || $showers > 0 || $precip > 0.5);
+                $isStorm = ($windSpeed > 30);
+
+                if ($isStorm && $isRaining) {
+                    $greeting = "Moin! Echtes Schietwetter heute, halt dich fest und bleib trocken!";
+                } elseif ($isStorm) {
+                    $greeting = "Moin! Pustet ordentlich da draußen, mach lieber die Fenster zu.";
+                } elseif ($isRaining) {
+                    $greeting = "Moin! Regenschirm aufspannen, von oben kommt ordentlich was runter.";
+                } elseif ($isNight) {
+                    $greeting = "Gute Nacht! Zeit zum Chillen, es ist dunkel.";
+                } elseif ($currentTemp > 25) {
+                    $greeting = "Moin! Pack die Badehose ein, feinstes Sommerwetter heute!";
+                } else {
+                    $greeting = "Moin! Ganz entspanntes Wetter heute in Leipzig-Holzhausen.";
+                }
+            ?>
             <div class="diorama-card">
-                <!-- Die fröhliche Sprachblase wie im Konzept -->
+                <!-- Die coole Sprachblase -->
                 <div class="weather-speech-bubble">
-                    <span class="weather-speech-icon">🐶☀️</span>
-                    <p><strong>Moin Leipzig-Holzhausen!</strong> Heute zeigt sich das Wetter von seiner besten Seite.
-                    </p>
+                    <span class="weather-speech-icon">💬</span>
+                    <p><strong>Hey!</strong> <?= $greeting ?></p>
                 </div>
 
-                <div class="diorama-container" style="background: <?= $skyColor ?>;">
-                    <svg viewBox="0 0 800 450" width="100%" height="auto" class="diorama-svg">
-                        <!-- Definitionen für Farbverläufe und Schatten -->
-                        <defs>
-                            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#38bdf8"/>
-                                <stop offset="100%" stop-color="#bae6fd"/>
-                            </linearGradient>
-                            <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#4ade80"/>
-                                <stop offset="100%" stop-color="#16a34a"/>
-                            </linearGradient>
-                            <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
-                                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.15"/>
-                            </filter>
-                        </defs>
-
-                        <!-- 1. HIMMEL -->
-                        <rect width="800" height="350" fill="url(#skyGrad)"/>
-
-                        <?php if ($currentWeatherCode <= 3): ?>
-                            <!-- Sonne mit Strahlen -->
-                            <g transform="translate(700, 80)" filter="url(#softShadow)">
-                                <circle r="35" fill="#facc15"/>
-                                <!-- Sonnenstrahlen -->
-                                <path d="M0-50 L0-42 M0 42 L0 50 M-50 0 L-42 0 M42 0 L50 0 M-35-35 L-29-29 M35 35 L29 29 M-35 35 L-29 29 M35-35 L29-29"
-                                      stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
+                <div class="diorama-container" style="position: relative; line-height: 0;">
+                    <!-- Basis-Jahreszeiten-Bild -->
+                    <img src="<?= $bgUrl ?>" alt="Jahreszeit Hintergrund" style="width: 100%; height: auto; display: block; object-fit: cover; aspect-ratio: 16/9;">
+                    
+                    <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
+                    <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <?php if ($isNight): ?>
+                            <!-- Nacht-Verdunkelung -->
+                            <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
+                            <!-- Mond (dynamische Mondphase aus Backend falls verfuegbar, hier Sichel simuliert) -->
+                            <circle cx="85%" cy="15%" r="40" fill="#facc15" opacity="0.9"/>
+                            <circle cx="83%" cy="13%" r="35" fill="#0a192f" opacity="0.7"/>
+                        <?php endif; ?>
+                        
+                        <?php if ($isRaining): ?>
+                            <!-- Regen (schraege Linien) -->
+                            <g stroke="#60a5fa" stroke-width="2.5" opacity="0.6">
+                                <line x1="200" y1="-50" x2="50" y2="950" />
+                                <line x1="400" y1="-100" x2="250" y2="800" />
+                                <line x1="600" y1="0" x2="450" y2="900" />
+                                <line x1="800" y1="-200" x2="650" y2="700" />
+                                <line x1="1000" y1="0" x2="850" y2="900" />
+                                <line x1="1200" y1="-50" x2="1050" y2="850" />
+                                <line x1="1400" y1="100" x2="1250" y2="1000" />
+                                <line x1="1600" y1="0" x2="1450" y2="900" />
+                                <line x1="1800" y1="-100" x2="1650" y2="800" />
                             </g>
                         <?php endif; ?>
-
-                        <!-- 2. HINTERGRUND-HÜGEL & LANDSCHAFT -->
-                        <path d="M0 300 Q 250 240 500 280 T 800 260 L 800 350 L 0 350 Z" fill="#22c55e" opacity="0.6"/>
-
-                        <!-- 3. HAUS -->
-                        <g transform="translate(80, 160)" filter="url(#softShadow)">
-                            <!-- Haus-Wand -->
-                            <rect x="0" y="60" width="180" height="130" fill="#f8fafc" rx="4"/>
-                            <!-- Dach -->
-                            <polygon points="-15,60 90,-15 195,60" fill="#dc2626"/>
-                            <!-- Schornstein -->
-                            <rect x="130" y="5" width="20" height="35" fill="#94a3b8"/>
-                            <!-- Fenster -->
-                            <rect x="30" y="85" width="40" height="45" fill="#38bdf8" rx="4"/>
-                            <rect x="110" y="85" width="40" height="45" fill="#38bdf8" rx="4"/>
-                            <!-- Tür -->
-                            <rect x="70" y="135" width="40" height="55" fill="#78350f" rx="2"/>
-                        </g>
-
-                        <!-- 4. BAUM (Jahreszeiten-abhängig) -->
-                        <g transform="translate(620, 150)" filter="url(#softShadow)">
-                            <!-- Stamm -->
-                            <rect x="-12" y="50" width="24" height="120" fill="#78350f" rx="4"/>
-                            <!-- Krone -->
-                            <?php if ($isWinter): ?>
-                                <!-- Kahle Äste im Winter -->
-                                <path d="M0 60 Q-40 20 -60 10 M-30 35 Q-10 10 -20 -15 M0 40 Q30 15 50 5 M20 30 Q10 0 30 -20"
-                                      stroke="#78350f" stroke-width="6" fill="none" stroke-linecap="round"/>
-                            <?php else: ?>
-                                <!-- Saftige grüne Baumkrone -->
-                                <circle cx="0" cy="10" r="65" fill="<?= $treeColor ?>"/>
-                                <circle cx="-35" cy="30" r="45" fill="<?= $treeColor ?>"/>
-                                <circle cx="35" cy="25" r="50" fill="<?= $treeColor ?>"/>
-                            <?php endif; ?>
-                        </g>
-
-                        <!-- 5. VORDERGRUND & WIESE -->
-                        <rect x="0" y="320" width="800" height="130" fill="url(#groundGrad)"/>
-
-                        <!-- 6. DER BRAUNE LABRADOR (Maskottchen) -->
-                        <g transform="translate(350, 270)" filter="url(#softShadow)">
-                            <!-- Einfacher, aber niedlicher Comic-Labrador-Korpus -->
-                            <ellipse cx="40" cy="40" rx="35" ry="22" fill="#92400e"/>
-                            <circle cx="15" cy="25" r="18" fill="#92400e"/>
-                            <!-- Schlappohren -->
-                            <path d="M5 20 Q-5 30 5 45 Z" fill="#78350f"/>
-                            <!-- Schnauze & Auge -->
-                            <circle cx="8" cy="23" r="2" fill="#1e293b"/>
-                            <ellipse cx="2" cy="28" rx="4" ry="3" fill="#451a03"/>
-                            <!-- Rute -->
-                            <path d="M70 35 Q90 20 85 10" stroke="#92400e" stroke-width="6" fill="none"
-                                  stroke-linecap="round"/>
-                            <!-- Pfoten -->
-                            <rect x="20" y="55" width="8" height="15" fill="#78350f" rx="3"/>
-                            <rect x="50" y="55" width="8" height="15" fill="#78350f" rx="3"/>
-                        </g>
+                        
+                        <?php if ($isStorm): ?>
+                            <!-- Wind-Boen (geschwungene Linien im Himmel) -->
+                            <g stroke="#e2e8f0" stroke-width="6" fill="none" opacity="0.4">
+                                <path d="M -100 200 Q 200 100 400 250 T 900 150" />
+                                <path d="M 300 350 Q 600 250 800 400 T 1400 300" />
+                                <path d="M 800 100 Q 1100 50 1300 200 T 1800 100" />
+                            </g>
+                        <?php endif; ?>
                     </svg>
                 </div>
             </div>
 
             <!-- Die 5 Entscheidungskriterien im modernen Grid-Layout -->
             <div class="weather-decision-grid">
-                <?php foreach ($eval as $key => $info): ?>
-                    <div class="weather-decision-card <?= $info['status'] ? 'active-yes' : 'active-no' ?>">
+                <?php 
+                $icons = [
+                    'umbrella' => '☔',
+                    'jacket' => '🧥',
+                    'winter' => '🧣',
+                    'pool' => '🏊',
+                    'watering' => '🌱'
+                ];
+                foreach ($eval as $key => $info): 
+                    $activeClass = $info['status'] ? 'active-yes' : 'active-no';
+                    $icon = $icons[$key] ?? '❓';
+                ?>
+                    <div class="weather-decision-card <?= $activeClass ?>">
                         <div class="decision-icon">
-                            <?= $info['status'] ? '✅' : '❌' ?>
+                            <?= $icon ?>
                         </div>
                         <div class="decision-text">
                             <?= htmlspecialchars($info['text']) ?>

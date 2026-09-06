@@ -48,52 +48,52 @@ class WeatherEvaluator
 
         // 1. Regenschirm
         $umbrella = false;
-        $umbrellaText = 'Kein Regen in Sicht.';
+        $umbrellaText = 'Alles trocken, Schirm kann zuhause bleiben.';
         if ($maxPrecipProb > 40 || $maxPrecip > 1.0) {
             $umbrella = true;
-            $umbrellaText = 'Schirm einpacken, es koennte nass werden!';
+            $umbrellaText = 'Nimm \'nen Schirm mit, sonst wirst du klatschnass!';
         }
 
         // 2. Jacke
         $jacket = false;
-        $jacketText = 'T-Shirt Wetter!';
+        $jacketText = 'T-Shirt reicht, genieß es!';
         $windchill = $currentTemp;
         if ($currentWind > 20) {
             $windchill -= 2;
         }
         if ($windchill < 15) {
             $jacket = true;
-            $jacketText = 'Eine Jacke ist ratsam.';
+            $jacketText = 'Zieh dir was drüber, echt fresh draußen.';
         }
 
         // 3. Schal und Muetze
         $winterGear = false;
-        $winterText = 'Nicht noetig.';
+        $winterText = 'Brauchst keine Winterausrüstung.';
         if ($windchill < 5) {
             $winterGear = true;
-            $winterText = 'Muetze und Schal nicht vergessen!';
+            $winterText = 'Freeze-Gefahr! Mütze und Schal sind heute Pflicht.';
         }
 
         // 4. Pool
         $pool = false;
-        $poolText = 'Zu kalt fuer den Pool.';
+        $poolText = 'Viel zu kalt für den Pool, bleib lieber im Trockenen.';
         if ($maxTempToday >= 28) {
             $pool = true;
-            $poolText = 'Ab in den Pool, es wird heiss!';
+            $poolText = 'Pool-Time! Perfektes Wetter zum Reinspringen.';
         }
 
         // 5. Giessen
         $dailyPrecip = $forecast['daily']['precipitation_sum'][0] ?? 0;
         $watering = false;
-        $wateringText = 'Boden ist feucht genug.';
+        $wateringText = 'Garten ist safe, Erde ist noch feucht genug.';
         
         $soil = $sensorData['soil_moisture_pct'] ?? 100;
         if ($dailyPrecip < 2.0 && $maxTempToday > 20 && $soil < 40) {
             $watering = true;
-            $wateringText = 'Pflanzen brauchen Wasser!';
+            $wateringText = 'Garten-Duty ruft: Die Pflanzen brauchen dringend Wasser!';
         } elseif ($dailyPrecip < 2.0 && !$sensorData && $maxTempToday > 22) {
              $watering = true;
-             $wateringText = 'Pflanzen koennten Wasser brauchen.';
+             $wateringText = 'Check mal den Garten, könnte trocken sein.';
         }
 
         return [
