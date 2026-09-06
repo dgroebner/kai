@@ -73,20 +73,13 @@ class WeatherIngestService
 
         if (!empty($data['daily'])) {
             foreach ($data['daily'] as $row) {
-                $time = strtotime($row['date']);
-                $daysDiff = ($time - $now) / 86400;
-                if (($isIcon && $daysDiff <= 2.0) || ($isEcmwf && $daysDiff > 2.0)) {
-                    $this->insertDaily($row, $isEcmwf, $limit48h);
-                }
+                $this->insertDaily($row, $isEcmwf, $limit48h);
             }
         }
 
         if (!empty($data['hourly'])) {
             foreach ($data['hourly'] as $row) {
-                $time = strtotime($row['date']);
-                if (($isIcon && $time <= $limit48h) || ($isEcmwf && $time > $limit48h)) {
-                    $this->insertHourly($row, $isEcmwf, $limit48h);
-                }
+                $this->insertHourly($row, $isEcmwf, $limit48h);
             }
         }
     }
