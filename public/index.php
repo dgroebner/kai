@@ -36,6 +36,12 @@ Auth::requirePage();
             </div>
 
             <div class="card">
+                <h3>⚡ Energie-Dashboard</h3>
+                <p>Live-Telemetrie und Ertragsprognose der Photovoltaikanlage (4,7 kWp) für die kommenden Tage.</p>
+                <a href="pvcharge/index.php" class="btn">Öffnen</a>
+            </div>
+            
+            <div class="card">
                 <h3>📝 Einkaufsliste</h3>
                 <p>Intelligente Einkaufsliste mit 2-Märkte-Splitting (Rewe & Globus), Gang-Sortierung und
                     KI-Rezept-Assistent.</p>
@@ -58,12 +64,6 @@ Auth::requirePage();
                 <h3>🏦 Finanzen</h3>
                 <p>Girokonto-Umsätze, Kreditkartenabrechnungen und Tag-Auswertungen im Überblick.</p>
                 <a href="bank/index.php" class="btn">Öffnen</a>
-            </div>
-
-            <div class="card">
-                <h3>⚡ Energie-Dashboard</h3>
-                <p>Live-Telemetrie und Ertragsprognose der Photovoltaikanlage (4,7 kWp) für die kommenden Tage.</p>
-                <a href="pvcharge/index.php" class="btn">Öffnen</a>
             </div>
 
             <div class="card">

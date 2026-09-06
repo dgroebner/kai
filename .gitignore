@@ -1,5 +1,7 @@
 /vendor/
+/local/
 */logs/
+migration.sql
 .env
 .idea/
 .DS_Store

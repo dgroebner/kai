@@ -389,3 +389,115 @@ CREATE TABLE IF NOT EXISTS `weather_sensor_live` (
     `wind_kmh` DECIMAL(4,1) NULL,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ==========================================================================
+-- WEATHER MODEL TABLES (ICON / ECMWF)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `weather_state` (
+    `id` INT PRIMARY KEY DEFAULT 1,
+    `temperature` DECIMAL(4,1),
+    `weather_code` INT,
+    `wind_speed` DECIMAL(4,1),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weather_forecast_daily` (
+    `forecast_date` DATE PRIMARY KEY,
+    `temperature_max` DECIMAL(4,1),
+    `temperature_min` DECIMAL(4,1),
+    `weather_code` INT,
+    `precipitation_sum` DECIMAL(5,2),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weather_forecast_hourly` (
+    `forecast_time` DATETIME PRIMARY KEY,
+    `temperature` DECIMAL(4,1),
+    `precipitation_probability` INT,
+    `precipitation` DECIMAL(5,2),
+    `weather_code` INT,
+    `wind_speed` DECIMAL(4,1),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+DROP TABLE IF EXISTS `weather_cache`;
+DROP TABLE IF EXISTS weather_state;
+DROP TABLE IF EXISTS weather_forecast_daily;
+DROP TABLE IF EXISTS weather_forecast_hourly;
+CREATE TABLE IF NOT EXISTS `weather_state` (
+    `id` INT PRIMARY KEY DEFAULT 1,
+    `temperature_2m` DECIMAL(10,2),
+    `relative_humidity_2m` DECIMAL(10,2),
+    `is_day` INT,
+    `apparent_temperature` DECIMAL(10,2),
+    `precipitation` DECIMAL(10,2),
+    `showers` DECIMAL(10,2),
+    `rain` DECIMAL(10,2),
+    `snowfall` DECIMAL(10,2),
+    `weather_code` INT,
+    `cloud_cover` DECIMAL(10,2),
+    `surface_pressure` DECIMAL(10,2),
+    `wind_gusts_10m` DECIMAL(10,2),
+    `wind_direction_10m` DECIMAL(10,2),
+    `wind_speed_10m` DECIMAL(10,2),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weather_forecast_daily` (
+    `forecast_date` DATE PRIMARY KEY,
+    `weather_code` INT,
+    `temperature_2m_max` DECIMAL(10,2),
+    `temperature_2m_min` DECIMAL(10,2),
+    `apparent_temperature_max` DECIMAL(10,2),
+    `apparent_temperature_min` DECIMAL(10,2),
+    `uv_index_max` DECIMAL(10,2),
+    `sunrise` DATETIME,
+    `sunset` DATETIME,
+    `daylight_duration` DECIMAL(10,2),
+    `sunshine_duration` DECIMAL(10,2),
+    `moonrise` DATETIME,
+    `moonset` DATETIME,
+    `moon_phase` DECIMAL(10,2),
+    `rain_sum` DECIMAL(10,2),
+    `showers_sum` DECIMAL(10,2),
+    `snowfall_sum` DECIMAL(10,2),
+    `precipitation_sum` DECIMAL(10,2),
+    `precipitation_hours` DECIMAL(10,2),
+    `precipitation_probability_max` INT,
+    `wind_speed_10m_max` DECIMAL(10,2),
+    `wind_gusts_10m_max` DECIMAL(10,2),
+    `wind_direction_10m_dominant` DECIMAL(10,2),
+    `shortwave_radiation_sum` DECIMAL(10,2),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weather_forecast_hourly` (
+    `forecast_time` DATETIME PRIMARY KEY,
+    `temperature_2m` DECIMAL(10,2),
+    `relative_humidity_2m` DECIMAL(10,2),
+    `dew_point_2m` DECIMAL(10,2),
+    `apparent_temperature` DECIMAL(10,2),
+    `precipitation_probability` INT,
+    `precipitation` DECIMAL(10,2),
+    `rain` DECIMAL(10,2),
+    `showers` DECIMAL(10,2),
+    `snowfall` DECIMAL(10,2),
+    `snow_depth` DECIMAL(10,2),
+    `weather_code` INT,
+    `cloud_cover` DECIMAL(10,2),
+    `surface_pressure` DECIMAL(10,2),
+    `visibility` DECIMAL(10,2),
+    `evapotranspiration` DECIMAL(10,2),
+    `wind_speed_10m` DECIMAL(10,2),
+    `wind_direction_10m` DECIMAL(10,2),
+    `wind_gusts_10m` DECIMAL(10,2),
+    `soil_temperature_0cm` DECIMAL(10,2),
+    `soil_moisture_0_to_1cm` DECIMAL(10,2),
+    `uv_index` DECIMAL(10,2),
+    `sunshine_duration` DECIMAL(10,2),
+    `total_column_integrated_water_vapour` DECIMAL(10,2),
+    `cape` DECIMAL(10,2),
+    `lifted_index` DECIMAL(10,2),
+    `convective_inhibition` DECIMAL(10,2),
+    `freezing_level_height` DECIMAL(10,2),
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
