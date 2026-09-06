@@ -61,21 +61,44 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 else $season = 'winter.jpeg';
                 $bgUrl = "../assets/weather/" . $season;
 
+                $weatherCode = $forecast['current']['weather_code'] ?? 0;
+                $cloudCover = $forecast['current']['cloud_cover'] ?? 0;
                 $windSpeed = $forecast['current']['wind_speed_10m'] ?? 0;
                 $rain = $forecast['current']['rain'] ?? 0;
                 $showers = $forecast['current']['showers'] ?? 0;
+                $snowfall = $forecast['current']['snowfall'] ?? 0;
                 $precip = $forecast['current']['precipitation'] ?? 0;
                 $isNight = isset($forecast['current']['is_day']) && $forecast['current']['is_day'] == 0;
 
-                $isRaining = ($rain > 0 || $showers > 0 || $precip > 0.5);
-                $isStorm = ($windSpeed > 30);
+                $sunriseStr = $forecast['daily']['sunrise'][0] ?? date('Y-m-d 06:00:00');
+                $sunsetStr = $forecast['daily']['sunset'][0] ?? date('Y-m-d 20:00:00');
+                $sunrise = strtotime(is_array($sunriseStr) ? $sunriseStr[0] : $sunriseStr);
+                $sunset = strtotime(is_array($sunsetStr) ? $sunsetStr[0] : $sunsetStr);
+                $now = time();
 
-                if ($isStorm && $isRaining) {
+                $isSnowing = ($snowfall > 0 || in_array($weatherCode, [71, 73, 75, 77, 85, 86]));
+                $isRaining = (!$isSnowing && ($rain > 0 || $showers > 0 || $precip > 0.1 || in_array($weatherCode, [51, 53, 55, 61, 63, 65, 80, 81, 82])));
+                $isStorm = ($windSpeed > 30);
+                $isFog = ($weatherCode == 45 || $weatherCode == 48);
+                $isCloudy = ($cloudCover > 30 || in_array($weatherCode, [3, 45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82, 71, 73, 75, 77, 85, 86]));
+                
+                $isGoldenHour = false;
+                if (abs($now - $sunrise) <= 3600 || abs($now - $sunset) <= 3600) {
+                    $isGoldenHour = true;
+                }
+
+                if ($isStorm && $isSnowing) {
+                    $greeting = "Moin! Echtes Schneegestöber heute, zieh dich warm an!";
+                } elseif ($isStorm && $isRaining) {
                     $greeting = "Moin! Echtes Schietwetter heute, halt dich fest und bleib trocken!";
                 } elseif ($isStorm) {
                     $greeting = "Moin! Pustet ordentlich da draußen, mach lieber die Fenster zu.";
+                } elseif ($isSnowing) {
+                    $greeting = "Moin! Es schneit! Pack dich gut ein.";
                 } elseif ($isRaining) {
                     $greeting = "Moin! Regenschirm aufspannen, von oben kommt ordentlich was runter.";
+                } elseif ($isFog) {
+                    $greeting = "Moin! Ziemlich neblig heute, fahr vorsichtig.";
                 } elseif ($isNight) {
                     $greeting = "Gute Nacht! Zeit zum Chillen, es ist dunkel.";
                 } elseif ($currentTemp > 25) {
@@ -97,31 +120,73 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     
                     <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
                     <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <defs>
+                            <linearGradient id="goldenGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#fb923c"/>
+                                <stop offset="50%" stop-color="#fcd34d"/>
+                                <stop offset="100%" stop-color="#f87171"/>
+                            </linearGradient>
+                        </defs>
+                        
                         <?php if ($isNight): ?>
                             <!-- Nacht-Verdunkelung -->
                             <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
-                            <!-- Mond (dynamische Mondphase aus Backend falls verfuegbar, hier Sichel simuliert) -->
+                            <!-- Mond -->
                             <circle cx="85%" cy="15%" r="40" fill="#facc15" opacity="0.9"/>
                             <circle cx="83%" cy="13%" r="35" fill="#0a192f" opacity="0.7"/>
                         <?php endif; ?>
                         
+                        <?php if ($isGoldenHour && !$isNight): ?>
+                            <!-- Daemmerung / Golden Hour -->
+                            <rect width="100%" height="100%" fill="url(#goldenGrad)" opacity="0.25" style="mix-blend-mode: overlay;"/>
+                        <?php endif; ?>
+                        
+                        <?php if ($isCloudy): ?>
+                            <!-- Wolken-Ebene (halbtransparent) -->
+                            <g fill="#ffffff" opacity="0.3">
+                                <path d="M200 150 Q300 50 450 150 Q600 50 700 200 Q500 250 200 150 Z" />
+                                <path d="M1000 200 Q1100 100 1300 200 Q1450 100 1500 250 Q1200 350 1000 200 Z" opacity="0.7"/>
+                                <path d="M600 100 Q750 0 900 120 Q1050 50 1100 180 Q800 220 600 100 Z" opacity="0.5"/>
+                            </g>
+                        <?php endif; ?>
+                        
+                        <?php if ($isFog): ?>
+                            <!-- Nebel (grauer milchiger Schleier) -->
+                            <rect width="100%" height="100%" fill="#cbd5e1" opacity="0.35"/>
+                        <?php endif; ?>
+                        
                         <?php if ($isRaining): ?>
-                            <!-- Regen (schraege Linien) -->
-                            <g stroke="#60a5fa" stroke-width="2.5" opacity="0.6">
-                                <line x1="200" y1="-50" x2="50" y2="950" />
-                                <line x1="400" y1="-100" x2="250" y2="800" />
-                                <line x1="600" y1="0" x2="450" y2="900" />
-                                <line x1="800" y1="-200" x2="650" y2="700" />
-                                <line x1="1000" y1="0" x2="850" y2="900" />
-                                <line x1="1200" y1="-50" x2="1050" y2="850" />
-                                <line x1="1400" y1="100" x2="1250" y2="1000" />
-                                <line x1="1600" y1="0" x2="1450" y2="900" />
-                                <line x1="1800" y1="-100" x2="1650" y2="800" />
+                            <!-- Regen mit Intensitaetssteuerung -->
+                            <?php 
+                            $rainWidth = ($precip >= 2.0) ? 3.5 : 1.5;
+                            $rainOpacity = ($precip >= 2.0) ? 0.7 : 0.4;
+                            $rainSpacing = ($precip >= 2.0) ? 70 : 180;
+                            ?>
+                            <g stroke="#60a5fa" stroke-width="<?= $rainWidth ?>" opacity="<?= $rainOpacity ?>">
+                                <?php for ($x = -200; $x <= 2000; $x += $rainSpacing): ?>
+                                    <line x1="<?= $x ?>" y1="-100" x2="<?= $x - 150 ?>" y2="1100" />
+                                    <?php if ($precip >= 2.0): ?>
+                                        <line x1="<?= $x + 35 ?>" y1="-50" x2="<?= $x - 115 ?>" y2="1050" />
+                                    <?php endif; ?>
+                                <?php endfor; ?>
+                            </g>
+                        <?php endif; ?>
+
+                        <?php if ($isSnowing): ?>
+                            <!-- Schnee (fallende Flocken) -->
+                            <g fill="#ffffff" opacity="0.8">
+                                <?php for ($i = 0; $i < 60; $i++): 
+                                    $cx = rand(0, 1600);
+                                    $cy = rand(0, 900);
+                                    $r = rand(2, 6);
+                                ?>
+                                    <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>" />
+                                <?php endfor; ?>
                             </g>
                         <?php endif; ?>
                         
                         <?php if ($isStorm): ?>
-                            <!-- Wind-Boen (geschwungene Linien im Himmel) -->
+                            <!-- Wind-Boen -->
                             <g stroke="#e2e8f0" stroke-width="6" fill="none" opacity="0.4">
                                 <path d="M -100 200 Q 200 100 400 250 T 900 150" />
                                 <path d="M 300 350 Q 600 250 800 400 T 1400 300" />
