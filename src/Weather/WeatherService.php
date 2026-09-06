@@ -44,7 +44,7 @@ class WeatherService
 
         // 3. Daily
         // Remove LIMIT 1 to fetch all days
-        $stmt = $this->pdo->query("SELECT * FROM weather_forecast_daily ORDER BY forecast_date ASC");
+        $stmt = $this->pdo->query("SELECT * FROM weather_forecast_daily WHERE forecast_date >= CURDATE() ORDER BY forecast_date ASC LIMIT 7");
         $dailyRows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         
         $forecast['daily'] = [];
