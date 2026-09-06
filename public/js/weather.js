@@ -83,6 +83,7 @@ function initWeatherHistoryChart() {
     const precipData = JSON.parse(canvas.getAttribute('data-precip') || '[]');
     const windData = JSON.parse(canvas.getAttribute('data-wind') || '[]');
     const humData = JSON.parse(canvas.getAttribute('data-hum') || '[]');
+    const pressData = JSON.parse(canvas.getAttribute('data-press') || '[]');
     
     const ctx = canvas.getContext('2d');
     
@@ -124,6 +125,17 @@ function initWeatherHistoryChart() {
                     borderColor: '#14b8a6',
                     backgroundColor: 'rgba(20, 184, 166, 0.1)',
                     yAxisID: 'yHum',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false,
+                    hidden: true // Default hidden
+                },
+                {
+                    label: 'Luftdruck (hPa)',
+                    data: pressData,
+                    borderColor: '#a855f7', // Purple
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    yAxisID: 'yPress',
                     borderWidth: 2,
                     tension: 0.3,
                     fill: false,
@@ -196,6 +208,14 @@ function initWeatherHistoryChart() {
                     ticks: { color: textColor },
                     min: 0,
                     max: 100
+                },
+                yPress: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    title: { display: true, text: 'Luftdruck (hPa)', color: textColor },
+                    grid: { drawOnChartArea: false },
+                    ticks: { color: textColor }
                 }
             }
         }

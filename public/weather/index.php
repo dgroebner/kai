@@ -23,12 +23,14 @@ $chartTemp = [];
 $chartPrecip = [];
 $chartWind = [];
 $chartHum = [];
+$chartPress = [];
 foreach ($histRows as $r) {
     $chartLabels[] = date('d.m. H:i', strtotime($r['forecast_time']));
     $chartTemp[] = (float)$r['temperature_2m'];
     $chartPrecip[] = (float)$r['precipitation'];
     $chartWind[] = (float)$r['wind_speed_10m'];
     $chartHum[] = (float)$r['relative_humidity_2m'];
+    $chartPress[] = (float)$r['surface_pressure'];
 }
 
     $sensorData = $weatherService->getLatestSensorData();
@@ -510,7 +512,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                         data-temp="<?= htmlspecialchars(json_encode($chartTemp), ENT_QUOTES, 'UTF-8') ?>"
                                         data-precip="<?= htmlspecialchars(json_encode($chartPrecip), ENT_QUOTES, 'UTF-8') ?>"
                                         data-wind="<?= htmlspecialchars(json_encode($chartWind), ENT_QUOTES, 'UTF-8') ?>"
-                                        data-hum="<?= htmlspecialchars(json_encode($chartHum), ENT_QUOTES, 'UTF-8') ?>">
+                                        data-hum="<?= htmlspecialchars(json_encode($chartHum), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-press="<?= htmlspecialchars(json_encode($chartPress), ENT_QUOTES, 'UTF-8') ?>">
                                 </canvas>
                             </div>
                         </div>
