@@ -27,7 +27,8 @@ $currentWeatherCode = $forecast['current']['weather_code'] ?? 0;
 $isWinter = date('n') >= 11 || date('n') <= 2;
 $isSummer = date('n') >= 6 && date('n') <= 8;
 
-function getWeatherIconAndText($code) {
+function getWeatherIconAndText($code)
+{
     if ($code === null || $code === '') return ['icon' => '❓', 'text' => 'Unbekannt'];
     $code = (int)$code;
     if ($code == 0) return ['icon' => '☀️', 'text' => 'Klar'];
@@ -63,9 +64,9 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
         <h1>Wetter Leipzig-Holzhausen</h1>
         <div class="page-header-actions">
             <?php
-                $updatedAtStr = $forecast['current']['updated_at'] ?? null;
-                if ($updatedAtStr):
-            ?>
+            $updatedAtStr = $forecast['current']['updated_at'] ?? null;
+            if ($updatedAtStr):
+                ?>
                 <span class="last-update">Stand: <?= date('d.m.Y H:i', strtotime($updatedAtStr)) ?> Uhr</span>
             <?php endif; ?>
             <a href="../index.php" class="btn btn-outline">Zurück</a>
@@ -73,7 +74,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
     </header>
 
     <main>
-        <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+        <div class="period-switcher"
+             style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
             <button class="btn" id="btn-tab-diorama" data-tab="diorama">Diorama</button>
             <button class="btn btn-outline" id="btn-tab-dashboard" data-tab="dashboard">Dashboard</button>
         </div>
@@ -81,199 +83,202 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
             <p>Fehler beim Laden der Wetterdaten.</p>
         <?php else: ?>
             <?php
-                $m = (int)date('n');
-                if ($m >= 3 && $m <= 5) $season = 'spring.jpeg';
-                elseif ($m >= 6 && $m <= 8) $season = 'summer.jpeg';
-                elseif ($m >= 9 && $m <= 11) $season = 'autmn.jpeg';
-                else $season = 'winter.jpeg';
-                $bgUrl = "../assets/weather/" . $season;
+            $m = (int)date('n');
+            if ($m >= 3 && $m <= 5) $season = 'spring.jpeg';
+            elseif ($m >= 6 && $m <= 8) $season = 'summer.jpeg';
+            elseif ($m >= 9 && $m <= 11) $season = 'autmn.jpeg';
+            else $season = 'winter.jpeg';
+            $bgUrl = "../assets/weather/" . $season;
 
-                $weatherCode = $forecast['current']['weather_code'] ?? 0;
-                $cloudCover = $forecast['current']['cloud_cover'] ?? 0;
-                $windSpeed = $forecast['current']['wind_speed_10m'] ?? 0;
-                $rain = $forecast['current']['rain'] ?? 0;
-                $showers = $forecast['current']['showers'] ?? 0;
-                $snowfall = $forecast['current']['snowfall'] ?? 0;
-                $precip = $forecast['current']['precipitation'] ?? 0;
-                $isNight = isset($forecast['current']['is_day']) && $forecast['current']['is_day'] == 0;
+            $weatherCode = $forecast['current']['weather_code'] ?? 0;
+            $cloudCover = $forecast['current']['cloud_cover'] ?? 0;
+            $windSpeed = $forecast['current']['wind_speed_10m'] ?? 0;
+            $rain = $forecast['current']['rain'] ?? 0;
+            $showers = $forecast['current']['showers'] ?? 0;
+            $snowfall = $forecast['current']['snowfall'] ?? 0;
+            $precip = $forecast['current']['precipitation'] ?? 0;
+            $isNight = isset($forecast['current']['is_day']) && $forecast['current']['is_day'] == 0;
 
-                $sunriseStr = $forecast['daily']['sunrise'][0] ?? date('Y-m-d 06:00:00');
-                $sunsetStr = $forecast['daily']['sunset'][0] ?? date('Y-m-d 20:00:00');
-                $sunrise = strtotime(is_array($sunriseStr) ? $sunriseStr[0] : $sunriseStr);
-                $sunset = strtotime(is_array($sunsetStr) ? $sunsetStr[0] : $sunsetStr);
-                $now = time();
+            $sunriseStr = $forecast['daily']['sunrise'][0] ?? date('Y-m-d 06:00:00');
+            $sunsetStr = $forecast['daily']['sunset'][0] ?? date('Y-m-d 20:00:00');
+            $sunrise = strtotime(is_array($sunriseStr) ? $sunriseStr[0] : $sunriseStr);
+            $sunset = strtotime(is_array($sunsetStr) ? $sunsetStr[0] : $sunsetStr);
+            $now = time();
 
-                $isSnowing = ($snowfall > 0 || in_array($weatherCode, [71, 73, 75, 77, 85, 86]));
-                $isRaining = (!$isSnowing && ($rain > 0 || $showers > 0 || $precip > 0.1 || in_array($weatherCode, [51, 53, 55, 61, 63, 65, 80, 81, 82])));
-                $isStorm = ($windSpeed > 30);
-                $isFog = ($weatherCode == 45 || $weatherCode == 48);
-                $isCloudy = ($cloudCover > 30 || in_array($weatherCode, [3, 45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82, 71, 73, 75, 77, 85, 86]));
-                
-                $isGoldenHour = false;
-                if (abs($now - $sunrise) <= 3600 || abs($now - $sunset) <= 3600) {
-                    $isGoldenHour = true;
-                }
+            $isSnowing = ($snowfall > 0 || in_array($weatherCode, [71, 73, 75, 77, 85, 86]));
+            $isRaining = (!$isSnowing && ($rain > 0 || $showers > 0 || $precip > 0.1 || in_array($weatherCode, [51, 53, 55, 61, 63, 65, 80, 81, 82])));
+            $isStorm = ($windSpeed > 30);
+            $isFog = ($weatherCode == 45 || $weatherCode == 48);
+            $isCloudy = ($cloudCover > 30 || in_array($weatherCode, [3, 45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82, 71, 73, 75, 77, 85, 86]));
 
-                if ($isStorm && $isSnowing) {
-                    $greeting = "Moin! Echtes Schneegestöber heute, zieh dich warm an!";
-                } elseif ($isStorm && $isRaining) {
-                    $greeting = "Moin! Echtes Schietwetter heute, halt dich fest und bleib trocken!";
-                } elseif ($isStorm) {
-                    $greeting = "Moin! Pustet ordentlich da draußen, mach lieber die Fenster zu.";
-                } elseif ($isSnowing) {
-                    $greeting = "Moin! Es schneit! Pack dich gut ein.";
-                } elseif ($isRaining) {
-                    $greeting = "Moin! Regenschirm aufspannen, von oben kommt ordentlich was runter.";
-                } elseif ($isFog) {
-                    $greeting = "Moin! Ziemlich neblig heute, fahr vorsichtig.";
-                } elseif ($isNight) {
-                    $greeting = "Gute Nacht! Zeit zum Chillen, es ist dunkel.";
-                } elseif ($currentTemp > 25) {
-                    $greeting = "Moin! Pack die Badehose ein, feinstes Sommerwetter heute!";
-                } else {
-                    $greeting = "Moin! Ganz entspanntes Wetter heute in Leipzig-Holzhausen.";
-                }
+            $isGoldenHour = false;
+            if (abs($now - $sunrise) <= 3600 || abs($now - $sunset) <= 3600) {
+                $isGoldenHour = true;
+            }
+
+            if ($isStorm && $isSnowing) {
+                $greeting = "Moin! Echtes Schneegestöber heute, zieh dich warm an!";
+            } elseif ($isStorm && $isRaining) {
+                $greeting = "Moin! Echtes Schietwetter heute, halt dich fest und bleib trocken!";
+            } elseif ($isStorm) {
+                $greeting = "Moin! Pustet ordentlich da draußen, mach lieber die Fenster zu.";
+            } elseif ($isSnowing) {
+                $greeting = "Moin! Es schneit! Pack dich gut ein.";
+            } elseif ($isRaining) {
+                $greeting = "Moin! Regenschirm aufspannen, von oben kommt ordentlich was runter.";
+            } elseif ($isFog) {
+                $greeting = "Moin! Ziemlich neblig heute, fahr vorsichtig.";
+            } elseif ($isNight) {
+                $greeting = "Gute Nacht! Zeit zum Chillen, es ist dunkel.";
+            } elseif ($currentTemp > 25) {
+                $greeting = "Moin! Pack die Badehose ein, feinstes Sommerwetter heute!";
+            } else {
+                $greeting = "Moin! Ganz entspanntes Wetter heute in Leipzig-Holzhausen.";
+            }
             ?>
             <div id="tab-diorama">
-            <div class="diorama-card">
-                <!-- Die coole Sprachblase -->
-                <div class="weather-speech-bubble">
-                    <span class="weather-speech-icon">💬</span>
-                    <p><strong>Hey!</strong> <?= $greeting ?></p>
-                </div>
-
-                <div class="diorama-container" style="position: relative; line-height: 0;">
-                    <!-- Basis-Jahreszeiten-Bild -->
-                    <img src="<?= $bgUrl ?>" alt="Jahreszeit Hintergrund" style="width: 100%; height: auto; display: block; object-fit: cover; aspect-ratio: 16/9;">
-                    
-                    <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
-                    <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
-                        <defs>
-                            <linearGradient id="goldenGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#fb923c"/>
-                                <stop offset="50%" stop-color="#fcd34d"/>
-                                <stop offset="100%" stop-color="#f87171"/>
-                            </linearGradient>
-                        </defs>
-                        
-                        <?php if ($isNight): ?>
-                            <!-- Nacht-Verdunkelung -->
-                            <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
-                            <!-- Mond -->
-                            <circle cx="85%" cy="15%" r="40" fill="#facc15" opacity="0.9"/>
-                            <circle cx="83%" cy="13%" r="35" fill="#0a192f" opacity="0.7"/>
-                        <?php endif; ?>
-                        
-                        <?php if ($isGoldenHour && !$isNight): ?>
-                            <!-- Daemmerung / Golden Hour -->
-                            <rect width="100%" height="100%" fill="url(#goldenGrad)" opacity="0.25" style="mix-blend-mode: overlay;"/>
-                        <?php endif; ?>
-                        
-                        <?php if ($isCloudy): ?>
-                            <!-- Wolken-Ebene (Top-Left Bereich) -->
-                            <g fill="#ffffff">
-                                <!-- Grosse Wolke -->
-                                <g transform="translate(10, 20) scale(1.4)" opacity="0.8">
-                                    <circle cx="100" cy="80" r="40"/>
-                                    <circle cx="150" cy="50" r="60"/>
-                                    <circle cx="210" cy="70" r="50"/>
-                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
-                                </g>
-                                <!-- Mittlere Wolke Rand links -->
-                                <g transform="translate(-50, -10) scale(1.2)" opacity="0.6">
-                                    <circle cx="100" cy="80" r="40"/>
-                                    <circle cx="150" cy="50" r="60"/>
-                                    <circle cx="210" cy="70" r="50"/>
-                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
-                                </g>
-                                <!-- Wolke unten links -->
-                                <g transform="translate(-100, 150) scale(1.1)" opacity="0.7">
-                                    <circle cx="100" cy="80" r="40"/>
-                                    <circle cx="150" cy="50" r="60"/>
-                                    <circle cx="210" cy="70" r="50"/>
-                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
-                                </g>
-                                <!-- Sehr hohe, kleine Wolke -->
-                                <g transform="translate(250, -20) scale(0.9)" opacity="0.6">
-                                    <circle cx="100" cy="80" r="40"/>
-                                    <circle cx="150" cy="50" r="60"/>
-                                    <circle cx="210" cy="70" r="50"/>
-                                    <rect x="80" y="50" width="150" height="70" rx="35"/>
-                                </g>
-                            </g>
-                        <?php endif; ?>
-                        
-                        <?php if ($isFog): ?>
-                            <!-- Nebel (grauer milchiger Schleier) -->
-                            <rect width="100%" height="100%" fill="#cbd5e1" opacity="0.35"/>
-                        <?php endif; ?>
-                        
-                        <?php if ($isRaining): ?>
-                            <!-- Regen mit Intensitaetssteuerung -->
-                            <?php 
-                            $rainWidth = ($precip >= 2.0) ? 3.5 : 1.5;
-                            $rainOpacity = ($precip >= 2.0) ? 0.7 : 0.4;
-                            $rainSpacing = ($precip >= 2.0) ? 70 : 180;
-                            ?>
-                            <g stroke="#60a5fa" stroke-width="<?= $rainWidth ?>" opacity="<?= $rainOpacity ?>">
-                                <?php for ($x = -200; $x <= 2000; $x += $rainSpacing): ?>
-                                    <line x1="<?= $x ?>" y1="-100" x2="<?= $x - 150 ?>" y2="1100" />
-                                    <?php if ($precip >= 2.0): ?>
-                                        <line x1="<?= $x + 35 ?>" y1="-50" x2="<?= $x - 115 ?>" y2="1050" />
-                                    <?php endif; ?>
-                                <?php endfor; ?>
-                            </g>
-                        <?php endif; ?>
-
-                        <?php if ($isSnowing): ?>
-                            <!-- Schnee (fallende Flocken) -->
-                            <g fill="#ffffff" opacity="0.8">
-                                <?php for ($i = 0; $i < 60; $i++): 
-                                    $cx = rand(0, 1600);
-                                    $cy = rand(0, 900);
-                                    $r = rand(2, 6);
-                                ?>
-                                    <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>" />
-                                <?php endfor; ?>
-                            </g>
-                        <?php endif; ?>
-                        
-                        <?php if ($isStorm): ?>
-                            <!-- Wind-Boen -->
-                            <g stroke="#e2e8f0" stroke-width="6" fill="none" opacity="0.4">
-                                <path d="M -100 200 Q 200 100 400 250 T 900 150" />
-                                <path d="M 300 350 Q 600 250 800 400 T 1400 300" />
-                                <path d="M 800 100 Q 1100 50 1300 200 T 1800 100" />
-                            </g>
-                        <?php endif; ?>
-                    </svg>
-                </div>
-            </div>
-
-            <!-- Die 5 Entscheidungskriterien im modernen Grid-Layout -->
-            <div class="weather-decision-grid">
-                <?php 
-                $icons = [
-                    'umbrella' => '☔',
-                    'jacket' => '🧥',
-                    'winter' => '🧣',
-                    'pool' => '🏊',
-                    'watering' => '🌱'
-                ];
-                foreach ($eval as $key => $info): 
-                    $activeClass = $info['status'] ? 'active-yes' : 'active-no';
-                    $icon = $icons[$key] ?? '❓';
-                ?>
-                    <div class="weather-decision-card <?= $activeClass ?>">
-                        <div class="decision-icon">
-                            <?= $icon ?>
-                        </div>
-                        <div class="decision-text">
-                            <?= htmlspecialchars($info['text']) ?>
-                        </div>
+                <div class="diorama-card">
+                    <!-- Die coole Sprachblase -->
+                    <div class="weather-speech-bubble">
+                        <span class="weather-speech-icon">💬</span>
+                        <p><strong>Hey!</strong> <?= $greeting ?></p>
                     </div>
-                <?php endforeach; ?>
-            </div>
+
+                    <div class="diorama-container" style="position: relative; line-height: 0;">
+                        <!-- Basis-Jahreszeiten-Bild -->
+                        <img src="<?= $bgUrl ?>" alt="Jahreszeit Hintergrund"
+                             style="width: 100%; height: auto; display: block; object-fit: cover; aspect-ratio: 16/9;">
+
+                        <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
+                        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg"
+                             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                            <defs>
+                                <linearGradient id="goldenGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#fb923c"/>
+                                    <stop offset="50%" stop-color="#fcd34d"/>
+                                    <stop offset="100%" stop-color="#f87171"/>
+                                </linearGradient>
+                            </defs>
+
+                            <?php if ($isNight): ?>
+                                <!-- Nacht-Verdunkelung -->
+                                <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
+                                <!-- Mond -->
+                                <circle cx="85%" cy="15%" r="40" fill="#facc15" opacity="0.9"/>
+                                <circle cx="83%" cy="13%" r="35" fill="#0a192f" opacity="0.7"/>
+                            <?php endif; ?>
+
+                            <?php if ($isGoldenHour && !$isNight): ?>
+                                <!-- Daemmerung / Golden Hour -->
+                                <rect width="100%" height="100%" fill="url(#goldenGrad)" opacity="0.25"
+                                      style="mix-blend-mode: overlay;"/>
+                            <?php endif; ?>
+
+                            <?php if ($isCloudy): ?>
+                                <!-- Wolken-Ebene (Top-Left Bereich) -->
+                                <g fill="#ffffff">
+                                    <!-- Grosse Wolke -->
+                                    <g transform="translate(10, 20) scale(1.4)" opacity="0.8">
+                                        <circle cx="100" cy="80" r="40"/>
+                                        <circle cx="150" cy="50" r="60"/>
+                                        <circle cx="210" cy="70" r="50"/>
+                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                    </g>
+                                    <!-- Mittlere Wolke Rand links -->
+                                    <g transform="translate(-50, -10) scale(1.2)" opacity="0.6">
+                                        <circle cx="100" cy="80" r="40"/>
+                                        <circle cx="150" cy="50" r="60"/>
+                                        <circle cx="210" cy="70" r="50"/>
+                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                    </g>
+                                    <!-- Wolke unten links -->
+                                    <g transform="translate(-100, 150) scale(1.1)" opacity="0.7">
+                                        <circle cx="100" cy="80" r="40"/>
+                                        <circle cx="150" cy="50" r="60"/>
+                                        <circle cx="210" cy="70" r="50"/>
+                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                    </g>
+                                    <!-- Sehr hohe, kleine Wolke -->
+                                    <g transform="translate(250, -20) scale(0.9)" opacity="0.6">
+                                        <circle cx="100" cy="80" r="40"/>
+                                        <circle cx="150" cy="50" r="60"/>
+                                        <circle cx="210" cy="70" r="50"/>
+                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                    </g>
+                                </g>
+                            <?php endif; ?>
+
+                            <?php if ($isFog): ?>
+                                <!-- Nebel (grauer milchiger Schleier) -->
+                                <rect width="100%" height="100%" fill="#cbd5e1" opacity="0.35"/>
+                            <?php endif; ?>
+
+                            <?php if ($isRaining): ?>
+                                <!-- Regen mit Intensitaetssteuerung -->
+                                <?php
+                                $rainWidth = ($precip >= 2.0) ? 3.5 : 1.5;
+                                $rainOpacity = ($precip >= 2.0) ? 0.7 : 0.4;
+                                $rainSpacing = ($precip >= 2.0) ? 70 : 180;
+                                ?>
+                                <g stroke="#60a5fa" stroke-width="<?= $rainWidth ?>" opacity="<?= $rainOpacity ?>">
+                                    <?php for ($x = -200; $x <= 2000; $x += $rainSpacing): ?>
+                                        <line x1="<?= $x ?>" y1="-100" x2="<?= $x - 150 ?>" y2="1100"/>
+                                        <?php if ($precip >= 2.0): ?>
+                                            <line x1="<?= $x + 35 ?>" y1="-50" x2="<?= $x - 115 ?>" y2="1050"/>
+                                        <?php endif; ?>
+                                    <?php endfor; ?>
+                                </g>
+                            <?php endif; ?>
+
+                            <?php if ($isSnowing): ?>
+                                <!-- Schnee (fallende Flocken) -->
+                                <g fill="#ffffff" opacity="0.8">
+                                    <?php for ($i = 0; $i < 60; $i++):
+                                        $cx = rand(0, 1600);
+                                        $cy = rand(0, 900);
+                                        $r = rand(2, 6);
+                                        ?>
+                                        <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>"/>
+                                    <?php endfor; ?>
+                                </g>
+                            <?php endif; ?>
+
+                            <?php if ($isStorm): ?>
+                                <!-- Wind-Boen -->
+                                <g stroke="#e2e8f0" stroke-width="6" fill="none" opacity="0.4">
+                                    <path d="M -100 200 Q 200 100 400 250 T 900 150"/>
+                                    <path d="M 300 350 Q 600 250 800 400 T 1400 300"/>
+                                    <path d="M 800 100 Q 1100 50 1300 200 T 1800 100"/>
+                                </g>
+                            <?php endif; ?>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Die 5 Entscheidungskriterien im modernen Grid-Layout -->
+                <div class="weather-decision-grid">
+                    <?php
+                    $icons = [
+                            'umbrella' => '☔',
+                            'jacket' => '🧥',
+                            'winter' => '🧣',
+                            'pool' => '🏊',
+                            'watering' => '🌱'
+                    ];
+                    foreach ($eval as $key => $info):
+                        $activeClass = $info['status'] ? 'active-yes' : 'active-no';
+                        $icon = $icons[$key] ?? '❓';
+                        ?>
+                        <div class="weather-decision-card <?= $activeClass ?>">
+                            <div class="decision-icon">
+                                <?= $icon ?>
+                            </div>
+                            <div class="decision-text">
+                                <?= htmlspecialchars($info['text']) ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div> <!-- End tab-diorama -->
 
             <div id="tab-dashboard" class="hidden">
@@ -328,22 +333,33 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     ?>
                     <div class="kpi-card">
                         <div class="kpi-label">Temperatur & Zustand</div>
-                        <div class="kpi-value" style="color: <?= $tempColor ?>;"><?= number_format((float)$currTemp, 1, ',', '.') ?> &deg;C</div>
-                        <div class="kpi-subtext"><?= $currIconText['icon'] ?> <?= $currIconText['text'] ?> | Gefühlt: <?= number_format((float)$appTemp, 1, ',', '.') ?> &deg;C</div>
+                        <div class="kpi-value-sm"
+                             style="color: <?= $tempColor ?>;"><?= number_format((float)$currTemp, 1, ',', '.') ?> &deg;C
+                        </div>
+                        <div class="kpi-subtext"><?= $currIconText['icon'] ?> <?= $currIconText['text'] ?> |
+                            Gefühlt: <?= number_format((float)$appTemp, 1, ',', '.') ?> &deg;C
+                        </div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-label">Niederschlag</div>
-                        <div class="kpi-value" style="color: <?= $precipColor ?>;"><?= number_format((float)$currPrecip, 1, ',', '.') ?> mm</div>
+                        <div class="kpi-value-sm"
+                             style="color: <?= $precipColor ?>;"><?= number_format((float)$currPrecip, 1, ',', '.') ?>
+                            mm
+                        </div>
                         <div class="kpi-subtext">Regenrisiko (1h): <?= $nextHourProb ?> %</div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-label">Wind</div>
-                        <div class="kpi-value" style="color: <?= $windColor ?>;"><?= number_format((float)$currWind, 1, ',', '.') ?> km/h</div>
-                        <div class="kpi-subtext">Böen: <?= number_format((float)$currGusts, 1, ',', '.') ?> km/h | <?= $currDir ?>&deg;</div>
+                        <div class="kpi-value-sm"
+                             style="color: <?= $windColor ?>;"><?= number_format((float)$currWind, 1, ',', '.') ?> km/h
+                        </div>
+                        <div class="kpi-subtext">Böen: <?= number_format((float)$currGusts, 1, ',', '.') ?> km/h |
+                            <?= $currDir ?>&deg;
+                        </div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-label">Luft</div>
-                        <div class="kpi-value" style="color: <?= $humColor ?>;"><?= $currHum ?> %</div>
+                        <div class="kpi-value-sm" style="color: <?= $humColor ?>;"><?= $currHum ?> %</div>
                         <div class="kpi-subtext">Druck: <?= $currPress ?> hPa | Wolken: <?= $currCloud ?> %</div>
                     </div>
                 </div>
@@ -390,59 +406,65 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
-                            <tr>
-                                <th>Datum</th>
-                                <th>Wetter</th>
-                                <th>Temperatur</th>
-                                <th>Niederschlag</th>
-                                <th>Sonne</th>
-                            </tr>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Wetter</th>
+                            <th>Temperatur</th>
+                            <th>Niederschlag</th>
+                            <th>Sonne</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            <?php
-                            if (!empty($forecast['daily']['time'])) {
-                                $wdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-                                foreach ($forecast['daily']['time'] as $i => $dateStr) {
-                                    if (!$dateStr) continue;
-                                    $t = strtotime($dateStr);
-                                    $wday = $wdays[date('w', $t)];
-                                    $dCode = $forecast['daily']['weather_code'][$i] ?? null;
-                                    
-                                    if ($dCode === null) {
-                                        // Fallback for missing future days
-                                        echo "<tr><td>{$wday} " . date('d.m.', $t) . "</td><td colspan='4' style='opacity: 0.5; text-align: center;'>-- Keine Daten --</td></tr>";
-                                        continue;
-                                    }
+                        <?php
+                        if (!empty($forecast['daily']['time'])) {
+                            $wdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                            foreach ($forecast['daily']['time'] as $i => $dateStr) {
+                                if (!$dateStr) continue;
+                                $t = strtotime($dateStr);
+                                $wday = $wdays[date('w', $t)];
+                                $dCode = $forecast['daily']['weather_code'][$i] ?? null;
 
-                                    $dIconText = getWeatherIconAndText($dCode);
-                                    $tMin = $forecast['daily']['temperature_2m_min'][$i] ?? '--';
-                                    $tMax = $forecast['daily']['temperature_2m_max'][$i] ?? '--';
-                                    $dProb = $forecast['daily']['precipitation_probability_max'][$i] ?? 0;
-                                    $dPrecip = $forecast['daily']['precipitation_sum'][$i] ?? 0;
-                                    
-                                    $sunshineSeconds = $forecast['daily']['sunshine_duration'][$i] ?? 0;
-                                    $sunHours = ($sunshineSeconds > 0) ? round($sunshineSeconds / 3600, 1) : 0;
-                                    
-                                    $sunriseT = strtotime($forecast['daily']['sunrise'][$i] ?? '');
-                                    $sunsetT = strtotime($forecast['daily']['sunset'][$i] ?? '');
-                                    $sunriseStr = $sunriseT ? date('H:i', $sunriseT) : '--';
-                                    $sunsetStr = $sunsetT ? date('H:i', $sunsetT) : '--';
-                                    
-                                    ?>
-                                    <tr>
-                                        <td><strong><?= $wday ?></strong><br><small class="text-muted"><?= date('d.m.', $t) ?></small></td>
-                                        <td><span style="font-size: 1.5rem; vertical-align: middle; margin-right: 0.5rem;"><?= $dIconText['icon'] ?></span> <?= $dIconText['text'] ?></td>
-                                        <td>
-                                            <?= number_format((float)$tMin, 1, ',', '.') ?> &deg;C <br>
-                                            <strong style="color: var(--color-orange);"><?= number_format((float)$tMax, 1, ',', '.') ?> &deg;C</strong>
-                                        </td>
-                                        <td><?= $dProb ?>% Risiko<br><small class="text-muted"><?= $dPrecip ?> mm</small></td>
-                                        <td><?= $sunHours ?> h<br><small class="text-muted">🌅 <?= $sunriseStr ?> 🌇 <?= $sunsetStr ?></small></td>
-                                    </tr>
-                                    <?php
+                                if ($dCode === null) {
+                                    // Fallback for missing future days
+                                    echo "<tr><td>{$wday} " . date('d.m.', $t) . "</td><td colspan='4' style='opacity: 0.5; text-align: center;'>-- Keine Daten --</td></tr>";
+                                    continue;
                                 }
+
+                                $dIconText = getWeatherIconAndText($dCode);
+                                $tMin = $forecast['daily']['temperature_2m_min'][$i] ?? '--';
+                                $tMax = $forecast['daily']['temperature_2m_max'][$i] ?? '--';
+                                $dProb = $forecast['daily']['precipitation_probability_max'][$i] ?? 0;
+                                $dPrecip = $forecast['daily']['precipitation_sum'][$i] ?? 0;
+
+                                $sunshineSeconds = $forecast['daily']['sunshine_duration'][$i] ?? 0;
+                                $sunHours = ($sunshineSeconds > 0) ? round($sunshineSeconds / 3600, 1) : 0;
+
+                                $sunriseT = strtotime($forecast['daily']['sunrise'][$i] ?? '');
+                                $sunsetT = strtotime($forecast['daily']['sunset'][$i] ?? '');
+                                $sunriseStr = $sunriseT ? date('H:i', $sunriseT) : '--';
+                                $sunsetStr = $sunsetT ? date('H:i', $sunsetT) : '--';
+
+                                ?>
+                                <tr>
+                                    <td><strong><?= $wday ?></strong><br><small
+                                                class="text-muted"><?= date('d.m.', $t) ?></small></td>
+                                    <td>
+                                        <span style="font-size: 1.5rem; vertical-align: middle; margin-right: 0.5rem;"><?= $dIconText['icon'] ?></span> <?= $dIconText['text'] ?>
+                                    </td>
+                                    <td>
+                                        <?= number_format((float)$tMin, 1, ',', '.') ?> &deg;C <br>
+                                        <strong style="color: var(--color-orange);"><?= number_format((float)$tMax, 1, ',', '.') ?>
+                                            &deg;C</strong>
+                                    </td>
+                                    <td><?= $dProb ?>% Risiko<br><small class="text-muted"><?= $dPrecip ?> mm</small>
+                                    </td>
+                                    <td><?= $sunHours ?> h<br><small class="text-muted">🌅 <?= $sunriseStr ?>
+                                            🌇 <?= $sunsetStr ?></small></td>
+                                </tr>
+                                <?php
                             }
-                            ?>
+                        }
+                        ?>
                         </tbody>
                     </table>
                 </div>
