@@ -2819,3 +2819,50 @@ body {
     font-weight: 500;
     line-height: 1.3;
 }
+/* Wetter Dashboard - Stundenband */
+.hourly-forecast-container {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    margin-bottom: 2rem;
+}
+.hourly-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    min-width: 100px;
+    text-align: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s;
+}
+.hourly-card:hover {
+    border-color: var(--accent);
+}
+.hourly-time {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+.hourly-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    line-height: 1;
+}
+.hourly-temp {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+}
+.hourly-detail {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}

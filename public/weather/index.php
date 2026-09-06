@@ -27,6 +27,23 @@ $currentWeatherCode = $forecast['current']['weather_code'] ?? 0;
 $isWinter = date('n') >= 11 || date('n') <= 2;
 $isSummer = date('n') >= 6 && date('n') <= 8;
 
+function getWeatherIconAndText($code) {
+    if ($code === null || $code === '') return ['icon' => '❓', 'text' => 'Unbekannt'];
+    $code = (int)$code;
+    if ($code == 0) return ['icon' => '☀️', 'text' => 'Klar'];
+    if ($code == 1 || $code == 2) return ['icon' => '⛅', 'text' => 'Heiter / Wolkig'];
+    if ($code == 3) return ['icon' => '☁️', 'text' => 'Bedeckt'];
+    if ($code == 45 || $code == 48) return ['icon' => '🌫️', 'text' => 'Nebel'];
+    if (in_array($code, [51, 53, 55])) return ['icon' => '🌧️', 'text' => 'Nieselregen'];
+    if (in_array($code, [61, 63, 65])) return ['icon' => '🌧️', 'text' => 'Regen'];
+    if (in_array($code, [71, 73, 75, 77])) return ['icon' => '❄️', 'text' => 'Schnee'];
+    if (in_array($code, [80, 81, 82])) return ['icon' => '🌦️', 'text' => 'Regenschauer'];
+    if (in_array($code, [85, 86])) return ['icon' => '🌨️', 'text' => 'Schneeschauer'];
+    if (in_array($code, [95, 96, 99])) return ['icon' => '⛈️', 'text' => 'Gewitter'];
+    return ['icon' => '❓', 'text' => 'Unbekannt'];
+}
+
+
 $treeColor = $isWinter ? '#8B4513' : '#228B22';
 $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 ?>
@@ -50,6 +67,10 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
     </header>
 
     <main>
+        <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+            <button class="btn" id="btn-tab-diorama" onclick="switchWeatherTab('diorama')">Diorama</button>
+            <button class="btn btn-outline" id="btn-tab-dashboard" onclick="switchWeatherTab('dashboard')">Dashboard</button>
+        </div>
         <?php if (!$forecast): ?>
             <p>Fehler beim Laden der Wetterdaten.</p>
         <?php else: ?>
@@ -107,6 +128,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     $greeting = "Moin! Ganz entspanntes Wetter heute in Leipzig-Holzhausen.";
                 }
             ?>
+            <div id="tab-diorama">
             <div class="diorama-card">
                 <!-- Die coole Sprachblase -->
                 <div class="weather-speech-bubble">
@@ -221,9 +243,201 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     </div>
                 <?php endforeach; ?>
             </div>
+            </div> <!-- End tab-diorama -->
+
+            <div id="tab-dashboard" class="hidden">
+                <!-- A. Aktuelle Wetterlage -->
+                <h3 style="margin-bottom: 1rem;">Aktuelle Wetterlage</h3>
+                <div class="kpi-grid" style="margin-bottom: 2rem;">
+                    <?php
+                    $currTemp = $forecast['current']['temperature_2m'] ?? '--';
+                    $appTemp = $forecast['current']['apparent_temperature'] ?? '--';
+                    $currCode = $forecast['current']['weather_code'] ?? -1;
+                    $currIconText = getWeatherIconAndText($currCode);
+
+                    $currPrecip = $forecast['current']['precipitation'] ?? 0;
+                    $nextHourProb = 0;
+                    $nowTime = time();
+                    if (!empty($forecast['hourly']['time'])) {
+                        foreach ($forecast['hourly']['time'] as $i => $timeStr) {
+                            $t = strtotime($timeStr);
+                            if ($t >= $nowTime) {
+                                $nextHourProb = $forecast['hourly']['precipitation_probability'][$i] ?? 0;
+                                break;
+                            }
+                        }
+                    }
+
+                    $currWind = $forecast['current']['wind_speed_10m'] ?? 0;
+                    $currGusts = $forecast['current']['wind_gusts_10m'] ?? 0;
+                    $currDir = $forecast['current']['wind_direction_10m'] ?? 0;
+
+                    $currHum = $forecast['current']['relative_humidity_2m'] ?? '--';
+                    $currPress = $forecast['current']['surface_pressure'] ?? '--';
+                    $currCloud = $forecast['current']['cloud_cover'] ?? '--';
+                    ?>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Temperatur & Zustand</div>
+                        <div class="kpi-value"><?= number_format((float)$currTemp, 1, ',', '.') ?> &deg;C</div>
+                        <div class="kpi-subtext"><?= $currIconText['icon'] ?> <?= $currIconText['text'] ?> | Gefühlt: <?= number_format((float)$appTemp, 1, ',', '.') ?> &deg;C</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Niederschlag</div>
+                        <div class="kpi-value"><?= number_format((float)$currPrecip, 1, ',', '.') ?> mm</div>
+                        <div class="kpi-subtext">Regenrisiko (1h): <?= $nextHourProb ?> %</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Wind</div>
+                        <div class="kpi-value"><?= number_format((float)$currWind, 1, ',', '.') ?> km/h</div>
+                        <div class="kpi-subtext">Böen: <?= number_format((float)$currGusts, 1, ',', '.') ?> km/h | <?= $currDir ?>&deg;</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Luft</div>
+                        <div class="kpi-value"><?= $currHum ?> %</div>
+                        <div class="kpi-subtext">Druck: <?= $currPress ?> hPa | Wolken: <?= $currCloud ?> %</div>
+                    </div>
+                </div>
+
+                <!-- B. 12-Stunden-Prognose -->
+                <h3 style="margin-bottom: 1rem;">12-Stunden-Prognose</h3>
+                <div class="hourly-forecast-container">
+                    <?php
+                    $count = 0;
+                    if (!empty($forecast['hourly']['time'])) {
+                        foreach ($forecast['hourly']['time'] as $i => $timeStr) {
+                            $t = strtotime($timeStr);
+                            if ($t >= $nowTime - 3600 && $count < 12) {
+                                $hCode = $forecast['hourly']['weather_code'][$i] ?? -1;
+                                $hIcon = getWeatherIconAndText($hCode)['icon'];
+                                $hTemp = number_format((float)($forecast['hourly']['temperature_2m'][$i] ?? 0), 1, ',', '.');
+                                $hProb = $forecast['hourly']['precipitation_probability'][$i] ?? 0;
+                                $hPrecip = $forecast['hourly']['precipitation'][$i] ?? 0;
+                                $hWind = $forecast['hourly']['wind_speed_10m'][$i] ?? 0;
+                                ?>
+                                <div class="hourly-card">
+                                    <div class="hourly-time"><?= date('H:i', $t) ?></div>
+                                    <div class="hourly-icon"><?= $hIcon ?></div>
+                                    <div class="hourly-temp"><?= $hTemp ?>&deg;</div>
+                                    <div class="hourly-detail">
+                                        <?php if ($hProb > 0): ?>
+                                            <span style="color: var(--color-blue);">💧 <?= $hProb ?>% (<?= $hPrecip ?>mm)</span>
+                                        <?php else: ?>
+                                            <span style="opacity: 0.5;">💧 0%</span>
+                                        <?php endif; ?>
+                                        <span>💨 <?= $hWind ?> km/h</span>
+                                    </div>
+                                </div>
+                                <?php
+                                $count++;
+                            }
+                        }
+                    }
+                    ?>
+                </div>
+
+                <!-- C. 7-Tage-Trend -->
+                <h3 style="margin-bottom: 1rem;">7-Tage-Trend</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Wetter</th>
+                                <th>Temperatur</th>
+                                <th>Niederschlag</th>
+                                <th>Sonne</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            if (!empty($forecast['daily']['time'])) {
+                                $wdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                                foreach ($forecast['daily']['time'] as $i => $dateStr) {
+                                    if (!$dateStr) continue;
+                                    $t = strtotime($dateStr);
+                                    $wday = $wdays[date('w', $t)];
+                                    $dCode = $forecast['daily']['weather_code'][$i] ?? null;
+                                    
+                                    if ($dCode === null) {
+                                        // Fallback for missing future days
+                                        echo "<tr><td>{$wday} " . date('d.m.', $t) . "</td><td colspan='4' style='opacity: 0.5; text-align: center;'>-- Keine Daten --</td></tr>";
+                                        continue;
+                                    }
+
+                                    $dIconText = getWeatherIconAndText($dCode);
+                                    $tMin = $forecast['daily']['temperature_2m_min'][$i] ?? '--';
+                                    $tMax = $forecast['daily']['temperature_2m_max'][$i] ?? '--';
+                                    $dProb = $forecast['daily']['precipitation_probability_max'][$i] ?? 0;
+                                    $dPrecip = $forecast['daily']['precipitation_sum'][$i] ?? 0;
+                                    
+                                    $sunshineSeconds = $forecast['daily']['sunshine_duration'][$i] ?? 0;
+                                    $sunHours = ($sunshineSeconds > 0) ? round($sunshineSeconds / 3600, 1) : 0;
+                                    
+                                    $sunriseT = strtotime($forecast['daily']['sunrise'][$i] ?? '');
+                                    $sunsetT = strtotime($forecast['daily']['sunset'][$i] ?? '');
+                                    $sunriseStr = $sunriseT ? date('H:i', $sunriseT) : '--';
+                                    $sunsetStr = $sunsetT ? date('H:i', $sunsetT) : '--';
+                                    
+                                    ?>
+                                    <tr>
+                                        <td><strong><?= $wday ?></strong><br><small class="text-muted"><?= date('d.m.', $t) ?></small></td>
+                                        <td><span style="font-size: 1.5rem; vertical-align: middle; margin-right: 0.5rem;"><?= $dIconText['icon'] ?></span> <?= $dIconText['text'] ?></td>
+                                        <td>
+                                            <?= number_format((float)$tMin, 1, ',', '.') ?> &deg;C <br>
+                                            <strong style="color: var(--color-orange);"><?= number_format((float)$tMax, 1, ',', '.') ?> &deg;C</strong>
+                                        </td>
+                                        <td><?= $dProb ?>% Risiko<br><small class="text-muted"><?= $dPrecip ?> mm</small></td>
+                                        <td><?= $sunHours ?> h<br><small class="text-muted">🌅 <?= $sunriseStr ?> 🌇 <?= $sunsetStr ?></small></td>
+                                    </tr>
+                                    <?php
+                                }
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div> <!-- End tab-dashboard -->
         <?php endif; ?>
     </main>
 </div>
 <script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+
+<script>
+function switchWeatherTab(tab) {
+    const btnDiorama = document.getElementById('btn-tab-diorama');
+    const btnDashboard = document.getElementById('btn-tab-dashboard');
+    const tabDiorama = document.getElementById('tab-diorama');
+    const tabDashboard = document.getElementById('tab-dashboard');
+
+    if (tab === 'dashboard') {
+        btnDiorama.className = 'btn btn-outline';
+        btnDashboard.className = 'btn';
+        tabDiorama.classList.add('hidden');
+        tabDashboard.classList.remove('hidden');
+        
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.set('tab', 'dashboard');
+        window.history.pushState({}, '', url);
+    } else {
+        btnDashboard.className = 'btn btn-outline';
+        btnDiorama.className = 'btn';
+        tabDashboard.classList.add('hidden');
+        tabDiorama.classList.remove('hidden');
+        
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.delete('tab');
+        window.history.pushState({}, '', url);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'dashboard') {
+        switchWeatherTab('dashboard');
+    }
+});
+</script>
 </body>
 </html>
