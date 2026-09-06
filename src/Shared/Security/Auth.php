@@ -41,7 +41,7 @@ final class Auth
             $writePermission = str_replace('_read', '_write', $permission);
             if (!self::hasPermission($writePermission)) {
                 ob_start(function ($buffer) {
-                    return preg_replace_callback('/<(input|select|textarea|button)\b([^>]*?)>/i', function ($matches) {
+                    return preg_replace_callback('/<(input|select|textarea|button|span|a)\b([^>]*?)>/i', function ($matches) {
                         $tag = strtolower($matches[1]);
                         $attrs = $matches[2];
 
@@ -59,7 +59,7 @@ final class Auth
                         if ($tag === 'button') {
                             $isSafeButton = stripos($attrs, 'modal-close') !== false ||
                                             stripos($attrs, 'js-tab-btn') !== false ||
-                                            stripos($attrs, 'js-open-') !== false ||
+                                            stripos($attrs, 'js-open-details') !== false ||
                                             stripos($attrs, 'js-market-filter') !== false ||
                                             stripos($attrs, 'filter') !== false ||
                                             stripos($attrs, 'reset') !== false;
@@ -68,6 +68,16 @@ final class Auth
                             if ($isSafeButton && stripos($attrs, 'type="submit"') === false) {
                                 return $matches[0];
                             }
+                        }
+                        
+                        // Spans und Links (A-Tags), die für Inline-Edits genutzt werden (z. B. E-Bons, Kreditkarten, Tags)
+                        if ($tag === 'span' || $tag === 'a') {
+                            if (preg_match('/\b(clickable-badge|clickable-tag)\b/i', $attrs, $m)) {
+                                // Trigger-Klasse entfernen und durch disabled-Klasse ersetzen
+                                $attrs = preg_replace('/\b' . preg_quote($m[1], '/') . '\b/i', 'permission-disabled', $attrs);
+                                return '<' . $matches[1] . $attrs . '>';
+                            }
+                            return $matches[0];
                         }
 
                         // Falls schon disabled, nichts tun
