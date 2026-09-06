@@ -2749,7 +2749,7 @@ body {
     border-radius: var(--border-radius);
     overflow: hidden;
     margin: 0 auto 1.5rem auto;
-    max-width: 750px;
+    max-width: 600px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
