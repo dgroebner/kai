@@ -5,7 +5,7 @@ use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Weather\WeatherEvaluator;
 use Kai\Tools\Weather\WeatherService;
 
-Auth::requirePage();
+Auth::requirePage('weather_read');
 try {
     $weatherService = new WeatherService();
     $forecast = $weatherService->getForecastFromDb();
