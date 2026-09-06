@@ -9,7 +9,7 @@ use Kai\Tools\Shared\Security\Auth;
 header('Content-Type: application/json; charset=utf-8');
 
 // 1. Auth-Check — immer zuerst
-Auth::requireApi();
+Auth::requireApi('ebon_write');
 
 // 2. HTTP-Methoden-Check
 Auth::requireMethod('POST');

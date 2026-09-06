@@ -11,7 +11,7 @@ class WeatherEvaluator
     {
         $currentTemp = $forecast['current']['temperature_2m'] ?? 20.0;
         $currentWind = $forecast['current']['wind_speed_10m'] ?? 0.0;
-        
+
         if ($sensorData && isset($sensorData['temperature_c'])) {
             $currentTemp = (float)$sensorData['temperature_c'];
         }
@@ -23,13 +23,13 @@ class WeatherEvaluator
         $hourlyPrecip = $forecast['hourly']['precipitation'] ?? [];
         $hourlyPrecipProb = $forecast['hourly']['precipitation_probability'] ?? [];
         $hourlyTemp = $forecast['hourly']['temperature_2m'] ?? [];
-        
+
         $maxPrecip = 0.0;
         $maxPrecipProb = 0;
         $maxTempToday = $currentTemp;
-        
+
         $now = time();
-        
+
         for ($i = 0; $i < count($hourlyTime); $i++) {
             $t = strtotime($hourlyTime[$i]);
             // Naechste 12 Stunden
@@ -77,7 +77,7 @@ class WeatherEvaluator
         // 4. Pool
         $pool = false;
         $poolText = 'Viel zu kalt für den Pool, bleib lieber im Trockenen.';
-        if ($maxTempToday >= 28) {
+        if ($maxTempToday >= 17) {
             $pool = true;
             $poolText = 'Pool-Time! Perfektes Wetter zum Reinspringen.';
         }
@@ -86,21 +86,21 @@ class WeatherEvaluator
         $dailyPrecip = $forecast['daily']['precipitation_sum'][0] ?? 0;
         $watering = false;
         $wateringText = 'Garten ist safe, Erde ist noch feucht genug.';
-        
+
         $soil = $sensorData['soil_moisture_pct'] ?? 100;
         if ($dailyPrecip < 2.0 && $maxTempToday > 20 && $soil < 40) {
             $watering = true;
             $wateringText = 'Garten-Duty ruft: Die Pflanzen brauchen dringend Wasser!';
         } elseif ($dailyPrecip < 2.0 && !$sensorData && $maxTempToday > 22) {
-             $watering = true;
-             $wateringText = 'Check mal den Garten, könnte trocken sein.';
+            $watering = true;
+            $wateringText = 'Check mal den Garten, könnte trocken sein.';
         }
 
         return [
             'umbrella' => ['status' => $umbrella, 'text' => $umbrellaText],
-            'jacket'   => ['status' => $jacket, 'text' => $jacketText],
-            'winter'   => ['status' => $winterGear, 'text' => $winterText],
-            'pool'     => ['status' => $pool, 'text' => $poolText],
+            'jacket' => ['status' => $jacket, 'text' => $jacketText],
+            'winter' => ['status' => $winterGear, 'text' => $winterText],
+            'pool' => ['status' => $pool, 'text' => $poolText],
             'watering' => ['status' => $watering, 'text' => $wateringText],
         ];
     }

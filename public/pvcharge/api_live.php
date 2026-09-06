@@ -8,7 +8,7 @@ use Kai\Tools\Shared\Security\Auth;
 header('Content-Type: application/json; charset=utf-8');
 
 // Auth-Check — JSON-Endpunkt, deshalb 401 statt Redirect
-Auth::requireApi();
+Auth::requireApi('pv_read');
 
 try {
     // Neueste Live-Daten abrufen

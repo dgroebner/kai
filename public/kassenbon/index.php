@@ -7,7 +7,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check — immer zuerst
-Auth::requirePage();
+Auth::requirePage('ebon_read');
 
 $csrfToken = Auth::csrfToken();
 $limit = 15;

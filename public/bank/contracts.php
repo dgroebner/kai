@@ -6,7 +6,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check
-Auth::requirePage();
+Auth::requirePage('finance_read');
 
 $logger = new Logger();
 $contractRepo = new BankContractRepository();

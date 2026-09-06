@@ -61,6 +61,9 @@ if (isset($_GET['code'])) {
             try {
                 $profileRepo = new UserProfileRepository();
                 $profileRepo->ensureProfileExists($email);
+
+                $permissionService = new \Kai\Tools\System\PermissionService();
+                $permissionService->handleUserLogin($email, $name);
             } catch (Throwable $e) {
                 // Login nicht blockieren, aber Fehler ins System-Log schreiben
                 $logger->error('login.php: Fehler beim Auto-Provisioning des Benutzerprofils.', ['error' => $e->getMessage()]);

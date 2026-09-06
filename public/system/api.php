@@ -8,7 +8,7 @@ use Kai\Tools\System\ActivityLogRepository;
 header('Content-Type: application/json; charset=utf-8');
 
 // 1. Auth-Check (AGENTS.md)
-Auth::requireApi();
+Auth::requireApi('system_write');
 
 // 2. HTTP-Methoden-Check (für Polling via GET oder POST – hier flexibel gehalten)
 // Wenn du POST mit JSON-Body nutzt, kannst du Auth::requireMethod('POST') verwenden.

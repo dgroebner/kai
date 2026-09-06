@@ -22,6 +22,7 @@ Auth::requirePage();
         <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></h1>
         <div class="page-header-actions">
             <span class="last-update">Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+            <a href="profile.php" class="btn btn-outline">👤 Profil</a>
             <a href="login.php?logout=1" class="btn btn-outline">Sicher abmelden</a>
         </div>
     </header>
@@ -29,50 +30,50 @@ Auth::requirePage();
     <main>
         <div class="tool-grid">
 
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('system_read') ? '' : 'permission-disabled' ?>">
                 <h3>🌤️ Wetter & Garten</h3>
                 <p>Tagesaktuelle Entscheidungshilfe für Leipzig-Holzhausen inkl. Garten-Bewässerung.</p>
                 <a href="weather/index.php" class="btn">Öffnen</a>
             </div>
 
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('pv_read') ? '' : 'permission-disabled' ?>">
                 <h3>⚡ Energie-Dashboard</h3>
                 <p>Live-Telemetrie und Ertragsprognose der Photovoltaikanlage (4,7 kWp) für die kommenden Tage.</p>
                 <a href="pvcharge/index.php" class="btn">Öffnen</a>
             </div>
             
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('shopping_read') ? '' : 'permission-disabled' ?>">
                 <h3>📝 Einkaufsliste</h3>
                 <p>Intelligente Einkaufsliste mit 2-Märkte-Splitting (Rewe & Globus), Gang-Sortierung und
                     KI-Rezept-Assistent.</p>
                 <a href="einkaufsliste/index.php" class="btn">Öffnen</a>
             </div>
 
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('ebon_read') ? '' : 'permission-disabled' ?>">
                 <h3>🛒 eBons</h3>
                 <p>Automatische KI-Auswertung der Haushalts-Kassenbons und Einzelpreise für die Küchenplanung.</p>
                 <a href="kassenbon/index.php" class="btn">Öffnen</a>
             </div>
 
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('ebon_read') ? '' : 'permission-disabled' ?>">
                 <h3>📈 Bon-Auswertung</h3>
                 <p>Auswertung der über die Kassenbons erfassten Positionen nach Zeitraum und Kategorien.</p>
                 <a href="kassenbon/auswertung.php" class="btn">Öffnen</a>
             </div>
 
-            <div class="card">
-                <h3>🏦 Finanzen</h3>
-                <p>Girokonto-Umsätze, Kreditkartenabrechnungen und Tag-Auswertungen im Überblick.</p>
+            <div class="card <?= Auth::hasPermission('finance_read') ? '' : 'permission-disabled' ?>">
+                <h3>🏦 Finanzen & Bank</h3>
+                <p>Girokonto-Umsätze, Kreditkartenabrechnungen und Tagging.</p>
                 <a href="bank/index.php" class="btn">Öffnen</a>
             </div>
 
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('car_read') ? '' : 'permission-disabled' ?>">
                 <h3>🚐 VW ID.Buzz</h3>
                 <p>Live-Telemetrie des Fahrzeugs: Ladestand, Reichweite, Temperaturen und Verlaufshistorie.</p>
                 <a href="car/index.php" class="btn">Öffnen</a>
             </div>
 
-            <div class="card">
+            <div class="card <?= Auth::hasPermission('system_read') ? '' : 'permission-disabled' ?>">
                 <h3>⚙️ System & Verwaltung</h3>
                 <p>Übersicht aller System-Ereignisse (Aktivitäts-Log) sowie Konfiguration globaler Parameter wie
                     Strompreise und Tarife.</p>

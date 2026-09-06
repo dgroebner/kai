@@ -2866,3 +2866,13 @@ body {
     flex-direction: column;
     gap: 0.2rem;
 }
+
+/* Permission Classes */
+.permission-hidden {
+    display: none !important;
+}
+.permission-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+}

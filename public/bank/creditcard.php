@@ -7,7 +7,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check — immer zuerst
-Auth::requirePage();
+Auth::requirePage('finance_read');
 
 // Paginierungseinstellungen
 $page = max(1, (int)($_GET['page'] ?? 1));

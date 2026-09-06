@@ -501,3 +501,33 @@ CREATE TABLE IF NOT EXISTS `weather_forecast_hourly` (
     `freezing_level_height` DECIMAL(10,2),
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ==========================================================================
+-- DOMAIN: SYSTEM (Roles & Permissions)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `users` (
+    `email` VARCHAR(255) PRIMARY KEY,
+    `name` VARCHAR(255) DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `groups` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `group_permissions` (
+    `group_id` INT NOT NULL,
+    `permission` VARCHAR(100) NOT NULL,
+    PRIMARY KEY (`group_id`, `permission`),
+    FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_groups` (
+    `user_email` VARCHAR(255) NOT NULL,
+    `group_id` INT NOT NULL,
+    PRIMARY KEY (`user_email`, `group_id`),
+    FOREIGN KEY (`user_email`) REFERENCES `users`(`email`) ON DELETE CASCADE,
+    FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

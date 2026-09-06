@@ -22,7 +22,7 @@ use Kai\Tools\Shared\Security\TokenEncryptionService;
 header('Content-Type: application/json; charset=utf-8');
 
 // 1. Auth-Check (AGENTS.md)
-Auth::requireApi();
+Auth::requireApi('finance_write');
 
 // 2. HTTP-Methoden-Check
 Auth::requireMethod('POST');

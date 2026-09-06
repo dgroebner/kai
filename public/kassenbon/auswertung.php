@@ -7,7 +7,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check — muss als erstes stehen, bevor irgendwelche Logik läuft
-Auth::requirePage();
+Auth::requirePage('ebon_read');
 
 $categoryAnalyzer = new CategoryAnalyzer();
 $logger = new Logger();
@@ -255,3 +255,4 @@ try {
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>
+

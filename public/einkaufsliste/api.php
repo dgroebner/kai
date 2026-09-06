@@ -16,7 +16,7 @@ use Kai\Tools\Shared\Security\Auth;
 header('Content-Type: application/json; charset=utf-8');
 
 // 1. Auth-Check — immer zuerst
-Auth::requireApi();
+Auth::requireApi('shopping_write');
 
 // 2. HTTP-Methoden-Check
 Auth::requireMethod('POST');
@@ -453,3 +453,4 @@ try {
     ]);
     Auth::sendJsonError(500, 'Interner Serverfehler bei der Verarbeitung');
 }
+

@@ -9,7 +9,7 @@ use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Shared\Security\Sanitizer;
 
 // 1. Auth-Check — immer zuerst (AGENTS.md)
-Auth::requirePage();
+Auth::requirePage('finance_read');
 
 $logger = new Logger();
 

@@ -10,7 +10,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
 // 1. Auth-Check — immer zuerst
-Auth::requirePage();
+Auth::requirePage('shopping_read');
 
 $csrfToken = Auth::csrfToken();
 $activeTab = $_GET['tab'] ?? 'list';
@@ -593,3 +593,4 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>
+

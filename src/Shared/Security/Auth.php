@@ -21,11 +21,17 @@ final class Auth
 
     /**
      * Schützt HTML-Seiten: leitet nicht angemeldete Besucher zum Login um.
+     * Prüft optional auf ein benötigtes Recht.
      */
-    public static function requirePage(): void
+    public static function requirePage(?string $permission = null): void
     {
         if (!self::isAuthenticated()) {
             header('Location: ' . APP_URL . '/login.php');
+            exit;
+        }
+
+        if ($permission !== null && !self::hasPermission($permission)) {
+            header('Location: ' . APP_URL . '/');
             exit;
         }
     }
@@ -39,12 +45,34 @@ final class Auth
     }
 
     /**
-     * Schützt JSON-Endpunkte: antwortet mit 401 statt einer Weiterleitung.
+     * Prüft, ob der angemeldete Benutzer ein bestimmtes Recht besitzt.
      */
-    public static function requireApi(): void
+    public static function hasPermission(string $permission): bool
+    {
+        // Admin-Fallback
+        $adminEmail = $_ENV['ADMIN_EMAIL'] ?? null;
+        if ($adminEmail && isset($_SESSION['user_email']) && strtolower($_SESSION['user_email']) === strtolower($adminEmail)) {
+            if (empty($_SESSION['temp_group_id'])) {
+                return true;
+            }
+        }
+
+        $permissions = $_SESSION['permissions'] ?? [];
+        return in_array($permission, $permissions, true);
+    }
+
+    /**
+     * Schützt JSON-Endpunkte: antwortet mit 401 statt einer Weiterleitung.
+     * Prüft optional auf ein benötigtes Recht.
+     */
+    public static function requireApi(?string $permission = null): void
     {
         if (!self::isAuthenticated()) {
             self::sendJsonError(401, 'Nicht angemeldet');
+        }
+
+        if ($permission !== null && !self::hasPermission($permission)) {
+            self::sendJsonError(403, 'Fehlendes Recht: ' . $permission);
         }
     }
 

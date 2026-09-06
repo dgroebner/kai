@@ -5,7 +5,7 @@ use Kai\Tools\Car\VehicleDashboardRepository;
 use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check — immer zuerst
-Auth::requirePage();
+Auth::requirePage('car_read');
 
 $csrfToken = Auth::csrfToken();
 
