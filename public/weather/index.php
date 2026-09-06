@@ -213,6 +213,52 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php if ($isNight): ?>
                                 <!-- Nacht-Verdunkelung -->
                                 <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
+                                
+                                <!-- Sterne (Funkeln) -->
+                                <g fill="#ffffff">
+                                    <?php
+                                    // Bereich 1 (Links vom Dach)
+                                    for($i=0; $i<12; $i++) {
+                                        $x = rand(350, 650);
+                                        $y = rand(50, 220);
+                                        $r = rand(10, 22) / 10;
+                                        $dur = rand(3, 7);
+                                        $delay = rand(0, 5);
+                                        echo "<circle cx=\"$x\" cy=\"$y\" r=\"$r\"><animate attributeName=\"opacity\" values=\"0.1;0.9;0.1\" dur=\"{$dur}s\" begin=\"{$delay}s\" repeatCount=\"indefinite\"/></circle>";
+                                    }
+                                    // Bereich 2 (Rechts vom Dach)
+                                    for($i=0; $i<12; $i++) {
+                                        $x = rand(1050, 1350);
+                                        $y = rand(40, 220);
+                                        $r = rand(10, 22) / 10;
+                                        $dur = rand(3, 7);
+                                        $delay = rand(0, 5);
+                                        echo "<circle cx=\"$x\" cy=\"$y\" r=\"$r\"><animate attributeName=\"opacity\" values=\"0.1;0.9;0.1\" dur=\"{$dur}s\" begin=\"{$delay}s\" repeatCount=\"indefinite\"/></circle>";
+                                    }
+                                    ?>
+                                </g>
+
+                                <!-- Sternschnuppen (zufällig) -->
+                                <?php for ($s = 1; $s <= 2; $s++): 
+                                    $startX = rand(400, 1300);
+                                    $startY = rand(20, 100);
+                                    $direction = rand(0, 1) ? 1 : -1;
+                                    $dx = rand(300, 600) * $direction;
+                                    $dy = rand(200, 400);
+                                    
+                                    $tailX = -($dx * 0.15);
+                                    $tailY = -($dy * 0.15);
+                                    
+                                    $delay = rand(2, 12);
+                                    $repeat = rand(15, 35);
+                                ?>
+                                <g opacity="0">
+                                    <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                                    <circle cx="0" cy="0" r="1.5" fill="#ffffff" />
+                                    <animateTransform attributeName="transform" type="translate" from="<?= $startX ?> <?= $startY ?>" to="<?= $startX+$dx ?> <?= $startY+$dy ?>" dur="0.7s" begin="<?= $delay ?>s; shooting<?= $s ?>.end+<?= $repeat ?>s" id="shooting<?= $s ?>" />
+                                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.7; 1" dur="0.7s" begin="shooting<?= $s ?>.begin" />
+                                </g>
+                                <?php endfor; ?>
                                 <!-- Mond -->
                                 <?php if (!$isNewMoon): ?>
                                 <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" <?= (!$isFullMoon) ? 'mask="url(#moonMask)"' : '' ?>/>
