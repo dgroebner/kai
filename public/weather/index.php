@@ -219,7 +219,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     <?php
                                     // Bereich 1 (Links vom Dach, strikt begrenzt)
                                     for($i=0; $i<10; $i++) {
-                                        $x = rand(400, 620);
+                                        $x = rand(400, 560);
                                         $y = rand(30, 160);
                                         $r = rand(10, 20) / 10;
                                         $dur = rand(3, 7);
@@ -228,7 +228,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     }
                                     // Bereich 2 (Rechts vom Dach, strikt begrenzt)
                                     for($i=0; $i<10; $i++) {
-                                        $x = rand(1100, 1320);
+                                        $x = rand(1180, 1350);
                                         $y = rand(30, 160);
                                         $r = rand(10, 20) / 10;
                                         $dur = rand(3, 7);
@@ -243,12 +243,12 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     if ($s == 1) {
                                         // Bereich 1 (Links) -> Fliegt immer nach LINKS, weg vom Dach
                                         $direction = -1;
-                                        $startX = rand(550, 600);
+                                        $startX = rand(500, 560);
                                         $dx = rand(150, 200) * $direction;
                                     } else {
                                         // Bereich 2 (Rechts) -> Fliegt immer nach RECHTS, weg vom Dach
                                         $direction = 1;
-                                        $startX = rand(1100, 1150);
+                                        $startX = rand(1180, 1220);
                                         $dx = rand(150, 200) * $direction;
                                     }
                                     $startY = rand(20, 50);
