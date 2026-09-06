@@ -217,20 +217,20 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <!-- Sterne (Funkeln) -->
                                 <g fill="#ffffff">
                                     <?php
-                                    // Bereich 1 (Links vom Dach)
-                                    for($i=0; $i<12; $i++) {
-                                        $x = rand(350, 650);
-                                        $y = rand(50, 220);
-                                        $r = rand(10, 22) / 10;
+                                    // Bereich 1 (Links vom Dach, strikt begrenzt)
+                                    for($i=0; $i<10; $i++) {
+                                        $x = rand(400, 620);
+                                        $y = rand(30, 160);
+                                        $r = rand(10, 20) / 10;
                                         $dur = rand(3, 7);
                                         $delay = rand(0, 5);
                                         echo "<circle cx=\"$x\" cy=\"$y\" r=\"$r\"><animate attributeName=\"opacity\" values=\"0.1;0.9;0.1\" dur=\"{$dur}s\" begin=\"{$delay}s\" repeatCount=\"indefinite\"/></circle>";
                                     }
-                                    // Bereich 2 (Rechts vom Dach)
-                                    for($i=0; $i<12; $i++) {
-                                        $x = rand(1050, 1350);
-                                        $y = rand(40, 220);
-                                        $r = rand(10, 22) / 10;
+                                    // Bereich 2 (Rechts vom Dach, strikt begrenzt)
+                                    for($i=0; $i<10; $i++) {
+                                        $x = rand(1100, 1320);
+                                        $y = rand(30, 160);
+                                        $r = rand(10, 20) / 10;
                                         $dur = rand(3, 7);
                                         $delay = rand(0, 5);
                                         echo "<circle cx=\"$x\" cy=\"$y\" r=\"$r\"><animate attributeName=\"opacity\" values=\"0.1;0.9;0.1\" dur=\"{$dur}s\" begin=\"{$delay}s\" repeatCount=\"indefinite\"/></circle>";
@@ -238,16 +238,24 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     ?>
                                 </g>
 
-                                <!-- Sternschnuppen (zufällig) -->
+                                <!-- Sternschnuppen (strikt in den 2 Bereichen) -->
                                 <?php for ($s = 1; $s <= 2; $s++): 
-                                    $startX = rand(400, 1300);
-                                    $startY = rand(20, 100);
-                                    $direction = rand(0, 1) ? 1 : -1;
-                                    $dx = rand(300, 600) * $direction;
-                                    $dy = rand(200, 400);
+                                    if ($s == 1) {
+                                        // Bereich 1 (Links)
+                                        $direction = rand(0, 1) ? 1 : -1;
+                                        $startX = ($direction == 1) ? rand(380, 420) : rand(580, 620);
+                                        $dx = rand(120, 220) * $direction;
+                                    } else {
+                                        // Bereich 2 (Rechts)
+                                        $direction = rand(0, 1) ? 1 : -1;
+                                        $startX = ($direction == 1) ? rand(1080, 1120) : rand(1280, 1320);
+                                        $dx = rand(120, 220) * $direction;
+                                    }
+                                    $startY = rand(20, 50);
+                                    $dy = rand(80, 150);
                                     
-                                    $tailX = -($dx * 0.15);
-                                    $tailY = -($dy * 0.15);
+                                    $tailX = -($dx * 0.2);
+                                    $tailY = -($dy * 0.2);
                                     
                                     $delay = rand(2, 12);
                                     $repeat = rand(15, 35);
@@ -255,8 +263,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <g opacity="0">
                                     <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
                                     <circle cx="0" cy="0" r="1.5" fill="#ffffff" />
-                                    <animateTransform attributeName="transform" type="translate" from="<?= $startX ?> <?= $startY ?>" to="<?= $startX+$dx ?> <?= $startY+$dy ?>" dur="0.7s" begin="<?= $delay ?>s; shooting<?= $s ?>.end+<?= $repeat ?>s" id="shooting<?= $s ?>" />
-                                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.7; 1" dur="0.7s" begin="shooting<?= $s ?>.begin" />
+                                    <animateTransform attributeName="transform" type="translate" from="<?= $startX ?> <?= $startY ?>" to="<?= $startX+$dx ?> <?= $startY+$dy ?>" dur="0.6s" begin="<?= $delay ?>s; shooting<?= $s ?>.end+<?= $repeat ?>s" id="shooting<?= $s ?>" />
+                                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.7; 1" dur="0.6s" begin="shooting<?= $s ?>.begin" />
                                 </g>
                                 <?php endfor; ?>
                                 <!-- Mond -->
