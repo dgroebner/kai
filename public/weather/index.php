@@ -238,21 +238,21 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     ?>
                                 </g>
 
-                                <!-- Sternschnuppen (strikt in den 2 Bereichen) -->
+                                <!-- Sternschnuppen (strikt in den 2 Bereichen, fliegen vom Dach weg) -->
                                 <?php for ($s = 1; $s <= 2; $s++): 
                                     if ($s == 1) {
-                                        // Bereich 1 (Links)
-                                        $direction = rand(0, 1) ? 1 : -1;
-                                        $startX = ($direction == 1) ? rand(380, 420) : rand(580, 620);
-                                        $dx = rand(120, 220) * $direction;
+                                        // Bereich 1 (Links) -> Fliegt immer nach LINKS, weg vom Dach
+                                        $direction = -1;
+                                        $startX = rand(550, 600);
+                                        $dx = rand(150, 200) * $direction;
                                     } else {
-                                        // Bereich 2 (Rechts)
-                                        $direction = rand(0, 1) ? 1 : -1;
-                                        $startX = ($direction == 1) ? rand(1080, 1120) : rand(1280, 1320);
-                                        $dx = rand(120, 220) * $direction;
+                                        // Bereich 2 (Rechts) -> Fliegt immer nach RECHTS, weg vom Dach
+                                        $direction = 1;
+                                        $startX = rand(1100, 1150);
+                                        $dx = rand(150, 200) * $direction;
                                     }
                                     $startY = rand(20, 50);
-                                    $dy = rand(80, 150);
+                                    $dy = rand(60, 120); // Etwas flacherer Winkel
                                     
                                     $tailX = -($dx * 0.2);
                                     $tailY = -($dy * 0.2);
