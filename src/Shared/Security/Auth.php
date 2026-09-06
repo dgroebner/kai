@@ -62,7 +62,8 @@ final class Auth
                                             stripos($attrs, 'js-open-details') !== false ||
                                             stripos($attrs, 'js-market-filter') !== false ||
                                             stripos($attrs, 'filter') !== false ||
-                                            stripos($attrs, 'reset') !== false;
+                                            stripos($attrs, 'reset') !== false ||
+                                            stripos($attrs, 'data-tab') !== false;
                             
                             // Wenn es kein Submit-Button ist und Klassen wie modal-close enthält, nicht disablen
                             if ($isSafeButton && stripos($attrs, 'type="submit"') === false) {

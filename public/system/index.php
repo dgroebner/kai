@@ -76,6 +76,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
+                // Reload current user's permissions in session just in case they were modified
+                $dbCon = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection();
+                if (!empty($_SESSION['temp_group_id'])) {
+                    $stmt = $dbCon->prepare("SELECT permission FROM group_permissions WHERE group_id = :group_id");
+                    $stmt->execute(["group_id" => $_SESSION['temp_group_id']]);
+                } else {
+                    $stmt = $dbCon->prepare("SELECT gp.permission FROM group_permissions gp JOIN user_groups ug ON gp.group_id = ug.group_id WHERE ug.user_email = :email");
+                    $stmt->execute(["email" => $_SESSION['user_email']]);
+                }
+                $_SESSION['permissions'] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
 
                 $successMessage = "Rollen & Rechte erfolgreich gespeichert.";
             } catch (Throwable $e) {
