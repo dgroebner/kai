@@ -68,8 +68,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
     <main>
         <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
-            <button class="btn" id="btn-tab-diorama" onclick="switchWeatherTab('diorama')">Diorama</button>
-            <button class="btn btn-outline" id="btn-tab-dashboard" onclick="switchWeatherTab('dashboard')">Dashboard</button>
+            <button class="btn" id="btn-tab-diorama" data-tab="diorama">Diorama</button>
+            <button class="btn btn-outline" id="btn-tab-dashboard" data-tab="dashboard">Dashboard</button>
         </div>
         <?php if (!$forecast): ?>
             <p>Fehler beim Laden der Wetterdaten.</p>
@@ -400,44 +400,10 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
         <?php endif; ?>
     </main>
 </div>
-<script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="../js/weather.js?v=<?= APP_VERSION ?>" defer></script>
 
-<script>
-function switchWeatherTab(tab) {
-    const btnDiorama = document.getElementById('btn-tab-diorama');
-    const btnDashboard = document.getElementById('btn-tab-dashboard');
-    const tabDiorama = document.getElementById('tab-diorama');
-    const tabDashboard = document.getElementById('tab-dashboard');
 
-    if (tab === 'dashboard') {
-        btnDiorama.className = 'btn btn-outline';
-        btnDashboard.className = 'btn';
-        tabDiorama.classList.add('hidden');
-        tabDashboard.classList.remove('hidden');
-        
-        // Update URL
-        const url = new URL(window.location);
-        url.searchParams.set('tab', 'dashboard');
-        window.history.pushState({}, '', url);
-    } else {
-        btnDashboard.className = 'btn btn-outline';
-        btnDiorama.className = 'btn';
-        tabDashboard.classList.add('hidden');
-        tabDiorama.classList.remove('hidden');
-        
-        // Update URL
-        const url = new URL(window.location);
-        url.searchParams.delete('tab');
-        window.history.pushState({}, '', url);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'dashboard') {
-        switchWeatherTab('dashboard');
-    }
-});
-</script>
 </body>
 </html>
+
