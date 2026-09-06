@@ -192,7 +192,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </linearGradient>
                                 <mask id="moonMask">
                                     <rect width="100%" height="100%" fill="white"/>
-                                    <circle cx="76%" cy="6%" r="35" fill="black"/>
+                                    <circle cx="90%" cy="5%" r="35" fill="black"/>
                                 </mask>
                             </defs>
 
@@ -200,7 +200,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <!-- Nacht-Verdunkelung -->
                                 <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
                                 <!-- Mond -->
-                                <circle cx="78%" cy="8%" r="40" fill="#facc15" opacity="0.9" mask="url(#moonMask)"/>
+                                <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" mask="url(#moonMask)"/>
                             <?php endif; ?>
 
                             <?php if ($isGoldenHour && !$isNight): ?>
