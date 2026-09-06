@@ -167,6 +167,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | Kassenbon | `Kai\Tools\Kassenbon\` | `src/Kassenbon/` | `public/kassenbon/` |
 | PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
 | System | `Kai\Tools\System\` | `src/System/` | `public/system/` |
+| Weather | `Kai\Tools\Weather\` | `src/Weather/` | `public/weather/` |
 
 ### Neue Domain anlegen
 
@@ -201,8 +202,8 @@ Jeder Endpunkt in `public/` verwendet ausschließlich die Guards der Klasse
 
 | Methode | Einsatz |
 |---|---|
-| `Auth::requirePage()` | HTML-Seiten: leitet nicht angemeldete Besucher nach `login.php` um |
-| `Auth::requireApi()` | JSON-Endpunkte: antwortet mit `401` statt einer Weiterleitung |
+| `Auth::requirePage(?string $permission = null)` | HTML-Seiten: leitet nicht angemeldete Besucher nach `login.php` um. Prüft optional auf ein benötigtes Recht (z.B. `shopping_read`) |
+| `Auth::requireApi(?string $permission = null)` | JSON-Endpunkte: antwortet mit `401` bzw. `403` statt einer Weiterleitung. Prüft optional auf ein benötigtes Recht |
 | `Auth::requireMethod('POST')` | Erzwingt die HTTP-Methode (antwortet mit `405`) |
 | `Auth::requireCsrfToken($payload)` | Erzwingt einen gültigen CSRF-Token (Header `X-CSRF-Token` oder Body) |
 | `Auth::csrfToken()` | Liefert/erzeugt den Session-CSRF-Token für `<meta>` bzw. Hidden-Field |

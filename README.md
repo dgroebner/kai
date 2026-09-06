@@ -8,11 +8,13 @@
 |---|---|---|
 | 🛒 **eBons (Kassenbons)** | `kassenbon/index.php` | Automatische KI-Auswertung von Haushalts-Kassenbons per E-Mail (IMAP) mit Einzelpreis- und Kategorie-Erfassung über Google Gemini. Erfasste Bons werden automatisch mit der passenden Giro- oder Kreditkartenbuchung verknüpft (inkl. Bargeld-Erkennung). |
 | 📈 **Bon-Auswertung** | `kassenbon/auswertung.php` | Dashboard zur grafischen Visualisierung der erfassten Einkäufe nach Zeiträumen und Kategorien (Donut-Chart, Kategorie-Drilldown). |
+| 📝 **Einkaufsliste** | `einkaufsliste/index.php` | Intelligente Einkaufsliste mit Markt-Splitting (Rewe & Globus), Gang-Sortierung, Rezept-Analyse via KI und lernenden Vorschlägen aus Kassenbons. |
 | 🏦 **Finanzen (Bank)** | `bank/index.php` | Girokonto-Umsätze über die **comdirect REST API** (photoTAN-Push-Login), automatische Verschlagwortung per Regelsystem und KI-Tag-Klassifizierung, Tag-Auswertung nach Zeitraum sowie Erkennung wiederkehrender Verträge. |
 | 💳 **Kreditkarte** | `bank/creditcard.php` | Einlesen und Auswertung von Visa-Kreditkartenabrechnungen (PDF-Parsing per Gemini) inklusive Umsatzübersicht je Abrechnungszeitraum und automatischer Verknüpfung mit der Giro-Lastschrift. |
 | 📄 **Verträge** | `bank/contracts.php` | Verwaltung wiederkehrender Zahlungen (Verträge) mit eigenem Regel-Editor und Zuordnung der zugehörigen Buchungen. |
 | ⚡ **Energie-Dashboard** | `pvcharge/index.php` | Live-Telemetrie der Photovoltaikanlage (PV-Leistung, Hauslast, Netzbezug/-einspeisung, Batterie-SoC) mit Energiefluss-Diagramm sowie Ertragsprognose über die forecast.solar API inkl. Soll-/Ist-Vergleich. |
 | 🚐 **VW ID.Buzz Telemetrie** | `car/index.php` | Live-Fahrzeugstatus (Ladestand, Reichweite, Temperaturen, Verriegelung) und Verlaufshistorie inkl. Effizienz-Auswertung. |
+| ⛅ **Wetter** | `weather/index.php` | Aktuelles Wetter-Diorama für den Standort mit stündlicher 12-Stunden-Prognose, 7-Tage-Trend und visueller Empfehlung (Schirm, Jacke, etc.) sowie historischen Daten. |
 | ⚙️ **System & Verwaltung** | `system/index.php` | Aktivitäts-Log aller System-Ereignisse sowie Pflege globaler Parameter (z. B. Strom-Bezugs- und Einspeisepreise) über den `system_settings`-Key-Value-Store. |
 
 ### Maschinen- & Cron-Endpunkte
@@ -76,9 +78,11 @@ kai_root/
 │   ├── bank/                ← Controller für Giro, Kreditkarte, Verträge und die Bank-API
 │   ├── car/                 ← Controller für das VW ID.Buzz Modul
 │   │   └── telemetry/       ← JSON-Endpunkt zur Entgegennahme der Fahrzeug-Telemetrie
+│   ├── einkaufsliste/       ← Controller & API für die intelligente Einkaufsliste
 │   ├── kassenbon/           ← Controller & API für Kassenbons
 │   ├── pvcharge/            ← Controller, Live-API, Ingest- und Cron-Endpunkt der PV-Anlage
-│   └── system/              ← Aktivitäts-Log und globale Systemeinstellungen
+│   ├── system/              ← Aktivitäts-Log und globale Systemeinstellungen
+│   └── weather/             ← Controller & API für das Wetter-Dashboard
 │
 ├── src/                     ← Core-Servercode (nicht öffentlich erreichbar, PSR-4: Kai\Tools\)
 │   ├── Shared/              ← Domainübergreifende Komponenten
@@ -90,9 +94,11 @@ kai_root/
 │   ├── Bank/                ← Giro- & Kreditkarten-Logik, Regel-/Vertrags-Matching, ComdirectClient
 │   │   └── Parser/          ← VisaPdfParser
 │   ├── Car/                 ← Repositories für das ID.Buzz Modul
+│   ├── Einkaufsliste/       ← Logik für die intelligente Einkaufsliste und KI-Rezept-Parser
 │   ├── Kassenbon/           ← Bon-Analyse (Gemini), Kategorie-Auswertung und Buchungs-Matching
 │   ├── PVCharge/            ← Solarprognose und Telemetrie-Ingest der PV-Anlage
-│   └── System/              ← Aktivitäts-Log-Repository und System-Einstellungen
+│   ├── System/              ← Aktivitäts-Log-Repository und System-Einstellungen
+│   └── Weather/             ← Wetterdaten-Abruf und Historien-Analyse
 │
 ├── database/
 │   └── schema.sql           ← Versioniertes Datenbankschema (MariaDB/MySQL)
@@ -111,8 +117,8 @@ kai_root/
 ### Domain-Trennung
 
 Jede fachliche Domäne ist ein eigenständiges Modul: Namespace `Kai\Tools\{Domain}\`, Servercode in
-`src/{Domain}/`, Einstiegspunkte in `public/{domain}/`. Aktuelle Domains sind **Bank**, **Car**,
-**Kassenbon**, **PVCharge** und **System**. Domains dürfen **nicht** direkt Klassen einer anderen
+`src/{Domain}/`, Einstiegspunkte in `public/{domain}/`. Aktuelle Domains sind **Bank**, **Car**, **Einkaufsliste**,
+**Kassenbon**, **PVCharge**, **System** und **Weather**. Domains dürfen **nicht** direkt Klassen einer anderen
 Domain importieren — geteilte Funktionalität wird ausschließlich über `src/Shared/` bezogen.
 Die wenigen bewusst gesetzten Ausnahmen (z. B. Bon-zu-Buchung-Matching) sind in AGENTS.md § 4 dokumentiert.
 
@@ -171,8 +177,10 @@ Alle Tabellen liegen in `database/schema.sql` (Single Source of Truth, kein Migr
 | Kassenbon | `kb_receipts`, `kb_items` |
 | Bank | `bank_accounts`, `bank_giro_transactions`, `bank_cc_statements`, `bank_cc_transactions`, `bank_categories`, `bank_tags`, `bank_transaction_tags`, `bank_tag_rules`, `bank_contracts`, `bank_contract_rules` |
 | PV-Anlage | `pv_live`, `pv_telemetry`, `pv_forecast_daily`, `pv_forecast_hourly` |
+| Einkaufsliste | `market_categories`, `product_master`, `shopping_list_items`, `school_holidays` |
+| Wetter | `weather_sensor_live`, `weather_state`, `weather_forecast_daily`, `weather_forecast_hourly` |
 | Fahrzeug | `vehicle_state`, `vehicle_telemetry_log` |
-| System | `activity_log`, `system_settings` |
+| System | `activity_log`, `system_settings`, `user_profiles`, `push_subscriptions`, `users`, `groups`, `group_permissions`, `user_groups` |
 
 ---
 

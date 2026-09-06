@@ -171,6 +171,13 @@ $groupPermissions = [];
 $userGroups = [];
 if ($tab === 'roles' && Auth::hasPermission('system_write')) {
     $groupRepo = new GroupRepository();
+    
+    // Fallback: Aktuellen Benutzer in die DB aufnehmen, falls er durch eine alte Session noch nicht drin ist
+    try {
+        $permissionService = new \Kai\Tools\System\PermissionService();
+        $permissionService->handleUserLogin($_SESSION['user_email'], $_SESSION['user_name'] ?? '');
+    } catch (\Throwable $e) {}
+
     $groups = $groupRepo->getAllGroups();
     $users = $groupRepo->getAllUsers();
 
