@@ -185,7 +185,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg"
                              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
                             <?php
-                            $moonPhase = $forecast['daily']['moon_phase'][0] ?? 0.5;
+                            $moonPhase = $forecast['current']['moon_phase'] ?? ($forecast['daily']['moon_phase'][0] ?? 0.5);
                             $isNewMoon = ($moonPhase < 0.03 || $moonPhase > 0.97);
                             $isFullMoon = ($moonPhase >= 0.47 && $moonPhase <= 0.53);
                             
@@ -204,114 +204,96 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <?php if (!$isFullMoon && !$isNewMoon): ?>
                                 <mask id="moonMask">
                                     <rect width="100%" height="100%" fill="white"/>
-                                    <!-- Moon has r=40, mask moves left (-px) for waxing, right (+px) for waning -->
                                     <circle cx="calc(92% + <?= $maskOffsetPx ?>px)" cy="7%" r="40" fill="black"/>
                                 </mask>
                                 <?php endif; ?>
+                                
+                                <clipPath id="skyClip">
+                                    <!-- Linker Himmelbereich (exakt am Dach entlang) -->
+                                    <polygon points="0,0 800,0 800,80 530,480 0,480" />
+                                    <!-- Rechter Himmelbereich (zwischen Dach und Baum) -->
+                                    <polygon points="850,0 1600,0 1600,100 1350,80 1200,300 900,100" />
+                                </clipPath>
                             </defs>
 
                             <?php if ($isNight): ?>
-                                <!-- Nacht-Verdunkelung -->
+                                <!-- Nacht-Verdunkelung (global) -->
                                 <rect width="100%" height="100%" fill="#0a192f" opacity="0.45"/>
-                                
-                                <!-- Sterne (Funkeln) -->
-                                <g fill="#ffffff">
-                                    <?php
-                                    // Bereich 1 (Links vom Dach, strikt begrenzt)
-                                    for($i=0; $i<10; $i++) {
-                                        $x = rand(400, 560);
-                                        $y = rand(30, 160);
-                                        $r = rand(10, 20) / 10;
-                                        $dur = rand(3, 7);
-                                        $delay = rand(0, 5);
-                                        echo "<circle cx=\"$x\" cy=\"$y\" r=\"$r\"><animate attributeName=\"opacity\" values=\"0.1;0.9;0.1\" dur=\"{$dur}s\" begin=\"{$delay}s\" repeatCount=\"indefinite\"/></circle>";
-                                    }
-                                    // Bereich 2 (Rechts vom Dach, strikt begrenzt)
-                                    for($i=0; $i<10; $i++) {
-                                        $x = rand(1180, 1350);
-                                        $y = rand(30, 160);
-                                        $r = rand(10, 20) / 10;
-                                        $dur = rand(3, 7);
-                                        $delay = rand(0, 5);
-                                        echo "<circle cx=\"$x\" cy=\"$y\" r=\"$r\"><animate attributeName=\"opacity\" values=\"0.1;0.9;0.1\" dur=\"{$dur}s\" begin=\"{$delay}s\" repeatCount=\"indefinite\"/></circle>";
-                                    }
-                                    ?>
-                                </g>
-
-                                <!-- Sternschnuppen (strikt in den 2 Bereichen, fliegen vom Dach weg) -->
-                                <?php for ($s = 1; $s <= 2; $s++): 
-                                    if ($s == 1) {
-                                        // Bereich 1 (Links) -> Fliegt immer nach LINKS, weg vom Dach
-                                        $direction = -1;
-                                        $startX = rand(500, 560);
-                                        $dx = rand(150, 200) * $direction;
-                                    } else {
-                                        // Bereich 2 (Rechts) -> Fliegt immer nach RECHTS, weg vom Dach
-                                        $direction = 1;
-                                        $startX = rand(1180, 1220);
-                                        $dx = rand(150, 200) * $direction;
-                                    }
-                                    $startY = rand(20, 50);
-                                    $dy = rand(60, 120); // Etwas flacherer Winkel
-                                    
-                                    $tailX = -($dx * 0.2);
-                                    $tailY = -($dy * 0.2);
-                                    
-                                    $delay = rand(2, 12);
-                                    $repeat = rand(15, 35);
-                                ?>
-                                <g opacity="0">
-                                    <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-                                    <circle cx="0" cy="0" r="1.5" fill="#ffffff" />
-                                    <animateTransform attributeName="transform" type="translate" from="<?= $startX ?> <?= $startY ?>" to="<?= $startX+$dx ?> <?= $startY+$dy ?>" dur="0.6s" begin="<?= $delay ?>s; shooting<?= $s ?>.end+<?= $repeat ?>s" id="shooting<?= $s ?>" />
-                                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.7; 1" dur="0.6s" begin="shooting<?= $s ?>.begin" />
-                                </g>
-                                <?php endfor; ?>
-                                <!-- Mond -->
-                                <?php if (!$isNewMoon): ?>
-                                <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" <?= (!$isFullMoon) ? 'mask="url(#moonMask)"' : '' ?>/>
-                                <?php endif; ?>
                             <?php endif; ?>
 
                             <?php if ($isGoldenHour && !$isNight): ?>
-                                <!-- Daemmerung / Golden Hour -->
+                                <!-- Daemmerung / Golden Hour (global) -->
                                 <rect width="100%" height="100%" fill="url(#goldenGrad)" opacity="0.25"
                                       style="mix-blend-mode: overlay;"/>
                             <?php endif; ?>
 
-                            <?php if ($isCloudy): ?>
-                                <!-- Wolken-Ebene (Top-Left Bereich) -->
-                                <g fill="#ffffff">
-                                    <!-- Grosse Wolke -->
-                                    <g transform="translate(10, 20) scale(1.4)" opacity="0.8">
-                                        <circle cx="100" cy="80" r="40"/>
-                                        <circle cx="150" cy="50" r="60"/>
-                                        <circle cx="210" cy="70" r="50"/>
-                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+                            <!-- HIMMEL INHALTE (Sterne, Mond, Wolken - strikt auf den Himmel geclippt) -->
+                            <g clip-path="url(#skyClip)">
+                                
+                                <?php if ($isNight): ?>
+                                    <!-- Sterne (zufällig über den Himmel verteilt, ClipPath regelt die Ränder) -->
+                                    <g fill="#ffffff">
+                                        <?php for($i=0; $i<50; $i++): 
+                                            $x = rand(0, 1600);
+                                            $y = rand(0, 400);
+                                            $r = rand(10, 20) / 10;
+                                            $dur = rand(3, 7);
+                                            $delay = rand(0, 5);
+                                        ?>
+                                            <circle cx="<?= $x ?>" cy="<?= $y ?>" r="<?= $r ?>">
+                                                <animate attributeName="opacity" values="0.1;0.9;0.1" dur="<?= $dur ?>s" begin="<?= $delay ?>s" repeatCount="indefinite"/>
+                                            </circle>
+                                        <?php endfor; ?>
                                     </g>
-                                    <!-- Mittlere Wolke Rand links -->
-                                    <g transform="translate(-50, -10) scale(1.2)" opacity="0.6">
-                                        <circle cx="100" cy="80" r="40"/>
-                                        <circle cx="150" cy="50" r="60"/>
-                                        <circle cx="210" cy="70" r="50"/>
-                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+
+                                    <!-- Sternschnuppen -->
+                                    <?php for ($s = 1; $s <= 2; $s++): 
+                                        $startX = rand(100, 1500);
+                                        $startY = rand(20, 100);
+                                        $direction = rand(0, 1) ? 1 : -1;
+                                        $dx = rand(300, 600) * $direction;
+                                        $dy = rand(150, 300);
+                                        $tailX = -($dx * 0.15);
+                                        $tailY = -($dy * 0.15);
+                                        $delay = rand(2, 12);
+                                        $repeat = rand(15, 35);
+                                    ?>
+                                    <g opacity="0">
+                                        <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                                        <circle cx="0" cy="0" r="1.5" fill="#ffffff" />
+                                        <animateTransform attributeName="transform" type="translate" from="<?= $startX ?> <?= $startY ?>" to="<?= $startX+$dx ?> <?= $startY+$dy ?>" dur="0.8s" begin="<?= $delay ?>s; shooting<?= $s ?>.end+<?= $repeat ?>s" id="shooting<?= $s ?>" />
+                                        <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.7; 1" dur="0.8s" begin="shooting<?= $s ?>.begin" />
                                     </g>
-                                    <!-- Wolke unten links -->
-                                    <g transform="translate(-100, 150) scale(1.1)" opacity="0.7">
-                                        <circle cx="100" cy="80" r="40"/>
-                                        <circle cx="150" cy="50" r="60"/>
-                                        <circle cx="210" cy="70" r="50"/>
-                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
+                                    <?php endfor; ?>
+
+                                    <!-- Mond -->
+                                    <?php if (!$isNewMoon): ?>
+                                    <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" <?= (!$isFullMoon) ? 'mask="url(#moonMask)"' : '' ?>/>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+
+                                <!-- WOLKEN (dynamische Bewölkung von links nach rechts) -->
+                                <?php if ($cloudCover > 0): 
+                                    $cloudX = 1600 * ($cloudCover / 100);
+                                    // Farbe: Je mehr Wolken, desto dunkler (Lightness 90% bis 35%)
+                                    $l = max(35, 95 - ($cloudCover * 0.6));
+                                    $cloudColor = "hsl(215, 20%, {$l}%)";
+                                ?>
+                                    <g fill="<?= $cloudColor ?>" opacity="0.95">
+                                        <!-- Der Hauptblock, der von links reinzieht -->
+                                        <rect x="0" y="0" width="<?= $cloudX ?>" height="600" />
+                                        
+                                        <!-- Eine wolkige Kante rechts, damit es nicht wie ein Lineal abgeschnitten aussieht -->
+                                        <?php if ($cloudCover < 100 && $cloudCover > 2): ?>
+                                            <circle cx="<?= $cloudX ?>" cy="50" r="80" />
+                                            <circle cx="<?= $cloudX + 25 ?>" cy="160" r="120" />
+                                            <circle cx="<?= $cloudX - 15 ?>" cy="290" r="140" />
+                                            <circle cx="<?= $cloudX + 35 ?>" cy="440" r="110" />
+                                            <circle cx="<?= $cloudX - 25 ?>" cy="550" r="130" />
+                                        <?php endif; ?>
                                     </g>
-                                    <!-- Sehr hohe, kleine Wolke -->
-                                    <g transform="translate(250, -20) scale(0.9)" opacity="0.6">
-                                        <circle cx="100" cy="80" r="40"/>
-                                        <circle cx="150" cy="50" r="60"/>
-                                        <circle cx="210" cy="70" r="50"/>
-                                        <rect x="80" y="50" width="150" height="70" rx="35"/>
-                                    </g>
-                                </g>
-                            <?php endif; ?>
+                                <?php endif; ?>
+                            </g>
 
                             <?php if ($isFog): ?>
                                 <!-- Nebel (grauer milchiger Schleier) -->
