@@ -43,3 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
         switchWeatherTab('dashboard');
     }
 });
+
+    // Automatischer Reload alle 5 Minuten (300.000 ms), um Live-Daten aktuell zu halten
+    setTimeout(() => {
+        window.location.reload();
+    }, 300000);

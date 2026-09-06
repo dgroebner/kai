@@ -275,25 +275,44 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     $currHum = $forecast['current']['relative_humidity_2m'] ?? '--';
                     $currPress = $forecast['current']['surface_pressure'] ?? '--';
                     $currCloud = $forecast['current']['cloud_cover'] ?? '--';
+
+                    // Farben fuer die KPIs berechnen
+                    $tempColor = 'var(--text-main)';
+                    if ($currTemp < 5) $tempColor = '#3b82f6'; // Blau fuer Kalt
+                    elseif ($currTemp >= 25) $tempColor = 'var(--color-red, #ef4444)'; // Rot fuer Heiss
+                    elseif ($currTemp >= 20) $tempColor = 'var(--color-orange, #f97316)'; // Orange fuer Warm
+                    elseif ($currTemp >= 10) $tempColor = 'var(--color-green, #22c55e)'; // Gruen fuer Angenehm
+
+                    $precipColor = 'var(--text-main)';
+                    if ($currPrecip > 2.0) $precipColor = 'var(--color-blue, #3b82f6)';
+                    elseif ($currPrecip > 0) $precipColor = '#60a5fa'; // Helles Blau
+
+                    $windColor = 'var(--text-main)';
+                    if ($currWind > 50) $windColor = 'var(--color-red, #ef4444)'; // Sturm
+                    elseif ($currWind > 30) $windColor = 'var(--color-orange, #f97316)'; // Windig
+
+                    $humColor = 'var(--text-main)';
+                    if ($currHum > 70) $humColor = 'var(--color-blue, #3b82f6)'; // Sehr feucht
+                    elseif ($currHum < 30) $humColor = 'var(--color-orange, #f97316)'; // Sehr trocken
                     ?>
                     <div class="kpi-card">
                         <div class="kpi-label">Temperatur & Zustand</div>
-                        <div class="kpi-value"><?= number_format((float)$currTemp, 1, ',', '.') ?> &deg;C</div>
+                        <div class="kpi-value" style="color: <?= $tempColor ?>;"><?= number_format((float)$currTemp, 1, ',', '.') ?> &deg;C</div>
                         <div class="kpi-subtext"><?= $currIconText['icon'] ?> <?= $currIconText['text'] ?> | Gefühlt: <?= number_format((float)$appTemp, 1, ',', '.') ?> &deg;C</div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-label">Niederschlag</div>
-                        <div class="kpi-value"><?= number_format((float)$currPrecip, 1, ',', '.') ?> mm</div>
+                        <div class="kpi-value" style="color: <?= $precipColor ?>;"><?= number_format((float)$currPrecip, 1, ',', '.') ?> mm</div>
                         <div class="kpi-subtext">Regenrisiko (1h): <?= $nextHourProb ?> %</div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-label">Wind</div>
-                        <div class="kpi-value"><?= number_format((float)$currWind, 1, ',', '.') ?> km/h</div>
+                        <div class="kpi-value" style="color: <?= $windColor ?>;"><?= number_format((float)$currWind, 1, ',', '.') ?> km/h</div>
                         <div class="kpi-subtext">Böen: <?= number_format((float)$currGusts, 1, ',', '.') ?> km/h | <?= $currDir ?>&deg;</div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-label">Luft</div>
-                        <div class="kpi-value"><?= $currHum ?> %</div>
+                        <div class="kpi-value" style="color: <?= $humColor ?>;"><?= $currHum ?> %</div>
                         <div class="kpi-subtext">Druck: <?= $currPress ?> hPa | Wolken: <?= $currCloud ?> %</div>
                     </div>
                 </div>
@@ -406,4 +425,6 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
 </body>
 </html>
+
+
 
