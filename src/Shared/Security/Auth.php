@@ -34,6 +34,52 @@ final class Auth
             header('Location: ' . APP_URL . '/');
             exit;
         }
+
+        // Wenn die Seite ein Lese-Recht erfordert, prüfen wir, ob auch das Schreib-Recht vorhanden ist.
+        // Falls nicht, greifen wir per Output-Buffering ein und setzen alle Eingabefelder auf disabled.
+        if ($permission !== null && str_ends_with($permission, '_read')) {
+            $writePermission = str_replace('_read', '_write', $permission);
+            if (!self::hasPermission($writePermission)) {
+                ob_start(function ($buffer) {
+                    return preg_replace_callback('/<(input|select|textarea|button)\b([^>]*?)>/i', function ($matches) {
+                        $tag = strtolower($matches[1]);
+                        $attrs = $matches[2];
+
+                        // Hidden-Inputs nicht disablen (werden z.B. für JS oder Layouting gebraucht)
+                        if ($tag === 'input' && stripos($attrs, 'type="hidden"') !== false) {
+                            return $matches[0];
+                        }
+                        
+                        // Bestimmte Filter- und Suchfelder ignorieren, da sie keine Schreibaktion auf der DB auslösen
+                        if ($tag === 'input' && (stripos($attrs, 'type="search"') !== false || stripos($attrs, 'id="search"') !== false || stripos($attrs, 'filter') !== false)) {
+                            return $matches[0];
+                        }
+
+                        // Bei Buttons aufpassen: Navigations- und Modal-Close-Buttons sollen klickbar bleiben
+                        if ($tag === 'button') {
+                            $isSafeButton = stripos($attrs, 'modal-close') !== false ||
+                                            stripos($attrs, 'js-tab-btn') !== false ||
+                                            stripos($attrs, 'js-open-') !== false ||
+                                            stripos($attrs, 'js-market-filter') !== false ||
+                                            stripos($attrs, 'filter') !== false ||
+                                            stripos($attrs, 'reset') !== false;
+                            
+                            // Wenn es kein Submit-Button ist und Klassen wie modal-close enthält, nicht disablen
+                            if ($isSafeButton && stripos($attrs, 'type="submit"') === false) {
+                                return $matches[0];
+                            }
+                        }
+
+                        // Falls schon disabled, nichts tun
+                        if (preg_match('/\bdisabled\b/i', $attrs)) {
+                            return $matches[0];
+                        }
+
+                        return '<' . $matches[1] . ' disabled' . $attrs . '>';
+                    }, $buffer);
+                });
+            }
+        }
     }
 
     /**
