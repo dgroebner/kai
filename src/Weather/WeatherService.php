@@ -80,7 +80,7 @@ class WeatherService
             $where .= " AND DATE(forecast_time) = CURDATE()";
         }
 
-        $stmt = $this->pdo->query("SELECT forecast_time, temperature_2m, precipitation, wind_speed_10m FROM weather_forecast_hourly WHERE $where ORDER BY forecast_time ASC");
+        $stmt = $this->pdo->query("SELECT forecast_time, temperature_2m, precipitation, wind_speed_10m, cloud_cover, relative_humidity_2m FROM weather_forecast_hourly WHERE $where ORDER BY forecast_time ASC");
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 

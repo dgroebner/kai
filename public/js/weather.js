@@ -81,6 +81,8 @@ function initWeatherHistoryChart() {
     const labels = JSON.parse(canvas.getAttribute('data-labels') || '[]');
     const tempData = JSON.parse(canvas.getAttribute('data-temp') || '[]');
     const precipData = JSON.parse(canvas.getAttribute('data-precip') || '[]');
+    const windData = JSON.parse(canvas.getAttribute('data-wind') || '[]');
+    const humData = JSON.parse(canvas.getAttribute('data-hum') || '[]');
     
     const ctx = canvas.getContext('2d');
     
@@ -103,6 +105,29 @@ function initWeatherHistoryChart() {
                     borderWidth: 2,
                     tension: 0.3,
                     fill: true
+                },
+                {
+                    label: 'Wind (km/h)',
+                    data: windData,
+                    borderColor: '#94a3b8',
+                    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+                    yAxisID: 'yTemp',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    fill: false,
+                    hidden: true // Default hidden to not clutter
+                },
+                {
+                    label: 'Luftfeuchtigkeit (%)',
+                    data: humData,
+                    borderColor: '#14b8a6',
+                    backgroundColor: 'rgba(20, 184, 166, 0.1)',
+                    yAxisID: 'yHum',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false,
+                    hidden: true // Default hidden
                 },
                 {
                     label: 'Niederschlag (mm)',
@@ -161,6 +186,16 @@ function initWeatherHistoryChart() {
                     grid: { drawOnChartArea: false }, // Only draw grid lines for one axis
                     ticks: { color: textColor, beginAtZero: true },
                     min: 0
+                },
+                yHum: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    title: { display: true, text: 'Feuchte (%)', color: textColor },
+                    grid: { drawOnChartArea: false },
+                    ticks: { color: textColor },
+                    min: 0,
+                    max: 100
                 }
             }
         }
