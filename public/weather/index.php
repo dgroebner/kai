@@ -173,28 +173,28 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <!-- Wolken-Ebene (Top-Left Bereich) -->
                             <g fill="#ffffff">
                                 <!-- Grosse Wolke -->
-                                <g transform="translate(100, 50) scale(1.5)" opacity="0.8">
+                                <g transform="translate(10, 20) scale(1.4)" opacity="0.8">
                                     <circle cx="100" cy="80" r="40"/>
                                     <circle cx="150" cy="50" r="60"/>
                                     <circle cx="210" cy="70" r="50"/>
                                     <rect x="80" y="50" width="150" height="70" rx="35"/>
                                 </g>
                                 <!-- Mittlere Wolke Rand links -->
-                                <g transform="translate(-20, -10) scale(1.3)" opacity="0.6">
+                                <g transform="translate(-50, -10) scale(1.2)" opacity="0.6">
                                     <circle cx="100" cy="80" r="40"/>
                                     <circle cx="150" cy="50" r="60"/>
                                     <circle cx="210" cy="70" r="50"/>
                                     <rect x="80" y="50" width="150" height="70" rx="35"/>
                                 </g>
-                                <!-- Kleine Wolke weiter rechts -->
-                                <g transform="translate(450, 80) scale(1.0)" opacity="0.7">
+                                <!-- Wolke unten links -->
+                                <g transform="translate(-100, 150) scale(1.1)" opacity="0.7">
                                     <circle cx="100" cy="80" r="40"/>
                                     <circle cx="150" cy="50" r="60"/>
                                     <circle cx="210" cy="70" r="50"/>
                                     <rect x="80" y="50" width="150" height="70" rx="35"/>
                                 </g>
                                 <!-- Sehr hohe, kleine Wolke -->
-                                <g transform="translate(300, -20) scale(0.9)" opacity="0.6">
+                                <g transform="translate(250, -20) scale(0.9)" opacity="0.6">
                                     <circle cx="100" cy="80" r="40"/>
                                     <circle cx="150" cy="50" r="60"/>
                                     <circle cx="210" cy="70" r="50"/>
@@ -456,6 +456,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
 </body>
 </html>
+
 
 
 
