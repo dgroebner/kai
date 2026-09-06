@@ -20,6 +20,7 @@ class PvTelemetryRepository
      */
     private const array FILTER_CONDITIONS = [
         'tag' => 'last_update >= CURDATE()',
+        'letzter_tag' => 'last_update >= NOW() - INTERVAL 1 DAY',
         'woche' => 'last_update >= NOW() - INTERVAL 7 DAY',
         'monat' => 'last_update >= NOW() - INTERVAL 30 DAY',
     ];
