@@ -19,8 +19,8 @@ class PermissionService
         $dbCon = $this->db->getConnection();
 
         // Ensure user exists
-        $stmt = $dbCon->prepare("INSERT INTO users (email, name) VALUES (:email, :name) ON DUPLICATE KEY UPDATE name = :name");
-        $stmt->execute(["email" => $email, "name" => $name]);
+        $stmt = $dbCon->prepare("INSERT INTO users (email, name) VALUES (:email, :name) ON DUPLICATE KEY UPDATE name = :name2");
+        $stmt->execute(["email" => $email, "name" => $name, "name2" => $name]);
 
         // Check Admin Fallback
         $adminEmail = $_ENV["ADMIN_EMAIL"] ?? null;
