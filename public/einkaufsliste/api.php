@@ -565,8 +565,6 @@ try {
                     Auth::sendJsonError(400, 'Ziel-Artikel fehlt');
                 }
                 $mappingRepo->save($ebonName, $targetId);
-                // Lernprozess erneut triggern um die Historie auf das neue Mapping anzuwenden
-                $learningService->learnFromReceipts();
             } elseif ($actionType === 'assign') {
                 $targetName = trim((string)($input['target_name'] ?? ''));
                 if ($targetName === '') {
@@ -578,8 +576,6 @@ try {
                 if ($existing) {
                     // MAP
                     $mappingRepo->save($ebonName, $existing['id']);
-                    // Trigger learning process to update history with new mapping
-                    $learningService->learnFromReceipts();
                     echo json_encode(['success' => true, 'message' => 'Zuordnung gespeichert']);
                 } else {
                     // NEW
