@@ -262,6 +262,13 @@ class ProductMasterRepository
         $fields = [];
         $params = [':id' => $id];
 
+        if (array_key_exists('name', $data)) {
+            $val = trim((string)($data['name'] ?? ''));
+            if ($val !== '') {
+                $fields[] = "name = :name";
+                $params[':name'] = $val;
+            }
+        }
         if (array_key_exists('custom_label', $data)) {
             $val = trim((string)($data['custom_label'] ?? ''));
             $fields[] = "custom_label = :custom_label";

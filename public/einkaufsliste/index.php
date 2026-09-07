@@ -670,8 +670,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         <div class="rule-modal-body">
             <input type="hidden" id="modal-product-id">
             <div class="form-group">
-                <label for="modal-custom-label">Label</label>
-                <input type="text" id="modal-custom-label" class="tag-search-input" placeholder="Eigenes Label">
+                <label for="modal-name">Artikelname</label>
+                <input type="text" id="modal-name" class="tag-search-input" placeholder="Artikelname">
             </div>
             <div class="form-group">
                 <label><input type="checkbox" id="modal-ignore-checkbox"> Ignorieren</label>

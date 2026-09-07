@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.success) {
                 const product = res.product;
                 document.getElementById('modal-product-id').value = product.id;
-                document.getElementById('modal-custom-label').value = product.custom_label ?? '';
+                document.getElementById('modal-name').value = product.display_name ?? product.name ?? '';
                 document.getElementById('modal-ignore-checkbox').checked = !!product.is_ignored;
                 document.getElementById('product-edit-modal').classList.remove('hidden');
             } else {
@@ -640,9 +640,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnSaveProduct) {
         btnSaveProduct.addEventListener('click', async () => {
             const id = document.getElementById('modal-product-id').value;
-            const label = document.getElementById('modal-custom-label').value.trim();
+            const name = document.getElementById('modal-name').value.trim();
             const ignore = document.getElementById('modal-ignore-checkbox').checked ? 1 : 0;
-            const payload = {action: 'save_product_master', id, custom_label: label, is_ignored: ignore};
+            const payload = {action: 'save_product_master', id, name: name, custom_label: '', is_ignored: ignore};
             const res = await KaiHttp.postJson(API_URL, payload);
             if (res.success) {
                 showToast(res.message || 'Produkt gespeichert');

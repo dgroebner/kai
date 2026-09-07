@@ -371,6 +371,9 @@ try {
                     'avg_interval_days' => $interval,
                     'holiday_factor' => $holidayFactor,
                 ];
+                if ($name !== '') {
+                    $updateData['name'] = $name;
+                }
                 if (array_key_exists('is_ignored', $input)) {
                     $updateData['is_ignored'] = $isIgnored;
                 }
