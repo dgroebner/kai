@@ -294,6 +294,22 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <?php if (!$isNewMoon && $cloudCover < 90): ?>
                                 <circle cx="92%" cy="7%" r="40" fill="#facc15" opacity="0.9" <?= (!$isFullMoon) ? 'mask="url(#moonMask)"' : '' ?>/>
                                 <?php endif; ?>
+                            <?php else: ?>
+                                <!-- Sonne (Rechts) -->
+                                <?php if ($cloudCover < 90): ?>
+                                <g transform="translate(1472, 63)">
+                                    <!-- Animierte Sonnenstrahlen (Pulsieren) -->
+                                    <circle cx="0" cy="0" r="50" fill="#fef08a" opacity="0.4">
+                                        <animate attributeName="r" values="50;55;50" dur="4s" repeatCount="indefinite" />
+                                        <animate attributeName="opacity" values="0.4;0.2;0.4" dur="4s" repeatCount="indefinite" />
+                                    </circle>
+                                    <circle cx="0" cy="0" r="42" fill="#fde047" opacity="0.8">
+                                        <animate attributeName="r" values="42;45;42" dur="3s" repeatCount="indefinite" />
+                                    </circle>
+                                    <!-- Harter Sonnenkern -->
+                                    <circle cx="0" cy="0" r="35" fill="#eab308" />
+                                </g>
+                                <?php endif; ?>
                             <?php endif; ?>
 
                             <!-- WOLKEN (in sicheren Zonen platziert, abhängig von $cloudCover) -->
