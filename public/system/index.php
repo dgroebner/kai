@@ -471,7 +471,7 @@ function getEventLabel(string $eventType): string
                                     'ebon_read', 'ebon_write',
                                     'pv_read', 'pv_write',
                                     'car_read', 'car_write',
-                                    'shopping_read', 'shopping_write',
+                                    'shopping_read', 'shopping_write', 'shopping_master',
                                     'weather_read', 'weather_write'
                             ];
                             ?>
