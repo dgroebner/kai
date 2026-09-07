@@ -136,13 +136,15 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
             $showers = $forecast['current']['showers'] ?? 0;
             $snowfall = $forecast['current']['snowfall'] ?? 0;
             $precip = $forecast['current']['precipitation'] ?? 0;
-            $isNight = isset($forecast['current']['is_day']) && $forecast['current']['is_day'] == 0;
 
             $sunriseStr = $forecast['daily']['sunrise'][0] ?? date('Y-m-d 06:00:00');
             $sunsetStr = $forecast['daily']['sunset'][0] ?? date('Y-m-d 20:00:00');
             $sunrise = strtotime(is_array($sunriseStr) ? $sunriseStr[0] : $sunriseStr);
             $sunset = strtotime(is_array($sunsetStr) ? $sunsetStr[0] : $sunsetStr);
             $now = time();
+            
+            // Exakter Wechsel zwischen Tag und Nacht anhand der genauen Sonnenauf- und Untergangszeiten
+            $isNight = ($now >= $sunset || $now < $sunrise);
 
             $isSnowing = ($snowfall > 0 || in_array($weatherCode, [71, 73, 75, 77, 85, 86]));
             $isRaining = (!$isSnowing && ($rain > 0 || $showers > 0 || $precip > 0.1 || in_array($weatherCode, [51, 53, 55, 61, 63, 65, 80, 81, 82])));
