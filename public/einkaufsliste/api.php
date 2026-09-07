@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Einkaufsliste\EbonMappingRepository;
 use Kai\Tools\Einkaufsliste\HolidayService;
 use Kai\Tools\Einkaufsliste\LearningService;
@@ -10,6 +9,7 @@ use Kai\Tools\Einkaufsliste\ProductMasterRepository;
 use Kai\Tools\Einkaufsliste\RecipeAiService;
 use Kai\Tools\Einkaufsliste\ShoppingListRepository;
 use Kai\Tools\Einkaufsliste\SuggestionService;
+use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Log\Logger;
@@ -462,16 +462,16 @@ try {
             $mappings = $mappingRepo->getByProduct($id);
 
             echo json_encode([
-                'success'  => true,
+                'success' => true,
                 'mappings' => $mappings,
-                'product'  => $product,
+                'product' => $product,
             ]);
             break;
 
         // --- 17. eBon-Mapping anlegen oder überschreiben ---
         case 'save_ebon_mapping':
             $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
-            $ebonName  = trim((string)($input['ebon_name'] ?? ''));
+            $ebonName = trim((string)($input['ebon_name'] ?? ''));
 
             if (!$productId) {
                 Auth::sendJsonError(400, 'Ungültige Produkt-ID');
@@ -489,32 +489,32 @@ try {
             }
 
             $mappingId = $mappingRepo->save($ebonName, $productId);
-            $mappings  = $mappingRepo->getByProduct($productId);
+            $mappings = $mappingRepo->getByProduct($productId);
 
             echo json_encode([
-                'success'    => $mappingId > 0,
+                'success' => $mappingId > 0,
                 'mapping_id' => $mappingId,
-                'mappings'   => $mappings,
-                'message'    => 'eBon-Zuordnung gespeichert',
+                'mappings' => $mappings,
+                'message' => 'eBon-Zuordnung gespeichert',
             ]);
             break;
 
         // --- 18. eBon-Mapping löschen ---
         case 'delete_ebon_mapping':
-            $id        = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+            $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
             $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
 
             if (!$id) {
                 Auth::sendJsonError(400, 'Ungültige Mapping-ID');
             }
 
-            $success  = $mappingRepo->delete($id);
+            $success = $mappingRepo->delete($id);
             $mappings = $productId ? $mappingRepo->getByProduct($productId) : [];
 
             echo json_encode([
-                'success'  => $success,
+                'success' => $success,
                 'mappings' => $mappings,
-                'message'  => 'eBon-Zuordnung gelöscht',
+                'message' => 'eBon-Zuordnung gelöscht',
             ]);
             break;
 
@@ -545,6 +545,11 @@ try {
                 $mappingRepo->save($ebonName, $targetId);
                 // Lernprozess erneut triggern um die Historie auf das neue Mapping anzuwenden
                 $learningService->learnFromReceipts();
+            } elseif ($actionType === 'ignore') {
+                // Legt ein Mapping auf NULL an, damit es künftig aus der Inbox verschwindet
+                $pdo = Database::getInstance()->getConnection();
+                $stmt = $pdo->prepare("INSERT INTO ebon_product_mappings (ebon_name, product_master_id) VALUES (:ebon, NULL) ON DUPLICATE KEY UPDATE product_master_id = NULL");
+                $stmt->execute([':ebon' => $ebonName]);
             } else {
                 Auth::sendJsonError(400, 'Ungültige Aktion');
             }
@@ -610,13 +615,13 @@ Artikel-Liste:
             try {
                 $gemini = new GeminiClient();
                 $response = $gemini->generate($prompt, null, null, true);
-                
+
                 if (!$response || !isset($response['text'])) {
                     Auth::sendJsonError(500, 'KI lieferte keine gültige Antwort');
                 }
 
                 $clusters = json_decode($response['text'], true);
-                
+
                 // Falls die KI versehentlich in Markdown antwortet, parsen:
                 if ($clusters === null) {
                     $cleanJson = preg_replace('/```json|```/', '', $response['text']);

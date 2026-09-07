@@ -1183,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         ${productOptions}
                                     </select>
                                     <button type="button" class="btn btn-sm btn-outline js-inbox-new-btn" data-name="${KaiHtml.escape(item.name)}">+ Als neu</button>
+                                    <button type="button" class="btn btn-sm btn-outline js-inbox-ignore-btn" data-name="${KaiHtml.escape(item.name)}" title="Als Rabatt/Pfand ignorieren">🚫 Ignorieren</button>
                                 </div>
                             </div>
                         `;
@@ -1462,6 +1463,42 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 showToast('Verbindungsfehler', true);
                 acceptBtn.innerHTML = 'Fehler';
+            }
+        }
+        
+        const ignoreBtn = e.target.closest('.js-inbox-ignore-btn');
+        if (ignoreBtn) {
+            const ebonName = ignoreBtn.dataset.name;
+            ignoreBtn.disabled = true;
+
+            try {
+                const res = await KaiHttp.postJson(API_URL, {
+                    action: 'resolve_inbox',
+                    action_type: 'ignore',
+                    ebon_name: ebonName
+                });
+
+                if (res.success) {
+                    showToast(res.message || 'Wird künftig ignoriert');
+                    ignoreBtn.closest('.inbox-item-card').remove();
+                    
+                    const currentCount = document.querySelectorAll('.inbox-item-card').length;
+                    const badge = document.querySelector('#tab-btn-inbox .badge');
+                    if (currentCount === 0) {
+                        if (badge) badge.remove();
+                        document.getElementById('inbox-list-container').classList.add('hidden');
+                        document.getElementById('inbox-empty-state').classList.remove('hidden');
+                    } else if (badge) {
+                        badge.textContent = currentCount;
+                    }
+                } else {
+                    showToast(res.message || 'Fehler beim Ignorieren', true);
+                    ignoreBtn.disabled = false;
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Verbindungsfehler', true);
+                ignoreBtn.disabled = false;
             }
         }
     });
