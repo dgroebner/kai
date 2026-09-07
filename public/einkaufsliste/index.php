@@ -548,6 +548,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                         <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
                                     </td>
                                     <td class="text-right">
+                                        <button class="btn-icon js-mapping-btn" data-id="<?= $p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>" title="eBon-Zuordnungen verwalten">🔗</button>
                                         <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>" title="Editieren">✏️</button>
                                         <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>" data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>" title="Ignorieren">
                                             <?= $p['is_ignored'] ? '🚫' : '👁️' ?>
@@ -589,8 +590,43 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
     </div>
 </div>
 
+<!-- eBon-Mapping Modal -->
+<div id="ebon-mapping-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 550px;">
+        <div class="rule-modal-header">
+            <h3>🔗 eBon-Zuordnungen: <span id="mapping-modal-product-name"></span></h3>
+            <button type="button" class="rule-modal-close" id="btn-close-mapping-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <input type="hidden" id="mapping-modal-product-id">
+            <p class="text-muted" style="font-size: 0.875rem; margin-bottom: 1rem;">
+                Kassenbonbezeichnungen, die diesem Master-Artikel zugeordnet sind.
+                Beim nächsten eBon-Import werden diese Namen automatisch auf den Master-Artikel gemappt.
+            </p>
+
+            <!-- Liste vorhandener Mappings -->
+            <div id="mapping-list-container" style="margin-bottom: 1.25rem;">
+                <p class="text-muted" style="font-size: 0.85rem;">Keine Zuordnungen vorhanden.</p>
+            </div>
+
+            <!-- Neues Mapping hinzufügen -->
+            <div class="form-group" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label for="mapping-new-ebon-name" style="font-size: 0.875rem;">Neuen eBon-Namen zuordnen</label>
+                    <input type="text" id="mapping-new-ebon-name" class="form-control" placeholder='z. B. "Erdb. 500g" oder "Erdbeeren lose"' maxlength="255">
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-add-mapping" style="white-space: nowrap;">+ Zuordnen</button>
+            </div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-close-mapping-modal-footer">Schließen</button>
+        </div>
+    </div>
+</div>
+
 <script src="../js/einkaufsliste.js?v=<?= APP_VERSION ?>" defer></script>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>
+
 

@@ -2,7 +2,6 @@
 
 namespace Kai\Tools\Einkaufsliste;
 
-use Exception;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
 use PDO;
@@ -10,23 +9,34 @@ use PDO;
 /**
  * Analysiert historische eBons (kb_receipts & kb_items) und ermittelt
  * Marktpräferenzen (Rewe vs. Globus) sowie Verbrauchsintervalle für den Artikelstamm.
+ *
+ * Nutzt EbonMappingRepository, um rohe Kassenbonnamen auf Master-Artikel
+ * abzubilden (Phase 1: Entkopplung eBon-Rohdaten ↔ Artikelstamm).
  */
 class LearningService
 {
     private PDO $pdo;
     private Logger $logger;
     private ProductMasterRepository $productRepo;
+    private EbonMappingRepository $mappingRepo;
 
-    public function __construct(?ProductMasterRepository $productRepo = null)
-    {
-        $this->pdo = Database::getInstance()->getConnection();
-        $this->logger = new Logger();
+    public function __construct(
+        ?ProductMasterRepository $productRepo = null,
+        ?EbonMappingRepository   $mappingRepo = null
+    ) {
+        $this->pdo         = Database::getInstance()->getConnection();
+        $this->logger      = new Logger();
         $this->productRepo = $productRepo ?? new ProductMasterRepository();
+        $this->mappingRepo = $mappingRepo ?? new EbonMappingRepository();
     }
 
     /**
      * Liest alle historischen Kassenbon-Positionen aus und lernt Marktzuordnungen,
      * Kategorien und durchschnittliche Kaufintervalle.
+     *
+     * Ablauf pro eBon-Rohname:
+     * 1. Existiert ein Mapping ebon_name → product_master_id? → Master-Artikel aktualisieren.
+     * 2. Kein Mapping: product_master per Name suchen / anlegen, danach Mapping persistieren.
      *
      * @return array{
      *     total_items_analyzed: int,
@@ -51,19 +61,19 @@ class LearningService
             ORDER BY i.name ASC, r.purchase_date ASC
         ");
 
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows       = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $totalItems = count($rows);
 
         if ($totalItems === 0) {
             $this->logger->info("LearningService: Keine eBons in kb_receipts/kb_items vorhanden.");
             return [
                 'total_items_analyzed' => 0,
-                'unique_products' => 0,
-                'products_updated' => 0,
+                'unique_products'      => 0,
+                'products_updated'     => 0,
             ];
         }
 
-        // Gruppierung nach normalisiertem Artikelnamen
+        // Gruppierung nach normalisiertem eBon-Rohdatennamen
         $products = [];
         foreach ($rows as $row) {
             $rawName = trim($row['name']);
@@ -72,9 +82,9 @@ class LearningService
             if (!isset($products[$normKey])) {
                 $products[$normKey] = [
                     'canonical_name' => $rawName,
-                    'stores' => ['Rewe' => 0, 'Globus' => 0, 'Other' => 0],
-                    'categories' => [],
-                    'dates' => [],
+                    'stores'         => ['Rewe' => 0, 'Globus' => 0, 'Other' => 0],
+                    'categories'     => [],
+                    'dates'          => [],
                 ];
             }
 
@@ -104,7 +114,7 @@ class LearningService
         $updatedCount = 0;
 
         foreach ($products as $normKey => $data) {
-            $name = $data['canonical_name'];
+            $rawName = $data['canonical_name'];
 
             // Bevorzugter Markt: Globus wenn Globus-Häufigkeit höher, sonst Standard Rewe
             $preferredMarket = $data['stores']['Globus'] > $data['stores']['Rewe'] ? 'Globus' : 'Rewe';
@@ -117,11 +127,11 @@ class LearningService
             }
 
             // Kaufdaten sortieren
-            $dates = $data['dates'];
+            $dates         = $data['dates'];
             sort($dates);
             $lastPurchased = end($dates);
 
-            // Durchschnittliches Kaufintervall in Tagen berechnen (wenn mindestens 2 verschiedene Einkaufsdaten vorliegen)
+            // Durchschnittliches Kaufintervall in Tagen berechnen
             $avgInterval = null;
             if (count($dates) >= 2) {
                 $diffs = [];
@@ -136,40 +146,55 @@ class LearningService
                 }
             }
 
-            // Artikelstamm aktualisieren / ergänzen
             $updateData = [
-                'name' => $name,
-                'preferred_market' => $preferredMarket,
-                'default_category' => $dominantCategory,
-                'default_unit' => 'Stück',
+                'preferred_market'  => $preferredMarket,
+                'default_category'  => $dominantCategory,
+                'default_unit'      => 'Stück',
                 'avg_interval_days' => $avgInterval,
                 'last_purchased_at' => $lastPurchased,
             ];
 
-            // Wenn neuer Artikel und Muster für Rabatt/Pfand erkannt: initial auf ignoriert setzen
-            $existing = $this->productRepo->findByName($name);
-            if (!$existing && $this->isNonProduct($name)) {
-                $updateData['is_ignored'] = 1;
-                if (!$dominantCategory) {
-                    $updateData['default_category'] = 'Sonstiges';
-                }
-            }
+            // --- Mapping-Schicht prüfen ---
+            $mapping = $this->mappingRepo->findByEbonName($rawName);
 
-            $this->productRepo->saveOrUpdate($updateData);
+            if ($mapping !== null) {
+                // Vorhandenes Mapping → zugehörigen Master-Artikel aktualisieren
+                $this->productRepo->saveOrUpdate(
+                    array_merge($updateData, ['name' => $mapping['master_name']])
+                );
+            } else {
+                // Kein Mapping → Master-Artikel per Rohname suchen oder anlegen
+                $existing = $this->productRepo->findByName($rawName);
+
+                // Wenn neuer Artikel und Muster für Rabatt/Pfand erkannt: initial ignorieren
+                if (!$existing && $this->isNonProduct($rawName)) {
+                    $updateData['is_ignored'] = 1;
+                    if (!$dominantCategory) {
+                        $updateData['default_category'] = 'Sonstiges';
+                    }
+                }
+
+                $productId = $this->productRepo->saveOrUpdate(
+                    array_merge($updateData, ['name' => $rawName])
+                );
+
+                // Neues 1:1-Mapping persistieren, damit zukünftige Importe direkt matchen
+                $this->mappingRepo->save($rawName, $productId);
+            }
 
             $updatedCount++;
         }
 
         $this->logger->info("LearningService: eBon-Analyse abgeschlossen.", [
-            'total_items' => $totalItems,
+            'total_items'     => $totalItems,
             'unique_products' => count($products),
-            'updated' => $updatedCount
+            'updated'         => $updatedCount,
         ]);
 
         return [
             'total_items_analyzed' => $totalItems,
-            'unique_products' => count($products),
-            'products_updated' => $updatedCount,
+            'unique_products'      => count($products),
+            'products_updated'     => $updatedCount,
         ];
     }
 
@@ -179,11 +204,11 @@ class LearningService
      */
     private function isNonProduct(string $name): bool
     {
-        $lower = mb_strtolower($name, 'UTF-8');
+        $lower    = mb_strtolower($name, 'UTF-8');
         $keywords = [
             'rabatt', 'coupon', 'aktionsnachlass', 'gutschein', 'treuepunkt',
             'bonus', 'ersparnis', 'nachlass', 'leergut', 'pfand', 'rückgabe',
-            'spende', 'aufrund'
+            'spende', 'aufrund',
         ];
 
         foreach ($keywords as $kw) {

@@ -357,7 +357,19 @@ CREATE TABLE IF NOT EXISTS `shopping_list_items` (
     INDEX `idx_checked` (`is_checked`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Sächsische Schulferien (zur automatischen Anpassung von Bedarfs- und Mengenvorschlägen)
+-- 4. eBon-Produktzuordnung (Mapping: Rohname aus Kassenbon → Master-Artikel)
+CREATE TABLE IF NOT EXISTS `ebon_product_mappings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ebon_name` VARCHAR(255) NOT NULL COMMENT 'Rohname aus dem Kassenbon (kb_items.name)',
+    `product_master_id` INT NOT NULL COMMENT 'Zugewiesener Master-Artikel',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_ebon_name` (`ebon_name`),
+    FOREIGN KEY (`product_master_id`) REFERENCES `product_master`(`id`) ON DELETE CASCADE,
+    INDEX `idx_product_master_id` (`product_master_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Sächsische Schulferien (zur automatischen Anpassung von Bedarfs- und Mengenvorschlägen)
 CREATE TABLE IF NOT EXISTS `school_holidays` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,

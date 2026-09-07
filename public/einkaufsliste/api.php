@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Einkaufsliste\EbonMappingRepository;
 use Kai\Tools\Einkaufsliste\HolidayService;
 use Kai\Tools\Einkaufsliste\LearningService;
 use Kai\Tools\Einkaufsliste\MarketCategoryRepository;
@@ -37,6 +38,7 @@ $logger = new Logger();
 $listRepo = new ShoppingListRepository();
 $productRepo = new ProductMasterRepository();
 $categoryRepo = new MarketCategoryRepository();
+$mappingRepo = new EbonMappingRepository();
 $holidayService = new HolidayService();
 $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
 
@@ -440,6 +442,77 @@ try {
             echo json_encode([
                 'success' => true,
                 'results' => $results,
+            ]);
+            break;
+
+        // --- 16. eBon-Mappings eines Artikels laden ---
+        case 'get_ebon_mappings':
+            $id = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$id) {
+                Auth::sendJsonError(400, 'Ungültige Produkt-ID');
+            }
+
+            $product = $productRepo->findById($id);
+            if (!$product) {
+                Auth::sendJsonError(404, 'Artikel nicht gefunden');
+            }
+
+            $mappings = $mappingRepo->getByProduct($id);
+
+            echo json_encode([
+                'success'  => true,
+                'mappings' => $mappings,
+                'product'  => $product,
+            ]);
+            break;
+
+        // --- 17. eBon-Mapping anlegen oder überschreiben ---
+        case 'save_ebon_mapping':
+            $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
+            $ebonName  = trim((string)($input['ebon_name'] ?? ''));
+
+            if (!$productId) {
+                Auth::sendJsonError(400, 'Ungültige Produkt-ID');
+            }
+            if ($ebonName === '') {
+                Auth::sendJsonError(400, 'eBon-Name darf nicht leer sein');
+            }
+            if (mb_strlen($ebonName) > 255) {
+                Auth::sendJsonError(400, 'eBon-Name ist zu lang (max. 255 Zeichen)');
+            }
+
+            $product = $productRepo->findById($productId);
+            if (!$product) {
+                Auth::sendJsonError(404, 'Artikel nicht gefunden');
+            }
+
+            $mappingId = $mappingRepo->save($ebonName, $productId);
+            $mappings  = $mappingRepo->getByProduct($productId);
+
+            echo json_encode([
+                'success'    => $mappingId > 0,
+                'mapping_id' => $mappingId,
+                'mappings'   => $mappings,
+                'message'    => 'eBon-Zuordnung gespeichert',
+            ]);
+            break;
+
+        // --- 18. eBon-Mapping löschen ---
+        case 'delete_ebon_mapping':
+            $id        = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+            $productId = filter_var($input['product_id'] ?? null, FILTER_VALIDATE_INT);
+
+            if (!$id) {
+                Auth::sendJsonError(400, 'Ungültige Mapping-ID');
+            }
+
+            $success  = $mappingRepo->delete($id);
+            $mappings = $productId ? $mappingRepo->getByProduct($productId) : [];
+
+            echo json_encode([
+                'success'  => $success,
+                'mappings' => $mappings,
+                'message'  => 'eBon-Zuordnung gelöscht',
             ]);
             break;
 

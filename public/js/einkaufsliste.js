@@ -662,4 +662,143 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelBtn) {
         cancelBtn.addEventListener('click', closeModal);
     }
+
+    // =========================================================
+    // --- eBon-Mapping Modal ---
+    // =========================================================
+
+    /** Rendert die Mapping-Liste im Modal neu */
+    function renderMappingList(mappings, productId) {
+        const container = document.getElementById('mapping-list-container');
+        if (!container) return;
+
+        if (!mappings || mappings.length === 0) {
+            container.innerHTML = '<p class="text-muted" style="font-size:0.85rem;">Noch keine Kassenbonnamen zugeordnet.</p>';
+            return;
+        }
+
+        const items = mappings.map(m => `
+            <div class="mapping-list-item" style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--bg-surface-hover);">
+                <span style="font-size:0.9rem;">${KaiHtml.escape(m.ebon_name)}</span>
+                <button type="button"
+                        class="btn-icon js-delete-mapping-btn"
+                        data-id="${KaiHtml.escape(String(m.id))}"
+                        data-product-id="${KaiHtml.escape(String(productId))}"
+                        title="Zuordnung löschen">🗑️</button>
+            </div>
+        `).join('');
+
+        container.innerHTML = items;
+    }
+
+    // Mapping-Modal öffnen
+    document.addEventListener('click', async (e) => {
+        const mappingBtn = e.target.closest('.js-mapping-btn');
+        if (!mappingBtn) return;
+
+        const productId   = mappingBtn.dataset.id;
+        const productName = mappingBtn.dataset.name;
+
+        const nameEl = document.getElementById('mapping-modal-product-name');
+        const idEl   = document.getElementById('mapping-modal-product-id');
+        const modal  = document.getElementById('ebon-mapping-modal');
+        const input  = document.getElementById('mapping-new-ebon-name');
+
+        if (nameEl) nameEl.textContent = productName;
+        if (idEl)   idEl.value         = productId;
+        if (input)  input.value         = '';
+
+        // Vorhandene Mappings laden
+        try {
+            const res = await KaiHttp.postJson(API_URL, {action: 'get_ebon_mappings', product_id: productId});
+            if (res.success) {
+                renderMappingList(res.mappings, productId);
+            } else {
+                showToast(res.message || 'Fehler beim Laden der Zuordnungen', true);
+                return;
+            }
+        } catch (err) {
+            showToast('Verbindungsfehler', true);
+            return;
+        }
+
+        if (modal) modal.classList.remove('hidden');
+    });
+
+    // Mapping-Modal schließen
+    const closeMappingModal = () => {
+        const modal = document.getElementById('ebon-mapping-modal');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    const closeMappingBtn = document.getElementById('btn-close-mapping-modal');
+    if (closeMappingBtn) closeMappingBtn.addEventListener('click', closeMappingModal);
+
+    const closeMappingBtnFooter = document.getElementById('btn-close-mapping-modal-footer');
+    if (closeMappingBtnFooter) closeMappingBtnFooter.addEventListener('click', closeMappingModal);
+
+    // Neues Mapping hinzufügen
+    const btnAddMapping = document.getElementById('btn-add-mapping');
+    if (btnAddMapping) {
+        btnAddMapping.addEventListener('click', async () => {
+            const productId = document.getElementById('mapping-modal-product-id')?.value;
+            const ebonName  = document.getElementById('mapping-new-ebon-name')?.value.trim();
+
+            if (!ebonName) {
+                showToast('eBon-Name darf nicht leer sein', true);
+                return;
+            }
+
+            btnAddMapping.disabled = true;
+            try {
+                const res = await KaiHttp.postJson(API_URL, {
+                    action:     'save_ebon_mapping',
+                    product_id: productId,
+                    ebon_name:  ebonName,
+                });
+
+                if (res.success) {
+                    renderMappingList(res.mappings, productId);
+                    const input = document.getElementById('mapping-new-ebon-name');
+                    if (input) input.value = '';
+                    showToast(res.message || 'Zuordnung gespeichert');
+                } else {
+                    showToast(res.message || 'Fehler beim Speichern', true);
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler', true);
+            } finally {
+                btnAddMapping.disabled = false;
+            }
+        });
+    }
+
+    // Mapping löschen (Event Delegation auf Modal-Container)
+    document.addEventListener('click', async (e) => {
+        const deleteBtn = e.target.closest('.js-delete-mapping-btn');
+        if (!deleteBtn) return;
+
+        const mappingId = deleteBtn.dataset.id;
+        const productId = deleteBtn.dataset.productId;
+
+        if (!confirm('Diese Kassenbonzuordnung wirklich löschen?')) return;
+
+        try {
+            const res = await KaiHttp.postJson(API_URL, {
+                action:     'delete_ebon_mapping',
+                id:         mappingId,
+                product_id: productId,
+            });
+
+            if (res.success) {
+                renderMappingList(res.mappings, productId);
+                showToast(res.message || 'Zuordnung gelöscht');
+            } else {
+                showToast(res.message || 'Fehler beim Löschen', true);
+            }
+        } catch (err) {
+            showToast('Verbindungsfehler', true);
+        }
+    });
 });
+
