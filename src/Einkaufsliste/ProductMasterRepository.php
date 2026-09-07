@@ -112,7 +112,7 @@ class ProductMasterRepository
             $params[':search_label'] = $term;
         }
 
-        $sql .= " ORDER BY is_ignored ASC, preferred_market ASC, display_name ASC";
+        $sql .= " ORDER BY is_ignored ASC, display_name ASC";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);

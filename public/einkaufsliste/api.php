@@ -618,8 +618,6 @@ try {
             $success = $productRepo->merge($sourceIds, $targetId);
 
             if ($success) {
-                // Da wir die Zuordnungen geändert haben, berechnen wir die Verbrauchsintervalle neu
-                $learningService->learnFromReceipts();
                 echo json_encode(['success' => true, 'message' => count($sourceIds) . ' Artikel erfolgreich zusammengeführt']);
             } else {
                 Auth::sendJsonError(500, 'Fehler beim Zusammenführen der Artikel');
