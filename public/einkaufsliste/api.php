@@ -564,6 +564,31 @@ try {
                 $mappingRepo->save($ebonName, $targetId);
                 // Lernprozess erneut triggern um die Historie auf das neue Mapping anzuwenden
                 $learningService->learnFromReceipts();
+            } elseif ($actionType === 'assign') {
+                $targetName = trim((string)($input['target_name'] ?? ''));
+                if ($targetName === '') {
+                    Auth::sendJsonError(400, 'Artikelname darf nicht leer sein');
+                }
+                
+                // Find existing product by exact name or label
+                $existing = $productRepo->findByLabelOrName($targetName);
+                if ($existing) {
+                    // MAP
+                    $mappingRepo->save($ebonName, $existing['id']);
+                    // Trigger learning process to update history with new mapping
+                    $learningService->learnFromReceipts();
+                    echo json_encode(['success' => true, 'message' => 'Zuordnung gespeichert']);
+                } else {
+                    // NEW
+                    $productId = $productRepo->saveOrUpdate(['name' => $targetName]);
+                    $mappingRepo->save($ebonName, $productId);
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Als neuen Artikel angelegt',
+                        'new_product' => ['id' => $productId, 'name' => $targetName]
+                    ]);
+                }
+                exit;
             } elseif ($actionType === 'ignore') {
                 // Legt ein Mapping auf NULL an, damit es künftig aus der Inbox verschwindet
                 $pdo = Database::getInstance()->getConnection();

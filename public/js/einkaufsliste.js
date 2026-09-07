@@ -840,11 +840,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </div>
                                 <div class="inbox-item-actions">
-                                    <select class="form-control js-inbox-target-select" data-name="${KaiHtml.escape(item.name)}" style="max-width: 200px;">
-                                        <option value="">-- Zuordnen zu... --</option>
-                                        ${productOptions}
-                                    </select>
-                                    <button type="button" class="btn btn-sm btn-outline js-inbox-new-btn" data-name="${KaiHtml.escape(item.name)}">+ Als neu</button>
+                                    <div class="inbox-assign-wrapper" style="display:flex; align-items:center; gap:0.25rem;">
+                                        <input type="text" class="form-control js-inbox-assign-input" 
+                                               list="known-products-datalist" 
+                                               data-ebon="${KaiHtml.escape(item.name)}" 
+                                               value="${KaiHtml.escape(item.name)}"
+                                               placeholder="Zuordnen oder neu..."
+                                               style="max-width: 200px;">
+                                        <button type="button" class="btn-icon js-inbox-assign-save hidden" title="Speichern">✅</button>
+                                        <button type="button" class="btn-icon js-inbox-assign-cancel hidden" title="Abbrechen">❌</button>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline js-inbox-ignore-btn" data-name="${KaiHtml.escape(item.name)}" title="Als Rabatt/Pfand ignorieren">🚫 Ignorieren</button>
                                 </div>
                             </div>
                         `;
@@ -1203,11 +1209,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </div>
                                 <div class="inbox-item-actions">
-                                    <select class="form-control js-inbox-target-select" data-name="${KaiHtml.escape(item.name)}" style="max-width: 200px;">
-                                        <option value="">-- Zuordnen zu... --</option>
-                                        ${productOptions}
-                                    </select>
-                                    <button type="button" class="btn btn-sm btn-outline js-inbox-new-btn" data-name="${KaiHtml.escape(item.name)}">+ Als neu</button>
+                                    <div class="inbox-assign-wrapper" style="display:flex; align-items:center; gap:0.25rem;">
+                                        <input type="text" class="form-control js-inbox-assign-input" 
+                                               list="known-products-datalist" 
+                                               data-ebon="${KaiHtml.escape(item.name)}" 
+                                               value="${KaiHtml.escape(item.name)}"
+                                               placeholder="Zuordnen oder neu..."
+                                               style="max-width: 200px;">
+                                        <button type="button" class="btn-icon js-inbox-assign-save hidden" title="Speichern">✅</button>
+                                        <button type="button" class="btn-icon js-inbox-assign-cancel hidden" title="Abbrechen">❌</button>
+                                    </div>
                                     <button type="button" class="btn btn-sm btn-outline js-inbox-ignore-btn" data-name="${KaiHtml.escape(item.name)}" title="Als Rabatt/Pfand ignorieren">🚫 Ignorieren</button>
                                 </div>
                             </div>
@@ -1548,4 +1559,88 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
+
+    // =========================================================
+    // --- Inbox Assignment (Input + Save/Cancel) ---
+    // =========================================================
+    
+    // Show buttons on input or focus
+    document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('js-inbox-assign-input')) {
+            const wrapper = e.target.closest('.inbox-assign-wrapper');
+            wrapper.querySelector('.js-inbox-assign-save').classList.remove('hidden');
+            wrapper.querySelector('.js-inbox-assign-cancel').classList.remove('hidden');
+        }
+    });
+    document.addEventListener('focusin', (e) => {
+        if (e.target.classList.contains('js-inbox-assign-input')) {
+            const wrapper = e.target.closest('.inbox-assign-wrapper');
+            wrapper.querySelector('.js-inbox-assign-save').classList.remove('hidden');
+            wrapper.querySelector('.js-inbox-assign-cancel').classList.remove('hidden');
+        }
+    });
+
+    // Handle clicks
+    document.addEventListener('click', async (e) => {
+        const cancelBtn = e.target.closest('.js-inbox-assign-cancel');
+        if (cancelBtn) {
+            const wrapper = cancelBtn.closest('.inbox-assign-wrapper');
+            const input = wrapper.querySelector('.js-inbox-assign-input');
+            // Revert value
+            input.value = input.dataset.ebon;
+            // Hide buttons
+            wrapper.querySelector('.js-inbox-assign-save').classList.add('hidden');
+            wrapper.querySelector('.js-inbox-assign-cancel').classList.add('hidden');
+            return;
+        }
+        
+        const saveBtn = e.target.closest('.js-inbox-assign-save');
+        if (saveBtn) {
+            const wrapper = saveBtn.closest('.inbox-assign-wrapper');
+            const input = wrapper.querySelector('.js-inbox-assign-input');
+            const ebonName = input.dataset.ebon;
+            const targetName = input.value.trim();
+            
+            if (targetName === '') {
+                showToast('Name darf nicht leer sein', true);
+                return;
+            }
+            
+            input.disabled = true;
+            saveBtn.disabled = true;
+            
+            try {
+                const res = await KaiHttp.postJson(API_URL, {
+                    action: 'resolve_inbox',
+                    action_type: 'assign',
+                    ebon_name: ebonName,
+                    target_name: targetName
+                });
+                
+                if (res.success) {
+                    window.inboxModified = true;
+                    showToast(res.message || 'Erfolgreich zugeordnet');
+                    wrapper.closest('.inbox-item-card').remove();
+                    
+                    // Update datalist if a new product was created
+                    if (res.new_product) {
+                        const datalist = document.getElementById('known-products-datalist');
+                        if (datalist) {
+                            const opt = document.createElement('option');
+                            opt.value = res.new_product.name;
+                            datalist.appendChild(opt);
+                        }
+                    }
+                } else {
+                    showToast(res.message || 'Fehler beim Zuordnen', true);
+                    input.disabled = false;
+                    saveBtn.disabled = false;
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler', true);
+                input.disabled = false;
+                saveBtn.disabled = false;
+            }
+        }
+    });
 });
