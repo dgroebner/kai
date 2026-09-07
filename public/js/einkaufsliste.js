@@ -1643,4 +1643,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // =========================================================
+    // --- Schnellfilter Artikelstamm ---
+    // =========================================================
+    const productMasterFilter = document.getElementById('product-master-filter');
+    if (productMasterFilter) {
+        productMasterFilter.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            const table = document.getElementById('product-master-table');
+            if (!table) return;
+            
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(term)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
 });

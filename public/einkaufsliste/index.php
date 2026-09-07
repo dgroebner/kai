@@ -568,8 +568,13 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     </div>
                 </div>
 
+                <!-- Schnellfilter -->
+                <div style="margin-top: 1rem;">
+                    <input type="text" id="product-master-filter" class="form-control" placeholder="🔍 Artikel filtern..." style="width: 100%; max-width: 300px;">
+                </div>
+
                 <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
-                    <table class="data-table stack-table table-compact">
+                    <table class="data-table stack-table table-compact" id="product-master-table">
                         <thead>
                         <tr>
                             <th style="width: 30px; padding-right: 5px;"><input type="checkbox" id="check-all-products" title="Alle auswählen"></th>
