@@ -14,6 +14,9 @@ Auth::requirePage('shopping_read');
 
 $csrfToken = Auth::csrfToken();
 $activeTab = $_GET['tab'] ?? 'list';
+if (!Auth::hasPermission('shopping_master') && in_array($activeTab, ['inbox', 'aisles'])) {
+    $activeTab = 'list';
+}
 $activeMarket = $_GET['market'] ?? 'all';
 if (!in_array($activeMarket, ['all', 'Rewe', 'Globus'], true)) {
     $activeMarket = 'all';
@@ -85,12 +88,14 @@ try {
         <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="recipe">
             🧑‍🍳 Rezept & KI
         </button>
+        <?php if (Auth::hasPermission('shopping_master')): ?>
         <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="inbox" id="tab-btn-inbox">
             📥 Unbekannte eBons
         </button>
         <button type="button" class="btn <?= $activeTab === 'aisles' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="aisles">
             🏪 Gänge & Artikelstamm
         </button>
+        <?php endif; ?>
     </div>
 
     <main>

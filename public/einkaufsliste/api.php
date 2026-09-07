@@ -44,6 +44,15 @@ $holidayService = new HolidayService();
 $learningService = new LearningService($productRepo, $mappingRepo);
 $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
 
+$masterActions = [
+    'update_aisle_order', 'save_product_master', 'toggle_product_ignore',
+    'save_ebon_mapping', 'delete_ebon_mapping', 'resolve_inbox',
+    'merge_products', 'ai_suggest_merges'
+];
+if (in_array($action, $masterActions, true) && !Auth::hasPermission('shopping_master')) {
+    Auth::sendJsonError(403, 'Fehlendes Schreibrecht für den Artikelstamm (shopping_master)');
+}
+
 try {
     switch ($action) {
         // --- 1. Artikel zur Einkaufsliste hinzufügen ---
