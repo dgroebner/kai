@@ -162,27 +162,10 @@ class LearningService
                 $this->productRepo->saveOrUpdate(
                     array_merge($updateData, ['name' => $mapping['master_name']])
                 );
-            } else {
-                // Kein Mapping → Master-Artikel per Rohname suchen oder anlegen
-                $existing = $this->productRepo->findByName($rawName);
-
-                // Wenn neuer Artikel und Muster für Rabatt/Pfand erkannt: initial ignorieren
-                if (!$existing && $this->isNonProduct($rawName)) {
-                    $updateData['is_ignored'] = 1;
-                    if (!$dominantCategory) {
-                        $updateData['default_category'] = 'Sonstiges';
-                    }
-                }
-
-                $productId = $this->productRepo->saveOrUpdate(
-                    array_merge($updateData, ['name' => $rawName])
-                );
-
-                // Neues 1:1-Mapping persistieren, damit zukünftige Importe direkt matchen
-                $this->mappingRepo->save($rawName, $productId);
+                $updatedCount++;
             }
-
-            $updatedCount++;
+            // ELSE: Phase 1.5 - Unbekannte Artikel werden NICHT mehr blind als neuer
+            // Master-Artikel angelegt. Sie verbleiben als ungemappte kb_items in der Inbox.
         }
 
         $this->logger->info("LearningService: eBon-Analyse abgeschlossen.", [
@@ -196,6 +179,91 @@ class LearningService
             'unique_products'      => count($products),
             'products_updated'     => $updatedCount,
         ];
+    }
+
+    /**
+     * Ermittelt alle Kassenbon-Positionen, die noch keinem Master-Artikel zugeordnet sind (Inbox).
+     *
+     * @return array<int, array{name: string, first_seen: string, last_seen: string, count: int, dominant_category: string}>
+     */
+    public function getInboxItems(): array
+    {
+        // Alle Kassenbon-Namen, die nicht in ebon_product_mappings stehen.
+        // Wir aggregieren gleich die Metadaten.
+        $stmt = $this->pdo->query("
+            SELECT 
+                i.name,
+                MIN(r.purchase_date) AS first_seen,
+                MAX(r.purchase_date) AS last_seen,
+                COUNT(i.id) AS `count`,
+                i.category
+            FROM kb_items i
+            JOIN kb_receipts r ON i.receipt_id = r.id
+            WHERE i.name NOT IN (SELECT ebon_name FROM ebon_product_mappings)
+              AND i.name IS NOT NULL 
+              AND TRIM(i.name) != ''
+            GROUP BY i.name, i.category
+            ORDER BY `count` DESC, i.name ASC
+        ");
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Nach Namen gruppieren und dominante Kategorie finden
+        $inbox = [];
+        foreach ($rows as $row) {
+            $name = $row['name'];
+            if (!isset($inbox[$name])) {
+                $inbox[$name] = [
+                    'name'       => $name,
+                    'first_seen' => $row['first_seen'],
+                    'last_seen'  => $row['last_seen'],
+                    'count'      => 0,
+                    'categories' => []
+                ];
+            }
+
+            $inbox[$name]['count'] += $row['count'];
+            
+            // Ältestes Datum
+            if ($row['first_seen'] < $inbox[$name]['first_seen']) {
+                $inbox[$name]['first_seen'] = $row['first_seen'];
+            }
+            // Neuestes Datum
+            if ($row['last_seen'] > $inbox[$name]['last_seen']) {
+                $inbox[$name]['last_seen'] = $row['last_seen'];
+            }
+            
+            if ($row['category']) {
+                $inbox[$name]['categories'][$row['category']] = ($inbox[$name]['categories'][$row['category']] ?? 0) + $row['count'];
+            }
+        }
+
+        // Dominante Kategorie ermitteln und bereinigen
+        $result = [];
+        foreach ($inbox as $name => $data) {
+            $dominant = 'Sonstiges';
+            if (!empty($data['categories'])) {
+                arsort($data['categories']);
+                $dominant = array_key_first($data['categories']);
+            }
+            $data['dominant_category'] = $dominant;
+            
+            // isNonProduct check (Rabatt, etc.) um sie im UI markieren zu können
+            $data['is_likely_non_product'] = $this->isNonProduct($name);
+            
+            unset($data['categories']);
+            $result[] = $data;
+        }
+
+        // Sortierung: Häufigkeit absteigend, dann Name
+        usort($result, function($a, $b) {
+            if ($a['count'] === $b['count']) {
+                return strcmp($a['name'], $b['name']);
+            }
+            return $b['count'] <=> $a['count'];
+        });
+
+        return $result;
     }
 
     /**

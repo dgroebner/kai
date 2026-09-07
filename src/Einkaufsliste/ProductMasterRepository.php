@@ -401,4 +401,71 @@ class ProductMasterRepository
         $stmt = $this->pdo->prepare("DELETE FROM product_master WHERE id = :id");
         return $stmt->execute([':id' => $id]);
     }
+
+    /**
+     * Führt mehrere Artikel in einem Zielartikel zusammen.
+     * 1. Verschiebt alle eBon-Mappings auf das Ziel.
+     * 2. Verschiebt aktive Einkaufslisten-Einträge auf das Ziel.
+     * 3. Löscht die Quellartikel aus dem Artikelstamm.
+     *
+     * @param int[] $sourceIds IDs der zu löschenden Quellartikel
+     * @param int   $targetId  ID des Zielartikels
+     * @return bool true bei Erfolg
+     */
+    public function merge(array $sourceIds, int $targetId): bool
+    {
+        if (empty($sourceIds)) {
+            return false;
+        }
+
+        // Sicherstellen, dass das Ziel nicht in den Quellen ist
+        $sourceIds = array_filter($sourceIds, fn($id) => $id !== $targetId);
+        if (empty($sourceIds)) {
+            return true;
+        }
+
+        $inQuery = implode(',', array_fill(0, count($sourceIds), '?'));
+
+        try {
+            $this->pdo->beginTransaction();
+
+            // 1. Mappings verschieben (IGNORE fängt ab, falls der eBon-Name beim Ziel schon gemappt ist)
+            $stmt1 = $this->pdo->prepare("
+                UPDATE IGNORE ebon_product_mappings 
+                SET product_master_id = ? 
+                WHERE product_master_id IN ($inQuery)
+            ");
+            $params1 = array_merge([$targetId], $sourceIds);
+            $stmt1->execute($params1);
+
+            // Mappings löschen, die durch IGNORE nicht verschoben werden konnten (Duplikate)
+            $stmt1b = $this->pdo->prepare("DELETE FROM ebon_product_mappings WHERE product_master_id IN ($inQuery)");
+            $stmt1b->execute($sourceIds);
+
+            // 2. Aktive Einkaufslisten-Positionen verschieben
+            $stmt2 = $this->pdo->prepare("
+                UPDATE shopping_list_items 
+                SET product_id = ? 
+                WHERE product_id IN ($inQuery)
+            ");
+            $stmt2->execute($params1);
+
+            // 3. Alte Master-Artikel löschen
+            $stmt3 = $this->pdo->prepare("DELETE FROM product_master WHERE id IN ($inQuery)");
+            $stmt3->execute($sourceIds);
+
+            $this->pdo->commit();
+            
+            $this->logger->info("ProductMasterRepository: Artikel erfolgreich zusammengeführt", [
+                'sources' => $sourceIds,
+                'target'  => $targetId
+            ]);
+            
+            return true;
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            $this->logger->error("ProductMasterRepository: Fehler beim Mergen", ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
 }

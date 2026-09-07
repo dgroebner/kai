@@ -627,7 +627,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 showToast(res.message || 'Fehler beim Umschalten', true);
             }
-            return;
         }
     });
 
@@ -696,17 +695,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const mappingBtn = e.target.closest('.js-mapping-btn');
         if (!mappingBtn) return;
 
-        const productId   = mappingBtn.dataset.id;
+        const productId = mappingBtn.dataset.id;
         const productName = mappingBtn.dataset.name;
 
         const nameEl = document.getElementById('mapping-modal-product-name');
-        const idEl   = document.getElementById('mapping-modal-product-id');
-        const modal  = document.getElementById('ebon-mapping-modal');
-        const input  = document.getElementById('mapping-new-ebon-name');
+        const idEl = document.getElementById('mapping-modal-product-id');
+        const modal = document.getElementById('ebon-mapping-modal');
+        const input = document.getElementById('mapping-new-ebon-name');
 
         if (nameEl) nameEl.textContent = productName;
-        if (idEl)   idEl.value         = productId;
-        if (input)  input.value         = '';
+        if (idEl) idEl.value = productId;
+        if (input) input.value = '';
 
         // Vorhandene Mappings laden
         try {
@@ -742,7 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAddMapping) {
         btnAddMapping.addEventListener('click', async () => {
             const productId = document.getElementById('mapping-modal-product-id')?.value;
-            const ebonName  = document.getElementById('mapping-new-ebon-name')?.value.trim();
+            const ebonName = document.getElementById('mapping-new-ebon-name')?.value.trim();
 
             if (!ebonName) {
                 showToast('eBon-Name darf nicht leer sein', true);
@@ -752,9 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAddMapping.disabled = true;
             try {
                 const res = await KaiHttp.postJson(API_URL, {
-                    action:     'save_ebon_mapping',
+                    action: 'save_ebon_mapping',
                     product_id: productId,
-                    ebon_name:  ebonName,
+                    ebon_name: ebonName,
                 });
 
                 if (res.success) {
@@ -785,8 +784,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const res = await KaiHttp.postJson(API_URL, {
-                action:     'delete_ebon_mapping',
-                id:         mappingId,
+                action: 'delete_ebon_mapping',
+                id: mappingId,
                 product_id: productId,
             });
 
@@ -799,6 +798,348 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             showToast('Verbindungsfehler', true);
         }
+        // =========================================================
+        // --- Inbox (Unbekannte eBons) ---
+        // =========================================================
+        const tabBtnInbox = document.getElementById('tab-btn-inbox');
+        const inboxListContainer = document.getElementById('inbox-list-container');
+        const inboxEmptyState = document.getElementById('inbox-empty-state');
+        const inboxLoading = document.getElementById('inbox-loading-indicator');
+
+        // Wir rendern in die Dropdowns alle verfügbaren Artikel als Datalist (einmalig)
+        const productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
+            .filter(opt => opt.value !== '')
+            .map(opt => `<option value="${opt.value}">${KaiHtml.escape(opt.textContent)}</option>`)
+            .join('');
+
+        function loadInbox() {
+            if (!inboxListContainer) return;
+
+            inboxLoading.classList.remove('hidden');
+            inboxListContainer.classList.add('hidden');
+            inboxEmptyState.classList.add('hidden');
+
+            KaiHttp.postJson(API_URL, {action: 'get_inbox'})
+                .then(res => {
+                    inboxLoading.classList.add('hidden');
+                    if (res.success && res.items && res.items.length > 0) {
+                        let html = '';
+                        res.items.forEach(item => {
+                            html += `
+                            <div class="inbox-item-card">
+                                <div class="inbox-item-info">
+                                    <h4 style="margin:0; font-size:1.1rem; ${item.is_likely_non_product ? 'text-decoration: line-through; color: var(--text-muted);' : ''}">${KaiHtml.escape(item.name)}</h4>
+                                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;">
+                                        Oft in: ${KaiHtml.escape(item.dominant_category)} | Gekauft: ${item.count}x
+                                        ${item.is_likely_non_product ? ' <br><span class="badge badge-warning">Vermutlich Rabatt/Pfand</span>' : ''}
+                                    </div>
+                                </div>
+                                <div class="inbox-item-actions">
+                                    <select class="form-control js-inbox-target-select" data-name="${KaiHtml.escape(item.name)}" style="max-width: 200px;">
+                                        <option value="">-- Zuordnen zu... --</option>
+                                        ${productOptions}
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline js-inbox-new-btn" data-name="${KaiHtml.escape(item.name)}">+ Als neu</button>
+                                </div>
+                            </div>
+                        `;
+                        });
+                        inboxListContainer.innerHTML = html;
+                        inboxListContainer.classList.remove('hidden');
+
+                        // Update Badge
+                        const badge = tabBtnInbox.querySelector('.badge');
+                        if (badge) badge.textContent = res.items.length;
+                        else tabBtnInbox.innerHTML = `📥 Unbekannte eBons <span class="badge badge-warning shopping-badge-counter">${res.items.length}</span>`;
+                    } else {
+                        inboxEmptyState.classList.remove('hidden');
+                        const badge = tabBtnInbox.querySelector('.badge');
+                        if (badge) badge.remove();
+                    }
+                })
+                .catch(err => {
+                    inboxLoading.classList.add('hidden');
+                    showToast('Fehler beim Laden der Inbox', true);
+                });
+        }
+
+        // Wenn der Inbox-Tab geklickt wird, laden wir neu
+        if (tabBtnInbox) {
+            tabBtnInbox.addEventListener('click', loadInbox);
+        }
+        // Wenn die Seite bereits mit Tab=Inbox lädt
+        if (new URLSearchParams(window.location.search).get('tab') === 'inbox') {
+            loadInbox();
+        }
+
+        // Event Delegation für Inbox Actions
+        document.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('js-inbox-target-select')) {
+                const select = e.target;
+                const targetId = select.value;
+                if (!targetId) return;
+
+                const ebonName = select.dataset.name;
+                select.disabled = true;
+
+                try {
+                    const res = await KaiHttp.postJson(API_URL, {
+                        action: 'resolve_inbox',
+                        action_type: 'map',
+                        ebon_name: ebonName,
+                        target_id: targetId
+                    });
+
+                    if (res.success) {
+                        showToast('Zuordnung gespeichert');
+                        select.closest('.inbox-item-card').remove();
+                    } else {
+                        showToast(res.message || 'Fehler beim Zuordnen', true);
+                        select.disabled = false;
+                    }
+                } catch (err) {
+                    showToast('Verbindungsfehler', true);
+                    select.disabled = false;
+                }
+            }
+        });
+
+        document.addEventListener('click', async (e) => {
+            const newBtn = e.target.closest('.js-inbox-new-btn');
+            if (newBtn) {
+                const ebonName = newBtn.dataset.name;
+                newBtn.disabled = true;
+
+                try {
+                    const res = await KaiHttp.postJson(API_URL, {
+                        action: 'resolve_inbox',
+                        action_type: 'new',
+                        ebon_name: ebonName
+                    });
+
+                    if (res.success) {
+                        showToast('Als neuen Artikel angelegt');
+                        newBtn.closest('.inbox-item-card').remove();
+                    } else {
+                        showToast(res.message || 'Fehler beim Anlegen', true);
+                        newBtn.disabled = false;
+                    }
+                } catch (err) {
+                    showToast('Verbindungsfehler', true);
+                    newBtn.disabled = false;
+                }
+            }
+        });
+
+        // =========================================================
+        // --- Bulk Merge (Artikelstamm Checkboxen) ---
+        // =========================================================
+        const checkAllProducts = document.getElementById('check-all-products');
+        const mergeCheckboxes = document.querySelectorAll('.js-merge-check');
+        const bulkActionBar = document.getElementById('bulk-action-bar');
+        const bulkSelectedCount = document.getElementById('bulk-selected-count');
+        const btnExecuteBulkMerge = document.getElementById('btn-execute-bulk-merge');
+        const bulkTargetSelect = document.getElementById('bulk-target-select');
+
+        function updateBulkActionBar() {
+            if (!bulkActionBar) return;
+            const checked = document.querySelectorAll('.js-merge-check:checked');
+            const count = checked.length;
+
+            bulkSelectedCount.textContent = count;
+            if (count > 0) {
+                bulkActionBar.classList.remove('hidden');
+            } else {
+                bulkActionBar.classList.add('hidden');
+            }
+        }
+
+        if (checkAllProducts) {
+            checkAllProducts.addEventListener('change', () => {
+                mergeCheckboxes.forEach(chk => chk.checked = checkAllProducts.checked);
+                updateBulkActionBar();
+            });
+        }
+
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('js-merge-check')) {
+                updateBulkActionBar();
+            }
+        });
+
+        if (bulkTargetSelect && btnExecuteBulkMerge) {
+            bulkTargetSelect.addEventListener('change', () => {
+                btnExecuteBulkMerge.disabled = bulkTargetSelect.value === '';
+            });
+
+            btnExecuteBulkMerge.addEventListener('click', async () => {
+                const targetId = bulkTargetSelect.value;
+                const sourceIds = Array.from(document.querySelectorAll('.js-merge-check:checked')).map(chk => chk.value);
+
+                if (!targetId || sourceIds.length === 0) return;
+
+                if (sourceIds.includes(targetId)) {
+                    showToast('Ziel-Artikel darf nicht in der Auswahl enthalten sein.', true);
+                    return;
+                }
+
+                if (!confirm(`Möchtest du diese ${sourceIds.length} Artikel wirklich zusammenführen? Die Quellen werden danach gelöscht.`)) return;
+
+                btnExecuteBulkMerge.disabled = true;
+                btnExecuteBulkMerge.innerHTML = 'Führe zusammen...';
+
+                try {
+                    const res = await KaiHttp.postJson(API_URL, {
+                        action: 'merge_products',
+                        target_id: targetId,
+                        source_ids: sourceIds
+                    });
+
+                    if (res.success) {
+                        showToast(res.message);
+                        setTimeout(() => window.location.reload(), 800);
+                    } else {
+                        showToast(res.message || 'Fehler beim Zusammenführen', true);
+                        btnExecuteBulkMerge.disabled = false;
+                        btnExecuteBulkMerge.innerHTML = 'Zusammenführen';
+                    }
+                } catch (err) {
+                    showToast('Verbindungsfehler', true);
+                    btnExecuteBulkMerge.disabled = false;
+                    btnExecuteBulkMerge.innerHTML = 'Zusammenführen';
+                }
+            });
+        }
+
+        // =========================================================
+        // --- KI-Auto-Merge Modal ---
+        // =========================================================
+        const btnOpenAiMerge = document.getElementById('btn-open-ai-merge');
+        const aiMergeModal = document.getElementById('ai-merge-modal');
+        const btnCloseAiModal = document.getElementById('btn-close-ai-modal');
+        const btnCancelAiModal = document.getElementById('btn-cancel-ai-modal');
+        const btnStartAiAnalysis = document.getElementById('btn-start-ai-analysis');
+        const aiLoading = document.getElementById('ai-loading-indicator');
+        const aiResults = document.getElementById('ai-results-container');
+        const aiEmpty = document.getElementById('ai-empty-state');
+
+        function closeAiModal() {
+            if (aiMergeModal) aiMergeModal.classList.add('hidden');
+        }
+
+        if (btnOpenAiMerge) {
+            btnOpenAiMerge.addEventListener('click', () => {
+                aiMergeModal.classList.remove('hidden');
+            });
+        }
+
+        if (btnCloseAiModal) btnCloseAiModal.addEventListener('click', closeAiModal);
+        if (btnCancelAiModal) btnCancelAiModal.addEventListener('click', closeAiModal);
+
+        if (btnStartAiAnalysis) {
+            btnStartAiAnalysis.addEventListener('click', async () => {
+                btnStartAiAnalysis.classList.add('hidden');
+                aiLoading.classList.remove('hidden');
+                aiResults.classList.add('hidden');
+                aiEmpty.classList.add('hidden');
+
+                try {
+                    const res = await KaiHttp.postJson(API_URL, {action: 'ai_suggest_merges'});
+
+                    aiLoading.classList.add('hidden');
+
+                    if (res.success && res.clusters && res.clusters.length > 0) {
+                        let html = '<h4 style="margin-bottom: 1rem;">Die KI schlägt folgende Zusammenführungen vor:</h4>';
+
+                        res.clusters.forEach((cluster, idx) => {
+                            html += `
+                            <div class="ai-cluster-card" id="cluster-card-${idx}">
+                                <div class="ai-cluster-header">
+                                    <strong>Ziel: ${KaiHtml.escape(cluster.target_name)}</strong>
+                                    <button type="button" class="btn btn-sm btn-primary js-accept-ai-cluster" 
+                                            data-idx="${idx}"
+                                            data-target-name="${KaiHtml.escape(cluster.target_name)}"
+                                            data-sources='${JSON.stringify(cluster.source_ids)}'>
+                                        Zusammenführen
+                                    </button>
+                                </div>
+                                <div class="ai-cluster-sources">
+                                    Fasst ${cluster.source_ids.length} Artikel-IDs zusammen.
+                                </div>
+                            </div>
+                        `;
+                        });
+
+                        aiResults.innerHTML = html;
+                        aiResults.classList.remove('hidden');
+                    } else {
+                        aiEmpty.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    aiLoading.classList.add('hidden');
+                    showToast('Fehler bei der KI-Analyse', true);
+                    btnStartAiAnalysis.classList.remove('hidden');
+                }
+            });
+        }
+
+        // KI-Cluster akzeptieren (Erstellt Target wenn nötig, führt dann zusammen)
+        document.addEventListener('click', async (e) => {
+            const acceptBtn = e.target.closest('.js-accept-ai-cluster');
+            if (acceptBtn) {
+                acceptBtn.disabled = true;
+                acceptBtn.innerHTML = '⏳ Arbeite...';
+
+                const targetName = acceptBtn.dataset.targetName;
+                let sourceIds = [];
+                try {
+                    sourceIds = JSON.parse(acceptBtn.dataset.sources);
+                } catch (err) {
+                }
+
+                if (sourceIds.length < 2) {
+                    showToast('Ein Cluster braucht mindestens 2 Artikel.', true);
+                    return;
+                }
+
+                // Um ein sauberes KI-Cluster zu mergen, nutzen wir einen zweistufigen Prozess:
+                // 1. Schauen ob "targetName" schon existiert (über API oder einfach in Inbox Logik).
+                // Da wir im JS keine direkte ID für den Target Name haben, legen wir ihn als Inbox "new" an
+                // oder suchen ihn.
+                // WORKAROUND FÜR PHASE 1.5: Wir nehmen einfach das erste Element aus den sources als "Target"
+                // und überschreiben seinen Namen auf den KI-Namen, dann mergen wir den Rest hinein.
+
+                const targetId = sourceIds.shift(); // Erstes Element ist das Ziel
+
+                try {
+                    // a) Namen des Ziels aktualisieren
+                    await KaiHttp.postJson(API_URL, {
+                        action: 'save_product_master',
+                        id: targetId,
+                        custom_label: targetName,
+                        is_ignored: 0
+                    });
+
+                    // b) Rest mergen
+                    const mergeRes = await KaiHttp.postJson(API_URL, {
+                        action: 'merge_products',
+                        target_id: targetId,
+                        source_ids: sourceIds
+                    });
+
+                    if (mergeRes.success) {
+                        acceptBtn.closest('.ai-cluster-card').remove();
+                        showToast('Cluster erfolgreich zusammengeführt');
+                    } else {
+                        showToast(mergeRes.message || 'Fehler beim Mergen', true);
+                        acceptBtn.innerHTML = 'Fehler';
+                    }
+                } catch (err) {
+                    showToast('Verbindungsfehler', true);
+                    acceptBtn.innerHTML = 'Fehler';
+                }
+            }
+        });
     });
 });
 

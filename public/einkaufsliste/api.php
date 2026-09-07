@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Einkaufsliste\EbonMappingRepository;
 use Kai\Tools\Einkaufsliste\HolidayService;
 use Kai\Tools\Einkaufsliste\LearningService;
@@ -40,6 +41,7 @@ $productRepo = new ProductMasterRepository();
 $categoryRepo = new MarketCategoryRepository();
 $mappingRepo = new EbonMappingRepository();
 $holidayService = new HolidayService();
+$learningService = new LearningService($productRepo, $mappingRepo);
 $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
 
 try {
@@ -514,6 +516,122 @@ try {
                 'mappings' => $mappings,
                 'message'  => 'eBon-Zuordnung gelöscht',
             ]);
+            break;
+
+        // --- 19. Inbox laden ---
+        case 'get_inbox':
+            $items = $learningService->getInboxItems();
+            echo json_encode(['success' => true, 'items' => $items]);
+            break;
+
+        // --- 20. Inbox-Item zuordnen (Neuer Kai-Artikel oder bestehender) ---
+        case 'resolve_inbox':
+            $ebonName = trim($input['ebon_name'] ?? '');
+            $targetId = filter_var($input['target_id'] ?? null, FILTER_VALIDATE_INT);
+            $actionType = $input['action_type'] ?? ''; // 'new' oder 'map'
+
+            if ($ebonName === '') {
+                Auth::sendJsonError(400, 'eBon-Name fehlt');
+            }
+
+            if ($actionType === 'new') {
+                // Legt neuen Master-Artikel an
+                $productId = $productRepo->saveOrUpdate(['name' => $ebonName]);
+                $mappingRepo->save($ebonName, $productId);
+            } elseif ($actionType === 'map') {
+                if (!$targetId) {
+                    Auth::sendJsonError(400, 'Ziel-Artikel fehlt');
+                }
+                $mappingRepo->save($ebonName, $targetId);
+                // Lernprozess erneut triggern um die Historie auf das neue Mapping anzuwenden
+                $learningService->learnFromReceipts();
+            } else {
+                Auth::sendJsonError(400, 'Ungültige Aktion');
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Zuordnung gespeichert']);
+            break;
+
+        // --- 21. Artikel zusammenführen (Merge) ---
+        case 'merge_products':
+            $sourceIds = $input['source_ids'] ?? [];
+            $targetId = filter_var($input['target_id'] ?? null, FILTER_VALIDATE_INT);
+
+            if (!is_array($sourceIds) || empty($sourceIds)) {
+                Auth::sendJsonError(400, 'Keine Quellartikel ausgewählt');
+            }
+            if (!$targetId) {
+                Auth::sendJsonError(400, 'Ziel-Artikel fehlt');
+            }
+
+            // Sicherstellen, dass alle IDs Integer sind
+            $sourceIds = array_map('intval', $sourceIds);
+
+            $success = $productRepo->merge($sourceIds, $targetId);
+
+            if ($success) {
+                // Da wir die Zuordnungen geändert haben, berechnen wir die Verbrauchsintervalle neu
+                $learningService->learnFromReceipts();
+                echo json_encode(['success' => true, 'message' => count($sourceIds) . ' Artikel erfolgreich zusammengeführt']);
+            } else {
+                Auth::sendJsonError(500, 'Fehler beim Zusammenführen der Artikel');
+            }
+            break;
+
+        // --- 22. KI-Aufräumvorschläge generieren ---
+        case 'ai_suggest_merges':
+            // Lade alle Artikel, die keine Mappings auf sich selbst haben, bzw.
+            // einfach alle Artikel zum Clustern. Um Token zu sparen, laden wir
+            // nur Name und ID.
+            $allProducts = $productRepo->getAll();
+            $productList = [];
+            foreach ($allProducts as $p) {
+                $productList[] = ['id' => $p['id'], 'name' => $p['name']];
+            }
+
+            if (empty($productList)) {
+                echo json_encode(['success' => true, 'clusters' => []]);
+                break;
+            }
+
+            $prompt = "Du bist ein intelligenter Datenbereinigungs-Assistent für eine Einkaufsliste.
+Folgend ist eine JSON-Liste von Artikeln (id und name), die oft Duplikate aufgrund verschiedener Kassenbon-Schreibweisen enthalten.
+Finde Gruppen von Namen, die dasselbe Produkt meinen (z.B. 'REWE Bio Erdb. 500g', 'Erdbeeren lose', 'Erdbeeren').
+Gib ein JSON-Array von Clustern zurück. Jedes Cluster muss so aussehen:
+{
+  \"target_name\": \"Der generischste, schönste Name für diese Gruppe (z.B. 'Erdbeeren')\",
+  \"source_ids\": [id1, id2, ...] (Alle IDs, die in diese Gruppe gehören. Mindestens 2 IDs pro Cluster!)
+}
+Ignoriere Artikel, die keine Duplikate haben. Liefere NUR sauberes JSON zurück, ohne Markdown-Codeblöcke!
+
+Artikel-Liste:
+" . json_encode($productList);
+
+            try {
+                $gemini = new GeminiClient();
+                $response = $gemini->generate($prompt, null, null, true);
+                
+                if (!$response || !isset($response['text'])) {
+                    Auth::sendJsonError(500, 'KI lieferte keine gültige Antwort');
+                }
+
+                $clusters = json_decode($response['text'], true);
+                
+                // Falls die KI versehentlich in Markdown antwortet, parsen:
+                if ($clusters === null) {
+                    $cleanJson = preg_replace('/```json|```/', '', $response['text']);
+                    $clusters = json_decode(trim($cleanJson), true);
+                }
+
+                if (!is_array($clusters)) {
+                    $clusters = []; // Fallback
+                }
+
+                echo json_encode(['success' => true, 'clusters' => $clusters]);
+            } catch (Exception $e) {
+                $logger->error('API: ai_suggest_merges failed', ['error' => $e->getMessage()]);
+                Auth::sendJsonError(500, 'Fehler bei der KI-Anfrage');
+            }
             break;
 
         default:

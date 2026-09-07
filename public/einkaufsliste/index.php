@@ -85,6 +85,9 @@ try {
         <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="recipe">
             🧑‍🍳 Rezept & KI
         </button>
+        <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="inbox" id="tab-btn-inbox">
+            📥 Unbekannte eBons
+        </button>
         <button type="button" class="btn <?= $activeTab === 'aisles' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="aisles">
             🏪 Gänge & Artikelstamm
         </button>
@@ -452,7 +455,35 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         </section>
 
         <!-- ============================================================== -->
-        <!-- TAB 4: GÄNGE & ARTIKELSTAMM                                    -->
+        <!-- TAB 4: INBOX (UNBEKANNTE EBONS)                                -->
+        <!-- ============================================================== -->
+        <section id="tab-inbox" class="shopping-tab-pane <?= $activeTab === 'inbox' ? '' : 'hidden' ?>">
+            <div class="card">
+                <h3>📥 Unbekannte eBons (Inbox)</h3>
+                <p class="text-muted">
+                    Hier landen Artikel aus Kassenbons, die das System noch nicht kennt.
+                    Ordne sie bestehenden Kai-Artikeln zu oder lege sie als neue Artikel an. 
+                    Damit bleibt dein Artikelstamm sauber.
+                </p>
+
+                <div id="inbox-loading-indicator" class="text-center" style="padding: 2rem;">
+                    <span class="spinner"></span> Lade Inbox...
+                </div>
+
+                <div id="inbox-list-container" class="inbox-list hidden">
+                    <!-- Wird per JS befüllt -->
+                </div>
+                
+                <div id="inbox-empty-state" class="hidden text-center" style="padding: 3rem 1rem;">
+                    <span style="font-size: 3rem;">🎉</span>
+                    <h4>Alles aufgeräumt!</h4>
+                    <p class="text-muted">Es gibt keine unbekannten Kassenbon-Positionen mehr.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 5: GÄNGE & ARTIKELSTAMM                                    -->
         <!-- ============================================================== -->
         <section id="tab-aisles" class="shopping-tab-pane <?= $activeTab === 'aisles' ? '' : 'hidden' ?>">
             
@@ -507,30 +538,56 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 
             <!-- Artikelstamm Übersicht -->
             <div class="card" style="margin-top: 1.5rem;">
-                <h3>📦 Gelernter Artikelstamm (<?= count($allProducts) ?> Artikel)</h3>
-                <p class="text-muted">
-                    Verknüpfungen aus eBons und manuellen Eingaben mit Marktzuordnung und Verbrauchszyklen.
-                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h3>📦 Gelernter Artikelstamm (<?= count($allProducts) ?> Artikel)</h3>
+                        <p class="text-muted" style="margin-bottom:0;">
+                            Hier verwaltest du deine sauberen Kai-Artikel.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-outline" id="btn-open-ai-merge">✨ KI Aufräumvorschläge</button>
+                </div>
+                
+                <!-- Bulk Action Bar -->
+                <div id="bulk-action-bar" class="bulk-action-bar hidden" style="margin-top: 1.5rem;">
+                    <div>
+                        <span id="bulk-selected-count">0</span> Artikel markiert
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span>Zusammenführen in:</span>
+                        <select id="bulk-target-select" class="form-control" style="width: auto; min-width: 200px;">
+                            <option value="">-- Ziel-Artikel wählen --</option>
+                            <?php foreach ($allProducts as $p): ?>
+                                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="btn btn-primary" id="btn-execute-bulk-merge" disabled>Zusammenführen</button>
+                    </div>
+                </div>
 
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
                     <table class="data-table stack-table">
                         <thead>
                         <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="check-all-products" title="Alle auswählen"></th>
                             <th>Artikel</th>
                             <th>Bevorzugter Markt</th>
                             <th>Kategorie</th>
                             <th>Kaufintervall</th>
                             <th>Ferienfaktor</th>
                             <th>Letzter Kauf</th>
-                                                    <th class="text-right">Aktion</th>
+                            <th class="text-right">Aktion</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php if (empty($allProducts)): ?>
-                            <tr><td colspan="7" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze „Aus eBons lernen" im Tab Vorschläge.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze „Aus eBons lernen" im Tab Vorschläge.</td></tr>
                         <?php else: ?>
                             <?php foreach ($allProducts as $p): ?>
                                 <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
+                                    <td data-label="Auswahl">
+                                        <input type="checkbox" class="merge-checkbox js-merge-check" value="<?= $p['id'] ?>">
+                                    </td>
                                     <td data-label="Artikel"><strong><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                                     <td data-label="Bevorzugter Markt">
                                         <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
@@ -547,7 +604,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                     <td data-label="Letzter Kauf">
                                         <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
                                     </td>
-                                    <td class="text-right">
+                                    <td class="text-right" style="white-space:nowrap;">
                                         <button class="btn-icon js-mapping-btn" data-id="<?= $p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>" title="eBon-Zuordnungen verwalten">🔗</button>
                                         <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>" title="Editieren">✏️</button>
                                         <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>" data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>" title="Ignorieren">
@@ -563,6 +620,40 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             </div>
         </section>
     </main>
+</div>
+
+<!-- ============================================================== -->
+<!-- KI-MERGE MODAL                                                 -->
+<!-- ============================================================== -->
+<div id="ai-merge-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 600px;">
+        <div class="rule-modal-header">
+            <h3>✨ KI-Aufräumvorschläge</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-ai-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <p class="text-muted" style="font-size: 0.9rem;">
+                Die KI analysiert deinen gesamten Artikelstamm und sucht nach ähnlichen Namen, die vermutlich dasselbe Produkt meinen.
+            </p>
+            
+            <div id="ai-loading-indicator" class="text-center hidden" style="padding: 2rem;">
+                <span class="spinner"></span> Analysiere Artikelstamm (das kann ein paar Sekunden dauern)...
+            </div>
+
+            <div id="ai-results-container" class="hidden">
+                <!-- Wird per JS gefüllt -->
+            </div>
+            
+            <div id="ai-empty-state" class="text-center hidden" style="padding: 2rem;">
+                <span style="font-size: 2rem;">👍</span>
+                <p>Die KI hat keine offensichtlichen Duplikate mehr gefunden.</p>
+            </div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-primary" id="btn-start-ai-analysis">Analyse starten</button>
+            <button type="button" class="btn btn-outline" id="btn-cancel-ai-modal">Schließen</button>
+        </div>
+    </div>
 </div>
 
 <!-- Modal / Toast Alert Container -->
