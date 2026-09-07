@@ -135,7 +135,7 @@ try {
                             <input type="text" id="input-item-name" name="name" class="form-control" list="known-products-datalist" placeholder="z.B. Bio-Milch, Butter, Kaffee..." required autocomplete="off">
                             <datalist id="known-products-datalist">
                                 <?php foreach ($allProducts as $p): ?>
-                                    <option value="<?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>" 
+                                    <option value="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>" 
                                             data-market="<?= htmlspecialchars($p['preferred_market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?>"
                                             data-category="<?= htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
                                             data-unit="<?= htmlspecialchars($p['default_unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>">
@@ -549,8 +549,6 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <p class="text-muted" style="margin-bottom:0;">
                             Hier verwaltest du deine sauberen Kai-Artikel.
                         </p>
-                    </div>
-                    <button type="button" class="btn btn-outline" id="btn-open-ai-merge">✨ KI Aufräumvorschläge</button>
                 </div>
                 
                 <!-- Bulk Action Bar -->
@@ -593,7 +591,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                     <td data-label="Auswahl" style="padding-right: 5px;">
                                         <input type="checkbox" class="merge-checkbox js-merge-check" value="<?= $p['id'] ?>">
                                     </td>
-                                    <td data-label="Artikel"><strong><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></strong></td>
+                                    <td data-label="Artikel"><strong><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                                     <td data-label="Markt">
                                         <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
                                             <?= htmlspecialchars($p['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
