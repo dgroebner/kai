@@ -812,7 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const inboxLoading = document.getElementById('inbox-loading-indicator');
 
         // Wir rendern in die Dropdowns alle verfügbaren Artikel als Datalist (einmalig)
-        const productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
+        let productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
             .filter(opt => opt.value !== '')
             .map(opt => `<option value="${opt.value}">${KaiHtml.escape(opt.textContent)}</option>`)
             .join('');
@@ -933,6 +933,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.inboxModified = true;
                         showToast('Als neuen Artikel angelegt');
                         newBtn.closest('.inbox-item-card').remove();
+                        
+                        if (res.new_product) {
+                            const newOpt = document.createElement('option');
+                            newOpt.value = res.new_product.id;
+                            newOpt.textContent = res.new_product.name;
+                            
+                            document.querySelectorAll('.js-inbox-target-select').forEach(select => {
+                                select.appendChild(newOpt.cloneNode(true));
+                            });
+                            
+                            productOptions += `<option value="${res.new_product.id}">${KaiHtml.escape(res.new_product.name)}</option>`;
+                        }
                     } else {
                         showToast(res.message || 'Fehler beim Anlegen', true);
                         newBtn.disabled = false;
@@ -1163,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inboxEmptyState = document.getElementById('inbox-empty-state');
     const inboxLoading = document.getElementById('inbox-loading-indicator');
     
-    const productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
+    let productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
         .filter(opt => opt.value !== '')
         .map(opt => `<option value="${opt.value}">${KaiHtml.escape(opt.textContent)}</option>`)
         .join('');
@@ -1283,6 +1295,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.inboxModified = true;
                     showToast('Als neuen Artikel angelegt');
                     newBtn.closest('.inbox-item-card').remove();
+                    
+                    if (res.new_product) {
+                        const newOpt = document.createElement('option');
+                        newOpt.value = res.new_product.id;
+                        newOpt.textContent = res.new_product.name;
+                        
+                        document.querySelectorAll('.js-inbox-target-select').forEach(select => {
+                            select.appendChild(newOpt.cloneNode(true));
+                        });
+                    }
                 } else {
                     showToast(res.message || 'Fehler beim Anlegen', true);
                     newBtn.disabled = false;

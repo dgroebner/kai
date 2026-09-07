@@ -551,6 +551,12 @@ try {
                 }
                 $productId = $productRepo->saveOrUpdate(['name' => $newName]);
                 $mappingRepo->save($ebonName, $productId);
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Als neuen Artikel angelegt',
+                    'new_product' => ['id' => $productId, 'name' => $newName]
+                ]);
+                exit;
             } elseif ($actionType === 'map') {
                 if (!$targetId) {
                     Auth::sendJsonError(400, 'Ziel-Artikel fehlt');
