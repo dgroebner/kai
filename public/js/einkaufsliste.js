@@ -33,6 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetTab = tabBtn.dataset.tab;
             if (!targetTab) return;
 
+            if (targetTab === 'aisles' && window.inboxModified) {
+                window.location.href = '?tab=' + targetTab;
+                return;
+            }
+
             // Buttons umschalten
             document.querySelectorAll('.js-tab-btn').forEach(btn => {
                 if (btn === tabBtn) {
@@ -908,16 +913,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const newBtn = e.target.closest('.js-inbox-new-btn');
             if (newBtn) {
                 const ebonName = newBtn.dataset.name;
+                const newName = prompt('Bitte den sauberen Artikelnamen eingeben (so wie er künftig heißen soll):', ebonName);
+                if (newName === null) return;
+                if (newName.trim() === '') {
+                    showToast('Der Name darf nicht leer sein.', true);
+                    return;
+                }
                 newBtn.disabled = true;
 
                 try {
                     const res = await KaiHttp.postJson(API_URL, {
                         action: 'resolve_inbox',
                         action_type: 'new',
-                        ebon_name: ebonName
+                        ebon_name: ebonName,
+                        new_name: newName.trim()
                     });
 
                     if (res.success) {
+                        window.inboxModified = true;
                         showToast('Als neuen Artikel angelegt');
                         newBtn.closest('.inbox-item-card').remove();
                     } else {
@@ -1232,6 +1245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 if (res.success) {
+                    window.inboxModified = true;
                     showToast('Zuordnung gespeichert');
                     select.closest('.inbox-item-card').remove();
                 } else {
@@ -1249,16 +1263,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const newBtn = e.target.closest('.js-inbox-new-btn');
         if (newBtn) {
             const ebonName = newBtn.dataset.name;
+            const newName = prompt('Bitte den sauberen Artikelnamen eingeben (so wie er künftig heißen soll):', ebonName);
+            if (newName === null) return;
+            if (newName.trim() === '') {
+                showToast('Der Name darf nicht leer sein.', true);
+                return;
+            }
             newBtn.disabled = true;
-            
+
             try {
                 const res = await KaiHttp.postJson(API_URL, {
                     action: 'resolve_inbox',
                     action_type: 'new',
-                    ebon_name: ebonName
+                    ebon_name: ebonName,
+                    new_name: newName.trim()
                 });
-                
+
                 if (res.success) {
+                    window.inboxModified = true;
                     showToast('Als neuen Artikel angelegt');
                     newBtn.closest('.inbox-item-card').remove();
                 } else {

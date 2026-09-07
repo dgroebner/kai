@@ -545,7 +545,11 @@ try {
 
             if ($actionType === 'new') {
                 // Legt neuen Master-Artikel an
-                $productId = $productRepo->saveOrUpdate(['name' => $ebonName]);
+                $newName = trim((string)($input['new_name'] ?? ''));
+                if ($newName === '') {
+                    $newName = $ebonName;
+                }
+                $productId = $productRepo->saveOrUpdate(['name' => $newName]);
                 $mappingRepo->save($ebonName, $productId);
             } elseif ($actionType === 'map') {
                 if (!$targetId) {
