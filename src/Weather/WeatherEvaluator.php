@@ -77,7 +77,7 @@ class WeatherEvaluator
         // 4. Pool
         $pool = false;
         $poolText = 'Viel zu kalt für den Pool, bleib lieber im Trockenen.';
-        if ($maxTempToday >= 17) {
+        if ($currentTemp >= 17) {
             $pool = true;
             $poolText = 'Pool-Time! Perfektes Wetter zum Reinspringen.';
         }

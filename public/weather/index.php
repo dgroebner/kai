@@ -58,12 +58,19 @@ function getWindDirectionText($deg) {
     return $arr[($val % 16)];
 }
 
-function getWeatherIconAndText($code)
+function getWeatherIconAndText($code, $isNight = false)
 {
     if ($code === null || $code === '') return ['icon' => '❓', 'text' => 'Unbekannt'];
     $code = (int)$code;
-    if ($code == 0) return ['icon' => '☀️', 'text' => 'Klar'];
-    if ($code == 1 || $code == 2) return ['icon' => '⛅', 'text' => 'Heiter / Wolkig'];
+    
+    if ($isNight) {
+        if ($code == 0) return ['icon' => '🌙', 'text' => 'Klar'];
+        if ($code == 1 || $code == 2) return ['icon' => '🌙☁️', 'text' => 'Heiter / Wolkig'];
+    } else {
+        if ($code == 0) return ['icon' => '☀️', 'text' => 'Klar'];
+        if ($code == 1 || $code == 2) return ['icon' => '⛅', 'text' => 'Heiter / Wolkig'];
+    }
+    
     if ($code == 3) return ['icon' => '☁️', 'text' => 'Bedeckt'];
     if ($code == 45 || $code == 48) return ['icon' => '🌫️', 'text' => 'Nebel'];
     if (in_array($code, [51, 53, 55])) return ['icon' => '🌧️', 'text' => 'Nieselregen'];
@@ -437,8 +444,10 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     $currTemp = $forecast['current']['temperature_2m'] ?? '--';
                     $appTemp = $forecast['current']['apparent_temperature'] ?? '--';
                     $currCode = $forecast['current']['weather_code'] ?? -1;
-                    $currIconText = getWeatherIconAndText($currCode);
-
+                    $currIconText = getWeatherIconAndText($currCode, $isNight);
+                    $currIcon = $currIconText['icon'];
+                    $currText = $currIconText['text'];
+                    
                     $currPrecip = $forecast['current']['precipitation'] ?? 0;
                     $nextHourProb = 0;
                     $nowTime = time();
@@ -511,7 +520,21 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             $t = strtotime($timeStr);
                             if ($t >= $nowTime - 3600 && $count < 12) {
                                 $hCode = $forecast['hourly']['weather_code'][$i] ?? -1;
-                                $hIcon = getWeatherIconAndText($hCode)['icon'];
+                                
+                                // Tag/Nacht für die stündliche Prognose ermitteln
+                                $hIsNight = false;
+                                $dateStr = date('Y-m-d', $t);
+                                $dIdx = array_search($dateStr, $forecast['daily']['time'] ?? []);
+                                if ($dIdx !== false && !empty($forecast['daily']['sunset'][$dIdx]) && !empty($forecast['daily']['sunrise'][$dIdx])) {
+                                    $hSunset = strtotime($forecast['daily']['sunset'][$dIdx]);
+                                    $hSunrise = strtotime($forecast['daily']['sunrise'][$dIdx]);
+                                    $hIsNight = ($t >= $hSunset || $t < $hSunrise);
+                                } else {
+                                    $hour = (int)date('H', $t);
+                                    $hIsNight = ($hour >= 20 || $hour < 6); // Fallback
+                                }
+                                
+                                $hIcon = getWeatherIconAndText($hCode, $hIsNight)['icon'];
                                 $hTemp = number_format((float)($forecast['hourly']['temperature_2m'][$i] ?? 0), 1, ',', '.');
                                 $hProb = $forecast['hourly']['precipitation_probability'][$i] ?? 0;
                                 $hPrecip = $forecast['hourly']['precipitation'][$i] ?? 0;
