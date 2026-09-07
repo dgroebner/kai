@@ -422,6 +422,10 @@ th, td {
     vertical-align: middle;
 }
 
+.table-compact th, .table-compact td {
+    padding: 8px 10px;
+}
+
 th {
     background-color: var(--bg-surface);
     font-weight: 600;

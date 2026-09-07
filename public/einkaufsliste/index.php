@@ -341,7 +341,7 @@ try {
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="data-table stack-table">
+                            <table class="data-table stack-table table-compact">
                                 <thead>
                                 <tr>
                                     <th>Artikel</th>
@@ -432,7 +432,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <h4>Gefundene Zutaten & Zuordnungen:</h4>
                     <p class="text-muted" style="font-size: 0.9rem;">Prüfe die Zuordnung vor dem Hinzufügen. Du kannst Markt und Menge noch anpassen:</p>
                     <div class="table-responsive">
-                        <table class="data-table stack-table" id="recipe-preview-table">
+                        <table class="data-table stack-table table-compact" id="recipe-preview-table">
                             <thead>
                             <tr>
                                 <th style="width: 40px;"><input type="checkbox" id="check-all-recipe-items" checked></th>
@@ -566,16 +566,16 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 </div>
 
                 <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
-                    <table class="data-table stack-table">
+                    <table class="data-table stack-table table-compact">
                         <thead>
                         <tr>
-                            <th style="width: 40px;"><input type="checkbox" id="check-all-products" title="Alle auswählen"></th>
+                            <th style="width: 30px; padding-right: 5px;"><input type="checkbox" id="check-all-products" title="Alle auswählen"></th>
                             <th>Artikel</th>
-                            <th>Bevorzugter Markt</th>
+                            <th>Markt</th>
                             <th>Kategorie</th>
-                            <th>Kaufintervall</th>
-                            <th>Ferienfaktor</th>
-                            <th>Letzter Kauf</th>
+                            <th>Intervall</th>
+                            <th>Ferien</th>
+                            <th>Gekauft</th>
                             <th class="text-right">Aktion</th>
                         </tr>
                         </thead>
@@ -585,23 +585,23 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <?php else: ?>
                             <?php foreach ($allProducts as $p): ?>
                                 <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
-                                    <td data-label="Auswahl">
+                                    <td data-label="Auswahl" style="padding-right: 5px;">
                                         <input type="checkbox" class="merge-checkbox js-merge-check" value="<?= $p['id'] ?>">
                                     </td>
                                     <td data-label="Artikel"><strong><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></strong></td>
-                                    <td data-label="Bevorzugter Markt">
+                                    <td data-label="Markt">
                                         <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
                                             <?= htmlspecialchars($p['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
                                     </td>
                                     <td data-label="Kategorie"><?= htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
-                                    <td data-label="Kaufintervall">
+                                    <td data-label="Intervall">
                                         <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
                                     </td>
-                                    <td data-label="Ferienfaktor">
+                                    <td data-label="Ferien">
                                         <?= (float)$p['holiday_factor'] > 1.0 ? '⚡ ' . (float)$p['holiday_factor'] . 'x' : '1.0x' ?>
                                     </td>
-                                    <td data-label="Letzter Kauf">
+                                    <td data-label="Gekauft">
                                         <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
                                     </td>
                                     <td class="text-right" style="white-space:nowrap;">
