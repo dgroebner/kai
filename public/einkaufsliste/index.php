@@ -475,7 +475,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <?php foreach ($categoriesGrouped['Rewe'] ?? [] as $cat): ?>
                             <li class="aisle-sortable-item" data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="aisle-handle">☰</span>
-                                <span class="aisle-name"><?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="aisle-name"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <div class="aisle-item-actions">
                                     <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️</button>
                                     <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️</button>
@@ -493,7 +493,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <?php foreach ($categoriesGrouped['Globus'] ?? [] as $cat): ?>
                             <li class="aisle-sortable-item" data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="aisle-handle">☰</span>
-                                <span class="aisle-name"><?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="aisle-name"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <div class="aisle-item-actions">
                                     <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️</button>
                                     <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️</button>
@@ -568,7 +568,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                             <?= htmlspecialchars($p['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
                                     </td>
-                                    <td data-label="Kategorie"><?= htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td data-label="Kategorie"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($p['default_category'] ?? 'Sonstiges') . ' ' . htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
                                     <td data-label="Intervall">
                                         <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
                                     </td>
@@ -716,44 +716,58 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <label for="modal-list-item-name">Artikelname</label>
                 <input type="text" id="modal-list-item-name" class="form-control">
             </div>
-            <div class="form-group">
-                <label for="modal-list-item-quantity">Menge</label>
-                <input type="number" id="modal-list-item-quantity" step="0.1" min="0.1" class="form-control">
+            <div class="form-group mb-2">
+                <label>Menge: <span id="edit-item-slider-display" style="font-weight:bold;">1</span> <span id="edit-item-unit-display"></span></label>
+                <input type="range" id="edit-item-slider" class="form-control" style="margin: 10px 0;" min="0" max="9" step="1" value="0">
+                <div id="edit-item-slider-ticks" style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+                    <!-- Ticks dynamically injected via JS -->
+                </div>
             </div>
-            <div class="form-group">
-                <label for="modal-list-item-unit">Einheit</label>
-                <select id="modal-list-item-unit" class="form-control">
-                    <option value="Stück">Stück</option>
-                    <option value="Packung">Packung</option>
-                    <option value="kg">kg</option>
-                    <option value="g">g</option>
-                    <option value="Liter">Liter</option>
-                    <option value="Dose">Dose</option>
-                    <option value="Flasche">Flasche</option>
-                    <option value="Bund">Bund</option>
-                    <option value="Becher">Becher</option>
-                </select>
+
+            <div class="shopping-add-grid" style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                <div class="form-group flex-1">
+                    <label for="modal-list-item-quantity">Menge (manuell)</label>
+                    <input type="number" id="modal-list-item-quantity" step="0.1" min="0.1" class="form-control">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="modal-list-item-unit">Einheit</label>
+                    <select id="modal-list-item-unit" class="form-control">
+                        <option value="Stück">Stück</option>
+                        <option value="Packung">Packung</option>
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="Liter">Liter</option>
+                        <option value="Dose">Dose</option>
+                        <option value="Flasche">Flasche</option>
+                        <option value="Bund">Bund</option>
+                        <option value="Becher">Becher</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="modal-list-item-market">Markt</label>
-                <select id="modal-list-item-market" class="form-control">
-                    <option value="Rewe">Rewe</option>
-                    <option value="Globus">Globus</option>
-                    <option value="Übergreifend">Übergreifend</option>
-                </select>
+
+            <div class="shopping-add-grid" style="margin-top: 0.75rem; display: flex; gap: 0.75rem;">
+                <div class="form-group flex-1">
+                    <label for="modal-list-item-market">Markt</label>
+                    <select id="modal-list-item-market" class="form-control">
+                        <option value="Rewe">Rewe</option>
+                        <option value="Globus">Globus</option>
+                        <option value="Übergreifend">Übergreifend</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="modal-list-item-category">Kategorie</label>
+                    <select id="modal-list-item-category" class="form-control">
+                        <option value="Sonstiges">Sonstiges</option>
+                        <?php foreach ($uniqueCats ?? [] as $c): ?>
+                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="modal-list-item-category">Kategorie</label>
-                <select id="modal-list-item-category" class="form-control">
-                    <option value="Sonstiges">Sonstiges</option>
-                    <?php foreach ($uniqueCats ?? [] as $c): ?>
-                        <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
+
+            <div class="form-group" style="margin-top: 0.75rem;">
                 <label for="modal-list-item-note">Bemerkung</label>
-                <input type="text" id="modal-list-item-note" class="form-control">
+                <input type="text" id="modal-list-item-note" class="form-control" placeholder="z.B. laktosefrei, für Mama...">
             </div>
         </div>
         <div class="rule-modal-footer">

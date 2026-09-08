@@ -1816,6 +1816,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
 // --- Einkaufslisten-Eintrag bearbeiten Modal ---
 window.openEditItemModal = function (id, name, quantity, unit, market, category, note) {
     document.getElementById('modal-list-item-id').value = id;
@@ -1826,6 +1827,11 @@ window.openEditItemModal = function (id, name, quantity, unit, market, category,
     document.getElementById('modal-list-item-market').value = market;
     document.getElementById('modal-list-item-note').value = note || '';
 
+    // Init Slider
+    if (typeof window.initEditSlider === 'function') {
+        window.initEditSlider(unit);
+    }
+
     document.getElementById('list-item-edit-modal').classList.remove('hidden');
 };
 
@@ -1834,6 +1840,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelListItem = document.getElementById('btn-cancel-list-item');
     const btnSaveListItem = document.getElementById('btn-save-list-item');
     const listItemEditModal = document.getElementById('list-item-edit-modal');
+
+    // Edit Slider Logic
+    const editSlider = document.getElementById('edit-item-slider');
+    const editSliderDisplay = document.getElementById('edit-item-slider-display');
+    const editUnitDisplay = document.getElementById('edit-item-unit-display');
+    const editSliderTicks = document.getElementById('edit-item-slider-ticks');
+    const editModalQuantity = document.getElementById('modal-list-item-quantity');
+    const editModalUnit = document.getElementById('modal-list-item-unit');
+
+    let currentEditSliderValues = [];
+
+    window.initEditSlider = function(unit) {
+        if (!editSlider) return;
+        if (unit === 'g') {
+            currentEditSliderValues = [100, 200, 250, 400, 500, 750, 1000];
+        } else if (unit === 'kg') {
+            currentEditSliderValues = [0.5, 1, 1.5, 2, 2.5, 3, 5];
+        } else if (unit === 'Liter') {
+            currentEditSliderValues = [0.5, 1, 1.5, 2, 3, 5];
+        } else {
+            currentEditSliderValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        }
+
+        editSlider.max = currentEditSliderValues.length - 1;
+        
+        editSliderTicks.innerHTML = '';
+        currentEditSliderValues.forEach(val => {
+            const span = document.createElement('span');
+            span.textContent = val;
+            editSliderTicks.appendChild(span);
+        });
+
+        editUnitDisplay.textContent = unit;
+        syncEditSliderWithInput();
+    };
+
+    function syncEditSliderWithInput() {
+        if (!editSlider) return;
+        const val = parseFloat(editModalQuantity.value) || 1;
+        let closestIdx = 0;
+        let minDiff = Infinity;
+        currentEditSliderValues.forEach((v, idx) => {
+            const diff = Math.abs(v - val);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIdx = idx;
+            }
+        });
+        editSlider.value = closestIdx;
+        editSliderDisplay.textContent = currentEditSliderValues[closestIdx];
+    }
+
+    if (editSlider) {
+        editSlider.addEventListener('input', () => {
+            const val = currentEditSliderValues[editSlider.value];
+            editSliderDisplay.textContent = val;
+            editModalQuantity.value = val;
+        });
+
+        editModalQuantity.addEventListener('input', syncEditSliderWithInput);
+
+        editModalUnit.addEventListener('change', () => {
+            window.initEditSlider(editModalUnit.value);
+        });
+    }
 
     function closeListItemModal() {
         if (listItemEditModal) listItemEditModal.classList.add('hidden');

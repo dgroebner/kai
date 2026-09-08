@@ -252,7 +252,7 @@ class LearningService
                 arsort($data['categories']);
                 $dominant = array_key_first($data['categories']);
             }
-            $data['dominant_category'] = $dominant;
+            $data['dominant_category'] = \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($dominant) . ' ' . $dominant;
             
             // isNonProduct check (Rabatt, etc.) um sie im UI markieren zu können
             $data['is_likely_non_product'] = $this->isNonProduct($name);
