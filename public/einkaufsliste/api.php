@@ -385,47 +385,51 @@ try {
             $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
             $name = trim((string)($input['name'] ?? ''));
 
-            $market = trim((string)($input['preferred_market'] ?? 'Rewe'));
-            if (!in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
-                $market = 'Rewe';
-            }
-
-            $customLabel = isset($input['custom_label']) ? trim((string)$input['custom_label']) : null;
-            $isIgnored = !empty($input['is_ignored']) ? 1 : 0;
-            $category = trim((string)($input['default_category'] ?? 'Sonstiges'));
-            $unit = trim((string)($input['default_unit'] ?? 'Stück'));
-            $interval = isset($input['avg_interval_days']) && $input['avg_interval_days'] !== ''
-                ? max(0.5, (float)$input['avg_interval_days'])
-                : null;
-            $holidayFactor = isset($input['holiday_factor']) && $input['holiday_factor'] !== ''
-                ? max(0.5, min(5.0, (float)$input['holiday_factor']))
-                : 1.00;
-
             if ($id) {
-                // Build update data, include is_ignored only if present in request
-                $updateData = [
-                    'custom_label' => $customLabel,
-                    'preferred_market' => $market,
-                    'default_category' => $category,
-                    'default_unit' => $unit,
-                    'avg_interval_days' => $interval,
-                    'holiday_factor' => $holidayFactor,
-                ];
+                $updateData = [];
                 if ($name !== '') {
                     $updateData['name'] = $name;
                 }
-                if (array_key_exists('is_ignored', $input)) {
-                    $updateData['is_ignored'] = $isIgnored;
+                if (array_key_exists('custom_label', $input)) {
+                    $updateData['custom_label'] = trim((string)$input['custom_label']) ?: null;
                 }
+                if (array_key_exists('preferred_market', $input)) {
+                    $market = trim((string)$input['preferred_market']);
+                    $updateData['preferred_market'] = in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true) ? $market : 'Rewe';
+                }
+                if (array_key_exists('default_category', $input)) {
+                    $updateData['default_category'] = trim((string)$input['default_category']) ?: 'Sonstiges';
+                }
+                if (array_key_exists('default_unit', $input)) {
+                    $updateData['default_unit'] = trim((string)$input['default_unit']) ?: 'Stück';
+                }
+                if (array_key_exists('avg_interval_days', $input)) {
+                    $updateData['avg_interval_days'] = $input['avg_interval_days'] !== '' ? max(0.5, (float)$input['avg_interval_days']) : null;
+                }
+                if (array_key_exists('holiday_factor', $input)) {
+                    $updateData['holiday_factor'] = $input['holiday_factor'] !== '' ? max(0.5, min(5.0, (float)$input['holiday_factor'])) : 1.00;
+                }
+                if (array_key_exists('is_ignored', $input)) {
+                    $updateData['is_ignored'] = !empty($input['is_ignored']) ? 1 : 0;
+                }
+
                 $success = $productRepo->updateMaster($id, $updateData);
                 $productId = $id;
             } else {
                 if ($name === '') {
-                    Auth::sendJsonError(400, 'Artikelname darf nicht leer sein');
+                    Auth::sendJsonError(400, 'Name darf nicht leer sein');
                 }
+                $market = trim((string)($input['preferred_market'] ?? 'Rewe'));
+                $market = in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true) ? $market : 'Rewe';
+                $category = trim((string)($input['default_category'] ?? 'Sonstiges'));
+                $unit = trim((string)($input['default_unit'] ?? 'Stück'));
+                $interval = isset($input['avg_interval_days']) && $input['avg_interval_days'] !== '' ? max(0.5, (float)$input['avg_interval_days']) : null;
+                $holidayFactor = isset($input['holiday_factor']) && $input['holiday_factor'] !== '' ? max(0.5, min(5.0, (float)$input['holiday_factor'])) : 1.00;
+                $isIgnored = !empty($input['is_ignored']) ? 1 : 0;
+
                 $productId = $productRepo->saveOrUpdate([
                     'name' => $name,
-                    'custom_label' => $customLabel,
+                    'custom_label' => isset($input['custom_label']) ? trim((string)$input['custom_label']) : null,
                     'preferred_market' => $market,
                     'default_category' => $category,
                     'default_unit' => $unit,

@@ -101,8 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let matchedOption = null;
         if (dl) {
             const options = dl.querySelectorAll('option');
+            const searchName = name.toLowerCase();
             options.forEach(opt => {
-                if (opt.value === name) {
+                if (opt.value.toLowerCase() === searchName) {
                     matchedOption = opt;
                 }
             });
