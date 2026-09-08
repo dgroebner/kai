@@ -767,6 +767,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <option value="kg">kg</option>
                         <option value="g">g</option>
                         <option value="Liter">Liter</option>
+                        <option value="ml">ml</option>
                         <option value="Dose">Dose</option>
                         <option value="Flasche">Flasche</option>
                         <option value="Bund">Bund</option>
@@ -844,6 +845,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <option value="kg">kg</option>
                         <option value="g">g</option>
                         <option value="Liter">Liter</option>
+                        <option value="ml">ml</option>
                         <option value="Dose">Dose</option>
                         <option value="Flasche">Flasche</option>
                         <option value="Bund">Bund</option>
@@ -914,6 +916,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <option value="kg">kg</option>
                         <option value="g">g</option>
                         <option value="Liter">Liter</option>
+                        <option value="ml">ml</option>
                         <option value="Dose">Dose</option>
                         <option value="Flasche">Flasche</option>
                         <option value="Bund">Bund</option>

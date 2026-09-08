@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSliderValues = [0.5, 1, 1.5, 2, 2.5, 3, 5];
         } else if (unit === 'Liter') {
             currentSliderValues = [0.5, 1, 1.5, 2, 3, 5];
+        } else if (unit === 'ml') {
+            currentSliderValues = [100, 200, 250, 330, 400, 500, 750];
         } else {
             // Default (Stück, Packung, etc.)
             currentSliderValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -1971,6 +1973,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentEditSliderValues = [0.5, 1, 1.5, 2, 2.5, 3, 5];
         } else if (unit === 'Liter') {
             currentEditSliderValues = [0.5, 1, 1.5, 2, 3, 5];
+        } else if (unit === 'ml') {
+            currentEditSliderValues = [100, 200, 250, 330, 400, 500, 750];
         } else {
             currentEditSliderValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         }
