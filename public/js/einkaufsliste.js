@@ -815,7 +815,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await KaiHttp.postJson(API_URL, payload);
             if (res.success) {
                 showToast(res.message || 'Produkt gespeichert');
-                window.location.reload();
+                const row = document.querySelector(`#product-master-table tr[data-id="${id}"]`);
+                if (row) {
+                    const nameCell = row.querySelector('td[data-label="Artikel"] strong');
+                    if (nameCell) nameCell.textContent = name;
+                    
+                    const marketBadge = row.querySelector('td[data-label="Markt"] span');
+                    if (marketBadge) {
+                        marketBadge.textContent = market;
+                        marketBadge.className = 'badge badge-market ' + (market === 'Rewe' ? 'badge-rewe' : 'badge-globus');
+                    }
+                    
+                    const catCell = row.querySelector('td[data-label="Kategorie"]');
+                    if (catCell) {
+                        const icon = (window.CATEGORY_ICONS && window.CATEGORY_ICONS[category]) || '🛒';
+                        catCell.textContent = icon + ' ' + category;
+                    }
+                    
+                    row.classList.toggle('row-ignored', ignore === 1);
+                }
+                document.getElementById('product-edit-modal').classList.add('hidden');
             } else {
                 showToast(res.message || 'Fehler beim Speichern', true);
             }

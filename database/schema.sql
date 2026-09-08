@@ -317,6 +317,39 @@ CREATE TABLE IF NOT EXISTS `market_categories` (
     INDEX `idx_market_sort` (`market`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Initial-Gänge (Einheitlich für Rewe & Globus) eintragen, sofern die Tabelle leer ist
+INSERT IGNORE INTO `market_categories` (`market`, `category_name`, `sort_order`) VALUES
+('Rewe', 'Brot & Backwaren', 10),
+('Rewe', 'Obst & Gemüse', 20),
+('Rewe', 'Frischetheke (Fleisch & Wurst, Käse)', 30),
+('Rewe', 'Molkereiprodukte & Eier', 40),
+('Rewe', 'Gewürze, Öle & Fertiggerichte', 50),
+('Rewe', 'Müsli, Brotaufstriche & Kaffee/Tee', 60),
+('Rewe', 'Nudeln & Reis', 65),
+('Rewe', 'Konserven', 70),
+('Rewe', 'Süßwaren & Knabberartikel', 80),
+('Rewe', 'Drogerie', 90),
+('Rewe', 'Haushalt', 100),
+('Rewe', 'Getränke', 110),
+('Rewe', 'Spirituosen', 115),
+('Rewe', 'Tiefkühlkost', 120),
+('Rewe', 'Sonstiges', 130),
+('Globus', 'Brot & Backwaren', 10),
+('Globus', 'Obst & Gemüse', 20),
+('Globus', 'Frischetheke (Fleisch & Wurst, Käse)', 30),
+('Globus', 'Molkereiprodukte & Eier', 40),
+('Globus', 'Gewürze, Öle & Fertiggerichte', 50),
+('Globus', 'Müsli, Brotaufstriche & Kaffee/Tee', 60),
+('Globus', 'Nudeln & Reis', 65),
+('Globus', 'Konserven', 70),
+('Globus', 'Süßwaren & Knabberartikel', 80),
+('Globus', 'Drogerie', 90),
+('Globus', 'Haushalt', 100),
+('Globus', 'Getränke', 110),
+('Globus', 'Spirituosen', 115),
+('Globus', 'Tiefkühlkost', 120),
+('Globus', 'Sonstiges', 130);
+
 -- 2. Artikelstamm & Markt-Zuordnung (Lernendes System)
 CREATE TABLE IF NOT EXISTS `product_master` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
