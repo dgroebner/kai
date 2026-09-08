@@ -159,9 +159,9 @@ class ShoppingListRepository
     {
         $stmt = $this->pdo->prepare("
             INSERT INTO shopping_list_items
-                (product_id, name, quantity, unit, market, category, is_spontaneous, source, is_checked, created_at)
+                (product_id, name, quantity, unit, market, category, note, is_spontaneous, source, is_checked, created_at)
             VALUES
-                (:product_id, :name, :quantity, :unit, :market, :category, :is_spontaneous, :source, 0, NOW())
+                (:product_id, :name, :quantity, :unit, :market, :category, :note, :is_spontaneous, :source, 0, NOW())
         ");
 
         $stmt->execute([
@@ -171,6 +171,7 @@ class ShoppingListRepository
             ':unit' => !empty($data['unit']) ? trim($data['unit']) : 'Stück',
             ':market' => !empty($data['market']) ? trim($data['market']) : 'Rewe',
             ':category' => !empty($data['category']) ? trim($data['category']) : 'Sonstiges',
+            ':note' => !empty($data['note']) ? trim($data['note']) : null,
             ':is_spontaneous' => !empty($data['is_spontaneous']) ? 1 : 0,
             ':source' => $data['source'] ?? 'manual',
         ]);
@@ -205,6 +206,10 @@ class ShoppingListRepository
         if (isset($data['category'])) {
             $fields[] = "category = :category";
             $params[':category'] = trim((string)$data['category']);
+        }
+        if (array_key_exists('note', $data)) {
+            $fields[] = "note = :note";
+            $params[':note'] = !empty($data['note']) ? trim((string)$data['note']) : null;
         }
         if (isset($data['is_spontaneous'])) {
             $fields[] = "is_spontaneous = :is_spontaneous";

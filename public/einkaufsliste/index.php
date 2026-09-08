@@ -143,8 +143,15 @@ try {
                             </datalist>
                         </div>
 
+                        <div class="form-group flex-1" style="flex-basis: 100%;">
+                            <label>Menge schnell auswählen:</label>
+                            <div id="quantity-chips-container" class="period-switcher" style="justify-content: flex-start; overflow-x: auto; padding-bottom: 5px; gap: 5px;">
+                                <!-- Chips dynamically injected via JS -->
+                            </div>
+                        </div>
+
                         <div class="form-group flex-1">
-                            <label for="input-item-quantity">Menge</label>
+                            <label for="input-item-quantity">Menge (manuell)</label>
                             <input type="number" id="input-item-quantity" name="quantity" class="form-control" value="1" step="0.1" min="0.1">
                         </div>
 
@@ -188,6 +195,11 @@ try {
                                     <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+
+                        <div class="form-group flex-2">
+                            <label for="input-item-note">Bemerkung (optional)</label>
+                            <input type="text" id="input-item-note" name="note" class="form-control" placeholder='z.B. "lactosefrei", "für Mama"'>
                         </div>
                     </div>
 
@@ -249,12 +261,17 @@ try {
                                         <div class="shopping-item-check">
                                             <input type="checkbox" class="shopping-checkbox js-item-check" data-id="<?= (int)$item['id'] ?>" title="Als erledigt markieren">
                                         </div>
-                                        <div class="shopping-item-details">
+                                        <div class="shopping-item-details" style="cursor: pointer;" onclick="openEditItemModal(<?= (int)$item['id'] ?>, '<?= htmlspecialchars(addslashes($item['name']), ENT_QUOTES, 'UTF-8') ?>', <?= (float)$item['quantity'] ?>, '<?= htmlspecialchars(addslashes($item['unit'] ?? 'Stück'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['market'] ?? 'Rewe'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['category'] ?? 'Sonstiges'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['note'] ?? ''), ENT_QUOTES, 'UTF-8') ?>')">
                                             <span class="item-name"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
                                             <span class="item-quantity">
                                                 <?= (float)$item['quantity'] == (int)$item['quantity'] ? (int)$item['quantity'] : number_format((float)$item['quantity'], 1, ',', '') ?>
                                                 <?= htmlspecialchars($item['unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>
                                             </span>
+                                            <?php if (!empty($item['note'])): ?>
+                                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                                    <small><i><?= htmlspecialchars($item['note'], ENT_QUOTES, 'UTF-8') ?></i></small>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                         <div class="shopping-item-meta">
                                             <span class="badge badge-market <?= $item['market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
@@ -667,6 +684,59 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 
 <!-- Modal / Toast Alert Container -->
 <div id="shopping-toast" class="shopping-toast hidden"></div>
+
+<!-- Einkaufslisten-Eintrag bearbeiten Modal -->
+<div id="list-item-edit-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 450px;">
+        <div class="rule-modal-header">
+            <h3>Eintrag bearbeiten</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-list-item-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <input type="hidden" id="modal-list-item-id">
+            <input type="hidden" id="modal-list-item-category">
+            <div class="form-group">
+                <label for="modal-list-item-name">Artikelname</label>
+                <input type="text" id="modal-list-item-name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="modal-list-item-quantity">Menge</label>
+                <input type="number" id="modal-list-item-quantity" step="0.1" min="0.1" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="modal-list-item-unit">Einheit</label>
+                <select id="modal-list-item-unit" class="form-control">
+                    <option value="Stück">Stück</option>
+                    <option value="Packung">Packung</option>
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="Liter">Liter</option>
+                    <option value="Dose">Dose</option>
+                    <option value="Flasche">Flasche</option>
+                    <option value="Bund">Bund</option>
+                    <option value="Becher">Becher</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="modal-list-item-market">Markt</label>
+                <select id="modal-list-item-market" class="form-control">
+                    <option value="Rewe">Rewe</option>
+                    <option value="Globus">Globus</option>
+                    <option value="Übergreifend">Übergreifend</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="modal-list-item-note">Bemerkung</label>
+                <input type="text" id="modal-list-item-note" class="form-control">
+            </div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-primary" id="btn-save-list-item">Speichern</button>
+            <button type="button" class="btn btn-outline" id="btn-cancel-list-item">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
 <div id="product-edit-modal" class="rule-modal-overlay hidden">
     <div class="rule-modal-card" style="max-width: 450px;">
         <div class="rule-modal-header">

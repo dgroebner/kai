@@ -346,6 +346,7 @@ CREATE TABLE IF NOT EXISTS `shopping_list_items` (
     `unit` VARCHAR(50) NULL DEFAULT 'Stück',
     `market` VARCHAR(50) NOT NULL DEFAULT 'Rewe',
     `category` VARCHAR(100) NULL,
+    `note` VARCHAR(255) NULL,
     `is_spontaneous` TINYINT(1) NOT NULL DEFAULT 0,
     `source` ENUM('manual', 'suggestion', 'recipe', 'spontaneous') NOT NULL DEFAULT 'manual',
     `is_checked` TINYINT(1) NOT NULL DEFAULT 0,

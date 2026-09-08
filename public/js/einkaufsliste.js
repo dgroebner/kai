@@ -1,3 +1,45 @@
+// --- Menge schnell auswählen Chips ---
+const unitSelect = document.getElementById('input-item-unit');
+const quantityChipsContainer = document.getElementById('quantity-chips-container');
+const quantityInput = document.getElementById('input-item-quantity');
+
+function renderQuantityChips() {
+    if (!unitSelect || !quantityChipsContainer) return;
+    const unit = unitSelect.value;
+    let chips;
+
+    if (unit === 'g') {
+        chips = [100, 200, 250, 400, 500, 750, 1000];
+    } else if (unit === 'kg') {
+        chips = [0.5, 1, 1.5, 2, 2.5, 3, 5];
+    } else if (unit === 'Liter') {
+        chips = [0.5, 1, 1.5, 2, 3, 5];
+    } else {
+        // Default (Stück, Packung, Bund, etc.)
+        chips = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    }
+
+    quantityChipsContainer.innerHTML = '';
+    chips.forEach(val => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline';
+        btn.textContent = val;
+        btn.addEventListener('click', () => {
+            if (quantityInput) quantityInput.value = val;
+
+            // Highlight active chip
+            Array.from(quantityChipsContainer.children).forEach(c => c.classList.remove('btn-active-filter'));
+            btn.classList.add('btn-active-filter');
+        });
+        quantityChipsContainer.appendChild(btn);
+    });
+}
+
+if (unitSelect) {
+    unitSelect.addEventListener('change', renderQuantityChips);
+    renderQuantityChips();
+}
 /**
  * einkaufsliste.js - Interaktive Steuerung der intelligenten Einkaufsliste
  *
@@ -98,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (unitSelect && match.dataset.unit) {
                     unitSelect.value = match.dataset.unit;
+                    renderQuantityChips();
                 }
             }
         });
@@ -117,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const market = document.getElementById('input-item-market').value;
             const category = document.getElementById('input-item-category').value;
             const isSpontaneous = document.getElementById('input-is-spontaneous').checked ? 1 : 0;
+            const note = document.getElementById('input-item-note') ? document.getElementById('input-item-note').value.trim() : '';
 
             const payload = {
                 action: 'add_item',
@@ -125,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 unit,
                 market,
                 category,
+                note,
                 is_spontaneous: isSpontaneous
             };
 
@@ -138,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Formular zurücksetzen, Fokus auf Name
                     document.getElementById('input-item-name').value = '';
                     document.getElementById('input-item-quantity').value = '1';
+                    if (document.getElementById('input-item-note')) document.getElementById('input-item-note').value = '';
                     document.getElementById('input-is-spontaneous').checked = false;
                     document.getElementById('input-item-name').focus();
 
@@ -681,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const items = mappings.map(m => `
+        container.innerHTML = mappings.map(m => `
             <div class="mapping-list-item" style="display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--bg-surface-hover);">
                 <span style="font-size:0.9rem;">${KaiHtml.escape(m.ebon_name)}</span>
                 <button type="button"
@@ -691,8 +737,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         title="Zuordnung löschen">🗑️</button>
             </div>
         `).join('');
-
-        container.innerHTML = items;
     }
 
     // Mapping-Modal öffnen
@@ -939,16 +983,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.inboxModified = true;
                         showToast('Als neuen Artikel angelegt');
                         newBtn.closest('.inbox-item-card').remove();
-                        
+
                         if (res.new_product) {
                             const newOpt = document.createElement('option');
                             newOpt.value = res.new_product.id;
                             newOpt.textContent = res.new_product.name;
-                            
+
                             document.querySelectorAll('.js-inbox-target-select').forEach(select => {
                                 select.appendChild(newOpt.cloneNode(true));
                             });
-                            
+
                             productOptions += `<option value="${res.new_product.id}">${KaiHtml.escape(res.new_product.name)}</option>`;
                         }
                     } else {
@@ -1180,20 +1224,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const inboxListContainer = document.getElementById('inbox-list-container');
     const inboxEmptyState = document.getElementById('inbox-empty-state');
     const inboxLoading = document.getElementById('inbox-loading-indicator');
-    
-    let productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
+    Array.from(document.querySelectorAll('#bulk-target-select option'))
         .filter(opt => opt.value !== '')
         .map(opt => `<option value="${opt.value}">${KaiHtml.escape(opt.textContent)}</option>`)
         .join('');
 
     function loadInbox() {
         if (!inboxListContainer) return;
-        
+
         inboxLoading.classList.remove('hidden');
         inboxListContainer.classList.add('hidden');
         inboxEmptyState.classList.add('hidden');
-        
-        KaiHttp.postJson(API_URL, { action: 'get_inbox' })
+
+        KaiHttp.postJson(API_URL, {action: 'get_inbox'})
             .then(res => {
                 inboxLoading.classList.add('hidden');
                 if (res.success && res.items && res.items.length > 0) {
@@ -1226,14 +1269,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     inboxListContainer.innerHTML = html;
                     inboxListContainer.classList.remove('hidden');
-                    
+
                     const badge = tabBtnInbox.querySelector('.badge');
-                    if(badge) badge.textContent = res.items.length;
+                    if (badge) badge.textContent = res.items.length;
                     else tabBtnInbox.innerHTML = `📥 Unbekannte eBons <span class="badge badge-warning shopping-badge-counter">${res.items.length}</span>`;
                 } else {
                     inboxEmptyState.classList.remove('hidden');
                     const badge = tabBtnInbox.querySelector('.badge');
-                    if(badge) badge.remove();
+                    if (badge) badge.remove();
                 }
             })
             .catch(err => {
@@ -1245,7 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabBtnInbox) {
         tabBtnInbox.addEventListener('click', loadInbox);
     }
-    
+
     if (new URLSearchParams(window.location.search).get('tab') === 'inbox') {
         loadInbox();
     }
@@ -1255,10 +1298,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const select = e.target;
             const targetId = select.value;
             if (!targetId) return;
-            
+
             const ebonName = select.dataset.name;
             select.disabled = true;
-            
+
             try {
                 const res = await KaiHttp.postJson(API_URL, {
                     action: 'resolve_inbox',
@@ -1266,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ebon_name: ebonName,
                     target_id: targetId
                 });
-                
+
                 if (res.success) {
                     window.inboxModified = true;
                     showToast('Zuordnung gespeichert');
@@ -1306,12 +1349,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.inboxModified = true;
                     showToast('Als neuen Artikel angelegt');
                     newBtn.closest('.inbox-item-card').remove();
-                    
+
                     if (res.new_product) {
                         const newOpt = document.createElement('option');
                         newOpt.value = res.new_product.id;
                         newOpt.textContent = res.new_product.name;
-                        
+
                         document.querySelectorAll('.js-inbox-target-select').forEach(select => {
                             select.appendChild(newOpt.cloneNode(true));
                         });
@@ -1341,7 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!bulkActionBar) return;
         const checked = document.querySelectorAll('.js-merge-check:checked');
         const count = checked.length;
-        
+
         bulkSelectedCount.textContent = count;
         if (count > 0) {
             bulkActionBar.classList.remove('hidden');
@@ -1367,28 +1410,28 @@ document.addEventListener('DOMContentLoaded', () => {
         bulkTargetSelect.addEventListener('change', () => {
             btnExecuteBulkMerge.disabled = bulkTargetSelect.value === '';
         });
-        
+
         btnExecuteBulkMerge.addEventListener('click', async () => {
             const targetId = bulkTargetSelect.value;
             const sourceIds = Array.from(document.querySelectorAll('.js-merge-check:checked')).map(chk => chk.value);
-            
+
             if (!targetId || sourceIds.length === 0) return;
             if (sourceIds.includes(targetId)) {
                 showToast('Ziel-Artikel darf nicht in der Auswahl enthalten sein.', true);
                 return;
             }
             if (!confirm(`Möchtest du diese ${sourceIds.length} Artikel wirklich zusammenführen? Die Quellen werden danach gelöscht.`)) return;
-            
+
             btnExecuteBulkMerge.disabled = true;
             btnExecuteBulkMerge.innerHTML = 'Führe zusammen...';
-            
+
             try {
                 const res = await KaiHttp.postJson(API_URL, {
                     action: 'merge_products',
                     target_id: targetId,
                     source_ids: sourceIds
                 });
-                
+
                 if (res.success) {
                     showToast(res.message);
                     setTimeout(() => window.location.reload(), 800);
@@ -1426,7 +1469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             aiMergeModal.classList.remove('hidden');
         });
     }
-    
+
     if (btnCloseAiModal) btnCloseAiModal.addEventListener('click', closeAiModal);
     if (btnCancelAiModal) btnCancelAiModal.addEventListener('click', closeAiModal);
 
@@ -1436,15 +1479,15 @@ document.addEventListener('DOMContentLoaded', () => {
             aiLoading.classList.remove('hidden');
             aiResults.classList.add('hidden');
             aiEmpty.classList.add('hidden');
-            
+
             try {
-                const res = await KaiHttp.postJson(API_URL, { action: 'ai_suggest_merges' });
-                
+                const res = await KaiHttp.postJson(API_URL, {action: 'ai_suggest_merges'});
+
                 aiLoading.classList.add('hidden');
-                
+
                 if (res.success && res.clusters && res.clusters.length > 0) {
                     let html = '<h4 style="margin-bottom: 1rem;">Die KI schlägt folgende Zusammenführungen vor:</h4>';
-                    
+
                     res.clusters.forEach((cluster, idx) => {
                         html += `
                             <div class="ai-cluster-card" id="cluster-card-${idx}">
@@ -1463,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         `;
                     });
-                    
+
                     aiResults.innerHTML = html;
                     aiResults.classList.remove('hidden');
                 } else {
@@ -1482,18 +1525,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (acceptBtn) {
             acceptBtn.disabled = true;
             acceptBtn.innerHTML = '⏳ Arbeite...';
-            
+
             const targetName = acceptBtn.dataset.targetName;
             let sourceIds = [];
-            try { sourceIds = JSON.parse(acceptBtn.dataset.sources); } catch(err) {}
-            
+            try {
+                sourceIds = JSON.parse(acceptBtn.dataset.sources);
+            } catch (err) {
+            }
+
             if (sourceIds.length < 2) {
                 showToast('Ein Cluster braucht mindestens 2 Artikel.', true);
                 return;
             }
-            
+
             const targetId = sourceIds.shift();
-            
+
             try {
                 await KaiHttp.postJson(API_URL, {
                     action: 'save_product_master',
@@ -1501,13 +1547,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     custom_label: targetName,
                     is_ignored: 0
                 });
-                
+
                 const mergeRes = await KaiHttp.postJson(API_URL, {
                     action: 'merge_products',
                     target_id: targetId,
                     source_ids: sourceIds
                 });
-                
+
                 if (mergeRes.success) {
                     acceptBtn.closest('.ai-cluster-card').remove();
                     showToast('Cluster erfolgreich zusammengeführt');
@@ -1520,7 +1566,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 acceptBtn.innerHTML = 'Fehler';
             }
         }
-        
+
         const ignoreBtn = e.target.closest('.js-inbox-ignore-btn');
         if (ignoreBtn) {
             const ebonName = ignoreBtn.dataset.name;
@@ -1536,7 +1582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.success) {
                     showToast(res.message || 'Wird künftig ignoriert');
                     ignoreBtn.closest('.inbox-item-card').remove();
-                    
+
                     const currentCount = document.querySelectorAll('.inbox-item-card').length;
                     const badge = document.querySelector('#tab-btn-inbox .badge');
                     if (currentCount === 0) {
@@ -1559,11 +1605,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-
     // =========================================================
     // --- Inbox Assignment (Input + Save/Cancel) ---
     // =========================================================
-    
+
     // Show buttons on input or focus
     document.addEventListener('input', (e) => {
         if (e.target.classList.contains('js-inbox-assign-input')) {
@@ -1593,22 +1638,22 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.querySelector('.js-inbox-assign-cancel').classList.add('hidden');
             return;
         }
-        
+
         const saveBtn = e.target.closest('.js-inbox-assign-save');
         if (saveBtn) {
             const wrapper = saveBtn.closest('.inbox-assign-wrapper');
             const input = wrapper.querySelector('.js-inbox-assign-input');
             const ebonName = input.dataset.ebon;
             const targetName = input.value.trim();
-            
+
             if (targetName === '') {
                 showToast('Name darf nicht leer sein', true);
                 return;
             }
-            
+
             input.disabled = true;
             saveBtn.disabled = true;
-            
+
             try {
                 const res = await KaiHttp.postJson(API_URL, {
                     action: 'resolve_inbox',
@@ -1616,12 +1661,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     ebon_name: ebonName,
                     target_name: targetName
                 });
-                
+
                 if (res.success) {
                     window.inboxModified = true;
                     showToast(res.message || 'Erfolgreich zugeordnet');
                     wrapper.closest('.inbox-item-card').remove();
-                    
+
                     // Update datalist if a new product was created
                     if (res.new_product) {
                         const datalist = document.getElementById('known-products-datalist');
@@ -1653,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const term = e.target.value.toLowerCase().trim();
             const table = document.getElementById('product-master-table');
             if (!table) return;
-            
+
             const rows = table.querySelectorAll('tbody tr');
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
@@ -1663,6 +1708,65 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.style.display = 'none';
                 }
             });
+        });
+    }
+});
+
+
+// --- Einkaufslisten-Eintrag bearbeiten Modal ---
+window.openEditItemModal = function (id, name, quantity, unit, market, category, note) {
+    document.getElementById('modal-list-item-id').value = id;
+    document.getElementById('modal-list-item-name').value = name;
+    document.getElementById('modal-list-item-quantity').value = quantity;
+    document.getElementById('modal-list-item-unit').value = unit;
+    document.getElementById('modal-list-item-category').value = category;
+    document.getElementById('modal-list-item-market').value = market;
+    document.getElementById('modal-list-item-note').value = note || '';
+
+    document.getElementById('list-item-edit-modal').classList.remove('hidden');
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnCloseListItemModal = document.getElementById('btn-close-list-item-modal');
+    const btnCancelListItem = document.getElementById('btn-cancel-list-item');
+    const btnSaveListItem = document.getElementById('btn-save-list-item');
+    const listItemEditModal = document.getElementById('list-item-edit-modal');
+
+    function closeListItemModal() {
+        if (listItemEditModal) listItemEditModal.classList.add('hidden');
+    }
+
+    if (btnCloseListItemModal) btnCloseListItemModal.addEventListener('click', closeListItemModal);
+    if (btnCancelListItem) btnCancelListItem.addEventListener('click', closeListItemModal);
+
+    if (btnSaveListItem) {
+        btnSaveListItem.addEventListener('click', async () => {
+            const id = document.getElementById('modal-list-item-id').value;
+            const name = document.getElementById('modal-list-item-name').value.trim();
+            const quantity = parseFloat(document.getElementById('modal-list-item-quantity').value);
+            const unit = document.getElementById('modal-list-item-unit').value;
+            const market = document.getElementById('modal-list-item-market').value;
+            const category = document.getElementById('modal-list-item-category').value;
+            const note = document.getElementById('modal-list-item-note').value.trim();
+
+            const payload = {
+                action: 'edit_list_item',
+                id,
+                name,
+                quantity,
+                unit,
+                market,
+                category,
+                note
+            };
+
+            const res = await KaiHttp.postJson(API_URL, payload);
+            if (res.success) {
+                showToast(res.message || 'Eintrag aktualisiert');
+                window.location.reload();
+            } else {
+                showToast(res.message || 'Fehler beim Aktualisieren', true);
+            }
         });
     }
 });

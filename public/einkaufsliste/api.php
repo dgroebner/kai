@@ -70,6 +70,7 @@ try {
             $category = trim((string)($input['category'] ?? ''));
             $unit = trim((string)($input['unit'] ?? 'Stück'));
             $quantity = max(0.01, (float)($input['quantity'] ?? 1.00));
+            $note = trim((string)($input['note'] ?? ''));
             $isSpontaneous = !empty($input['is_spontaneous']) ? 1 : 0;
             $source = $isSpontaneous ? 'spontaneous' : 'manual';
 
@@ -107,6 +108,7 @@ try {
                 'unit' => $unit,
                 'market' => $market,
                 'category' => $category,
+                'note' => $note,
                 'is_spontaneous' => $isSpontaneous,
                 'source' => $source,
             ]);
@@ -118,6 +120,44 @@ try {
                 'counts' => $counts,
                 'message' => 'Artikel hinzugefügt',
             ]);
+            break;
+
+        // --- 1.b Artikel auf der Liste bearbeiten ---
+        case 'edit_list_item':
+            $id = (int)($input['id'] ?? 0);
+            if ($id <= 0) {
+                Auth::sendJsonError(400, 'Ungültige ID');
+            }
+            
+            $name = trim((string)($input['name'] ?? ''));
+            $quantity = max(0.01, (float)($input['quantity'] ?? 1.00));
+            $unit = trim((string)($input['unit'] ?? 'Stück'));
+            $market = trim((string)($input['market'] ?? 'Rewe'));
+            if (!in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
+                $market = 'Rewe';
+            }
+            $category = trim((string)($input['category'] ?? 'Sonstiges'));
+            $note = trim((string)($input['note'] ?? ''));
+
+            $updateData = [
+                'name' => $name,
+                'quantity' => $quantity,
+                'unit' => $unit,
+                'market' => $market,
+                'category' => $category,
+                'note' => $note
+            ];
+            
+            $success = $listRepo->updateItem($id, $updateData);
+            if ($success) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Artikel aktualisiert',
+                    'counts' => $listRepo->getItemCountsByMarket()
+                ]);
+            } else {
+                Auth::sendJsonError(500, 'Fehler beim Aktualisieren');
+            }
             break;
 
         // --- 2. Abhaken umschalten ---
