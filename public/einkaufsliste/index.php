@@ -64,8 +64,8 @@ try {
     <link rel="stylesheet" href="../css/style.css">
     <!-- FontAwesome oder eigene Icons knnten hier folgen -->
     <script>
-        const MARKET_CATEGORIES = <?= json_encode($categoriesGrouped ?? []) ?>;
-        const UNIQUE_CATS = <?= json_encode($uniqueCats ?? []) ?>;
+        window.MARKET_CATEGORIES = <?= json_encode($categoriesGrouped ?? []) ?>;
+        window.UNIQUE_CATS = <?= json_encode($uniqueCats ?? []) ?>;
     </script>
     <script src="../js/http.js" defer></script>
     <script src="../js/pwa-register.js" defer></script>
