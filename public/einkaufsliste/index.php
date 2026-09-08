@@ -66,7 +66,8 @@ try {
     <title>kai - Einkaufsliste</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <!-- FontAwesome oder eigene Icons knnten hier folgen -->
-    <meta name="market-categories" content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="market-categories"
+          content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="unique-cats" content="<?= htmlspecialchars(json_encode($uniqueCats ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <script src="../js/http.js" defer></script>
     <script src="../js/pwa-register.js" defer></script>
@@ -634,7 +635,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                                                                     title="Alle auswählen"></th>
                                 <th>Artikel</th>
                                 <th>Markt</th>
-                                <th>Kategorie</th>
+                                <th>Gang</th>
                                 <th>Intervall</th>
                                 <th>Ferien</th>
                                 <th>Gekauft</th>
@@ -929,7 +930,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <select id="modal-product-category" class="form-control">
                     <option value="Sonstiges">Sonstiges</option>
                     <?php foreach ($uniqueCats ?? [] as $c): ?>
-                        <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                        <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
