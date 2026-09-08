@@ -223,8 +223,9 @@ try {
                                             <?php if (($item['source'] ?? '') === 'recipe'): ?>
                                                 <span class="badge badge-info" title="Aus Rezept generiert">🧑‍🍳 Rezept</span>
                                             <?php elseif (($item['source'] ?? '') === 'suggestion'): ?>
-                                                <span class="badge badge-info" title="Aus automatischem Intervall vorgeschlagen">💡 Vorschlag</span>
+                                                <span class="badge badge-info" title="Aus automatischem Intervall vorgeschlagen">✨ Vorschlag</span>
                                             <?php endif; ?>
+                                            <button type="button" class="btn-icon" onclick="openEditItemModal(<?= (int)$item['id'] ?>, '<?= htmlspecialchars(addslashes($item['name']), ENT_QUOTES, 'UTF-8') ?>', <?= (float)$item['quantity'] ?>, '<?= htmlspecialchars(addslashes($item['unit'] ?? 'Stück'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['market'] ?? 'Rewe'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['category'] ?? 'Sonstiges'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['note'] ?? ''), ENT_QUOTES, 'UTF-8') ?>')" title="Bearbeiten">✏️</button>
                                             <button type="button" class="btn-icon js-delete-item-btn" data-id="<?= (int)$item['id'] ?>" title="Löschen">🗑️</button>
                                         </div>
                                     </div>
