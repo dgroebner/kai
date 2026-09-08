@@ -334,6 +334,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Artikel löschen ---
     document.addEventListener('click', async (e) => {
+        const editTrigger = e.target.closest('.js-edit-list-item-trigger');
+        if (editTrigger) {
+            const row = editTrigger.closest('.shopping-item-row');
+            if (row && typeof window.openEditItemModal === 'function') {
+                window.openEditItemModal(
+                    parseInt(row.dataset.id, 10),
+                    row.dataset.name,
+                    parseFloat(row.dataset.quantity),
+                    row.dataset.unit,
+                    row.dataset.market,
+                    row.dataset.category,
+                    row.dataset.note
+                );
+            }
+            return;
+        }
+
         const deleteBtn = e.target.closest('.js-delete-item-btn');
         if (deleteBtn) {
             const itemId = parseInt(deleteBtn.dataset.id, 10);

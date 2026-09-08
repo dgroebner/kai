@@ -189,19 +189,26 @@ try {
                         <div class="card shopping-aisle-group">
                             <div class="shopping-aisle-header">
                                 <h4 class="aisle-title">
-                                    <span class="aisle-badge">Gang <?= $group['order'] < 900 ? $group['order'] : '•' ?></span>
-                                    <?= htmlspecialchars($catName, ENT_QUOTES, 'UTF-8') ?>
+                                    <span class="aisle-badge">Gang <?= $group['order'] < 900 ? $group['order'] : '❓' ?></span>
+                                    <?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($catName) . ' ' . htmlspecialchars($catName, ENT_QUOTES, 'UTF-8') ?>
                                     <span class="text-muted">(<?= count($group['items']) ?>)</span>
                                 </h4>
                             </div>
 
                             <div class="shopping-items-list">
                                 <?php foreach ($group['items'] as $item): ?>
-                                    <div class="shopping-item-row" data-id="<?= (int)$item['id'] ?>" data-market="<?= htmlspecialchars($item['market'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <div class="shopping-item-row" 
+                                         data-id="<?= (int)$item['id'] ?>" 
+                                         data-market="<?= htmlspecialchars($item['market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?>"
+                                         data-name="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                         data-quantity="<?= (float)$item['quantity'] ?>"
+                                         data-unit="<?= htmlspecialchars($item['unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>"
+                                         data-category="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
+                                         data-note="<?= htmlspecialchars($item['note'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                                         <div class="shopping-item-check">
                                             <input type="checkbox" class="shopping-checkbox js-item-check" data-id="<?= (int)$item['id'] ?>" title="Als erledigt markieren">
                                         </div>
-                                        <div class="shopping-item-details" style="cursor: pointer;" onclick="openEditItemModal(<?= (int)$item['id'] ?>, '<?= htmlspecialchars(addslashes($item['name']), ENT_QUOTES, 'UTF-8') ?>', <?= (float)$item['quantity'] ?>, '<?= htmlspecialchars(addslashes($item['unit'] ?? 'Stück'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['market'] ?? 'Rewe'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['category'] ?? 'Sonstiges'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['note'] ?? ''), ENT_QUOTES, 'UTF-8') ?>')">
+                                        <div class="shopping-item-details js-edit-list-item-trigger" style="cursor: pointer;">
                                             <span class="item-name"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
                                             <span class="item-quantity">
                                                 <?= (float)$item['quantity'] == (int)$item['quantity'] ? (int)$item['quantity'] : number_format((float)$item['quantity'], 1, ',', '') ?>
@@ -225,7 +232,7 @@ try {
                                             <?php elseif (($item['source'] ?? '') === 'suggestion'): ?>
                                                 <span class="badge badge-info" title="Aus automatischem Intervall vorgeschlagen">✨ Vorschlag</span>
                                             <?php endif; ?>
-                                            <button type="button" class="btn-icon" onclick="openEditItemModal(<?= (int)$item['id'] ?>, '<?= htmlspecialchars(addslashes($item['name']), ENT_QUOTES, 'UTF-8') ?>', <?= (float)$item['quantity'] ?>, '<?= htmlspecialchars(addslashes($item['unit'] ?? 'Stück'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['market'] ?? 'Rewe'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['category'] ?? 'Sonstiges'), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars(addslashes($item['note'] ?? ''), ENT_QUOTES, 'UTF-8') ?>')" title="Bearbeiten">✏️</button>
+                                            <button type="button" class="btn-icon js-edit-list-item-trigger" title="Bearbeiten">✏️</button>
                                             <button type="button" class="btn-icon js-delete-item-btn" data-id="<?= (int)$item['id'] ?>" title="Löschen">🗑️</button>
                                         </div>
                                     </div>
@@ -679,7 +686,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <select id="modal-add-category" class="form-control">
                         <option value="Sonstiges">Sonstiges</option>
                         <?php foreach ($uniqueCats ?? [] as $c): ?>
-                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -705,7 +712,6 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         </div>
         <div class="rule-modal-body">
             <input type="hidden" id="modal-list-item-id">
-            <input type="hidden" id="modal-list-item-category">
             <div class="form-group">
                 <label for="modal-list-item-name">Artikelname</label>
                 <input type="text" id="modal-list-item-name" class="form-control">
@@ -734,6 +740,15 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <option value="Rewe">Rewe</option>
                     <option value="Globus">Globus</option>
                     <option value="Übergreifend">Übergreifend</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="modal-list-item-category">Kategorie</label>
+                <select id="modal-list-item-category" class="form-control">
+                    <option value="Sonstiges">Sonstiges</option>
+                    <?php foreach ($uniqueCats ?? [] as $c): ?>
+                        <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="form-group">
