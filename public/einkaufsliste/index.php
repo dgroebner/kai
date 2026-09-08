@@ -51,7 +51,7 @@ try {
     $suggestions = $suggestionService->generateSuggestions(3);
 
 } catch (Throwable $e) {
-    new Logger()->error('einkaufsliste/index.php: Fehler beim Laden der Daten.', ['error' => $e->getMessage()]);
+    (new Logger())->error('einkaufsliste/index.php: Fehler beim Laden der Daten.', ['error' => $e->getMessage()]);
     http_response_code(500);
     exit('Interner Fehler. Bitte versuche es später erneut.');
 }
@@ -59,12 +59,17 @@ try {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <title>Einkaufsliste - Kai</title>
-    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
+    <title>kai - Einkaufsliste</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- FontAwesome oder eigene Icons knnten hier folgen -->
+    <script>
+        const MARKET_CATEGORIES = <?= json_encode($categoriesGrouped ?? []) ?>;
+        const UNIQUE_CATS = <?= json_encode($uniqueCats ?? []) ?>;
+    </script>
+    <script src="../js/http.js" defer></script>
+    <script src="../js/pwa-register.js" defer></script>
+    <script src="../js/einkaufsliste.js?v=<?= APP_VERSION ?>" defer></script>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">

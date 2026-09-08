@@ -755,6 +755,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modal-product-id').value = product.id;
                 document.getElementById('modal-name').value = product.display_name ?? product.name ?? '';
                 document.getElementById('modal-product-market').value = product.preferred_market || 'Rewe';
+                
+                if (typeof window.updateCategoryDropdown === 'function') {
+                    window.updateCategoryDropdown('modal-product-market', 'modal-product-category');
+                }
                 document.getElementById('modal-product-unit').value = product.default_unit || 'Stück';
                 document.getElementById('modal-product-category').value = product.default_category || 'Sonstiges';
                 document.getElementById('modal-ignore-checkbox').checked = !!product.is_ignored;
@@ -1839,8 +1843,13 @@ window.openEditItemModal = function (id, name, quantity, unit, market, category,
     document.getElementById('modal-list-item-name').value = name;
     document.getElementById('modal-list-item-quantity').value = quantity;
     document.getElementById('modal-list-item-unit').value = unit;
-    document.getElementById('modal-list-item-category').value = category;
     document.getElementById('modal-list-item-market').value = market;
+
+    if (typeof window.updateCategoryDropdown === 'function') {
+        window.updateCategoryDropdown('modal-list-item-market', 'modal-list-item-category');
+    }
+    document.getElementById('modal-list-item-category').value = category || 'Sonstiges';
+
     document.getElementById('modal-list-item-note').value = note || '';
 
     // Init Slider
@@ -1856,6 +1865,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelListItem = document.getElementById('btn-cancel-list-item');
     const btnSaveListItem = document.getElementById('btn-save-list-item');
     const listItemEditModal = document.getElementById('list-item-edit-modal');
+
+    // Category dropdown filter logic
+    // Cache icons from the original DOM so we don't lose them
+    window.CATEGORY_ICONS = {};
+    document.querySelectorAll('#modal-add-category option').forEach(opt => {
+        if (opt.value !== 'Sonstiges') {
+            const text = opt.textContent.trim();
+            const iconMatch = text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base})\s+(.*)$/u);
+            if (iconMatch) {
+                window.CATEGORY_ICONS[opt.value] = iconMatch[1];
+            } else {
+                // Fallback for simple emojis or if regex misses
+                const firstChar = Array.from(text)[0];
+                window.CATEGORY_ICONS[opt.value] = firstChar;
+            }
+        }
+    });
+
+    window.updateCategoryDropdown = function(marketSelectId, categorySelectId) {
+        const marketSelect = document.getElementById(marketSelectId);
+        const categorySelect = document.getElementById(categorySelectId);
+        if (!marketSelect || !categorySelect) return;
+
+        const selectedMarket = marketSelect.value;
+        const currentCategory = categorySelect.value;
+
+        categorySelect.innerHTML = '<option value="Sonstiges">Sonstiges</option>';
+
+        let catsToShow = [];
+        if (selectedMarket === 'Übergreifend' || selectedMarket === 'all') {
+            catsToShow = window.UNIQUE_CATS || [];
+        } else {
+            const marketData = (window.MARKET_CATEGORIES && window.MARKET_CATEGORIES[selectedMarket]) || [];
+            catsToShow = marketData.map(c => c.category_name);
+        }
+
+        catsToShow.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            const icon = window.CATEGORY_ICONS[c] || '🛒';
+            opt.textContent = icon + ' ' + c;
+            categorySelect.appendChild(opt);
+        });
+
+        const exists = Array.from(categorySelect.options).some(opt => opt.value === currentCategory);
+        if (exists) {
+            categorySelect.value = currentCategory;
+        } else {
+            categorySelect.value = 'Sonstiges';
+        }
+    };
+
+    const attachCategoryFilter = (marketId, catId) => {
+        const marketEl = document.getElementById(marketId);
+        if (marketEl) {
+            marketEl.addEventListener('change', () => window.updateCategoryDropdown(marketId, catId));
+            window.updateCategoryDropdown(marketId, catId);
+        }
+    };
+
+    attachCategoryFilter('modal-add-market', 'modal-add-category');
+    attachCategoryFilter('modal-list-item-market', 'modal-list-item-category');
+    attachCategoryFilter('modal-product-market', 'modal-product-category');
 
     // Edit Slider Logic
     const editSlider = document.getElementById('edit-item-slider');
@@ -1950,7 +2022,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 note
             };
 
-            const res = await KaiHttp.postJson(API_URL, payload);
+            const res = await KaiHttp.postJson('api.php', payload);
             if (res.success) {
                 showToast(res.message || 'Eintrag aktualisiert');
                 window.location.reload();
