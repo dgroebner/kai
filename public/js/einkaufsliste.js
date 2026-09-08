@@ -1893,11 +1893,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         categorySelect.innerHTML = '<option value="Sonstiges">Sonstiges</option>';
 
+        const metaMarkets = document.querySelector('meta[name="market-categories"]');
+        const metaUnique = document.querySelector('meta[name="unique-cats"]');
+        const marketCategories = metaMarkets ? JSON.parse(metaMarkets.content) : {};
+        const uniqueCats = metaUnique ? JSON.parse(metaUnique.content) : [];
+
         let catsToShow = [];
         if (selectedMarket === 'Übergreifend' || selectedMarket === 'all') {
-            catsToShow = window.UNIQUE_CATS || [];
+            catsToShow = uniqueCats || [];
         } else {
-            const marketData = (window.MARKET_CATEGORIES && window.MARKET_CATEGORIES[selectedMarket]) || [];
+            const marketData = (marketCategories && marketCategories[selectedMarket]) || [];
             catsToShow = marketData.map(c => c.category_name);
         }
 

@@ -63,10 +63,8 @@ try {
     <title>kai - Einkaufsliste</title>
     <link rel="stylesheet" href="../css/style.css">
     <!-- FontAwesome oder eigene Icons knnten hier folgen -->
-    <script>
-        window.MARKET_CATEGORIES = <?= json_encode($categoriesGrouped ?? []) ?>;
-        window.UNIQUE_CATS = <?= json_encode($uniqueCats ?? []) ?>;
-    </script>
+    <meta name="market-categories" content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="unique-cats" content="<?= htmlspecialchars(json_encode($uniqueCats ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <script src="../js/http.js" defer></script>
     <script src="../js/pwa-register.js" defer></script>
     <script src="../js/einkaufsliste.js?v=<?= APP_VERSION ?>" defer></script>
