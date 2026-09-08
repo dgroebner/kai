@@ -724,8 +724,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             </div>
         </div>
         <div class="rule-modal-footer">
-            <button type="button" class="btn btn-primary" id="btn-start-ai-analysis">Analyse starten</button>
             <button type="button" class="btn btn-outline" id="btn-cancel-ai-modal">Schließen</button>
+            <button type="button" class="btn btn-primary" id="btn-start-ai-analysis">Analyse starten</button>
         </div>
     </div>
 </div>
@@ -879,8 +879,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             </div>
         </div>
         <div class="rule-modal-footer">
-            <button type="button" class="btn btn-primary" id="btn-save-list-item">Speichern</button>
             <button type="button" class="btn btn-outline" id="btn-cancel-list-item">Abbrechen</button>
+            <button type="button" class="btn btn-primary" id="btn-save-list-item">Speichern</button>
         </div>
     </div>
 </div>
@@ -935,8 +935,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             </div>
         </div>
         <div class="rule-modal-footer">
-            <button type="button" class="btn btn-primary" id="btn-save-product">Speichern</button>
             <button type="button" class="btn btn-outline" id="btn-cancel-product">Abbrechen</button>
+            <button type="button" class="btn btn-primary" id="btn-save-product">Speichern</button>
         </div>
     </div>
 </div>
