@@ -116,8 +116,14 @@ class LearningService
         foreach ($products as $normKey => $data) {
             $rawName = $data['canonical_name'];
 
-            // Bevorzugter Markt: Globus wenn Globus-Häufigkeit höher, sonst Standard Rewe
-            $preferredMarket = $data['stores']['Globus'] > $data['stores']['Rewe'] ? 'Globus' : 'Rewe';
+            // Bevorzugter Markt: Globus wenn Globus-Häufigkeit höher, Rewe wenn Rewe-Häufigkeit höher, sonst Übergreifend
+            if ($data['stores']['Globus'] > $data['stores']['Rewe']) {
+                $preferredMarket = 'Globus';
+            } elseif ($data['stores']['Rewe'] > $data['stores']['Globus']) {
+                $preferredMarket = 'Rewe';
+            } else {
+                $preferredMarket = 'Übergreifend';
+            }
 
             // Häufigste Kategorie ermitteln
             $dominantCategory = null;

@@ -31,6 +31,8 @@ class ShoppingListRepository
      */
     public function getItems(?string $market = null, bool $includeChecked = true): array
     {
+        $joinMarket = ($market !== null && $market !== '' && $market !== 'all') ? $market : 'Rewe';
+        
         $sql = "
             SELECT 
                 s.*,
@@ -39,15 +41,16 @@ class ShoppingListRepository
                 pm.last_purchased_at
             FROM shopping_list_items s
             LEFT JOIN market_categories mc 
-                ON s.market = mc.market AND s.category = mc.category_name
+                ON (mc.market = s.market OR (s.market = 'Übergreifend' AND mc.market = :join_market))
+                AND s.category = mc.category_name
             LEFT JOIN product_master pm 
                 ON s.product_id = pm.id
             WHERE 1=1
         ";
 
-        $params = [];
+        $params = [':join_market' => $joinMarket];
         if ($market !== null && $market !== '' && $market !== 'all') {
-            $sql .= " AND s.market = :market";
+            $sql .= " AND s.market IN (:market, 'Übergreifend')";
             $params[':market'] = $market;
         }
 
@@ -86,6 +89,7 @@ class ShoppingListRepository
             'all' => ['total' => 0, 'open' => 0, 'checked' => 0],
             'Rewe' => ['total' => 0, 'open' => 0, 'checked' => 0],
             'Globus' => ['total' => 0, 'open' => 0, 'checked' => 0],
+            'Übergreifend' => ['total' => 0, 'open' => 0, 'checked' => 0],
         ];
 
         foreach ($rows as $row) {
@@ -94,10 +98,31 @@ class ShoppingListRepository
             $checked = (int)$row['checked_count'];
             $total = (int)$row['total'];
 
-            $result[$m] = ['total' => $total, 'open' => $open, 'checked' => $checked];
+            if (!isset($result[$m])) {
+                $result[$m] = ['total' => 0, 'open' => 0, 'checked' => 0];
+            }
+            $result[$m]['total'] += $total;
+            $result[$m]['open'] += $open;
+            $result[$m]['checked'] += $checked;
+
             $result['all']['total'] += $total;
             $result['all']['open'] += $open;
             $result['all']['checked'] += $checked;
+        }
+
+        // Add 'Übergreifend' to specific markets so they show up in the tabs
+        if (isset($result['Übergreifend'])) {
+            $u_open = $result['Übergreifend']['open'];
+            $u_checked = $result['Übergreifend']['checked'];
+            $u_total = $result['Übergreifend']['total'];
+
+            $result['Rewe']['total'] += $u_total;
+            $result['Rewe']['open'] += $u_open;
+            $result['Rewe']['checked'] += $u_checked;
+
+            $result['Globus']['total'] += $u_total;
+            $result['Globus']['open'] += $u_open;
+            $result['Globus']['checked'] += $u_checked;
         }
 
         return $result;
@@ -260,7 +285,7 @@ class ShoppingListRepository
         $params = [];
 
         if ($market !== null && $market !== '' && $market !== 'all') {
-            $sql .= " AND market = :market";
+            $sql .= " AND market IN (:market, 'Übergreifend')";
             $params[':market'] = $market;
         }
 

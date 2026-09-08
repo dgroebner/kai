@@ -63,7 +63,7 @@ try {
             }
 
             $market = trim((string)($input['market'] ?? 'Rewe'));
-            if (!in_array($market, ['Rewe', 'Globus'], true)) {
+            if (!in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
                 $market = 'Rewe';
             }
 
@@ -324,7 +324,7 @@ try {
         // --- 11. Gang-Reihenfolge aktualisieren ---
         case 'update_aisle_order':
             $market = trim((string)($input['market'] ?? ''));
-            if (!in_array($market, ['Rewe', 'Globus'], true)) {
+            if (!in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
                 Auth::sendJsonError(400, 'Ungültiger Markt');
             }
 
@@ -346,7 +346,7 @@ try {
             $name = trim((string)($input['name'] ?? ''));
 
             $market = trim((string)($input['preferred_market'] ?? 'Rewe'));
-            if (!in_array($market, ['Rewe', 'Globus'], true)) {
+            if (!in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
                 $market = 'Rewe';
             }
 

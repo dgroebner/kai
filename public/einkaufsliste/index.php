@@ -168,6 +168,7 @@ try {
                             <select id="input-item-market" name="market" class="form-control">
                                 <option value="Rewe" <?= $activeMarket === 'Rewe' ? 'selected' : '' ?>>Rewe</option>
                                 <option value="Globus" <?= $activeMarket === 'Globus' ? 'selected' : '' ?>>Globus</option>
+                                <option value="Übergreifend" <?= $activeMarket === 'all' ? 'selected' : '' ?>>Übergreifend</option>
                             </select>
                         </div>
 
