@@ -754,6 +754,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const product = res.product;
                 document.getElementById('modal-product-id').value = product.id;
                 document.getElementById('modal-name').value = product.display_name ?? product.name ?? '';
+                document.getElementById('modal-product-market').value = product.preferred_market || 'Rewe';
+                document.getElementById('modal-product-unit').value = product.default_unit || 'Stück';
+                document.getElementById('modal-product-category').value = product.default_category || 'Sonstiges';
                 document.getElementById('modal-ignore-checkbox').checked = !!product.is_ignored;
                 document.getElementById('product-edit-modal').classList.remove('hidden');
             } else {
@@ -792,7 +795,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = document.getElementById('modal-product-id').value;
             const name = document.getElementById('modal-name').value.trim();
             const ignore = document.getElementById('modal-ignore-checkbox').checked ? 1 : 0;
-            const payload = {action: 'save_product_master', id, name: name, custom_label: '', is_ignored: ignore};
+            const market = document.getElementById('modal-product-market').value;
+            const unit = document.getElementById('modal-product-unit').value;
+            const category = document.getElementById('modal-product-category').value;
+            
+            const payload = {
+                action: 'save_product_master', 
+                id, 
+                name: name, 
+                preferred_market: market,
+                default_unit: unit,
+                default_category: category,
+                is_ignored: ignore
+            };
             const res = await KaiHttp.postJson(API_URL, payload);
             if (res.success) {
                 showToast(res.message || 'Produkt gespeichert');

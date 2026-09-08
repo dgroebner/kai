@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
+use Kai\Tools\Einkaufsliste\CategoryIconHelper;
 use Kai\Tools\Einkaufsliste\HolidayService;
 use Kai\Tools\Einkaufsliste\MarketCategoryRepository;
 use Kai\Tools\Einkaufsliste\ProductMasterRepository;
@@ -37,6 +38,15 @@ try {
     $categoriesGrouped = $categoryRepo->getAllCategoriesGrouped();
     $allProducts = $productRepo->getAll();
 
+    $uniqueCats = [];
+    foreach ($categoriesGrouped as $cats) {
+        foreach ($cats as $cat) {
+            $uniqueCats[$cat['category_name']] = true;
+        }
+    }
+    $uniqueCats = array_keys($uniqueCats);
+    sort($uniqueCats);
+
     // Vorschläge vorab berechnen
     $suggestions = $suggestionService->generateSuggestions(3);
 
@@ -61,7 +71,8 @@ try {
     <header class="page-header">
         <div>
             <h1>🛒 Intelligente Einkaufsliste</h1>
-            <p class="text-muted" style="margin-bottom: 0;">2-Märkte-Splitting (Rewe & Globus) mit Gang-Sortierung und lernendem Vorschlagsmodell</p>
+            <p class="text-muted" style="margin-bottom: 0;">2-Märkte-Splitting (Rewe & Globus) mit Gang-Sortierung und
+                lernendem Vorschlagsmodell</p>
         </div>
         <div class="page-header-actions">
             <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
@@ -79,22 +90,26 @@ try {
             🛒 Einkaufsliste
             <span class="badge badge-info shopping-badge-counter"><?= (int)$marketCounts['all']['open'] ?></span>
         </button>
-        <button type="button" class="btn <?= $activeTab === 'suggestions' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="suggestions">
+        <button type="button" class="btn <?= $activeTab === 'suggestions' ? '' : 'btn-outline' ?> js-tab-btn"
+                data-tab="suggestions">
             💡 Vorschläge
             <?php if (count($suggestions) > 0): ?>
                 <span class="badge badge-warning shopping-badge-counter"><?= count($suggestions) ?></span>
             <?php endif; ?>
         </button>
-        <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="recipe">
+        <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn"
+                data-tab="recipe">
             🧑‍🍳 Rezept & KI
         </button>
         <?php if (Auth::hasPermission('shopping_master')): ?>
-        <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="inbox" id="tab-btn-inbox">
-            📥 Unbekannte eBons
-        </button>
-        <button type="button" class="btn <?= $activeTab === 'aisles' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="aisles">
-            🏪 Gänge & Artikelstamm
-        </button>
+            <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn"
+                    data-tab="inbox" id="tab-btn-inbox">
+                📥 Unbekannte eBons
+            </button>
+            <button type="button" class="btn <?= $activeTab === 'aisles' ? '' : 'btn-outline' ?> js-tab-btn"
+                    data-tab="aisles">
+                🏪 Gänge & Artikelstamm
+            </button>
         <?php endif; ?>
     </div>
 
@@ -103,27 +118,6 @@ try {
         <!-- TAB 1: EINKAUFSLISTE                                           -->
         <!-- ============================================================== -->
         <section id="tab-list" class="shopping-tab-pane <?= $activeTab === 'list' ? '' : 'hidden' ?>">
-            
-            <!-- Markt-Filter Bar -->
-            <div class="card shopping-market-filter-card">
-                <div class="shopping-market-chips">
-                    <button type="button" class="btn btn-sm <?= $activeMarket === 'all' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter" data-market="all">
-                        Alle Märkte (<?= (int)$marketCounts['all']['open'] ?>)
-                    </button>
-                    <button type="button" class="btn btn-sm <?= $activeMarket === 'Rewe' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-rewe" data-market="Rewe">
-                        🔴 Rewe (<?= (int)$marketCounts['Rewe']['open'] ?>)
-                    </button>
-                    <button type="button" class="btn btn-sm <?= $activeMarket === 'Globus' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-globus" data-market="Globus">
-                        🟠 Globus (<?= (int)$marketCounts['Globus']['open'] ?>)
-                    </button>
-                </div>
-                
-                <?php if ((int)$marketCounts['all']['checked'] > 0): ?>
-                    <button type="button" class="btn btn-success js-complete-shopping-btn" data-market="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
-                        ✔️ Einkauf abschließen (<?= (int)($activeMarket === 'all' ? $marketCounts['all']['checked'] : $marketCounts[$activeMarket]['checked']) ?>)
-                    </button>
-                <?php endif; ?>
-            </div>
 
             <!-- Schnellerfassung neuer Artikel -->
             <section class="card shopping-quick-add-card">
@@ -132,27 +126,64 @@ try {
                     <div class="shopping-add-grid">
                         <div class="form-group flex-2" style="flex-basis: 100%;">
                             <label for="input-item-name" class="sr-only">Artikelname</label>
-                            <input type="text" id="input-item-name" name="name" class="form-control" list="known-products-datalist" placeholder="z.B. Bio-Milch, Butter, Kaffee..." required autocomplete="off" style="font-size: 1.1rem; padding: 0.75rem;">
+                            <input type="text" id="input-item-name" name="name" class="form-control"
+                                   list="known-products-datalist" placeholder="z.B. Bio-Milch, Butter, Kaffee..."
+                                   required autocomplete="off" style="font-size: 1.1rem; padding: 0.75rem;">
                             <datalist id="known-products-datalist">
-                                <?php foreach ($allProducts as $p): ?>
-                                    <option value="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>" 
-                                            data-market="<?= htmlspecialchars($p['preferred_market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?>"
-                                            data-category="<?= htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
-                                            data-unit="<?= htmlspecialchars($p['default_unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>">
-                                <?php endforeach; ?>
+                                <?php foreach ($allProducts
+
+                                as $p): ?>
+                                <option value="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                        data-market="<?= htmlspecialchars($p['preferred_market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?>"
+                                        data-category="<?= htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
+                                        data-unit="<?= htmlspecialchars($p['default_unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>">
+                                    <?php endforeach; ?>
                             </datalist>
                         </div>
                     </div>
 
-                    <div class="shopping-add-options" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="shopping-add-options"
+                         style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
                         <label style="cursor: pointer;">
                             <input type="checkbox" id="input-is-spontaneous" name="is_spontaneous" value="1">
                             ⚡ Spontaner Einkauf (akuter Bedarf)
                         </label>
-                        <button type="button" class="btn btn-primary" id="btn-quick-start-next">Details & Hinzufügen &rarr;</button>
+                        <button type="button" class="btn btn-primary" id="btn-quick-start-next">Details & Hinzufügen
+                            &rarr;
+                        </button>
                     </div>
                 </form>
             </section>
+
+            <!-- Markt-Filter Bar -->
+            <div class="card shopping-market-filter-card">
+                <div class="shopping-market-chips">
+                    <button type="button"
+                            class="btn btn-sm <?= $activeMarket === 'all' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter"
+                            data-market="all">
+                        Alle Märkte (<?= (int)$marketCounts['all']['open'] ?>)
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm <?= $activeMarket === 'Rewe' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-rewe"
+                            data-market="Rewe">
+                        🔴 Rewe (<?= (int)$marketCounts['Rewe']['open'] ?>)
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm <?= $activeMarket === 'Globus' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-globus"
+                            data-market="Globus">
+                        🟠 Globus (<?= (int)$marketCounts['Globus']['open'] ?>)
+                    </button>
+                </div>
+
+                <?php if ((int)$marketCounts['all']['checked'] > 0): ?>
+                    <button type="button" class="btn btn-success js-complete-shopping-btn"
+                            data-market="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
+                        ✔️ Einkauf abschließen
+                        (<?= (int)($activeMarket === 'all' ? $marketCounts['all']['checked'] : $marketCounts[$activeMarket]['checked']) ?>
+                        )
+                    </button>
+                <?php endif; ?>
+            </div>
 
             <!-- Offene Einkaufslisten-Elemente nach Gängen gruppiert -->
             <div id="shopping-items-container">
@@ -167,9 +198,9 @@ try {
                     $order = (int)($item['aisle_order'] ?? 999);
                     if (!isset($groupedOpen[$cat])) {
                         $groupedOpen[$cat] = [
-                            'name' => $cat,
-                            'order' => $order,
-                            'items' => []
+                                'name' => $cat,
+                                'order' => $order,
+                                'items' => []
                         ];
                     }
                     $groupedOpen[$cat]['items'][] = $item;
@@ -182,7 +213,9 @@ try {
                 <?php if (empty($openItems)): ?>
                     <div class="card text-center shopping-empty-state">
                         <p>🎉 Keine offenen Artikel für diesen Markt auf der Einkaufsliste!</p>
-                        <button type="button" class="btn btn-outline js-tab-btn" data-tab="suggestions">💡 Vorschläge prüfen</button>
+                        <button type="button" class="btn btn-outline js-tab-btn" data-tab="suggestions">💡 Vorschläge
+                            prüfen
+                        </button>
                     </div>
                 <?php else: ?>
                     <?php foreach ($groupedOpen as $catName => $group): ?>
@@ -190,15 +223,15 @@ try {
                             <div class="shopping-aisle-header">
                                 <h4 class="aisle-title">
                                     <span class="aisle-badge">Gang <?= $group['order'] < 900 ? $group['order'] : '❓' ?></span>
-                                    <?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($catName) . ' ' . htmlspecialchars($catName, ENT_QUOTES, 'UTF-8') ?>
+                                    <?= CategoryIconHelper::getIcon($catName) . ' ' . htmlspecialchars($catName, ENT_QUOTES, 'UTF-8') ?>
                                     <span class="text-muted">(<?= count($group['items']) ?>)</span>
                                 </h4>
                             </div>
 
                             <div class="shopping-items-list">
                                 <?php foreach ($group['items'] as $item): ?>
-                                    <div class="shopping-item-row" 
-                                         data-id="<?= (int)$item['id'] ?>" 
+                                    <div class="shopping-item-row"
+                                         data-id="<?= (int)$item['id'] ?>"
                                          data-market="<?= htmlspecialchars($item['market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?>"
                                          data-name="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>"
                                          data-quantity="<?= (float)$item['quantity'] ?>"
@@ -206,9 +239,11 @@ try {
                                          data-category="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
                                          data-note="<?= htmlspecialchars($item['note'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                                         <div class="shopping-item-check">
-                                            <input type="checkbox" class="shopping-checkbox js-item-check" data-id="<?= (int)$item['id'] ?>" title="Als erledigt markieren">
+                                            <input type="checkbox" class="shopping-checkbox js-item-check"
+                                                   data-id="<?= (int)$item['id'] ?>" title="Als erledigt markieren">
                                         </div>
-                                        <div class="shopping-item-details js-edit-list-item-trigger" style="cursor: pointer;">
+                                        <div class="shopping-item-details js-edit-list-item-trigger"
+                                             style="cursor: pointer;">
                                             <span class="item-name"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
                                             <span class="item-quantity">
                                                 <?= (float)$item['quantity'] == (int)$item['quantity'] ? (int)$item['quantity'] : number_format((float)$item['quantity'], 1, ',', '') ?>
@@ -225,15 +260,22 @@ try {
                                                 <?= htmlspecialchars($item['market'], ENT_QUOTES, 'UTF-8') ?>
                                             </span>
                                             <?php if (!empty($item['is_spontaneous'])): ?>
-                                                <span class="badge badge-warning" title="Spontankauf (verzerrt das Verbrauchsintervall nicht)">⚡ Spontan</span>
+                                                <span class="badge badge-warning"
+                                                      title="Spontankauf (verzerrt das Verbrauchsintervall nicht)">⚡ Spontan</span>
                                             <?php endif; ?>
                                             <?php if (($item['source'] ?? '') === 'recipe'): ?>
-                                                <span class="badge badge-info" title="Aus Rezept generiert">🧑‍🍳 Rezept</span>
+                                                <span class="badge badge-info"
+                                                      title="Aus Rezept generiert">🧑‍🍳 Rezept</span>
                                             <?php elseif (($item['source'] ?? '') === 'suggestion'): ?>
-                                                <span class="badge badge-info" title="Aus automatischem Intervall vorgeschlagen">✨ Vorschlag</span>
+                                                <span class="badge badge-info"
+                                                      title="Aus automatischem Intervall vorgeschlagen">✨ Vorschlag</span>
                                             <?php endif; ?>
-                                            <button type="button" class="btn-icon js-edit-list-item-trigger" title="Bearbeiten">✏️</button>
-                                            <button type="button" class="btn-icon js-delete-item-btn" data-id="<?= (int)$item['id'] ?>" title="Löschen">🗑️</button>
+                                            <button type="button" class="btn-icon js-edit-list-item-trigger"
+                                                    title="Bearbeiten">✏️
+                                            </button>
+                                            <button type="button" class="btn-icon js-delete-item-btn"
+                                                    data-id="<?= (int)$item['id'] ?>" title="Löschen">🗑️
+                                            </button>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -249,7 +291,8 @@ try {
                             <h4 class="aisle-title text-muted">
                                 ✔️ Erledigt (<?= count($checkedItems) ?>)
                             </h4>
-                            <button type="button" class="btn btn-sm btn-success js-complete-shopping-btn" data-market="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
+                            <button type="button" class="btn btn-sm btn-success js-complete-shopping-btn"
+                                    data-market="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
                                 Einkauf abschließen & löschen
                             </button>
                         </div>
@@ -257,7 +300,8 @@ try {
                             <?php foreach ($checkedItems as $item): ?>
                                 <div class="shopping-item-row is-checked" data-id="<?= (int)$item['id'] ?>">
                                     <div class="shopping-item-check">
-                                        <input type="checkbox" class="shopping-checkbox js-item-check" data-id="<?= (int)$item['id'] ?>" checked title="Wieder öffnen">
+                                        <input type="checkbox" class="shopping-checkbox js-item-check"
+                                               data-id="<?= (int)$item['id'] ?>" checked title="Wieder öffnen">
                                     </div>
                                     <div class="shopping-item-details">
                                         <span class="item-name strike-through"><?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -270,7 +314,9 @@ try {
                                         <span class="badge badge-market <?= $item['market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
                                             <?= htmlspecialchars($item['market'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
-                                        <button type="button" class="btn-icon js-delete-item-btn" data-id="<?= (int)$item['id'] ?>" title="Löschen">🗑️</button>
+                                        <button type="button" class="btn-icon js-delete-item-btn"
+                                                data-id="<?= (int)$item['id'] ?>" title="Löschen">🗑️
+                                        </button>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -289,7 +335,8 @@ try {
                     <div>
                         <h3>💡 Intelligente Vorschläge für den Wocheneinkauf</h3>
                         <p class="text-muted" style="margin-bottom: 0;">
-                            Ermittelt Artikel, deren Verbrauchsintervall fällig ist – angepasst an sächsische Schulferien und historische eBons.
+                            Ermittelt Artikel, deren Verbrauchsintervall fällig ist – angepasst an sächsische
+                            Schulferien und historische eBons.
                         </p>
                     </div>
                     <div class="shopping-header-actions">
@@ -297,7 +344,8 @@ try {
                             🔄 Aus eBons lernen
                         </button>
                         <?php if (!empty($suggestions)): ?>
-                            <button type="button" id="btn-accept-all-suggestions" class="btn btn-primary" data-ids="<?= htmlspecialchars(json_encode(array_column($suggestions, 'product_id')), ENT_QUOTES, 'UTF-8') ?>">
+                            <button type="button" id="btn-accept-all-suggestions" class="btn btn-primary"
+                                    data-ids="<?= htmlspecialchars(json_encode(array_column($suggestions, 'product_id')), ENT_QUOTES, 'UTF-8') ?>">
                                 Alle <?= count($suggestions) ?> übernehmen
                             </button>
                         <?php endif; ?>
@@ -307,8 +355,11 @@ try {
                 <div id="suggestions-list-container" style="margin-top: 1.5rem;">
                     <?php if (empty($suggestions)): ?>
                         <div class="text-center shopping-empty-state">
-                            <p>Keine fälligen Artikel gefunden. Entweder stehen alle Artikel bereits auf der Liste oder es liegen noch nicht genügend eBons vor.</p>
-                            <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt historische eBons analysieren</button>
+                            <p>Keine fälligen Artikel gefunden. Entweder stehen alle Artikel bereits auf der Liste oder
+                                es liegen noch nicht genügend eBons vor.</p>
+                            <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt historische
+                                eBons analysieren
+                            </button>
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
@@ -330,7 +381,9 @@ try {
                                         <td data-label="Artikel">
                                             <strong><?= htmlspecialchars($sug['name'], ENT_QUOTES, 'UTF-8') ?></strong>
                                             <?php if ($sug['holiday_adapted']): ?>
-                                                <div class="badge badge-warning" style="font-size: 0.75rem;">🏖️ Ferienfaktor</div>
+                                                <div class="badge badge-warning" style="font-size: 0.75rem;">🏖️
+                                                    Ferienfaktor
+                                                </div>
                                             <?php endif; ?>
                                         </td>
                                         <td data-label="Markt">
@@ -341,21 +394,25 @@ try {
                                         <td data-label="Kategorie"><?= htmlspecialchars($sug['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
                                         <td data-label="Letzter Kauf">
                                             vor <?= (int)$sug['days_since_last'] ?> Tagen
-                                            <div class="text-muted" style="font-size: 0.8rem;"><?= date('d.m.Y', strtotime($sug['last_purchased_at'])) ?></div>
+                                            <div class="text-muted"
+                                                 style="font-size: 0.8rem;"><?= date('d.m.Y', strtotime($sug['last_purchased_at'])) ?></div>
                                         </td>
                                         <td data-label="Intervall">
-                                            ca. alle <?= number_format((float)$sug['effective_interval'], 1, ',', '') ?> Tage
+                                            ca. alle <?= number_format((float)$sug['effective_interval'], 1, ',', '') ?>
+                                            Tage
                                         </td>
                                         <td data-label="Dringlichkeit">
                                             <div class="urgency-bar-container">
-                                                <div class="urgency-bar <?= $sug['is_overdue'] ? 'urgency-overdue' : '' ?>" style="width: <?= min(100, $sug['urgency_percent']) ?>%;"></div>
+                                                <div class="urgency-bar <?= $sug['is_overdue'] ? 'urgency-overdue' : '' ?>"
+                                                     style="width: <?= min(100, $sug['urgency_percent']) ?>%;"></div>
                                             </div>
                                             <span class="text-muted" style="font-size: 0.8rem;">
                                                 <?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)' ?>
                                             </span>
                                         </td>
                                         <td data-label="Aktion" class="text-right">
-                                            <button type="button" class="btn btn-sm btn-primary js-accept-single-suggestion" 
+                                            <button type="button"
+                                                    class="btn btn-sm btn-primary js-accept-single-suggestion"
                                                     data-id="<?= (int)$sug['product_id'] ?>"
                                                     data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>">
                                                 + Übernehmen
@@ -379,7 +436,8 @@ try {
                 <h3>🧑‍🍳 Rezept- & Freitext-Assistent (Google Gemini)</h3>
                 <p class="text-muted">
                     Füge hier ein Kochrezept, eine unformatierte Zutatenliste oder eine formlose Einkaufsnotiz ein.
-                    Die KI erkennt alle Zutaten, ermittelt Mengen/Einheiten und ordnet sie automatisch nach Rewe bzw. Globus und den korrekten Gängen zu.
+                    Die KI erkennt alle Zutaten, ermittelt Mengen/Einheiten und ordnet sie automatisch nach Rewe bzw.
+                    Globus und den korrekten Gängen zu.
                 </p>
 
                 <form id="form-recipe-ai" class="recipe-form">
@@ -393,20 +451,25 @@ try {
 Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     </div>
                     <div style="display: flex; gap: 1rem; align-items: center; justify-content: flex-end;">
-                        <span id="recipe-loading-indicator" class="hidden text-muted">⏳ Gemini analysiert Rezept...</span>
-                        <button type="submit" id="btn-parse-recipe" class="btn btn-primary">🤖 Rezept analysieren</button>
+                        <span id="recipe-loading-indicator"
+                              class="hidden text-muted">⏳ Gemini analysiert Rezept...</span>
+                        <button type="submit" id="btn-parse-recipe" class="btn btn-primary">🤖 Rezept analysieren
+                        </button>
                     </div>
                 </form>
 
                 <!-- Container für die KI-Ergebnisse mit Checkboxen vor der Übernahme -->
-                <div id="recipe-preview-container" class="hidden" style="margin-top: 1.5rem; border-top: 1px solid var(--bg-surface-hover); padding-top: 1.5rem;">
+                <div id="recipe-preview-container" class="hidden"
+                     style="margin-top: 1.5rem; border-top: 1px solid var(--bg-surface-hover); padding-top: 1.5rem;">
                     <h4>Gefundene Zutaten & Zuordnungen:</h4>
-                    <p class="text-muted" style="font-size: 0.9rem;">Prüfe die Zuordnung vor dem Hinzufügen. Du kannst Markt und Menge noch anpassen:</p>
+                    <p class="text-muted" style="font-size: 0.9rem;">Prüfe die Zuordnung vor dem Hinzufügen. Du kannst
+                        Markt und Menge noch anpassen:</p>
                     <div class="table-responsive">
                         <table class="data-table stack-table table-compact" id="recipe-preview-table">
                             <thead>
                             <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="check-all-recipe-items" checked></th>
+                                <th style="width: 40px;"><input type="checkbox" id="check-all-recipe-items" checked>
+                                </th>
                                 <th>Artikel</th>
                                 <th>Menge</th>
                                 <th>Einheit</th>
@@ -419,7 +482,9 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         </table>
                     </div>
                     <div style="margin-top: 1rem; text-align: right;">
-                        <button type="button" id="btn-save-recipe-items" class="btn btn-success">✔️ Ausgewählte Artikel zur Einkaufsliste hinzufügen</button>
+                        <button type="button" id="btn-save-recipe-items" class="btn btn-success">✔️ Ausgewählte Artikel
+                            zur Einkaufsliste hinzufügen
+                        </button>
                     </div>
                 </div>
             </div>
@@ -433,7 +498,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <h3>📥 Unbekannte eBons (Inbox)</h3>
                 <p class="text-muted">
                     Hier landen Artikel aus Kassenbons, die das System noch nicht kennt.
-                    Ordne sie bestehenden Kai-Artikeln zu oder lege sie als neue Artikel an. 
+                    Ordne sie bestehenden Kai-Artikeln zu oder lege sie als neue Artikel an.
                     Damit bleibt dein Artikelstamm sauber.
                 </p>
 
@@ -444,7 +509,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <div id="inbox-list-container" class="inbox-list hidden">
                     <!-- Wird per JS befüllt -->
                 </div>
-                
+
                 <div id="inbox-empty-state" class="hidden text-center" style="padding: 3rem 1rem;">
                     <span style="font-size: 3rem;">🎉</span>
                     <h4>Alles aufgeräumt!</h4>
@@ -457,33 +522,41 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         <!-- TAB 5: GÄNGE & ARTIKELSTAMM                                    -->
         <!-- ============================================================== -->
         <section id="tab-aisles" class="shopping-tab-pane <?= $activeTab === 'aisles' ? '' : 'hidden' ?>">
-            
+
             <!-- Gang-Reihenfolge Konfiguration -->
             <div class="card">
                 <h3>🏪 Gang-Reihenfolge der Märkte konfigurieren</h3>
                 <p class="text-muted">
-                    Bestimme die exakte Reihenfolge der Gänge und Regale für deinen Stamm-Rewe und Globus, um den Gang durch den Markt zu optimieren.
+                    Bestimme die exakte Reihenfolge der Gänge und Regale für deinen Stamm-Rewe und Globus, um den Gang
+                    durch den Markt zu optimieren.
                 </p>
 
                 <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1rem;">
-                    <button type="button" class="btn btn-sm js-aisle-market-toggle" data-market="Rewe">🔴 Rewe Gänge</button>
-                    <button type="button" class="btn btn-sm btn-outline js-aisle-market-toggle" data-market="Globus">🟠 Globus Gänge</button>
+                    <button type="button" class="btn btn-sm js-aisle-market-toggle" data-market="Rewe">🔴 Rewe Gänge
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline js-aisle-market-toggle" data-market="Globus">🟠
+                        Globus Gänge
+                    </button>
                 </div>
 
                 <div id="aisle-list-rewe" class="aisle-management-box">
                     <ul class="aisle-sortable-list" data-market="Rewe">
                         <?php foreach ($categoriesGrouped['Rewe'] ?? [] as $cat): ?>
-                            <li class="aisle-sortable-item" data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
+                            <li class="aisle-sortable-item"
+                                data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="aisle-handle">☰</span>
-                                <span class="aisle-name"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="aisle-name"><?= CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <div class="aisle-item-actions">
-                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️</button>
-                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️</button>
+                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️
+                                    </button>
+                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️
+                                    </button>
                                 </div>
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Rewe" style="margin-top: 1rem;">
+                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Rewe"
+                            style="margin-top: 1rem;">
                         💾 Gang-Reihenfolge für Rewe speichern
                     </button>
                 </div>
@@ -491,17 +564,21 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <div id="aisle-list-globus" class="aisle-management-box hidden">
                     <ul class="aisle-sortable-list" data-market="Globus">
                         <?php foreach ($categoriesGrouped['Globus'] ?? [] as $cat): ?>
-                            <li class="aisle-sortable-item" data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
+                            <li class="aisle-sortable-item"
+                                data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="aisle-handle">☰</span>
-                                <span class="aisle-name"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="aisle-name"><?= CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <div class="aisle-item-actions">
-                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️</button>
-                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️</button>
+                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️
+                                    </button>
+                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️
+                                    </button>
                                 </div>
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Globus" style="margin-top: 1rem;">
+                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Globus"
+                            style="margin-top: 1rem;">
                         💾 Gang-Reihenfolge für Globus speichern
                     </button>
                 </div>
@@ -515,83 +592,102 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <p class="text-muted" style="margin-bottom:0;">
                             Hier verwaltest du deine sauberen Kai-Artikel.
                         </p>
-                </div>
-                
-                <!-- Bulk Action Bar -->
-                <div id="bulk-action-bar" class="bulk-action-bar hidden" style="margin-top: 1.5rem;">
-                    <div>
-                        <span id="bulk-selected-count">0</span> Artikel markiert
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <span>Zusammenführen in:</span>
-                        <select id="bulk-target-select" class="form-control" style="width: auto; min-width: 200px;">
-                            <option value="">-- Ziel-Artikel wählen --</option>
-                            <?php foreach ($allProducts as $p): ?>
-                                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="button" class="btn btn-primary" id="btn-execute-bulk-merge" disabled>Zusammenführen</button>
+
+                    <!-- Bulk Action Bar -->
+                    <div id="bulk-action-bar" class="bulk-action-bar hidden" style="margin-top: 1.5rem;">
+                        <div>
+                            <span id="bulk-selected-count">0</span> Artikel markiert
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <span>Zusammenführen in:</span>
+                            <select id="bulk-target-select" class="form-control" style="width: auto; min-width: 200px;">
+                                <option value="">-- Ziel-Artikel wählen --</option>
+                                <?php foreach ($allProducts as $p): ?>
+                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" class="btn btn-primary" id="btn-execute-bulk-merge" disabled>
+                                Zusammenführen
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Schnellfilter -->
-                <div style="margin-top: 1rem;">
-                    <input type="text" id="product-master-filter" class="form-control" placeholder="🔍 Artikel filtern..." style="width: 100%; max-width: 300px;">
-                </div>
+                    <!-- Schnellfilter -->
+                    <div style="margin-top: 1rem;">
+                        <input type="text" id="product-master-filter" class="form-control"
+                               placeholder="🔍 Artikel filtern..." style="width: 100%; max-width: 300px;">
+                    </div>
 
-                <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
-                    <table class="data-table stack-table table-compact" id="product-master-table">
-                        <thead>
-                        <tr>
-                            <th style="width: 30px; padding-right: 5px;"><input type="checkbox" id="check-all-products" title="Alle auswählen"></th>
-                            <th>Artikel</th>
-                            <th>Markt</th>
-                            <th>Kategorie</th>
-                            <th>Intervall</th>
-                            <th>Ferien</th>
-                            <th>Gekauft</th>
-                            <th class="text-right">Aktion</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php if (empty($allProducts)): ?>
-                            <tr><td colspan="8" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze „Aus eBons lernen" im Tab Vorschläge.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($allProducts as $p): ?>
-                                <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
-                                    <td data-label="Auswahl" style="padding-right: 5px;">
-                                        <input type="checkbox" class="merge-checkbox js-merge-check" value="<?= $p['id'] ?>">
+                    <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
+                        <table class="data-table stack-table table-compact" id="product-master-table">
+                            <thead>
+                            <tr>
+                                <th style="width: 30px; padding-right: 5px;"><input type="checkbox"
+                                                                                    id="check-all-products"
+                                                                                    title="Alle auswählen"></th>
+                                <th>Artikel</th>
+                                <th>Markt</th>
+                                <th>Kategorie</th>
+                                <th>Intervall</th>
+                                <th>Ferien</th>
+                                <th>Gekauft</th>
+                                <th class="text-right">Aktion</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php if (empty($allProducts)): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze
+                                        „Aus eBons lernen" im Tab Vorschläge.
                                     </td>
-                                    <td data-label="Artikel"><strong><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></strong></td>
-                                    <td data-label="Markt">
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($allProducts as $p): ?>
+                                    <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
+                                        <td data-label="Auswahl" style="padding-right: 5px;">
+                                            <input type="checkbox" class="merge-checkbox js-merge-check"
+                                                   value="<?= $p['id'] ?>">
+                                        </td>
+                                        <td data-label="Artikel">
+                                            <strong><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                        </td>
+                                        <td data-label="Markt">
                                         <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
                                             <?= htmlspecialchars($p['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
-                                    </td>
-                                    <td data-label="Kategorie"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($p['default_category'] ?? 'Sonstiges') . ' ' . htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
-                                    <td data-label="Intervall">
-                                        <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
-                                    </td>
-                                    <td data-label="Ferien">
-                                        <?= (float)$p['holiday_factor'] > 1.0 ? '⚡ ' . (float)$p['holiday_factor'] . 'x' : '1.0x' ?>
-                                    </td>
-                                    <td data-label="Gekauft">
-                                        <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
-                                    </td>
-                                    <td class="text-right" style="white-space:nowrap;">
-                                        <button class="btn-icon js-mapping-btn" data-id="<?= $p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>" title="eBon-Zuordnungen verwalten">🔗</button>
-                                        <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>" title="Editieren">✏️</button>
-                                        <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>" data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>" title="Ignorieren">
-                                            <?= $p['is_ignored'] ? '🚫' : '👁️' ?>
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
+                                        </td>
+                                        <td data-label="Kategorie"><?= CategoryIconHelper::getIcon($p['default_category'] ?? 'Sonstiges') . ' ' . htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td data-label="Intervall">
+                                            <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
+                                        </td>
+                                        <td data-label="Ferien">
+                                            <?= (float)$p['holiday_factor'] > 1.0 ? '⚡ ' . (float)$p['holiday_factor'] . 'x' : '1.0x' ?>
+                                        </td>
+                                        <td data-label="Gekauft">
+                                            <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
+                                        </td>
+                                        <td class="text-right" style="white-space:nowrap;">
+                                            <button class="btn-icon js-mapping-btn" data-id="<?= $p['id'] ?>"
+                                                    data-name="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                    title="eBon-Zuordnungen verwalten">🔗
+                                            </button>
+                                            <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>"
+                                                    title="Editieren">✏️
+                                            </button>
+                                            <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>"
+                                                    data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>"
+                                                    title="Ignorieren">
+                                                <?= $p['is_ignored'] ? '🚫' : '👁️' ?>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
         </section>
     </main>
 </div>
@@ -607,9 +703,10 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         </div>
         <div class="rule-modal-body">
             <p class="text-muted" style="font-size: 0.9rem;">
-                Die KI analysiert deinen gesamten Artikelstamm und sucht nach ähnlichen Namen, die vermutlich dasselbe Produkt meinen.
+                Die KI analysiert deinen gesamten Artikelstamm und sucht nach ähnlichen Namen, die vermutlich dasselbe
+                Produkt meinen.
             </p>
-            
+
             <div id="ai-loading-indicator" class="text-center hidden" style="padding: 2rem;">
                 <span class="spinner"></span> Analysiere Artikelstamm (das kann ein paar Sekunden dauern)...
             </div>
@@ -617,7 +714,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             <div id="ai-results-container" class="hidden">
                 <!-- Wird per JS gefüllt -->
             </div>
-            
+
             <div id="ai-empty-state" class="text-center hidden" style="padding: 2rem;">
                 <span style="font-size: 2rem;">👍</span>
                 <p>Die KI hat keine offensichtlichen Duplikate mehr gefunden.</p>
@@ -642,11 +739,14 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         </div>
         <div class="rule-modal-body">
             <h4 id="quick-add-display-name" style="margin-bottom: 1rem; color: var(--primary-color);"></h4>
-            
+
             <div class="form-group mb-2">
-                <label>Menge: <span id="quick-add-slider-display" style="font-weight:bold;">1</span> <span id="quick-add-unit-display"></span></label>
-                <input type="range" id="quick-add-slider" class="form-control" style="margin: 10px 0;" min="0" max="9" step="1" value="0">
-                <div id="quick-add-slider-ticks" style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+                <label>Menge: <span id="quick-add-slider-display" style="font-weight:bold;">1</span> <span
+                            id="quick-add-unit-display"></span></label>
+                <input type="range" id="quick-add-slider" class="form-control" style="margin: 10px 0;" min="0" max="9"
+                       step="1" value="0">
+                <div id="quick-add-slider-ticks"
+                     style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
                     <!-- Ticks dynamically injected via JS -->
                 </div>
             </div>
@@ -686,7 +786,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <select id="modal-add-category" class="form-control">
                         <option value="Sonstiges">Sonstiges</option>
                         <?php foreach ($uniqueCats ?? [] as $c): ?>
-                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -694,7 +794,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 
             <div class="form-group" style="margin-top: 0.75rem;">
                 <label for="modal-add-note">Bemerkung (optional)</label>
-                <input type="text" id="modal-add-note" class="form-control" placeholder='z.B. "lactosefrei", "für Mama"'>
+                <input type="text" id="modal-add-note" class="form-control"
+                       placeholder='z.B. "lactosefrei", "für Mama"'>
             </div>
         </div>
         <div class="rule-modal-footer">
@@ -717,9 +818,12 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <input type="text" id="modal-list-item-name" class="form-control">
             </div>
             <div class="form-group mb-2">
-                <label>Menge: <span id="edit-item-slider-display" style="font-weight:bold;">1</span> <span id="edit-item-unit-display"></span></label>
-                <input type="range" id="edit-item-slider" class="form-control" style="margin: 10px 0;" min="0" max="9" step="1" value="0">
-                <div id="edit-item-slider-ticks" style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+                <label>Menge: <span id="edit-item-slider-display" style="font-weight:bold;">1</span> <span
+                            id="edit-item-unit-display"></span></label>
+                <input type="range" id="edit-item-slider" class="form-control" style="margin: 10px 0;" min="0" max="9"
+                       step="1" value="0">
+                <div id="edit-item-slider-ticks"
+                     style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
                     <!-- Ticks dynamically injected via JS -->
                 </div>
             </div>
@@ -759,7 +863,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <select id="modal-list-item-category" class="form-control">
                         <option value="Sonstiges">Sonstiges</option>
                         <?php foreach ($uniqueCats ?? [] as $c): ?>
-                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -767,7 +871,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 
             <div class="form-group" style="margin-top: 0.75rem;">
                 <label for="modal-list-item-note">Bemerkung</label>
-                <input type="text" id="modal-list-item-note" class="form-control" placeholder="z.B. laktosefrei, für Mama...">
+                <input type="text" id="modal-list-item-note" class="form-control"
+                       placeholder="z.B. laktosefrei, für Mama...">
             </div>
         </div>
         <div class="rule-modal-footer">
@@ -787,7 +892,40 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             <input type="hidden" id="modal-product-id">
             <div class="form-group">
                 <label for="modal-name">Artikelname</label>
-                <input type="text" id="modal-name" class="tag-search-input" placeholder="Artikelname">
+                <input type="text" id="modal-name" class="form-control" placeholder="Artikelname">
+            </div>
+            <div class="shopping-add-grid" style="display: flex; gap: 0.75rem;">
+                <div class="form-group flex-1">
+                    <label for="modal-product-market">Bevorzugter Markt</label>
+                    <select id="modal-product-market" class="form-control">
+                        <option value="Rewe">Rewe</option>
+                        <option value="Globus">Globus</option>
+                        <option value="Übergreifend">Übergreifend</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="modal-product-unit">Einheit</label>
+                    <select id="modal-product-unit" class="form-control">
+                        <option value="Stück">Stück</option>
+                        <option value="Packung">Packung</option>
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="Liter">Liter</option>
+                        <option value="Dose">Dose</option>
+                        <option value="Flasche">Flasche</option>
+                        <option value="Bund">Bund</option>
+                        <option value="Becher">Becher</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="modal-product-category">Standard-Kategorie (Gang)</label>
+                <select id="modal-product-category" class="form-control">
+                    <option value="Sonstiges">Sonstiges</option>
+                    <?php foreach ($uniqueCats ?? [] as $c): ?>
+                        <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= \Kai\Tools\Einkaufsliste\CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="form-group">
                 <label><input type="checkbox" id="modal-ignore-checkbox"> Ignorieren</label>
@@ -823,9 +961,12 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             <div class="form-group" style="display: flex; gap: 0.5rem; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label for="mapping-new-ebon-name" style="font-size: 0.875rem;">Neuen eBon-Namen zuordnen</label>
-                    <input type="text" id="mapping-new-ebon-name" class="form-control" placeholder='z. B. "Erdb. 500g" oder "Erdbeeren lose"' maxlength="255">
+                    <input type="text" id="mapping-new-ebon-name" class="form-control"
+                           placeholder='z. B. "Erdb. 500g" oder "Erdbeeren lose"' maxlength="255">
                 </div>
-                <button type="button" class="btn btn-primary" id="btn-add-mapping" style="white-space: nowrap;">+ Zuordnen</button>
+                <button type="button" class="btn btn-primary" id="btn-add-mapping" style="white-space: nowrap;">+
+                    Zuordnen
+                </button>
             </div>
         </div>
         <div class="rule-modal-footer">
