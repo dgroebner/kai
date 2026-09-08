@@ -1,45 +1,4 @@
-// --- Menge schnell auswählen Chips ---
-const unitSelect = document.getElementById('input-item-unit');
-const quantityChipsContainer = document.getElementById('quantity-chips-container');
-const quantityInput = document.getElementById('input-item-quantity');
 
-function renderQuantityChips() {
-    if (!unitSelect || !quantityChipsContainer) return;
-    const unit = unitSelect.value;
-    let chips;
-
-    if (unit === 'g') {
-        chips = [100, 200, 250, 400, 500, 750, 1000];
-    } else if (unit === 'kg') {
-        chips = [0.5, 1, 1.5, 2, 2.5, 3, 5];
-    } else if (unit === 'Liter') {
-        chips = [0.5, 1, 1.5, 2, 3, 5];
-    } else {
-        // Default (Stück, Packung, Bund, etc.)
-        chips = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    }
-
-    quantityChipsContainer.innerHTML = '';
-    chips.forEach(val => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-sm btn-outline';
-        btn.textContent = val;
-        btn.addEventListener('click', () => {
-            if (quantityInput) quantityInput.value = val;
-
-            // Highlight active chip
-            Array.from(quantityChipsContainer.children).forEach(c => c.classList.remove('btn-active-filter'));
-            btn.classList.add('btn-active-filter');
-        });
-        quantityChipsContainer.appendChild(btn);
-    });
-}
-
-if (unitSelect) {
-    unitSelect.addEventListener('change', renderQuantityChips);
-    renderQuantityChips();
-}
 /**
  * einkaufsliste.js - Interaktive Steuerung der intelligenten Einkaufsliste
  *
@@ -49,6 +8,185 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     const API_URL = 'api.php';
+
+    // =========================================================
+    // --- Quick-Add Flow (Slider & Modal) ---
+    // =========================================================
+    const quickAddForm = document.getElementById('shopping-add-form');
+    const btnQuickStartNext = document.getElementById('btn-quick-start-next');
+    const inputItemName = document.getElementById('input-item-name');
+    
+    // Modal Elements
+    const quickAddModal = document.getElementById('quick-add-modal');
+    const btnCloseQuickAddModal = document.getElementById('btn-close-quick-add-modal');
+    const displayName = document.getElementById('quick-add-display-name');
+    const slider = document.getElementById('quick-add-slider');
+    const sliderDisplay = document.getElementById('quick-add-slider-display');
+    const unitDisplay = document.getElementById('quick-add-unit-display');
+    const sliderTicks = document.getElementById('quick-add-slider-ticks');
+    const modalAddQuantity = document.getElementById('modal-add-quantity');
+    const modalAddUnit = document.getElementById('modal-add-unit');
+    const modalAddMarket = document.getElementById('modal-add-market');
+    const modalAddCategory = document.getElementById('modal-add-category');
+    const modalAddNote = document.getElementById('modal-add-note');
+    const btnSubmitQuickAdd = document.getElementById('btn-submit-quick-add');
+    const inputIsSpontaneous = document.getElementById('input-is-spontaneous');
+
+    let currentSliderValues = [];
+
+    function initSlider(unit) {
+        if (!slider) return;
+        if (unit === 'g') {
+            currentSliderValues = [100, 200, 250, 400, 500, 750, 1000];
+        } else if (unit === 'kg') {
+            currentSliderValues = [0.5, 1, 1.5, 2, 2.5, 3, 5];
+        } else if (unit === 'Liter') {
+            currentSliderValues = [0.5, 1, 1.5, 2, 3, 5];
+        } else {
+            // Default (Stück, Packung, etc.)
+            currentSliderValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        }
+
+        slider.max = currentSliderValues.length - 1;
+        
+        // Render Ticks
+        sliderTicks.innerHTML = '';
+        currentSliderValues.forEach(val => {
+            const span = document.createElement('span');
+            span.textContent = val;
+            sliderTicks.appendChild(span);
+        });
+
+        unitDisplay.textContent = unit;
+        syncSliderWithInput();
+    }
+
+    function syncSliderWithInput() {
+        if (!slider) return;
+        const val = parseFloat(modalAddQuantity.value) || 1;
+        let closestIdx = 0;
+        let minDiff = Infinity;
+        currentSliderValues.forEach((v, idx) => {
+            const diff = Math.abs(v - val);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIdx = idx;
+            }
+        });
+        slider.value = closestIdx;
+        sliderDisplay.textContent = currentSliderValues[closestIdx];
+    }
+
+    if (slider) {
+        slider.addEventListener('input', () => {
+            const val = currentSliderValues[slider.value];
+            sliderDisplay.textContent = val;
+            modalAddQuantity.value = val;
+        });
+
+        modalAddQuantity.addEventListener('input', syncSliderWithInput);
+
+        modalAddUnit.addEventListener('change', () => {
+            initSlider(modalAddUnit.value);
+        });
+    }
+
+    function openQuickAddModal() {
+        if(!inputItemName) return;
+        const name = inputItemName.value.trim();
+        if (!name) return;
+
+        // Auto-fill from datalist if possible
+        const dl = document.getElementById('known-products-datalist');
+        let matchedOption = null;
+        if (dl) {
+            const options = dl.querySelectorAll('option');
+            options.forEach(opt => {
+                if (opt.value === name) {
+                    matchedOption = opt;
+                }
+            });
+        }
+
+        if(displayName) displayName.textContent = name;
+        
+        if (matchedOption) {
+            modalAddUnit.value = matchedOption.dataset.unit || 'Stück';
+            modalAddMarket.value = matchedOption.dataset.market || 'Rewe';
+            modalAddCategory.value = matchedOption.dataset.category || 'Sonstiges';
+        } else {
+            modalAddUnit.value = 'Stück';
+            modalAddMarket.value = 'Übergreifend';
+            modalAddCategory.value = 'Sonstiges';
+        }
+        
+        modalAddQuantity.value = 1;
+        modalAddNote.value = '';
+        initSlider(modalAddUnit.value);
+
+        if(quickAddModal) quickAddModal.classList.remove('hidden');
+    }
+
+    if (btnQuickStartNext) {
+        btnQuickStartNext.addEventListener('click', openQuickAddModal);
+    }
+    if (quickAddForm) {
+        quickAddForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            openQuickAddModal();
+        });
+    }
+
+    function closeQuickAddModal() {
+        if(quickAddModal) quickAddModal.classList.add('hidden');
+    }
+
+    if (btnCloseQuickAddModal) {
+        btnCloseQuickAddModal.addEventListener('click', closeQuickAddModal);
+    }
+
+    if (btnSubmitQuickAdd) {
+        btnSubmitQuickAdd.addEventListener('click', async () => {
+            const name = displayName.textContent;
+            const quantity = parseFloat(modalAddQuantity.value) || 1.0;
+            const unit = modalAddUnit.value;
+            const market = modalAddMarket.value;
+            const category = modalAddCategory.value;
+            const note = modalAddNote.value.trim();
+            const isSpontaneous = inputIsSpontaneous && inputIsSpontaneous.checked ? 1 : 0;
+
+            const payload = {
+                action: 'add_item',
+                name,
+                quantity,
+                unit,
+                market,
+                category,
+                note,
+                is_spontaneous: isSpontaneous
+            };
+
+            btnSubmitQuickAdd.disabled = true;
+
+            try {
+                const res = await KaiHttp.postJson(API_URL, payload);
+                if (res.success) {
+                    showToast(res.message || 'Artikel hinzugefügt!');
+                    inputItemName.value = '';
+                    if (inputIsSpontaneous) inputIsSpontaneous.checked = false;
+                    closeQuickAddModal();
+                    inputItemName.focus();
+                    window.location.reload();
+                } else {
+                    showToast(res.message || 'Fehler beim Hinzufügen', true);
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler', true);
+            } finally {
+                btnSubmitQuickAdd.disabled = false;
+            }
+        });
+    }
 
     // Toast Notification Helper
     function showToast(message, isError = false) {
@@ -146,59 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Artikel hinzufügen (Form Submit) ---
-    const addForm = document.getElementById('shopping-add-form');
-    if (addForm) {
-        addForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const name = document.getElementById('input-item-name').value.trim();
-            if (!name) return;
-
-            const quantity = parseFloat(document.getElementById('input-item-quantity').value) || 1.0;
-            const unit = document.getElementById('input-item-unit').value;
-            const market = document.getElementById('input-item-market').value;
-            const category = document.getElementById('input-item-category').value;
-            const isSpontaneous = document.getElementById('input-is-spontaneous').checked ? 1 : 0;
-            const note = document.getElementById('input-item-note') ? document.getElementById('input-item-note').value.trim() : '';
-
-            const payload = {
-                action: 'add_item',
-                name,
-                quantity,
-                unit,
-                market,
-                category,
-                note,
-                is_spontaneous: isSpontaneous
-            };
-
-            const submitBtn = addForm.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
-
-            try {
-                const res = await KaiHttp.postJson(API_URL, payload);
-                if (res.success) {
-                    showToast(res.message || 'Artikel hinzugefügt!');
-                    // Formular zurücksetzen, Fokus auf Name
-                    document.getElementById('input-item-name').value = '';
-                    document.getElementById('input-item-quantity').value = '1';
-                    if (document.getElementById('input-item-note')) document.getElementById('input-item-note').value = '';
-                    document.getElementById('input-is-spontaneous').checked = false;
-                    document.getElementById('input-item-name').focus();
-
-                    // Seite neu laden um die korrekte Gang-Sortierung serverseitig zu rendern
-                    window.location.reload();
-                } else {
-                    showToast(res.message || 'Fehler beim Hinzufügen', true);
-                }
-            } catch (err) {
-                showToast('Verbindungsfehler', true);
-            } finally {
-                if (submitBtn) submitBtn.disabled = false;
-            }
-        });
-    }
+    
 
     // --- Abhaken umschalten (Checkbox Klick) ---
     document.addEventListener('change', async (e) => {

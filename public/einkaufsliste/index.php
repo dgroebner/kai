@@ -130,9 +130,9 @@ try {
                 <h3>+ Artikel schnell hinzufügen</h3>
                 <form id="shopping-add-form" class="shopping-add-form">
                     <div class="shopping-add-grid">
-                        <div class="form-group flex-2">
-                            <label for="input-item-name">Artikelname</label>
-                            <input type="text" id="input-item-name" name="name" class="form-control" list="known-products-datalist" placeholder="z.B. Bio-Milch, Butter, Kaffee..." required autocomplete="off">
+                        <div class="form-group flex-2" style="flex-basis: 100%;">
+                            <label for="input-item-name" class="sr-only">Artikelname</label>
+                            <input type="text" id="input-item-name" name="name" class="form-control" list="known-products-datalist" placeholder="z.B. Bio-Milch, Butter, Kaffee..." required autocomplete="off" style="font-size: 1.1rem; padding: 0.75rem;">
                             <datalist id="known-products-datalist">
                                 <?php foreach ($allProducts as $p): ?>
                                     <option value="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>" 
@@ -142,74 +142,14 @@ try {
                                 <?php endforeach; ?>
                             </datalist>
                         </div>
-
-                        <div class="form-group flex-1" style="flex-basis: 100%;">
-                            <label>Menge schnell auswählen:</label>
-                            <div id="quantity-chips-container" class="period-switcher" style="justify-content: flex-start; overflow-x: auto; padding-bottom: 5px; gap: 5px;">
-                                <!-- Chips dynamically injected via JS -->
-                            </div>
-                        </div>
-
-                        <div class="form-group flex-1">
-                            <label for="input-item-quantity">Menge (manuell)</label>
-                            <input type="number" id="input-item-quantity" name="quantity" class="form-control" value="1" step="0.1" min="0.1">
-                        </div>
-
-                        <div class="form-group flex-1">
-                            <label for="input-item-unit">Einheit</label>
-                            <select id="input-item-unit" name="unit" class="form-control">
-                                <option value="Stück">Stück</option>
-                                <option value="Packung">Packung</option>
-                                <option value="kg">kg</option>
-                                <option value="g">g</option>
-                                <option value="Liter">Liter</option>
-                                <option value="Dose">Dose</option>
-                                <option value="Flasche">Flasche</option>
-                                <option value="Bund">Bund</option>
-                                <option value="Becher">Becher</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group flex-1">
-                            <label for="input-item-market">Markt</label>
-                            <select id="input-item-market" name="market" class="form-control">
-                                <option value="Rewe" <?= $activeMarket === 'Rewe' ? 'selected' : '' ?>>Rewe</option>
-                                <option value="Globus" <?= $activeMarket === 'Globus' ? 'selected' : '' ?>>Globus</option>
-                                <option value="Übergreifend" <?= $activeMarket === 'all' ? 'selected' : '' ?>>Übergreifend</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group flex-2">
-                            <label for="input-item-category">Gang / Kategorie</label>
-                            <select id="input-item-category" name="category" class="form-control">
-                                <option value="">-- Automatisch / Auswählen --</option>
-                                <?php
-                                $reweCats = $categoriesGrouped['Rewe'] ?? [];
-                                $globusCats = $categoriesGrouped['Globus'] ?? [];
-                                $uniqueCats = array_unique(array_merge(
-                                    array_column($reweCats, 'category_name'),
-                                    array_column($globusCats, 'category_name')
-                                ));
-                                sort($uniqueCats);
-                                foreach ($uniqueCats as $c): ?>
-                                    <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group flex-2">
-                            <label for="input-item-note">Bemerkung (optional)</label>
-                            <input type="text" id="input-item-note" name="note" class="form-control" placeholder='z.B. "lactosefrei", "für Mama"'>
-                        </div>
                     </div>
 
-                    <div class="shopping-add-options">
-                        <label class="checkbox-label" title="Spontankäufe fließen nicht in die wöchentliche Intervall-Berechnung ein">
+                    <div class="shopping-add-options" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <label style="cursor: pointer;">
                             <input type="checkbox" id="input-is-spontaneous" name="is_spontaneous" value="1">
-                            <span>⚡ Spontaner Einkauf (akuter Bedarf)</span>
+                            ⚡ Spontaner Einkauf (akuter Bedarf)
                         </label>
-
-                        <button type="submit" class="btn btn-primary">+ Zur Liste</button>
+                        <button type="button" class="btn btn-primary" id="btn-quick-start-next">Details & Hinzufügen &rarr;</button>
                     </div>
                 </form>
             </section>
@@ -684,6 +624,76 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 
 <!-- Modal / Toast Alert Container -->
 <div id="shopping-toast" class="shopping-toast hidden"></div>
+
+<!-- Quick-Add Modal -->
+<div id="quick-add-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 500px;">
+        <div class="rule-modal-header">
+            <h3>Ab auf die Liste</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-quick-add-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <h4 id="quick-add-display-name" style="margin-bottom: 1rem; color: var(--primary-color);"></h4>
+            
+            <div class="form-group mb-2">
+                <label>Menge: <span id="quick-add-slider-display" style="font-weight:bold;">1</span> <span id="quick-add-unit-display"></span></label>
+                <input type="range" id="quick-add-slider" class="form-control" style="margin: 10px 0;" min="0" max="9" step="1" value="0">
+                <div id="quick-add-slider-ticks" style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+                    <!-- Ticks dynamically injected via JS -->
+                </div>
+            </div>
+
+            <div class="shopping-add-grid" style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                <div class="form-group flex-1">
+                    <label for="modal-add-quantity">Menge (manuell)</label>
+                    <input type="number" id="modal-add-quantity" class="form-control" value="1" step="0.1" min="0.1">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="modal-add-unit">Einheit</label>
+                    <select id="modal-add-unit" class="form-control">
+                        <option value="Stück">Stück</option>
+                        <option value="Packung">Packung</option>
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="Liter">Liter</option>
+                        <option value="Dose">Dose</option>
+                        <option value="Flasche">Flasche</option>
+                        <option value="Bund">Bund</option>
+                        <option value="Becher">Becher</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="shopping-add-grid" style="margin-top: 0.75rem; display: flex; gap: 0.75rem;">
+                <div class="form-group flex-1">
+                    <label for="modal-add-market">Markt</label>
+                    <select id="modal-add-market" class="form-control">
+                        <option value="Rewe">Rewe</option>
+                        <option value="Globus">Globus</option>
+                        <option value="Übergreifend">Übergreifend</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="modal-add-category">Kategorie</label>
+                    <select id="modal-add-category" class="form-control">
+                        <option value="Sonstiges">Sonstiges</option>
+                        <?php foreach ($uniqueCats ?? [] as $c): ?>
+                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 0.75rem;">
+                <label for="modal-add-note">Bemerkung (optional)</label>
+                <input type="text" id="modal-add-note" class="form-control" placeholder='z.B. "lactosefrei", "für Mama"'>
+            </div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-primary" id="btn-submit-quick-add">+ Zur Liste</button>
+        </div>
+    </div>
+</div>
 
 <!-- Einkaufslisten-Eintrag bearbeiten Modal -->
 <div id="list-item-edit-modal" class="rule-modal-overlay hidden">
