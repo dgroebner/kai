@@ -150,6 +150,23 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
             $isSnowing = ($snowfall > 0 || in_array($weatherCode, [71, 73, 75, 77, 85, 86]));
             $isRaining = (!$isSnowing && ($rain > 0 || $showers > 0 || $precip > 0.1 || in_array($weatherCode, [51, 53, 55, 61, 63, 65, 80, 81, 82])));
+
+            // Regen-Intensität bestimmen (light, medium, heavy)
+            $rainIntensity = 'light';
+            if ($precip >= 3.0 || in_array($weatherCode, [65, 82])) {
+                $rainIntensity = 'heavy';
+            } elseif ($precip >= 1.0 || in_array($weatherCode, [55, 63, 81])) {
+                $rainIntensity = 'medium';
+            }
+
+            // Schnee-Intensität bestimmen (light, medium, heavy)
+            $snowIntensity = 'light';
+            if ($snowfall >= 2.0 || in_array($weatherCode, [75, 86])) {
+                $snowIntensity = 'heavy';
+            } elseif ($snowfall >= 0.5 || in_array($weatherCode, [73])) {
+                $snowIntensity = 'medium';
+            }
+
             $isStorm = ($windSpeed > 30);
             $isFog = ($weatherCode == 45 || $weatherCode == 48);
             $isCloudy = ($cloudCover > 30 || in_array($weatherCode, [3, 45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82, 71, 73, 75, 77, 85, 86]));
@@ -165,9 +182,58 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 if (isset($_GET['dbg_night']))      $isNight      = (bool)(int)$_GET['dbg_night'];
                 if (isset($_GET['dbg_golden']))     $isGoldenHour = (bool)(int)$_GET['dbg_golden'];
                 if (isset($_GET['dbg_cloud']))      $cloudCover   = max(0, min(100, (int)$_GET['dbg_cloud']));
-                if (isset($_GET['dbg_rain']))       { $isRaining = (bool)(int)$_GET['dbg_rain']; if ($isRaining) { $precip = 1.5; } }
-                if (isset($_GET['dbg_heavyrain'])) { $isRaining = (bool)(int)$_GET['dbg_heavyrain']; if ($isRaining) { $precip = 3.0; } }
-                if (isset($_GET['dbg_snow']))       { $isSnowing = (bool)(int)$_GET['dbg_snow']; if ($isSnowing) { $isRaining = false; } }
+
+                // Debug Regen (Aus, Leicht, Mäßig, Stark inkl. Abwärtskompatibilität)
+                if (isset($_GET['dbg_rain'])) {
+                    $rVal = (string)$_GET['dbg_rain'];
+                    if ($rVal === 'heavy' || isset($_GET['dbg_heavyrain'])) {
+                        $isRaining = true;
+                        $isSnowing = false;
+                        $rainIntensity = 'heavy';
+                        $precip = 4.5;
+                    } elseif ($rVal === 'medium' || $rVal === '1') {
+                        $isRaining = true;
+                        $isSnowing = false;
+                        $rainIntensity = 'medium';
+                        $precip = 2.0;
+                    } elseif ($rVal === 'light') {
+                        $isRaining = true;
+                        $isSnowing = false;
+                        $rainIntensity = 'light';
+                        $precip = 0.6;
+                    } elseif ($rVal === '0' || $rVal === '') {
+                        $isRaining = false;
+                    }
+                } elseif (isset($_GET['dbg_heavyrain']) && (int)$_GET['dbg_heavyrain'] === 1) {
+                    $isRaining = true;
+                    $isSnowing = false;
+                    $rainIntensity = 'heavy';
+                    $precip = 4.5;
+                }
+
+                // Debug Schnee (Aus, Leicht, Mäßig, Stark)
+                if (isset($_GET['dbg_snow'])) {
+                    $sVal = (string)$_GET['dbg_snow'];
+                    if ($sVal === 'heavy') {
+                        $isSnowing = true;
+                        $isRaining = false;
+                        $snowIntensity = 'heavy';
+                        $snowfall = 3.5;
+                    } elseif ($sVal === 'medium' || $sVal === '1') {
+                        $isSnowing = true;
+                        $isRaining = false;
+                        $snowIntensity = 'medium';
+                        $snowfall = 1.2;
+                    } elseif ($sVal === 'light') {
+                        $isSnowing = true;
+                        $isRaining = false;
+                        $snowIntensity = 'light';
+                        $snowfall = 0.3;
+                    } elseif ($sVal === '0' || $sVal === '') {
+                        $isSnowing = false;
+                    }
+                }
+
                 if (isset($_GET['dbg_fog']))        $isFog        = (bool)(int)$_GET['dbg_fog'];
                 if (isset($_GET['dbg_wind']))       $windSpeed    = max(0, min(120, (int)$_GET['dbg_wind']));
                 if (isset($_GET['dbg_gusts']))      $windGusts    = max(0, min(150, (int)$_GET['dbg_gusts']));
@@ -228,8 +294,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         <img src="<?= $bgUrl ?>" alt="Jahreszeit Hintergrund">
 
                         <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
-                        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg"
-                             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg">
                             <?php
                             $moonPhase = $forecast['current']['moon_phase'] ?? ($forecast['daily']['moon_phase'][0] ?? 0.5);
                             $isNewMoon = ($moonPhase < 0.03 || $moonPhase > 0.97);
@@ -390,32 +455,168 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php endif; ?>
 
                             <?php if ($isRaining): ?>
-                                <!-- Regen mit Intensitaetssteuerung; Neigung wird durch JS via CSS-Variable gesetzt -->
+                                <!-- Mehrschichtiger, nahtlos animierter Regen mit Tiefenstaffelung -->
                                 <?php
-                                $rainWidth = ($precip >= 2.0) ? 3.5 : 1.5;
-                                $rainOpacity = ($precip >= 2.0) ? 0.7 : 0.4;
-                                $rainSpacing = ($precip >= 2.0) ? 70 : 180;
+                                if ($rainIntensity === 'heavy') {
+                                    $bgCount = 90;
+                                    $fgCount = 70;
+                                    $bgLenMin = 45; $bgLenMax = 70;
+                                    $fgLenMin = 75; $fgLenMax = 110;
+                                    $bgStroke = 1.4;
+                                    $fgStroke = 2.4;
+                                    $bgOpacity = 0.55;
+                                    $fgOpacity = 0.85;
+                                    $durBg = '0.45s';
+                                    $durFg = '0.34s';
+                                } elseif ($rainIntensity === 'medium') {
+                                    $bgCount = 55;
+                                    $fgCount = 45;
+                                    $bgLenMin = 30; $bgLenMax = 50;
+                                    $fgLenMin = 50; $fgLenMax = 75;
+                                    $bgStroke = 1.2;
+                                    $fgStroke = 1.9;
+                                    $bgOpacity = 0.45;
+                                    $fgOpacity = 0.75;
+                                    $durBg = '0.62s';
+                                    $durFg = '0.48s';
+                                } else { // light
+                                    $bgCount = 32;
+                                    $fgCount = 24;
+                                    $bgLenMin = 20; $bgLenMax = 35;
+                                    $fgLenMin = 35; $fgLenMax = 50;
+                                    $bgStroke = 1.0;
+                                    $fgStroke = 1.5;
+                                    $bgOpacity = 0.35;
+                                    $fgOpacity = 0.6;
+                                    $durBg = '0.85s';
+                                    $durFg = '0.65s';
+                                }
                                 ?>
-                                <g class="rain-layer" stroke="#60a5fa" stroke-width="<?= $rainWidth ?>" opacity="<?= $rainOpacity ?>">
-                                    <?php for ($x = -200; $x <= 2000; $x += $rainSpacing): ?>
-                                        <line x1="<?= $x ?>" y1="-100" x2="<?= $x - 150 ?>" y2="1100"/>
-                                        <?php if ($precip >= 2.0): ?>
-                                            <line x1="<?= $x + 35 ?>" y1="-50" x2="<?= $x - 115 ?>" y2="1050"/>
-                                        <?php endif; ?>
-                                    <?php endfor; ?>
+                                <g class="rain-layer" style="--rain-fall-dur-bg: <?= $durBg ?>; --rain-fall-dur-fg: <?= $durFg ?>;">
+                                    <!-- Hintergrund-Regen: feiner, dezent, etwas langsamer -->
+                                    <g class="diorama-rain-bg" stroke="#93c5fd" stroke-width="<?= $bgStroke ?>" stroke-linecap="round" opacity="<?= $bgOpacity ?>">
+                                        <?php
+                                        mt_srand(42);
+                                        for ($i = 0; $i < $bgCount; $i++):
+                                            $rx = mt_rand(-400, 2000);
+                                            $ry = mt_rand(0, 899);
+                                            $rlen = mt_rand($bgLenMin, $bgLenMax);
+                                        ?>
+                                            <line x1="<?= $rx ?>" y1="<?= $ry ?>" x2="<?= $rx ?>" y2="<?= $ry + $rlen ?>"/>
+                                            <line x1="<?= $rx ?>" y1="<?= $ry + 900 ?>" x2="<?= $rx ?>" y2="<?= $ry + 900 + $rlen ?>"/>
+                                        <?php endfor; ?>
+                                    </g>
+
+                                    <!-- Vordergrund-Regen: längere, prägnantere Schlieren, schneller -->
+                                    <g class="diorama-rain-fg" stroke="#bfdbfe" stroke-width="<?= $fgStroke ?>" stroke-linecap="round" opacity="<?= $fgOpacity ?>">
+                                        <?php
+                                        mt_srand(1337);
+                                        for ($i = 0; $i < $fgCount; $i++):
+                                            $rx = mt_rand(-400, 2000);
+                                            $ry = mt_rand(0, 899);
+                                            $rlen = mt_rand($fgLenMin, $fgLenMax);
+                                        ?>
+                                            <line x1="<?= $rx ?>" y1="<?= $ry ?>" x2="<?= $rx ?>" y2="<?= $ry + $rlen ?>"/>
+                                            <line x1="<?= $rx ?>" y1="<?= $ry + 900 ?>" x2="<?= $rx ?>" y2="<?= $ry + 900 + $rlen ?>"/>
+                                        <?php endfor; ?>
+                                    </g>
+
+                                    <?php if ($rainIntensity === 'heavy'): ?>
+                                        <!-- Bodenspritzer bei Starkregen -->
+                                        <g>
+                                            <?php
+                                            mt_srand(2024);
+                                            for ($s = 0; $s < 12; $s++):
+                                                $sx = mt_rand(100, 1500);
+                                                $sy = mt_rand(800, 875);
+                                                $sDel = ($s * 0.08);
+                                                $sDur = 0.45;
+                                            ?>
+                                                <ellipse cx="<?= $sx ?>" cy="<?= $sy ?>" rx="1" ry="0.5" fill="none" stroke="#bfdbfe" stroke-width="1.2" opacity="0">
+                                                    <animate attributeName="rx" values="1;9;15" dur="<?= $sDur ?>s" begin="<?= $sDel ?>s" repeatCount="indefinite" />
+                                                    <animate attributeName="ry" values="0.5;3;5" dur="<?= $sDur ?>s" begin="<?= $sDel ?>s" repeatCount="indefinite" />
+                                                    <animate attributeName="opacity" values="0;0.75;0" dur="<?= $sDur ?>s" begin="<?= $sDel ?>s" repeatCount="indefinite" />
+                                                </ellipse>
+                                            <?php endfor; ?>
+                                        </g>
+                                    <?php endif; ?>
                                 </g>
                             <?php endif; ?>
 
                             <?php if ($isSnowing): ?>
-                                <!-- Schnee (fallende Flocken); Neigung wird durch JS via CSS-Variable gesetzt -->
-                                <g class="snow-layer" fill="#ffffff" opacity="0.8">
-                                    <?php for ($i = 0; $i < 60; $i++):
-                                        $cx = rand(0, 1600);
-                                        $cy = rand(0, 900);
-                                        $r = rand(2, 6);
-                                        ?>
-                                        <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>"/>
-                                    <?php endfor; ?>
+                                <!-- Mehrschichtiger, sanft taumelnder Schneefall -->
+                                <?php
+                                if ($snowIntensity === 'heavy') {
+                                    $bgSnowCount = 65;
+                                    $fgSnowCount = 50;
+                                    $durBg = ($isStorm) ? '4.0s' : '5.5s';
+                                    $durFg = ($isStorm) ? '2.8s' : '3.8s';
+                                } elseif ($snowIntensity === 'medium') {
+                                    $bgSnowCount = 40;
+                                    $fgSnowCount = 30;
+                                    $durBg = ($isStorm) ? '5.2s' : '7.0s';
+                                    $durFg = ($isStorm) ? '3.8s' : '5.0s';
+                                } else { // light
+                                    $bgSnowCount = 20;
+                                    $fgSnowCount = 15;
+                                    $durBg = '8.5s';
+                                    $durFg = '6.2s';
+                                }
+                                ?>
+                                <g class="snow-layer" style="--snow-fall-dur-bg: <?= $durBg ?>; --snow-fall-dur-fg: <?= $durFg ?>;">
+                                    <!-- Hintergrund-Schnee: kleinere Flocken, dezent, langsamer Fall -->
+                                    <g class="diorama-snow-bg" fill="#e2e8f0" opacity="0.65">
+                                        <g class="diorama-snow-sway-1">
+                                            <?php
+                                            mt_srand(777);
+                                            for ($i = 0; $i < (int)($bgSnowCount * 0.5); $i++):
+                                                $cx = mt_rand(-300, 1900);
+                                                $cy = mt_rand(0, 899);
+                                                $r = mt_rand(15, 28) / 10;
+                                            ?>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>"/>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy + 900 ?>" r="<?= $r ?>"/>
+                                            <?php endfor; ?>
+                                        </g>
+                                        <g class="diorama-snow-sway-2">
+                                            <?php
+                                            for ($i = 0; $i < (int)($bgSnowCount * 0.5); $i++):
+                                                $cx = mt_rand(-300, 1900);
+                                                $cy = mt_rand(0, 899);
+                                                $r = mt_rand(15, 28) / 10;
+                                            ?>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>"/>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy + 900 ?>" r="<?= $r ?>"/>
+                                            <?php endfor; ?>
+                                        </g>
+                                    </g>
+
+                                    <!-- Vordergrund-Schnee: größere, flauschige Flocken mit Taumelbewegung -->
+                                    <g class="diorama-snow-fg" fill="#ffffff" opacity="0.9">
+                                        <g class="diorama-snow-sway-2">
+                                            <?php
+                                            mt_srand(999);
+                                            for ($i = 0; $i < (int)($fgSnowCount * 0.5); $i++):
+                                                $cx = mt_rand(-300, 1900);
+                                                $cy = mt_rand(0, 899);
+                                                $r = ($snowIntensity === 'heavy') ? mt_rand(30, 55) / 10 : mt_rand(25, 45) / 10;
+                                            ?>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>"/>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy + 900 ?>" r="<?= $r ?>"/>
+                                            <?php endfor; ?>
+                                        </g>
+                                        <g class="diorama-snow-sway-3">
+                                            <?php
+                                            for ($i = 0; $i < (int)($fgSnowCount * 0.5); $i++):
+                                                $cx = mt_rand(-300, 1900);
+                                                $cy = mt_rand(0, 899);
+                                                $r = ($snowIntensity === 'heavy') ? mt_rand(32, 58) / 10 : mt_rand(26, 48) / 10;
+                                            ?>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="<?= $r ?>"/>
+                                                <circle cx="<?= $cx ?>" cy="<?= $cy + 900 ?>" r="<?= $r ?>"/>
+                                            <?php endfor; ?>
+                                        </g>
+                                    </g>
                                 </g>
                             <?php endif; ?>
 
@@ -539,18 +740,23 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </label>
 
                                 <label class="diorama-debug-row">
-                                    <span>Regen (leicht)</span>
-                                    <input type="checkbox" name="dbg_rain" value="1" <?= ($isRaining && $precip < 2.5) ? 'checked' : '' ?>>
-                                </label>
-
-                                <label class="diorama-debug-row">
-                                    <span>Regen (stark)</span>
-                                    <input type="checkbox" name="dbg_heavyrain" value="1" <?= ($isRaining && $precip >= 2.5) ? 'checked' : '' ?>>
+                                    <span>Regen</span>
+                                    <select name="dbg_rain">
+                                        <option value="0" <?= !$isRaining ? 'selected' : '' ?>>– Kein Regen –</option>
+                                        <option value="light" <?= ($isRaining && $rainIntensity === 'light') ? 'selected' : '' ?>>Leicht (Niesel)</option>
+                                        <option value="medium" <?= ($isRaining && $rainIntensity === 'medium') ? 'selected' : '' ?>>Mäßig</option>
+                                        <option value="heavy" <?= ($isRaining && $rainIntensity === 'heavy') ? 'selected' : '' ?>>Stark (Wolkenbruch)</option>
+                                    </select>
                                 </label>
 
                                 <label class="diorama-debug-row">
                                     <span>Schnee</span>
-                                    <input type="checkbox" name="dbg_snow" value="1" <?= $isSnowing ? 'checked' : '' ?>>
+                                    <select name="dbg_snow">
+                                        <option value="0" <?= !$isSnowing ? 'selected' : '' ?>>– Kein Schnee –</option>
+                                        <option value="light" <?= ($isSnowing && $snowIntensity === 'light') ? 'selected' : '' ?>>Leicht</option>
+                                        <option value="medium" <?= ($isSnowing && $snowIntensity === 'medium') ? 'selected' : '' ?>>Mäßig</option>
+                                        <option value="heavy" <?= ($isSnowing && $snowIntensity === 'heavy') ? 'selected' : '' ?>>Stark (Schneegestöber)</option>
+                                    </select>
                                 </label>
 
                                 <label class="diorama-debug-row">

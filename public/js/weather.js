@@ -127,8 +127,29 @@ function initWindGustController() {
     const dirSign = (windDir > 180) ? 1 : -1;
 
     // Grundwind-Regen/Schnee-Neigung als CSS-Variable setzen
-    const rainSkewDeg = Math.min(30, windSpeed * 0.6) * dirSign;
+    const rainSkewDeg = Math.min(32, windSpeed * 0.65) * dirSign;
     container.style.setProperty('--rain-skew', `${rainSkewDeg}deg`);
+
+    const rainLayer = container.querySelector('.rain-layer');
+    const snowLayer = container.querySelector('.snow-layer');
+
+    // Basis-Fallgeschwindigkeiten aus inline CSS erfassen
+    const baseRainFg = rainLayer ? (parseFloat(rainLayer.style.getPropertyValue('--rain-fall-dur-fg')) || 0.48) : 0.48;
+    const baseRainBg = rainLayer ? (parseFloat(rainLayer.style.getPropertyValue('--rain-fall-dur-bg')) || 0.65) : 0.65;
+    const baseSnowFg = snowLayer ? (parseFloat(snowLayer.style.getPropertyValue('--snow-fall-dur-fg')) || 5.0) : 5.0;
+    const baseSnowBg = snowLayer ? (parseFloat(snowLayer.style.getPropertyValue('--snow-fall-dur-bg')) || 7.0) : 7.0;
+
+    // Bei starkem Grundwind (> 30 km/h) Falltempo bereits leicht anziehen
+    if (windSpeed > 30) {
+        if (rainLayer) {
+            rainLayer.style.setProperty('--rain-fall-dur-fg', `${(baseRainFg * 0.85).toFixed(2)}s`);
+            rainLayer.style.setProperty('--rain-fall-dur-bg', `${(baseRainBg * 0.85).toFixed(2)}s`);
+        }
+        if (snowLayer) {
+            snowLayer.style.setProperty('--snow-fall-dur-fg', `${(baseSnowFg * 0.75).toFixed(2)}s`);
+            snowLayer.style.setProperty('--snow-fall-dur-bg', `${(baseSnowBg * 0.75).toFixed(2)}s`);
+        }
+    }
 
     // Kein Wind-Schlieren-Layer im DOM -> fertig
     if (!gustLayer) return;
@@ -148,18 +169,41 @@ function initWindGustController() {
     }
 
     // Boen-Neigung auf Regen/Schnee: staerker als Grundwind
-    const gustSkewDeg = Math.min(38, windGusts * 0.76) * dirSign;
+    const gustSkewDeg = Math.min(40, windGusts * 0.8) * dirSign;
 
     function fireGust() {
         // Phase 1: schnelles Anschwellen (CSS-Transition 0.25s ease-in via .gust-active)
         gustLayer.classList.add('gust-active');
         container.style.setProperty('--rain-skew', `${gustSkewDeg}deg`);
 
+        // Bei Böen Falltempo kurzzeitig beschleunigen (dynamischer Peitscheneffekt)
+        if (rainLayer) {
+            rainLayer.style.setProperty('--rain-fall-dur-fg', `${(baseRainFg * 0.75).toFixed(2)}s`);
+            rainLayer.style.setProperty('--rain-fall-dur-bg', `${(baseRainBg * 0.75).toFixed(2)}s`);
+        }
+        if (snowLayer) {
+            snowLayer.style.setProperty('--snow-fall-dur-fg', `${(baseSnowFg * 0.6).toFixed(2)}s`);
+            snowLayer.style.setProperty('--snow-fall-dur-bg', `${(baseSnowBg * 0.6).toFixed(2)}s`);
+        }
+
         // Phase 2: nach 1.5-3s abklingen
         const gustDuration = 1500 + Math.random() * 1500;
         setTimeout(() => {
             gustLayer.classList.remove('gust-active');
             container.style.setProperty('--rain-skew', `${rainSkewDeg}deg`);
+
+            // Falltempo wieder auf Grundwert zurücksetzen
+            const factor = (windSpeed > 30) ? 0.85 : 1.0;
+            const snowFactor = (windSpeed > 30) ? 0.75 : 1.0;
+            if (rainLayer) {
+                rainLayer.style.setProperty('--rain-fall-dur-fg', `${(baseRainFg * factor).toFixed(2)}s`);
+                rainLayer.style.setProperty('--rain-fall-dur-bg', `${(baseRainBg * factor).toFixed(2)}s`);
+            }
+            if (snowLayer) {
+                snowLayer.style.setProperty('--snow-fall-dur-fg', `${(baseSnowFg * snowFactor).toFixed(2)}s`);
+                snowLayer.style.setProperty('--snow-fall-dur-bg', `${(baseSnowBg * snowFactor).toFixed(2)}s`);
+            }
+
             const nextDelay = (intervalMin + Math.random() * (intervalMax - intervalMin)) * 1000;
             setTimeout(fireGust, nextDelay);
         }, gustDuration);
