@@ -190,6 +190,24 @@ try {
                 </form>
             </section>
 
+            <!-- Start-Bar für Supermarkt-Besuch (falls keine Session aktiv) -->
+            <div id="shopping-start-session-bar" class="card"
+                 style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; <?= $activeSession ? 'display:none;' : '' ?>">
+                <div>
+                    <h3 style="margin-bottom: 0.2rem; font-size: 1.05rem;">Supermarkt-Besuch starten</h3>
+                    <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">Schaltet in den mobilen
+                        Live-Modus mit großen Touch-Zielen & Markt-Filter.</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary js-start-session-btn" data-type="wocheneinkauf">
+                        🛒 Wocheneinkauf starten
+                    </button>
+                    <button type="button" class="btn btn-outline js-start-session-btn" data-type="spontaneinkauf">
+                        ⚡ Spontaneinkauf starten
+                    </button>
+                </div>
+            </div>
+
             <!-- Markt-Filter Bar -->
             <div class="card shopping-market-filter-card">
                 <div class="shopping-market-chips">
@@ -360,23 +378,6 @@ try {
                 <?php endif; ?>
             </div>
 
-            <!-- Start-Bar für Supermarkt-Besuch (falls keine Session aktiv) -->
-            <div id="shopping-start-session-bar" class="card"
-                 style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; <?= $activeSession ? 'display:none;' : '' ?>">
-                <div>
-                    <h3 style="margin-bottom: 0.2rem; font-size: 1.05rem;">Supermarkt-Besuch starten</h3>
-                    <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">Schaltet in den mobilen
-                        Live-Modus mit großen Touch-Zielen & Markt-Filter.</p>
-                </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary js-start-session-btn" data-type="wocheneinkauf">
-                        🛒 Wocheneinkauf starten
-                    </button>
-                    <button type="button" class="btn btn-outline js-start-session-btn" data-type="spontaneinkauf">
-                        ⚡ Spontaneinkauf starten
-                    </button>
-                </div>
-            </div>
         </section>
 
         <!-- ============================================================== -->
