@@ -29,7 +29,7 @@ class ShoppingListRepository
      * @param bool $includeChecked Ob abgehakte Artikel mitgeladen werden sollen
      * @return array<int, array<string, mixed>>
      */
-    public function getItems(?string $market = null, bool $includeChecked = true): array
+    public function getItems(?string $market = null, bool $includeChecked = true, ?int $isSpontaneous = null): array
     {
         $joinMarket = ($market !== null && $market !== '' && $market !== 'all') ? $market : 'Rewe';
         
@@ -52,6 +52,11 @@ class ShoppingListRepository
         if ($market !== null && $market !== '' && $market !== 'all') {
             $sql .= " AND s.market IN (:market, 'Übergreifend')";
             $params[':market'] = $market;
+        }
+
+        if ($isSpontaneous !== null) {
+            $sql .= " AND s.is_spontaneous = :is_spontaneous";
+            $params[':is_spontaneous'] = $isSpontaneous ? 1 : 0;
         }
 
         if (!$includeChecked) {

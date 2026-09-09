@@ -245,6 +245,7 @@ CREATE TABLE IF NOT EXISTS `kb_receipts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `bank_giro_transaction_id` INT NULL DEFAULT NULL,
   `bank_cc_transaction_id` INT UNSIGNED NULL DEFAULT NULL,
+  `shopping_session_id` INT NULL DEFAULT NULL,
   `file_hash` varchar(64) DEFAULT NULL,
   `store` varchar(255) NOT NULL,
   `purchase_date` date NOT NULL,
@@ -253,7 +254,8 @@ CREATE TABLE IF NOT EXISTS `kb_receipts` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_file_hash` (`file_hash`),
   FOREIGN KEY (`bank_giro_transaction_id`) REFERENCES `bank_giro_transactions`(`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`bank_cc_transaction_id`) REFERENCES `bank_cc_transactions`(`id`) ON DELETE SET NULL
+  FOREIGN KEY (`bank_cc_transaction_id`) REFERENCES `bank_cc_transactions`(`id`) ON DELETE SET NULL,
+  INDEX `idx_shopping_session_id` (`shopping_session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `kb_items` (
@@ -391,7 +393,39 @@ CREATE TABLE IF NOT EXISTS `shopping_list_items` (
     INDEX `idx_checked` (`is_checked`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. eBon-Produktzuordnung (Mapping: Rohname aus Kassenbon → Master-Artikel)
+-- 4. Aktive Einkaufs-Sessions
+CREATE TABLE IF NOT EXISTS `shopping_sessions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_type` ENUM('wocheneinkauf', 'spontaneinkauf') NOT NULL DEFAULT 'wocheneinkauf',
+    `status` ENUM('active', 'completed', 'cancelled') NOT NULL DEFAULT 'active',
+    `started_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `completed_at` DATETIME NULL,
+    `notes` VARCHAR(255) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_status` (`status`),
+    INDEX `idx_started_at` (`started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Historisierte Artikel abgeschlossener Einkäufe (Session Items)
+CREATE TABLE IF NOT EXISTS `shopping_session_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_id` INT NOT NULL,
+    `product_id` INT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `quantity` DECIMAL(8, 2) NOT NULL DEFAULT 1.00,
+    `unit` VARCHAR(50) NULL DEFAULT 'Stück',
+    `market` VARCHAR(50) NOT NULL DEFAULT 'Rewe',
+    `category` VARCHAR(100) NULL,
+    `is_spontaneous` TINYINT(1) NOT NULL DEFAULT 0,
+    `checked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_id`) REFERENCES `shopping_sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`product_id`) REFERENCES `product_master`(`id`) ON DELETE SET NULL,
+    INDEX `idx_session_id` (`session_id`),
+    INDEX `idx_product_id` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. eBon-Produktzuordnung (Mapping: Rohname aus Kassenbon → Master-Artikel)
 CREATE TABLE IF NOT EXISTS `ebon_product_mappings` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ebon_name` VARCHAR(255) NOT NULL COMMENT 'Rohname aus dem Kassenbon (kb_items.name)',

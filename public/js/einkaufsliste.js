@@ -1,4 +1,3 @@
-
 /**
  * einkaufsliste.js - Interaktive Steuerung der intelligenten Einkaufsliste
  *
@@ -15,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const quickAddForm = document.getElementById('shopping-add-form');
     const btnQuickStartNext = document.getElementById('btn-quick-start-next');
     const inputItemName = document.getElementById('input-item-name');
-    
+
     // Modal Elements
     const quickAddModal = document.getElementById('quick-add-modal');
     const btnCloseQuickAddModal = document.getElementById('btn-close-quick-add-modal');
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         slider.max = currentSliderValues.length - 1;
-        
+
         // Render Ticks
         sliderTicks.innerHTML = '';
         currentSliderValues.forEach(val => {
@@ -94,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openQuickAddModal() {
-        if(!inputItemName) return;
+        if (!inputItemName) return;
         const name = inputItemName.value.trim();
         if (!name) return;
 
@@ -111,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        if(displayName) displayName.textContent = name;
-        
+        if (displayName) displayName.textContent = name;
+
         if (matchedOption) {
             modalAddUnit.value = matchedOption.dataset.unit || 'Stück';
             modalAddMarket.value = matchedOption.dataset.market || 'Rewe';
@@ -122,12 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
             modalAddMarket.value = 'Übergreifend';
             modalAddCategory.value = 'Sonstiges';
         }
-        
+
         modalAddQuantity.value = 1;
         modalAddNote.value = '';
         initSlider(modalAddUnit.value);
 
-        if(quickAddModal) quickAddModal.classList.remove('hidden');
+        if (quickAddModal) quickAddModal.classList.remove('hidden');
     }
 
     if (btnQuickStartNext) {
@@ -141,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeQuickAddModal() {
-        if(quickAddModal) quickAddModal.classList.add('hidden');
+        if (quickAddModal) quickAddModal.classList.add('hidden');
     }
 
     if (btnCloseQuickAddModal) {
@@ -287,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    
 
     // --- Abhaken umschalten (Checkbox Klick) ---
     document.addEventListener('change', async (e) => {
@@ -757,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modal-product-id').value = product.id;
                 document.getElementById('modal-name').value = product.display_name ?? product.name ?? '';
                 document.getElementById('modal-product-market').value = product.preferred_market || 'Rewe';
-                
+
                 if (typeof window.updateCategoryDropdown === 'function') {
                     window.updateCategoryDropdown('modal-product-market', 'modal-product-category');
                 }
@@ -804,11 +802,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const market = document.getElementById('modal-product-market').value;
             const unit = document.getElementById('modal-product-unit').value;
             const category = document.getElementById('modal-product-category').value;
-            
+
             const payload = {
-                action: 'save_product_master', 
-                id, 
-                name: name, 
+                action: 'save_product_master',
+                id,
+                name: name,
                 preferred_market: market,
                 default_unit: unit,
                 default_category: category,
@@ -821,19 +819,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (row) {
                     const nameCell = row.querySelector('td[data-label="Artikel"] strong');
                     if (nameCell) nameCell.textContent = name;
-                    
+
                     const marketBadge = row.querySelector('td[data-label="Markt"] span');
                     if (marketBadge) {
                         marketBadge.textContent = market;
                         marketBadge.className = 'badge badge-market ' + (market === 'Rewe' ? 'badge-rewe' : 'badge-globus');
                     }
-                    
+
                     const catCell = row.querySelector('td[data-label="Kategorie"]');
                     if (catCell) {
                         const icon = (window.CATEGORY_ICONS && window.CATEGORY_ICONS[category]) || '🛒';
                         catCell.textContent = icon + ' ' + category;
                     }
-                    
+
                     row.classList.toggle('row-ignored', ignore === 1);
                 }
                 document.getElementById('product-edit-modal').classList.add('hidden');
@@ -1857,7 +1855,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-
 // --- Einkaufslisten-Eintrag bearbeiten Modal ---
 window.openEditItemModal = function (id, name, quantity, unit, market, category, note) {
     document.getElementById('modal-list-item-id').value = id;
@@ -1898,13 +1895,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.CATEGORY_ICONS[opt.value] = iconMatch[1];
             } else {
                 // Fallback for simple emojis or if regex misses
-                const firstChar = Array.from(text)[0];
-                window.CATEGORY_ICONS[opt.value] = firstChar;
+                window.CATEGORY_ICONS[opt.value] = Array.from(text)[0];
             }
         }
     });
 
-    window.updateCategoryDropdown = function(marketSelectId, categorySelectId) {
+    window.updateCategoryDropdown = function (marketSelectId, categorySelectId) {
         const marketSelect = document.getElementById(marketSelectId);
         const categorySelect = document.getElementById(categorySelectId);
         if (!marketSelect || !categorySelect) return;
@@ -1919,7 +1915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const marketCategories = metaMarkets ? JSON.parse(metaMarkets.content) : {};
         const uniqueCats = metaUnique ? JSON.parse(metaUnique.content) : [];
 
-        let catsToShow = [];
+        let catsToShow;
         if (selectedMarket === 'Übergreifend' || selectedMarket === 'all') {
             catsToShow = uniqueCats || [];
         } else {
@@ -1965,7 +1961,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentEditSliderValues = [];
 
-    window.initEditSlider = function(unit) {
+    window.initEditSlider = function (unit) {
         if (!editSlider) return;
         if (unit === 'g') {
             currentEditSliderValues = [100, 200, 250, 400, 500, 750, 1000];
@@ -1980,7 +1976,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         editSlider.max = currentEditSliderValues.length - 1;
-        
+
         editSliderTicks.innerHTML = '';
         currentEditSliderValues.forEach(val => {
             const span = document.createElement('span');
@@ -2058,5 +2054,524 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(res.message || 'Fehler beim Aktualisieren', true);
             }
         });
+    }
+
+    // ==============================================================
+    // PHASE 2: EINKAUFS-SESSIONS & MOBILER LIVE-MODUS
+    // ==============================================================
+    const activeBanner = document.getElementById('shopping-active-banner');
+    const liveOverlay = document.getElementById('shopping-live-overlay');
+    const checkoutModal = document.getElementById('checkout-confirm-modal');
+    const linkReceiptsModal = document.getElementById('session-link-receipts-modal');
+    const analysisModal = document.getElementById('session-analysis-modal');
+
+    let currentLiveMarket = 'all';
+
+    // 1. Session starten
+    document.addEventListener('click', async (e) => {
+        const startBtn = e.target.closest('.js-start-session-btn');
+        if (startBtn) {
+            const type = startBtn.dataset.type || 'wocheneinkauf';
+            startBtn.disabled = true;
+            try {
+                const res = await KaiHttp.postJson(API_URL, {action: 'start_session', session_type: type});
+                if (res.success) {
+                    showToast(res.message || 'Einkauf gestartet');
+                    if (activeBanner) {
+                        activeBanner.classList.remove('hidden');
+                        activeBanner.dataset.sessionId = res.session_id;
+                        const typeEl = document.getElementById('banner-session-type');
+                        if (typeEl) typeEl.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                    }
+                    const startBar = document.getElementById('shopping-start-session-bar');
+                    if (startBar) startBar.style.display = 'none';
+                    openLiveMode();
+                } else {
+                    showToast(res.message || 'Fehler beim Starten', true);
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler beim Starten', true);
+            } finally {
+                startBtn.disabled = false;
+            }
+            return;
+        }
+
+        // Session abbrechen
+        const cancelBtn = e.target.closest('.js-cancel-session-btn');
+        if (cancelBtn) {
+            const sessionId = cancelBtn.dataset.sessionId || (activeBanner ? activeBanner.dataset.sessionId : null);
+            if (!sessionId) return;
+            if (!confirm('Möchtest du diesen Einkauf wirklich abbrechen? Deine Artikel bleiben auf der Liste.')) return;
+
+            const res = await KaiHttp.postJson(API_URL, {action: 'cancel_session', session_id: sessionId});
+            if (res.success) {
+                showToast(res.message || 'Einkauf abgebrochen');
+                window.location.reload();
+            } else {
+                showToast(res.message || 'Fehler beim Abbrechen', true);
+            }
+            return;
+        }
+
+        // Live-Modus öffnen
+        if (e.target.closest('.js-open-live-mode')) {
+            openLiveMode();
+            return;
+        }
+
+        // Live-Modus schließen / pausieren
+        if (e.target.closest('.js-close-live-mode')) {
+            closeLiveMode();
+            return;
+        }
+
+        // Live-Modus: Einkauf beenden Trigger
+        if (e.target.closest('.js-finish-live-session')) {
+            openCheckoutConfirmModal();
+            return;
+        }
+
+        // Checkout Modal Abbrechen
+        if (e.target.closest('#btn-cancel-checkout-modal') || e.target.closest('#btn-close-checkout-modal')) {
+            if (checkoutModal) checkoutModal.classList.add('hidden');
+            return;
+        }
+
+        // Checkout Bestätigen
+        if (e.target.closest('#btn-confirm-checkout')) {
+            const confirmBtn = document.getElementById('btn-confirm-checkout');
+            const sessionId = activeBanner ? activeBanner.dataset.sessionId : null;
+            if (!sessionId) {
+                showToast('Keine aktive Session gefunden', true);
+                return;
+            }
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Schließe ab...';
+
+            try {
+                const res = await KaiHttp.postJson(API_URL, {
+                    action: 'complete_session',
+                    session_id: sessionId,
+                    market: currentLiveMarket
+                });
+                if (res.success) {
+                    showToast(res.message || 'Einkauf erfolgreich abgeschlossen!');
+                    if (checkoutModal) checkoutModal.classList.add('hidden');
+                    if (liveOverlay) liveOverlay.classList.add('hidden');
+                    window.location.href = '?tab=history';
+                } else {
+                    showToast(res.message || 'Fehler beim Beenden', true);
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Ja, Einkauf beenden';
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler beim Checkout', true);
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Ja, Einkauf beenden';
+            }
+            return;
+        }
+
+        // Live-Modus: Filter-Wechsel
+        const liveFilterBtn = e.target.closest('.js-live-market-filter');
+        if (liveFilterBtn) {
+            document.querySelectorAll('.js-live-market-filter').forEach(btn => {
+                btn.classList.remove('btn-active-filter');
+                btn.classList.add('btn-outline');
+            });
+            liveFilterBtn.classList.remove('btn-outline');
+            liveFilterBtn.classList.add('btn-active-filter');
+            currentLiveMarket = liveFilterBtn.dataset.market || 'all';
+            applyLiveMarketFilter(currentLiveMarket);
+            return;
+        }
+
+        // Live-Modus: Artikelzeile antippen / abhaken
+        const liveItemRow = e.target.closest('.shopping-live-item-row');
+        if (liveItemRow && !e.target.classList.contains('shopping-live-checkbox')) {
+            const itemId = liveItemRow.dataset.id;
+            toggleLiveItem(liveItemRow, itemId);
+            return;
+        }
+
+        // Kassenbons verknüpfen Modal öffnen
+        const linkReceiptsBtn = e.target.closest('.js-link-receipts-btn');
+        if (linkReceiptsBtn) {
+            const sessionId = linkReceiptsBtn.dataset.sessionId;
+            openLinkReceiptsModal(sessionId);
+            return;
+        }
+
+        // Kassenbon Verknüpfung / Lösen Aktion
+        const toggleReceiptLinkBtn = e.target.closest('.js-toggle-receipt-link');
+        if (toggleReceiptLinkBtn) {
+            const receiptId = toggleReceiptLinkBtn.dataset.receiptId;
+            const sessionId = toggleReceiptLinkBtn.dataset.sessionId;
+            const isLinked = toggleReceiptLinkBtn.dataset.linked === '1';
+            toggleReceiptLinkBtn.disabled = true;
+
+            const action = isLinked ? 'unlink_receipt' : 'link_receipt';
+            const res = await KaiHttp.postJson(API_URL, {action, receipt_id: receiptId, session_id: sessionId});
+            if (res.success) {
+                showToast(res.message);
+                openLinkReceiptsModal(sessionId); // Neu laden
+            } else {
+                showToast(res.message || 'Fehler', true);
+                toggleReceiptLinkBtn.disabled = false;
+            }
+            return;
+        }
+
+        // E-Bon Analyse Modal öffnen
+        const analysisBtn = e.target.closest('.js-view-session-analysis-btn');
+        if (analysisBtn) {
+            const sessionId = analysisBtn.dataset.sessionId;
+            openSessionAnalysisModal(sessionId);
+            return;
+        }
+
+        // Modals schließen
+        if (e.target.closest('#btn-close-link-receipts-modal') || e.target.closest('#btn-cancel-link-receipts-modal')) {
+            if (linkReceiptsModal) linkReceiptsModal.classList.add('hidden');
+            return;
+        }
+        if (e.target.closest('#btn-close-analysis-modal') || e.target.closest('#btn-cancel-analysis-modal')) {
+            if (analysisModal) analysisModal.classList.add('hidden');
+
+        }
+    });
+
+    // Checkbox-Change im Live-Modus
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('shopping-live-checkbox')) {
+            const row = e.target.closest('.shopping-live-item-row');
+            if (row) {
+                toggleLiveItem(row, row.dataset.id);
+            }
+        }
+    });
+
+    // Hilfsfunktion: Live-Modus öffnen & befüllen
+    function openLiveMode() {
+        if (!liveOverlay) return;
+
+        const liveContent = document.getElementById('shopping-live-content');
+        if (!liveContent) return;
+
+        // Alle Quell-Gänge aus der normalen Ansicht kopieren
+        const aisleGroups = document.querySelectorAll('.shopping-aisle-group');
+        let html = '';
+
+        if (aisleGroups.length === 0) {
+            html = '<div class="card text-center" style="padding: 2.5rem 1rem;"><p>🎉 Keine Artikel auf der Liste!</p></div>';
+        } else {
+            aisleGroups.forEach(group => {
+                const titleEl = group.querySelector('.aisle-title');
+                const titleHtml = titleEl ? titleEl.innerHTML : 'Gang';
+                const items = group.querySelectorAll('.shopping-item-row');
+
+                if (items.length > 0) {
+                    html += `<div class="shopping-live-aisle-group" style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: 700; font-size: 1.05rem; padding: 0.5rem 0.25rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                            ${titleHtml}
+                        </div>
+                        <div class="shopping-live-items-list">`;
+
+                    items.forEach(item => {
+                        const id = item.dataset.id;
+                        const name = item.dataset.name || '';
+                        const qty = item.dataset.quantity || '1';
+                        const unit = item.dataset.unit || 'Stück';
+                        const market = item.dataset.market || 'Rewe';
+                        const note = item.dataset.note || '';
+                        const isChecked = item.classList.contains('is-checked');
+                        const marketBadgeClass = market === 'Rewe' ? 'badge-rewe' : (market === 'Globus' ? 'badge-globus' : 'badge-info');
+
+                        html += `
+                            <div class="shopping-live-item-row ${isChecked ? 'is-checked' : ''}" 
+                                 data-id="${id}" 
+                                 data-market="${KaiHtml.escape(market)}" 
+                                 data-checked="${isChecked ? '1' : '0'}">
+                                <input type="checkbox" class="shopping-live-checkbox" ${isChecked ? 'checked' : ''}>
+                                <div class="shopping-live-item-body">
+                                    <div>
+                                        <div class="shopping-live-item-name">
+                                            ${KaiHtml.escape(name)}
+                                            <span class="shopping-live-item-qty">${KaiHtml.escape(qty)} ${KaiHtml.escape(unit)}</span>
+                                        </div>
+                                        ${note ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"><i>${KaiHtml.escape(note)}</i></div>` : ''}
+                                    </div>
+                                    <div>
+                                        <span class="badge badge-market ${marketBadgeClass}">${KaiHtml.escape(market)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div></div>`;
+                }
+            });
+        }
+
+        liveContent.innerHTML = html;
+        liveOverlay.classList.remove('hidden');
+        applyLiveMarketFilter(currentLiveMarket);
+        updateLiveCounters();
+    }
+
+    function closeLiveMode() {
+        if (liveOverlay) liveOverlay.classList.add('hidden');
+    }
+
+    function applyLiveMarketFilter(market) {
+        const rows = document.querySelectorAll('.shopping-live-item-row');
+        rows.forEach(row => {
+            const m = row.dataset.market;
+            const match = (market === 'all' || m === market || m === 'Übergreifend');
+            row.style.display = match ? 'flex' : 'none';
+        });
+
+        // Leere Gang-Gruppen im Filter ausblenden
+        document.querySelectorAll('.shopping-live-aisle-group').forEach(group => {
+            const visibleRows = Array.from(group.querySelectorAll('.shopping-live-item-row')).filter(r => r.style.display !== 'none');
+            group.style.display = visibleRows.length > 0 ? 'block' : 'none';
+        });
+
+        updateLiveCounters();
+    }
+
+    async function toggleLiveItem(row, itemId) {
+        try {
+            const res = await KaiHttp.postJson(API_URL, {action: 'toggle_item_check', id: itemId});
+            if (res.success) {
+                const checked = res.is_checked ? 1 : 0;
+                row.dataset.checked = checked;
+                row.classList.toggle('is-checked', checked === 1);
+                const cb = row.querySelector('.shopping-live-checkbox');
+                if (cb) cb.checked = checked === 1;
+
+                // Sync mit normaler Ansicht
+                const regRow = document.querySelector(`.shopping-item-row[data-id="${itemId}"]`);
+                if (regRow) {
+                    regRow.classList.toggle('is-checked', checked === 1);
+                    const regCb = regRow.querySelector('.shopping-checkbox');
+                    if (regCb) regCb.checked = checked === 1;
+                }
+
+                updateLiveCounters();
+            } else {
+                showToast(res.message || 'Fehler beim Abhaken', true);
+            }
+        } catch (err) {
+            showToast('Verbindungsfehler', true);
+        }
+    }
+
+    function updateLiveCounters() {
+        const visibleRows = Array.from(document.querySelectorAll('.shopping-live-item-row')).filter(r => r.style.display !== 'none');
+        const checkedRows = visibleRows.filter(r => r.dataset.checked === '1');
+
+        const checkedEl = document.getElementById('live-checked-counter');
+        const totalEl = document.getElementById('live-total-counter');
+        if (checkedEl) checkedEl.textContent = checkedRows.length;
+        if (totalEl) totalEl.textContent = visibleRows.length;
+
+        // Auch Banner synchronisieren
+        const allChecked = document.querySelectorAll('.shopping-live-item-row[data-checked="1"]').length;
+        const allTotal = document.querySelectorAll('.shopping-live-item-row').length;
+        const bannerChecked = document.getElementById('banner-checked-count');
+        const bannerTotal = document.getElementById('banner-total-count');
+        if (bannerChecked) bannerChecked.textContent = allChecked;
+        if (bannerTotal) bannerTotal.textContent = allTotal;
+    }
+
+    function openCheckoutConfirmModal() {
+        if (!checkoutModal) return;
+        const allRows = Array.from(document.querySelectorAll('.shopping-live-item-row'));
+        const checkedCount = allRows.filter(r => r.dataset.checked === '1').length;
+        const openCount = allRows.filter(r => r.dataset.checked === '0').length;
+
+        const chkEl = document.getElementById('checkout-modal-checked-count');
+        const opEl = document.getElementById('checkout-modal-open-count');
+        if (chkEl) chkEl.textContent = checkedCount;
+        if (opEl) opEl.textContent = openCount;
+
+        checkoutModal.classList.remove('hidden');
+    }
+
+    // Modal: Kassenbons verknüpfen
+    async function openLinkReceiptsModal(sessionId) {
+        if (!linkReceiptsModal) return;
+        linkReceiptsModal.classList.remove('hidden');
+        const listContainer = document.getElementById('candidate-receipts-list');
+        const loader = document.getElementById('candidate-receipts-loading');
+
+        if (loader) loader.classList.remove('hidden');
+        if (listContainer) listContainer.innerHTML = '';
+
+        try {
+            const res = await KaiHttp.postJson(API_URL, {action: 'get_session_candidates', session_id: sessionId});
+            if (loader) loader.classList.add('hidden');
+
+            if (res.success && res.candidates && res.candidates.length > 0) {
+                let html = '';
+                res.candidates.forEach(c => {
+                    const isLinked = c.is_currently_linked === 1;
+                    html += `
+                        <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; margin-bottom: 0.5rem; border-color: ${isLinked ? 'var(--color-green)' : 'var(--border)'};">
+                            <div>
+                                <strong>${KaiHtml.escape(c.store)}</strong>
+                                <span class="badge badge-market ${c.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">${KaiHtml.escape(c.purchase_date)}</span>
+                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+                                    ${parseFloat(c.total).toFixed(2).replace('.', ',')} € &bull; ${c.item_count} Artikel
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm ${isLinked ? 'btn-outline' : 'btn-success'} js-toggle-receipt-link"
+                                    data-receipt-id="${c.id}" 
+                                    data-session-id="${sessionId}" 
+                                    data-linked="${isLinked ? '1' : '0'}">
+                                ${isLinked ? '❌ Lösen' : '➕ Verknüpfen'}
+                            </button>
+                        </div>
+                    `;
+                });
+                listContainer.innerHTML = html;
+            } else {
+                listContainer.innerHTML = '<div class="text-center text-muted" style="padding: 1.5rem;">Keine passenden Kassenbons für diesen Zeitraum gefunden.</div>';
+            }
+        } catch (err) {
+            if (loader) loader.classList.add('hidden');
+            listContainer.innerHTML = '<div class="text-center text-danger" style="padding: 1rem;">Fehler beim Laden der Belege.</div>';
+        }
+    }
+
+    // Modal: E-Bon-Analyse & Spontankäufe
+    async function openSessionAnalysisModal(sessionId) {
+        if (!analysisModal) return;
+        analysisModal.classList.remove('hidden');
+
+        const content = document.getElementById('session-analysis-content');
+        const loader = document.getElementById('session-analysis-loading');
+        if (loader) loader.classList.remove('hidden');
+        if (content) content.innerHTML = '';
+
+        try {
+            const res = await KaiHttp.postJson(API_URL, {action: 'get_session_analysis', session_id: sessionId});
+            if (loader) loader.classList.add('hidden');
+
+            if (res.success && res.data) {
+                const d = res.data;
+                if (d.receipt_count === 0) {
+                    content.innerHTML = `
+                        <div class="card text-center" style="padding: 2rem;">
+                            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">🧾 Noch kein Kassenbon verknüpft</p>
+                            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 1.25rem;">
+                                Um geplante Artikel und Spontankäufe abzugleichen, verknüpfe bitte zuerst die E-Bons dieses Einkaufs.
+                            </p>
+                            <button type="button" class="btn btn-primary js-link-receipts-btn" data-session-id="${sessionId}">
+                                ➕ Jetzt Kassenbons verknüpfen
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `
+                    <div class="shopping-analysis-grid">
+                        <div class="shopping-analysis-kpi">
+                            <div class="text-muted" style="font-size: 0.85rem;">Gesamtausgaben</div>
+                            <div class="kpi-value">${d.total_cost.toFixed(2).replace('.', ',')} €</div>
+                            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">aus ${d.receipt_count} Beleg(en)</div>
+                        </div>
+                        <div class="shopping-analysis-kpi kpi-planned">
+                            <div class="text-muted" style="font-size: 0.85rem;">Geplanter Einkauf</div>
+                            <div class="kpi-value">${d.planned_cost.toFixed(2).replace('.', ',')} €</div>
+                            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">${d.planned_items.length} Artikel von der Liste</div>
+                        </div>
+                        <div class="shopping-analysis-kpi kpi-spontaneous">
+                            <div class="text-muted" style="font-size: 0.85rem;">Spontankäufe</div>
+                            <div class="kpi-value">${d.spontaneous_cost.toFixed(2).replace('.', ',')} €</div>
+                            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">${d.spontaneous_pct_cost}% des Gesamtbetrags (${d.spontaneous_items.length} Artikel)</div>
+                        </div>
+                    </div>
+                `;
+
+                if (d.spontaneous_items.length > 0) {
+                    html += `
+                        <div class="card" style="margin-bottom: 1.25rem; border-color: rgba(245, 158, 11, 0.4);">
+                            <h4 style="color: var(--color-orange); margin-bottom: 0.75rem;">⚡ Spontankäufe (${d.spontaneous_items.length})</h4>
+                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                Diese Artikel standen <strong>nicht</strong> auf deiner Einkaufsliste und wurden spontan im Markt mitgenommen:
+                            </p>
+                            <div class="table-responsive">
+                                <table class="data-table stack-table table-compact">
+                                    <thead>
+                                        <tr>
+                                            <th>Artikel</th>
+                                            <th>Markt</th>
+                                            <th>Menge</th>
+                                            <th class="text-right">Betrag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    d.spontaneous_items.forEach(it => {
+                        html += `
+                            <tr>
+                                <td data-label="Artikel"><strong>${KaiHtml.escape(it.name)}</strong></td>
+                                <td data-label="Markt"><span class="badge badge-market ${it.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">${KaiHtml.escape(it.store)}</span></td>
+                                <td data-label="Menge">${it.quantity > 1 ? it.quantity + 'x' : '1x'}</td>
+                                <td data-label="Betrag" class="text-right"><strong>${it.total_price.toFixed(2).replace('.', ',')} €</strong></td>
+                            </tr>
+                        `;
+                    });
+                    html += `</tbody></table></div></div>`;
+                } else {
+                    html += `
+                        <div class="card text-center" style="padding: 1.25rem; margin-bottom: 1.25rem; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.3);">
+                            <p style="margin-bottom: 0; color: var(--color-green); font-weight: 600;">🎯 Perfekt diszipliniert! Keine Spontankäufe auf den Kassenbons entdeckt.</p>
+                        </div>
+                    `;
+                }
+
+                if (d.planned_items.length > 0) {
+                    html += `
+                        <div class="card">
+                            <h4 style="margin-bottom: 0.75rem;">✔️ Geplante Einkäufe (${d.planned_items.length})</h4>
+                            <div class="table-responsive">
+                                <table class="data-table stack-table table-compact">
+                                    <thead>
+                                        <tr>
+                                            <th>Artikel (Kassenbon)</th>
+                                            <th>Zugeordnet zu</th>
+                                            <th>Markt</th>
+                                            <th class="text-right">Betrag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    d.planned_items.forEach(it => {
+                        html += `
+                            <tr>
+                                <td data-label="Artikel">${KaiHtml.escape(it.name)}</td>
+                                <td data-label="Zugeordnet zu"><strong>${KaiHtml.escape(it.display_name)}</strong></td>
+                                <td data-label="Markt"><span class="badge badge-market ${it.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">${KaiHtml.escape(it.store)}</span></td>
+                                <td data-label="Betrag" class="text-right">${it.total_price.toFixed(2).replace('.', ',')} €</td>
+                            </tr>
+                        `;
+                    });
+                    html += `</tbody></table></div></div>`;
+                }
+
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<div class="text-center text-danger" style="padding: 1.5rem;">Fehler beim Laden der Auswertung.</div>';
+            }
+        } catch (err) {
+            if (loader) loader.classList.add('hidden');
+            content.innerHTML = '<div class="text-center text-danger" style="padding: 1.5rem;">Verbindungsfehler beim Laden der Analyse.</div>';
+        }
     }
 });

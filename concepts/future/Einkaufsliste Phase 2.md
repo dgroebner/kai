@@ -51,6 +51,8 @@ abgebildet werden:
 
 1. Der Nutzer wählt im Kai Tool aus, ob ein **Wocheneinkauf** oder ein **Spontaneinkauf** gestartet werden soll.
 2. Das System öffnet die entsprechende Ansicht und generiert eine aktive Einkauf-Session.
+3. Einkauf pausieren und fortsetzen. Es muss möglich sein einen aktiven Einkauf zu unterbrechen und anschließend
+   fortzusetzen.fortzusetzen.
 
 ### B. Mobile Ansicht & Schnellfilter im Markt
 

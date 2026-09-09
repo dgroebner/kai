@@ -7,7 +7,9 @@ use Kai\Tools\Einkaufsliste\LearningService;
 use Kai\Tools\Einkaufsliste\MarketCategoryRepository;
 use Kai\Tools\Einkaufsliste\ProductMasterRepository;
 use Kai\Tools\Einkaufsliste\RecipeAiService;
+use Kai\Tools\Einkaufsliste\ReceiptSessionService;
 use Kai\Tools\Einkaufsliste\ShoppingListRepository;
+use Kai\Tools\Einkaufsliste\ShoppingSessionRepository;
 use Kai\Tools\Einkaufsliste\SuggestionService;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Db\Database;
@@ -40,6 +42,8 @@ $listRepo = new ShoppingListRepository();
 $productRepo = new ProductMasterRepository();
 $categoryRepo = new MarketCategoryRepository();
 $mappingRepo = new EbonMappingRepository();
+$sessionRepo = new ShoppingSessionRepository();
+$receiptSessionService = new ReceiptSessionService();
 $holidayService = new HolidayService();
 $learningService = new LearningService($productRepo, $mappingRepo);
 $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
@@ -722,6 +726,129 @@ Artikel-Liste:
                 $logger->error('API: ai_suggest_merges failed', ['error' => $e->getMessage()]);
                 Auth::sendJsonError(500, 'Fehler bei der KI-Anfrage');
             }
+            break;
+
+        // --- PHASE 2: Einkaufs-Sessions & Live-Modus ---
+
+        // 17. Einkaufs-Session starten
+        case 'start_session':
+            $type = trim((string)($input['session_type'] ?? 'wocheneinkauf'));
+            $notes = isset($input['notes']) ? trim((string)$input['notes']) : null;
+            $sessionId = $sessionRepo->startSession($type, $notes);
+            $active = $sessionRepo->getActiveSession();
+            echo json_encode([
+                'success' => true,
+                'session_id' => $sessionId,
+                'session' => $active,
+                'message' => 'Einkauf erfolgreich gestartet'
+            ]);
+            break;
+
+        // 18. Status der aktiven Session abrufen
+        case 'get_active_session':
+            $active = $sessionRepo->getActiveSession();
+            echo json_encode([
+                'success' => true,
+                'session' => $active
+            ]);
+            break;
+
+        // 19. Aktive Einkaufs-Session abbrechen
+        case 'cancel_session':
+            $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$sessionId) {
+                Auth::sendJsonError(400, 'Ungültige Session-ID');
+            }
+            $success = $sessionRepo->cancelSession($sessionId);
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Einkauf abgebrochen' : 'Session konnte nicht abgebrochen werden'
+            ]);
+            break;
+
+        // 20. Einkauf abschließen ("Checkout" mit Historisierung & Cleanup)
+        case 'complete_session':
+            $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$sessionId) {
+                Auth::sendJsonError(400, 'Ungültige Session-ID');
+            }
+            $market = trim((string)($input['market'] ?? 'all'));
+            $marketFilter = ($market === 'Rewe' || $market === 'Globus') ? $market : null;
+
+            try {
+                $archivedItems = $sessionRepo->completeSession($sessionId, $marketFilter);
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Einkauf erfolgreich abgeschlossen',
+                    'completed_count' => count($archivedItems),
+                    'items' => $archivedItems
+                ]);
+            } catch (Exception $e) {
+                Auth::sendJsonError(500, $e->getMessage());
+            }
+            break;
+
+        // 21. Passende Kassenbons für eine Session abrufen
+        case 'get_session_candidates':
+            $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$sessionId) {
+                Auth::sendJsonError(400, 'Ungültige Session-ID');
+            }
+            $candidates = $receiptSessionService->getCandidateReceipts($sessionId);
+            echo json_encode([
+                'success' => true,
+                'candidates' => $candidates
+            ]);
+            break;
+
+        // 22. Kassenbon mit Session verknüpfen (n:1)
+        case 'link_receipt':
+            $receiptId = filter_var($input['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+            $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$receiptId || !$sessionId) {
+                Auth::sendJsonError(400, 'Ungültige Parameter');
+            }
+            $success = $receiptSessionService->linkReceipt($receiptId, $sessionId);
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Kassenbon erfolgreich verknüpft' : 'Fehler beim Verknüpfen'
+            ]);
+            break;
+
+        // 23. Kassenbon von Session lösen
+        case 'unlink_receipt':
+            $receiptId = filter_var($input['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$receiptId) {
+                Auth::sendJsonError(400, 'Ungültige Beleg-ID');
+            }
+            $success = $receiptSessionService->unlinkReceipt($receiptId);
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Verknüpfung gelöst' : 'Fehler beim Lösen'
+            ]);
+            break;
+
+        // 24. Detaillierte Spontankauf- & Matching-Auswertung für eine Session
+        case 'get_session_analysis':
+            $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$sessionId) {
+                Auth::sendJsonError(400, 'Ungültige Session-ID');
+            }
+            $analysis = $receiptSessionService->analyzeSessionPurchases($sessionId);
+            echo json_encode([
+                'success' => true,
+                'data' => $analysis
+            ]);
+            break;
+
+        // 25. Letzte Sessions abrufen
+        case 'get_recent_sessions':
+            $limit = filter_var($input['limit'] ?? 10, FILTER_VALIDATE_INT) ?: 10;
+            $sessions = $sessionRepo->getRecentSessions($limit);
+            echo json_encode([
+                'success' => true,
+                'sessions' => $sessions
+            ]);
             break;
 
         default:

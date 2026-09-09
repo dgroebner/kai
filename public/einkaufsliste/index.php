@@ -5,7 +5,9 @@ use Kai\Tools\Einkaufsliste\CategoryIconHelper;
 use Kai\Tools\Einkaufsliste\HolidayService;
 use Kai\Tools\Einkaufsliste\MarketCategoryRepository;
 use Kai\Tools\Einkaufsliste\ProductMasterRepository;
+use Kai\Tools\Einkaufsliste\ReceiptSessionService;
 use Kai\Tools\Einkaufsliste\ShoppingListRepository;
+use Kai\Tools\Einkaufsliste\ShoppingSessionRepository;
 use Kai\Tools\Einkaufsliste\SuggestionService;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
@@ -28,9 +30,13 @@ try {
     $productRepo = new ProductMasterRepository();
     $categoryRepo = new MarketCategoryRepository();
     $holidayService = new HolidayService();
+    $sessionRepo = new ShoppingSessionRepository();
+    $receiptSessionService = new ReceiptSessionService();
     $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
 
     // Daten für die Ansichten laden
+    $activeSession = $sessionRepo->getActiveSession();
+    $recentSessions = $sessionRepo->getRecentSessions(10);
     $marketFilter = $activeMarket === 'all' ? null : $activeMarket;
     $items = $listRepo->getItems($marketFilter, true);
     $marketCounts = $listRepo->getItemCountsByMarket();
@@ -104,6 +110,10 @@ try {
                 data-tab="recipe">
             🧑‍🍳 Rezept & KI
         </button>
+        <button type="button" class="btn <?= $activeTab === 'history' ? '' : 'btn-outline' ?> js-tab-btn"
+                data-tab="history">
+            📋 Historie & E-Bons
+        </button>
         <?php if (Auth::hasPermission('shopping_master')): ?>
             <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn"
                     data-tab="inbox" id="tab-btn-inbox">
@@ -117,10 +127,42 @@ try {
     </div>
 
     <main>
+        <!-- Aktive Einkaufs-Session Banner -->
+        <div id="shopping-active-banner" class="shopping-active-banner <?= $activeSession ? '' : 'hidden' ?>" data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>">
+            <div class="shopping-active-banner-info">
+                <span class="shopping-active-banner-pulse"></span>
+                <strong>Einkauf aktiv:</strong>
+                <span id="banner-session-type"><?= htmlspecialchars(ucfirst($activeSession['session_type'] ?? 'Wocheneinkauf'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="text-muted">(seit <span id="banner-session-time"><?= $activeSession ? date('H:i', strtotime($activeSession['started_at'])) : '' ?></span> Uhr)</span>
+                &bull;
+                <span id="banner-checked-count"><?= (int)($activeSession['checked_count'] ?? 0) ?></span> / <span id="banner-total-count"><?= (int)($activeSession['total_count'] ?? 0) ?></span> abgehakt
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" class="btn btn-success btn-sm js-open-live-mode">📱 Live-Modus öffnen</button>
+                <button type="button" class="btn btn-outline btn-sm js-cancel-session-btn" data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>" title="Einkauf abbrechen">Abbrechen</button>
+            </div>
+        </div>
+
         <!-- ============================================================== -->
         <!-- TAB 1: EINKAUFSLISTE                                           -->
         <!-- ============================================================== -->
         <section id="tab-list" class="shopping-tab-pane <?= $activeTab === 'list' ? '' : 'hidden' ?>">
+
+            <!-- Start-Bar für Supermarkt-Besuch (falls keine Session aktiv) -->
+            <div id="shopping-start-session-bar" class="card" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; <?= $activeSession ? 'display:none;' : '' ?>">
+                <div>
+                    <h3 style="margin-bottom: 0.2rem; font-size: 1.05rem;">Supermarkt-Besuch starten</h3>
+                    <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">Schaltet in den mobilen Live-Modus mit großen Touch-Zielen & Markt-Filter.</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary js-start-session-btn" data-type="wocheneinkauf">
+                        🛒 Wocheneinkauf starten
+                    </button>
+                    <button type="button" class="btn btn-outline js-start-session-btn" data-type="spontaneinkauf">
+                        ⚡ Spontaneinkauf starten
+                    </button>
+                </div>
+            </div>
 
             <!-- Schnellerfassung neuer Artikel -->
             <section class="card shopping-quick-add-card">
@@ -692,7 +734,171 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     </div>
                 </div>
         </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 5: HISTORIE & E-BONS                                      -->
+        <!-- ============================================================== -->
+        <section id="tab-history" class="shopping-tab-pane <?= $activeTab === 'history' ? '' : 'hidden' ?>">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="shopping-section-header">
+                    <div>
+                        <h3>📋 Einkaufshistorie & E-Bon-Matching</h3>
+                        <p class="text-muted" style="margin-bottom: 0;">
+                            Abgeschlossene Einkäufe, verknüpfte Kassenbons und Auswertung von geplanten Artikeln vs. Spontankäufen.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="recent-sessions-container">
+                <?php if (empty($recentSessions)): ?>
+                    <div class="card text-center shopping-empty-state">
+                        <p>Noch keine abgeschlossenen Einkäufe vorhanden.</p>
+                        <p class="text-muted" style="font-size: 0.9rem;">
+                            Starte deinen nächsten Einkauf im Tab "Einkaufsliste" und schließe ihn nach dem Bezahlen ab!
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($recentSessions as $s): ?>
+                        <div class="card shopping-receipt-card" data-session-id="<?= (int)$s['id'] ?>">
+                            <div style="flex: 1; min-width: 260px;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                                    <strong><?= htmlspecialchars(ucfirst($s['session_type']), ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <span class="badge badge-market badge-rewe">
+                                        <?= date('d.m.Y', strtotime($s['started_at'])) ?>
+                                    </span>
+                                    <span class="text-muted" style="font-size: 0.85rem;">
+                                        <?= date('H:i', strtotime($s['started_at'])) ?> - <?= $s['completed_at'] ? date('H:i', strtotime($s['completed_at'])) : '?' ?> Uhr
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted); display: flex; gap: 1rem; flex-wrap: wrap;">
+                                    <span>📦 <strong><?= (int)$s['item_count'] ?></strong> Artikel archiviert</span>
+                                    <span>🧾 <strong><?= (int)$s['receipt_count'] ?></strong> E-Bons verknüpft</span>
+                                    <?php if ((float)$s['receipts_total'] > 0): ?>
+                                        <span>💶 <strong><?= number_format((float)$s['receipts_total'], 2, ',', '.') ?> €</strong></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                                <button type="button" class="btn btn-outline btn-sm js-view-session-analysis-btn" data-session-id="<?= (int)$s['id'] ?>">
+                                    📊 E-Bon Abgleich
+                                </button>
+                                <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn" data-session-id="<?= (int)$s['id'] ?>">
+                                    🔗 Bons verknüpfen (<?= (int)$s['receipt_count'] ?>)
+                                </button>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </section>
     </main>
+</div>
+
+<!-- ============================================================== -->
+<!-- LIVE EINKAUFS-MODUS (MOBILE FULLSCREEN OVERLAY)                -->
+<!-- ============================================================== -->
+<div id="shopping-live-overlay" class="shopping-live-overlay hidden">
+    <div class="shopping-live-sticky-header">
+        <div class="shopping-live-header-top">
+            <div class="shopping-live-title">
+                <span class="shopping-active-banner-pulse"></span>
+                <span>🛒 Live-Einkauf</span>
+                <span id="live-session-type-badge" class="badge badge-info">Wocheneinkauf</span>
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 600;">
+                <span id="live-checked-counter">0</span> / <span id="live-total-counter">0</span> erledigt
+            </div>
+        </div>
+        <div class="shopping-live-filter-chips">
+            <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle Märkte</button>
+            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">🔴 Rewe</button>
+            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">🟠 Globus</button>
+        </div>
+    </div>
+
+    <div class="shopping-live-content" id="shopping-live-content">
+        <!-- Wird live per JS befüllt -->
+    </div>
+
+    <div class="shopping-live-footer">
+        <button type="button" class="btn btn-outline js-close-live-mode">⏸️ Pause</button>
+        <button type="button" class="btn btn-success js-finish-live-session">✔️ Einkauf beenden</button>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- CHECKOUT BESTÄTIGUNGS-MODAL                                    -->
+<!-- ============================================================== -->
+<div id="checkout-confirm-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 500px;">
+        <div class="rule-modal-header">
+            <h3>🛒 Einkauf abschließen?</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-checkout-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <p style="margin-bottom: 1rem;">
+                Möchtest du deinen Supermarkt-Besuch jetzt abschließen?
+            </p>
+            <div class="card" style="background: rgba(255, 255, 255, 0.03); margin-bottom: 1rem; border-color: rgba(255, 255, 255, 0.1);">
+                <p style="margin-bottom: 0.4rem;">
+                    <strong><span id="checkout-modal-checked-count">0</span> abgehakte Artikel</strong> werden in deine Einkaufshistorie überführt und von der aktiven Liste gelöscht.
+                </p>
+                <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">
+                    <span id="checkout-modal-open-count">0</span> nicht gefundene Artikel verbleiben für das nächste Mal auf der Liste.
+                </p>
+            </div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-cancel-checkout-modal">Abbrechen</button>
+            <button type="button" class="btn btn-success" id="btn-confirm-checkout">Ja, Einkauf beenden</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- E-BON ZUORDNUNGS-MODAL                                         -->
+<!-- ============================================================== -->
+<div id="session-link-receipts-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 650px;">
+        <div class="rule-modal-header">
+            <h3>🧾 Kassenbons zuordnen</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-link-receipts-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 1rem;">
+                Wähle digitale Kassenbons (E-Bons) aus, die zu diesem Einkauf gehören. Es können mehrere Bons (z. B. Rewe und Globus) verknüpft werden.
+            </p>
+            <div id="candidate-receipts-loading" class="text-center hidden" style="padding: 1.5rem;">
+                <span class="spinner"></span> Lade Kassenbons...
+            </div>
+            <div id="candidate-receipts-list"></div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-cancel-link-receipts-modal">Schließen</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- E-BON ABGLEICH & SPONTANKAUF-ANALYSE MODAL                     -->
+<!-- ============================================================== -->
+<div id="session-analysis-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card" style="max-width: 800px;">
+        <div class="rule-modal-header">
+            <h3 id="session-analysis-title">📊 E-Bon-Abgleich & Spontankäufe</h3>
+            <button type="button" class="rule-modal-close" id="btn-close-analysis-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <div id="session-analysis-loading" class="text-center hidden" style="padding: 2rem;">
+                <span class="spinner"></span> Analysiere Kassenbons und Einkaufsliste...
+            </div>
+            <div id="session-analysis-content"></div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-cancel-analysis-modal">Schließen</button>
+        </div>
+    </div>
 </div>
 
 <!-- ============================================================== -->
