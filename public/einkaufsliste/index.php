@@ -812,26 +812,25 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
 <!-- ============================================================== -->
 <div id="shopping-live-overlay" class="shopping-live-overlay hidden">
     <div class="shopping-live-sticky-header">
-        <div class="shopping-live-header-top">
-            <div class="shopping-live-title">
-                <span class="shopping-active-banner-pulse"></span>
-                <span>🛒 Live-Einkauf</span>
-                <span id="live-session-type-badge" class="badge badge-info">Wocheneinkauf</span>
+        <div class="shopping-live-header-inner">
+            <div class="shopping-live-header-top">
+                <div class="shopping-live-title">
+                    <span class="shopping-active-banner-pulse"></span>
+                    <span>🛒 Live-Einkauf</span>
+                    <span id="live-session-type-badge" class="badge badge-info">Wocheneinkauf</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 0.95rem; font-weight: 600;">
+                        <span id="live-checked-counter">0</span> / <span id="live-total-counter">0</span> erledigt
+                    </span>
+                    <button type="button" class="btn btn-outline btn-sm js-close-live-mode" title="Live-Modus pausieren">&times; Pause</button>
+                </div>
             </div>
-            <div style="font-size: 0.95rem; font-weight: 600;">
-                <span id="live-checked-counter">0</span> / <span id="live-total-counter">0</span> erledigt
+            <div class="shopping-live-filter-chips">
+                <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle Märkte</button>
+                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">🔴 Rewe</button>
+                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">🟠 Globus</button>
             </div>
-        </div>
-        <div class="shopping-live-filter-chips">
-            <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle
-                Märkte
-            </button>
-            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">🔴
-                Rewe
-            </button>
-            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">
-                🟠 Globus
-            </button>
         </div>
     </div>
 
@@ -840,8 +839,10 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
     </div>
 
     <div class="shopping-live-footer">
-        <button type="button" class="btn btn-outline js-close-live-mode">⏸️ Pause</button>
-        <button type="button" class="btn btn-success js-finish-live-session">✔️ Einkauf beenden</button>
+        <div class="shopping-live-footer-inner">
+            <button type="button" class="btn btn-outline js-close-live-mode">⏸️ Pause</button>
+            <button type="button" class="btn btn-success js-finish-live-session">✔️ Einkauf beenden</button>
+        </div>
     </div>
 </div>
 

@@ -2160,6 +2160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(res.message || 'Einkauf erfolgreich abgeschlossen!');
                     if (checkoutModal) checkoutModal.classList.add('hidden');
                     if (liveOverlay) liveOverlay.classList.add('hidden');
+                    document.body.style.overflow = '';
                     window.location.href = '?tab=history';
                 } else {
                     showToast(res.message || 'Fehler beim Beenden', true);
@@ -2273,8 +2274,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const items = group.querySelectorAll('.shopping-item-row');
 
                 if (items.length > 0) {
-                    html += `<div class="shopping-live-aisle-group" style="margin-bottom: 1.5rem;">
-                        <div style="font-weight: 700; font-size: 1.05rem; padding: 0.5rem 0.25rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                    html += `<div class="shopping-live-aisle-group">
+                        <div class="shopping-live-aisle-header">
                             ${titleHtml}
                         </div>
                         <div class="shopping-live-items-list">`;
@@ -2317,12 +2318,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         liveContent.innerHTML = html;
+        document.body.style.overflow = 'hidden';
         liveOverlay.classList.remove('hidden');
         applyLiveMarketFilter(currentLiveMarket);
         updateLiveCounters();
     }
 
     function closeLiveMode() {
+        document.body.style.overflow = '';
         if (liveOverlay) liveOverlay.classList.add('hidden');
     }
 
