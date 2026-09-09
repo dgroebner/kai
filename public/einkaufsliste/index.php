@@ -20,6 +20,15 @@ $activeTab = $_GET['tab'] ?? 'list';
 if (!Auth::hasPermission('shopping_master') && in_array($activeTab, ['inbox', 'aisles'])) {
     $activeTab = 'list';
 }
+if ($activeTab === 'suggestions' && !Auth::hasPermission('suggestions_read') && !Auth::hasPermission('suggestions_write')) {
+    $activeTab = 'list';
+}
+if ($activeTab === 'recipe' && !Auth::hasPermission('recipe_read') && !Auth::hasPermission('recipe_write')) {
+    $activeTab = 'list';
+}
+if ($activeTab === 'history' && !Auth::hasPermission('history_read') && !Auth::hasPermission('history_write')) {
+    $activeTab = 'list';
+}
 $activeMarket = $_GET['market'] ?? 'all';
 if (!in_array($activeMarket, ['all', 'Rewe', 'Globus'], true)) {
     $activeMarket = 'all';
@@ -103,21 +112,27 @@ try {
             🛒 Einkaufsliste
             <span id="shopping-nav-list-count" class="badge badge-info shopping-badge-counter"><?= (int)$marketCounts['all']['open'] ?></span>
         </button>
-        <button type="button" class="btn <?= $activeTab === 'suggestions' ? '' : 'btn-outline' ?> js-tab-btn"
-                data-tab="suggestions">
-            💡 Vorschläge
-            <?php if (count($suggestions) > 0): ?>
-                <span class="badge badge-warning shopping-badge-counter"><?= count($suggestions) ?></span>
-            <?php endif; ?>
-        </button>
-        <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn"
-                data-tab="recipe">
-            🧑‍🍳 Rezept & KI
-        </button>
-        <button type="button" class="btn <?= $activeTab === 'history' ? '' : 'btn-outline' ?> js-tab-btn"
-                data-tab="history">
-            📋 Historie & E-Bons
-        </button>
+        <?php if (Auth::hasPermission('suggestions_read') || Auth::hasPermission('suggestions_write')): ?>
+            <button type="button" class="btn <?= $activeTab === 'suggestions' ? '' : 'btn-outline' ?> js-tab-btn"
+                    data-tab="suggestions">
+                💡 Vorschläge
+                <?php if (count($suggestions) > 0): ?>
+                    <span class="badge badge-warning shopping-badge-counter"><?= count($suggestions) ?></span>
+                <?php endif; ?>
+            </button>
+        <?php endif; ?>
+        <?php if (Auth::hasPermission('recipe_read') || Auth::hasPermission('recipe_write')): ?>
+            <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn"
+                    data-tab="recipe">
+                🧑‍🍳 Rezept & KI
+            </button>
+        <?php endif; ?>
+        <?php if (Auth::hasPermission('history_read') || Auth::hasPermission('history_write')): ?>
+            <button type="button" class="btn <?= $activeTab === 'history' ? '' : 'btn-outline' ?> js-tab-btn"
+                    data-tab="history">
+                📋 Historie & E-Bons
+            </button>
+        <?php endif; ?>
         <?php if (Auth::hasPermission('shopping_master')): ?>
             <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn"
                     data-tab="inbox" id="tab-btn-inbox">
@@ -147,7 +162,8 @@ try {
             <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <button type="button" class="btn btn-success btn-sm js-open-live-mode">📱 Live-Modus öffnen</button>
                 <button type="button" class="btn btn-outline btn-sm js-cancel-session-btn"
-                        data-session-id="<?= $activeSession ? (int)$activeSession['id'] : '' ?>" title="Einkauf abbrechen">Abbrechen
+                        data-session-id="<?= $activeSession ? (int)$activeSession['id'] : '' ?>"
+                        title="Einkauf abbrechen">Abbrechen
                 </button>
             </div>
         </div>
@@ -159,13 +175,13 @@ try {
 
             <!-- Schnellerfassung neuer Artikel -->
             <section class="card shopping-quick-add-card">
-                <h3>+ Artikel schnell hinzufügen</h3>
+                <h3>+ Artikel hinzufügen</h3>
                 <form id="shopping-add-form" class="shopping-add-form">
                     <div class="shopping-add-grid">
                         <div class="form-group flex-2" style="flex-basis: 100%;">
                             <label for="input-item-name" class="sr-only">Artikelname</label>
                             <input type="text" id="input-item-name" name="name" class="form-control"
-                                   list="known-products-datalist" placeholder="z.B. Bio-Milch, Butter, Kaffee..."
+                                   list="known-products-datalist" placeholder="z.B. Milch, Butter, Kaffee..."
                                    required autocomplete="off" style="font-size: 1.1rem; padding: 0.75rem;">
                             <datalist id="known-products-datalist">
                                 <?php foreach ($allProducts
@@ -386,6 +402,7 @@ try {
         <!-- ============================================================== -->
         <!-- TAB 2: VORSCHLÄGE (Wocheneinkauf & eBon-Lernen)                 -->
         <!-- ============================================================== -->
+        <?php if (Auth::hasPermission('suggestions_read') || Auth::hasPermission('suggestions_write')): ?>
         <section id="tab-suggestions" class="shopping-tab-pane <?= $activeTab === 'suggestions' ? '' : 'hidden' ?>">
             <div class="card">
                 <div class="shopping-section-header">
@@ -396,6 +413,7 @@ try {
                             Schulferien und historische eBons.
                         </p>
                     </div>
+                    <?php if (Auth::hasPermission('suggestions_write')): ?>
                     <div class="shopping-header-actions">
                         <button type="button" id="btn-sync-ebons" class="btn btn-outline">
                             🔄 Aus eBons lernen
@@ -407,6 +425,7 @@ try {
                             </button>
                         <?php endif; ?>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <div id="suggestions-list-container" style="margin-top: 1.5rem;">
@@ -414,9 +433,11 @@ try {
                         <div class="text-center shopping-empty-state">
                             <p>Keine fälligen Artikel gefunden. Entweder stehen alle Artikel bereits auf der Liste oder
                                 es liegen noch nicht genügend eBons vor.</p>
-                            <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt historische
-                                eBons analysieren
-                            </button>
+                            <?php if (Auth::hasPermission('suggestions_write')): ?>
+                                <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt historische
+                                    eBons analysieren
+                                </button>
+                            <?php endif; ?>
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
@@ -429,7 +450,9 @@ try {
                                     <th>Letzter Kauf</th>
                                     <th>Intervall</th>
                                     <th>Dringlichkeit</th>
-                                    <th class="text-right">Aktion</th>
+                                    <?php if (Auth::hasPermission('suggestions_write')): ?>
+                                        <th class="text-right">Aktion</th>
+                                    <?php endif; ?>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -467,14 +490,16 @@ try {
                                                 <?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)' ?>
                                             </span>
                                         </td>
-                                        <td data-label="Aktion" class="text-right">
-                                            <button type="button"
-                                                    class="btn btn-sm btn-primary js-accept-single-suggestion"
-                                                    data-id="<?= (int)$sug['product_id'] ?>"
-                                                    data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>">
-                                                + Übernehmen
-                                            </button>
-                                        </td>
+                                        <?php if (Auth::hasPermission('suggestions_write')): ?>
+                                            <td data-label="Aktion" class="text-right">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-primary js-accept-single-suggestion"
+                                                        data-id="<?= (int)$sug['product_id'] ?>"
+                                                        data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>">
+                                                    + Übernehmen
+                                                </button>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                                 </tbody>
@@ -484,10 +509,13 @@ try {
                 </div>
             </div>
         </section>
+        <?php endif; ?>
+
 
         <!-- ============================================================== -->
         <!-- TAB 3: REZEPT & FREITEXT (GEMINI KI-ASSISTENT)                 -->
         <!-- ============================================================== -->
+        <?php if (Auth::hasPermission('recipe_read') || Auth::hasPermission('recipe_write')): ?>
         <section id="tab-recipe" class="shopping-tab-pane <?= $activeTab === 'recipe' ? '' : 'hidden' ?>">
             <div class="card">
                 <h3>🧑‍🍳 Rezept- & Freitext-Assistent (Google Gemini)</h3>
@@ -497,6 +525,7 @@ try {
                     Globus und den korrekten Gängen zu.
                 </p>
 
+                <?php if (Auth::hasPermission('recipe_write')): ?>
                 <form id="form-recipe-ai" class="recipe-form">
                     <div class="form-group">
                         <textarea id="recipe-input-text" class="form-control" rows="6" placeholder="z. B. Spaghetti Bolognese für 4 Personen:
@@ -544,8 +573,14 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         </button>
                     </div>
                 </div>
+                <?php else: ?>
+                    <p class="text-muted">Du hast nur Leserechte für diesen Bereich. Für die KI-Analyse wird
+                        <strong>recipe_write</strong> benötigt.</p>
+                <?php endif; ?>
             </div>
         </section>
+        <?php endif; ?>
+
 
         <!-- ============================================================== -->
         <!-- TAB 4: INBOX (UNBEKANNTE EBONS)                                -->
@@ -674,7 +709,11 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%; max-width: 320px;">
                         <input type="text" id="product-master-filter" class="form-control"
                                placeholder="🔍 Artikel filtern..." style="width: 100%;">
-                        <button type="button" id="btn-clear-product-filter" class="btn-icon hidden" title="Filter leeren" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0 0.25rem;">✕</button>
+                        <button type="button" id="btn-clear-product-filter" class="btn-icon hidden"
+                                title="Filter leeren"
+                                style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0 0.25rem;">
+                            ✕
+                        </button>
                     </div>
                 </div>
 
@@ -727,9 +766,11 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                     </td>
                                     <td data-label="Ferien">
                                         <?php if ((float)$p['holiday_factor'] < 0.05): ?>
-                                            <span class="badge badge-warning" title="Brotbüchse: Pausiert vor &amp; in Ferien, aktiv vor Schulstart">🥪 Brotbüchse</span>
+                                            <span class="badge badge-warning"
+                                                  title="Brotbüchse: Pausiert vor &amp; in Ferien, aktiv vor Schulstart">🥪 Brotbüchse</span>
                                         <?php elseif ((float)$p['holiday_factor'] > 1.0): ?>
-                                            <span class="badge badge-info" title="Mehrbedarf in Ferien">🏖️ <?= (float)$p['holiday_factor'] ?>x</span>
+                                            <span class="badge badge-info"
+                                                  title="Mehrbedarf in Ferien">🏖️ <?= (float)$p['holiday_factor'] ?>x</span>
                                         <?php else: ?>
                                             <span class="text-muted">1.0x</span>
                                         <?php endif; ?>
@@ -763,6 +804,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         <!-- ============================================================== -->
         <!-- TAB 5: HISTORIE & E-BONS                                      -->
         <!-- ============================================================== -->
+        <?php if (Auth::hasPermission('history_read') || Auth::hasPermission('history_write')): ?>
         <section id="tab-history" class="shopping-tab-pane <?= $activeTab === 'history' ? '' : 'hidden' ?>">
             <div class="card" style="margin-bottom: 1.5rem;">
                 <div class="shopping-section-header">
@@ -810,16 +852,20 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                         data-session-id="<?= (int)$s['id'] ?>">
                                     📊 E-Bon Abgleich
                                 </button>
-                                <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn"
-                                        data-session-id="<?= (int)$s['id'] ?>">
-                                    🔗 Bons verknüpfen (<?= (int)$s['receipt_count'] ?>)
-                                </button>
+                                <?php if (Auth::hasPermission('history_write')): ?>
+                                    <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn"
+                                            data-session-id="<?= (int)$s['id'] ?>">
+                                        🔗 Bons verknüpfen (<?= (int)$s['receipt_count'] ?>)
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
         </section>
+        <?php endif; ?>
+
     </main>
 </div>
 
@@ -839,13 +885,21 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <span style="font-size: 0.95rem; font-weight: 600;">
                         <span id="live-checked-counter">0</span> / <span id="live-total-counter">0</span> erledigt
                     </span>
-                    <button type="button" class="btn btn-outline btn-sm js-close-live-mode" title="Live-Modus pausieren">&times; Pause</button>
+                    <button type="button" class="btn btn-outline btn-sm js-close-live-mode"
+                            title="Live-Modus pausieren">&times; Pause
+                    </button>
                 </div>
             </div>
             <div class="shopping-live-filter-chips">
-                <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle Märkte</button>
-                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">🔴 Rewe</button>
-                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">🟠 Globus</button>
+                <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle
+                    Märkte
+                </button>
+                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">
+                    🔴 Rewe
+                </button>
+                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus"
+                        data-market="Globus">🟠 Globus
+                </button>
             </div>
         </div>
     </div>
@@ -1181,14 +1235,17 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 </div>
                 <div class="form-group flex-1">
                     <label for="modal-product-interval">Kaufzyklus (Tage)</label>
-                    <input type="number" id="modal-product-interval" step="0.5" min="0.5" class="form-control" placeholder="z. B. 7 (automatisch)">
+                    <input type="number" id="modal-product-interval" step="0.5" min="0.5" class="form-control"
+                           placeholder="z. B. 7 (automatisch)">
                 </div>
             </div>
             <div class="form-group">
                 <label for="modal-product-holiday-mode">Ferien-Verhalten</label>
                 <select id="modal-product-holiday-mode" class="form-control">
                     <option value="1.00">🔄 Normal (ganzjährig gleicher Bedarf)</option>
-                    <option value="0.00">🥪 Nur Schulzeit / Brotbüchse (pausiert vor &amp; in Ferien, aktiv vor Schulstart)</option>
+                    <option value="0.00">🥪 Nur Schulzeit / Brotbüchse (pausiert vor &amp; in Ferien, aktiv vor
+                        Schulstart)
+                    </option>
                     <option value="1.50">🏖️ Mehrbedarf in Ferien (+50 % häufiger)</option>
                     <option value="2.00">🏖️ Starker Mehrbedarf in Ferien (doppelt so häufig)</option>
                 </select>

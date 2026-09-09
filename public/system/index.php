@@ -466,15 +466,25 @@ function getEventLabel(string $eventType): string
                             <?php
                             // Standard-Rechte sammeln, damit das UI nicht leer ist
                             $availablePermissions = [
+                                    // System & Finanzen
                                     'system_read', 'system_write',
                                     'finance_read', 'finance_write',
                                     'ebon_read', 'ebon_write',
+                                    // PV / Fahrzeug / Wetter
                                     'pv_read', 'pv_write',
                                     'car_read', 'car_write',
+                                    'weather_read', 'weather_write',
+                                    // Einkaufsliste — Basiszugang
                                     'shopping_read', 'shopping_write', 'shopping_master',
-                                    'weather_read', 'weather_write'
+                                    // Einkaufsliste — Vorschläge-Tab
+                                    'suggestions_read', 'suggestions_write',
+                                    // Einkaufsliste — Rezept & KI-Tab
+                                    'recipe_read', 'recipe_write',
+                                    // Einkaufsliste — Historie & E-Bons-Tab
+                                    'history_read', 'history_write',
                             ];
                             ?>
+
                             <?php foreach ($availablePermissions as $perm): ?>
                                 <tr>
                                     <td data-label="Recht"><strong><?= htmlspecialchars($perm) ?></strong></td>

@@ -67,6 +67,37 @@ if (in_array($action, $masterActions, true) && !Auth::hasPermission('shopping_ma
     Auth::sendJsonError(403, 'Fehlendes Schreibrecht für den Artikelstamm (shopping_master)');
 }
 
+// Vorschläge-spezifische Rechteprüfung
+$suggestionReadActions = ['get_suggestions'];
+$suggestionWriteActions = ['accept_suggestion', 'accept_all_suggestions', 'sync_ebons'];
+if (in_array($action, $suggestionReadActions, true)
+    && !Auth::hasPermission('suggestions_read')
+    && !Auth::hasPermission('suggestions_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung für den Vorschläge-Tab (suggestions_read)');
+}
+if (in_array($action, $suggestionWriteActions, true) && !Auth::hasPermission('suggestions_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung für Vorschläge-Aktionen (suggestions_write)');
+}
+
+// Rezept-spezifische Rechteprüfung
+$recipeWriteActions = ['parse_recipe', 'save_recipe_items'];
+if (in_array($action, $recipeWriteActions, true) && !Auth::hasPermission('recipe_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung für den Rezept-Assistenten (recipe_write)');
+}
+
+// Histor-spezifische Rechteprüfung
+$historyReadActions = ['get_recent_sessions', 'get_session_candidates', 'get_session_analysis'];
+$historyWriteActions = ['link_receipt', 'unlink_receipt'];
+if (in_array($action, $historyReadActions, true)
+    && !Auth::hasPermission('history_read')
+    && !Auth::hasPermission('history_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung für die Einkaufshistorie (history_read)');
+}
+if (in_array($action, $historyWriteActions, true) && !Auth::hasPermission('history_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung zum Verknüpfen von Kassenbons (history_write)');
+}
+
+
 try {
     switch ($action) {
         // --- 0. Sync-State (Echtzeit-Synchronisation) ---
