@@ -195,18 +195,12 @@ class ProductMasterRepository
         if ($existing) {
             $id = (int)$existing['id'];
             $fields = [
-                'preferred_market = COALESCE(:preferred_market, preferred_market)',
-                'default_category = COALESCE(:default_category, default_category)',
-                'default_unit = COALESCE(:default_unit, default_unit)',
                 'avg_interval_days = COALESCE(:avg_interval_days, avg_interval_days)',
                 'last_purchased_at = COALESCE(:last_purchased_at, last_purchased_at)',
                 'holiday_factor = COALESCE(:holiday_factor, holiday_factor)',
             ];
             $params = [
                 ':id' => $id,
-                ':preferred_market' => $data['preferred_market'] ?? null,
-                ':default_category' => $data['default_category'] ?? null,
-                ':default_unit' => $data['default_unit'] ?? null,
                 ':avg_interval_days' => isset($data['avg_interval_days']) ? (float)$data['avg_interval_days'] : null,
                 ':last_purchased_at' => $data['last_purchased_at'] ?? null,
                 ':holiday_factor' => isset($data['holiday_factor']) ? (float)$data['holiday_factor'] : null,
