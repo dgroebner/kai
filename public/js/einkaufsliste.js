@@ -2092,6 +2092,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await KaiHttp.postJson(API_URL, {action: 'toggle_item_check', id: itemId});
             if (res.success) {
+                if (res.sync_hash && window.shoppingSync) {
+                    window.shoppingSync.setHash(res.sync_hash);
+                }
                 const checked = res.is_checked ? 1 : 0;
                 row.dataset.checked = checked;
                 row.classList.toggle('is-checked', checked === 1);
@@ -2320,4 +2323,508 @@ document.addEventListener('DOMContentLoaded', () => {
             content.innerHTML = '<div class="text-center text-danger" style="padding: 1.5rem;">Verbindungsfehler beim Laden der Analyse.</div>';
         }
     }
+
+    // ==============================================================
+    // REALTIME-SYNCHRONISATION (SHOPPING LIST SYNC)
+    // ==============================================================
+    class ShoppingListSync {
+        constructor() {
+            const metaHash = document.querySelector('meta[name="shopping-sync-hash"]');
+            this.currentHash = metaHash ? metaHash.getAttribute('content') : '';
+            this.timer = null;
+            this.isPolling = false;
+            this.visibleInterval = 4000;  // 4s wenn Tab im Vordergrund
+            this.hiddenInterval = 30000;  // 30s wenn Tab im Hintergrund
+            this.isInitialLoad = true;
+
+            this.init();
+        }
+
+        init() {
+            this.scheduleNext(this.visibleInterval);
+
+            // Tab-Wechsel und Wiederkehr erkennen
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    this.pollNow();
+                } else {
+                    this.scheduleNext(this.hiddenInterval);
+                }
+            });
+
+            window.addEventListener('focus', () => {
+                this.pollNow();
+            });
+        }
+
+        scheduleNext(ms) {
+            if (this.timer) clearTimeout(this.timer);
+            this.timer = setTimeout(() => this.poll(), ms);
+        }
+
+        async pollNow() {
+            if (this.timer) clearTimeout(this.timer);
+            await this.poll();
+        }
+
+        setHash(newHash) {
+            if (newHash) {
+                this.currentHash = newHash;
+                const metaHash = document.querySelector('meta[name="shopping-sync-hash"]');
+                if (metaHash) metaHash.setAttribute('content', newHash);
+            }
+        }
+
+        getActiveMarket() {
+            const metaMarket = document.querySelector('meta[name="active-market"]');
+            return metaMarket ? metaMarket.getAttribute('content') : 'all';
+        }
+
+        async poll() {
+            if (this.isPolling) return;
+            this.isPolling = true;
+
+            try {
+                const res = await KaiHttp.postJson(API_URL, {
+                    action: 'get_sync_state',
+                    current_hash: this.currentHash
+                });
+
+                if (res.success) {
+                    if (res.changed && res.items) {
+                        const previousHash = this.currentHash;
+                        this.setHash(res.hash);
+
+                        // Aktualisierungen durchführen
+                        this.applySyncUpdate(res, previousHash !== '');
+                    } else if (res.hash) {
+                        this.setHash(res.hash);
+                    }
+                }
+            } catch (err) {
+                // Stilles Ignorieren von Netzwerkfehlern beim Polling (z.B. Offline oder Funkloch)
+            } finally {
+                this.isPolling = false;
+                const nextInterval = document.hidden ? this.hiddenInterval : this.visibleInterval;
+                this.scheduleNext(nextInterval);
+            }
+        }
+
+        applySyncUpdate(data, showNotification) {
+            const allItems = data.items || [];
+            const marketCounts = data.market_counts || {};
+            const activeSession = data.active_session;
+
+            // 1. Zähler in Navigation & Filtern aktualisieren
+            this.updateHeaderAndCounters(marketCounts);
+
+            // 2. Aktives Einkaufs-Banner aktualisieren
+            this.updateSessionBanner(activeSession);
+
+            // 3. Hauptansicht (tab-list) aktualisieren
+            const activeMarket = this.getActiveMarket();
+            const relevantItems = activeMarket === 'all'
+                ? allItems
+                : allItems.filter(i => i.market === activeMarket || i.market === 'Übergreifend');
+
+            const newlyAddedIds = this.renderMainList(relevantItems);
+
+            // 4. Live-Modus Overlay aktualisieren (falls gerade geöffnet)
+            const liveNewlyAdded = this.updateLiveOverlay(allItems);
+
+            // 5. Dezente Benachrichtigung für Nutzer
+            if (showNotification) {
+                const totalNew = Math.max(newlyAddedIds.length, liveNewlyAdded.length);
+                if (totalNew > 0) {
+                    showToast(`🛒 ${totalNew} neue(r) Artikel auf die Liste gesetzt!`);
+                }
+            }
+        }
+
+        updateHeaderAndCounters(counts) {
+            // Tab-Badge Einkaufsliste
+            const navBadge = document.getElementById('shopping-nav-list-count');
+            if (navBadge && counts.all) {
+                navBadge.textContent = counts.all.open;
+            }
+
+            // Filter Buttons (Alle / Rewe / Globus)
+            document.querySelectorAll('.js-market-filter').forEach(btn => {
+                const m = btn.dataset.market;
+                if (m === 'all' && counts.all) {
+                    btn.textContent = `Alle Märkte (${counts.all.open})`;
+                } else if (m === 'Rewe' && counts.Rewe) {
+                    btn.textContent = `🔴 Rewe (${counts.Rewe.open})`;
+                } else if (m === 'Globus' && counts.Globus) {
+                    btn.textContent = `🟠 Globus (${counts.Globus.open})`;
+                }
+            });
+
+            // "Einkauf abschließen"-Button
+            const completeBtn = document.querySelector('.shopping-market-filter-card .js-complete-shopping-btn');
+            const activeMarket = this.getActiveMarket();
+            const checkedCount = counts[activeMarket] ? counts[activeMarket].checked : (counts.all ? counts.all.checked : 0);
+
+            if (checkedCount > 0) {
+                if (completeBtn) {
+                    completeBtn.textContent = `✔️ Einkauf abschließen (${checkedCount})`;
+                    completeBtn.style.display = '';
+                }
+            } else if (completeBtn) {
+                completeBtn.style.display = 'none';
+            }
+        }
+
+        updateSessionBanner(session) {
+            const banner = document.getElementById('shopping-active-banner');
+            const startBar = document.getElementById('shopping-start-session-bar');
+
+            if (session) {
+                if (banner) {
+                    banner.classList.remove('hidden');
+                    banner.dataset.sessionId = session.id;
+                    const typeEl = document.getElementById('banner-session-type');
+                    if (typeEl) typeEl.textContent = session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1);
+                    const chkEl = document.getElementById('banner-checked-count');
+                    const totEl = document.getElementById('banner-total-count');
+                    if (chkEl) chkEl.textContent = session.checked_count;
+                    if (totEl) totEl.textContent = session.total_count;
+
+                    const cancelBtn = banner.querySelector('.js-cancel-session-btn');
+                    if (cancelBtn) cancelBtn.dataset.sessionId = session.id;
+                }
+                if (startBar) startBar.style.display = 'none';
+            } else {
+                if (banner) {
+                    banner.classList.add('hidden');
+                    banner.dataset.sessionId = '';
+                }
+                if (startBar) startBar.style.display = '';
+            }
+        }
+
+        renderMainList(items) {
+            const container = document.getElementById('shopping-items-container');
+            if (!container) return [];
+
+            const existingRows = container.querySelectorAll('.shopping-item-row');
+            const oldIds = new Set(Array.from(existingRows).map(r => parseInt(r.dataset.id, 10)));
+
+            const openItems = items.filter(i => parseInt(i.is_checked, 10) === 0);
+            const checkedItems = items.filter(i => parseInt(i.is_checked, 10) === 1);
+
+            const newlyAddedIds = [];
+            openItems.forEach(it => {
+                if (!oldIds.has(parseInt(it.id, 10))) {
+                    newlyAddedIds.push(parseInt(it.id, 10));
+                }
+            });
+
+            if (openItems.length === 0 && checkedItems.length === 0) {
+                container.innerHTML = `
+                    <div class="card text-center shopping-empty-state">
+                        <p>🎉 Keine offenen Artikel für diesen Markt auf der Einkaufsliste!</p>
+                        <button type="button" class="btn btn-outline js-tab-btn" data-tab="suggestions">💡 Vorschläge prüfen</button>
+                    </div>
+                `;
+                return newlyAddedIds;
+            }
+
+            // Gruppieren nach Kategorie/Gang
+            const groupedOpen = {};
+            openItems.forEach(item => {
+                const cat = item.category || 'Sonstiges';
+                const order = parseInt(item.aisle_order || 999, 10);
+                if (!groupedOpen[cat]) {
+                    groupedOpen[cat] = {
+                        name: cat,
+                        order: order,
+                        items: []
+                    };
+                }
+                groupedOpen[cat].items.push(item);
+            });
+
+            const sortedCategories = Object.keys(groupedOpen).sort((a, b) => groupedOpen[a].order - groupedOpen[b].order);
+
+            let html = '';
+            if (openItems.length === 0) {
+                html += `
+                    <div class="card text-center shopping-empty-state">
+                        <p>🎉 Keine offenen Artikel für diesen Markt auf der Einkaufsliste!</p>
+                        <button type="button" class="btn btn-outline js-tab-btn" data-tab="suggestions">💡 Vorschläge prüfen</button>
+                    </div>
+                `;
+            } else {
+                sortedCategories.forEach(catName => {
+                    const group = groupedOpen[catName];
+                    const catIcon = (window.CATEGORY_ICONS && window.CATEGORY_ICONS[catName]) || '🛒';
+                    const aisleLabel = group.order < 900 ? `Gang ${group.order}` : '❓';
+
+                    html += `
+                        <div class="card shopping-aisle-group">
+                            <div class="shopping-aisle-header">
+                                <h4 class="aisle-title">
+                                    <span class="aisle-badge">${aisleLabel}</span>
+                                    ${catIcon} ${KaiHtml.escape(catName)}
+                                    <span class="text-muted">(${group.items.length})</span>
+                                </h4>
+                            </div>
+                            <div class="shopping-items-list">
+                    `;
+
+                    group.items.forEach(item => {
+                        const isNew = newlyAddedIds.includes(parseInt(item.id, 10));
+                        html += this.buildMainItemRow(item, false, isNew);
+                    });
+
+                    html += `</div></div>`;
+                });
+            }
+
+            // Abgehakte Artikel
+            if (checkedItems.length > 0) {
+                const activeMarket = this.getActiveMarket();
+                html += `
+                    <div class="card shopping-checked-group">
+                        <div class="shopping-aisle-header">
+                            <h4 class="aisle-title text-muted">
+                                ✔️ Erledigt (${checkedItems.length})
+                            </h4>
+                            <button type="button" class="btn btn-sm btn-success js-complete-shopping-btn" data-market="${KaiHtml.escape(activeMarket)}">
+                                Einkauf abschließen &amp; löschen
+                            </button>
+                        </div>
+                        <div class="shopping-items-list shopping-checked-list">
+                `;
+
+                checkedItems.forEach(item => {
+                    html += this.buildMainItemRow(item, true, false);
+                });
+
+                html += `</div></div>`;
+            }
+
+            container.innerHTML = html;
+            return newlyAddedIds;
+        }
+
+        buildMainItemRow(item, isChecked, isNew) {
+            const id = parseInt(item.id, 10);
+            const name = item.name || '';
+            const qty = parseFloat(item.quantity) || 1;
+            const formattedQty = (qty === parseInt(qty, 10)) ? parseInt(qty, 10) : qty.toFixed(1).replace('.', ',');
+            const unit = item.unit || 'Stück';
+            const market = item.market || 'Rewe';
+            const category = item.category || 'Sonstiges';
+            const note = item.note || '';
+            const marketBadgeClass = market === 'Rewe' ? 'badge-rewe' : 'badge-globus';
+            const isSpontaneous = parseInt(item.is_spontaneous, 10) === 1;
+
+            const newClass = isNew ? ' item-newly-added' : '';
+
+            if (isChecked) {
+                return `
+                    <div class="shopping-item-row is-checked${newClass}" data-id="${id}">
+                        <div class="shopping-item-check">
+                            <input type="checkbox" class="shopping-checkbox js-item-check" data-id="${id}" checked title="Wieder öffnen">
+                        </div>
+                        <div class="shopping-item-details">
+                            <span class="item-name strike-through">${KaiHtml.escape(name)}</span>
+                            <span class="item-quantity text-muted">${formattedQty} ${KaiHtml.escape(unit)}</span>
+                        </div>
+                        <div class="shopping-item-meta">
+                            <span class="badge badge-market ${marketBadgeClass}">${KaiHtml.escape(market)}</span>
+                            <button type="button" class="btn-icon js-delete-item-btn" data-id="${id}" title="Löschen">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            let badges = `<span class="badge badge-market ${marketBadgeClass}">${KaiHtml.escape(market)}</span>`;
+            if (isSpontaneous) {
+                badges += `<span class="badge badge-warning" title="Spontankauf (verzerrt das Verbrauchsintervall nicht)">⚡ Spontan</span>`;
+            }
+            if (item.source === 'recipe') {
+                badges += `<span class="badge badge-info" title="Aus Rezept generiert">🧑‍🍳 Rezept</span>`;
+            } else if (item.source === 'suggestion') {
+                badges += `<span class="badge badge-info" title="Aus automatischem Intervall vorgeschlagen">✨ Vorschlag</span>`;
+            }
+
+            return `
+                <div class="shopping-item-row${newClass}"
+                     data-id="${id}"
+                     data-market="${KaiHtml.escape(market)}"
+                     data-name="${KaiHtml.escape(name)}"
+                     data-quantity="${qty}"
+                     data-unit="${KaiHtml.escape(unit)}"
+                     data-category="${KaiHtml.escape(category)}"
+                     data-note="${KaiHtml.escape(note)}">
+                    <div class="shopping-item-check">
+                        <input type="checkbox" class="shopping-checkbox js-item-check" data-id="${id}" title="Als erledigt markieren">
+                    </div>
+                    <div class="shopping-item-details js-edit-list-item-trigger" style="cursor: pointer;">
+                        <span class="item-name">${KaiHtml.escape(name)}</span>
+                        <span class="item-quantity">${formattedQty} ${KaiHtml.escape(unit)}</span>
+                        ${note ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"><small><i>${KaiHtml.escape(note)}</i></small></div>` : ''}
+                    </div>
+                    <div class="shopping-item-meta">
+                        ${badges}
+                        <button type="button" class="btn-icon js-edit-list-item-trigger" title="Bearbeiten">✏️</button>
+                        <button type="button" class="btn-icon js-delete-item-btn" data-id="${id}" title="Löschen">🗑️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        updateLiveOverlay(items) {
+            const liveOverlay = document.getElementById('shopping-live-overlay');
+            const liveContent = document.getElementById('shopping-live-content');
+            if (!liveOverlay || liveOverlay.classList.contains('hidden') || !liveContent) {
+                return [];
+            }
+
+            const existingLiveRows = liveContent.querySelectorAll('.shopping-live-item-row');
+            const liveOldIds = new Set(Array.from(existingLiveRows).map(r => parseInt(r.dataset.id, 10)));
+            const newLiveItemIds = [];
+
+            // Alle offenen & erledigten Artikel nach Gängen gruppieren
+            // Items sortieren nach Gang (aisle_order)
+            const grouped = {};
+            items.forEach(it => {
+                const cat = it.category || 'Sonstiges';
+                const order = parseInt(it.aisle_order || 999, 10);
+                if (!grouped[cat]) {
+                    grouped[cat] = {
+                        name: cat,
+                        order: order,
+                        items: []
+                    };
+                }
+                grouped[cat].items.push(it);
+                if (!liveOldIds.has(parseInt(it.id, 10))) {
+                    newLiveItemIds.push(parseInt(it.id, 10));
+                }
+            });
+
+            // Diffen der bestehenden DOM-Elemente
+            // 1. Entfernte Items aus DOM löschen
+            const itemMap = new Map(items.map(it => [parseInt(it.id, 10), it]));
+            existingLiveRows.forEach(row => {
+                const id = parseInt(row.dataset.id, 10);
+                if (!itemMap.has(id)) {
+                    row.remove();
+                }
+            });
+
+            // 2. Bestehende Items aktualisieren (Checked-Status)
+            existingLiveRows.forEach(row => {
+                const id = parseInt(row.dataset.id, 10);
+                const fresh = itemMap.get(id);
+                if (fresh) {
+                    const isChecked = parseInt(fresh.is_checked, 10) === 1;
+                    const wasChecked = row.dataset.checked === '1';
+                    if (isChecked !== wasChecked) {
+                        row.dataset.checked = isChecked ? '1' : '0';
+                        row.classList.toggle('is-checked', isChecked);
+                        const cb = row.querySelector('.shopping-live-checkbox');
+                        if (cb) cb.checked = isChecked;
+                    }
+                }
+            });
+
+            // 3. Neu hinzugekommene Items in die passenden Gang-Gruppen einhängen
+            if (newLiveItemIds.length > 0) {
+                newLiveItemIds.forEach(newId => {
+                    const item = itemMap.get(newId);
+                    if (!item) return;
+
+                    const catName = item.category || 'Sonstiges';
+                    const order = parseInt(item.aisle_order || 999, 10);
+                    const catIcon = (window.CATEGORY_ICONS && window.CATEGORY_ICONS[catName]) || '🛒';
+                    const aisleLabel = order < 900 ? `Gang ${order}` : '❓';
+
+                    // Suche bestehende Gang-Gruppe im Live-Modus
+                    let aisleGroup = null;
+                    liveContent.querySelectorAll('.shopping-live-aisle-group').forEach(group => {
+                        const header = group.querySelector('.shopping-live-aisle-header');
+                        if (header && header.textContent.includes(catName)) {
+                            aisleGroup = group;
+                        }
+                    });
+
+                    if (!aisleGroup) {
+                        // Gang-Gruppe neu erstellen
+                        aisleGroup = document.createElement('div');
+                        aisleGroup.className = 'shopping-live-aisle-group';
+                        aisleGroup.dataset.order = order;
+                        aisleGroup.innerHTML = `
+                            <div class="shopping-live-aisle-header">
+                                <span class="aisle-badge">${aisleLabel}</span>
+                                ${catIcon} ${KaiHtml.escape(catName)}
+                            </div>
+                            <div class="shopping-live-items-list"></div>
+                        `;
+
+                        // An geordneter Stelle einfügen
+                        let inserted = false;
+                        const allGroups = liveContent.querySelectorAll('.shopping-live-aisle-group');
+                        for (const g of allGroups) {
+                            const gOrder = parseInt(g.dataset.order || 999, 10);
+                            if (order < gOrder) {
+                                liveContent.insertBefore(aisleGroup, g);
+                                inserted = true;
+                                break;
+                            }
+                        }
+                        if (!inserted) {
+                            liveContent.appendChild(aisleGroup);
+                        }
+                    }
+
+                    const listContainer = aisleGroup.querySelector('.shopping-live-items-list');
+                    if (listContainer) {
+                        const rowEl = document.createElement('div');
+                        const isChecked = parseInt(item.is_checked, 10) === 1;
+                        const market = item.market || 'Rewe';
+                        const marketBadgeClass = market === 'Rewe' ? 'badge-rewe' : (market === 'Globus' ? 'badge-globus' : 'badge-info');
+                        const qty = parseFloat(item.quantity) || 1;
+                        const formattedQty = (qty === parseInt(qty, 10)) ? parseInt(qty, 10) : qty.toFixed(1).replace('.', ',');
+                        const unit = item.unit || 'Stück';
+
+                        rowEl.className = `shopping-live-item-row item-newly-added${isChecked ? ' is-checked' : ''}`;
+                        rowEl.dataset.id = item.id;
+                        rowEl.dataset.market = market;
+                        rowEl.dataset.checked = isChecked ? '1' : '0';
+
+                        rowEl.innerHTML = `
+                            <input type="checkbox" class="shopping-live-checkbox" ${isChecked ? 'checked' : ''}>
+                            <div class="shopping-live-item-body">
+                                <div>
+                                    <div class="shopping-live-item-name">
+                                        ${KaiHtml.escape(item.name)}
+                                        <span class="shopping-live-item-qty">${formattedQty} ${KaiHtml.escape(unit)}</span>
+                                    </div>
+                                    ${item.note ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"><i>${KaiHtml.escape(item.note)}</i></div>` : ''}
+                                </div>
+                                <div>
+                                    <span class="badge badge-market ${marketBadgeClass}">${KaiHtml.escape(market)}</span>
+                                </div>
+                            </div>
+                        `;
+                        listContainer.appendChild(rowEl);
+                    }
+                });
+            }
+
+            // Filter anwenden & Zähler aktualisieren
+            applyLiveMarketFilter(currentLiveMarket);
+            updateLiveCounters();
+
+            return newLiveItemIds;
+        }
+    }
+
+    // Instanziieren und global zur Verfügung stellen
+    window.shoppingSync = new ShoppingListSync();
 });

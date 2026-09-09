@@ -19,8 +19,8 @@ use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');
 
-// 1. Auth-Check — immer zuerst
-Auth::requireApi('shopping_write');
+// 1. Auth-Check — immer zuerst (mindestens shopping_read)
+Auth::requireApi('shopping_read');
 
 // 2. HTTP-Methoden-Check
 Auth::requireMethod('POST');
@@ -48,6 +48,16 @@ $holidayService = new HolidayService();
 $learningService = new LearningService($productRepo, $mappingRepo);
 $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
 
+// Prüfen auf Lese-Aktionen vs. Schreibaktionen
+$readActions = [
+    'get_sync_state', 'get_active_session', 'get_recent_sessions',
+    'get_suggestions', 'get_inbox', 'get_ebon_mappings',
+    'get_session_candidates', 'get_session_analysis'
+];
+if (!in_array($action, $readActions, true) && !Auth::hasPermission('shopping_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung zum Bearbeiten der Einkaufsliste');
+}
+
 $masterActions = [
     'update_aisle_order', 'save_product_master', 'toggle_product_ignore',
     'save_ebon_mapping', 'delete_ebon_mapping', 'resolve_inbox',
@@ -59,6 +69,35 @@ if (in_array($action, $masterActions, true) && !Auth::hasPermission('shopping_ma
 
 try {
     switch ($action) {
+        // --- 0. Sync-State (Echtzeit-Synchronisation) ---
+        case 'get_sync_state':
+            $clientHash = trim((string)($input['current_hash'] ?? ''));
+            $syncState = $listRepo->getSyncState();
+            $serverHash = $syncState['hash'];
+
+            if ($clientHash !== '' && $clientHash === $serverHash) {
+                echo json_encode([
+                    'success' => true,
+                    'changed' => false,
+                    'hash' => $serverHash,
+                ]);
+                break;
+            }
+
+            $items = $listRepo->getItems(null, true);
+            $marketCounts = $listRepo->getItemCountsByMarket();
+            $activeSession = $sessionRepo->getActiveSession();
+
+            echo json_encode([
+                'success' => true,
+                'changed' => true,
+                'hash' => $serverHash,
+                'items' => $items,
+                'market_counts' => $marketCounts,
+                'active_session' => $activeSession,
+            ]);
+            break;
+
         // --- 1. Artikel zur Einkaufsliste hinzufügen ---
         case 'add_item':
             $name = trim((string)($input['name'] ?? ''));
@@ -118,10 +157,12 @@ try {
             ]);
 
             $counts = $listRepo->getItemCountsByMarket();
+            $syncHash = $listRepo->getSyncState()['hash'];
             echo json_encode([
                 'success' => true,
                 'item_id' => $itemId,
                 'counts' => $counts,
+                'sync_hash' => $syncHash,
                 'message' => 'Artikel hinzugefügt',
             ]);
             break;
@@ -154,9 +195,11 @@ try {
             
             $success = $listRepo->updateItem($id, $updateData);
             if ($success) {
+                $syncHash = $listRepo->getSyncState()['hash'];
                 echo json_encode([
                     'success' => true,
                     'message' => 'Artikel aktualisiert',
+                    'sync_hash' => $syncHash,
                     'counts' => $listRepo->getItemCountsByMarket()
                 ]);
             } else {
@@ -176,11 +219,13 @@ try {
             $success = $listRepo->toggleCheck($id, $force);
             $item = $listRepo->findById($id);
             $counts = $listRepo->getItemCountsByMarket();
+            $syncHash = $listRepo->getSyncState()['hash'];
 
             echo json_encode([
                 'success' => $success,
                 'is_checked' => $item ? (int)$item['is_checked'] : 0,
                 'counts' => $counts,
+                'sync_hash' => $syncHash,
             ]);
             break;
 
@@ -193,10 +238,12 @@ try {
 
             $success = $listRepo->deleteItem($id);
             $counts = $listRepo->getItemCountsByMarket();
+            $syncHash = $listRepo->getSyncState()['hash'];
 
             echo json_encode([
                 'success' => $success,
                 'counts' => $counts,
+                'sync_hash' => $syncHash,
                 'message' => 'Artikel gelöscht',
             ]);
             break;
@@ -229,10 +276,12 @@ try {
             }
 
             $counts = $listRepo->getItemCountsByMarket();
+            $syncHash = $listRepo->getSyncState()['hash'];
             echo json_encode([
                 'success' => true,
                 'completed_count' => $count,
                 'counts' => $counts,
+                'sync_hash' => $syncHash,
                 'message' => "Einkauf mit {$count} Position(en) erfolgreich abgeschlossen.",
             ]);
             break;
@@ -739,10 +788,12 @@ Artikel-Liste:
             $notes = isset($input['notes']) ? trim((string)$input['notes']) : null;
             $sessionId = $sessionRepo->startSession($type, $notes);
             $active = $sessionRepo->getActiveSession();
+            $syncHash = $listRepo->getSyncState()['hash'];
             echo json_encode([
                 'success' => true,
                 'session_id' => $sessionId,
                 'session' => $active,
+                'sync_hash' => $syncHash,
                 'message' => 'Einkauf erfolgreich gestartet'
             ]);
             break;
@@ -767,8 +818,10 @@ Artikel-Liste:
                 Auth::sendJsonError(400, 'Keine aktive Einkaufs-Session zum Abbrechen gefunden');
             }
             $success = $sessionRepo->cancelSession($sessionId);
+            $syncHash = $listRepo->getSyncState()['hash'];
             echo json_encode([
                 'success' => $success,
+                'sync_hash' => $syncHash,
                 'message' => $success ? 'Einkauf abgebrochen' : 'Session konnte nicht abgebrochen werden'
             ]);
             break;
@@ -788,10 +841,14 @@ Artikel-Liste:
 
             try {
                 $archivedItems = $sessionRepo->completeSession($sessionId, $marketFilter);
+                $counts = $listRepo->getItemCountsByMarket();
+                $syncHash = $listRepo->getSyncState()['hash'];
                 echo json_encode([
                     'success' => true,
                     'message' => 'Einkauf erfolgreich abgeschlossen',
                     'completed_count' => count($archivedItems),
+                    'counts' => $counts,
+                    'sync_hash' => $syncHash,
                     'items' => $archivedItems
                 ]);
             } catch (Exception $e) {

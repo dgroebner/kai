@@ -328,4 +328,50 @@ class ShoppingListRepository
 
         return $checkedItems;
     }
+
+    /**
+     * Ermittelt den aktuellen Synchronisationszustand (Hash) der Einkaufsliste
+     * und aktiven Einkaufssessions zur Erkennung externer Änderungen.
+     *
+     * @return array{hash: string, item_count: int, checked_count: int, active_session_id: ?int}
+     */
+    public function getSyncState(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT 
+                COUNT(*) AS item_count,
+                COALESCE(MAX(updated_at), '1970-01-01 00:00:00') AS max_updated,
+                COALESCE(SUM(is_checked), 0) AS checked_count,
+                COALESCE(MAX(id), 0) AS max_id
+            FROM shopping_list_items
+        ");
+        $itemsState = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $sessionStmt = $this->pdo->query("
+            SELECT id, status, updated_at
+            FROM shopping_sessions
+            WHERE status = 'active'
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $sessionState = $sessionStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $raw = implode('|', [
+            $itemsState['item_count'] ?? 0,
+            $itemsState['max_updated'] ?? '',
+            $itemsState['checked_count'] ?? 0,
+            $itemsState['max_id'] ?? 0,
+            $sessionState['id'] ?? 'none',
+            $sessionState['status'] ?? 'none',
+            $sessionState['updated_at'] ?? ''
+        ]);
+
+        return [
+            'hash' => md5($raw),
+            'item_count' => (int)($itemsState['item_count'] ?? 0),
+            'checked_count' => (int)($itemsState['checked_count'] ?? 0),
+            'active_session_id' => !empty($sessionState['id']) ? (int)$sessionState['id'] : null,
+        ];
+    }
 }
+

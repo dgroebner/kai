@@ -55,6 +55,7 @@ try {
 
     // Vorschläge vorab berechnen
     $suggestions = $suggestionService->generateSuggestions(3);
+    $initialSyncHash = $listRepo->getSyncState()['hash'];
 
 } catch (Throwable $e) {
     (new Logger())->error('einkaufsliste/index.php: Fehler beim Laden der Daten.', ['error' => $e->getMessage()]);
@@ -68,6 +69,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="shopping-sync-hash" content="<?= htmlspecialchars($initialSyncHash, ENT_QUOTES, 'UTF-8') ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
     <title>kai - Einkaufsliste</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
@@ -75,6 +77,7 @@ try {
     <meta name="market-categories"
           content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="unique-cats" content="<?= htmlspecialchars(json_encode($uniqueCats ?? []), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="active-market" content="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
@@ -98,7 +101,7 @@ try {
     <div class="period-switcher shopping-tab-nav">
         <button type="button" class="btn <?= $activeTab === 'list' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="list">
             🛒 Einkaufsliste
-            <span class="badge badge-info shopping-badge-counter"><?= (int)$marketCounts['all']['open'] ?></span>
+            <span id="shopping-nav-list-count" class="badge badge-info shopping-badge-counter"><?= (int)$marketCounts['all']['open'] ?></span>
         </button>
         <button type="button" class="btn <?= $activeTab === 'suggestions' ? '' : 'btn-outline' ?> js-tab-btn"
                 data-tab="suggestions">
