@@ -615,69 +615,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         <!-- ============================================================== -->
         <section id="tab-aisles" class="shopping-tab-pane <?= $activeTab === 'aisles' ? '' : 'hidden' ?>">
 
-            <!-- Gang-Reihenfolge Konfiguration -->
-            <div class="card">
-                <h3>🏪 Gang-Reihenfolge der Märkte konfigurieren</h3>
-                <p class="text-muted">
-                    Bestimme die exakte Reihenfolge der Gänge und Regale für deinen Stamm-Rewe und Globus, um den Gang
-                    durch den Markt zu optimieren.
-                </p>
-
-                <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1rem;">
-                    <button type="button" class="btn btn-sm js-aisle-market-toggle" data-market="Rewe">🔴 Rewe Gänge
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline js-aisle-market-toggle" data-market="Globus">🟠
-                        Globus Gänge
-                    </button>
-                </div>
-
-                <div id="aisle-list-rewe" class="aisle-management-box">
-                    <ul class="aisle-sortable-list" data-market="Rewe">
-                        <?php foreach ($categoriesGrouped['Rewe'] ?? [] as $cat): ?>
-                            <li class="aisle-sortable-item"
-                                data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
-                                <span class="aisle-handle">☰</span>
-                                <span class="aisle-name"><?= CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <div class="aisle-item-actions">
-                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️
-                                    </button>
-                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️
-                                    </button>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Rewe"
-                            style="margin-top: 1rem;">
-                        💾 Gang-Reihenfolge für Rewe speichern
-                    </button>
-                </div>
-
-                <div id="aisle-list-globus" class="aisle-management-box hidden">
-                    <ul class="aisle-sortable-list" data-market="Globus">
-                        <?php foreach ($categoriesGrouped['Globus'] ?? [] as $cat): ?>
-                            <li class="aisle-sortable-item"
-                                data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
-                                <span class="aisle-handle">☰</span>
-                                <span class="aisle-name"><?= CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <div class="aisle-item-actions">
-                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️
-                                    </button>
-                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️
-                                    </button>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Globus"
-                            style="margin-top: 1rem;">
-                        💾 Gang-Reihenfolge für Globus speichern
-                    </button>
-                </div>
-            </div>
-
             <!-- Artikelstamm Übersicht -->
-            <div class="card" style="margin-top: 1.5rem;">
+            <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
                         <h3>📦 Gelernter Artikelstamm (<?= count($allProducts) ?> Artikel)</h3>
@@ -797,6 +736,67 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Gang-Reihenfolge Konfiguration -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <h3>🏪 Gang-Reihenfolge der Märkte konfigurieren</h3>
+                <p class="text-muted">
+                    Bestimme die exakte Reihenfolge der Gänge und Regale für deinen Stamm-Rewe und Globus, um den Gang
+                    durch den Markt zu optimieren.
+                </p>
+
+                <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1rem;">
+                    <button type="button" class="btn btn-sm js-aisle-market-toggle" data-market="Rewe">🔴 Rewe Gänge
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline js-aisle-market-toggle" data-market="Globus">🟠
+                        Globus Gänge
+                    </button>
+                </div>
+
+                <div id="aisle-list-rewe" class="aisle-management-box">
+                    <ul class="aisle-sortable-list" data-market="Rewe">
+                        <?php foreach ($categoriesGrouped['Rewe'] ?? [] as $cat): ?>
+                            <li class="aisle-sortable-item"
+                                data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
+                                <span class="aisle-handle">☰</span>
+                                <span class="aisle-name"><?= CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <div class="aisle-item-actions">
+                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️
+                                    </button>
+                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️
+                                    </button>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Rewe"
+                            style="margin-top: 1rem;">
+                        💾 Gang-Reihenfolge für Rewe speichern
+                    </button>
+                </div>
+
+                <div id="aisle-list-globus" class="aisle-management-box hidden">
+                    <ul class="aisle-sortable-list" data-market="Globus">
+                        <?php foreach ($categoriesGrouped['Globus'] ?? [] as $cat): ?>
+                            <li class="aisle-sortable-item"
+                                data-category="<?= htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?>">
+                                <span class="aisle-handle">☰</span>
+                                <span class="aisle-name"><?= CategoryIconHelper::getIcon($cat['category_name']) . ' ' . htmlspecialchars($cat['category_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <div class="aisle-item-actions">
+                                    <button type="button" class="btn-icon js-move-aisle-up" title="Nach oben">⬆️
+                                    </button>
+                                    <button type="button" class="btn-icon js-move-aisle-down" title="Nach unten">⬇️
+                                    </button>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <button type="button" class="btn btn-primary js-save-aisle-order" data-market="Globus"
+                            style="margin-top: 1rem;">
+                        💾 Gang-Reihenfolge für Globus speichern
+                    </button>
                 </div>
             </div>
         </section>
