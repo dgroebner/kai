@@ -132,6 +132,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
             $weatherCode = $forecast['current']['weather_code'] ?? 0;
             $cloudCover = $forecast['current']['cloud_cover'] ?? 0;
             $windSpeed = $forecast['current']['wind_speed_10m'] ?? 0;
+            $windGusts = $forecast['current']['wind_gusts_10m'] ?? 0;
+            $windDirection = $forecast['current']['wind_direction_10m'] ?? 270;
             $rain = $forecast['current']['rain'] ?? 0;
             $showers = $forecast['current']['showers'] ?? 0;
             $snowfall = $forecast['current']['snowfall'] ?? 0;
@@ -185,10 +187,12 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         <p><strong>Hey!</strong> <?= $greeting ?></p>
                     </div>
 
-                    <div class="diorama-container" style="position: relative; line-height: 0;">
+                    <div class="diorama-container"
+                         data-wind-speed="<?= (int)$windSpeed ?>"
+                         data-wind-gusts="<?= (int)$windGusts ?>"
+                         data-wind-dir="<?= (int)$windDirection ?>">
                         <!-- Basis-Jahreszeiten-Bild -->
-                        <img src="<?= $bgUrl ?>" alt="Jahreszeit Hintergrund"
-                             style="width: 100%; height: auto; display: block; object-fit: cover; aspect-ratio: 16/9;">
+                        <img src="<?= $bgUrl ?>" alt="Jahreszeit Hintergrund">
 
                         <!-- Transparentes SVG-Overlay (Wetter-Effekte) -->
                         <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="diorama-svg"
@@ -353,13 +357,13 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php endif; ?>
 
                             <?php if ($isRaining): ?>
-                                <!-- Regen mit Intensitaetssteuerung -->
+                                <!-- Regen mit Intensitaetssteuerung; Neigung wird durch JS via CSS-Variable gesetzt -->
                                 <?php
                                 $rainWidth = ($precip >= 2.0) ? 3.5 : 1.5;
                                 $rainOpacity = ($precip >= 2.0) ? 0.7 : 0.4;
                                 $rainSpacing = ($precip >= 2.0) ? 70 : 180;
                                 ?>
-                                <g stroke="#60a5fa" stroke-width="<?= $rainWidth ?>" opacity="<?= $rainOpacity ?>">
+                                <g class="rain-layer" stroke="#60a5fa" stroke-width="<?= $rainWidth ?>" opacity="<?= $rainOpacity ?>">
                                     <?php for ($x = -200; $x <= 2000; $x += $rainSpacing): ?>
                                         <line x1="<?= $x ?>" y1="-100" x2="<?= $x - 150 ?>" y2="1100"/>
                                         <?php if ($precip >= 2.0): ?>
@@ -370,8 +374,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php endif; ?>
 
                             <?php if ($isSnowing): ?>
-                                <!-- Schnee (fallende Flocken) -->
-                                <g fill="#ffffff" opacity="0.8">
+                                <!-- Schnee (fallende Flocken); Neigung wird durch JS via CSS-Variable gesetzt -->
+                                <g class="snow-layer" fill="#ffffff" opacity="0.8">
                                     <?php for ($i = 0; $i < 60; $i++):
                                         $cx = rand(0, 1600);
                                         $cy = rand(0, 900);
@@ -382,12 +386,36 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
                             <?php endif; ?>
 
-                            <?php if ($isStorm): ?>
-                                <!-- Wind-Boen -->
-                                <g stroke="#e2e8f0" stroke-width="6" fill="none" opacity="0.4">
-                                    <path d="M -100 200 Q 200 100 400 250 T 900 150"/>
-                                    <path d="M 300 350 Q 600 250 800 400 T 1400 300"/>
-                                    <path d="M 800 100 Q 1100 50 1300 200 T 1800 100"/>
+                            <?php if ($windSpeed >= 15): ?>
+                                <!-- Wind-Schlieren-Layer (Layer 2): Sichtbarkeit und Böen werden durch JS gesteuert -->
+                                <g id="wind-gust-layer">
+                                    <defs>
+                                        <linearGradient id="windGradL" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0"/>
+                                            <stop offset="40%" stop-color="#e2e8f0" stop-opacity="0.55"/>
+                                            <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0"/>
+                                        </linearGradient>
+                                        <linearGradient id="windGradR" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0"/>
+                                            <stop offset="60%" stop-color="#e2e8f0" stop-opacity="0.4"/>
+                                            <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Schliere 1: breite Hauptströmung quer durch den Garten -->
+                                    <path d="M -100 480 Q 300 430 600 490 T 1200 440 T 1700 460"
+                                          stroke="url(#windGradL)" stroke-width="14" fill="none" stroke-linecap="round"/>
+                                    <!-- Schliere 2: etwas höher, schlanker -->
+                                    <path d="M -100 350 Q 250 310 550 370 T 1100 320 T 1700 355"
+                                          stroke="url(#windGradL)" stroke-width="8" fill="none" stroke-linecap="round"/>
+                                    <!-- Schliere 3: Bodennahe Strömung -->
+                                    <path d="M -100 620 Q 400 580 700 630 T 1300 590 T 1700 615"
+                                          stroke="url(#windGradL)" stroke-width="10" fill="none" stroke-linecap="round"/>
+                                    <!-- Schliere 4: leichte obere Brise -->
+                                    <path d="M -100 250 Q 350 220 650 270 T 1250 230 T 1700 255"
+                                          stroke="url(#windGradR)" stroke-width="6" fill="none" stroke-linecap="round"/>
+                                    <!-- Schliere 5: tiefer Bodenwirbel -->
+                                    <path d="M -100 730 Q 300 700 600 740 T 1200 710 T 1700 730"
+                                          stroke="url(#windGradR)" stroke-width="7" fill="none" stroke-linecap="round"/>
                                 </g>
                             <?php endif; ?>
                             

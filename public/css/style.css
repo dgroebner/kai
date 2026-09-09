@@ -2752,6 +2752,201 @@ body {
     border: 1px solid var(--bg-surface-hover);
     border-radius: var(--border-radius);
     overflow: hidden;
+.shopping-item-details {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.item-name {
+    font-weight: 500;
+}
+
+.item-name.strike-through {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.item-quantity {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.shopping-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.badge-market {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.badge-rewe {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-globus {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem 0.4rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-icon:hover {
+    opacity: 1;
+}
+
+.shopping-checked-group {
+    margin-top: 1.5rem;
+    opacity: 0.85;
+}
+
+.shopping-empty-state {
+    padding: 2.5rem 1rem;
+    color: var(--text-muted);
+}
+
+.shopping-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.shopping-header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.urgency-bar-container {
+    width: 100%;
+    max-width: 100px;
+    height: 6px;
+    background-color: var(--bg-main);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.urgency-bar {
+    height: 100%;
+    background-color: var(--color-blue);
+    border-radius: 3px;
+}
+
+.urgency-bar.urgency-overdue {
+    background-color: var(--color-red);
+}
+
+.aisle-management-box {
+    margin-top: 1rem;
+}
+
+.aisle-sortable-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.aisle-sortable-item {
+    display: flex;
+    align-items: center;
+    padding: 0.55rem 0.85rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    gap: 0.75rem;
+}
+
+.aisle-handle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.aisle-name {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.aisle-item-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.shopping-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 0.8rem 1.4rem;
+    border-radius: 8px;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: opacity 0.3s ease;
+}
+
+.toast-success {
+    background-color: var(--color-green);
+    color: #fff;
+}
+
+.toast-error {
+    background-color: var(--color-red);
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .shopping-add-grid {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .flex-1, .flex-2 {
+        flex: 1 1 100%;
+    }
+    .shopping-item-row {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .shopping-item-details {
+        min-width: 65%;
+    }
+    .shopping-item-meta {
+        margin-left: auto;
+    }
+}
+
+
+/* ==========================================================================
+   WETTER DIORAMA & ENTSCHEIDUNGSHILFE (ERWEITERUNG)
+   ========================================================================== */
+
+.diorama-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    overflow: hidden;
     margin: 0 auto 1.5rem auto;
     max-width: 600px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -2774,12 +2969,44 @@ body {
 .diorama-container {
     width: 100%;
     line-height: 0;
+    position: relative;
 }
 
-.diorama-svg {
-    display: block;
+/* Hintergrundbild nimmt die volle Breite ein */
+.diorama-container > img {
     width: 100%;
     height: auto;
+    display: block;
+    object-fit: cover;
+    aspect-ratio: 16 / 9;
+}
+
+/* SVG-Overlay liegt exakt über dem Bild */
+.diorama-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* Wind-Schlieren: standardmäßig unsichtbar; JS schaltet .gust-active */
+#wind-gust-layer {
+    opacity: 0;
+    transition: opacity 1.4s ease-out; /* Phase 2: langsames Abklingen */
+}
+
+#wind-gust-layer.gust-active {
+    opacity: 1;
+    transition: opacity 0.25s ease-in; /* Phase 1: schnelles Anschwellen */
+}
+
+/* Regen/Schnee-Neigung durch JS gesetzt via CSS-Variable */
+.rain-layer,
+.snow-layer {
+    transform-origin: center center;
+    transform: skewX(var(--rain-skew, 0deg));
 }
 
 /* Modernes Grid für die 5 Entscheidungsfragen unten */
