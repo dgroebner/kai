@@ -94,6 +94,8 @@ class HolidayService
      *     next_holiday_name: ?string,
      *     next_holiday_start: ?string,
      *     days_until_next: ?int,
+     *     days_until_holiday_end: ?int,
+     *     school_snack_state: string,
      *     status_badge: string
      * }
      */
@@ -101,9 +103,23 @@ class HolidayService
     {
         $current = $this->getCurrentHoliday($date);
         $next = $this->getNextHoliday($date);
+        $today = new DateTimeImmutable($date ?? 'today');
 
         if ($current) {
+            $endDate = new DateTimeImmutable($current['end_date']);
+            $daysUntilEnd = (int)$today->diff($endDate)->format('%r%a');
             $formattedEnd = date('d.m.Y', strtotime($current['end_date']));
+
+            // Brotbüchsen-Logik: In den letzten 5 Tagen der Ferien vor Schulbeginn wieder aktivieren
+            $isBackToSchoolPrep = ($daysUntilEnd <= 5);
+            $schoolSnackState = $isBackToSchoolPrep ? 'back_to_school_prep' : 'holiday_pause';
+
+            if ($isBackToSchoolPrep) {
+                $statusBadge = "🎒 Noch {$daysUntilEnd} Tag(e) {$current['name']} in Sachsen (bis {$formattedEnd}) – Brotbüchsen-Einkauf für Schulstart aktiv!";
+            } else {
+                $statusBadge = "🏖️ Aktuell {$current['name']} in Sachsen (bis {$formattedEnd}) – Ferienmodus (Brotbüchsen pausiert)";
+            }
+
             return [
                 'is_holiday' => true,
                 'holiday_name' => $current['name'],
@@ -111,12 +127,24 @@ class HolidayService
                 'next_holiday_name' => null,
                 'next_holiday_start' => null,
                 'days_until_next' => null,
-                'status_badge' => "🏖️ Aktuell {$current['name']} in Sachsen (bis {$formattedEnd}) – Ferienfaktor aktiv",
+                'days_until_holiday_end' => $daysUntilEnd,
+                'school_snack_state' => $schoolSnackState,
+                'status_badge' => $statusBadge,
             ];
         }
 
         if ($next && $next['days_until'] <= 14) {
             $formattedStart = date('d.m.Y', strtotime($next['start_date']));
+            // Beim Einkauf 1 bis 5 Tage vor Ferienbeginn bereits pausieren
+            $isPreHolidayPause = ($next['days_until'] <= 5);
+            $schoolSnackState = $isPreHolidayPause ? 'pre_holiday_pause' : 'normal';
+
+            if ($isPreHolidayPause) {
+                $statusBadge = "📅 In {$next['days_until']} Tag(en) {$next['name']} in Sachsen (ab {$formattedStart}) – Brotbüchsen pausieren für die Ferien";
+            } else {
+                $statusBadge = "📅 In {$next['days_until']} Tag(en) {$next['name']} in Sachsen (ab {$formattedStart})";
+            }
+
             return [
                 'is_holiday' => false,
                 'holiday_name' => null,
@@ -124,7 +152,9 @@ class HolidayService
                 'next_holiday_name' => $next['name'],
                 'next_holiday_start' => $next['start_date'],
                 'days_until_next' => $next['days_until'],
-                'status_badge' => "📅 In {$next['days_until']} Tag(en) {$next['name']} in Sachsen (ab {$formattedStart})",
+                'days_until_holiday_end' => null,
+                'school_snack_state' => $schoolSnackState,
+                'status_badge' => $statusBadge,
             ];
         }
 
@@ -136,6 +166,8 @@ class HolidayService
             'next_holiday_name' => $next['name'] ?? null,
             'next_holiday_start' => $next['start_date'] ?? null,
             'days_until_next' => $next['days_until'] ?? null,
+            'days_until_holiday_end' => null,
+            'school_snack_state' => 'normal',
             'status_badge' => "🏫 Regulärer Schulbetrieb ({$nextText})",
         ];
     }

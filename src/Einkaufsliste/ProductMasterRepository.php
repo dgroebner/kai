@@ -287,7 +287,12 @@ class ProductMasterRepository
         }
         if (array_key_exists('avg_interval_days', $data)) {
             $fields[] = "avg_interval_days = :avg_interval_days";
-            $params[':avg_interval_days'] = $data['avg_interval_days'] !== null && $data['avg_interval_days'] !== '' ? (float)$data['avg_interval_days'] : null;
+            $val = $data['avg_interval_days'] !== null && $data['avg_interval_days'] !== '' ? (float)$data['avg_interval_days'] : null;
+            $params[':avg_interval_days'] = $val;
+            if ($val !== null && $val > 0) {
+                $fields[] = "last_purchased_at = COALESCE(last_purchased_at, DATE_SUB(NOW(), INTERVAL :init_days DAY))";
+                $params[':init_days'] = (int)round($val);
+            }
         }
         if (isset($data['holiday_factor'])) {
             $fields[] = "holiday_factor = :holiday_factor";

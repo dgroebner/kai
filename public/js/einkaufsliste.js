@@ -763,6 +763,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modal-product-unit').value = product.default_unit || 'Stück';
                 document.getElementById('modal-product-category').value = product.default_category || 'Sonstiges';
                 document.getElementById('modal-ignore-checkbox').checked = !!product.is_ignored;
+
+                const intervalInput = document.getElementById('modal-product-interval');
+                if (intervalInput) {
+                    intervalInput.value = product.avg_interval_days !== null && product.avg_interval_days !== undefined ? product.avg_interval_days : '';
+                }
+
+                const holidayModeSelect = document.getElementById('modal-product-holiday-mode');
+                if (holidayModeSelect) {
+                    const factor = parseFloat(product.holiday_factor ?? 1.0);
+                    if (factor < 0.05) {
+                        holidayModeSelect.value = '0.00';
+                    } else if (factor >= 1.9) {
+                        holidayModeSelect.value = '2.00';
+                    } else if (factor >= 1.4) {
+                        holidayModeSelect.value = '1.50';
+                    } else {
+                        holidayModeSelect.value = '1.00';
+                    }
+                }
+
                 document.getElementById('product-edit-modal').classList.remove('hidden');
             } else {
                 showToast(res.message || 'Fehler beim Laden', true);
@@ -803,6 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const market = document.getElementById('modal-product-market').value;
             const unit = document.getElementById('modal-product-unit').value;
             const category = document.getElementById('modal-product-category').value;
+            const intervalVal = document.getElementById('modal-product-interval') ? document.getElementById('modal-product-interval').value.trim() : '';
+            const holidayModeVal = document.getElementById('modal-product-holiday-mode') ? document.getElementById('modal-product-holiday-mode').value : '1.00';
 
             const payload = {
                 action: 'save_product_master',
@@ -811,6 +833,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 preferred_market: market,
                 default_unit: unit,
                 default_category: category,
+                avg_interval_days: intervalVal !== '' ? parseFloat(intervalVal) : '',
+                holiday_factor: holidayModeVal,
                 is_ignored: ignore
             };
             const res = await KaiHttp.postJson(API_URL, payload);
@@ -831,6 +855,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (catCell) {
                         const icon = (window.CATEGORY_ICONS && window.CATEGORY_ICONS[category]) || '🛒';
                         catCell.textContent = icon + ' ' + category;
+                    }
+
+                    const intervalCell = row.querySelector('td[data-label="Intervall"]');
+                    if (intervalCell) {
+                        intervalCell.textContent = intervalVal !== '' ? parseFloat(intervalVal).toFixed(1).replace('.', ',') + ' Tage' : '—';
+                    }
+
+                    const holidayCell = row.querySelector('td[data-label="Ferien"]');
+                    if (holidayCell) {
+                        const hf = parseFloat(holidayModeVal);
+                        if (hf < 0.05) {
+                            holidayCell.innerHTML = '<span class="badge badge-warning" title="Brotbüchse: Pausiert vor &amp; in Ferien, aktiv vor Schulstart">🥪 Brotbüchse</span>';
+                        } else if (hf > 1.0) {
+                            holidayCell.innerHTML = '<span class="badge badge-info" title="Mehrbedarf in Ferien">🏖️ ' + hf.toFixed(1) + 'x</span>';
+                        } else {
+                            holidayCell.innerHTML = '<span class="text-muted">1.0x</span>';
+                        }
                     }
 
                     row.classList.toggle('row-ignored', ignore === 1);

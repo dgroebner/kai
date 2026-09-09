@@ -40,8 +40,9 @@ class SuggestionService
 
         $holidayContext = $this->holidayService->getHolidayContext();
         $isInHoliday = $holidayContext['is_holiday'];
+        $schoolSnackState = $holidayContext['school_snack_state'] ?? 'normal';
         $isUpcomingHoliday = ($holidayContext['days_until_next'] !== null && $holidayContext['days_until_next'] <= 7);
-        $applyHolidayFactor = $isInHoliday || $isUpcomingHoliday;
+        $applyHolidayBoost = $isInHoliday;
 
         $today = new DateTimeImmutable('today');
         $suggestions = [];
@@ -56,21 +57,46 @@ class SuggestionService
                 continue;
             }
 
+            $holidayFactor = (float)($product['holiday_factor'] ?? 1.00);
+            $isSchoolSnack = ($holidayFactor < 0.05);
+
+            // 🥪 Brotbüchsen- / Schulzeit-Logik:
+            // Wenn vor den Ferien (letzter Einkauf) oder mitten in den Ferien -> pausieren!
+            if ($isSchoolSnack) {
+                if ($schoolSnackState === 'pre_holiday_pause' || $schoolSnackState === 'holiday_pause') {
+                    continue;
+                }
+            }
+
             $lastDate = new DateTimeImmutable($product['last_purchased_at']);
             $baseInterval = (float)$product['avg_interval_days'];
-            $holidayFactor = (float)($product['holiday_factor'] ?? 1.00);
 
-            // In den Ferien (oder kurz davor) bei artikelspezifischem Faktor das Intervall verkürzen
+            // In den Ferien bei Mehrbedarf-Artikeln das Intervall verkürzen
             $effectiveInterval = $baseInterval;
             $holidayAdapted = false;
+            $holidayBadge = null;
 
-            if ($applyHolidayFactor && $holidayFactor > 1.0) {
+            if ($isSchoolSnack) {
+                if ($schoolSnackState === 'back_to_school_prep') {
+                    $holidayAdapted = true;
+                    $holidayBadge = '🎒 Schulstart-Vorbereitung';
+                } else {
+                    $holidayBadge = '🥪 Brotbüchse';
+                }
+            } elseif ($applyHolidayBoost && $holidayFactor > 1.0) {
                 $effectiveInterval = max(1.0, round($baseInterval / $holidayFactor, 1));
                 $holidayAdapted = true;
+                $holidayBadge = '🏖️ Ferien-Mehrbedarf (+' . (int)round(($holidayFactor - 1) * 100) . '%)';
             }
 
             $daysSinceLast = (int)$today->diff($lastDate)->format('%r%a');
             $daysUntilDue = (int)round($effectiveInterval - $daysSinceLast);
+
+            // Für Schulstart-Vorbereitung (letzter Einkauf in den Ferien):
+            // Brotbüchsenartikel auf jeden Fall fällig stellen, damit der erste Schultag vorbereitet ist!
+            if ($isSchoolSnack && $schoolSnackState === 'back_to_school_prep') {
+                $daysUntilDue = min($daysUntilDue, 0);
+            }
 
             // Wenn fällig oder innerhalb des Prognosefensters
             if ($daysUntilDue <= $forecastWindowDays) {
@@ -93,7 +119,7 @@ class SuggestionService
                     'urgency_percent' => max(0, min(200, (int)$urgencyPercent)),
                     'is_overdue' => $daysUntilDue < 0,
                     'holiday_adapted' => $holidayAdapted,
-                    'holiday_badge' => $holidayAdapted ? 'Ferienanpassung (+' . (int)round(($holidayFactor - 1) * 100) . '% Bedarf)' : null,
+                    'holiday_badge' => $holidayBadge,
                 ];
             }
         }

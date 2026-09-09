@@ -414,7 +414,7 @@ try {
                     $updateData['avg_interval_days'] = $input['avg_interval_days'] !== '' ? max(0.5, (float)$input['avg_interval_days']) : null;
                 }
                 if (array_key_exists('holiday_factor', $input)) {
-                    $updateData['holiday_factor'] = $input['holiday_factor'] !== '' ? max(0.5, min(5.0, (float)$input['holiday_factor'])) : 1.00;
+                    $updateData['holiday_factor'] = $input['holiday_factor'] !== '' ? max(0.0, min(5.0, (float)$input['holiday_factor'])) : 1.00;
                 }
                 if (array_key_exists('is_ignored', $input)) {
                     $updateData['is_ignored'] = !empty($input['is_ignored']) ? 1 : 0;
@@ -431,7 +431,7 @@ try {
                 $category = trim((string)($input['default_category'] ?? 'Sonstiges'));
                 $unit = trim((string)($input['default_unit'] ?? 'Stück'));
                 $interval = isset($input['avg_interval_days']) && $input['avg_interval_days'] !== '' ? max(0.5, (float)$input['avg_interval_days']) : null;
-                $holidayFactor = isset($input['holiday_factor']) && $input['holiday_factor'] !== '' ? max(0.5, min(5.0, (float)$input['holiday_factor'])) : 1.00;
+                $holidayFactor = isset($input['holiday_factor']) && $input['holiday_factor'] !== '' ? max(0.0, min(5.0, (float)$input['holiday_factor'])) : 1.00;
                 $isIgnored = !empty($input['is_ignored']) ? 1 : 0;
 
                 $productId = $productRepo->saveOrUpdate([

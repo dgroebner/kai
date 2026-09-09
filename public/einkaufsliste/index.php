@@ -716,7 +716,13 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                             <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
                                         </td>
                                         <td data-label="Ferien">
-                                            <?= (float)$p['holiday_factor'] > 1.0 ? '⚡ ' . (float)$p['holiday_factor'] . 'x' : '1.0x' ?>
+                                            <?php if ((float)$p['holiday_factor'] < 0.05): ?>
+                                                <span class="badge badge-warning" title="Brotbüchse: Pausiert vor &amp; in Ferien, aktiv vor Schulstart">🥪 Brotbüchse</span>
+                                            <?php elseif ((float)$p['holiday_factor'] > 1.0): ?>
+                                                <span class="badge badge-info" title="Mehrbedarf in Ferien">🏖️ <?= (float)$p['holiday_factor'] ?>x</span>
+                                            <?php else: ?>
+                                                <span class="text-muted">1.0x</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td data-label="Gekauft">
                                             <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
@@ -1153,13 +1159,28 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     </select>
                 </div>
             </div>
+            <div class="shopping-add-grid" style="display: flex; gap: 0.75rem;">
+                <div class="form-group flex-1">
+                    <label for="modal-product-category">Standard-Kategorie (Gang)</label>
+                    <select id="modal-product-category" class="form-control">
+                        <option value="Sonstiges">Sonstiges</option>
+                        <?php foreach ($uniqueCats ?? [] as $c): ?>
+                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="modal-product-interval">Kaufzyklus (Tage)</label>
+                    <input type="number" id="modal-product-interval" step="0.5" min="0.5" class="form-control" placeholder="z. B. 7 (automatisch)">
+                </div>
+            </div>
             <div class="form-group">
-                <label for="modal-product-category">Standard-Kategorie (Gang)</label>
-                <select id="modal-product-category" class="form-control">
-                    <option value="Sonstiges">Sonstiges</option>
-                    <?php foreach ($uniqueCats ?? [] as $c): ?>
-                        <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>"><?= CategoryIconHelper::getIcon($c) . ' ' . htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
+                <label for="modal-product-holiday-mode">Ferien-Verhalten</label>
+                <select id="modal-product-holiday-mode" class="form-control">
+                    <option value="1.00">🔄 Normal (ganzjährig gleicher Bedarf)</option>
+                    <option value="0.00">🥪 Nur Schulzeit / Brotbüchse (pausiert vor &amp; in Ferien, aktiv vor Schulstart)</option>
+                    <option value="1.50">🏖️ Mehrbedarf in Ferien (+50 % häufiger)</option>
+                    <option value="2.00">🏖️ Starker Mehrbedarf in Ferien (doppelt so häufig)</option>
                 </select>
             </div>
             <div class="form-group">
