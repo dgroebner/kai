@@ -2107,9 +2107,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if ((!sessionId || isNaN(sessionId)) && activeBanner) {
                 sessionId = parseInt(activeBanner.dataset.sessionId, 10);
             }
+            if (!sessionId || isNaN(sessionId)) {
+                sessionId = null;
+            }
             if (!confirm('Möchtest du diesen Einkauf wirklich abbrechen? Deine Artikel bleiben auf der Liste.')) return;
 
-            const res = await KaiHttp.postJson(API_URL, { action: 'cancel_session', session_id: sessionId || null });
+            const res = await KaiHttp.postJson(API_URL, { action: 'cancel_session', session_id: sessionId });
             if (res.success) {
                 showToast(res.message || 'Einkauf abgebrochen');
                 window.location.reload();

@@ -165,6 +165,7 @@ try {
             break;
 
         // --- 2. Abhaken umschalten ---
+        case 'toggle_item_check':
         case 'toggle_check':
             $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
             if (!$id) {
@@ -173,10 +174,12 @@ try {
 
             $force = isset($input['checked']) ? (bool)$input['checked'] : null;
             $success = $listRepo->toggleCheck($id, $force);
+            $item = $listRepo->findById($id);
             $counts = $listRepo->getItemCountsByMarket();
 
             echo json_encode([
                 'success' => $success,
+                'is_checked' => $item ? (int)$item['is_checked'] : 0,
                 'counts' => $counts,
             ]);
             break;

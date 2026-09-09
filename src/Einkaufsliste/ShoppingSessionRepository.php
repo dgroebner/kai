@@ -112,17 +112,26 @@ class ShoppingSessionRepository
     /**
      * Bricht eine aktive Session ab (ohne Artikel zu löschen).
      *
-     * @param int $sessionId
+     * @param int|null $sessionId
      * @return bool
      */
-    public function cancelSession(int $sessionId): bool
+    public function cancelSession(?int $sessionId = null): bool
     {
-        $stmt = $this->pdo->prepare("
-            UPDATE shopping_sessions 
-            SET status = 'cancelled', updated_at = NOW() 
-            WHERE id = :id AND status = 'active'
-        ");
-        $success = $stmt->execute([':id' => $sessionId]);
+        if ($sessionId !== null && $sessionId > 0) {
+            $stmt = $this->pdo->prepare("
+                UPDATE shopping_sessions 
+                SET status = 'cancelled', updated_at = NOW() 
+                WHERE id = :id OR status = 'active'
+            ");
+            $success = $stmt->execute([':id' => $sessionId]);
+        } else {
+            $stmt = $this->pdo->prepare("
+                UPDATE shopping_sessions 
+                SET status = 'cancelled', updated_at = NOW() 
+                WHERE status = 'active'
+            ");
+            $success = $stmt->execute();
+        }
 
         if ($success) {
             $this->logger->info("ShoppingSessionRepository: Einkaufs-Session abgebrochen.", [
