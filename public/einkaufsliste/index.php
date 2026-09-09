@@ -668,86 +668,93 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     </div>
 
                     <!-- Schnellfilter -->
-                    <div style="margin-top: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%; max-width: 320px;">
                         <input type="text" id="product-master-filter" class="form-control"
-                               placeholder="🔍 Artikel filtern..." style="width: 100%; max-width: 300px;">
-                    </div>
-
-                    <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
-                        <table class="data-table stack-table table-compact" id="product-master-table">
-                            <thead>
-                            <tr>
-                                <th style="width: 30px; padding-right: 5px;"><input type="checkbox"
-                                                                                    id="check-all-products"
-                                                                                    title="Alle auswählen"></th>
-                                <th>Artikel</th>
-                                <th>Markt</th>
-                                <th>Gang</th>
-                                <th>Intervall</th>
-                                <th>Ferien</th>
-                                <th>Gekauft</th>
-                                <th class="text-right">Aktion</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <?php if (empty($allProducts)): ?>
-                                <tr>
-                                    <td colspan="8" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze
-                                        „Aus eBons lernen" im Tab Vorschläge.
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($allProducts as $p): ?>
-                                    <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
-                                        <td data-label="Auswahl" style="padding-right: 5px;">
-                                            <input type="checkbox" class="merge-checkbox js-merge-check"
-                                                   value="<?= $p['id'] ?>">
-                                        </td>
-                                        <td data-label="Artikel">
-                                            <strong><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                        </td>
-                                        <td data-label="Markt">
-                                        <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
-                                            <?= htmlspecialchars($p['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
-                                        </span>
-                                        </td>
-                                        <td data-label="Kategorie"><?= CategoryIconHelper::getIcon($p['default_category'] ?? 'Sonstiges') . ' ' . htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td data-label="Intervall">
-                                            <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
-                                        </td>
-                                        <td data-label="Ferien">
-                                            <?php if ((float)$p['holiday_factor'] < 0.05): ?>
-                                                <span class="badge badge-warning" title="Brotbüchse: Pausiert vor &amp; in Ferien, aktiv vor Schulstart">🥪 Brotbüchse</span>
-                                            <?php elseif ((float)$p['holiday_factor'] > 1.0): ?>
-                                                <span class="badge badge-info" title="Mehrbedarf in Ferien">🏖️ <?= (float)$p['holiday_factor'] ?>x</span>
-                                            <?php else: ?>
-                                                <span class="text-muted">1.0x</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Gekauft">
-                                            <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
-                                        </td>
-                                        <td class="text-right" style="white-space:nowrap;">
-                                            <button class="btn-icon js-mapping-btn" data-id="<?= $p['id'] ?>"
-                                                    data-name="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>"
-                                                    title="eBon-Zuordnungen verwalten">🔗
-                                            </button>
-                                            <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>"
-                                                    title="Editieren">✏️
-                                            </button>
-                                            <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>"
-                                                    data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>"
-                                                    title="Ignorieren">
-                                                <?= $p['is_ignored'] ? '🚫' : '👁️' ?>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            </tbody>
-                        </table>
+                               placeholder="🔍 Artikel filtern..." style="width: 100%;">
+                        <button type="button" id="btn-clear-product-filter" class="btn-icon hidden" title="Filter leeren" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0 0.25rem;">✕</button>
                     </div>
                 </div>
+
+                <div class="table-responsive" style="margin-top: 1.5rem; max-height: 500px; overflow-y: auto;">
+                    <table class="data-table stack-table table-compact" id="product-master-table">
+                        <thead>
+                        <tr>
+                            <th style="width: 30px; padding-right: 5px;"><input type="checkbox"
+                                                                                id="check-all-products"
+                                                                                title="Alle auswählen"></th>
+                            <th>Artikel</th>
+                            <th>Markt</th>
+                            <th>Gang</th>
+                            <th>Intervall</th>
+                            <th>Ferien</th>
+                            <th>Gekauft</th>
+                            <th class="text-right">Aktion</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr id="product-master-filter-empty" class="hidden">
+                            <td colspan="8" class="text-center text-muted" style="padding: 2rem;">
+                                🔍 Keine Artikel gefunden, die der Suche entsprechen.
+                            </td>
+                        </tr>
+                        <?php if (empty($allProducts)): ?>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">Noch keine Artikel im Stamm. Nutze
+                                    „Aus eBons lernen" im Tab Vorschläge.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($allProducts as $p): ?>
+                                <tr data-id="<?= $p['id'] ?>" class="<?= $p['is_ignored'] ? 'row-ignored' : '' ?>">
+                                    <td data-label="Auswahl" style="padding-right: 5px;">
+                                        <input type="checkbox" class="merge-checkbox js-merge-check"
+                                               value="<?= $p['id'] ?>">
+                                    </td>
+                                    <td data-label="Artikel">
+                                        <strong><?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    </td>
+                                    <td data-label="Markt">
+                                    <span class="badge badge-market <?= $p['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
+                                        <?= htmlspecialchars($p['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                    </td>
+                                    <td data-label="Kategorie"><?= CategoryIconHelper::getIcon($p['default_category'] ?? 'Sonstiges') . ' ' . htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td data-label="Intervall">
+                                        <?= $p['avg_interval_days'] !== null ? number_format((float)$p['avg_interval_days'], 1, ',', '') . ' Tage' : '—' ?>
+                                    </td>
+                                    <td data-label="Ferien">
+                                        <?php if ((float)$p['holiday_factor'] < 0.05): ?>
+                                            <span class="badge badge-warning" title="Brotbüchse: Pausiert vor &amp; in Ferien, aktiv vor Schulstart">🥪 Brotbüchse</span>
+                                        <?php elseif ((float)$p['holiday_factor'] > 1.0): ?>
+                                            <span class="badge badge-info" title="Mehrbedarf in Ferien">🏖️ <?= (float)$p['holiday_factor'] ?>x</span>
+                                        <?php else: ?>
+                                            <span class="text-muted">1.0x</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td data-label="Gekauft">
+                                        <?= $p['last_purchased_at'] ? date('d.m.Y', strtotime($p['last_purchased_at'])) : '—' ?>
+                                    </td>
+                                    <td class="text-right" style="white-space:nowrap;">
+                                        <button class="btn-icon js-mapping-btn" data-id="<?= $p['id'] ?>"
+                                                data-name="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                title="eBon-Zuordnungen verwalten">🔗
+                                        </button>
+                                        <button class="btn-icon js-edit-product-btn" data-id="<?= $p['id'] ?>"
+                                                title="Editieren">✏️
+                                        </button>
+                                        <button class="btn-icon js-toggle-ignore-btn" data-id="<?= $p['id'] ?>"
+                                                data-ignored="<?= $p['is_ignored'] ? '1' : '0' ?>"
+                                                title="Ignorieren">
+                                            <?= $p['is_ignored'] ? '🚫' : '👁️' ?>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- ============================================================== -->

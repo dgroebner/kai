@@ -237,6 +237,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetPane = document.getElementById('tab-' + targetTab);
             if (targetPane) {
                 targetPane.classList.remove('hidden');
+                if (targetTab === 'aisles' && typeof window.applyProductMasterFilter === 'function') {
+                    const filterInput = document.getElementById('product-master-filter');
+                    if (filterInput && filterInput.value.trim() !== '') {
+                        window.applyProductMasterFilter(filterInput.value);
+                    }
+                }
             }
 
             // URL anpassen (ohne Reload)
@@ -1031,375 +1037,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             showToast('Verbindungsfehler', true);
         }
-        // =========================================================
-        // --- Inbox (Unbekannte eBons) ---
-        // =========================================================
-        const tabBtnInbox = document.getElementById('tab-btn-inbox');
-        const inboxListContainer = document.getElementById('inbox-list-container');
-        const inboxEmptyState = document.getElementById('inbox-empty-state');
-        const inboxLoading = document.getElementById('inbox-loading-indicator');
-
-        // Wir rendern in die Dropdowns alle verfügbaren Artikel als Datalist (einmalig)
-        let productOptions = Array.from(document.querySelectorAll('#bulk-target-select option'))
-            .filter(opt => opt.value !== '')
-            .map(opt => `<option value="${opt.value}">${KaiHtml.escape(opt.textContent)}</option>`)
-            .join('');
-
-        function loadInbox() {
-            if (!inboxListContainer) return;
-
-            inboxLoading.classList.remove('hidden');
-            inboxListContainer.classList.add('hidden');
-            inboxEmptyState.classList.add('hidden');
-
-            KaiHttp.postJson(API_URL, {action: 'get_inbox'})
-                .then(res => {
-                    inboxLoading.classList.add('hidden');
-                    if (res.success && res.items && res.items.length > 0) {
-                        let html = '';
-                        res.items.forEach(item => {
-                            html += `
-                            <div class="inbox-item-card">
-                                <div class="inbox-item-info">
-                                    <h4 style="margin:0; font-size:1.1rem; ${item.is_likely_non_product ? 'text-decoration: line-through; color: var(--text-muted);' : ''}">${KaiHtml.escape(item.name)}</h4>
-                                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;">
-                                        Oft in: ${KaiHtml.escape(item.dominant_category)} | Gekauft: ${item.count}x
-                                        ${item.is_likely_non_product ? ' <br><span class="badge badge-warning">Vermutlich Rabatt/Pfand</span>' : ''}
-                                    </div>
-                                </div>
-                                <div class="inbox-item-actions">
-                                    <div class="inbox-assign-wrapper" style="display:flex; align-items:center; gap:0.25rem;">
-                                        <input type="text" class="form-control js-inbox-assign-input" 
-                                               list="known-products-datalist" 
-                                               data-ebon="${KaiHtml.escape(item.name)}" 
-                                               value="${KaiHtml.escape(item.name)}"
-                                               placeholder="Zuordnen oder neu..."
-                                               style="max-width: 200px;">
-                                        <button type="button" class="btn-icon js-inbox-assign-save hidden" title="Speichern">✅</button>
-                                        <button type="button" class="btn-icon js-inbox-assign-cancel hidden" title="Abbrechen">❌</button>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline js-inbox-ignore-btn" data-name="${KaiHtml.escape(item.name)}" title="Als Rabatt/Pfand ignorieren">🚫 Ignorieren</button>
-                                </div>
-                            </div>
-                        `;
-                        });
-                        inboxListContainer.innerHTML = html;
-                        inboxListContainer.classList.remove('hidden');
-
-                        // Update Badge
-                        const badge = tabBtnInbox.querySelector('.badge');
-                        if (badge) badge.textContent = res.items.length;
-                        else tabBtnInbox.innerHTML = `📥 Unbekannte eBons <span class="badge badge-warning shopping-badge-counter">${res.items.length}</span>`;
-                    } else {
-                        inboxEmptyState.classList.remove('hidden');
-                        const badge = tabBtnInbox.querySelector('.badge');
-                        if (badge) badge.remove();
-                    }
-                })
-                .catch(err => {
-                    inboxLoading.classList.add('hidden');
-                    showToast('Fehler beim Laden der Inbox', true);
-                });
-        }
-
-        // Wenn der Inbox-Tab geklickt wird, laden wir neu
-        if (tabBtnInbox) {
-            tabBtnInbox.addEventListener('click', loadInbox);
-        }
-        // Wenn die Seite bereits mit Tab=Inbox lädt
-        if (new URLSearchParams(window.location.search).get('tab') === 'inbox') {
-            loadInbox();
-        }
-
-        // Event Delegation für Inbox Actions
-        document.addEventListener('change', async (e) => {
-            if (e.target.classList.contains('js-inbox-target-select')) {
-                const select = e.target;
-                const targetId = select.value;
-                if (!targetId) return;
-
-                const ebonName = select.dataset.name;
-                select.disabled = true;
-
-                try {
-                    const res = await KaiHttp.postJson(API_URL, {
-                        action: 'resolve_inbox',
-                        action_type: 'map',
-                        ebon_name: ebonName,
-                        target_id: targetId
-                    });
-
-                    if (res.success) {
-                        showToast('Zuordnung gespeichert');
-                        select.closest('.inbox-item-card').remove();
-                    } else {
-                        showToast(res.message || 'Fehler beim Zuordnen', true);
-                        select.disabled = false;
-                    }
-                } catch (err) {
-                    showToast('Verbindungsfehler', true);
-                    select.disabled = false;
-                }
-            }
-        });
-
-        document.addEventListener('click', async (e) => {
-            const newBtn = e.target.closest('.js-inbox-new-btn');
-            if (newBtn) {
-                const ebonName = newBtn.dataset.name;
-                const newName = prompt('Bitte den sauberen Artikelnamen eingeben (so wie er künftig heißen soll):', ebonName);
-                if (newName === null) return;
-                if (newName.trim() === '') {
-                    showToast('Der Name darf nicht leer sein.', true);
-                    return;
-                }
-                newBtn.disabled = true;
-
-                try {
-                    const res = await KaiHttp.postJson(API_URL, {
-                        action: 'resolve_inbox',
-                        action_type: 'new',
-                        ebon_name: ebonName,
-                        new_name: newName.trim()
-                    });
-
-                    if (res.success) {
-                        window.inboxModified = true;
-                        showToast('Als neuen Artikel angelegt');
-                        newBtn.closest('.inbox-item-card').remove();
-
-                        if (res.new_product) {
-                            const newOpt = document.createElement('option');
-                            newOpt.value = res.new_product.id;
-                            newOpt.textContent = res.new_product.name;
-
-                            document.querySelectorAll('.js-inbox-target-select').forEach(select => {
-                                select.appendChild(newOpt.cloneNode(true));
-                            });
-
-                            productOptions += `<option value="${res.new_product.id}">${KaiHtml.escape(res.new_product.name)}</option>`;
-                        }
-                    } else {
-                        showToast(res.message || 'Fehler beim Anlegen', true);
-                        newBtn.disabled = false;
-                    }
-                } catch (err) {
-                    showToast('Verbindungsfehler', true);
-                    newBtn.disabled = false;
-                }
-            }
-        });
-
-        // =========================================================
-        // --- Bulk Merge (Artikelstamm Checkboxen) ---
-        // =========================================================
-        const checkAllProducts = document.getElementById('check-all-products');
-        const mergeCheckboxes = document.querySelectorAll('.js-merge-check');
-        const bulkActionBar = document.getElementById('bulk-action-bar');
-        const bulkSelectedCount = document.getElementById('bulk-selected-count');
-        const btnExecuteBulkMerge = document.getElementById('btn-execute-bulk-merge');
-        const bulkTargetSelect = document.getElementById('bulk-target-select');
-
-        function updateBulkActionBar() {
-            if (!bulkActionBar) return;
-            const checked = document.querySelectorAll('.js-merge-check:checked');
-            const count = checked.length;
-
-            bulkSelectedCount.textContent = count;
-            if (count > 0) {
-                bulkActionBar.classList.remove('hidden');
-            } else {
-                bulkActionBar.classList.add('hidden');
-            }
-        }
-
-        if (checkAllProducts) {
-            checkAllProducts.addEventListener('change', () => {
-                mergeCheckboxes.forEach(chk => chk.checked = checkAllProducts.checked);
-                updateBulkActionBar();
-            });
-        }
-
-        document.addEventListener('change', (e) => {
-            if (e.target.classList.contains('js-merge-check')) {
-                updateBulkActionBar();
-            }
-        });
-
-        if (bulkTargetSelect && btnExecuteBulkMerge) {
-            bulkTargetSelect.addEventListener('change', () => {
-                btnExecuteBulkMerge.disabled = bulkTargetSelect.value === '';
-            });
-
-            btnExecuteBulkMerge.addEventListener('click', async () => {
-                const targetId = bulkTargetSelect.value;
-                const sourceIds = Array.from(document.querySelectorAll('.js-merge-check:checked')).map(chk => chk.value);
-
-                if (!targetId || sourceIds.length === 0) return;
-
-                if (sourceIds.includes(targetId)) {
-                    showToast('Ziel-Artikel darf nicht in der Auswahl enthalten sein.', true);
-                    return;
-                }
-
-                if (!confirm(`Möchtest du diese ${sourceIds.length} Artikel wirklich zusammenführen? Die Quellen werden danach gelöscht.`)) return;
-
-                btnExecuteBulkMerge.disabled = true;
-                btnExecuteBulkMerge.innerHTML = 'Führe zusammen...';
-
-                try {
-                    const res = await KaiHttp.postJson(API_URL, {
-                        action: 'merge_products',
-                        target_id: targetId,
-                        source_ids: sourceIds
-                    });
-
-                    if (res.success) {
-                        showToast(res.message);
-                        setTimeout(() => window.location.reload(), 800);
-                    } else {
-                        showToast(res.message || 'Fehler beim Zusammenführen', true);
-                        btnExecuteBulkMerge.disabled = false;
-                        btnExecuteBulkMerge.innerHTML = 'Zusammenführen';
-                    }
-                } catch (err) {
-                    showToast('Verbindungsfehler', true);
-                    btnExecuteBulkMerge.disabled = false;
-                    btnExecuteBulkMerge.innerHTML = 'Zusammenführen';
-                }
-            });
-        }
-
-        // =========================================================
-        // --- KI-Auto-Merge Modal ---
-        // =========================================================
-        const btnOpenAiMerge = document.getElementById('btn-open-ai-merge');
-        const aiMergeModal = document.getElementById('ai-merge-modal');
-        const btnCloseAiModal = document.getElementById('btn-close-ai-modal');
-        const btnCancelAiModal = document.getElementById('btn-cancel-ai-modal');
-        const btnStartAiAnalysis = document.getElementById('btn-start-ai-analysis');
-        const aiLoading = document.getElementById('ai-loading-indicator');
-        const aiResults = document.getElementById('ai-results-container');
-        const aiEmpty = document.getElementById('ai-empty-state');
-
-        function closeAiModal() {
-            if (aiMergeModal) aiMergeModal.classList.add('hidden');
-        }
-
-        if (btnOpenAiMerge) {
-            btnOpenAiMerge.addEventListener('click', () => {
-                aiMergeModal.classList.remove('hidden');
-            });
-        }
-
-        if (btnCloseAiModal) btnCloseAiModal.addEventListener('click', closeAiModal);
-        if (btnCancelAiModal) btnCancelAiModal.addEventListener('click', closeAiModal);
-
-        if (btnStartAiAnalysis) {
-            btnStartAiAnalysis.addEventListener('click', async () => {
-                btnStartAiAnalysis.classList.add('hidden');
-                aiLoading.classList.remove('hidden');
-                aiResults.classList.add('hidden');
-                aiEmpty.classList.add('hidden');
-
-                try {
-                    const res = await KaiHttp.postJson(API_URL, {action: 'ai_suggest_merges'});
-
-                    aiLoading.classList.add('hidden');
-
-                    if (res.success && res.clusters && res.clusters.length > 0) {
-                        let html = '<h4 style="margin-bottom: 1rem;">Die KI schlägt folgende Zusammenführungen vor:</h4>';
-
-                        res.clusters.forEach((cluster, idx) => {
-                            html += `
-                            <div class="ai-cluster-card" id="cluster-card-${idx}">
-                                <div class="ai-cluster-header">
-                                    <strong>Ziel: ${KaiHtml.escape(cluster.target_name)}</strong>
-                                    <button type="button" class="btn btn-sm btn-primary js-accept-ai-cluster" 
-                                            data-idx="${idx}"
-                                            data-target-name="${KaiHtml.escape(cluster.target_name)}"
-                                            data-sources='${JSON.stringify(cluster.source_ids)}'>
-                                        Zusammenführen
-                                    </button>
-                                </div>
-                                <div class="ai-cluster-sources">
-                                    Fasst ${cluster.source_ids.length} Artikel-IDs zusammen.
-                                </div>
-                            </div>
-                        `;
-                        });
-
-                        aiResults.innerHTML = html;
-                        aiResults.classList.remove('hidden');
-                    } else {
-                        aiEmpty.classList.remove('hidden');
-                    }
-                } catch (err) {
-                    aiLoading.classList.add('hidden');
-                    showToast('Fehler bei der KI-Analyse', true);
-                    btnStartAiAnalysis.classList.remove('hidden');
-                }
-            });
-        }
-
-        // KI-Cluster akzeptieren (Erstellt Target wenn nötig, führt dann zusammen)
-        document.addEventListener('click', async (e) => {
-            const acceptBtn = e.target.closest('.js-accept-ai-cluster');
-            if (acceptBtn) {
-                acceptBtn.disabled = true;
-                acceptBtn.innerHTML = '⏳ Arbeite...';
-
-                const targetName = acceptBtn.dataset.targetName;
-                let sourceIds = [];
-                try {
-                    sourceIds = JSON.parse(acceptBtn.dataset.sources);
-                } catch (err) {
-                }
-
-                if (sourceIds.length < 2) {
-                    showToast('Ein Cluster braucht mindestens 2 Artikel.', true);
-                    return;
-                }
-
-                // Um ein sauberes KI-Cluster zu mergen, nutzen wir einen zweistufigen Prozess:
-                // 1. Schauen ob "targetName" schon existiert (über API oder einfach in Inbox Logik).
-                // Da wir im JS keine direkte ID für den Target Name haben, legen wir ihn als Inbox "new" an
-                // oder suchen ihn.
-                // WORKAROUND FÜR PHASE 1.5: Wir nehmen einfach das erste Element aus den sources als "Target"
-                // und überschreiben seinen Namen auf den KI-Namen, dann mergen wir den Rest hinein.
-
-                const targetId = sourceIds.shift(); // Erstes Element ist das Ziel
-
-                try {
-                    // a) Namen des Ziels aktualisieren
-                    await KaiHttp.postJson(API_URL, {
-                        action: 'save_product_master',
-                        id: targetId,
-                        custom_label: targetName,
-                        is_ignored: 0
-                    });
-
-                    // b) Rest mergen
-                    const mergeRes = await KaiHttp.postJson(API_URL, {
-                        action: 'merge_products',
-                        target_id: targetId,
-                        source_ids: sourceIds
-                    });
-
-                    if (mergeRes.success) {
-                        acceptBtn.closest('.ai-cluster-card').remove();
-                        showToast('Cluster erfolgreich zusammengeführt');
-                    } else {
-                        showToast(mergeRes.message || 'Fehler beim Mergen', true);
-                        acceptBtn.innerHTML = 'Fehler';
-                    }
-                } catch (err) {
-                    showToast('Verbindungsfehler', true);
-                    acceptBtn.innerHTML = 'Fehler';
-                }
-            }
-        });
     });
+
 
     // =========================================================
     // --- Inbox (Unbekannte eBons) ---
@@ -1876,24 +1515,79 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
     // --- Schnellfilter Artikelstamm ---
     // =========================================================
+    function applyProductMasterFilter(term) {
+        const table = document.getElementById('product-master-table');
+        if (!table) return;
+
+        const cleanTerm = (term || '').toLowerCase().trim();
+        const tokens = cleanTerm.split(/\s+/).filter(t => t.length > 0);
+        const rows = table.querySelectorAll('tbody tr:not(#product-master-filter-empty)');
+        const emptyRow = document.getElementById('product-master-filter-empty');
+
+        let visibleCount = 0;
+        let totalArticleRows = 0;
+
+        rows.forEach(row => {
+            // Ignore static placeholder if database had 0 products initially
+            if (row.querySelector('td[colspan]')) return;
+            totalArticleRows++;
+
+            const text = row.textContent.toLowerCase();
+            const match = tokens.length === 0 || tokens.every(token => text.includes(token));
+
+            if (match) {
+                row.classList.remove('hidden');
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.classList.add('hidden');
+                row.style.display = 'none';
+            }
+        });
+
+        if (emptyRow) {
+            if (visibleCount === 0 && tokens.length > 0 && totalArticleRows > 0) {
+                emptyRow.classList.remove('hidden');
+                emptyRow.style.display = '';
+            } else {
+                emptyRow.classList.add('hidden');
+                emptyRow.style.display = 'none';
+            }
+        }
+
+        const clearBtn = document.getElementById('btn-clear-product-filter');
+        if (clearBtn) {
+            clearBtn.classList.toggle('hidden', cleanTerm.length === 0);
+        }
+    }
+    window.applyProductMasterFilter = applyProductMasterFilter;
+
     const productMasterFilter = document.getElementById('product-master-filter');
     if (productMasterFilter) {
-        productMasterFilter.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase().trim();
-            const table = document.getElementById('product-master-table');
-            if (!table) return;
-
-            const rows = table.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(term)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+        ['input', 'keyup', 'change', 'search'].forEach(evt => {
+            productMasterFilter.addEventListener(evt, (e) => {
+                applyProductMasterFilter(e.target.value);
             });
         });
     }
+
+    // Event Delegation fallback
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'product-master-filter') {
+            applyProductMasterFilter(e.target.value);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'btn-clear-product-filter') {
+            const input = document.getElementById('product-master-filter');
+            if (input) {
+                input.value = '';
+                input.focus();
+                applyProductMasterFilter('');
+            }
+        }
+    });
 });
 
 
