@@ -3,10 +3,29 @@
  *
  * Verwendet Event Delegation, KaiHttp (CSRF-POST) und KaiHtml (DOM-Escaping).
  */
+const API_URL = 'api.php';
+window.API_URL = API_URL;
+
+function showToast(message, isError = false) {
+    let toast = document.getElementById('shopping-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'shopping-toast';
+        toast.className = 'shopping-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.className = 'shopping-toast ' + (isError ? 'toast-error' : 'toast-success');
+    toast.classList.remove('hidden');
+
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3500);
+}
+window.showToast = showToast;
+
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
-
-    const API_URL = 'api.php';
 
     // =========================================================
     // --- Quick-Add Flow (Slider & Modal) ---
@@ -188,24 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnSubmitQuickAdd.disabled = false;
             }
         });
-    }
-
-    // Toast Notification Helper
-    function showToast(message, isError = false) {
-        let toast = document.getElementById('shopping-toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'shopping-toast';
-            toast.className = 'shopping-toast';
-            document.body.appendChild(toast);
-        }
-        toast.textContent = message;
-        toast.className = 'shopping-toast ' + (isError ? 'toast-error' : 'toast-success');
-        toast.classList.remove('hidden');
-
-        setTimeout(() => {
-            toast.classList.add('hidden');
-        }, 3500);
     }
 
     // --- Tab Navigation ---

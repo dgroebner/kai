@@ -72,7 +72,8 @@ try {
     <title>kai - Einkaufsliste</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <!-- FontAwesome oder eigene Icons knnten hier folgen -->
-    <meta name="market-categories" content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="market-categories"
+          content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="unique-cats" content="<?= htmlspecialchars(json_encode($uniqueCats ?? []), ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
@@ -128,18 +129,23 @@ try {
 
     <main>
         <!-- Aktive Einkaufs-Session Banner -->
-        <div id="shopping-active-banner" class="shopping-active-banner <?= $activeSession ? '' : 'hidden' ?>" data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>">
+        <div id="shopping-active-banner" class="shopping-active-banner <?= $activeSession ? '' : 'hidden' ?>"
+             data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>">
             <div class="shopping-active-banner-info">
                 <span class="shopping-active-banner-pulse"></span>
                 <strong>Einkauf aktiv:</strong>
                 <span id="banner-session-type"><?= htmlspecialchars(ucfirst($activeSession['session_type'] ?? 'Wocheneinkauf'), ENT_QUOTES, 'UTF-8') ?></span>
-                <span class="text-muted">(seit <span id="banner-session-time"><?= $activeSession ? date('H:i', strtotime($activeSession['started_at'])) : '' ?></span> Uhr)</span>
+                <span class="text-muted">(seit <span
+                            id="banner-session-time"><?= $activeSession ? date('H:i', strtotime($activeSession['started_at'])) : '' ?></span> Uhr)</span>
                 &bull;
-                <span id="banner-checked-count"><?= (int)($activeSession['checked_count'] ?? 0) ?></span> / <span id="banner-total-count"><?= (int)($activeSession['total_count'] ?? 0) ?></span> abgehakt
+                <span id="banner-checked-count"><?= (int)($activeSession['checked_count'] ?? 0) ?></span> / <span
+                        id="banner-total-count"><?= (int)($activeSession['total_count'] ?? 0) ?></span> abgehakt
             </div>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <button type="button" class="btn btn-success btn-sm js-open-live-mode">📱 Live-Modus öffnen</button>
-                <button type="button" class="btn btn-outline btn-sm js-cancel-session-btn" data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>" title="Einkauf abbrechen">Abbrechen</button>
+                <button type="button" class="btn btn-outline btn-sm js-cancel-session-btn"
+                        data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>" title="Einkauf abbrechen">Abbrechen
+                </button>
             </div>
         </div>
 
@@ -147,22 +153,6 @@ try {
         <!-- TAB 1: EINKAUFSLISTE                                           -->
         <!-- ============================================================== -->
         <section id="tab-list" class="shopping-tab-pane <?= $activeTab === 'list' ? '' : 'hidden' ?>">
-
-            <!-- Start-Bar für Supermarkt-Besuch (falls keine Session aktiv) -->
-            <div id="shopping-start-session-bar" class="card" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; <?= $activeSession ? 'display:none;' : '' ?>">
-                <div>
-                    <h3 style="margin-bottom: 0.2rem; font-size: 1.05rem;">Supermarkt-Besuch starten</h3>
-                    <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">Schaltet in den mobilen Live-Modus mit großen Touch-Zielen & Markt-Filter.</p>
-                </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary js-start-session-btn" data-type="wocheneinkauf">
-                        🛒 Wocheneinkauf starten
-                    </button>
-                    <button type="button" class="btn btn-outline js-start-session-btn" data-type="spontaneinkauf">
-                        ⚡ Spontaneinkauf starten
-                    </button>
-                </div>
-            </div>
 
             <!-- Schnellerfassung neuer Artikel -->
             <section class="card shopping-quick-add-card">
@@ -368,6 +358,24 @@ try {
                         </div>
                     </div>
                 <?php endif; ?>
+            </div>
+
+            <!-- Start-Bar für Supermarkt-Besuch (falls keine Session aktiv) -->
+            <div id="shopping-start-session-bar" class="card"
+                 style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; <?= $activeSession ? 'display:none;' : '' ?>">
+                <div>
+                    <h3 style="margin-bottom: 0.2rem; font-size: 1.05rem;">Supermarkt-Besuch starten</h3>
+                    <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">Schaltet in den mobilen
+                        Live-Modus mit großen Touch-Zielen & Markt-Filter.</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary js-start-session-btn" data-type="wocheneinkauf">
+                        🛒 Wocheneinkauf starten
+                    </button>
+                    <button type="button" class="btn btn-outline js-start-session-btn" data-type="spontaneinkauf">
+                        ⚡ Spontaneinkauf starten
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -744,7 +752,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                     <div>
                         <h3>📋 Einkaufshistorie & E-Bon-Matching</h3>
                         <p class="text-muted" style="margin-bottom: 0;">
-                            Abgeschlossene Einkäufe, verknüpfte Kassenbons und Auswertung von geplanten Artikeln vs. Spontankäufen.
+                            Abgeschlossene Einkäufe, verknüpfte Kassenbons und Auswertung von geplanten Artikeln vs.
+                            Spontankäufen.
                         </p>
                     </div>
                 </div>
@@ -780,10 +789,12 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                                <button type="button" class="btn btn-outline btn-sm js-view-session-analysis-btn" data-session-id="<?= (int)$s['id'] ?>">
+                                <button type="button" class="btn btn-outline btn-sm js-view-session-analysis-btn"
+                                        data-session-id="<?= (int)$s['id'] ?>">
                                     📊 E-Bon Abgleich
                                 </button>
-                                <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn" data-session-id="<?= (int)$s['id'] ?>">
+                                <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn"
+                                        data-session-id="<?= (int)$s['id'] ?>">
                                     🔗 Bons verknüpfen (<?= (int)$s['receipt_count'] ?>)
                                 </button>
                             </div>
@@ -811,9 +822,15 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             </div>
         </div>
         <div class="shopping-live-filter-chips">
-            <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle Märkte</button>
-            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">🔴 Rewe</button>
-            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">🟠 Globus</button>
+            <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle
+                Märkte
+            </button>
+            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">🔴
+                Rewe
+            </button>
+            <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">
+                🟠 Globus
+            </button>
         </div>
     </div>
 
@@ -840,12 +857,15 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             <p style="margin-bottom: 1rem;">
                 Möchtest du deinen Supermarkt-Besuch jetzt abschließen?
             </p>
-            <div class="card" style="background: rgba(255, 255, 255, 0.03); margin-bottom: 1rem; border-color: rgba(255, 255, 255, 0.1);">
+            <div class="card"
+                 style="background: rgba(255, 255, 255, 0.03); margin-bottom: 1rem; border-color: rgba(255, 255, 255, 0.1);">
                 <p style="margin-bottom: 0.4rem;">
-                    <strong><span id="checkout-modal-checked-count">0</span> abgehakte Artikel</strong> werden in deine Einkaufshistorie überführt und von der aktiven Liste gelöscht.
+                    <strong><span id="checkout-modal-checked-count">0</span> abgehakte Artikel</strong> werden in deine
+                    Einkaufshistorie überführt und von der aktiven Liste gelöscht.
                 </p>
                 <p class="text-muted" style="margin-bottom: 0; font-size: 0.85rem;">
-                    <span id="checkout-modal-open-count">0</span> nicht gefundene Artikel verbleiben für das nächste Mal auf der Liste.
+                    <span id="checkout-modal-open-count">0</span> nicht gefundene Artikel verbleiben für das nächste Mal
+                    auf der Liste.
                 </p>
             </div>
         </div>
@@ -867,7 +887,8 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         </div>
         <div class="rule-modal-body">
             <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 1rem;">
-                Wähle digitale Kassenbons (E-Bons) aus, die zu diesem Einkauf gehören. Es können mehrere Bons (z. B. Rewe und Globus) verknüpft werden.
+                Wähle digitale Kassenbons (E-Bons) aus, die zu diesem Einkauf gehören. Es können mehrere Bons (z. B.
+                Rewe und Globus) verknüpft werden.
             </p>
             <div id="candidate-receipts-loading" class="text-center hidden" style="padding: 1.5rem;">
                 <span class="spinner"></span> Lade Kassenbons...
