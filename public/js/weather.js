@@ -50,11 +50,62 @@ document.addEventListener('DOMContentLoaded', () => {
         switchWeatherTab('history');
     }
 
+    // Wind- und Böensteuerung initialisieren
     initWindGustController();
+
+    // Debug-Modal Event-Handler initialisieren
+    initDioramaDebugModal();
 });
 
 // Automatischer Reload alle 5 Minuten
 setTimeout(() => { window.location.reload(); }, 300000);
+
+/**
+ * Initialisiert die Event-Listener für das Diorama Debug-Modal.
+ * Trennt strikt HTML und JS gemäß AGENTS.md.
+ */
+function initDioramaDebugModal() {
+    const btnOpen = document.getElementById('diorama-debug-open');
+    const btnClose = document.getElementById('diorama-debug-close');
+    const modal = document.getElementById('diorama-debug-modal');
+
+    if (!btnOpen || !modal) return;
+
+    // Öffnen
+    btnOpen.addEventListener('click', (e) => {
+        e.preventDefault();
+        modal.removeAttribute('hidden');
+    });
+
+    // Schließen via Button
+    if (btnClose) {
+        btnClose.addEventListener('click', (e) => {
+            e.preventDefault();
+            modal.setAttribute('hidden', '');
+        });
+    }
+
+    // Schließen via Klick auf den Hintergrund
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.setAttribute('hidden', '');
+        }
+    });
+
+    // Live-Update der Werte-Anzeigen bei Range-Slidern
+    const ranges = modal.querySelectorAll('input[type="range"][data-output]');
+    ranges.forEach(range => {
+        range.addEventListener('input', (e) => {
+            const outputId = e.target.getAttribute('data-output');
+            const suffix = e.target.getAttribute('data-suffix') || '';
+            const outputEl = document.getElementById(outputId);
+            if (outputEl) {
+                outputEl.textContent = e.target.value + suffix;
+            }
+        });
+    });
+}
+
 
 /**
  * Wind- und Boen-Controller fuer das SVG-Diorama.

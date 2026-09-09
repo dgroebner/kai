@@ -159,6 +159,36 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 $isGoldenHour = true;
             }
 
+            // Debug-Override: Nur bei weather_write-Recht aktiv; verändert keine Backend-Daten
+            $hasDebugAccess = Auth::hasPermission('weather_write');
+            if ($hasDebugAccess && isset($_GET['dbg'])) {
+                if (isset($_GET['dbg_night']))      $isNight      = (bool)(int)$_GET['dbg_night'];
+                if (isset($_GET['dbg_golden']))     $isGoldenHour = (bool)(int)$_GET['dbg_golden'];
+                if (isset($_GET['dbg_cloud']))      $cloudCover   = max(0, min(100, (int)$_GET['dbg_cloud']));
+                if (isset($_GET['dbg_rain']))       { $isRaining = (bool)(int)$_GET['dbg_rain']; if ($isRaining) { $precip = 1.5; } }
+                if (isset($_GET['dbg_heavyrain'])) { $isRaining = (bool)(int)$_GET['dbg_heavyrain']; if ($isRaining) { $precip = 3.0; } }
+                if (isset($_GET['dbg_snow']))       { $isSnowing = (bool)(int)$_GET['dbg_snow']; if ($isSnowing) { $isRaining = false; } }
+                if (isset($_GET['dbg_fog']))        $isFog        = (bool)(int)$_GET['dbg_fog'];
+                if (isset($_GET['dbg_wind']))       $windSpeed    = max(0, min(120, (int)$_GET['dbg_wind']));
+                if (isset($_GET['dbg_gusts']))      $windGusts    = max(0, min(150, (int)$_GET['dbg_gusts']));
+                if (isset($_GET['dbg_winddir']))    $windDirection = max(0, min(360, (int)$_GET['dbg_winddir']));
+                if (isset($_GET['dbg_moon']))       $moonPhase    = max(0.0, min(1.0, (float)$_GET['dbg_moon']));
+                if (isset($_GET['dbg_season']))     {
+                    $allowedSeasons = ['spring.jpeg', 'summer.jpeg', 'autmn.jpeg', 'winter.jpeg'];
+                    $s = $_GET['dbg_season'];
+                    if (in_array($s, $allowedSeasons, true)) { $bgUrl = "../assets/weather/$s"; }
+                }
+                // Abhaengige Berechnungen nach Override neu ermitteln
+                $isStorm    = ($windSpeed > 30);
+                $isNewMoon  = ($moonPhase < 0.03 || $moonPhase > 0.97);
+                $isFullMoon = ($moonPhase >= 0.47 && $moonPhase <= 0.53);
+                if ($moonPhase <= 0.5) {
+                    $maskOffsetPx = -80 * ($moonPhase / 0.5);
+                } else {
+                    $maskOffsetPx = 80 * ((1.0 - $moonPhase) / 0.5);
+                }
+            }
+
             if ($isStorm && $isSnowing) {
                 $greeting = "Moin! Echtes Schneegestöber heute, zieh dich warm an!";
             } elseif ($isStorm && $isRaining) {
@@ -185,6 +215,9 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     <div class="weather-speech-bubble">
                         <span class="weather-speech-icon">💬</span>
                         <p><strong>Hey!</strong> <?= $greeting ?></p>
+                        <?php if ($hasDebugAccess): ?>
+                            <button class="diorama-debug-btn" id="diorama-debug-open" title="Diorama Debug-Panel">🔧</button>
+                        <?php endif; ?>
                     </div>
 
                     <div class="diorama-container"
@@ -454,6 +487,106 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         </svg>
                     </div>
                 </div>
+
+                <?php if ($hasDebugAccess): ?>
+                <!-- Debug-Panel-Modal (nur für weather_write sichtbar) -->
+                <div id="diorama-debug-modal" class="diorama-debug-overlay" hidden>
+                    <div class="diorama-debug-panel">
+                        <div class="diorama-debug-header">
+                            <span>🔧 Diorama Debug-Panel</span>
+                            <button class="diorama-debug-close" id="diorama-debug-close">✕</button>
+                        </div>
+                        <form id="diorama-debug-form" method="get" action="">
+                            <input type="hidden" name="dbg" value="1">
+                            <div class="diorama-debug-body">
+
+                                <div class="diorama-debug-section">Jahreszeit &amp; Licht</div>
+
+                                <label class="diorama-debug-row">
+                                    <span>Jahreszeit</span>
+                                    <select name="dbg_season">
+                                        <option value="">– Live –</option>
+                                        <option value="spring.jpeg" <?= (strpos($bgUrl,'spring')!==false) ? 'selected' : '' ?>>Frühling</option>
+                                        <option value="summer.jpeg" <?= (strpos($bgUrl,'summer')!==false) ? 'selected' : '' ?>>Sommer</option>
+                                        <option value="autmn.jpeg"  <?= (strpos($bgUrl,'autmn')!==false)  ? 'selected' : '' ?>>Herbst</option>
+                                        <option value="winter.jpeg" <?= (strpos($bgUrl,'winter')!==false) ? 'selected' : '' ?>>Winter</option>
+                                    </select>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Nacht</span>
+                                    <input type="checkbox" name="dbg_night" value="1" <?= $isNight ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Goldene Stunde</span>
+                                    <input type="checkbox" name="dbg_golden" value="1" <?= $isGoldenHour ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Mondphase <span id="dbg-moon-val"><?= number_format($moonPhase, 2) ?></span></span>
+                                    <input type="range" name="dbg_moon" min="0" max="1" step="0.01"
+                                           value="<?= htmlspecialchars((string)$moonPhase, ENT_QUOTES, 'UTF-8') ?>"
+                                           data-output="dbg-moon-val">
+                                </label>
+
+                                <div class="diorama-debug-section">Bewölkung &amp; Niederschlag</div>
+
+                                <label class="diorama-debug-row">
+                                    <span>Bedeckung <span id="dbg-cloud-val"><?= (int)$cloudCover ?>%</span></span>
+                                    <input type="range" name="dbg_cloud" min="0" max="100" step="5"
+                                           value="<?= (int)$cloudCover ?>" data-output="dbg-cloud-val" data-suffix="%">
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Regen (leicht)</span>
+                                    <input type="checkbox" name="dbg_rain" value="1" <?= ($isRaining && $precip < 2.5) ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Regen (stark)</span>
+                                    <input type="checkbox" name="dbg_heavyrain" value="1" <?= ($isRaining && $precip >= 2.5) ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Schnee</span>
+                                    <input type="checkbox" name="dbg_snow" value="1" <?= $isSnowing ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Nebel</span>
+                                    <input type="checkbox" name="dbg_fog" value="1" <?= $isFog ? 'checked' : '' ?>>
+                                </label>
+
+                                <div class="diorama-debug-section">Wind</div>
+
+                                <label class="diorama-debug-row">
+                                    <span>Windgeschwindigkeit <span id="dbg-wind-val"><?= (int)$windSpeed ?> km/h</span></span>
+                                    <input type="range" name="dbg_wind" min="0" max="120" step="1"
+                                           value="<?= (int)$windSpeed ?>" data-output="dbg-wind-val" data-suffix=" km/h">
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Böen <span id="dbg-gusts-val"><?= (int)$windGusts ?> km/h</span></span>
+                                    <input type="range" name="dbg_gusts" min="0" max="150" step="1"
+                                           value="<?= (int)$windGusts ?>" data-output="dbg-gusts-val" data-suffix=" km/h">
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Windrichtung <span id="dbg-winddir-val"><?= (int)$windDirection ?>°</span></span>
+                                    <input type="range" name="dbg_winddir" min="0" max="360" step="5"
+                                           value="<?= (int)$windDirection ?>" data-output="dbg-winddir-val" data-suffix="°">
+                                </label>
+
+                            </div>
+                            <div class="diorama-debug-footer">
+                                <button type="submit" class="btn">Anwenden (Reload)</button>
+                                <a href="?" class="btn btn-outline">Zurücksetzen</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Die 5 Entscheidungskriterien im modernen Grid-Layout -->
                 <div class="weather-decision-grid">
