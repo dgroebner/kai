@@ -130,7 +130,7 @@ try {
     <main>
         <!-- Aktive Einkaufs-Session Banner -->
         <div id="shopping-active-banner" class="shopping-active-banner <?= $activeSession ? '' : 'hidden' ?>"
-             data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>">
+             data-session-id="<?= $activeSession ? (int)$activeSession['id'] : '' ?>">
             <div class="shopping-active-banner-info">
                 <span class="shopping-active-banner-pulse"></span>
                 <strong>Einkauf aktiv:</strong>
@@ -144,7 +144,7 @@ try {
             <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <button type="button" class="btn btn-success btn-sm js-open-live-mode">📱 Live-Modus öffnen</button>
                 <button type="button" class="btn btn-outline btn-sm js-cancel-session-btn"
-                        data-session-id="<?= (int)($activeSession['id'] ?? 0) ?>" title="Einkauf abbrechen">Abbrechen
+                        data-session-id="<?= $activeSession ? (int)$activeSession['id'] : '' ?>" title="Einkauf abbrechen">Abbrechen
                 </button>
             </div>
         </div>

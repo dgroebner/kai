@@ -756,8 +756,12 @@ Artikel-Liste:
         // 19. Aktive Einkaufs-Session abbrechen
         case 'cancel_session':
             $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$sessionId || $sessionId <= 0) {
+                $active = $sessionRepo->getActiveSession();
+                $sessionId = $active ? (int)$active['id'] : null;
+            }
             if (!$sessionId) {
-                Auth::sendJsonError(400, 'Ungültige Session-ID');
+                Auth::sendJsonError(400, 'Keine aktive Einkaufs-Session zum Abbrechen gefunden');
             }
             $success = $sessionRepo->cancelSession($sessionId);
             echo json_encode([
@@ -769,8 +773,12 @@ Artikel-Liste:
         // 20. Einkauf abschließen ("Checkout" mit Historisierung & Cleanup)
         case 'complete_session':
             $sessionId = filter_var($input['session_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$sessionId || $sessionId <= 0) {
+                $active = $sessionRepo->getActiveSession();
+                $sessionId = $active ? (int)$active['id'] : null;
+            }
             if (!$sessionId) {
-                Auth::sendJsonError(400, 'Ungültige Session-ID');
+                Auth::sendJsonError(400, 'Keine aktive Einkaufs-Session zum Abschließen gefunden');
             }
             $market = trim((string)($input['market'] ?? 'all'));
             $marketFilter = ($market === 'Rewe' || $market === 'Globus') ? $market : null;

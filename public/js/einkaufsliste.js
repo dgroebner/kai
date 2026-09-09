@@ -2081,6 +2081,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (activeBanner) {
                         activeBanner.classList.remove('hidden');
                         activeBanner.dataset.sessionId = res.session_id;
+                        const cancelBtnInBanner = activeBanner.querySelector('.js-cancel-session-btn');
+                        if (cancelBtnInBanner) cancelBtnInBanner.dataset.sessionId = res.session_id;
                         const typeEl = document.getElementById('banner-session-type');
                         if (typeEl) typeEl.textContent = type.charAt(0).toUpperCase() + type.slice(1);
                     }
@@ -2101,11 +2103,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Session abbrechen
         const cancelBtn = e.target.closest('.js-cancel-session-btn');
         if (cancelBtn) {
-            const sessionId = cancelBtn.dataset.sessionId || (activeBanner ? activeBanner.dataset.sessionId : null);
-            if (!sessionId) return;
+            let sessionId = parseInt(cancelBtn.dataset.sessionId, 10);
+            if ((!sessionId || isNaN(sessionId)) && activeBanner) {
+                sessionId = parseInt(activeBanner.dataset.sessionId, 10);
+            }
             if (!confirm('Möchtest du diesen Einkauf wirklich abbrechen? Deine Artikel bleiben auf der Liste.')) return;
 
-            const res = await KaiHttp.postJson(API_URL, {action: 'cancel_session', session_id: sessionId});
+            const res = await KaiHttp.postJson(API_URL, { action: 'cancel_session', session_id: sessionId || null });
             if (res.success) {
                 showToast(res.message || 'Einkauf abgebrochen');
                 window.location.reload();
@@ -2142,7 +2146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Checkout Bestätigen
         if (e.target.closest('#btn-confirm-checkout')) {
             const confirmBtn = document.getElementById('btn-confirm-checkout');
-            const sessionId = activeBanner ? activeBanner.dataset.sessionId : null;
+            let sessionId = activeBanner ? parseInt(activeBanner.dataset.sessionId, 10) : null;
             if (!sessionId) {
                 showToast('Keine aktive Session gefunden', true);
                 return;
