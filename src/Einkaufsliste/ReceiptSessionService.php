@@ -209,6 +209,23 @@ class ReceiptSessionService
             ];
         }
 
+        // Alle Artikel des Artikelstamms laden für schnelle Zuordnung und Umbenennungen
+        $masterById = [];
+        $masterByName = [];
+        try {
+            $allMastersStmt = $this->pdo->query("SELECT id, name, custom_label FROM product_master");
+            foreach ($allMastersStmt->fetchAll(PDO::FETCH_ASSOC) as $pm) {
+                $mId = (int)$pm['id'];
+                $masterById[$mId] = $pm;
+                $masterByName[mb_strtolower(trim($pm['name']), 'UTF-8')] = $mId;
+                if (!empty($pm['custom_label'])) {
+                    $masterByName[mb_strtolower(trim($pm['custom_label']), 'UTF-8')] = $mId;
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warn("ReceiptSessionService: Konnte product_master nicht laden", ['error' => $e->getMessage()]);
+        }
+
         // Falls noch kein Kassenbon verknüpft ist, Liste der Artikel trotzdem zurückgeben
         if (empty($linkedReceipts)) {
             return [
@@ -243,22 +260,54 @@ class ReceiptSessionService
         $itemsStmt->execute($receiptIds);
         $receiptItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Mappings für Bon-Namen vorab laden zur schnellen Erkennung
-        $rawNames = array_unique(array_column($receiptItems, 'name'));
+        // Mappings für Bon-Namen UND Einkaufslisten-Namen laden
+        $rawReceiptNames = array_unique(array_column($receiptItems, 'name'));
+        $rawSessionNames = array_unique(array_map(static fn($si) => trim($si['name']), $sessionItems));
+        $allLookupNames = array_unique(array_merge($rawReceiptNames, $rawSessionNames));
+
         $mappings = [];
-        if (!empty($rawNames)) {
-            $namePlaceholders = implode(',', array_fill(0, count($rawNames), '?'));
+        if (!empty($allLookupNames)) {
+            $namePlaceholders = implode(',', array_fill(0, count($allLookupNames), '?'));
             $mStmt = $this->pdo->prepare("
                 SELECT ebon_name, product_master_id, custom_label, pm.name AS master_name
                 FROM ebon_product_mappings m
                 JOIN product_master pm ON m.product_master_id = pm.id
                 WHERE ebon_name IN ($namePlaceholders)
             ");
-            $mStmt->execute(array_values($rawNames));
+            $mStmt->execute(array_values($allLookupNames));
             foreach ($mStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
                 $mappings[mb_strtolower($m['ebon_name'], 'UTF-8')] = $m;
             }
         }
+
+        // Einkaufslisten-Positionen nachauflösen (falls gemappt oder im Master umbenannt)
+        foreach ($formattedSessionItems as $siId => &$fsi) {
+            $siNorm = mb_strtolower(trim($fsi['name']), 'UTF-8');
+
+            // 1. Wenn in ebon_product_mappings vorhanden (z.B. Mini-Steaks -> Minutensteaks)
+            if (isset($mappings[$siNorm])) {
+                $mappedMasterId = (int)$mappings[$siNorm]['product_master_id'];
+                $fsi['product_id'] = $mappedMasterId;
+                $fsi['display_name'] = $mappings[$siNorm]['custom_label'] ?: $mappings[$siNorm]['master_name'];
+
+                // DB-Eintrag heilen falls nötig
+                try {
+                    $upStmt = $this->pdo->prepare("UPDATE shopping_session_items SET product_id = :pid WHERE id = :id AND (product_id IS NULL OR product_id != :pid2)");
+                    $upStmt->execute([':pid' => $mappedMasterId, ':id' => $siId, ':pid2' => $mappedMasterId]);
+                } catch (\Throwable $e) {}
+            }
+            // 2. Wenn product_id fehlt, aber Name im Master existiert
+            elseif (empty($fsi['product_id']) && isset($masterByName[$siNorm])) {
+                $foundId = $masterByName[$siNorm];
+                $fsi['product_id'] = $foundId;
+                $fsi['display_name'] = $masterById[$foundId]['custom_label'] ?: $masterById[$foundId]['name'];
+            }
+            // 3. Wenn product_id veraltet/ungültig ist, Name aus masterById auffrischen
+            elseif (!empty($fsi['product_id']) && isset($masterById[$fsi['product_id']])) {
+                $fsi['display_name'] = $masterById[$fsi['product_id']]['custom_label'] ?: $masterById[$fsi['product_id']]['name'];
+            }
+        }
+        unset($fsi);
 
         $totalCost = 0.00;
         $plannedCost = 0.00;
@@ -275,23 +324,47 @@ class ReceiptSessionService
             $rawName = trim($item['name']);
             $normRaw = mb_strtolower($rawName, 'UTF-8');
 
+            $mappedMasterId = null;
+            $mappedMasterName = null;
+
+            // Mapping für diese Bon-Position ermitteln
+            if (isset($mappings[$normRaw])) {
+                $mappedMasterId = (int)$mappings[$normRaw]['product_master_id'];
+                $mappedMasterName = $mappings[$normRaw]['custom_label'] ?: $mappings[$normRaw]['master_name'];
+            } elseif (isset($masterByName[$normRaw])) {
+                $mappedMasterId = $masterByName[$normRaw];
+                $mappedMasterName = $masterById[$mappedMasterId]['custom_label'] ?: $masterById[$mappedMasterId]['name'];
+            }
+
             $matchedSessionItemId = null;
             $matchedDisplayName = null;
 
-            // Check 1: Über gespeichertes eBon-Mapping (product_master_id)
-            if (isset($mappings[$normRaw])) {
-                $masterId = (int)$mappings[$normRaw]['product_master_id'];
-                $mappedName = $mappings[$normRaw]['custom_label'] ?: $mappings[$normRaw]['master_name'];
+            // Stufe 1: Direkter Match über product_master_id
+            if ($mappedMasterId !== null) {
                 foreach ($formattedSessionItems as $siId => $si) {
-                    if ($si['product_id'] === $masterId) {
+                    if ($si['product_id'] !== null && $si['product_id'] === $mappedMasterId) {
                         $matchedSessionItemId = $siId;
-                        $matchedDisplayName = $mappedName;
+                        $matchedDisplayName = $mappedMasterName ?: $si['display_name'];
                         break;
                     }
                 }
             }
 
-            // Check 2: Exakter Namensabgleich (oder Display-Name)
+            // Stufe 2: Match über Master-Namen (z.B. wenn Einkaufsliste den Master-Namen trägt)
+            if ($matchedSessionItemId === null && $mappedMasterName !== null) {
+                $normMappedMaster = mb_strtolower(trim($mappedMasterName), 'UTF-8');
+                foreach ($formattedSessionItems as $siId => $si) {
+                    $siNorm = mb_strtolower(trim($si['name']), 'UTF-8');
+                    $siDisplayNorm = mb_strtolower(trim($si['display_name']), 'UTF-8');
+                    if ($normMappedMaster === $siNorm || $normMappedMaster === $siDisplayNorm) {
+                        $matchedSessionItemId = $siId;
+                        $matchedDisplayName = $mappedMasterName;
+                        break;
+                    }
+                }
+            }
+
+            // Stufe 3: Exakter Namensabgleich zwischen Kassenbon-Position und Einkaufsliste
             if ($matchedSessionItemId === null) {
                 foreach ($formattedSessionItems as $siId => $si) {
                     $siNorm = mb_strtolower(trim($si['name']), 'UTF-8');
@@ -304,24 +377,38 @@ class ReceiptSessionService
                 }
             }
 
-            // Check 3: Teilstring-Abgleich (Fuzzy)
+            // Stufe 4: Teilstring-Abgleich (Fuzzy, mind. 3 Zeichen)
             if ($matchedSessionItemId === null) {
                 foreach ($formattedSessionItems as $siId => $si) {
                     $siNorm = mb_strtolower(trim($si['name']), 'UTF-8');
+                    $siDisplayNorm = mb_strtolower(trim($si['display_name']), 'UTF-8');
                     if (mb_strlen($siNorm, 'UTF-8') >= 3 && (str_contains($normRaw, $siNorm) || str_contains($siNorm, $normRaw))) {
                         $matchedSessionItemId = $siId;
                         $matchedDisplayName = $si['display_name'];
                         break;
                     }
+                    if ($mappedMasterName !== null) {
+                        $normMappedMaster = mb_strtolower(trim($mappedMasterName), 'UTF-8');
+                        if (mb_strlen($siNorm, 'UTF-8') >= 3 && (str_contains($normMappedMaster, $siNorm) || str_contains($siNorm, $normMappedMaster))) {
+                            $matchedSessionItemId = $siId;
+                            $matchedDisplayName = $mappedMasterName;
+                            break;
+                        }
+                    }
                 }
             }
 
             $isPlanned = ($matchedSessionItemId !== null);
+            $effectiveDisplayName = $matchedDisplayName ?: ($mappedMasterName ?: $rawName);
+            $hasLearnedName = ($mappedMasterName !== null && mb_strtolower($mappedMasterName, 'UTF-8') !== $normRaw);
+
             $entry = [
                 'id' => (int)$item['id'],
                 'receipt_id' => (int)$item['receipt_id'],
                 'name' => $rawName,
-                'display_name' => $matchedDisplayName ?: $rawName,
+                'display_name' => $effectiveDisplayName,
+                'master_name' => $mappedMasterName,
+                'has_learned_name' => $hasLearnedName,
                 'store' => $item['store'],
                 'category' => $item['category'],
                 'quantity' => (float)$item['quantity'],
@@ -341,6 +428,7 @@ class ReceiptSessionService
                     'receipt_item_id' => (int)$item['id'],
                     'receipt_id' => (int)$item['receipt_id'],
                     'name' => $rawName,
+                    'display_name' => $effectiveDisplayName,
                     'price' => $cost,
                     'store' => $item['store'],
                 ];

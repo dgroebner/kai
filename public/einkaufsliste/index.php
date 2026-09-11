@@ -110,7 +110,8 @@ try {
     <div class="period-switcher shopping-tab-nav">
         <button type="button" class="btn <?= $activeTab === 'list' ? '' : 'btn-outline' ?> js-tab-btn" data-tab="list">
             🛒 Einkaufsliste
-            <span id="shopping-nav-list-count" class="badge badge-info shopping-badge-counter"><?= (int)$marketCounts['all']['open'] ?></span>
+            <span id="shopping-nav-list-count"
+                  class="badge badge-info shopping-badge-counter"><?= (int)$marketCounts['all']['open'] ?></span>
         </button>
         <?php if (Auth::hasPermission('suggestions_read') || Auth::hasPermission('suggestions_write')): ?>
             <button type="button" class="btn <?= $activeTab === 'suggestions' ? '' : 'btn-outline' ?> js-tab-btn"
@@ -403,112 +404,115 @@ try {
         <!-- TAB 2: VORSCHLÄGE (Wocheneinkauf & eBon-Lernen)                 -->
         <!-- ============================================================== -->
         <?php if (Auth::hasPermission('suggestions_read') || Auth::hasPermission('suggestions_write')): ?>
-        <section id="tab-suggestions" class="shopping-tab-pane <?= $activeTab === 'suggestions' ? '' : 'hidden' ?>">
-            <div class="card">
-                <div class="shopping-section-header">
-                    <div>
-                        <h3>💡 Intelligente Vorschläge für den Wocheneinkauf</h3>
-                        <p class="text-muted" style="margin-bottom: 0;">
-                            Ermittelt Artikel, deren Verbrauchsintervall fällig ist – angepasst an sächsische
-                            Schulferien und historische eBons.
-                        </p>
-                    </div>
-                    <?php if (Auth::hasPermission('suggestions_write')): ?>
-                    <div class="shopping-header-actions">
-                        <button type="button" id="btn-sync-ebons" class="btn btn-outline">
-                            🔄 Aus eBons lernen
-                        </button>
-                        <?php if (!empty($suggestions)): ?>
-                            <button type="button" id="btn-accept-all-suggestions" class="btn btn-primary"
-                                    data-ids="<?= htmlspecialchars(json_encode(array_column($suggestions, 'product_id')), ENT_QUOTES, 'UTF-8') ?>">
-                                Alle <?= count($suggestions) ?> übernehmen
-                            </button>
+            <section id="tab-suggestions" class="shopping-tab-pane <?= $activeTab === 'suggestions' ? '' : 'hidden' ?>">
+                <div class="card">
+                    <div class="shopping-section-header">
+                        <div>
+                            <h3>💡 Intelligente Vorschläge für den Wocheneinkauf</h3>
+                            <p class="text-muted" style="margin-bottom: 0;">
+                                Ermittelt Artikel, deren Verbrauchsintervall fällig ist – angepasst an sächsische
+                                Schulferien und historische eBons.
+                            </p>
+                        </div>
+                        <?php if (Auth::hasPermission('suggestions_write')): ?>
+                            <div class="shopping-header-actions">
+                                <button type="button" id="btn-sync-ebons" class="btn btn-outline">
+                                    🔄 Aus eBons lernen
+                                </button>
+                                <?php if (!empty($suggestions)): ?>
+                                    <button type="button" id="btn-accept-all-suggestions" class="btn btn-primary"
+                                            data-ids="<?= htmlspecialchars(json_encode(array_column($suggestions, 'product_id')), ENT_QUOTES, 'UTF-8') ?>">
+                                        Alle <?= count($suggestions) ?> übernehmen
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         <?php endif; ?>
                     </div>
-                    <?php endif; ?>
-                </div>
 
-                <div id="suggestions-list-container" style="margin-top: 1.5rem;">
-                    <?php if (empty($suggestions)): ?>
-                        <div class="text-center shopping-empty-state">
-                            <p>Keine fälligen Artikel gefunden. Entweder stehen alle Artikel bereits auf der Liste oder
-                                es liegen noch nicht genügend eBons vor.</p>
-                            <?php if (Auth::hasPermission('suggestions_write')): ?>
-                                <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt historische
-                                    eBons analysieren
-                                </button>
-                            <?php endif; ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="data-table stack-table table-compact">
-                                <thead>
-                                <tr>
-                                    <th>Artikel</th>
-                                    <th>Markt</th>
-                                    <th>Kategorie</th>
-                                    <th>Letzter Kauf</th>
-                                    <th>Intervall</th>
-                                    <th>Dringlichkeit</th>
-                                    <?php if (Auth::hasPermission('suggestions_write')): ?>
-                                        <th class="text-right">Aktion</th>
-                                    <?php endif; ?>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <?php foreach ($suggestions as $sug): ?>
+                    <div id="suggestions-list-container" style="margin-top: 1.5rem;">
+                        <?php if (empty($suggestions)): ?>
+                            <div class="text-center shopping-empty-state">
+                                <p>Keine fälligen Artikel gefunden. Entweder stehen alle Artikel bereits auf der Liste
+                                    oder
+                                    es liegen noch nicht genügend eBons vor.</p>
+                                <?php if (Auth::hasPermission('suggestions_write')): ?>
+                                    <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt
+                                        historische
+                                        eBons analysieren
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="data-table stack-table table-compact">
+                                    <thead>
                                     <tr>
-                                        <td data-label="Artikel">
-                                            <strong><?= htmlspecialchars($sug['name'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <?php if ($sug['holiday_adapted']): ?>
-                                                <div class="badge badge-warning" style="font-size: 0.75rem;">🏖️
-                                                    Ferienfaktor
-                                                </div>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Markt">
+                                        <th>Artikel</th>
+                                        <th>Markt</th>
+                                        <th>Kategorie</th>
+                                        <th>Letzter Kauf</th>
+                                        <th>Intervall</th>
+                                        <th>Dringlichkeit</th>
+                                        <?php if (Auth::hasPermission('suggestions_write')): ?>
+                                            <th class="text-right">Aktion</th>
+                                        <?php endif; ?>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($suggestions as $sug): ?>
+                                        <tr>
+                                            <td data-label="Artikel">
+                                                <strong><?= htmlspecialchars($sug['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                                <?php if ($sug['holiday_adapted']): ?>
+                                                    <div class="badge badge-warning" style="font-size: 0.75rem;">🏖️
+                                                        Ferienfaktor
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td data-label="Markt">
                                             <span class="badge badge-market <?= $sug['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
                                                 <?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
                                             </span>
-                                        </td>
-                                        <td data-label="Kategorie"><?= htmlspecialchars($sug['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td data-label="Letzter Kauf">
-                                            vor <?= (int)$sug['days_since_last'] ?> Tagen
-                                            <div class="text-muted"
-                                                 style="font-size: 0.8rem;"><?= date('d.m.Y', strtotime($sug['last_purchased_at'])) ?></div>
-                                        </td>
-                                        <td data-label="Intervall">
-                                            ca. alle <?= number_format((float)$sug['effective_interval'], 1, ',', '') ?>
-                                            Tage
-                                        </td>
-                                        <td data-label="Dringlichkeit">
-                                            <div class="urgency-bar-container">
-                                                <div class="urgency-bar <?= $sug['is_overdue'] ? 'urgency-overdue' : '' ?>"
-                                                     style="width: <?= min(100, $sug['urgency_percent']) ?>%;"></div>
-                                            </div>
-                                            <span class="text-muted" style="font-size: 0.8rem;">
+                                            </td>
+                                            <td data-label="Kategorie"><?= htmlspecialchars($sug['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td data-label="Letzter Kauf">
+                                                vor <?= (int)$sug['days_since_last'] ?> Tagen
+                                                <div class="text-muted"
+                                                     style="font-size: 0.8rem;"><?= date('d.m.Y', strtotime($sug['last_purchased_at'])) ?></div>
+                                            </td>
+                                            <td data-label="Intervall">
+                                                ca.
+                                                alle <?= number_format((float)$sug['effective_interval'], 1, ',', '') ?>
+                                                Tage
+                                            </td>
+                                            <td data-label="Dringlichkeit">
+                                                <div class="urgency-bar-container">
+                                                    <div class="urgency-bar <?= $sug['is_overdue'] ? 'urgency-overdue' : '' ?>"
+                                                         style="width: <?= min(100, $sug['urgency_percent']) ?>%;"></div>
+                                                </div>
+                                                <span class="text-muted" style="font-size: 0.8rem;">
                                                 <?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)' ?>
                                             </span>
-                                        </td>
-                                        <?php if (Auth::hasPermission('suggestions_write')): ?>
-                                            <td data-label="Aktion" class="text-right">
-                                                <button type="button"
-                                                        class="btn btn-sm btn-primary js-accept-single-suggestion"
-                                                        data-id="<?= (int)$sug['product_id'] ?>"
-                                                        data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>">
-                                                    + Übernehmen
-                                                </button>
                                             </td>
-                                        <?php endif; ?>
-                                    </tr>
-                                <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
+                                            <?php if (Auth::hasPermission('suggestions_write')): ?>
+                                                <td data-label="Aktion" class="text-right">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-primary js-accept-single-suggestion"
+                                                            data-id="<?= (int)$sug['product_id'] ?>"
+                                                            data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>">
+                                                        + Übernehmen
+                                                    </button>
+                                                </td>
+                                            <?php endif; ?>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
         <?php endif; ?>
 
 
@@ -516,18 +520,19 @@ try {
         <!-- TAB 3: REZEPT & FREITEXT (GEMINI KI-ASSISTENT)                 -->
         <!-- ============================================================== -->
         <?php if (Auth::hasPermission('recipe_read') || Auth::hasPermission('recipe_write')): ?>
-        <section id="tab-recipe" class="shopping-tab-pane <?= $activeTab === 'recipe' ? '' : 'hidden' ?>">
-            <div class="card">
-                <h3>🧑‍🍳 Rezept- & Freitext-Assistent (Google Gemini)</h3>
-                <p class="text-muted">
-                    Füge hier ein Kochrezept, eine unformatierte Zutatenliste oder eine formlose Einkaufsnotiz ein.
-                    Die KI erkennt alle Zutaten, ermittelt Mengen/Einheiten und ordnet sie automatisch nach Rewe bzw.
-                    Globus und den korrekten Gängen zu.
-                </p>
+            <section id="tab-recipe" class="shopping-tab-pane <?= $activeTab === 'recipe' ? '' : 'hidden' ?>">
+                <div class="card">
+                    <h3>🧑‍🍳 Rezept- & Freitext-Assistent (Google Gemini)</h3>
+                    <p class="text-muted">
+                        Füge hier ein Kochrezept, eine unformatierte Zutatenliste oder eine formlose Einkaufsnotiz ein.
+                        Die KI erkennt alle Zutaten, ermittelt Mengen/Einheiten und ordnet sie automatisch nach Rewe
+                        bzw.
+                        Globus und den korrekten Gängen zu.
+                    </p>
 
-                <?php if (Auth::hasPermission('recipe_write')): ?>
-                <form id="form-recipe-ai" class="recipe-form">
-                    <div class="form-group">
+                    <?php if (Auth::hasPermission('recipe_write')): ?>
+                        <form id="form-recipe-ai" class="recipe-form">
+                            <div class="form-group">
                         <textarea id="recipe-input-text" class="form-control" rows="6" placeholder="z. B. Spaghetti Bolognese für 4 Personen:
 500g Rinderhackfleisch
 1 Zwiebel und 2 Zehen Knoblauch
@@ -535,50 +540,53 @@ try {
 2 Dosen gehackte Tomaten
 50g Parmesan
 Olivenöl, Salz, Pfeffer, Oregano"></textarea>
-                    </div>
-                    <div style="display: flex; gap: 1rem; align-items: center; justify-content: flex-end;">
+                            </div>
+                            <div style="display: flex; gap: 1rem; align-items: center; justify-content: flex-end;">
                         <span id="recipe-loading-indicator"
                               class="hidden text-muted">⏳ Gemini analysiert Rezept...</span>
-                        <button type="submit" id="btn-parse-recipe" class="btn btn-primary">🤖 Rezept analysieren
-                        </button>
-                    </div>
-                </form>
+                                <button type="submit" id="btn-parse-recipe" class="btn btn-primary">🤖 Rezept analysieren
+                                </button>
+                            </div>
+                        </form>
 
-                <!-- Container für die KI-Ergebnisse mit Checkboxen vor der Übernahme -->
-                <div id="recipe-preview-container" class="hidden"
-                     style="margin-top: 1.5rem; border-top: 1px solid var(--bg-surface-hover); padding-top: 1.5rem;">
-                    <h4>Gefundene Zutaten & Zuordnungen:</h4>
-                    <p class="text-muted" style="font-size: 0.9rem;">Prüfe die Zuordnung vor dem Hinzufügen. Du kannst
-                        Markt und Menge noch anpassen:</p>
-                    <div class="table-responsive">
-                        <table class="data-table stack-table table-compact" id="recipe-preview-table">
-                            <thead>
-                            <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="check-all-recipe-items" checked>
-                                </th>
-                                <th>Artikel</th>
-                                <th>Menge</th>
-                                <th>Einheit</th>
-                                <th>Zielmarkt</th>
-                                <th>Gang / Kategorie</th>
-                            </tr>
-                            </thead>
-                            <tbody id="recipe-preview-body">
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="margin-top: 1rem; text-align: right;">
-                        <button type="button" id="btn-save-recipe-items" class="btn btn-success">✔️ Ausgewählte Artikel
-                            zur Einkaufsliste hinzufügen
-                        </button>
-                    </div>
+                        <!-- Container für die KI-Ergebnisse mit Checkboxen vor der Übernahme -->
+                        <div id="recipe-preview-container" class="hidden"
+                             style="margin-top: 1.5rem; border-top: 1px solid var(--bg-surface-hover); padding-top: 1.5rem;">
+                            <h4>Gefundene Zutaten & Zuordnungen:</h4>
+                            <p class="text-muted" style="font-size: 0.9rem;">Prüfe die Zuordnung vor dem Hinzufügen. Du
+                                kannst
+                                Markt und Menge noch anpassen:</p>
+                            <div class="table-responsive">
+                                <table class="data-table stack-table table-compact" id="recipe-preview-table">
+                                    <thead>
+                                    <tr>
+                                        <th style="width: 40px;"><input type="checkbox" id="check-all-recipe-items"
+                                                                        checked>
+                                        </th>
+                                        <th>Artikel</th>
+                                        <th>Menge</th>
+                                        <th>Einheit</th>
+                                        <th>Zielmarkt</th>
+                                        <th>Gang / Kategorie</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="recipe-preview-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top: 1rem; text-align: right;">
+                                <button type="button" id="btn-save-recipe-items" class="btn btn-success">✔️ Ausgewählte
+                                    Artikel
+                                    zur Einkaufsliste hinzufügen
+                                </button>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted">Du hast nur Leserechte für diesen Bereich. Für die KI-Analyse wird
+                            <strong>recipe_write</strong> benötigt.</p>
+                    <?php endif; ?>
                 </div>
-                <?php else: ?>
-                    <p class="text-muted">Du hast nur Leserechte für diesen Bereich. Für die KI-Analyse wird
-                        <strong>recipe_write</strong> benötigt.</p>
-                <?php endif; ?>
-            </div>
-        </section>
+            </section>
         <?php endif; ?>
 
 
@@ -805,65 +813,66 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
         <!-- TAB 5: HISTORIE & E-BONS                                      -->
         <!-- ============================================================== -->
         <?php if (Auth::hasPermission('history_read') || Auth::hasPermission('history_write')): ?>
-        <section id="tab-history" class="shopping-tab-pane <?= $activeTab === 'history' ? '' : 'hidden' ?>">
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <div class="shopping-section-header">
-                    <div>
-                        <h3>📋 Einkaufshistorie & E-Bon-Matching</h3>
-                        <p class="text-muted" style="margin-bottom: 0;">
-                            Abgeschlossene Einkäufe, verknüpfte Kassenbons und Auswertung von geplanten Artikeln vs.
-                            Spontankäufen.
-                        </p>
+            <section id="tab-history" class="shopping-tab-pane <?= $activeTab === 'history' ? '' : 'hidden' ?>">
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div class="shopping-section-header">
+                        <div>
+                            <h3>📋 Einkaufshistorie & E-Bon-Matching</h3>
+                            <p class="text-muted" style="margin-bottom: 0;">
+                                Abgeschlossene Einkäufe, verknüpfte Kassenbons und Auswertung von geplanten Artikeln vs.
+                                Spontankäufen.
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div id="recent-sessions-container">
-                <?php if (empty($recentSessions)): ?>
-                    <div class="card text-center shopping-empty-state">
-                        <p>Noch keine abgeschlossenen Einkäufe vorhanden.</p>
-                        <p class="text-muted" style="font-size: 0.9rem;">
-                            Starte deinen nächsten Einkauf im Tab "Einkaufsliste" und schließe ihn nach dem Bezahlen ab!
-                        </p>
-                    </div>
-                <?php else: ?>
-                    <?php foreach ($recentSessions as $s): ?>
-                        <div class="card shopping-receipt-card" data-session-id="<?= (int)$s['id'] ?>">
-                            <div style="flex: 1; min-width: 260px;">
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
-                                    <strong><?= htmlspecialchars(ucfirst($s['session_type']), ENT_QUOTES, 'UTF-8') ?></strong>
-                                    <span class="badge badge-market badge-rewe">
+                <div id="recent-sessions-container">
+                    <?php if (empty($recentSessions)): ?>
+                        <div class="card text-center shopping-empty-state">
+                            <p>Noch keine abgeschlossenen Einkäufe vorhanden.</p>
+                            <p class="text-muted" style="font-size: 0.9rem;">
+                                Starte deinen nächsten Einkauf im Tab "Einkaufsliste" und schließe ihn nach dem Bezahlen
+                                ab!
+                            </p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($recentSessions as $s): ?>
+                            <div class="card shopping-receipt-card" data-session-id="<?= (int)$s['id'] ?>">
+                                <div style="flex: 1; min-width: 260px;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                                        <strong><?= htmlspecialchars(ucfirst($s['session_type']), ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <span class="badge badge-market badge-rewe">
                                         <?= date('d.m.Y', strtotime($s['started_at'])) ?>
                                     </span>
-                                    <span class="text-muted" style="font-size: 0.85rem;">
+                                        <span class="text-muted" style="font-size: 0.85rem;">
                                         <?= date('H:i', strtotime($s['started_at'])) ?> - <?= $s['completed_at'] ? date('H:i', strtotime($s['completed_at'])) : '?' ?> Uhr
                                     </span>
+                                    </div>
+                                    <div style="font-size: 0.9rem; color: var(--text-muted); display: flex; gap: 1rem; flex-wrap: wrap;">
+                                        <span>📦 <strong><?= (int)$s['item_count'] ?></strong> Artikel archiviert</span>
+                                        <span>🧾 <strong><?= (int)$s['receipt_count'] ?></strong> E-Bons verknüpft</span>
+                                        <?php if ((float)$s['receipts_total'] > 0): ?>
+                                            <span>💶 <strong><?= number_format((float)$s['receipts_total'], 2, ',', '.') ?> €</strong></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
-                                <div style="font-size: 0.9rem; color: var(--text-muted); display: flex; gap: 1rem; flex-wrap: wrap;">
-                                    <span>📦 <strong><?= (int)$s['item_count'] ?></strong> Artikel archiviert</span>
-                                    <span>🧾 <strong><?= (int)$s['receipt_count'] ?></strong> E-Bons verknüpft</span>
-                                    <?php if ((float)$s['receipts_total'] > 0): ?>
-                                        <span>💶 <strong><?= number_format((float)$s['receipts_total'], 2, ',', '.') ?> €</strong></span>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                                    <button type="button" class="btn btn-outline btn-sm js-view-session-analysis-btn"
+                                            data-session-id="<?= (int)$s['id'] ?>">
+                                        📊 Details
+                                    </button>
+                                    <?php if (Auth::hasPermission('history_write')): ?>
+                                        <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn"
+                                                data-session-id="<?= (int)$s['id'] ?>">
+                                            🔗 Bons verknüpfen (<?= (int)$s['receipt_count'] ?>)
+                                        </button>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                                <button type="button" class="btn btn-outline btn-sm js-view-session-analysis-btn"
-                                        data-session-id="<?= (int)$s['id'] ?>">
-                                    📊 E-Bon Abgleich
-                                </button>
-                                <?php if (Auth::hasPermission('history_write')): ?>
-                                    <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn"
-                                            data-session-id="<?= (int)$s['id'] ?>">
-                                        🔗 Bons verknüpfen (<?= (int)$s['receipt_count'] ?>)
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </section>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </section>
         <?php endif; ?>
 
     </main>
@@ -968,7 +977,9 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             <div id="candidate-receipts-list"></div>
         </div>
         <div class="rule-modal-footer">
-            <button type="button" class="btn btn-primary js-view-session-analysis-btn" id="btn-show-analysis-from-link" data-session-id="">📊 Zum Abgleich</button>
+            <button type="button" class="btn btn-primary js-view-session-analysis-btn" id="btn-show-analysis-from-link"
+                    data-session-id="">📊 Zum Abgleich
+            </button>
             <button type="button" class="btn btn-outline" id="btn-cancel-link-receipts-modal">Schließen</button>
         </div>
     </div>

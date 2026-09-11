@@ -456,6 +456,14 @@ class ProductMasterRepository
             ");
             $stmt2->execute($params1);
 
+            // 2b. Auch archivierte Einkaufs-Historien-Positionen auf das neue Ziel migrieren
+            $stmt2b = $this->pdo->prepare("
+                UPDATE shopping_session_items 
+                SET product_id = ? 
+                WHERE product_id IN ($inQuery)
+            ");
+            $stmt2b->execute($params1);
+
             // 3. Alte Master-Artikel löschen
             $stmt3 = $this->pdo->prepare("DELETE FROM product_master WHERE id IN ($inQuery)");
             $stmt3->execute($sourceIds);

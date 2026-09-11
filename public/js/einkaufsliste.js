@@ -2379,7 +2379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <table class="data-table stack-table table-compact">
                                         <thead>
                                             <tr>
-                                                <th>Artikel (Kassenbon)</th>
+                                                <th>Artikel</th>
                                                 <th>Markt</th>
                                                 <th>Menge</th>
                                                 <th class="text-right">Betrag</th>
@@ -2388,9 +2388,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <tbody>
                         `;
                         spontaneousItems.forEach(it => {
+                            const hasLearned = it.has_learned_name || (it.display_name && it.display_name !== it.name);
+                            const mainTitle = hasLearned ? it.display_name : it.name;
+                            const subTitle = hasLearned ? `<div class="text-muted" style="font-size: 0.78rem;">${KaiHtml.escape(it.name)}</div>` : '';
+
                             html += `
                                 <tr>
-                                    <td data-label="Artikel"><strong>${KaiHtml.escape(it.name)}</strong></td>
+                                    <td data-label="Artikel">
+                                        <strong>${KaiHtml.escape(mainTitle)}</strong>
+                                        ${subTitle}
+                                    </td>
                                     <td data-label="Markt">
                                         <span class="badge badge-market ${it.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">
                                             ${KaiHtml.escape(it.store)}
