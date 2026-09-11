@@ -43,28 +43,60 @@ class ReceiptSessionService
             return [];
         }
 
-        $sessionDate = date('Y-m-d', strtotime($session['started_at']));
+        $startDate = date('Y-m-d', strtotime($session['started_at']));
+        $endDate = !empty($session['completed_at'])
+            ? date('Y-m-d', strtotime($session['completed_at']))
+            : (!empty($session['updated_at']) ? date('Y-m-d', strtotime($session['updated_at'])) : date('Y-m-d'));
 
-        // Bons im Fenster von -1 Tag bis +1 Tag um das Einkaufsdatum suchen
+        $minDate = min($startDate, $endDate);
+        $maxDate = max($startDate, $endDate);
+
+        // Primary search: Bons im Fenster von -7 Tagen vor Start bis +7 Tage nach Ende/heute suchen
         $stmt = $this->pdo->prepare("
             SELECT r.*, 
                    COUNT(i.id) AS item_count,
-                   (r.shopping_session_id = :session_id) AS is_currently_linked
+                   (CASE WHEN r.shopping_session_id = :session_id THEN 1 ELSE 0 END) AS is_currently_linked
             FROM kb_receipts r
             LEFT JOIN kb_items i ON r.id = i.receipt_id
             WHERE (r.shopping_session_id IS NULL OR r.shopping_session_id = :session_id_filter)
-              AND r.purchase_date BETWEEN DATE_SUB(:session_date, INTERVAL 1 DAY) AND DATE_ADD(:session_date, INTERVAL 1 DAY)
+              AND r.purchase_date BETWEEN DATE_SUB(:min_date, INTERVAL 7 DAY) AND DATE_ADD(:max_date, INTERVAL 7 DAY)
             GROUP BY r.id
-            ORDER BY r.purchase_date DESC, r.id DESC
+            ORDER BY is_currently_linked DESC, r.purchase_date DESC, r.id DESC
         ");
 
         $stmt->execute([
             ':session_id' => $sessionId,
             ':session_id_filter' => $sessionId,
-            ':session_date' => $sessionDate,
+            ':min_date' => $minDate,
+            ':max_date' => $maxDate,
         ]);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: Falls im 7-Tage-Fenster keine unverknüpften Bons gefunden wurden,
+        // weiten wir die Suche auf alle unverknüpften Bons der letzten 60 Tage aus.
+        $unlinkedCount = count(array_filter($candidates, static fn($c) => (int)$c['is_currently_linked'] === 0));
+        if ($unlinkedCount === 0) {
+            $fallbackStmt = $this->pdo->prepare("
+                SELECT r.*, 
+                       COUNT(i.id) AS item_count,
+                       (CASE WHEN r.shopping_session_id = :session_id THEN 1 ELSE 0 END) AS is_currently_linked
+                FROM kb_receipts r
+                LEFT JOIN kb_items i ON r.id = i.receipt_id
+                WHERE (r.shopping_session_id IS NULL OR r.shopping_session_id = :session_id_filter)
+                  AND r.purchase_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+                GROUP BY r.id
+                ORDER BY is_currently_linked DESC, r.purchase_date DESC, r.id DESC
+                LIMIT 30
+            ");
+            $fallbackStmt->execute([
+                ':session_id' => $sessionId,
+                ':session_id_filter' => $sessionId,
+            ]);
+            $candidates = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return $candidates;
     }
 
     /**

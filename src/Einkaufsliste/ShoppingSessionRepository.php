@@ -293,11 +293,16 @@ class ShoppingSessionRepository
             SELECT 
                 s.*,
                 COUNT(DISTINCT i.id) AS item_count,
-                COUNT(DISTINCT r.id) AS receipt_count,
-                COALESCE(SUM(r.total), 0.00) AS receipts_total
+                COALESCE(r_stats.receipt_count, 0) AS receipt_count,
+                COALESCE(r_stats.receipts_total, 0.00) AS receipts_total
             FROM shopping_sessions s
             LEFT JOIN shopping_session_items i ON s.id = i.session_id
-            LEFT JOIN kb_receipts r ON s.id = r.shopping_session_id
+            LEFT JOIN (
+                SELECT shopping_session_id, COUNT(*) AS receipt_count, SUM(total) AS receipts_total
+                FROM kb_receipts
+                WHERE shopping_session_id IS NOT NULL
+                GROUP BY shopping_session_id
+            ) r_stats ON s.id = r_stats.shopping_session_id
             WHERE s.status = 'completed'
             GROUP BY s.id
             ORDER BY s.completed_at DESC
