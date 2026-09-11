@@ -3,7 +3,7 @@
  *
  * Verwendet Event Delegation, KaiHttp (CSRF-POST) und KaiHtml (DOM-Escaping).
  */
-const API_URL = 'api.php';
+let API_URL = 'api.php';
 window.API_URL = API_URL;
 
 function showToast(message, isError = false) {
@@ -22,6 +22,7 @@ function showToast(message, isError = false) {
         toast.classList.add('hidden');
     }, 3500);
 }
+
 window.showToast = showToast;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1560,6 +1561,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearBtn.classList.toggle('hidden', cleanTerm.length === 0);
         }
     }
+
     window.applyProductMasterFilter = applyProductMasterFilter;
 
     const productMasterFilter = document.getElementById('product-master-filter');
@@ -1802,6 +1804,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const analysisModal = document.getElementById('session-analysis-modal');
 
     let currentLiveMarket = 'all';
+    let showWeeklyInSpontaneous = false;
+
+    function applyMainSpontaneousFilter() {
+        const isSpontaneinkauf = activeBanner && activeBanner.dataset.sessionType === 'spontaneinkauf' && !activeBanner.classList.contains('hidden');
+        const hideWeekly = isSpontaneinkauf && !showWeeklyInSpontaneous;
+
+        const mainToggleBtn = document.getElementById('btn-toggle-main-weekly');
+        const liveToggleBtn = document.getElementById('btn-toggle-live-weekly');
+
+        if (isSpontaneinkauf) {
+            if (mainToggleBtn) mainToggleBtn.classList.remove('hidden');
+            if (liveToggleBtn) liveToggleBtn.classList.remove('hidden');
+        } else {
+            if (mainToggleBtn) mainToggleBtn.classList.add('hidden');
+            if (liveToggleBtn) liveToggleBtn.classList.add('hidden');
+        }
+
+        const label = showWeeklyInSpontaneous ? '- Wocheneinkauf ausbl.' : '+ Wocheneinkauf';
+        if (mainToggleBtn) mainToggleBtn.textContent = label;
+        if (liveToggleBtn) liveToggleBtn.textContent = label;
+
+        document.querySelectorAll('#tab-list .shopping-item-row').forEach(row => {
+            row.style.display = (hideWeekly && row.dataset.isSpontaneous !== '1') ? 'none' : 'flex';
+        });
+
+        document.querySelectorAll('#tab-list .shopping-aisle-group, #tab-list .shopping-checked-group').forEach(group => {
+            const visibleRows = Array.from(group.querySelectorAll('.shopping-item-row')).filter(r => r.style.display !== 'none');
+            group.style.display = visibleRows.length > 0 ? 'block' : 'none';
+        });
+    }
+
+    applyMainSpontaneousFilter();
 
     // 1. Session starten
     document.addEventListener('click', async (e) => {
@@ -1816,6 +1850,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (activeBanner) {
                         activeBanner.classList.remove('hidden');
                         activeBanner.dataset.sessionId = res.session_id;
+                        activeBanner.dataset.sessionType = type;
                         const cancelBtnInBanner = activeBanner.querySelector('.js-cancel-session-btn');
                         if (cancelBtnInBanner) cancelBtnInBanner.dataset.sessionId = res.session_id;
                         const typeEl = document.getElementById('banner-session-type');
@@ -1823,6 +1858,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     const startBar = document.getElementById('shopping-start-session-bar');
                     if (startBar) startBar.style.display = 'none';
+                    showWeeklyInSpontaneous = false;
+                    applyMainSpontaneousFilter();
                     openLiveMode();
                 } else {
                     showToast(res.message || 'Fehler beim Starten', true);
@@ -1847,7 +1884,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!confirm('Möchtest du diesen Einkauf wirklich abbrechen? Deine Artikel bleiben auf der Liste.')) return;
 
-            const res = await KaiHttp.postJson(API_URL, { action: 'cancel_session', session_id: sessionId });
+            const res = await KaiHttp.postJson(API_URL, {action: 'cancel_session', session_id: sessionId});
             if (res.success) {
                 showToast(res.message || 'Einkauf abgebrochen');
                 window.location.reload();
@@ -1878,6 +1915,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Checkout Modal Abbrechen
         if (e.target.closest('#btn-cancel-checkout-modal') || e.target.closest('#btn-close-checkout-modal')) {
             if (checkoutModal) checkoutModal.classList.add('hidden');
+            return;
+        }
+
+        // Toggle Spontaneinkauf Wocheneinkauf
+        if (e.target.closest('#btn-toggle-main-weekly') || e.target.closest('#btn-toggle-live-weekly')) {
+            showWeeklyInSpontaneous = !showWeeklyInSpontaneous;
+            applyMainSpontaneousFilter();
+            if (liveOverlay && !liveOverlay.classList.contains('hidden')) {
+                applyLiveMarketFilter(currentLiveMarket);
+            }
             return;
         }
 
@@ -2032,12 +2079,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const market = item.dataset.market || 'Rewe';
                         const note = item.dataset.note || '';
                         const isChecked = item.classList.contains('is-checked');
+                        const isSpontaneous = item.dataset.isSpontaneous || '0';
                         const marketBadgeClass = market === 'Rewe' ? 'badge-rewe' : (market === 'Globus' ? 'badge-globus' : 'badge-info');
 
                         html += `
                             <div class="shopping-live-item-row ${isChecked ? 'is-checked' : ''}" 
                                  data-id="${id}" 
                                  data-market="${KaiHtml.escape(market)}" 
+                                 data-is-spontaneous="${isSpontaneous}"
                                  data-checked="${isChecked ? '1' : '0'}">
                                 <input type="checkbox" class="shopping-live-checkbox" ${isChecked ? 'checked' : ''}>
                                 <div class="shopping-live-item-body">
@@ -2074,11 +2123,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyLiveMarketFilter(market) {
+        const isSpontaneinkauf = activeBanner && activeBanner.dataset.sessionType === 'spontaneinkauf' && !activeBanner.classList.contains('hidden');
+        const hideWeekly = isSpontaneinkauf && !showWeeklyInSpontaneous;
+
         const rows = document.querySelectorAll('.shopping-live-item-row');
         rows.forEach(row => {
             const m = row.dataset.market;
             const match = (market === 'all' || m === market || m === 'Übergreifend');
-            row.style.display = match ? 'flex' : 'none';
+            const isSpontaneousHidden = hideWeekly && row.dataset.isSpontaneous !== '1';
+            row.style.display = (match && !isSpontaneousHidden) ? 'flex' : 'none';
         });
 
         // Leere Gang-Gruppen im Filter ausblenden
@@ -2247,7 +2300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                 } else {
-                    const receiptsSummary = (d.linked_receipts || []).map(r => 
+                    const receiptsSummary = (d.linked_receipts || []).map(r =>
                         `${KaiHtml.escape(r.store)} (${parseFloat(r.total).toFixed(2).replace('.', ',')} €)`
                     ).join(', ');
 
@@ -2301,9 +2354,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             ` : ''}
                         </div>
                         <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                            ${d.receipt_count > 0 
-                                ? 'Alle Positionen, die für diesen Einkauf auf der Liste standen. Zugeordnete Belegpositionen sind grün hervorgehoben:' 
-                                : 'Alle Positionen, die während dieses Einkaufs auf der Liste standen und abgehakt wurden:'}
+                            ${d.receipt_count > 0
+                    ? 'Alle Positionen, die für diesen Einkauf auf der Liste standen. Zugeordnete Belegpositionen sind grün hervorgehoben:'
+                    : 'Alle Positionen, die während dieses Einkaufs auf der Liste standen und abgehakt wurden:'}
                         </p>
                 `;
 
@@ -2589,6 +2642,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (banner) {
                     banner.classList.remove('hidden');
                     banner.dataset.sessionId = session.id;
+                    banner.dataset.sessionType = session.session_type;
                     const typeEl = document.getElementById('banner-session-type');
                     if (typeEl) typeEl.textContent = session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1);
                     const chkEl = document.getElementById('banner-checked-count');
@@ -2712,6 +2766,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             container.innerHTML = html;
+
+            if (typeof applyMainSpontaneousFilter === 'function') {
+                applyMainSpontaneousFilter();
+            }
+
             return newlyAddedIds;
         }
 
@@ -2731,7 +2790,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isChecked) {
                 return `
-                    <div class="shopping-item-row is-checked${newClass}" data-id="${id}">
+                    <div class="shopping-item-row is-checked${newClass}" data-id="${id}" data-is-spontaneous="${isSpontaneous ? '1' : '0'}">
                         <div class="shopping-item-check">
                             <input type="checkbox" class="shopping-checkbox js-item-check" data-id="${id}" checked title="Wieder öffnen">
                         </div>
@@ -2765,7 +2824,8 @@ document.addEventListener('DOMContentLoaded', () => {
                      data-quantity="${qty}"
                      data-unit="${KaiHtml.escape(unit)}"
                      data-category="${KaiHtml.escape(category)}"
-                     data-note="${KaiHtml.escape(note)}">
+                     data-note="${KaiHtml.escape(note)}"
+                     data-is-spontaneous="${isSpontaneous ? '1' : '0'}">
                     <div class="shopping-item-check">
                         <input type="checkbox" class="shopping-checkbox js-item-check" data-id="${id}" title="Als erledigt markieren">
                     </div>
@@ -2902,6 +2962,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         rowEl.dataset.id = item.id;
                         rowEl.dataset.market = market;
                         rowEl.dataset.checked = isChecked ? '1' : '0';
+                        rowEl.dataset.isSpontaneous = item.is_spontaneous ? '1' : '0';
 
                         rowEl.innerHTML = `
                             <input type="checkbox" class="shopping-live-checkbox" ${isChecked ? 'checked' : ''}>

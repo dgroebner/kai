@@ -149,7 +149,8 @@ try {
     <main>
         <!-- Aktive Einkaufs-Session Banner -->
         <div id="shopping-active-banner" class="shopping-active-banner <?= $activeSession ? '' : 'hidden' ?>"
-             data-session-id="<?= $activeSession ? (int)$activeSession['id'] : '' ?>">
+             data-session-id="<?= $activeSession ? (int)$activeSession['id'] : '' ?>"
+             data-session-type="<?= htmlspecialchars($activeSession['session_type'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <div class="shopping-active-banner-info">
                 <span class="shopping-active-banner-pulse"></span>
                 <strong>Einkauf aktiv:</strong>
@@ -246,6 +247,9 @@ try {
                             data-market="Globus">
                         🟠 Globus (<?= (int)$marketCounts['Globus']['open'] ?>)
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline js-toggle-main-weekly <?= ($activeSession['session_type'] ?? '') === 'spontaneinkauf' ? '' : 'hidden' ?>" id="btn-toggle-main-weekly">
+                        + Wocheneinkauf
+                    </button>
                 </div>
 
                 <?php if ((int)$marketCounts['all']['checked'] > 0): ?>
@@ -310,7 +314,8 @@ try {
                                          data-quantity="<?= (float)$item['quantity'] ?>"
                                          data-unit="<?= htmlspecialchars($item['unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>"
                                          data-category="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
-                                         data-note="<?= htmlspecialchars($item['note'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                         data-note="<?= htmlspecialchars($item['note'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                         data-is-spontaneous="<?= !empty($item['is_spontaneous']) ? '1' : '0' ?>">
                                         <div class="shopping-item-check">
                                             <input type="checkbox" class="shopping-checkbox js-item-check"
                                                    data-id="<?= (int)$item['id'] ?>" title="Als erledigt markieren">
@@ -371,7 +376,7 @@ try {
                         </div>
                         <div class="shopping-items-list shopping-checked-list">
                             <?php foreach ($checkedItems as $item): ?>
-                                <div class="shopping-item-row is-checked" data-id="<?= (int)$item['id'] ?>">
+                                <div class="shopping-item-row is-checked" data-id="<?= (int)$item['id'] ?>" data-is-spontaneous="<?= !empty($item['is_spontaneous']) ? '1' : '0' ?>">
                                     <div class="shopping-item-check">
                                         <input type="checkbox" class="shopping-checkbox js-item-check"
                                                data-id="<?= (int)$item['id'] ?>" checked title="Wieder öffnen">
@@ -908,6 +913,9 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus"
                         data-market="Globus">🟠 Globus
+                </button>
+                <button type="button" class="btn btn-sm btn-outline js-toggle-live-weekly hidden" id="btn-toggle-live-weekly">
+                    + Wocheneinkauf
                 </button>
             </div>
         </div>
