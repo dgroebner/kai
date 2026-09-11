@@ -189,16 +189,41 @@ class ReceiptSessionService
         $sessionItems = $this->sessionRepo->getSessionItems($sessionId);
         $linkedReceipts = $this->getLinkedReceipts($sessionId);
 
+        // Basis-Liste aller Einkaufslisten-Artikel vorbereiten
+        $formattedSessionItems = [];
+        foreach ($sessionItems as $si) {
+            $siId = (int)$si['id'];
+            $formattedSessionItems[$siId] = [
+                'id' => $siId,
+                'product_id' => !empty($si['product_id']) ? (int)$si['product_id'] : null,
+                'name' => $si['name'],
+                'display_name' => $si['master_display_name'] ?: $si['name'],
+                'quantity' => (float)$si['quantity'],
+                'unit' => $si['unit'] ?? 'Stück',
+                'market' => $si['market'] ?? 'Rewe',
+                'category' => $si['category'] ?? 'Sonstiges',
+                'is_spontaneous' => !empty($si['is_spontaneous']),
+                'is_matched' => false,
+                'matches' => [],
+                'matched_cost' => 0.00,
+            ];
+        }
+
+        // Falls noch kein Kassenbon verknüpft ist, Liste der Artikel trotzdem zurückgeben
         if (empty($linkedReceipts)) {
             return [
                 'session' => $session,
                 'receipt_count' => 0,
+                'linked_receipts' => [],
                 'session_items_count' => count($sessionItems),
+                'session_items' => array_values($formattedSessionItems),
+                'matched_session_items_count' => 0,
+                'total_items_count' => 0,
                 'total_cost' => 0.00,
                 'planned_cost' => 0.00,
                 'spontaneous_cost' => 0.00,
                 'spontaneous_pct_cost' => 0.0,
-                'items' => [],
+                'spontaneous_pct_count' => 0.0,
                 'spontaneous_items' => [],
                 'planned_items' => [],
             ];
@@ -235,18 +260,6 @@ class ReceiptSessionService
             }
         }
 
-        // Indexierung der Session-Items für schnellen Lookup
-        // 1. nach product_id
-        // 2. nach normalisiertem Namen
-        $sessionProductIds = [];
-        $sessionNames = [];
-        foreach ($sessionItems as $si) {
-            if (!empty($si['product_id'])) {
-                $sessionProductIds[(int)$si['product_id']] = true;
-            }
-            $sessionNames[mb_strtolower(trim($si['name']), 'UTF-8')] = true;
-        }
-
         $totalCost = 0.00;
         $plannedCost = 0.00;
         $spontaneousCost = 0.00;
@@ -262,51 +275,76 @@ class ReceiptSessionService
             $rawName = trim($item['name']);
             $normRaw = mb_strtolower($rawName, 'UTF-8');
 
-            $isPlanned = false;
-            $matchedMasterName = null;
+            $matchedSessionItemId = null;
+            $matchedDisplayName = null;
 
-            // Check 1: Über gespeichertes eBon-Mapping
+            // Check 1: Über gespeichertes eBon-Mapping (product_master_id)
             if (isset($mappings[$normRaw])) {
                 $masterId = (int)$mappings[$normRaw]['product_master_id'];
-                $matchedMasterName = $mappings[$normRaw]['custom_label'] ?: $mappings[$normRaw]['master_name'];
-                if (isset($sessionProductIds[$masterId])) {
-                    $isPlanned = true;
-                }
-            }
-
-            // Check 2: Direkter Namensabgleich (Fuzzy/Exact)
-            if (!$isPlanned) {
-                if (isset($sessionNames[$normRaw])) {
-                    $isPlanned = true;
-                    $matchedMasterName = $rawName;
-                } else {
-                    // Prüfen ob ein Session-Item-Name im Bon-Namen enthalten ist
-                    foreach ($sessionNames as $sName => $true) {
-                        if (str_contains($normRaw, $sName) || str_contains($sName, $normRaw)) {
-                            $isPlanned = true;
-                            $matchedMasterName = $sName;
-                            break;
-                        }
+                $mappedName = $mappings[$normRaw]['custom_label'] ?: $mappings[$normRaw]['master_name'];
+                foreach ($formattedSessionItems as $siId => $si) {
+                    if ($si['product_id'] === $masterId) {
+                        $matchedSessionItemId = $siId;
+                        $matchedDisplayName = $mappedName;
+                        break;
                     }
                 }
             }
 
+            // Check 2: Exakter Namensabgleich (oder Display-Name)
+            if ($matchedSessionItemId === null) {
+                foreach ($formattedSessionItems as $siId => $si) {
+                    $siNorm = mb_strtolower(trim($si['name']), 'UTF-8');
+                    $siDisplayNorm = mb_strtolower(trim($si['display_name']), 'UTF-8');
+                    if ($normRaw === $siNorm || $normRaw === $siDisplayNorm) {
+                        $matchedSessionItemId = $siId;
+                        $matchedDisplayName = $si['display_name'];
+                        break;
+                    }
+                }
+            }
+
+            // Check 3: Teilstring-Abgleich (Fuzzy)
+            if ($matchedSessionItemId === null) {
+                foreach ($formattedSessionItems as $siId => $si) {
+                    $siNorm = mb_strtolower(trim($si['name']), 'UTF-8');
+                    if (mb_strlen($siNorm, 'UTF-8') >= 3 && (str_contains($normRaw, $siNorm) || str_contains($siNorm, $normRaw))) {
+                        $matchedSessionItemId = $siId;
+                        $matchedDisplayName = $si['display_name'];
+                        break;
+                    }
+                }
+            }
+
+            $isPlanned = ($matchedSessionItemId !== null);
             $entry = [
                 'id' => (int)$item['id'],
                 'receipt_id' => (int)$item['receipt_id'],
                 'name' => $rawName,
-                'display_name' => $matchedMasterName ?: $rawName,
+                'display_name' => $matchedDisplayName ?: $rawName,
                 'store' => $item['store'],
                 'category' => $item['category'],
                 'quantity' => (float)$item['quantity'],
                 'unit_price' => (float)$item['unit_price'],
                 'total_price' => $cost,
                 'is_planned' => $isPlanned,
+                'matched_session_item_id' => $matchedSessionItemId,
             ];
 
             if ($isPlanned) {
                 $plannedCost += $cost;
                 $plannedItems[] = $entry;
+
+                // Zugehörigen Einkaufslisten-Artikel als gematcht markieren
+                $formattedSessionItems[$matchedSessionItemId]['is_matched'] = true;
+                $formattedSessionItems[$matchedSessionItemId]['matches'][] = [
+                    'receipt_item_id' => (int)$item['id'],
+                    'receipt_id' => (int)$item['receipt_id'],
+                    'name' => $rawName,
+                    'price' => $cost,
+                    'store' => $item['store'],
+                ];
+                $formattedSessionItems[$matchedSessionItemId]['matched_cost'] += $cost;
             } else {
                 $spontaneousCost += $cost;
                 $spontaneousItems[] = $entry;
@@ -315,6 +353,7 @@ class ReceiptSessionService
             $processedItems[] = $entry;
         }
 
+        $matchedSessionItemsCount = count(array_filter($formattedSessionItems, static fn($si) => $si['is_matched']));
         $spontaneousPctCost = $totalCost > 0 ? round(($spontaneousCost / $totalCost) * 100, 1) : 0.0;
         $spontaneousPctCount = count($receiptItems) > 0 ? round((count($spontaneousItems) / count($receiptItems)) * 100, 1) : 0.0;
 
@@ -322,6 +361,9 @@ class ReceiptSessionService
             'session' => $session,
             'receipt_count' => count($linkedReceipts),
             'linked_receipts' => $linkedReceipts,
+            'session_items_count' => count($sessionItems),
+            'session_items' => array_values($formattedSessionItems),
+            'matched_session_items_count' => $matchedSessionItemsCount,
             'total_items_count' => count($receiptItems),
             'total_cost' => round($totalCost, 2),
             'planned_cost' => round($plannedCost, 2),

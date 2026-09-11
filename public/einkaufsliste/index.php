@@ -968,6 +968,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
             <div id="candidate-receipts-list"></div>
         </div>
         <div class="rule-modal-footer">
+            <button type="button" class="btn btn-primary js-view-session-analysis-btn" id="btn-show-analysis-from-link" data-session-id="">📊 Zum Abgleich</button>
             <button type="button" class="btn btn-outline" id="btn-cancel-link-receipts-modal">Schließen</button>
         </div>
     </div>

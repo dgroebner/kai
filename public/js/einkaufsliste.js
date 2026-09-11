@@ -1943,6 +1943,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const linkReceiptsBtn = e.target.closest('.js-link-receipts-btn');
         if (linkReceiptsBtn) {
             const sessionId = linkReceiptsBtn.dataset.sessionId;
+            if (analysisModal) analysisModal.classList.add('hidden');
             openLinkReceiptsModal(sessionId);
             return;
         }
@@ -1971,6 +1972,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const analysisBtn = e.target.closest('.js-view-session-analysis-btn');
         if (analysisBtn) {
             const sessionId = analysisBtn.dataset.sessionId;
+            if (linkReceiptsModal) linkReceiptsModal.classList.add('hidden');
             openSessionAnalysisModal(sessionId);
             return;
         }
@@ -2156,6 +2158,10 @@ document.addEventListener('DOMContentLoaded', () => {
         linkReceiptsModal.classList.remove('hidden');
         const listContainer = document.getElementById('candidate-receipts-list');
         const loader = document.getElementById('candidate-receipts-loading');
+        const btnShowAnalysis = document.getElementById('btn-show-analysis-from-link');
+        if (btnShowAnalysis) {
+            btnShowAnalysis.dataset.sessionId = sessionId;
+        }
 
         if (loader) loader.classList.remove('hidden');
         if (listContainer) listContainer.innerHTML = '';
@@ -2212,106 +2218,199 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.success && res.data) {
                 const d = res.data;
+                const s = d.session || {};
+                const sessionType = s.session_type ? (s.session_type.charAt(0).toUpperCase() + s.session_type.slice(1)) : 'Wocheneinkauf';
+                const sessionDate = s.started_at ? new Date(s.started_at).toLocaleDateString('de-DE') : '';
+                const sessionStartTime = s.started_at ? s.started_at.substring(11, 16) : '';
+                const sessionEndTime = s.completed_at ? s.completed_at.substring(11, 16) : '';
+                const timeStr = sessionStartTime ? `${sessionStartTime} Uhr` : '';
+                const durationStr = (sessionStartTime && sessionEndTime) ? `${sessionStartTime} – ${sessionEndTime} Uhr` : timeStr;
+
+                let html = '';
+
+                // 1. Verknüpfungs-Banner / Header
                 if (d.receipt_count === 0) {
-                    content.innerHTML = `
-                        <div class="card text-center" style="padding: 2rem;">
-                            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">🧾 Noch kein Kassenbon verknüpft</p>
-                            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 1.25rem;">
-                                Um geplante Artikel und Spontankäufe abzugleichen, verknüpfe bitte zuerst die E-Bons dieses Einkaufs.
-                            </p>
-                            <button type="button" class="btn btn-primary js-link-receipts-btn" data-session-id="${sessionId}">
-                                ➕ Jetzt Kassenbons verknüpfen
+                    html += `
+                        <div class="shopping-analysis-banner shopping-analysis-banner-unlinked">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="font-size: 1.5rem;">🧾</span>
+                                <div>
+                                    <strong>Noch kein Kassenbon verknüpft</strong>
+                                    <div class="text-muted" style="font-size: 0.85rem;">
+                                        Verknüpfe den digitalen Beleg dieses Einkaufs, um Beträge und Spontankäufe abzugleichen.
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm js-link-receipts-btn" data-session-id="${sessionId}">
+                                ➕ Kassenbon verknüpfen
                             </button>
                         </div>
                     `;
-                    return;
+                } else {
+                    const receiptsSummary = (d.linked_receipts || []).map(r => 
+                        `${KaiHtml.escape(r.store)} (${parseFloat(r.total).toFixed(2).replace('.', ',')} €)`
+                    ).join(', ');
+
+                    html += `
+                        <div class="shopping-analysis-banner">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                                <span style="font-size: 1.5rem;">🧾</span>
+                                <div>
+                                    <strong>${d.receipt_count} Kassenbon(s) verknüpft:</strong>
+                                    <span class="text-muted" style="font-size: 0.85rem; margin-left: 0.25rem;">
+                                        ${receiptsSummary}
+                                    </span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm js-link-receipts-btn" data-session-id="${sessionId}">
+                                🔗 Bons verwalten
+                            </button>
+                        </div>
+
+                        <!-- KPIs -->
+                        <div class="shopping-analysis-grid">
+                            <div class="shopping-analysis-kpi">
+                                <div class="text-muted" style="font-size: 0.85rem;">Gesamtausgaben</div>
+                                <div class="kpi-value">${d.total_cost.toFixed(2).replace('.', ',')} €</div>
+                                <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">aus ${d.receipt_count} Beleg(en)</div>
+                            </div>
+                            <div class="shopping-analysis-kpi kpi-planned">
+                                <div class="text-muted" style="font-size: 0.85rem;">Geplanter Einkauf</div>
+                                <div class="kpi-value">${d.planned_cost.toFixed(2).replace('.', ',')} €</div>
+                                <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">${d.matched_session_items_count} von ${(d.session_items || []).length} Artikeln zugeordnet</div>
+                            </div>
+                            <div class="shopping-analysis-kpi kpi-spontaneous">
+                                <div class="text-muted" style="font-size: 0.85rem;">Spontankäufe</div>
+                                <div class="kpi-value">${d.spontaneous_cost.toFixed(2).replace('.', ',')} €</div>
+                                <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">${d.spontaneous_pct_cost}% des Betrags (${(d.spontaneous_items || []).length} Artikel)</div>
+                            </div>
+                        </div>
+                    `;
                 }
 
-                let html = `
-                    <div class="shopping-analysis-grid">
-                        <div class="shopping-analysis-kpi">
-                            <div class="text-muted" style="font-size: 0.85rem;">Gesamtausgaben</div>
-                            <div class="kpi-value">${d.total_cost.toFixed(2).replace('.', ',')} €</div>
-                            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">aus ${d.receipt_count} Beleg(en)</div>
+                // 2. Artikel der Einkaufsliste (IMMER ANZEIGEN!)
+                const sessionItems = d.session_items || [];
+                html += `
+                    <div class="card" style="margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <h4 style="margin-bottom: 0;">🛒 Artikel der Einkaufsliste (${sessionItems.length})</h4>
+                            ${d.receipt_count > 0 ? `
+                                <span class="badge ${d.matched_session_items_count === sessionItems.length ? 'badge-success' : 'badge-primary'}">
+                                    ${d.matched_session_items_count} / ${sessionItems.length} auf Beleg gefunden
+                                </span>
+                            ` : ''}
                         </div>
-                        <div class="shopping-analysis-kpi kpi-planned">
-                            <div class="text-muted" style="font-size: 0.85rem;">Geplanter Einkauf</div>
-                            <div class="kpi-value">${d.planned_cost.toFixed(2).replace('.', ',')} €</div>
-                            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">${d.planned_items.length} Artikel von der Liste</div>
-                        </div>
-                        <div class="shopping-analysis-kpi kpi-spontaneous">
-                            <div class="text-muted" style="font-size: 0.85rem;">Spontankäufe</div>
-                            <div class="kpi-value">${d.spontaneous_cost.toFixed(2).replace('.', ',')} €</div>
-                            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">${d.spontaneous_pct_cost}% des Gesamtbetrags (${d.spontaneous_items.length} Artikel)</div>
-                        </div>
-                    </div>
+                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                            ${d.receipt_count > 0 
+                                ? 'Alle Positionen, die für diesen Einkauf auf der Liste standen. Zugeordnete Belegpositionen sind grün hervorgehoben:' 
+                                : 'Alle Positionen, die während dieses Einkaufs auf der Liste standen und abgehakt wurden:'}
+                        </p>
                 `;
 
-                if (d.spontaneous_items.length > 0) {
-                    html += `
-                        <div class="card" style="margin-bottom: 1.25rem; border-color: rgba(245, 158, 11, 0.4);">
-                            <h4 style="color: var(--color-orange); margin-bottom: 0.75rem;">⚡ Spontankäufe (${d.spontaneous_items.length})</h4>
-                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                                Diese Artikel standen <strong>nicht</strong> auf deiner Einkaufsliste und wurden spontan im Markt mitgenommen:
-                            </p>
-                            <div class="table-responsive">
-                                <table class="data-table stack-table table-compact">
-                                    <thead>
-                                        <tr>
-                                            <th>Artikel</th>
-                                            <th>Markt</th>
-                                            <th>Menge</th>
-                                            <th class="text-right">Betrag</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                    `;
-                    d.spontaneous_items.forEach(it => {
-                        html += `
-                            <tr>
-                                <td data-label="Artikel"><strong>${KaiHtml.escape(it.name)}</strong></td>
-                                <td data-label="Markt"><span class="badge badge-market ${it.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">${KaiHtml.escape(it.store)}</span></td>
-                                <td data-label="Menge">${it.quantity > 1 ? it.quantity + 'x' : '1x'}</td>
-                                <td data-label="Betrag" class="text-right"><strong>${it.total_price.toFixed(2).replace('.', ',')} €</strong></td>
-                            </tr>
-                        `;
-                    });
-                    html += `</tbody></table></div></div>`;
+                if (sessionItems.length === 0) {
+                    html += `<p class="text-muted text-center" style="padding: 1.5rem;">Keine archivierten Artikel für diese Session vorhanden.</p>`;
                 } else {
                     html += `
-                        <div class="card text-center" style="padding: 1.25rem; margin-bottom: 1.25rem; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.3);">
-                            <p style="margin-bottom: 0; color: var(--color-green); font-weight: 600;">🎯 Perfekt diszipliniert! Keine Spontankäufe auf den Kassenbons entdeckt.</p>
-                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table stack-table table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>Artikel</th>
+                                        <th>Markt</th>
+                                        <th>Gang / Kategorie</th>
+                                        <th>Menge</th>
+                                        ${d.receipt_count > 0 ? '<th class="text-right">Kassenbon-Zuordnung</th>' : ''}
+                                    </tr>
+                                </thead>
+                                <tbody>
                     `;
-                }
 
-                if (d.planned_items.length > 0) {
-                    html += `
-                        <div class="card">
-                            <h4 style="margin-bottom: 0.75rem;">✔️ Geplante Einkäufe (${d.planned_items.length})</h4>
-                            <div class="table-responsive">
-                                <table class="data-table stack-table table-compact">
-                                    <thead>
-                                        <tr>
-                                            <th>Artikel (Kassenbon)</th>
-                                            <th>Zugeordnet zu</th>
-                                            <th>Markt</th>
-                                            <th class="text-right">Betrag</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                    `;
-                    d.planned_items.forEach(it => {
+                    sessionItems.forEach(it => {
+                        const isMatched = it.is_matched === true;
+                        const rowClass = isMatched ? 'class="shopping-session-matched-row"' : '';
+                        const displayName = it.display_name || it.name;
+
                         html += `
-                            <tr>
-                                <td data-label="Artikel">${KaiHtml.escape(it.name)}</td>
-                                <td data-label="Zugeordnet zu"><strong>${KaiHtml.escape(it.display_name)}</strong></td>
-                                <td data-label="Markt"><span class="badge badge-market ${it.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">${KaiHtml.escape(it.store)}</span></td>
-                                <td data-label="Betrag" class="text-right">${it.total_price.toFixed(2).replace('.', ',')} €</td>
+                            <tr ${rowClass}>
+                                <td data-label="Artikel">
+                                    <strong>${KaiHtml.escape(displayName)}</strong>
+                                    ${it.is_spontaneous ? '<span class="badge badge-warning" style="font-size: 0.75rem; margin-left: 4px;">Spontan</span>' : ''}
+                                </td>
+                                <td data-label="Markt">
+                                    <span class="badge badge-market ${it.market.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">
+                                        ${KaiHtml.escape(it.market)}
+                                    </span>
+                                </td>
+                                <td data-label="Kategorie">${KaiHtml.escape(it.category)}</td>
+                                <td data-label="Menge">${it.quantity > 0 ? (it.quantity % 1 === 0 ? it.quantity : it.quantity.toFixed(2)) + ' ' + KaiHtml.escape(it.unit) : '—'}</td>
+                                ${d.receipt_count > 0 ? `
+                                    <td data-label="Kassenbon-Zuordnung" class="text-right">
+                                        ${isMatched ? `
+                                            <span class="badge badge-success">
+                                                ✔️ ${it.matched_cost.toFixed(2).replace('.', ',')} €
+                                            </span>
+                                            <div class="text-muted" style="font-size: 0.78rem; margin-top: 2px;">
+                                                ${(it.matches || []).map(m => KaiHtml.escape(m.name)).join(', ')}
+                                            </div>
+                                        ` : `
+                                            <span class="text-muted" style="font-size: 0.85rem;">— Nicht auf Beleg</span>
+                                        `}
+                                    </td>
+                                ` : ''}
                             </tr>
                         `;
                     });
-                    html += `</tbody></table></div></div>`;
+
+                    html += `</tbody></table></div>`;
+                }
+                html += `</div>`;
+
+                // 3. Spontankäufe aus E-Bon (NUR ANZEIGEN WENN E-BONS VERKNÜPFT SIND!)
+                if (d.receipt_count > 0) {
+                    const spontaneousItems = d.spontaneous_items || [];
+                    if (spontaneousItems.length > 0) {
+                        html += `
+                            <div class="card shopping-spontaneous-card">
+                                <h4 class="shopping-spontaneous-title">⚡ Spontankäufe laut Kassenbon (${spontaneousItems.length})</h4>
+                                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                    Diese Artikel wurden am Kassenbon erfasst, standen jedoch <strong>nicht</strong> auf deiner Einkaufsliste:
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="data-table stack-table table-compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Artikel (Kassenbon)</th>
+                                                <th>Markt</th>
+                                                <th>Menge</th>
+                                                <th class="text-right">Betrag</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                        `;
+                        spontaneousItems.forEach(it => {
+                            html += `
+                                <tr>
+                                    <td data-label="Artikel"><strong>${KaiHtml.escape(it.name)}</strong></td>
+                                    <td data-label="Markt">
+                                        <span class="badge badge-market ${it.store.toLowerCase().includes('rewe') ? 'badge-rewe' : 'badge-globus'}">
+                                            ${KaiHtml.escape(it.store)}
+                                        </span>
+                                    </td>
+                                    <td data-label="Menge">${it.quantity > 1 ? it.quantity + 'x' : '1x'}</td>
+                                    <td data-label="Betrag" class="text-right"><strong>${it.total_price.toFixed(2).replace('.', ',')} €</strong></td>
+                                </tr>
+                            `;
+                        });
+                        html += `</tbody></table></div></div>`;
+                    } else {
+                        html += `
+                            <div class="shopping-analysis-empty-spontaneous">
+                                <p style="margin-bottom: 0; color: var(--color-green); font-weight: 600;">
+                                    🎯 Perfekt diszipliniert! Keine Spontankäufe auf den Kassenbons entdeckt.
+                                </p>
+                            </div>
+                        `;
+                    }
                 }
 
                 content.innerHTML = html;
