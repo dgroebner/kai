@@ -1854,7 +1854,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const cancelBtnInBanner = activeBanner.querySelector('.js-cancel-session-btn');
                         if (cancelBtnInBanner) cancelBtnInBanner.dataset.sessionId = res.session_id;
                         const typeEl = document.getElementById('banner-session-type');
-                        if (typeEl) typeEl.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                        const typeStr = type.charAt(0).toUpperCase() + type.slice(1);
+                        if (typeEl) typeEl.textContent = typeStr;
+                        const liveBadge = document.getElementById('live-session-type-badge');
+                        if (liveBadge) {
+                            liveBadge.textContent = typeStr;
+                            liveBadge.className = 'badge ' + (type === 'spontaneinkauf' ? 'badge-warning' : 'badge-info');
+                        }
                     }
                     const startBar = document.getElementById('shopping-start-session-bar');
                     if (startBar) startBar.style.display = 'none';
@@ -2644,7 +2650,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     banner.dataset.sessionId = session.id;
                     banner.dataset.sessionType = session.session_type;
                     const typeEl = document.getElementById('banner-session-type');
-                    if (typeEl) typeEl.textContent = session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1);
+                    const typeStr = session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1);
+                    if (typeEl) typeEl.textContent = typeStr;
+                    
+                    const liveBadge = document.getElementById('live-session-type-badge');
+                    if (liveBadge) {
+                        liveBadge.textContent = typeStr;
+                        liveBadge.className = 'badge ' + (session.session_type === 'spontaneinkauf' ? 'badge-warning' : 'badge-info');
+                    }
+                    
                     const chkEl = document.getElementById('banner-checked-count');
                     const totEl = document.getElementById('banner-total-count');
                     if (chkEl) chkEl.textContent = session.checked_count;

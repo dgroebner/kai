@@ -893,7 +893,9 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <div class="shopping-live-title">
                     <span class="shopping-active-banner-pulse"></span>
                     <span>🛒 Live-Einkauf</span>
-                    <span id="live-session-type-badge" class="badge badge-info">Wocheneinkauf</span>
+                    <span id="live-session-type-badge" class="badge <?= ($activeSession['session_type'] ?? 'wocheneinkauf') === 'spontaneinkauf' ? 'badge-warning' : 'badge-info' ?>">
+                        <?= htmlspecialchars(ucfirst($activeSession['session_type'] ?? 'Wocheneinkauf'), ENT_QUOTES, 'UTF-8') ?>
+                    </span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <span style="font-size: 0.95rem; font-weight: 600;">
