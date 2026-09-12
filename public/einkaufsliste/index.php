@@ -919,6 +919,9 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 <button type="button" class="btn btn-sm btn-outline js-toggle-live-weekly hidden" id="btn-toggle-live-weekly">
                     + Wocheneinkauf
                 </button>
+                <button type="button" class="btn btn-sm btn-outline js-toggle-live-checked" id="btn-toggle-live-checked" title="Erledigte Artikel anzeigen/ausblenden">
+                    👁️ Erledigte einbl.
+                </button>
             </div>
         </div>
     </div>

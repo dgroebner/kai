@@ -115,7 +115,8 @@ try {
                 break;
             }
 
-            $items = $listRepo->getItems(null, true);
+            $sortMarket = trim((string)($input['sort_market'] ?? ''));
+            $items = $listRepo->getItems(null, true, null, $sortMarket);
             $marketCounts = $listRepo->getItemCountsByMarket();
             $activeSession = $sessionRepo->getActiveSession();
 

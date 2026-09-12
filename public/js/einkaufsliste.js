@@ -1805,6 +1805,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentLiveMarket = 'all';
     let showWeeklyInSpontaneous = false;
+    let showCheckedInLive = false;
 
     function applyMainSpontaneousFilter() {
         const isSpontaneinkauf = activeBanner && activeBanner.dataset.sessionType === 'spontaneinkauf' && !activeBanner.classList.contains('hidden');
@@ -1981,6 +1982,16 @@ document.addEventListener('DOMContentLoaded', () => {
             liveFilterBtn.classList.add('btn-active-filter');
             currentLiveMarket = liveFilterBtn.dataset.market || 'all';
             applyLiveMarketFilter(currentLiveMarket);
+            if (window.shoppingSync) window.shoppingSync.pollNow();
+            return;
+        }
+
+        // Toggle Checked in Live Mode
+        const toggleCheckedBtn = e.target.closest('#btn-toggle-live-checked');
+        if (toggleCheckedBtn) {
+            showCheckedInLive = !showCheckedInLive;
+            toggleCheckedBtn.textContent = showCheckedInLive ? '👁️ Erledigte ausbl.' : '👁️ Erledigte einbl.';
+            applyLiveMarketFilter(currentLiveMarket);
             return;
         }
 
@@ -2137,7 +2148,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = row.dataset.market;
             const match = (market === 'all' || m === market || m === 'Übergreifend');
             const isSpontaneousHidden = hideWeekly && row.dataset.isSpontaneous !== '1';
-            row.style.display = (match && !isSpontaneousHidden) ? 'flex' : 'none';
+            const isCheckedHidden = !showCheckedInLive && row.classList.contains('is-checked');
+            
+            row.style.display = (match && !isSpontaneousHidden && !isCheckedHidden) ? 'flex' : 'none';
         });
 
         // Leere Gang-Gruppen im Filter ausblenden
@@ -2161,6 +2174,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.classList.toggle('is-checked', checked === 1);
                 const cb = row.querySelector('.shopping-live-checkbox');
                 if (cb) cb.checked = checked === 1;
+                
+                if (checked === 1 && !showCheckedInLive) {
+                    setTimeout(() => {
+                        if (row.classList.contains('is-checked')) {
+                            applyLiveMarketFilter(currentLiveMarket);
+                        }
+                    }, 500);
+                } else {
+                    applyLiveMarketFilter(currentLiveMarket);
+                }
 
                 // Sync mit normaler Ansicht
                 const regRow = document.querySelector(`.shopping-item-row[data-id="${itemId}"]`);
@@ -2180,13 +2203,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateLiveCounters() {
-        const visibleRows = Array.from(document.querySelectorAll('.shopping-live-item-row')).filter(r => r.style.display !== 'none');
-        const checkedRows = visibleRows.filter(r => r.dataset.checked === '1');
+        const isSpontaneinkauf = activeBanner && activeBanner.dataset.sessionType === 'spontaneinkauf' && !activeBanner.classList.contains('hidden');
+        const hideWeekly = isSpontaneinkauf && !showWeeklyInSpontaneous;
+
+        const allRows = document.querySelectorAll('.shopping-live-item-row');
+        let relevantRows = 0;
+        let checkedRows = 0;
+
+        allRows.forEach(r => {
+            const m = r.dataset.market;
+            const match = (currentLiveMarket === 'all' || m === currentLiveMarket || m === 'Übergreifend');
+            const isSpontaneousHidden = hideWeekly && r.dataset.isSpontaneous !== '1';
+            
+            if (match && !isSpontaneousHidden) {
+                relevantRows++;
+                if (r.dataset.checked === '1') {
+                    checkedRows++;
+                }
+            }
+        });
 
         const checkedEl = document.getElementById('live-checked-counter');
         const totalEl = document.getElementById('live-total-counter');
-        if (checkedEl) checkedEl.textContent = checkedRows.length;
-        if (totalEl) totalEl.textContent = visibleRows.length;
+
+        if (checkedEl) checkedEl.textContent = checkedRows;
+        if (totalEl) totalEl.textContent = relevantRows;
 
         // Auch Banner synchronisieren
         const allChecked = document.querySelectorAll('.shopping-live-item-row[data-checked="1"]').length;
@@ -2550,12 +2591,27 @@ document.addEventListener('DOMContentLoaded', () => {
             this.isPolling = true;
 
             try {
+                let requestMarket = this.getActiveMarket();
+                const liveOverlayEl = document.getElementById('shopping-live-overlay');
+                if (liveOverlayEl && !liveOverlayEl.classList.contains('hidden')) {
+                    if (typeof currentLiveMarket !== 'undefined' && currentLiveMarket !== 'all') {
+                        requestMarket = currentLiveMarket;
+                    }
+                }
+
+                let hashToSend = this.currentHash;
+                if (this.lastSortMarket && this.lastSortMarket !== requestMarket) {
+                    hashToSend = ''; // Force full update when sorting context changes
+                }
+
                 const res = await KaiHttp.postJson(API_URL, {
                     action: 'get_sync_state',
-                    current_hash: this.currentHash
+                    current_hash: hashToSend,
+                    sort_market: requestMarket
                 });
 
                 if (res.success) {
+                    this.lastSortMarket = requestMarket;
                     if (res.changed && res.items) {
                         const previousHash = this.currentHash;
                         this.setHash(res.hash);
