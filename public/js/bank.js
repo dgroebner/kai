@@ -1534,7 +1534,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (resultMsg) {
                 resultMsg.style.color = 'var(--color-green, #10b981)';
-                resultMsg.innerText = 'Sync erfolgreich abgeschlossen!';
+                if (syncResponse.auto_report) {
+                    resultMsg.innerText = `Sync erfolgreich! KI-Finanzreport für ${syncResponse.auto_report} wurde automatisch generiert.`;
+                } else {
+                    resultMsg.innerText = 'Sync erfolgreich abgeschlossen!';
+                }
             }
             btnCloseSync.classList.remove('hidden');
 

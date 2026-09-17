@@ -224,11 +224,15 @@ try {
 
         $stats = $bankGiroService->syncWithComdirectApi($tokens);
 
+        // Nach dem Sync prüfen, ob der erste Monatsabruf vorliegt und der Vormonats-Report erzeugt werden soll
+        $autoReportMonth = $bankGiroService->triggerPendingMonthlyReport();
+
         echo json_encode([
             'success' => true,
             'imported' => $stats['imported'],
             'ignored' => $stats['ignored'],
-            'tagged' => $stats['tagged']
+            'tagged' => $stats['tagged'],
+            'auto_report' => $autoReportMonth
         ]);
         exit;
     }

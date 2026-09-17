@@ -255,4 +255,55 @@ class BankGiroService
 
         return $stats;
     }
-}
+
+    /**
+     * Prüft nach einem erfolgreichen Sync, ob für den abgelaufenen Vormonat
+     * bereits ein KI-Finanzreport existiert. Falls nicht, wird dieser automatisch erzeugt.
+     *
+     * @return string|null Der analysierte Vormonat (z. B. '2026-08') oder null, falls kein Report erzeugt wurde.
+     */
+    public function triggerPendingMonthlyReport(): ?string
+    {
+        try {
+            $prevMonth = (new \DateTimeImmutable('first day of last month'))->format('Y-m');
+            $reportRepo = new FinancialReportRepository();
+
+            // Prüfen, ob für den Vormonat bereits ein Report existiert
+            if ($reportRepo->getReport('month', $prevMonth) === null) {
+                $this->logger->info("BankGiroService: Erster Monatsabruf erkannt. Generiere automatischen Finanzreport für $prevMonth...");
+
+                $reportService = new FinancialReportService($reportRepo);
+                $reportService->generateReport('month', $prevMonth);
+
+                $activityLogger = new ActivityLogger($this->db);
+                $activityLogger->log(
+                    'finance',
+                    "KI-Finanzreport für $prevMonth nach Bankdatenabruf automatisch generiert.",
+                    "/bank/report.php?type=monat&period=" . $prevMonth
+                );
+
+                // Jahreswechsel-Check: Im Januar auch das Vorjahr automatisch analysieren
+                if ((int)date('n') === 1) {
+                    $prevYear = (string)((int)date('Y') - 1);
+                    if ($reportRepo->getReport('year', $prevYear) === null) {
+                        $this->logger->info("BankGiroService: Januar-Sync erkannt. Generiere automatischen Jahresreport für $prevYear...");
+                        $reportService->generateReport('year', $prevYear);
+                        $activityLogger->log(
+                            'finance',
+                            "KI-Jahresreport für $prevYear automatisch generiert.",
+                            "/bank/report.php?type=jahr&period=" . $prevYear
+                        );
+                    }
+                }
+
+                return $prevMonth;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error("BankGiroService: Fehler bei automatischer Finanzreport-Generierung nach Sync", [
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return null;
+    }
+}
