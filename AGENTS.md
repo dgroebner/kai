@@ -153,14 +153,16 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `Bank\BankGiroService` | `Kassenbon\ReceiptMatcher` | Nach dem Import neuer Umsätze werden offene Kassenbons den Buchungen zugeordnet. |
 | `Bank\CreditCardService` | `Kassenbon\ReceiptMatcher` | Analog für importierte Kreditkartenabrechnungen. |
 | `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
+| `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
-Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System);
+Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen);
 Rückwärts- oder Zirkelbezüge sind unzulässig.
 
 ### Aktuelle Domains
 
 | Domain | Namespace | Src | Public |
 |---|---|---|---|
+| Assistant | `Kai\Tools\Assistant\` | `src/Assistant/` | `public/assistant/` |
 | Bank | `Kai\Tools\Bank\` | `src/Bank/` (inkl. `Parser/`) | `public/bank/` |
 | Car | `Kai\Tools\Car\` | `src/Car/` | `public/car/` |
 | Einkaufsliste | `Kai\Tools\Einkaufsliste\` | `src/Einkaufsliste/` | `public/einkaufsliste/` |
@@ -210,6 +212,7 @@ Jeder Endpunkt in `public/` verwendet ausschließlich die Guards der Klasse
 | `Auth::isValidCsrfToken($token)` | Zeitkonstante Prüfung, z. B. für klassische Formular-POSTs |
 | `Auth::requireCronToken()` | Schützt Cronjob-Endpunkte über `CRON_TOKEN` (zeitkonstant, `hash_equals`) |
 | `Auth::cronTokenMatches(false)` | Token-Prüfung ohne Query-Parameter (nur Header) für Maschinen-APIs |
+| `Auth::assistantTokenMatches()` | Token-Prüfung über Bearer-Token oder X-API-Key für Smart Home / Assistant APIs (ASSISTANT_API_KEY / CRON_TOKEN) |
 | `Auth::sendJsonError($status, $msg)` | Beendet den Request mit generischer JSON-Fehlerantwort |
 
 **Neue Shared-Klassen anlegen,** wenn dieselbe Infrastruktur von mehr als einer Domain

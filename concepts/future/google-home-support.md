@@ -1,5 +1,7 @@
 # Implementierungskonzept: Anbindung des Kai Toolsets via Home Assistant an Google Assistant
 
+> **Status:** Umgesetzt. Siehe vollständige Setup- und Konfigurationsanleitung in [`concepts/done/google-home-assistant-setup.md`](../done/google-home-assistant-setup.md).
+
 ## 1. Zielsetzung und Architektur
 
 Das Ziel dieses Konzepts ist es, eine sichere und stabile Schnittstelle zu schaffen, um Sprachbefehle vom Google

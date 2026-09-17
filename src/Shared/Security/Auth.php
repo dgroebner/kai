@@ -246,6 +246,19 @@ final class Auth
     }
 
     /**
+     * Prüft zeitkonstant, ob der übermittelte Assistant-Token gültig ist.
+     * Erwartet Bearer- oder X-API-Key-Header (kein Query-Parameter).
+     * Validiert gegen ASSISTANT_API_KEY mit Fallback auf CRON_TOKEN.
+     */
+    public static function assistantTokenMatches(): bool
+    {
+        $expected = (string)($_ENV['ASSISTANT_API_KEY'] ?? $_ENV['CRON_TOKEN'] ?? '');
+        $received = self::extractCronToken(false);
+
+        return $expected !== '' && $received !== null && hash_equals($expected, $received);
+    }
+
+    /**
      * Liest den Cron-Token aus Query-String oder den gängigen Auth-Headern aus.
      */
     private static function extractCronToken(bool $allowQueryParam = true): ?string
