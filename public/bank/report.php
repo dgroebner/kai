@@ -231,7 +231,7 @@ $canEdit = Auth::hasPermission('finance_write');
             <div class="report-ongoing-body">
                 <strong>Laufender Monat (Zwischenstand – noch nicht abgeschlossen):</strong>
                 <p>
-                    Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Miete und Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
+                    Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Leasingraten und laufende Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
                 </p>
             </div>
         </div>

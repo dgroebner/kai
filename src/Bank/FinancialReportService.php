@@ -147,7 +147,7 @@ Die Buchungsdaten nutzen ein Multi-Label-System. Einzelne Buchungen können mehr
 
 AUFGABEN:
 1. Verfasse ein kurzes, ermutigendes und klares Fazit (maximal 3 einfache Sätze).
-2. Erkläre einfach das Verhältnis von festen Kosten (Miete, Verträge) zu veränderbaren Ausgaben (Einkaufen, Freizeit).
+2. Erkläre einfach das Verhältnis von festen Kosten (Leasingraten, Verträge) zu veränderbaren Ausgaben (Einkaufen, Freizeit).
 3. Zeige auffällige Ausgabenkategorien verständlich auf und erkläre anhand der `overlap_tags`, warum die Ausgaben entstanden sind (z. B. „Mehr für Freizeit ausgegeben, vor allem wegen Urlaubsaktivitäten“).
 4. Melde Unregelmäßigkeiten bei Verträgen direkt (z. B. wenn eine Abbuchung höher war als sonst oder eine Zahlung gefehlt hat).
 5. Erkläre Auffälligkeiten bei Kassenbons und Einkäufen (wo wurde eingekauft, wurden bestimmte Produkte teurer, gab es viele kleine Spontankäufe).
