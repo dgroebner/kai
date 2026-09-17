@@ -70,4 +70,41 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnGenerateInline) {
         btnGenerateInline.addEventListener('click', generateReport);
     }
+
+    // =========================================================
+    // Interaktive Tooltips für Trend-Chart & Barometer
+    // =========================================================
+    let tooltip = document.getElementById('global-chart-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'global-chart-tooltip';
+        tooltip.className = 'chart-tooltip';
+        document.body.appendChild(tooltip);
+    }
+
+    document.addEventListener('mouseover', (e) => {
+        const el = e.target.closest('[data-tooltip]');
+        if (!el) return;
+
+        const text = el.dataset.tooltip;
+        if (!text) return;
+
+        tooltip.innerHTML = text;
+        tooltip.style.display = 'block';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (tooltip.style.display === 'block') {
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY - 15}px`;
+        }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const el = e.target.closest('[data-tooltip]');
+        if (el) {
+            tooltip.style.display = 'none';
+        }
+    });
 });
+

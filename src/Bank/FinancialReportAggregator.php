@@ -63,9 +63,15 @@ class FinancialReportAggregator
             $dates['ref_end']
         );
 
+        $cashflowHistory = $this->calculateCashflowHistory(
+            $periodType,
+            $periodTarget
+        );
+
         return [
             'metadata' => $metadata,
             'cashflow_totals' => $cashflowTotals,
+            'cashflow_history' => $cashflowHistory,
             'tag_breakdown' => $tagBreakdown,
             'contract_deviations' => $contractDeviations,
             'receipt_insights' => $receiptInsights,
@@ -531,4 +537,95 @@ class FinancialReportAggregator
             'basket_splits' => $basketSplits,
         ];
     }
+
+    /**
+     * Ermittelt die monatliche Einnahmen-, Ausgaben- und Saldenhistorie.
+     * Für Monatsansicht: die letzten 6 Monate bis einschließlich Zielmonat.
+     * Für Jahresansicht: alle 12 Monate des Zieljahres.
+     *
+     * @param string $periodType 'month' oder 'year'
+     * @param string $periodTarget 'YYYY-MM' oder 'YYYY'
+     * @return array Liste von Monatsdaten mit Einnahmen, Ausgaben, Saldo und Sparquote
+     */
+    public function calculateCashflowHistory(string $periodType, string $periodTarget): array
+    {
+        $germanMonths = [
+            '01' => 'Jan', '02' => 'Feb', '03' => 'Mär', '04' => 'Apr',
+            '05' => 'Mai', '06' => 'Jun', '07' => 'Jul', '08' => 'Aug',
+            '09' => 'Sep', '10' => 'Okt', '11' => 'Nov', '12' => 'Dez'
+        ];
+
+        $monthKeys = [];
+
+        if ($periodType === 'year') {
+            $year = (int)$periodTarget;
+            if ($year < 2000 || $year > 2100) {
+                $year = (int)date('Y');
+            }
+            $startDate = sprintf('%04d-01-01', $year);
+            $endDate = sprintf('%04d-12-31', $year);
+
+            for ($m = 1; $m <= 12; $m++) {
+                $mStr = sprintf('%02d', $m);
+                $key = sprintf('%04d-%s', $year, $mStr);
+                $monthKeys[$key] = ($germanMonths[$mStr] ?? $mStr) . ' ' . substr((string)$year, 2);
+            }
+        } else {
+            // Monatsansicht: 6 Monate bis einschließlich Zielmonat
+            $dt = DateTimeImmutable::createFromFormat('!Y-m', $periodTarget) ?: new DateTimeImmutable('first day of this month');
+            $startDt = $dt->modify('-5 months');
+            $startDate = $startDt->format('Y-m-01');
+            $endDate = $dt->format('Y-m-t');
+
+            $iter = $startDt;
+            for ($i = 0; $i < 6; $i++) {
+                $key = $iter->format('Y-m');
+                $mNum = $iter->format('m');
+                $monthKeys[$key] = ($germanMonths[$mNum] ?? $mNum) . ' ' . $iter->format('y');
+                $iter = $iter->modify('+1 month');
+            }
+        }
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                DATE_FORMAT(booking_date, '%Y-%m') AS month_key,
+                COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) AS total_income,
+                COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS total_expenses
+            FROM bank_giro_transactions
+            WHERE booking_date BETWEEN :start AND :end
+            GROUP BY DATE_FORMAT(booking_date, '%Y-%m')
+            ORDER BY month_key ASC
+        ");
+        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $dataByKey = [];
+        foreach ($rows as $row) {
+            $dataByKey[$row['month_key']] = [
+                'income' => (float)$row['total_income'],
+                'expenses' => (float)$row['total_expenses'],
+            ];
+        }
+
+        $history = [];
+        foreach ($monthKeys as $key => $label) {
+            $income = $dataByKey[$key]['income'] ?? 0.0;
+            $expenses = $dataByKey[$key]['expenses'] ?? 0.0;
+            $net = $income - $expenses;
+            $savingsRate = $income > 0.01 ? max(0.0, round(($net / $income) * 100, 1)) : 0.0;
+
+            $history[] = [
+                'month_key' => $key,
+                'label' => $label,
+                'total_income' => round($income, 2),
+                'total_expenses' => round($expenses, 2),
+                'net_balance' => round($net, 2),
+                'savings_rate_percent' => $savingsRate,
+                'is_current' => ($periodType === 'month' && $key === $periodTarget)
+            ];
+        }
+
+        return $history;
+    }
 }
+

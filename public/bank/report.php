@@ -90,6 +90,60 @@ $savingsRate = (float)($cashflow['savings_rate_percent'] ?? 0);
 $fixedExpenses = (float)($cashflow['fixed_expenses_total'] ?? 0);
 $variableExpenses = (float)($cashflow['variable_expenses_total'] ?? 0);
 
+// Cashflow-Historie (6 Monate bzw. 12 Monate für Trend-Visualisierung)
+$cashflowHistory = $aggregated['cashflow_history'] ?? $aggregator->calculateCashflowHistory($periodType, $periodTarget);
+
+// 4. Datenaufbereitung für Visualisierungen
+// 4.1 Sparquoten-Barometer (Halbkreis-Tacho von -10 % bis +40 % = 50 PP)
+$clampedRate = max(-10.0, min(40.0, $savingsRate));
+$gaugeDeg = round(-90.0 + (($clampedRate - (-10.0)) / 50.0) * 180.0, 1);
+
+if ($netBalance < 0) {
+    $gaugeStatus = 'Defizit';
+    $gaugeStatusClass = 'report-status-critical';
+} elseif ($savingsRate < 10.0) {
+    $gaugeStatus = 'Geringer Puffer';
+    $gaugeStatusClass = 'report-status-tight';
+} elseif ($savingsRate < 25.0) {
+    $gaugeStatus = 'Solide Sparquote';
+    $gaugeStatusClass = 'report-status-healthy';
+} else {
+    $gaugeStatus = 'Exzellenter Sparer';
+    $gaugeStatusClass = 'report-status-healthy';
+}
+
+// 4.2 50 / 30 / 20 Budget-Verteilung
+if ($totalIncome > 0.01) {
+    $pctFixed = round(($fixedExpenses / $totalIncome) * 100, 1);
+    $pctVariable = round(($variableExpenses / $totalIncome) * 100, 1);
+    $pctSaved = max(0.0, round(($netBalance / $totalIncome) * 100, 1));
+} else {
+    $pctFixed = 0.0;
+    $pctVariable = 0.0;
+    $pctSaved = 0.0;
+}
+$isOverBudget = ($totalExpenses > $totalIncome);
+$budgetDeficit = $isOverBudget ? ($totalExpenses - $totalIncome) : 0.0;
+
+// Segmentbreiten auf 100 % normiert für den Verteilungsbalken
+$totalExpenseRatio = $pctFixed + $pctVariable;
+if ($totalExpenseRatio > 100.0) {
+    $barWFixed = round(($pctFixed / $totalExpenseRatio) * 100, 1);
+    $barWVar = round(($pctVariable / $totalExpenseRatio) * 100, 1);
+    $barWSaved = 0.0;
+} else {
+    $barWFixed = $pctFixed;
+    $barWVar = $pctVariable;
+    $barWSaved = max(0.0, round(100.0 - $barWFixed - $barWVar, 1));
+}
+
+// 4.3 6-Monats-Trend Maximum für Skalierung
+$maxTrendVal = 1000.0;
+foreach ($cashflowHistory as $histItem) {
+    $maxTrendVal = max($maxTrendVal, (float)$histItem['total_income'], (float)$histItem['total_expenses']);
+}
+$maxTrendVal = ceil($maxTrendVal / 500) * 500;
+
 $canEdit = Auth::hasPermission('finance_write');
 ?>
 <!DOCTYPE html>
@@ -199,6 +253,273 @@ $canEdit = Auth::hasPermission('finance_write');
                 <?= number_format($variableExpenses, 2, ',', '.') ?> €
             </div>
         </div>
+    </section>
+
+    <!-- NEUES FINANZ-COCKPIT (Barometer & 50/30/20-Verteilung) -->
+    <div class="report-cockpit-grid">
+        <!-- 1. Sparquoten-Barometer (Halbkreis-Tacho) -->
+        <div class="card report-cockpit-card">
+            <div class="report-cockpit-header">
+                <h3>🧭 Sparquoten-Barometer</h3>
+                <span class="report-status-badge <?= htmlspecialchars($gaugeStatusClass, ENT_QUOTES, 'UTF-8') ?>">
+                    <?= htmlspecialchars($gaugeStatus, ENT_QUOTES, 'UTF-8') ?>
+                </span>
+            </div>
+            <div class="report-gauge-container">
+                <svg viewBox="0 0 300 160" class="report-gauge-svg">
+                    <!-- 4 Farbzonen (Halbkreisbogen r=95, cx=150, cy=130) -->
+                    <!-- Defizit (< 0%) -->
+                    <path d="M 55 130 A 95 95 0 0 1 73.14 74.16" fill="none" stroke="#ef4444" stroke-width="16" stroke-linecap="round" />
+                    <!-- Knapp (0% - 10%) -->
+                    <path d="M 73.14 74.16 A 95 95 0 0 1 120.64 39.65" fill="none" stroke="#f59e0b" stroke-width="16" />
+                    <!-- Solide (10% - 25%) -->
+                    <path d="M 120.64 39.65 A 95 95 0 0 1 205.84 53.14" fill="none" stroke="#10b981" stroke-width="16" />
+                    <!-- Top (> 25%) -->
+                    <path d="M 205.84 53.14 A 95 95 0 0 1 245 130" fill="none" stroke="#059669" stroke-width="16" stroke-linecap="round" />
+
+                    <!-- Zeigernadel -->
+                    <polygon points="147,130 150,45 153,130" fill="#f8fafc" class="report-gauge-needle"
+                             style="transform: rotate(<?= $gaugeDeg ?>deg);" />
+                    <circle cx="150" cy="130" r="9" fill="#3b82f6" stroke="#0f172a" stroke-width="2" />
+                    <circle cx="150" cy="130" r="4" fill="#ffffff" />
+                </svg>
+                <div class="report-gauge-center">
+                    <div class="report-gauge-number <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
+                        <?= $netBalance >= 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
+                    </div>
+                    <div class="report-gauge-ticks">
+                        <span>&lt; 0%</span>
+                        <span>0%</span>
+                        <span>10%</span>
+                        <span>25%</span>
+                        <span>&gt; 40%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 50 / 30 / 20 Budget-Verteilung -->
+        <div class="card report-cockpit-card">
+            <div class="report-cockpit-header">
+                <h3>⚖️ 50 / 30 / 20 Budget-Verteilung</h3>
+                <span class="report-status-badge <?= $isOverBudget ? 'report-status-critical' : 'report-status-healthy' ?>">
+                    <?= $isOverBudget ? 'ÜBERSCHREITUNG' : 'IN BALANCE' ?>
+                </span>
+            </div>
+            <div class="report-budget-container">
+                <div class="report-budget-bar-wrapper">
+                    <div class="report-budget-bar">
+                        <?php if ($barWFixed > 0): ?>
+                            <div class="report-budget-seg report-budget-seg-fixed" style="width: <?= $barWFixed ?>%;" title="Fixkosten: <?= $pctFixed ?>%">
+                                <?= $barWFixed >= 12 ? $pctFixed . '%' : '' ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($barWVar > 0): ?>
+                            <div class="report-budget-seg report-budget-seg-var" style="width: <?= $barWVar ?>%;" title="Konsum: <?= $pctVar ?>%">
+                                <?= $barWVar >= 12 ? $pctVar . '%' : '' ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($barWSaved > 0): ?>
+                            <div class="report-budget-seg report-budget-seg-saved" style="width: <?= $barWSaved ?>%;" title="Sparen: <?= $pctSaved ?>%">
+                                <?= $barWSaved >= 12 ? $pctSaved . '%' : '' ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="report-budget-markers">
+                        <div class="report-budget-marker" style="left: 50%;">50% Soll (Fix)</div>
+                        <div class="report-budget-marker" style="left: 80%;">80% Soll (Konsum)</div>
+                    </div>
+                </div>
+
+                <?php if ($isOverBudget): ?>
+                    <div class="report-budget-deficit-box">
+                        ⚠️ Ausgaben übersteigen Einnahmen um <strong><?= number_format($budgetDeficit, 2, ',', '.') ?> €</strong>
+                    </div>
+                <?php endif; ?>
+
+                <div class="report-budget-stats">
+                    <div class="report-budget-stat-item">
+                        <div class="report-budget-stat-header">
+                            <span>Fixkosten</span>
+                            <span><?= $pctFixed <= 50.0 ? '✅' : '⚠️' ?></span>
+                        </div>
+                        <div class="report-budget-stat-val text-blue">
+                            <?= $pctFixed ?> %
+                        </div>
+                        <div class="report-budget-stat-sub">
+                            <?= number_format($fixedExpenses, 2, ',', '.') ?> € (Soll: &le; 50%)
+                        </div>
+                    </div>
+                    <div class="report-budget-stat-item">
+                        <div class="report-budget-stat-header">
+                            <span>Konsum</span>
+                            <span><?= $pctVariable <= 35.0 ? '✅' : '⚡' ?></span>
+                        </div>
+                        <div class="report-budget-stat-val text-orange">
+                            <?= $pctVariable ?> %
+                        </div>
+                        <div class="report-budget-stat-sub">
+                            <?= number_format($variableExpenses, 2, ',', '.') ?> € (Soll: ~30%)
+                        </div>
+                    </div>
+                    <div class="report-budget-stat-item">
+                        <div class="report-budget-stat-header">
+                            <span>Sparen</span>
+                            <span><?= $pctSaved >= 20.0 ? '✅' : ($netBalance >= 0 ? '🟡' : '🔴') ?></span>
+                        </div>
+                        <div class="report-budget-stat-val <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
+                            <?= $pctSaved ?> %
+                        </div>
+                        <div class="report-budget-stat-sub">
+                            <?= number_format(max(0, $netBalance), 2, ',', '.') ?> € (Soll: &ge; 20%)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. CASHFLOW-TREND -->
+    <section class="card report-trend-card">
+        <div class="report-trend-card-header">
+            <h2>📈 Cashflow-Trend (<?= $periodType === 'year' ? '12 Monate' : 'Letzte 6 Monate' ?>)</h2>
+            <span class="text-muted" style="font-size: 0.85rem;">
+                Einnahmen vs. Ausgaben &amp; Netto-Saldo
+            </span>
+        </div>
+        <p class="subtitle" style="margin-bottom: 0.5rem;">
+            Monatlicher Verlauf zur schnellen Erkennung von Ausreißern und Kontoveränderungen.
+        </p>
+
+        <?php if (empty($cashflowHistory)): ?>
+            <p class="text-muted">Keine historischen Buchungsdaten vorhanden.</p>
+        <?php else:
+            $cnt = count($cashflowHistory);
+            $svgW = 860;
+            $svgH = 220;
+            $padL = 55;
+            $padR = 25;
+            $padT = 20;
+            $padB = 40;
+            $chartW = $svgW - $padL - $padR;
+            $chartH = $svgH - $padT - $padB;
+            $slotW = $chartW / max(1, $cnt);
+            $barW = max(10, min(24, round($slotW * 0.28)));
+            $netPoints = [];
+            $trendNodes = [];
+        ?>
+            <div class="report-trend-chart-wrapper">
+                <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="report-trend-svg" preserveAspectRatio="none">
+                    <!-- Grid Lines -->
+                    <line x1="<?= $padL ?>" y1="<?= $padT ?>" x2="<?= $svgW - $padR ?>" y2="<?= $padT ?>"
+                          stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 2" />
+                    <text x="<?= $padL - 8 ?>" y="<?= $padT + 4 ?>" text-anchor="end" fill="var(--text-muted)" font-size="10">
+                        <?= number_format($maxTrendVal, 0, ',', '.') ?> €
+                    </text>
+
+                    <line x1="<?= $padL ?>" y1="<?= $padT + $chartH / 2 ?>" x2="<?= $svgW - $padR ?>" y2="<?= $padT + $chartH / 2 ?>"
+                          stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 2" />
+                    <text x="<?= $padL - 8 ?>" y="<?= $padT + $chartH / 2 + 4 ?>" text-anchor="end" fill="var(--text-muted)" font-size="10">
+                        <?= number_format($maxTrendVal / 2, 0, ',', '.') ?> €
+                    </text>
+
+                    <line x1="<?= $padL ?>" y1="<?= $padT + $chartH ?>" x2="<?= $svgW - $padR ?>" y2="<?= $padT + $chartH ?>"
+                          stroke="rgba(255,255,255,0.12)" stroke-width="1.2" />
+                    <text x="<?= $padL - 8 ?>" y="<?= $padT + $chartH + 4 ?>" text-anchor="end" fill="var(--text-muted)" font-size="10">
+                        0 €
+                    </text>
+
+                    <!-- Säulen & Highlight -->
+                    <?php foreach ($cashflowHistory as $idx => $m):
+                        $xCenter = round($padL + ($idx + 0.5) * $slotW, 1);
+                        $hInc = max(2, round(((float)$m['total_income'] / $maxTrendVal) * $chartH, 1));
+                        $yInc = round($padT + $chartH - $hInc, 1);
+                        $xInc = round($xCenter - $barW - 2, 1);
+
+                        $hExp = max(2, round(((float)$m['total_expenses'] / $maxTrendVal) * $chartH, 1));
+                        $yExp = round($padT + $chartH - $hExp, 1);
+                        $xExp = round($xCenter + 2, 1);
+
+                        $netRatio = (float)$m['net_balance'] / $maxTrendVal;
+                        $yNet = round($padT + $chartH - ($netRatio * $chartH), 1);
+                        $yNet = max($padT, min($padT + $chartH + 10, $yNet));
+                        $netPoints[] = "$xCenter,$yNet";
+
+                        $ttText = "<strong>" . htmlspecialchars($m['label'], ENT_QUOTES, 'UTF-8') . " (" . htmlspecialchars($m['month_key'], ENT_QUOTES, 'UTF-8') . ")</strong><br>"
+                                . "📈 Einnahmen: +" . number_format($m['total_income'], 2, ',', '.') . " €<br>"
+                                . "📉 Ausgaben: -" . number_format($m['total_expenses'], 2, ',', '.') . " €<br>"
+                                . "💰 Netto-Saldo: " . ($m['net_balance'] >= 0 ? '+' : '') . number_format($m['net_balance'], 2, ',', '.') . " €<br>"
+                                . "🎯 Sparquote: " . number_format($m['savings_rate_percent'], 1, ',', '.') . " %";
+
+                        $trendNodes[] = [
+                            'x' => $xCenter,
+                            'y' => $yNet,
+                            'net' => $m['net_balance'],
+                            'tt' => $ttText,
+                            'is_current' => $m['is_current'],
+                            'label' => $m['label']
+                        ];
+                    ?>
+                        <?php if ($m['is_current']): ?>
+                            <!-- Highlight-Rahmen für aktuellen Zeitraum -->
+                            <rect x="<?= round($xCenter - $slotW / 2 + 2, 1) ?>" y="<?= $padT ?>"
+                                  width="<?= round($slotW - 4, 1) ?>" height="<?= $chartH ?>"
+                                  fill="rgba(59, 130, 246, 0.08)" stroke="rgba(59, 130, 246, 0.4)" stroke-dasharray="2 2" rx="4" />
+                        <?php endif; ?>
+
+                        <!-- Einnahmen-Säule (Grün) -->
+                        <rect class="report-trend-bar chart-bar"
+                              x="<?= $xInc ?>" y="<?= $yInc ?>" width="<?= $barW ?>" height="<?= $hInc ?>"
+                              fill="#10b981" rx="2" data-tooltip="<?= $ttText ?>" />
+
+                        <!-- Ausgaben-Säule (Rot) -->
+                        <rect class="report-trend-bar chart-bar"
+                              x="<?= $xExp ?>" y="<?= $yExp ?>" width="<?= $barW ?>" height="<?= $hExp ?>"
+                              fill="#ef4444" rx="2" data-tooltip="<?= $ttText ?>" />
+
+                        <!-- Monats-Beschriftung -->
+                        <text x="<?= $xCenter ?>" y="<?= $padT + $chartH + 20 ?>" text-anchor="middle"
+                              fill="<?= $m['is_current'] ? '#60a5fa' : 'var(--text-muted)' ?>"
+                              font-size="11" font-weight="<?= $m['is_current'] ? '700' : '400' ?>">
+                            <?= htmlspecialchars($m['label'], ENT_QUOTES, 'UTF-8') ?>
+                        </text>
+                    <?php endforeach; ?>
+
+                    <!-- Netto-Saldo Trendlinie -->
+                    <?php if (count($netPoints) > 1): ?>
+                        <polyline points="<?= implode(' ', $netPoints) ?>" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-dasharray="3 3" />
+                    <?php endif; ?>
+
+                    <!-- Saldo Punkte -->
+                    <?php foreach ($trendNodes as $node): ?>
+                        <circle class="report-trend-point chart-point"
+                                cx="<?= $node['x'] ?>" cy="<?= $node['y'] ?>" r="4.5"
+                                fill="<?= $node['net'] >= 0 ? '#10b981' : '#ef4444' ?>"
+                                stroke="#0f172a" stroke-width="1.5"
+                                data-tooltip="<?= $node['tt'] ?>" />
+                    <?php endforeach; ?>
+                </svg>
+
+                <div class="report-trend-legend">
+                    <div class="report-trend-legend-item">
+                        <span class="report-trend-legend-color" style="background: #10b981;"></span>
+                        <span>Einnahmen</span>
+                    </div>
+                    <div class="report-trend-legend-item">
+                        <span class="report-trend-legend-color" style="background: #ef4444;"></span>
+                        <span>Ausgaben</span>
+                    </div>
+                    <div class="report-trend-legend-item">
+                        <span class="report-trend-legend-line"></span>
+                        <span>Netto-Saldo</span>
+                    </div>
+                    <div class="report-trend-legend-item">
+                        <span style="color: #60a5fa; font-weight: 700;">[---]</span>
+                        <span>Ausgewählter Zeitraum</span>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
     </section>
 
     <!-- KI-Analyse Hero-Karte -->
