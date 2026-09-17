@@ -161,7 +161,7 @@ class AssistantService
     /**
      * Liefert den aktuellen Status des Elektrofahrzeugs (VW ID.Buzz).
      */
-    public function getCarStatus(): array
+    public function getCarStatus(?string $customName = null): array
     {
         try {
             $state = $this->vehicleRepo->getLatestState();
@@ -182,7 +182,8 @@ class AssistantService
             $chargingState = strtolower((string)($state['charging_state'] ?? ''));
             $plug = (bool)($state['plug_connected'] ?? false);
 
-            $speech = "Das Auto hat aktuell {$soc} Prozent Ladestand und eine Reichweite von {$range} Kilometern.";
+            $carName = !empty($customName) ? $customName : 'Das Auto';
+            $speech = "{$carName} hat aktuell {$soc} Prozent Ladestand und eine Reichweite von {$range} Kilometern.";
 
             if ($chargeKw > 0.1 || $chargingState === 'charging') {
                 $chargeKwText = number_format($chargeKw, 1, ',', '.');
@@ -497,9 +498,10 @@ class AssistantService
             return $this->getPvStatus();
         }
 
-        // 4. Regex-Muster: Auto / Car / ID.Buzz
-        if (preg_match('/(?:auto|\bcar\b|id\.buzz|idbuzz|wagen|fahrzeug|reichweite|ladestand|wallbox)/iu', $text)) {
-            return $this->getCarStatus();
+        // 4. Regex-Muster: Auto / Car / ID.Buzz / Buzzy
+        if (preg_match('/(?:auto|\bcar\b|id\.buzz|idbuzz|\bbuzz\b|\bbuzzy\b|wagen|fahrzeug|reichweite|ladestand|wallbox)/iu', $text)) {
+            $carName = preg_match('/buzzy/iu', $text) ? 'Buzzy' : (preg_match('/\bbuzz\b/iu', $text) ? 'Der Buzz' : null);
+            return $this->getCarStatus($carName);
         }
 
         // 5. Regex-Muster: Wetter / Jacke / Regenschirm
