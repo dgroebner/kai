@@ -376,30 +376,62 @@ class FinancialReportAggregator
         string $refStart,
         string $refEnd
     ): array {
-        // 1. Top Merchants (aus kb_receipts und bank_cc_transactions)
-        $stmtMerchants = $this->pdo->prepare("
-            SELECT merchant, ROUND(SUM(amount), 2) AS total, COUNT(*) AS count
-            FROM (
-                SELECT store AS merchant, total AS amount 
-                FROM kb_receipts 
-                WHERE purchase_date BETWEEN :start1 AND :end1
-                UNION ALL
-                SELECT merchant_name AS merchant, ABS(amount) AS amount 
-                FROM bank_cc_transactions 
-                WHERE booking_date BETWEEN :start2 AND :end2 AND amount < 0
-            ) AS combined
-            WHERE merchant IS NOT NULL AND merchant != ''
-            GROUP BY merchant
-            ORDER BY total DESC
-            LIMIT 5
+        // 1. Top Merchants (aus kb_receipts und bank_cc_transactions getrennt abgefragt, um Collation-Konflikte zu vermeiden)
+        $stmtReceipts = $this->pdo->prepare("
+            SELECT store AS merchant, SUM(total) AS total, COUNT(*) AS count
+            FROM kb_receipts
+            WHERE purchase_date BETWEEN :start AND :end
+              AND store IS NOT NULL AND store != ''
+            GROUP BY store
         ");
-        $stmtMerchants->execute([
-            ':start1' => $targetStart,
-            ':end1' => $targetEnd,
-            ':start2' => $targetStart,
-            ':end2' => $targetEnd,
-        ]);
-        $topMerchants = $stmtMerchants->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $stmtReceipts->execute([':start' => $targetStart, ':end' => $targetEnd]);
+        $receiptMerchants = $stmtReceipts->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $stmtCC = $this->pdo->prepare("
+            SELECT merchant_name AS merchant, SUM(ABS(amount)) AS total, COUNT(*) AS count
+            FROM bank_cc_transactions
+            WHERE booking_date BETWEEN :start AND :end
+              AND amount < 0
+              AND merchant_name IS NOT NULL AND merchant_name != ''
+            GROUP BY merchant_name
+        ");
+        $stmtCC->execute([':start' => $targetStart, ':end' => $targetEnd]);
+        $ccMerchants = $stmtCC->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $merchantMap = [];
+        foreach ($receiptMerchants as $m) {
+            $name = trim((string)$m['merchant']);
+            if ($name === '') {
+                continue;
+            }
+            $merchantMap[$name] = [
+                'merchant' => $name,
+                'total' => (float)$m['total'],
+                'count' => (int)$m['count'],
+            ];
+        }
+        foreach ($ccMerchants as $m) {
+            $name = trim((string)$m['merchant']);
+            if ($name === '') {
+                continue;
+            }
+            if (!isset($merchantMap[$name])) {
+                $merchantMap[$name] = [
+                    'merchant' => $name,
+                    'total' => 0.0,
+                    'count' => 0,
+                ];
+            }
+            $merchantMap[$name]['total'] += (float)$m['total'];
+            $merchantMap[$name]['count'] += (int)$m['count'];
+        }
+
+        uasort($merchantMap, static fn(array $a, array $b): int => $b['total'] <=> $a['total']);
+        $topMerchants = array_slice(array_values($merchantMap), 0, 5);
+        foreach ($topMerchants as &$tm) {
+            $tm['total'] = round($tm['total'], 2);
+        }
+        unset($tm);
 
         // 2. Micro Transactions (< 10 € Ausgaben im Giro- und Kreditkartenbereich)
         $stmtMicroGiro = $this->pdo->prepare("
