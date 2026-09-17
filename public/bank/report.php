@@ -256,7 +256,7 @@ $canEdit = Auth::hasPermission('finance_write');
     </section>
 
     <!-- NEUES FINANZ-COCKPIT (Barometer & 50/30/20-Verteilung) -->
-    <div class="report-cockpit-grid">
+    <div class="report-cockpit-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
         <!-- 1. Sparquoten-Barometer (Halbkreis-Tacho) -->
         <div class="card report-cockpit-card">
             <div class="report-cockpit-header">
@@ -266,35 +266,46 @@ $canEdit = Auth::hasPermission('finance_write');
                 </span>
             </div>
             <div class="report-gauge-container">
-                <svg viewBox="0 0 300 160" class="report-gauge-svg">
-                    <!-- 4 Farbzonen (Halbkreisbogen r=95, cx=150, cy=130) -->
+                <svg viewBox="0 0 320 185" class="report-gauge-svg" style="max-width: 270px; width: 100%; height: auto; display: block; margin: 0 auto;">
+                    <!-- 4 Farbzonen (Halbkreisbogen r=85, cx=160, cy=130) -->
                     <!-- Defizit (< 0%) -->
-                    <path d="M 55 130 A 95 95 0 0 1 73.14 74.16" fill="none" stroke="#ef4444" stroke-width="16" stroke-linecap="round" />
+                    <path d="M 75 130 A 85 85 0 0 1 91.2 80" fill="none" stroke="#ef4444" stroke-width="16" stroke-linecap="round" />
                     <!-- Knapp (0% - 10%) -->
-                    <path d="M 73.14 74.16 A 95 95 0 0 1 120.64 39.65" fill="none" stroke="#f59e0b" stroke-width="16" />
+                    <path d="M 91.2 80 A 85 85 0 0 1 133.7 49.2" fill="none" stroke="#f59e0b" stroke-width="16" />
                     <!-- Solide (10% - 25%) -->
-                    <path d="M 120.64 39.65 A 95 95 0 0 1 205.84 53.14" fill="none" stroke="#10b981" stroke-width="16" />
+                    <path d="M 133.7 49.2 A 85 85 0 0 1 210.0 61.2" fill="none" stroke="#10b981" stroke-width="16" />
                     <!-- Top (> 25%) -->
-                    <path d="M 205.84 53.14 A 95 95 0 0 1 245 130" fill="none" stroke="#059669" stroke-width="16" stroke-linecap="round" />
+                    <path d="M 210.0 61.2 A 85 85 0 0 1 245 130" fill="none" stroke="#059669" stroke-width="16" stroke-linecap="round" />
+
+                    <!-- Skalen-Beschriftung direkt am Bogen -->
+                    <text x="48" y="134" text-anchor="end" fill="#ef4444" font-size="11" font-weight="700">&lt; 0%</text>
+                    <text x="78" y="74" text-anchor="end" fill="#f59e0b" font-size="11" font-weight="700">0%</text>
+                    <text x="124" y="38" text-anchor="end" fill="#cbd5e1" font-size="11" font-weight="700">10%</text>
+                    <text x="216" y="48" text-anchor="start" fill="#10b981" font-size="11" font-weight="700">25%</text>
+                    <text x="272" y="134" text-anchor="start" fill="#059669" font-size="11" font-weight="700">&gt; 40%</text>
+
+                    <!-- Zonen-Namen unter den Segmenten -->
+                    <text x="75" y="152" text-anchor="middle" fill="#ef4444" font-size="9" font-weight="600">Defizit</text>
+                    <text x="112" y="152" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="600">Puffer</text>
+                    <text x="175" y="152" text-anchor="middle" fill="#10b981" font-size="9" font-weight="600">Solide</text>
+                    <text x="235" y="152" text-anchor="middle" fill="#059669" font-size="9" font-weight="600">Top</text>
 
                     <!-- Zeigernadel -->
-                    <polygon points="147,130 150,45 153,130" fill="#f8fafc" class="report-gauge-needle"
-                             style="transform: rotate(<?= $gaugeDeg ?>deg);" />
-                    <circle cx="150" cy="130" r="9" fill="#3b82f6" stroke="#0f172a" stroke-width="2" />
-                    <circle cx="150" cy="130" r="4" fill="#ffffff" />
-                </svg>
-                <div class="report-gauge-center">
-                    <div class="report-gauge-number <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
+                    <polygon points="157,130 160,54 163,130" fill="#ffffff" class="report-gauge-needle"
+                             style="transform-origin: 160px 130px; transform: rotate(<?= $gaugeDeg ?>deg);" />
+                    <circle cx="160" cy="130" r="8" fill="#3b82f6" stroke="#0f172a" stroke-width="2" />
+                    <circle cx="160" cy="130" r="3" fill="#ffffff" />
+
+                    <!-- Großer Prozentwert im Zentrum -->
+                    <text x="160" y="112" text-anchor="middle" fill="<?= $netBalance >= 0 ? '#10b981' : '#ef4444' ?>" font-size="22" font-weight="800">
                         <?= $netBalance >= 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
-                    </div>
-                    <div class="report-gauge-ticks">
-                        <span>&lt; 0%</span>
-                        <span>0%</span>
-                        <span>10%</span>
-                        <span>25%</span>
-                        <span>&gt; 40%</span>
-                    </div>
-                </div>
+                    </text>
+
+                    <!-- Status-Badge im SVG -->
+                    <text x="160" y="174" text-anchor="middle" fill="<?= $netBalance >= 0 ? '#60a5fa' : '#ef4444' ?>" font-size="11" font-weight="700" letter-spacing="1">
+                        <?= htmlspecialchars(strtoupper($gaugeStatus), ENT_QUOTES, 'UTF-8') ?>
+                    </text>
+                </svg>
             </div>
         </div>
 
@@ -311,17 +322,17 @@ $canEdit = Auth::hasPermission('finance_write');
                     <div class="report-budget-bar">
                         <?php if ($barWFixed > 0): ?>
                             <div class="report-budget-seg report-budget-seg-fixed" style="width: <?= $barWFixed ?>%;" title="Fixkosten: <?= $pctFixed ?>%">
-                                <?= $barWFixed >= 12 ? $pctFixed . '%' : '' ?>
+                                <?= $barWFixed >= 14 ? 'Fix ' . $pctFixed . '%' : ($barWFixed >= 8 ? $pctFixed . '%' : '') ?>
                             </div>
                         <?php endif; ?>
                         <?php if ($barWVar > 0): ?>
                             <div class="report-budget-seg report-budget-seg-var" style="width: <?= $barWVar ?>%;" title="Konsum: <?= $pctVar ?>%">
-                                <?= $barWVar >= 12 ? $pctVar . '%' : '' ?>
+                                <?= $barWVar >= 14 ? 'Konsum ' . $pctVar . '%' : ($barWVar >= 8 ? $pctVar . '%' : '') ?>
                             </div>
                         <?php endif; ?>
                         <?php if ($barWSaved > 0): ?>
                             <div class="report-budget-seg report-budget-seg-saved" style="width: <?= $barWSaved ?>%;" title="Sparen: <?= $pctSaved ?>%">
-                                <?= $barWSaved >= 12 ? $pctSaved . '%' : '' ?>
+                                <?= $barWSaved >= 14 ? 'Sparen ' . $pctSaved . '%' : ($barWSaved >= 8 ? $pctSaved . '%' : '') ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -384,59 +395,59 @@ $canEdit = Auth::hasPermission('finance_write');
         <div class="report-trend-card-header">
             <h2>📈 Cashflow-Trend (<?= $periodType === 'year' ? '12 Monate' : 'Letzte 6 Monate' ?>)</h2>
             <span class="text-muted" style="font-size: 0.85rem;">
-                Einnahmen vs. Ausgaben &amp; Netto-Saldo
+                Einnahmen (grün) vs. Ausgaben (rot) &amp; Netto-Saldo
             </span>
         </div>
-        <p class="subtitle" style="margin-bottom: 0.5rem;">
-            Monatlicher Verlauf zur schnellen Erkennung von Ausreißern und Kontoveränderungen.
+        <p class="subtitle" style="margin-bottom: 0.75rem;">
+            Monatlicher Verlauf zur schnellen Erkennung von Kontobewegungen und Trends.
         </p>
 
         <?php if (empty($cashflowHistory)): ?>
             <p class="text-muted">Keine historischen Buchungsdaten vorhanden.</p>
         <?php else:
             $cnt = count($cashflowHistory);
-            $svgW = 860;
-            $svgH = 220;
-            $padL = 55;
+            $svgW = 800;
+            $svgH = 240;
+            $padL = 70;
             $padR = 25;
-            $padT = 20;
-            $padB = 40;
+            $padT = 25;
+            $padB = 48;
             $chartW = $svgW - $padL - $padR;
             $chartH = $svgH - $padT - $padB;
             $slotW = $chartW / max(1, $cnt);
-            $barW = max(10, min(24, round($slotW * 0.28)));
+            $barW = max(12, min(24, round($slotW * 0.28)));
             $netPoints = [];
             $trendNodes = [];
         ?>
-            <div class="report-trend-chart-wrapper">
-                <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="report-trend-svg" preserveAspectRatio="none">
-                    <!-- Grid Lines -->
+            <div class="report-trend-chart-wrapper" style="width: 100%; overflow-x: auto;">
+                <svg viewBox="0 0 <?= $svgW ?> <?= $svgH ?>" class="report-trend-svg" style="min-width: 580px; max-width: 100%; height: auto; max-height: 240px; display: block; margin: 0 auto;">
+                    <!-- Grid Lines & Y-Achsen-Beschriftung -->
                     <line x1="<?= $padL ?>" y1="<?= $padT ?>" x2="<?= $svgW - $padR ?>" y2="<?= $padT ?>"
-                          stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 2" />
-                    <text x="<?= $padL - 8 ?>" y="<?= $padT + 4 ?>" text-anchor="end" fill="var(--text-muted)" font-size="10">
+                          stroke="#334155" stroke-dasharray="3 3" />
+                    <text x="<?= $padL - 10 ?>" y="<?= $padT + 4 ?>" text-anchor="end" fill="#94a3b8" font-size="11" font-weight="600">
                         <?= number_format($maxTrendVal, 0, ',', '.') ?> €
                     </text>
 
-                    <line x1="<?= $padL ?>" y1="<?= $padT + $chartH / 2 ?>" x2="<?= $svgW - $padR ?>" y2="<?= $padT + $chartH / 2 ?>"
-                          stroke="rgba(255,255,255,0.06)" stroke-dasharray="2 2" />
-                    <text x="<?= $padL - 8 ?>" y="<?= $padT + $chartH / 2 + 4 ?>" text-anchor="end" fill="var(--text-muted)" font-size="10">
+                    <line x1="<?= $padL ?>" y1="<?= round($padT + $chartH / 2, 1) ?>" x2="<?= $svgW - $padR ?>" y2="<?= round($padT + $chartH / 2, 1) ?>"
+                          stroke="#334155" stroke-dasharray="3 3" />
+                    <text x="<?= $padL - 10 ?>" y="<?= round($padT + $chartH / 2 + 4, 1) ?>" text-anchor="end" fill="#94a3b8" font-size="11" font-weight="600">
                         <?= number_format($maxTrendVal / 2, 0, ',', '.') ?> €
                     </text>
 
                     <line x1="<?= $padL ?>" y1="<?= $padT + $chartH ?>" x2="<?= $svgW - $padR ?>" y2="<?= $padT + $chartH ?>"
-                          stroke="rgba(255,255,255,0.12)" stroke-width="1.2" />
-                    <text x="<?= $padL - 8 ?>" y="<?= $padT + $chartH + 4 ?>" text-anchor="end" fill="var(--text-muted)" font-size="10">
+                          stroke="#475569" stroke-width="1.5" />
+                    <text x="<?= $padL - 10 ?>" y="<?= $padT + $chartH + 4 ?>" text-anchor="end" fill="#94a3b8" font-size="11" font-weight="600">
                         0 €
                     </text>
 
                     <!-- Säulen & Highlight -->
                     <?php foreach ($cashflowHistory as $idx => $m):
                         $xCenter = round($padL + ($idx + 0.5) * $slotW, 1);
-                        $hInc = max(2, round(((float)$m['total_income'] / $maxTrendVal) * $chartH, 1));
+                        $hInc = max(3, round(((float)$m['total_income'] / $maxTrendVal) * $chartH, 1));
                         $yInc = round($padT + $chartH - $hInc, 1);
                         $xInc = round($xCenter - $barW - 2, 1);
 
-                        $hExp = max(2, round(((float)$m['total_expenses'] / $maxTrendVal) * $chartH, 1));
+                        $hExp = max(3, round(((float)$m['total_expenses'] / $maxTrendVal) * $chartH, 1));
                         $yExp = round($padT + $chartH - $hExp, 1);
                         $xExp = round($xCenter + 2, 1);
 
@@ -464,24 +475,43 @@ $canEdit = Auth::hasPermission('finance_write');
                             <!-- Highlight-Rahmen für aktuellen Zeitraum -->
                             <rect x="<?= round($xCenter - $slotW / 2 + 2, 1) ?>" y="<?= $padT ?>"
                                   width="<?= round($slotW - 4, 1) ?>" height="<?= $chartH ?>"
-                                  fill="rgba(59, 130, 246, 0.08)" stroke="rgba(59, 130, 246, 0.4)" stroke-dasharray="2 2" rx="4" />
+                                  fill="rgba(59, 130, 246, 0.08)" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3 3" rx="4" />
                         <?php endif; ?>
 
                         <!-- Einnahmen-Säule (Grün) -->
                         <rect class="report-trend-bar chart-bar"
                               x="<?= $xInc ?>" y="<?= $yInc ?>" width="<?= $barW ?>" height="<?= $hInc ?>"
-                              fill="#10b981" rx="2" data-tooltip="<?= $ttText ?>" />
+                              fill="#10b981" rx="3" data-tooltip="<?= $ttText ?>" />
 
                         <!-- Ausgaben-Säule (Rot) -->
                         <rect class="report-trend-bar chart-bar"
                               x="<?= $xExp ?>" y="<?= $yExp ?>" width="<?= $barW ?>" height="<?= $hExp ?>"
-                              fill="#ef4444" rx="2" data-tooltip="<?= $ttText ?>" />
+                              fill="#ef4444" rx="3" data-tooltip="<?= $ttText ?>" />
 
-                        <!-- Monats-Beschriftung -->
-                        <text x="<?= $xCenter ?>" y="<?= $padT + $chartH + 20 ?>" text-anchor="middle"
-                              fill="<?= $m['is_current'] ? '#60a5fa' : 'var(--text-muted)' ?>"
-                              font-size="11" font-weight="<?= $m['is_current'] ? '700' : '400' ?>">
+                        <?php if ($cnt <= 6): ?>
+                            <!-- Beträge über den Säulen bei bis zu 6 Monaten -->
+                            <text x="<?= round($xInc + $barW / 2, 1) ?>" y="<?= max($padT - 4, $yInc - 4) ?>"
+                                  text-anchor="middle" fill="#10b981" font-size="9" font-weight="600">
+                                <?= round($m['total_income'] / 1000, 1) ?>k
+                            </text>
+                            <text x="<?= round($xExp + $barW / 2, 1) ?>" y="<?= max($padT - 4, $yExp - 4) ?>"
+                                  text-anchor="middle" fill="#f87171" font-size="9" font-weight="600">
+                                <?= round($m['total_expenses'] / 1000, 1) ?>k
+                            </text>
+                        <?php endif; ?>
+
+                        <!-- Monats-Beschriftung (X-Achse) -->
+                        <text x="<?= $xCenter ?>" y="<?= $padT + $chartH + 18 ?>" text-anchor="middle"
+                              fill="<?= $m['is_current'] ? '#60a5fa' : '#e2e8f0' ?>"
+                              font-size="12" font-weight="<?= $m['is_current'] ? '800' : '600' ?>">
                             <?= htmlspecialchars($m['label'], ENT_QUOTES, 'UTF-8') ?>
+                        </text>
+
+                        <!-- Netto-Saldo Wert direkt unter dem Monat -->
+                        <text x="<?= $xCenter ?>" y="<?= $padT + $chartH + 34 ?>" text-anchor="middle"
+                              fill="<?= $m['net_balance'] >= 0 ? '#10b981' : '#f87171' ?>"
+                              font-size="11" font-weight="700">
+                            <?= $m['net_balance'] >= 0 ? '+' : '' ?><?= number_format($m['net_balance'], 0, ',', '.') ?> €
                         </text>
                     <?php endforeach; ?>
 
@@ -503,7 +533,7 @@ $canEdit = Auth::hasPermission('finance_write');
                 <div class="report-trend-legend">
                     <div class="report-trend-legend-item">
                         <span class="report-trend-legend-color" style="background: #10b981;"></span>
-                        <span>Einnahmen</span>
+                        <span>Einnahmen (k = Tausend €)</span>
                     </div>
                     <div class="report-trend-legend-item">
                         <span class="report-trend-legend-color" style="background: #ef4444;"></span>
@@ -511,11 +541,11 @@ $canEdit = Auth::hasPermission('finance_write');
                     </div>
                     <div class="report-trend-legend-item">
                         <span class="report-trend-legend-line"></span>
-                        <span>Netto-Saldo</span>
+                        <span>Netto-Saldo Trend</span>
                     </div>
                     <div class="report-trend-legend-item">
                         <span style="color: #60a5fa; font-weight: 700;">[---]</span>
-                        <span>Ausgewählter Zeitraum</span>
+                        <span>Aktueller Monat</span>
                     </div>
                 </div>
             </div>

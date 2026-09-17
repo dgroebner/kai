@@ -1,8 +1,8 @@
-﻿// public/sw.js
+// public/sw.js
 // Service Worker für die kai PWA
 // Strategie: Network-First für HTML-Seiten, Cache-First für statische Assets
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `kai-${CACHE_VERSION}`;
 
 // Statische Assets, die beim Install gecacht werden
