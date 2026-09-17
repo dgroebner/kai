@@ -80,6 +80,7 @@ class AssistantService
             ),
             'get_weather_status', 'weather_status', 'wetter' => $this->getWeatherStatus(),
             'get_summary', 'summary', 'uebersicht', 'status' => $this->getSummary(),
+            'get_intro', 'intro', 'hallo', 'wer_bist_du' => $this->getIntro(),
             'voice_command', 'query', 'command' => $this->parseVoiceCommand(
                 (string)($payload['text'] ?? $payload['query'] ?? $payload['command'] ?? '')
             ),
@@ -461,6 +462,26 @@ class AssistantService
     }
 
     /**
+     * Stellt Kai persönlich vor und begrüßt die Familie.
+     */
+    public function getIntro(): array
+    {
+        $speech = "Hallo! Ich bin Kai, euer persönlicher Assistent für das ganze Haus. "
+                . "Ich passe auf Buzzy auf, überwache den Solarstrom auf dem Dach und merke mir eure Einkäufe. "
+                . "Fragt mich einfach nach Buzzy, der Photovoltaikanlage, dem Wetter oder der Einkaufsliste!";
+
+        return [
+            'success' => true,
+            'action' => 'get_intro',
+            'speech' => $speech,
+            'data' => [
+                'name' => 'Kai',
+                'role' => 'Haushalts- und Energieassistent',
+            ],
+        ];
+    }
+
+    /**
      * Analysiert einen Freitext-Sprachbefehl und führt die passende Aktion aus.
      */
     public function parseVoiceCommand(string $query): array
@@ -473,6 +494,11 @@ class AssistantService
                 'speech' => 'Ich habe keinen Sprachbefehl verstanden.',
                 'data' => [],
             ];
+        }
+
+        // 0. Vorstellung / Begrüßung
+        if (preg_match('/(?:wer bist du|stell dich vor|hallo kai|hi kai|sprich mit kai|über dich|ueber dich)/iu', $text)) {
+            return $this->getIntro();
         }
 
         // 1. Regex-Muster: Artikel auf die Einkaufsliste setzen
