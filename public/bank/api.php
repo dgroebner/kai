@@ -11,6 +11,7 @@ use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Bank\ComdirectClient;
 use Kai\Tools\Bank\ContractAssignmentService;
 use Kai\Tools\Bank\CreditCardRepository;
+use Kai\Tools\Bank\FinancialReportService;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Bank\StatementMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
@@ -514,6 +515,30 @@ try {
         new ContractAssignmentService()->deleteContract($contractId);
 
         echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // KI-Finanzreport neu generieren / aktualisieren
+    if ($action === 'generate_financial_report') {
+        $periodType = trim((string)($data['period_type'] ?? 'month'));
+        if (!in_array($periodType, ['month', 'year'], true)) {
+            $periodType = 'month';
+        }
+
+        $periodTarget = trim((string)($data['period_target'] ?? ''));
+        if ($periodTarget === '') {
+            $periodTarget = $periodType === 'year' ? date('Y') : date('Y-m');
+        }
+
+        $periodReference = !empty($data['period_reference']) ? trim((string)$data['period_reference']) : null;
+
+        $reportService = new FinancialReportService();
+        $report = $reportService->generateReport($periodType, $periodTarget, $periodReference);
+
+        echo json_encode([
+            'success' => true,
+            'report' => $report,
+        ]);
         exit;
     }
 

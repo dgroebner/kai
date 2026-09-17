@@ -333,11 +333,12 @@ try {
     </div>
     <!-- ENDE: Sync modal Overlay -->
 
-    <!-- Tab-Switcher (Girokonto / Kreditkarte) -->
+    <!-- Tab-Switcher (Girokonto / Kreditkarte / Verträge / Finanzreport) -->
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
         <a href="index.php" class="btn">🏦 Girokonto</a>
         <a href="creditcard.php" class="btn btn-outline">💳 Kreditkarte</a>
         <a href="contracts.php" class="btn btn-outline">📑 Verträge</a>
+        <a href="report.php" class="btn btn-outline">📊 Finanzreport</a>
     </div>
 
     <!-- Salden-Dashboard -->

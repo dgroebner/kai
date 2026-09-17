@@ -107,20 +107,28 @@ a:hover {
     text-align: right;
 }
 
-.text-success {
+.text-success,
+.text-green {
     color: var(--color-green) !important;
 }
 
-.text-danger {
+.text-danger,
+.text-red {
     color: var(--color-red) !important;
 }
 
-.text-warning {
+.text-warning,
+.text-orange {
     color: var(--color-orange) !important;
 }
 
-.text-info {
+.text-info,
+.text-blue {
     color: var(--color-blue) !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
 }
 
 .amount-bold {
@@ -3518,3 +3526,250 @@ body {
     animation: highlightNewItem 3s ease-out forwards;
     border-left: 3px solid var(--color-green) !important;
 }
+
+/* ==========================================================================
+   DOMAIN: BANK - FINANZREPORT MODUL
+   ========================================================================== */
+
+.report-nav-tabs {
+    justify-content: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.report-kpi-grid {
+    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.report-kpi-income {
+    border: 1px solid var(--color-green) !important;
+}
+
+.report-kpi-expenses {
+    border: 1px solid var(--color-red) !important;
+}
+
+.report-kpi-balance {
+    border: 1px solid var(--accent) !important;
+}
+
+.report-feedback-banner {
+    padding: 0.8rem 1.2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.report-feedback-loading {
+    background: var(--color-blue-dim);
+    color: var(--color-blue);
+    border: 1px solid var(--color-blue);
+}
+
+.report-feedback-error {
+    background: var(--color-red-dim);
+    color: var(--color-red);
+    border: 1px solid var(--color-red);
+}
+
+.report-hero-card {
+    border: 1px solid var(--accent);
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+}
+
+.report-hero-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.report-status-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+.report-status-healthy {
+    background: var(--color-green-dim);
+    color: var(--color-green);
+    border: 1px solid var(--color-green);
+}
+
+.report-status-tight {
+    background: var(--color-orange-dim);
+    color: var(--color-orange);
+    border: 1px solid var(--color-orange);
+}
+
+.report-status-critical {
+    background: var(--color-red-dim);
+    color: var(--color-red);
+    border: 1px solid var(--color-red);
+}
+
+.report-summary-text {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    color: var(--text-main);
+}
+
+.report-analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.report-analysis-col {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    padding: 1rem;
+    border: 1px solid var(--bg-surface-hover);
+}
+
+.report-col-text {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.report-actions-wrapper {
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.report-action-items {
+    list-style-position: inside;
+    margin-top: 0.5rem;
+    padding-left: 0;
+}
+
+.report-action-items li {
+    margin-bottom: 0.4rem;
+    font-size: 0.95rem;
+}
+
+.report-empty-prompt {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.report-section-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.report-findings-box {
+    background: var(--bg-main);
+    border-left: 3px solid var(--accent);
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.2rem;
+}
+
+.report-findings-list {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 0.4rem;
+}
+
+.report-findings-list li {
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+}
+
+.report-tag-badge {
+    background: var(--color-blue-dim);
+    color: var(--color-blue);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.report-overlap-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-left: 0.3rem;
+}
+
+.co-tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.co-tag-chip {
+    background: var(--bg-surface-hover);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+}
+
+.report-dev-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+}
+
+.report-dev-missing_payment {
+    background: var(--color-red-dim);
+    color: var(--color-red);
+}
+
+.report-dev-amount_mismatch {
+    background: var(--color-orange-dim);
+    color: var(--color-orange);
+}
+
+.receipt-insights-subgrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.insights-subcol {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.insights-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.insights-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.9rem;
+}
+
+.insights-subheading {
+    font-size: 1rem;
+    margin: 1.2rem 0 0.5rem 0;
+}
+
+@media (max-width: 768px) {
+    .report-analysis-grid,
+    .receipt-insights-subgrid {
+        grid-template-columns: 1fr;
+    }
+}
+

@@ -227,6 +227,20 @@ CREATE TABLE IF NOT EXISTS bank_contract_rules (
     FOREIGN KEY (contract_id) REFERENCES bank_contracts(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 10. Persistierte Standardisierte KI-Finanzreports
+CREATE TABLE IF NOT EXISTS bank_financial_reports (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    period_type ENUM('month', 'year') NOT NULL,
+    period_target VARCHAR(10) NOT NULL,
+    period_reference VARCHAR(20) NOT NULL,
+    aggregated_data LONGTEXT NOT NULL,
+    ai_analysis LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_period (period_type, period_target)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 
 CREATE TABLE IF NOT EXISTS `activity_log` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,

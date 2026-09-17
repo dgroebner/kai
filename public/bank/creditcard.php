@@ -50,11 +50,12 @@ try {
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
 
-    <!-- Tab-Switcher -->
+    <!-- Tab-Switcher (Girokonto / Kreditkarte / Verträge / Finanzreport) -->
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
         <a href="index.php" class="btn btn-outline">🏦 Girokonto</a>
         <a href="creditcard.php" class="btn">💳 Kreditkarte</a>
         <a href="contracts.php" class="btn btn-outline">📑 Verträge</a>
+        <a href="report.php" class="btn btn-outline">📊 Finanzreport</a>
     </div>
 
     <main>

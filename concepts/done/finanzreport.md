@@ -86,3 +86,4 @@ AUFGABEN:
 6. Gib eine kurze, realistische Prognose für die Folgeperiode ab.
 
 Antworte strikt im vorgegebenen JSON-Format ohne umschließende Markdown-Backticks.
+```

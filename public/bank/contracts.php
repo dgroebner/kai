@@ -71,11 +71,12 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
         </div>
     </header>
 
-    <!-- Tab-Switcher (Girokonto / Kreditkarte / Verträge) -->
+    <!-- Tab-Switcher (Girokonto / Kreditkarte / Verträge / Finanzreport) -->
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
         <a href="index.php" class="btn btn-outline">🏦 Girokonto</a>
         <a href="creditcard.php" class="btn btn-outline">💳 Kreditkarte</a>
         <a href="contracts.php" class="btn">📑 Verträge</a>
+        <a href="report.php" class="btn btn-outline">📊 Finanzreport</a>
     </div>
 
     <!-- KPI / Übersichtskarte -->
