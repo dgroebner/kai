@@ -5,7 +5,6 @@ use Kai\Tools\Bank\FinancialReportAggregator;
 use Kai\Tools\Bank\FinancialReportRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
-use Kai\Tools\Shared\Security\Sanitizer;
 
 // 1. Auth-Check (AGENTS.md)
 Auth::requirePage('finance_read');
@@ -48,18 +47,18 @@ if ($periodType === 'year') {
     $periodLabel = $dt->format('F Y');
     // Deutsche Monatsnamen
     $monthNames = [
-        'January' => 'Januar', 'February' => 'Februar', 'March' => 'März', 'April' => 'April',
-        'May' => 'Mai', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'August',
-        'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Dezember'
+            'January' => 'Januar', 'February' => 'Februar', 'March' => 'März', 'April' => 'April',
+            'May' => 'Mai', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'August',
+            'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Dezember'
     ];
     $periodLabel = strtr($periodLabel, $monthNames);
     $navPrevLabel = strtr($prevDt->format('M Y'), [
-        'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mär', 'Apr' => 'Apr', 'May' => 'Mai', 'Jun' => 'Jun',
-        'Jul' => 'Jul', 'Aug' => 'Aug', 'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Dez'
+            'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mär', 'Apr' => 'Apr', 'May' => 'Mai', 'Jun' => 'Jun',
+            'Jul' => 'Jul', 'Aug' => 'Aug', 'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Dez'
     ]);
     $navNextLabel = strtr($nextDt->format('M Y'), [
-        'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mär', 'Apr' => 'Apr', 'May' => 'Mai', 'Jun' => 'Jun',
-        'Jul' => 'Jul', 'Aug' => 'Aug', 'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Dez'
+            'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mär', 'Apr' => 'Apr', 'May' => 'Mai', 'Jun' => 'Jun',
+            'Jul' => 'Jul', 'Aug' => 'Aug', 'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Dez'
     ]);
 }
 
@@ -166,37 +165,37 @@ $canEdit = Auth::hasPermission('finance_write');
     <section class="kpi-grid report-kpi-grid">
         <div class="kpi-card report-kpi-income">
             <div class="kpi-label">📈 Gesamteinnahmen</div>
-            <div class="kpi-value text-green">
+            <div class="kpi-value-sm text-green">
                 +<?= number_format($totalIncome, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card report-kpi-expenses">
             <div class="kpi-label">📉 Gesamtausgaben</div>
-            <div class="kpi-value text-red">
+            <div class="kpi-value-sm text-red">
                 -<?= number_format($totalExpenses, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card report-kpi-balance">
             <div class="kpi-label">💰 Netto-Saldo</div>
-            <div class="kpi-value <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
+            <div class="kpi-value-sm <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
                 <?= $netBalance >= 0 ? '+' : '' ?><?= number_format($netBalance, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card report-kpi-savings">
             <div class="kpi-label">🎯 Sparquote</div>
-            <div class="kpi-value">
+            <div class="kpi-value-sm">
                 <?= number_format($savingsRate, 1, ',', '.') ?> %
             </div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">📑 Gebundene Fixkosten</div>
-            <div class="kpi-value">
+            <div class="kpi-value-sm">
                 <?= number_format($fixedExpenses, 2, ',', '.') ?> €
             </div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">🛒 Variabler Konsum</div>
-            <div class="kpi-value">
+            <div class="kpi-value-sm">
                 <?= number_format($variableExpenses, 2, ',', '.') ?> €
             </div>
         </div>
@@ -246,7 +245,8 @@ $canEdit = Auth::hasPermission('finance_write');
         <div class="card report-empty-prompt">
             <h3>🤖 Noch keine KI-Analyse für diesen Zeitraum vorhanden</h3>
             <p>
-                Die deterministischen Buchungsdaten und Salden wurden oben aufbereitet. Starte die KI-Analyse, um Ausreißer,
+                Die deterministischen Buchungsdaten und Salden wurden oben aufbereitet. Starte die KI-Analyse, um
+                Ausreißer,
                 Vertragsabweichungen und Handlungsempfehlungen zu berechnen.
             </p>
             <?php if ($canEdit): ?>
@@ -312,10 +312,13 @@ $canEdit = Auth::hasPermission('finance_write');
                                 <td data-label="Referenz" class="text-right">
                                     <?= number_format($tagRow['reference_sum'], 2, ',', '.') ?> €
                                 </td>
-                                <td data-label="Delta" class="text-right <?= $tagRow['delta_absolute'] > 0 ? 'text-red' : ($tagRow['delta_absolute'] < 0 ? 'text-green' : '') ?>">
-                                    <?= $tagRow['delta_absolute'] > 0 ? '+' : '' ?><?= number_format($tagRow['delta_absolute'], 2, ',', '.') ?> €
+                                <td data-label="Delta"
+                                    class="text-right <?= $tagRow['delta_absolute'] > 0 ? 'text-red' : ($tagRow['delta_absolute'] < 0 ? 'text-green' : '') ?>">
+                                    <?= $tagRow['delta_absolute'] > 0 ? '+' : '' ?><?= number_format($tagRow['delta_absolute'], 2, ',', '.') ?>
+                                    €
                                     <?php if ($tagRow['delta_percent'] !== null): ?>
-                                        <small>(<?= $tagRow['delta_percent'] > 0 ? '+' : '' ?><?= number_format($tagRow['delta_percent'], 1, ',', '.') ?>%)</small>
+                                        <small>(<?= $tagRow['delta_percent'] > 0 ? '+' : '' ?><?= number_format($tagRow['delta_percent'], 1, ',', '.') ?>
+                                            %)</small>
                                     <?php endif; ?>
                                 </td>
                                 <td data-label="Co-Tags">
@@ -352,7 +355,8 @@ $canEdit = Auth::hasPermission('finance_write');
                     <ul class="report-findings-list">
                         <?php foreach ($aiAnalysis['contract_findings'] as $finding): ?>
                             <li>
-                                <strong><?= htmlspecialchars($finding['contract_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>:</strong>
+                                <strong><?= htmlspecialchars($finding['contract_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                                    :</strong>
                                 <?= htmlspecialchars($finding['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                             </li>
                         <?php endforeach; ?>
@@ -361,7 +365,8 @@ $canEdit = Auth::hasPermission('finance_write');
             <?php endif; ?>
 
             <?php if (empty($deviations)): ?>
-                <p class="text-green">✅ Alle aktiven Fixkosten und Verträge wurden im Zeitraum ordnungsgemäß bedient.</p>
+                <p class="text-green">✅ Alle aktiven Fixkosten und Verträge wurden im Zeitraum ordnungsgemäß
+                    bedient.</p>
             <?php else: ?>
                 <div class="table-responsive">
                     <table class="receipts-table stack-table">
@@ -392,8 +397,10 @@ $canEdit = Auth::hasPermission('finance_write');
                                 <td data-label="Ist" class="text-right">
                                     <?= number_format($dev['actual_amount'], 2, ',', '.') ?> €
                                 </td>
-                                <td data-label="Differenz" class="text-right <?= $dev['difference'] > 0 ? 'text-red' : ($dev['difference'] < 0 ? 'text-orange' : '') ?>">
-                                    <?= $dev['difference'] > 0 ? '+' : '' ?><?= number_format($dev['difference'], 2, ',', '.') ?> €
+                                <td data-label="Differenz"
+                                    class="text-right <?= $dev['difference'] > 0 ? 'text-red' : ($dev['difference'] < 0 ? 'text-orange' : '') ?>">
+                                    <?= $dev['difference'] > 0 ? '+' : '' ?><?= number_format($dev['difference'], 2, ',', '.') ?>
+                                    €
                                 </td>
                                 <td data-label="Hinweis">
                                     <?= htmlspecialchars($dev['details'], ENT_QUOTES, 'UTF-8') ?>
@@ -420,13 +427,19 @@ $canEdit = Auth::hasPermission('finance_write');
                     <strong>KI-Erkenntnisse:</strong>
                     <ul class="report-findings-list">
                         <?php if (!empty($aiAnalysis['receipt_insights_analysis']['inflation_notes'])): ?>
-                            <li><strong>Inflation / Einzelpreise:</strong> <?= htmlspecialchars($aiAnalysis['receipt_insights_analysis']['inflation_notes'], ENT_QUOTES, 'UTF-8') ?></li>
+                            <li><strong>Inflation /
+                                    Einzelpreise:</strong> <?= htmlspecialchars($aiAnalysis['receipt_insights_analysis']['inflation_notes'], ENT_QUOTES, 'UTF-8') ?>
+                            </li>
                         <?php endif; ?>
                         <?php if (!empty($aiAnalysis['receipt_insights_analysis']['merchant_notes'])): ?>
-                            <li><strong>Händler & Kleinbeträge:</strong> <?= htmlspecialchars($aiAnalysis['receipt_insights_analysis']['merchant_notes'], ENT_QUOTES, 'UTF-8') ?></li>
+                            <li><strong>Händler &
+                                    Kleinbeträge:</strong> <?= htmlspecialchars($aiAnalysis['receipt_insights_analysis']['merchant_notes'], ENT_QUOTES, 'UTF-8') ?>
+                            </li>
                         <?php endif; ?>
                         <?php if (!empty($aiAnalysis['receipt_insights_analysis']['basket_split_notes'])): ?>
-                            <li><strong>Warenkörbe:</strong> <?= htmlspecialchars($aiAnalysis['receipt_insights_analysis']['basket_split_notes'], ENT_QUOTES, 'UTF-8') ?></li>
+                            <li>
+                                <strong>Warenkörbe:</strong> <?= htmlspecialchars($aiAnalysis['receipt_insights_analysis']['basket_split_notes'], ENT_QUOTES, 'UTF-8') ?>
+                            </li>
                         <?php endif; ?>
                     </ul>
                 </div>
@@ -455,7 +468,9 @@ $canEdit = Auth::hasPermission('finance_write');
                     <h3>⚡ Kleinbuchungen (&lt; 10 €)</h3>
                     <p>
                         <strong><?= (int)($receiptInsights['micro_transactions']['count'] ?? 0) ?> Buchungen</strong>
-                        mit insgesamt <strong><?= number_format((float)($receiptInsights['micro_transactions']['total_amount'] ?? 0), 2, ',', '.') ?> €</strong>
+                        mit insgesamt
+                        <strong><?= number_format((float)($receiptInsights['micro_transactions']['total_amount'] ?? 0), 2, ',', '.') ?>
+                            €</strong>
                     </p>
 
                     <?php if (!empty($receiptInsights['top_price_increases'])): ?>
@@ -488,9 +503,12 @@ $canEdit = Auth::hasPermission('finance_write');
                         <tbody>
                         <?php foreach ($receiptInsights['basket_splits'] as $split): ?>
                             <tr>
-                                <td data-label="Händler"><strong><?= htmlspecialchars($split['store'], ENT_QUOTES, 'UTF-8') ?></strong></td>
+                                <td data-label="Händler">
+                                    <strong><?= htmlspecialchars($split['store'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                                 <td data-label="Datum"><?= date('d.m.Y', strtotime($split['purchase_date'])) ?></td>
-                                <td data-label="Gesamt" class="text-right"><?= number_format($split['total'], 2, ',', '.') ?> €</td>
+                                <td data-label="Gesamt"
+                                    class="text-right"><?= number_format($split['total'], 2, ',', '.') ?> €
+                                </td>
                                 <td data-label="Kategorien">
                                     <div class="co-tag-chips">
                                         <?php foreach ($split['categories'] as $cat): ?>
