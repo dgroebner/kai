@@ -247,13 +247,13 @@ final class Auth
 
     /**
      * Prüft zeitkonstant, ob der übermittelte Assistant-Token gültig ist.
-     * Erwartet Bearer- oder X-API-Key-Header (kein Query-Parameter).
+     * Erwartet Bearer- oder X-API-Key-Header (oder optional Payload-Token).
      * Validiert gegen ASSISTANT_API_KEY mit Fallback auf CRON_TOKEN.
      */
-    public static function assistantTokenMatches(): bool
+    public static function assistantTokenMatches(?string $payloadToken = null): bool
     {
         $expected = (string)($_ENV['ASSISTANT_API_KEY'] ?? $_ENV['CRON_TOKEN'] ?? '');
-        $received = self::extractCronToken(false);
+        $received = self::extractCronToken(false, $payloadToken);
 
         return $expected !== '' && $received !== null && hash_equals($expected, $received);
     }
@@ -261,13 +261,16 @@ final class Auth
     /**
      * Liest den Cron-Token aus Query-String oder den gängigen Auth-Headern aus.
      */
-    private static function extractCronToken(bool $allowQueryParam = true): ?string
+    private static function extractCronToken(bool $allowQueryParam = true, ?string $payloadToken = null): ?string
     {
         $candidates = [
             $_SERVER['HTTP_X_API_KEY'] ?? null,
+            $payloadToken,
         ];
 
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION']
+            ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+            ?? '';
 
         // Apache reicht den Authorization-Header ohne CGIPassAuth nicht an $_SERVER
         // weiter — deshalb zusätzlich die Roh-Header des Requests auswerten.

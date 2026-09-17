@@ -1,5 +1,12 @@
 RewriteEngine On
 
+# Authorization-Header an PHP / FastCGI weiterreichen
+<IfModule mod_authz_core.c>
+    CGIPassAuth On
+</IfModule>
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # HTTPS erzwingen
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
