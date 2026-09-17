@@ -98,11 +98,20 @@ $cashflowHistory = $aggregated['cashflow_history'] ?? $aggregator->calculateCash
 $clampedRate = max(-10.0, min(40.0, $savingsRate));
 $gaugeDeg = round(-90.0 + (($clampedRate - (-10.0)) / 50.0) * 180.0, 1);
 
+// Prüfen, ob der aktuell ausgewählte Zeitraum der noch laufende Monat/Jahr ist
+$isCurrentPeriod = ($periodType === 'month' && $periodTarget === date('Y-m'))
+    || ($periodType === 'year' && $periodTarget === date('Y'));
+
 if ($netBalance < 0) {
-    $gaugeStatus = 'Defizit';
-    $gaugeStatusClass = 'report-status-critical';
+    if ($isCurrentPeriod) {
+        $gaugeStatus = 'Zwischenstand';
+        $gaugeStatusClass = 'report-status-tight';
+    } else {
+        $gaugeStatus = 'Defizit';
+        $gaugeStatusClass = 'report-status-critical';
+    }
 } elseif ($savingsRate < 10.0) {
-    $gaugeStatus = 'Geringer Puffer';
+    $gaugeStatus = $isCurrentPeriod ? 'Zwischenstand' : 'Geringer Puffer';
     $gaugeStatusClass = 'report-status-tight';
 } elseif ($savingsRate < 25.0) {
     $gaugeStatus = 'Solide Sparquote';
@@ -215,6 +224,19 @@ $canEdit = Auth::hasPermission('finance_write');
     <!-- Status / Lade-Meldung -->
     <div id="report-feedback-banner" class="hidden report-feedback-banner"></div>
 
+    <!-- Hinweisbanner bei laufendem Zeitraum -->
+    <?php if ($isCurrentPeriod): ?>
+        <div class="report-ongoing-banner">
+            <div class="report-ongoing-icon">ℹ️</div>
+            <div class="report-ongoing-body">
+                <strong>Laufender Monat (Zwischenstand – noch nicht abgeschlossen):</strong>
+                <p>
+                    Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Miete und Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
+                </p>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <!-- KPI-Dashboard -->
     <section class="kpi-grid report-kpi-grid">
         <div class="kpi-card report-kpi-income">
@@ -313,8 +335,8 @@ $canEdit = Auth::hasPermission('finance_write');
         <div class="card report-cockpit-card">
             <div class="report-cockpit-header">
                 <h3>⚖️ 50 / 30 / 20 Budget-Verteilung</h3>
-                <span class="report-status-badge <?= $isOverBudget ? 'report-status-critical' : 'report-status-healthy' ?>">
-                    <?= $isOverBudget ? 'ÜBERSCHREITUNG' : 'IN BALANCE' ?>
+                <span class="report-status-badge <?= $isOverBudget ? ($isCurrentPeriod ? 'report-status-tight' : 'report-status-critical') : 'report-status-healthy' ?>">
+                    <?= $isOverBudget ? ($isCurrentPeriod ? 'ZWISCHENSTAND' : 'ÜBERSCHREITUNG') : 'IN BALANCE' ?>
                 </span>
             </div>
             <div class="report-budget-container">
@@ -343,8 +365,12 @@ $canEdit = Auth::hasPermission('finance_write');
                 </div>
 
                 <?php if ($isOverBudget): ?>
-                    <div class="report-budget-deficit-box">
-                        ⚠️ Ausgaben übersteigen Einnahmen um <strong><?= number_format($budgetDeficit, 2, ',', '.') ?> €</strong>
+                    <div class="report-budget-deficit-box <?= $isCurrentPeriod ? 'report-budget-ongoing-box' : '' ?>">
+                        <?php if ($isCurrentPeriod): ?>
+                            ℹ️ <strong>Laufender Monat:</strong> Ausgaben liegen aktuell um <?= number_format($budgetDeficit, 2, ',', '.') ?> € über den bisherigen Eingängen. Der finale Ausgleich erfolgt in der Regel mit dem Gehaltseingang zum Monatsende.
+                        <?php else: ?>
+                            ⚠️ Ausgaben übersteigen Einnahmen um <strong><?= number_format($budgetDeficit, 2, ',', '.') ?> €</strong>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
 
