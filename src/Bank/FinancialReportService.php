@@ -132,20 +132,26 @@ class FinancialReportService
     private function getSystemPrompt(): string
     {
         return <<<PROMPT
-Du bist ein hochpräziser Finanzanalyst für private Finanzen. Dein Ziel ist es, aus voraggregierten Finanzdaten aussagekräftige Erkenntnisse, Trends, Anomalien und Handlungsbedarfe abzuleiten.
+Du bist ein persönlicher, verständlicher Finanzassistent für private Finanzen. Dein Ziel ist es, aus den voraggregierten Finanzdaten klare, alltagsnahe und leicht verständliche Erkenntnisse, Trends und praktische Tipps abzuleiten.
+
+SPRACHE & TONFALL:
+- Schreibe in einer einfachen, menschlichen und leicht verständlichen Alltagssprache.
+- Verzichte komplett auf geschwollenes Banker- und Finanzjargon (keine Fachbegriffe wie „disjunkte Primäraggregationen“, „Konsumvolatilität“, „Periodendifferenzial“, „Budgetallokation“ etc.).
+- Sprich den Nutzer direkt, freundlich und auf Augenhöhe an (z. B. „Diesen Monat hast du...“, „Deine festen Ausgaben liegen bei...“).
+- Formuliere kurz, klar und auf den Punkt.
 
 WICHTIGE REGEL ZU DEN SUMMEN:
 Die Buchungsdaten nutzen ein Multi-Label-System. Einzelne Buchungen können mehreren Tags zugeordnet sein. 
-- Nutze für Salden, Puffer- und Gesamtberechnungen AUSSCHLIESSLICH die Werte aus `cashflow_totals`. Addiere NIEMALS die Werte aus `tag_breakdown` auf, da dies zu Doppelzählungen führt.
-- Nutze `tag_breakdown` ausschließlich zur Identifikation von Ausreißern, Trendwechseln und thematischen Schwerpunkten.
+- Nutze für Gesamtsalden, Sparquote und Realausgaben AUSSCHLIESSLICH die Zahlen aus `cashflow_totals`. Addiere NIEMALS die Werte aus `tag_breakdown` auf, da Buchungen mehrere Tags haben können und dies zu Doppelzählungen führt.
+- Nutze `tag_breakdown` ausschließlich, um Schwerpunkte und Ausreißer zu erklären.
 
 AUFGABEN:
-1. Verfasse ein prägnantes Monats- bzw. Jahresfazit (maximal 3 Sätze).
-2. Analysiere das Verhältnis von Fixkosten zu variablem Konsum.
-3. Identifiziere signifikante Ausreißer in den Tags unter Einbeziehung der `overlap_tags` (z. B. Sonderausgaben durch Urlaub vs. reguläre Kosten).
-4. Melde Unregelmäßigkeiten bei Verträgen (Preiserhöhungen, fehlende Buchungen).
-5. Analysiere Kassenbondaten auf Artikelebene (z. B. Eigenpreis-Inflation, Spontankäufe, Händlerkonzentration).
-6. Gib eine kurze, realistische Prognose für die Folgeperiode ab.
+1. Verfasse ein kurzes, ermutigendes und klares Fazit (maximal 3 einfache Sätze).
+2. Erkläre einfach das Verhältnis von festen Kosten (Miete, Verträge) zu veränderbaren Ausgaben (Einkaufen, Freizeit).
+3. Zeige auffällige Ausgabenkategorien verständlich auf und erkläre anhand der `overlap_tags`, warum die Ausgaben entstanden sind (z. B. „Mehr für Freizeit ausgegeben, vor allem wegen Urlaubsaktivitäten“).
+4. Melde Unregelmäßigkeiten bei Verträgen direkt (z. B. wenn eine Abbuchung höher war als sonst oder eine Zahlung gefehlt hat).
+5. Erkläre Auffälligkeiten bei Kassenbons und Einkäufen (wo wurde eingekauft, wurden bestimmte Produkte teurer, gab es viele kleine Spontankäufe).
+6. Gib einen einfachen Ausblick auf den nächsten Zeitraum und 1 bis 3 konkrete, alltagstaugliche Tipps.
 
 Antworte strikt im vorgegebenen JSON-Format ohne umschließende Markdown-Backticks.
 PROMPT;
@@ -159,43 +165,43 @@ PROMPT;
         $payloadJson = json_encode($aggregatedData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         return <<<PROMPT
-Hier sind die voraggregierten Finanzdaten für die Analyse:
+Hier sind die voraggregierten Finanzdaten für die Auswertung:
 
 ```json
 $payloadJson
 ```
 
-Analysiere diese Daten präzise und antworte im folgenden JSON-Format:
+Erstelle die Auswertung in einfacher, verständlicher Sprache und antworte im folgenden JSON-Format:
 {
-  "summary": "Prägnantes Fazit (maximal 3 Sätze) über den Gesamterfolg des Zeitraums.",
+  "summary": "Kurzes, verständliches Fazit (maximal 3 Sätze) darüber, wie der Monat oder das Jahr finanziell gelaufen ist.",
   "fixed_vs_variable": {
-    "analysis": "Bewertung des Verhältnisses von Fixkosten zu steuerbarem Konsum sowie der Sparquote.",
+    "analysis": "Einfache Erklärung, wie viel Geld für feste Verträge und wie viel für alltäglichen Konsum draufging und wie die Sparquote einzuschätzen ist.",
     "status": "healthy"
   },
   "tag_anomalies": [
     {
-      "tag_name": "Name des Tags",
+      "tag_name": "Name der Kategorie / des Tags",
       "type": "spike",
-      "observation": "Beobachtung zu auffälligem Anstieg, Rückgang oder Besonderheit",
-      "overlap_context": "Erklärung basierend auf overlap_tags (z. B. Co-Tag Urlaub oder Haushalt)"
+      "observation": "Einfache Beobachtung (z. B. 'Diesen Monat hast du 120 € mehr für Essen ausgegeben als im Vormonat.')",
+      "overlap_context": "Erklärung aus den Co-Tags (z. B. 'Vor allem durch Restaurantbesuche am Wochenende')"
     }
   ],
   "contract_findings": [
     {
       "contract_name": "Name des Vertrags",
       "severity": "warning",
-      "description": "Details zu Preiserhöhung, Abweichung oder fehlender Abbuchung"
+      "description": "Einfache Erklärung der Abweichung (z. B. 'Die Abbuchung war um 5 € höher als vereinbart.')"
     }
   ],
   "receipt_insights_analysis": {
-    "inflation_notes": "Beobachtungen zu Preissteigerungen bei Artikeln",
-    "merchant_notes": "Konzentration auf Händler und Kleinbuchungen",
-    "basket_split_notes": "Auffälligkeiten bei Multi-Kategorie-Einkäufen"
+    "inflation_notes": "Verständlicher Hinweis zu Preissteigerungen bei Artikeln im Einkaufskorb",
+    "merchant_notes": "Kurze Notiz zu den Haupt-Einkaufsorten und vielen kleinen Beträgen unter 10 €",
+    "basket_split_notes": "Hinweis zu gemischten Einkäufen (z. B. Drogerie und Lebensmittel im selben Markt)"
   },
-  "forecast": "Kurze, realistische Prognose für die Folgeperiode.",
+  "forecast": "Einfacher, realistischer Ausblick für den kommenden Monat.",
   "action_items": [
-    "Konkrete Handlungsempfehlung 1",
-    "Konkrete Handlungsempfehlung 2"
+    "Praktischer Alltagstipp 1",
+    "Praktischer Alltagstipp 2"
   ]
 }
 PROMPT;
@@ -236,7 +242,7 @@ PROMPT;
         $savings = (float)($cashflow['savings_rate_percent'] ?? 0.0);
 
         $summary = sprintf(
-            'Im Betrachtungszeitraum wurde ein Netto-Saldo von %+.2f € erzielt. Die Sparquote lag bei %.1f%%.',
+            'In diesem Zeitraum sind unterm Strich %+.2f € übrig geblieben. Deine Sparquote lag bei %.1f%%.',
             $net,
             $savings
         );
@@ -254,7 +260,7 @@ PROMPT;
             'summary' => $summary,
             'fixed_vs_variable' => [
                 'analysis' => sprintf(
-                    'Fixkosten betrugen %.2f €, variable Konsumausgaben %.2f €.',
+                    'Für feste Verträge und Abos gingen %.2f € ab, für alltägliche Ausgaben wurden %.2f € genutzt.',
                     (float)($cashflow['fixed_expenses_total'] ?? 0),
                     (float)($cashflow['variable_expenses_total'] ?? 0)
                 ),
@@ -264,15 +270,15 @@ PROMPT;
             'contract_findings' => $contractFindings,
             'receipt_insights_analysis' => [
                 'inflation_notes' => !empty($aggregatedData['receipt_insights']['top_price_increases'])
-                    ? 'Preissteigerungen bei erfassten Artikeln erkannt.'
-                    : 'Keine signifikanten Preissteigerungen festgestellt.',
+                    ? 'Bei einigen Artikeln im Einkaufswagen gab es Preisanstiege.'
+                    : 'Keine auffälligen Preisanstiege bei den Einkäufen.',
                 'merchant_notes' => '',
                 'basket_split_notes' => '',
             ],
-            'forecast' => 'Aufgrund fehlender KI-Konnektivität steht keine automatisierte Prognose bereit.',
+            'forecast' => 'Wenn die festen Kosten so bleiben, kannst du dich im nächsten Monat an deinen gewohnten Ausgaben orientieren.',
             'action_items' => [
-                'Vertragsabweichungen in den Buchungsdetails prüfen.',
-                'Budgetkontrolle für variable Konsumausgaben aufrechterhalten.',
+                'Regelmäßige Verträge und Abbuchungen im Blick behalten.',
+                'Auf ungeplante Spontankäufe und Kleinbeträge achten.',
             ],
         ];
     }

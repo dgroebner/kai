@@ -243,15 +243,13 @@ $canEdit = Auth::hasPermission('finance_write');
         </section>
     <?php else: ?>
         <div class="card report-empty-prompt">
-            <h3>🤖 Noch keine KI-Analyse für diesen Zeitraum vorhanden</h3>
+            <h3>🤖 Noch keine KI-Auswertung für diesen Zeitraum vorhanden</h3>
             <p>
-                Die deterministischen Buchungsdaten und Salden wurden oben aufbereitet. Starte die KI-Analyse, um
-                Ausreißer,
-                Vertragsabweichungen und Handlungsempfehlungen zu berechnen.
+                Deine Einnahmen, Ausgaben und Salden sind oben bereits fertig berechnet. Starte die KI-Analyse, um eine verständliche Zusammenfassung, Ausreißer und Alltagstipps zu erhalten.
             </p>
             <?php if ($canEdit): ?>
                 <button type="button" class="btn btn-blue" id="btn-generate-report-inline">
-                    🚀 KI-Finanzreport jetzt generieren
+                    🚀 KI-Finanzreport jetzt erstellen
                 </button>
             <?php endif; ?>
         </div>
@@ -260,13 +258,13 @@ $canEdit = Auth::hasPermission('finance_write');
     <!-- DETAIL-BEREICHE -->
     <div class="report-section-grid">
 
-        <!-- 1. Dimensionale Tag-Analyse -->
+        <!-- 1. Ausgaben nach Kategorien -->
         <section class="card">
             <div class="card-header">
-                <h2>🏷️ Dimensionale Tag-Verteilung</h2>
+                <h2>🏷️ Ausgaben nach Kategorien</h2>
             </div>
             <p class="subtitle">
-                Überlappende Tag-Summen mit Vorperiodenvergleich und Co-Tagging (overlap_tags).
+                Überblick über deine getaggten Ausgaben im Vergleich zum Vormonat mit Co-Tags.
             </p>
 
             <?php if (!empty($aiAnalysis['tag_anomalies'])): ?>
@@ -340,23 +338,22 @@ $canEdit = Auth::hasPermission('finance_write');
             <?php endif; ?>
         </section>
 
-        <!-- 2. Vertragsabgleich & Soll-Ist-Abweichungen -->
+        <!-- 2. Feste Verträge & Abos -->
         <section class="card">
             <div class="card-header">
-                <h2>📑 Vertragsprüfung & Fixkosten</h2>
+                <h2>📑 Feste Verträge & Abos</h2>
             </div>
             <p class="subtitle">
-                Abgleich der hinterlegten aktiven Verträge mit tatsächlichen Giro-Buchungen.
+                Prüfung deiner regelmäßigen Abbuchungen und Verträge auf Veränderungen oder fehlende Buchungen.
             </p>
 
             <?php if (!empty($aiAnalysis['contract_findings'])): ?>
                 <div class="report-findings-box">
-                    <strong>KI-Prüfbefund:</strong>
+                    <strong>Wichtige Hinweise:</strong>
                     <ul class="report-findings-list">
                         <?php foreach ($aiAnalysis['contract_findings'] as $finding): ?>
                             <li>
-                                <strong><?= htmlspecialchars($finding['contract_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
-                                    :</strong>
+                                <strong><?= htmlspecialchars($finding['contract_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>:</strong>
                                 <?= htmlspecialchars($finding['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                             </li>
                         <?php endforeach; ?>
@@ -365,8 +362,7 @@ $canEdit = Auth::hasPermission('finance_write');
             <?php endif; ?>
 
             <?php if (empty($deviations)): ?>
-                <p class="text-green">✅ Alle aktiven Fixkosten und Verträge wurden im Zeitraum ordnungsgemäß
-                    bedient.</p>
+                <p class="text-green">✅ Alle festen Verträge und Abos wurden in diesem Zeitraum wie erwartet abgebucht.</p>
             <?php else: ?>
                 <div class="table-responsive">
                     <table class="receipts-table stack-table">
@@ -399,8 +395,7 @@ $canEdit = Auth::hasPermission('finance_write');
                                 </td>
                                 <td data-label="Differenz"
                                     class="text-right <?= $dev['difference'] > 0 ? 'text-red' : ($dev['difference'] < 0 ? 'text-orange' : '') ?>">
-                                    <?= $dev['difference'] > 0 ? '+' : '' ?><?= number_format($dev['difference'], 2, ',', '.') ?>
-                                    €
+                                    <?= $dev['difference'] > 0 ? '+' : '' ?><?= number_format($dev['difference'], 2, ',', '.') ?> €
                                 </td>
                                 <td data-label="Hinweis">
                                     <?= htmlspecialchars($dev['details'], ENT_QUOTES, 'UTF-8') ?>
@@ -413,13 +408,13 @@ $canEdit = Auth::hasPermission('finance_write');
             <?php endif; ?>
         </section>
 
-        <!-- 3. Kassenbon- & Positions-Insights -->
+        <!-- 3. Einkäufe & Kassenbons -->
         <section class="card">
             <div class="card-header">
-                <h2>🧾 Kassenbon- & Konsum-Insights</h2>
+                <h2>🧾 Einkäufe & Kassenbons</h2>
             </div>
             <p class="subtitle">
-                Artikelebene, Warenkorb-Splits und Händlerkonzentration.
+                Supermärkte, Preisanstiege bei Artikeln und kleinere Beträge im Alltag.
             </p>
 
             <?php if (!empty($aiAnalysis['receipt_insights_analysis'])): ?>
