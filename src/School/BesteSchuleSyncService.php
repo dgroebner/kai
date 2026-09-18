@@ -126,6 +126,9 @@ class BesteSchuleSyncService
             }
         }
 
+        // Bestehende Duplikate (z. B. aus Doppelstunden) aufräumen
+        $this->repo->deleteDuplicateNotes();
+
         $this->logger->info("BesteSchuleSyncService: Sync abgeschlossen", $stats);
         return ['success' => true, 'message' => "Sync erfolgreich", 'stats' => $stats];
     }

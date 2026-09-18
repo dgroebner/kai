@@ -71,6 +71,40 @@ class BesteSchuleRepository
     public function upsertNote(array $noteData): void
     {
         $pdo = $this->db->getConnection();
+
+        // Prüfen, ob für dasselbe Kind am selben Tag im selben Fach bereits exakt dieselbe Notiz existiert (z. B. bei Doppelstunden)
+        $checkStmt = $pdo->prepare("
+            SELECT id FROM school_beste_notes 
+            WHERE student_id = :student_id 
+              AND lesson_date = :lesson_date 
+              AND subject = :subject 
+              AND description = :description
+            LIMIT 1
+        ");
+        $checkStmt->execute([
+            ':student_id' => $noteData['student_id'],
+            ':lesson_date' => $noteData['lesson_date'],
+            ':subject' => $noteData['subject'],
+            ':description' => $noteData['description'],
+        ]);
+        $existingId = $checkStmt->fetchColumn();
+
+        if ($existingId) {
+            // Bereits vorhanden -> nur Typ und API-Note-ID aktualisieren, kein Duplikat anlegen
+            $updateStmt = $pdo->prepare("
+                UPDATE school_beste_notes 
+                SET type_name = :type_name,
+                    api_note_id = :api_note_id
+                WHERE id = :id
+            ");
+            $updateStmt->execute([
+                ':type_name' => $noteData['type_name'],
+                ':api_note_id' => $noteData['api_note_id'],
+                ':id' => $existingId
+            ]);
+            return;
+        }
+
         $stmt = $pdo->prepare("
             INSERT INTO school_beste_notes (student_id, lesson_date, subject, type_name, description, api_note_id, created_at)
             VALUES (:student_id, :lesson_date, :subject, :type_name, :description, :api_note_id, NOW())
@@ -81,6 +115,23 @@ class BesteSchuleRepository
                 description = VALUES(description)
         ");
         $stmt->execute($noteData);
+    }
+
+    /**
+     * Entfernt bestehende Duplikate aus der Datenbank (behält jeweils den ältesten Eintrag mit kleinster ID).
+     */
+    public function deleteDuplicateNotes(): void
+    {
+        $pdo = $this->db->getConnection();
+        $pdo->exec("
+            DELETE n1 FROM school_beste_notes n1
+            INNER JOIN school_beste_notes n2 
+            WHERE n1.id > n2.id 
+              AND n1.student_id = n2.student_id 
+              AND n1.lesson_date = n2.lesson_date 
+              AND n1.subject = n2.subject 
+              AND n1.description = n2.description
+        ");
     }
 
     // -------------------------------------------------------------------------
@@ -161,15 +212,32 @@ class BesteSchuleRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getUpcomingNotes(array $studentIds): array
+    public function getUpcomingNotes(array $studentIds, ?string $fromDate = null): array
     {
         if (empty($studentIds)) return [];
 
+        if ($fromDate === null) {
+            $now = new \DateTimeImmutable();
+            $hour = (int)$now->format('G');
+            $dayOfWeek = (int)$now->format('N'); // 1 = Mo, ..., 7 = So
+
+            if ($dayOfWeek === 6) { // Samstag -> nächster Montag
+                $fromDate = $now->modify('+2 days')->format('Y-m-d');
+            } elseif ($dayOfWeek === 7) { // Sonntag -> nächster Montag
+                $fromDate = $now->modify('+1 day')->format('Y-m-d');
+            } elseif ($dayOfWeek === 5 && $hour >= 15) { // Freitag ab 15:00 Uhr -> nächster Montag
+                $fromDate = $now->modify('+3 days')->format('Y-m-d');
+            } elseif ($hour >= 15) { // Mo-Do ab 15:00 Uhr -> nächster Tag
+                $fromDate = $now->modify('+1 day')->format('Y-m-d');
+            } else {
+                $fromDate = $now->format('Y-m-d');
+            }
+        }
+
         $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
-        $today = date('Y-m-d');
 
         $params = array_values($studentIds);
-        array_unshift($params, $today);
+        array_unshift($params, $fromDate);
 
         $sql = "SELECT n.*, s.name as student_name, s.display_color 
                 FROM school_beste_notes n
@@ -180,6 +248,19 @@ class BesteSchuleRepository
 
         $stmt = $this->db->getConnection()->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Duplikate herausfiltern (z. B. wenn bei Doppelstunden derselbe Eintrag an beiden Stunden hängt)
+        $unique = [];
+        $deduped = [];
+        foreach ($rows as $row) {
+            $key = $row['student_id'] . '|' . $row['lesson_date'] . '|' . mb_strtolower(trim($row['subject'])) . '|' . mb_strtolower(trim($row['description']));
+            if (!isset($unique[$key])) {
+                $unique[$key] = true;
+                $deduped[] = $row;
+            }
+        }
+
+        return $deduped;
     }
 }

@@ -560,88 +560,163 @@ $nextLabel = ($nextSchoolDay === $today)
             <?php endforeach; ?>
         <?php endif; ?>
 
-                <?php elseif ($view === 'homework'): ?>
+    <?php elseif ($view === 'homework'): ?>
         <?php if (!empty($besteUpcomingNotes) || count($besteHomework) > 0): ?>
-            
+
+            <!-- Hinweis-Badge oben, falls es vergessene Hausaufgaben/Materialien gibt -->
             <?php if (count($besteHomework) > 0): ?>
-                <h3 style="margin-top: 0; margin-bottom: 1rem;">&#9888;&#65039; Vergessen (letzte 14 Tage)</h3>
-                <?php foreach ($besteHomework as $hw): ?>
-                    <?php $studentColor = $hw['display_color'] ?? '#dc2626'; ?>
-                    <section class="card school-plan-card" style="border-left: 4px solid <?= htmlspecialchars($studentColor, ENT_QUOTES, 'UTF-8') ?>; margin-bottom: 1rem;">
-                        <div class="school-hero-header">
-                            <div class="school-hero-title">
-                                <?php if ($selectedStudentId === 'all'): ?>
-                                    <span class="school-avatar" style="background-color: <?= htmlspecialchars($studentColor, ENT_QUOTES, 'UTF-8') ?>;">
-                                        <?= htmlspecialchars(mb_substr($hw['student_name'] ?? 'K', 0, 1), ENT_QUOTES, 'UTF-8') ?>
-                                    </span>
-                                    <strong><?= htmlspecialchars($hw['student_name'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                <?php endif; ?>
-                            </div>
-                            <span class="school-hero-time-pill" style="background-color: var(--danger-color); color: white; border-color: var(--danger-color);">
-                                <strong>&#9888;&#65039; Fehlendes Material</strong>
-                            </span>
-                        </div>
-                        
-                        <div class="school-hero-sentence" style="font-size: 1.15rem; font-weight: bold; margin-bottom: 0.5rem;">
-                            <?= date('d.m.', strtotime($hw['lesson_date'])) ?> &middot; <?= htmlspecialchars($hw['subject'], ENT_QUOTES, 'UTF-8') ?>
-                        </div>
-                        
-                        <div class="school-hero-deviations" style="border-left-color: var(--danger-color);">
-                            <div style="font-size: 1.05rem; line-height: 1.5;">
-                                <?= $hw['missing_homework'] ? '&#10060; Hausaufgabe vergessen<br>' : '' ?>
-                                <?= $hw['missing_equipment'] ? '&#10060; Material vergessen' : '' ?>
-                            </div>
-                        </div>
-                    </section>
-                <?php endforeach; ?>
+                <div style="margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger-color); padding: 0.75rem 1rem; border-radius: var(--border-radius, 8px);">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                        <span style="font-size: 1.2rem;">&#9888;&#65039;</span>
+                        <span><strong><?= count($besteHomework) ?></strong> vergessene Hausaufgabe(n) / Material in den letzten 14 Tagen</span>
+                    </div>
+                    <a href="#vergessen" class="btn btn-small" style="background-color: var(--danger-color); color: #fff; text-decoration: none; border-radius: 20px; font-size: 0.85rem; padding: 0.25rem 0.75rem;">
+                        Zu den Einträgen &darr;
+                    </a>
+                </div>
             <?php endif; ?>
 
+            <!-- Anstehende Hausaufgaben / Termine (zuerst!) -->
             <?php if (!empty($besteUpcomingNotes)): ?>
-                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem;">&#128221; Anstehende Hausaufgaben / Notizen</h3>
-                <?php foreach ($besteUpcomingNotes as $note): ?>
-                    <?php 
-                    $daysDe = ['Mon' => 'Mo', 'Tue' => 'Di', 'Wed' => 'Mi', 'Thu' => 'Do', 'Fri' => 'Fr', 'Sat' => 'Sa', 'Sun' => 'So'];
-                    $dayEn = date('D', strtotime($note['lesson_date']));
-                    $dayDe = $daysDe[$dayEn] ?? $dayEn;
-                    $dateLabel = date('d.m.', strtotime($note['lesson_date'])) . ' (' . $dayDe . ')';
-                    
-                    $noteTypeLower = strtolower($note['type_name']);
-                    if (strpos($noteTypeLower, 'klassenarbeit') !== false || strpos($noteTypeLower, 'klausur') !== false) {
-                        $typeColor = '#dc2626'; // Red
-                    } elseif (strpos($noteTypeLower, 'test') !== false || strpos($noteTypeLower, 'kontrolle') !== false || strpos($noteTypeLower, 'leistung') !== false) {
-                        $typeColor = '#ea580c'; // Orange
-                    } elseif (strpos($noteTypeLower, 'info') !== false || strpos($noteTypeLower, 'mitbring') !== false) {
-                        $typeColor = '#2563eb'; // Blue
-                    } else {
-                        $typeColor = '#64748b'; // Slate
-                    }
-                    
-                    $studentColor = $note['display_color'] ?? $typeColor;
-                    ?>
-                    <section class="card school-plan-card" style="border-left: 4px solid <?= htmlspecialchars($typeColor, ENT_QUOTES, 'UTF-8') ?>; margin-bottom: 1rem;">
-                        <div class="school-hero-header">
-                            <div class="school-hero-title">
-                                <?php if ($selectedStudentId === 'all'): ?>
-                                    <span class="school-avatar" style="background-color: <?= htmlspecialchars($studentColor, ENT_QUOTES, 'UTF-8') ?>;">
-                                        <?= htmlspecialchars(mb_substr($note['student_name'] ?? 'K', 0, 1), ENT_QUOTES, 'UTF-8') ?>
-                                    </span>
-                                    <strong><?= htmlspecialchars($note['student_name'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                <?php endif; ?>
+                <?php
+                // Tags/Typen mit Anzahl ermitteln
+                $typeCounts = [];
+                foreach ($besteUpcomingNotes as $n) {
+                    $tn = trim($n['type_name'] ?? '');
+                    if ($tn === '') $tn = 'Notiz';
+                    $typeCounts[$tn] = ($typeCounts[$tn] ?? 0) + 1;
+                }
+                ?>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">&#128221; Anstehende Aufgaben &amp; Termine</h3>
+                </div>
+
+                <!-- Tag-Filterleiste -->
+                <div class="school-tag-filter-bar" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; align-items: center;">
+                    <span class="text-muted" style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Filter:</span>
+                    <button type="button" class="btn btn-small js-hw-filter-btn" data-filter="all" style="border-radius: 20px; font-size: 0.85rem; padding: 0.2rem 0.75rem;">
+                        Alle (<?= count($besteUpcomingNotes) ?>)
+                    </button>
+                    <?php foreach ($typeCounts as $tName => $tCount): ?>
+                        <?php
+                        $tLower = strtolower($tName);
+                        if (strpos($tLower, 'klassenarbeit') !== false || strpos($tLower, 'klausur') !== false) {
+                            $chipColor = '#dc2626';
+                        } elseif (strpos($tLower, 'test') !== false || strpos($tLower, 'kontrolle') !== false || strpos($tLower, 'leistung') !== false) {
+                            $chipColor = '#ea580c';
+                        } elseif (strpos($tLower, 'info') !== false || strpos($tLower, 'mitbring') !== false) {
+                            $chipColor = '#2563eb';
+                        } else {
+                            $chipColor = '#64748b';
+                        }
+                        ?>
+                        <button type="button" class="btn btn-outline btn-small js-hw-filter-btn" data-filter="<?= htmlspecialchars($tName, ENT_QUOTES, 'UTF-8') ?>" style="border-radius: 20px; font-size: 0.85rem; padding: 0.2rem 0.75rem; border-color: <?= $chipColor ?>; color: <?= $chipColor ?>;">
+                            <?= htmlspecialchars($tName, ENT_QUOTES, 'UTF-8') ?> (<?= $tCount ?>)
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+
+                <div id="js-hw-filter-empty" class="card school-empty-notice" style="display: none; margin-bottom: 1.5rem;">
+                    <div class="school-empty-icon">&#128269;</div>
+                    <div class="school-empty-content">
+                        <h3>Keine Einträge</h3>
+                        <p class="text-muted">Für die gewählte Kategorie liegen keine Einträge vor.</p>
+                    </div>
+                </div>
+
+                <div class="js-homework-list">
+                    <?php foreach ($besteUpcomingNotes as $note): ?>
+                        <?php 
+                        $daysDe = ['Mon' => 'Mo', 'Tue' => 'Di', 'Wed' => 'Mi', 'Thu' => 'Do', 'Fri' => 'Fr', 'Sat' => 'Sa', 'Sun' => 'So'];
+                        $dayEn = date('D', strtotime($note['lesson_date']));
+                        $dayDe = $daysDe[$dayEn] ?? $dayEn;
+                        $dateLabel = date('d.m.', strtotime($note['lesson_date'])) . ' (' . $dayDe . ')';
+                        
+                        $noteTypeLower = strtolower($note['type_name']);
+                        if (strpos($noteTypeLower, 'klassenarbeit') !== false || strpos($noteTypeLower, 'klausur') !== false) {
+                            $typeColor = '#dc2626'; // Red
+                        } elseif (strpos($noteTypeLower, 'test') !== false || strpos($noteTypeLower, 'kontrolle') !== false || strpos($noteTypeLower, 'leistung') !== false) {
+                            $typeColor = '#ea580c'; // Orange
+                        } elseif (strpos($noteTypeLower, 'info') !== false || strpos($noteTypeLower, 'mitbring') !== false) {
+                            $typeColor = '#2563eb'; // Blue
+                        } else {
+                            $typeColor = '#64748b'; // Slate
+                        }
+                        
+                        $studentColor = $note['display_color'] ?? $typeColor;
+                        ?>
+                        <section class="card school-plan-card js-homework-item" data-type="<?= htmlspecialchars($note['type_name'], ENT_QUOTES, 'UTF-8') ?>" style="border-left: 4px solid <?= htmlspecialchars($typeColor, ENT_QUOTES, 'UTF-8') ?>; margin-bottom: 1rem;">
+                            <div class="school-hero-header">
+                                <div class="school-hero-title">
+                                    <?php if ($selectedStudentId === 'all'): ?>
+                                        <span class="school-avatar" style="background-color: <?= htmlspecialchars($studentColor, ENT_QUOTES, 'UTF-8') ?>;">
+                                            <?= htmlspecialchars(mb_substr($note['student_name'] ?? 'K', 0, 1), ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                        <strong><?= htmlspecialchars($note['student_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="school-hero-time-pill" style="background-color: <?= $typeColor ?>; color: white; border-color: <?= $typeColor ?>;">
+                                    <strong><?= htmlspecialchars($note['type_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                </span>
                             </div>
-                            <span class="school-hero-time-pill" style="background-color: <?= $typeColor ?>; color: white; border-color: <?= $typeColor ?>;">
-                                <strong><?= htmlspecialchars($note['type_name'], ENT_QUOTES, 'UTF-8') ?></strong>
-                            </span>
-                        </div>
-                        
-                        <div class="school-hero-sentence" style="font-size: 1.15rem; font-weight: bold; margin-bottom: 0.5rem;">
-                            <?= $dateLabel ?> &middot; <?= htmlspecialchars($note['subject'], ENT_QUOTES, 'UTF-8') ?>
-                        </div>
-                        
-                        <div class="school-hero-deviations" style="border-left-color: <?= $typeColor ?>;">
-                            <div style="font-size: 1.05rem; line-height: 1.5; white-space: pre-wrap;"><?= htmlspecialchars($note['description'], ENT_QUOTES, 'UTF-8') ?></div>
-                        </div>
-                    </section>
-                <?php endforeach; ?>
+                            
+                            <div class="school-hero-sentence" style="font-size: 1.15rem; font-weight: bold; margin-bottom: 0.5rem;">
+                                <?= $dateLabel ?> &middot; <?= htmlspecialchars($note['subject'], ENT_QUOTES, 'UTF-8') ?>
+                            </div>
+                            
+                            <div class="school-hero-deviations" style="border-left-color: <?= $typeColor ?>;">
+                                <div style="font-size: 1.05rem; line-height: 1.5; white-space: pre-wrap;"><?= htmlspecialchars($note['description'], ENT_QUOTES, 'UTF-8') ?></div>
+                            </div>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="card school-empty-notice" style="margin-bottom: 1.5rem;">
+                    <div class="school-empty-icon">&#128221;</div>
+                    <div class="school-empty-content">
+                        <h3>Keine anstehenden Hausaufgaben</h3>
+                        <p class="text-muted">Für die nächsten 14 Tage sind aktuell keine Hausaufgaben oder Tests eingetragen.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Vergessen-Details (unter den Hausaufgaben) mit Sprungmarke -->
+            <?php if (count($besteHomework) > 0): ?>
+                <div id="vergessen" style="margin-top: 2.5rem; scroll-margin-top: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--danger-color); display: flex; align-items: center; gap: 0.5rem;">
+                        <span>&#9888;&#65039;</span>
+                        <span>Vergessen (letzte 14 Tage)</span>
+                    </h3>
+                    <?php foreach ($besteHomework as $hw): ?>
+                        <?php $studentColor = $hw['display_color'] ?? '#dc2626'; ?>
+                        <section class="card school-plan-card" style="border-left: 4px solid <?= htmlspecialchars($studentColor, ENT_QUOTES, 'UTF-8') ?>; margin-bottom: 1rem;">
+                            <div class="school-hero-header">
+                                <div class="school-hero-title">
+                                    <?php if ($selectedStudentId === 'all'): ?>
+                                        <span class="school-avatar" style="background-color: <?= htmlspecialchars($studentColor, ENT_QUOTES, 'UTF-8') ?>;">
+                                            <?= htmlspecialchars(mb_substr($hw['student_name'] ?? 'K', 0, 1), ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                        <strong><?= htmlspecialchars($hw['student_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="school-hero-time-pill" style="background-color: var(--danger-color); color: white; border-color: var(--danger-color);">
+                                    <strong>&#9888;&#65039; Fehlendes Material</strong>
+                                </span>
+                            </div>
+                            
+                            <div class="school-hero-sentence" style="font-size: 1.15rem; font-weight: bold; margin-bottom: 0.5rem;">
+                                <?= date('d.m.', strtotime($hw['lesson_date'])) ?> &middot; <?= htmlspecialchars($hw['subject'], ENT_QUOTES, 'UTF-8') ?>
+                            </div>
+                            
+                            <div class="school-hero-deviations" style="border-left-color: var(--danger-color);">
+                                <div style="font-size: 1.05rem; line-height: 1.5;">
+                                    <?= $hw['missing_homework'] ? '&#10060; Hausaufgabe vergessen<br>' : '' ?>
+                                    <?= $hw['missing_equipment'] ? '&#10060; Material vergessen' : '' ?>
+                                </div>
+                            </div>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
             
         <?php else: ?>

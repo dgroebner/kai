@@ -94,3 +94,36 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Fach: ${subject}\nNote: ${grade}\nDatum: ${date}\nDetails: ${details}`);
         }
     });
+
+    // 7. Filter für Hausaufgaben-Tags (Klassenarbeit, Test, Notiz etc.)
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.js-hw-filter-btn');
+        if (!btn) return;
+
+        const filter = btn.getAttribute('data-filter');
+        const allBtns = document.querySelectorAll('.js-hw-filter-btn');
+        allBtns.forEach((b) => {
+            b.classList.add('btn-outline');
+            b.classList.remove('is-active');
+        });
+        btn.classList.remove('btn-outline');
+        btn.classList.add('is-active');
+
+        const items = document.querySelectorAll('.js-homework-item');
+        let visibleCount = 0;
+        items.forEach((item) => {
+            const itemType = item.getAttribute('data-type');
+            if (filter === 'all' || itemType === filter) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        const emptyNotice = document.getElementById('js-hw-filter-empty');
+        if (emptyNotice) {
+            emptyNotice.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+    });
+
