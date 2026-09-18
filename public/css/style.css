@@ -4425,6 +4425,11 @@ body {
     font-size: 0.9rem;
 }
 
+.school-sync-form {
+    display: inline-flex;
+    margin: 0;
+}
+
 @media (max-width: 768px) {
     .school-smart-summary-grid {
         grid-template-columns: 1fr;

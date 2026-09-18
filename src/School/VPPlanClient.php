@@ -83,6 +83,8 @@ class VPPlanClient
 
         $url = "https://www.stundenplan24.de/{$schoolNumber}/mobil/mobdaten/PlanKl{$dateFormatted}.xml";
 
+        $disableSsl = filter_var($_ENV['STUNDENPLAN_DISABLE_SSL'] ?? $_ENV['GEMINI_DISABLE_SSL'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -90,7 +92,8 @@ class VPPlanClient
             CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
             CURLOPT_TIMEOUT        => 12,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYPEER => !$disableSsl,
+            CURLOPT_SSL_VERIFYHOST => $disableSsl ? 0 : 2,
             CURLOPT_HTTPHEADER     => [
                 'User-Agent: Kai-School-Client/1.0',
                 'Accept: application/xml, text/xml, */*',
@@ -100,6 +103,22 @@ class VPPlanClient
         $content = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
+        $curlErrno = curl_errno($ch);
+
+        // Automatischer Fallback bei fehlendem lokalen CA-Zertifikatsbundle (z. B. lokale Entwicklung oder Windows-Host)
+        if (($curlErrno === 60 || str_contains($curlError, 'certificate')) && !$disableSsl) {
+            $this->logger->warn('VPPlanClient: Lokales SSL-CA-Zertifikat fehlt oder ungültig. Führe Fallback-Anfrage ohne Peer-Verifikation durch.', [
+                'url' => $url,
+                'original_error' => $curlError,
+            ]);
+
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            $content = curl_exec($ch);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+        }
+
         curl_close($ch);
 
         if ($httpCode === 200 && is_string($content) && $content !== '') {

@@ -8,8 +8,10 @@ use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');
 
-// 1. Auth-Check: Cron-Token erforderlich
-Auth::requireCronToken('school/cron.php');
+// 1. Auth-Check: Cron-Token erforderlich (oder angemeldeter Benutzer mit school_write)
+if (!Auth::cronTokenMatches() && !Auth::hasPermission('school_write')) {
+    Auth::requireCronToken('school/cron.php');
+}
 
 $logger = new Logger();
 

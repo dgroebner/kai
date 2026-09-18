@@ -1,2 +1,6 @@
 name: web
 color: "#346AB2"
+variables:
+  - secret: true
+    name: stundenplan24password
+    description: ""

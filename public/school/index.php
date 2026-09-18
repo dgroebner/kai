@@ -40,7 +40,19 @@ if ($requestedStudentId !== null && $requestedStudentId !== '') {
     $selectedStudentId = 'all';
 }
 
-// 4. Daten für das gewählte Datum laden
+// 4. Manueller Sofort-Abgleich direkt über den SchoolService
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sync') {
+    Auth::requireCsrfToken($_POST);
+    if (Auth::hasPermission('school_write')) {
+        $syncDate = filter_input(INPUT_POST, 'date', FILTER_DEFAULT) ?: $selectedDate;
+        $schoolService->syncDate($syncDate);
+        $studentParam = filter_input(INPUT_POST, 'student', FILTER_DEFAULT) ?: $selectedStudentId;
+        header('Location: index.php?date=' . urlencode($syncDate) . '&student=' . urlencode($studentParam));
+        exit;
+    }
+}
+
+// 5. Daten für das gewählte Datum laden
 $metadata = $planRepo->getPlanMetadata($selectedDate);
 $globalNotes = $planRepo->getGlobalNotes($selectedDate);
 $availableClasses = $planRepo->getAvailableClasses($selectedDate);
@@ -103,7 +115,13 @@ $nextLabel = ($nextSchoolDay === $today)
         </div>
         <div class="page-header-actions">
             <?php if (Auth::hasPermission('school_write')): ?>
-                <button type="button" class="btn btn-outline js-sync-school-btn" data-date="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">🔄 Aktualisieren</button>
+                <form method="POST" action="index.php" class="school-sync-form">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="action" value="sync">
+                    <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit" class="btn btn-outline">🔄 Aktualisieren</button>
+                </form>
             <?php endif; ?>
             <a href="../index.php" class="btn btn-outline">&larr; Dashboard</a>
         </div>
@@ -183,9 +201,13 @@ $nextLabel = ($nextSchoolDay === $today)
                             Zu heute (<?= date('d.m.') ?>) wechseln
                         </a>
                         <?php if (Auth::hasPermission('school_write')): ?>
-                            <button type="button" class="btn btn-outline js-sync-school-btn" data-date="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
-                                Jetzt prüfen
-                            </button>
+                            <form method="POST" action="index.php" class="school-sync-form">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="action" value="sync">
+                                <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+                                <button type="submit" class="btn btn-outline">Jetzt prüfen</button>
+                            </form>
                         <?php endif; ?>
                     </div>
                 </div>
