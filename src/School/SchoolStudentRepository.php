@@ -110,6 +110,10 @@ class SchoolStudentRepository
 
         $name = trim((string)($data['name'] ?? ''));
         $className = strtoupper(trim((string)($data['class_name'] ?? '')));
+        $excludedSubjects = isset($data['excluded_subjects']) ? trim((string)$data['excluded_subjects']) : null;
+        if ($excludedSubjects === '') {
+            $excludedSubjects = null;
+        }
         $userEmail = !empty($data['user_email']) ? strtolower(trim((string)$data['user_email'])) : null;
         $color = !empty($data['display_color']) ? trim((string)$data['display_color']) : '#2563eb';
         $sortOrder = isset($data['sort_order']) ? (int)$data['sort_order'] : 0;
@@ -120,6 +124,7 @@ class SchoolStudentRepository
                 UPDATE school_students 
                 SET name = :name,
                     class_name = :class_name,
+                    excluded_subjects = :excluded_subjects,
                     user_email = :user_email,
                     display_color = :display_color,
                     sort_order = :sort_order,
@@ -131,6 +136,7 @@ class SchoolStudentRepository
                 'id' => $id,
                 'name' => $name,
                 'class_name' => $className,
+                'excluded_subjects' => $excludedSubjects,
                 'user_email' => $userEmail,
                 'display_color' => $color,
                 'sort_order' => $sortOrder,
@@ -141,12 +147,13 @@ class SchoolStudentRepository
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO school_students (name, class_name, user_email, display_color, sort_order, is_active, created_at, updated_at)
-            VALUES (:name, :class_name, :user_email, :display_color, :sort_order, :is_active, NOW(), NOW())
+            INSERT INTO school_students (name, class_name, excluded_subjects, user_email, display_color, sort_order, is_active, created_at, updated_at)
+            VALUES (:name, :class_name, :excluded_subjects, :user_email, :display_color, :sort_order, :is_active, NOW(), NOW())
         ");
         $stmt->execute([
             'name' => $name,
             'class_name' => $className,
+            'excluded_subjects' => $excludedSubjects,
             'user_email' => $userEmail,
             'display_color' => $color,
             'sort_order' => $sortOrder,
@@ -154,6 +161,29 @@ class SchoolStudentRepository
         ]);
 
         return (int)$pdo->lastInsertId();
+    }
+
+    /**
+     * Aktualisiert ausschließlich die abgewählten Fächer eines Schülers.
+     *
+     * @param int $id ID des Schülers
+     * @param array<int, string> $excludedList Liste abgewählter Fächer
+     */
+    public function updateExcludedSubjects(int $id, array $excludedList): bool
+    {
+        $clean = array_values(array_unique(array_filter(array_map('trim', $excludedList))));
+        $value = !empty($clean) ? implode(',', $clean) : null;
+
+        $stmt = $this->db->getConnection()->prepare("
+            UPDATE school_students 
+            SET excluded_subjects = :excluded, updated_at = NOW() 
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            'id' => $id,
+            'excluded' => $value,
+        ]);
     }
 
     /**

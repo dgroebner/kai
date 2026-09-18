@@ -634,6 +634,7 @@ CREATE TABLE IF NOT EXISTS `school_students` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `class_name` VARCHAR(20) NOT NULL,
+    `excluded_subjects` VARCHAR(255) NULL,
     `user_email` VARCHAR(255) NULL,
     `display_color` VARCHAR(20) NOT NULL DEFAULT '#2563eb',
     `sort_order` INT NOT NULL DEFAULT 0,

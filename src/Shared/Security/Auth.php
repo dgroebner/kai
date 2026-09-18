@@ -61,6 +61,7 @@ final class Auth
                                             stripos($attrs, 'js-tab-btn') !== false ||
                                             stripos($attrs, 'js-open-details') !== false ||
                                             stripos($attrs, 'js-market-filter') !== false ||
+                                            stripos($attrs, 'school-config-toggle') !== false ||
                                             stripos($attrs, 'filter') !== false ||
                                             stripos($attrs, 'reset') !== false ||
                                             stripos($attrs, 'data-tab') !== false;
@@ -70,6 +71,12 @@ final class Auth
                                 return $matches[0];
                             }
                         }
+
+                        // Formular-Elemente für Schüler-Selbstverwaltung eigener Fächer explizit freigeben
+                        if (stripos($attrs, 'data-student-self-edit="1"') !== false) {
+                            return $matches[0];
+                        }
+
                         
                         // Spans und Links (A-Tags), die für Inline-Edits genutzt werden (z. B. E-Bons, Kreditkarten, Tags)
                         if ($tag === 'span' || $tag === 'a') {

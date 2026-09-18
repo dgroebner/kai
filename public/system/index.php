@@ -178,6 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'id' => $studentId,
                         'name' => trim($_POST['name'] ?? ''),
                         'class_name' => trim($_POST['class_name'] ?? ''),
+                        'excluded_subjects' => !empty($_POST['excluded_subjects']) ? trim($_POST['excluded_subjects']) : null,
                         'user_email' => !empty($_POST['user_email']) ? trim($_POST['user_email']) : null,
                         'display_color' => trim($_POST['display_color'] ?? '#2563eb'),
                         'is_active' => isset($_POST['is_active']) ? 1 : 0,
@@ -508,6 +509,7 @@ function getEventLabel(string $eventType): string
                             <tr>
                                 <th>Name</th>
                                 <th>Klasse</th>
+                                <th>Abgewählte Fächer</th>
                                 <th>Verknüpftes Google-Konto</th>
                                 <th>Farbe</th>
                                 <th style="text-align: center;">Status</th>
@@ -517,7 +519,7 @@ function getEventLabel(string $eventType): string
                         <tbody>
                             <?php if (empty($students)): ?>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">Noch keine Schüler angelegt.</td>
+                                    <td colspan="7" class="text-center text-muted">Noch keine Schüler angelegt.</td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($students as $student): ?>
@@ -527,6 +529,13 @@ function getEventLabel(string $eventType): string
                                         </td>
                                         <td data-label="Klasse">
                                             <span class="badge badge-outline"><?= htmlspecialchars($student['class_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                        </td>
+                                        <td data-label="Abgewählt">
+                                            <?php if (!empty($student['excluded_subjects'])): ?>
+                                                <small class="text-danger"><?= htmlspecialchars($student['excluded_subjects'], ENT_QUOTES, 'UTF-8') ?></small>
+                                            <?php else: ?>
+                                                <small class="text-muted">–</small>
+                                            <?php endif; ?>
                                         </td>
                                         <td data-label="E-Mail">
                                             <?php if (!empty($student['user_email'])): ?>
@@ -590,6 +599,10 @@ function getEventLabel(string $eventType): string
                             <div>
                                 <label for="st_color" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Badge-Farbe:</label>
                                 <input type="color" id="st_color" name="display_color" value="#0284c7" class="yield-input" style="width: 100%; height: 38px; padding: 2px;">
+                            </div>
+                            <div>
+                                <label for="st_excluded" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Abgewählte Fächer (optional):</label>
+                                <input type="text" id="st_excluded" name="excluded_subjects" class="yield-input" style="width: 100%;" placeholder="z. B. ETH, F (kommagetrennt)">
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem; padding-top: 1.5rem;">
                                 <input type="checkbox" id="st_active" name="is_active" value="1" checked style="transform: scale(1.3);">

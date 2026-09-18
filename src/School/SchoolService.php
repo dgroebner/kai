@@ -236,6 +236,20 @@ class SchoolService
         $items = $this->planRepo->getPlanItemsForClass($date, $className);
         $meta = $this->planRepo->getPlanMetadata($date);
 
+        // Fach-Filter: Abgewählte Fächer für diesen Schüler herausfiltern
+        $excludedRaw = (string)($student['excluded_subjects'] ?? '');
+        $excludedList = [];
+        if ($excludedRaw !== '') {
+            $excludedList = array_values(array_filter(array_map('trim', explode(',', strtoupper($excludedRaw)))));
+        }
+
+        if (!empty($excludedList)) {
+            $items = array_values(array_filter($items, static function (array $item) use ($excludedList): bool {
+                $subj = strtoupper(trim((string)($item['subject'] ?? '')));
+                return !in_array($subj, $excludedList, true);
+            }));
+        }
+
         if (empty($items)) {
             $dayLabel = $this->formatDateLabel($date);
             return [
@@ -248,6 +262,7 @@ class SchoolService
                 'deviations' => [],
                 'start_time' => null,
                 'end_time' => null,
+                'excluded_subjects' => $excludedList,
             ];
         }
 
@@ -292,6 +307,7 @@ class SchoolService
             'summary_sentence' => $summary,
             'deviations' => $deviations,
             'items' => $items,
+            'excluded_subjects' => $excludedList,
         ];
     }
 

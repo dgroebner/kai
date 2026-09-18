@@ -214,6 +214,27 @@ class SchoolPlanRepository
     }
 
     /**
+     * Liefert alle eindeutigen Fächer für eine bestimmte Klasse (alphabetisch sortiert).
+     *
+     * @return array<int, string>
+     */
+    public function getDistinctSubjectsForClass(string $className): array
+    {
+        $stmt = $this->db->getConnection()->prepare("
+            SELECT DISTINCT subject FROM school_plan_items 
+            WHERE UPPER(class_name) = UPPER(:class_name)
+              AND subject IS NOT NULL 
+              AND subject != '' 
+              AND subject != '---'
+            ORDER BY subject ASC
+        ");
+        $stmt->execute(['class_name' => trim($className)]);
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    }
+
+
+    /**
      * Liefert alle Daten, für die Pläne in der Datenbank gespeichert sind.
      *
      * @return array<int, string> Liste von YYYY-MM-DD

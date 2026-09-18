@@ -40,11 +40,31 @@ if ($requestedStudentId !== null && $requestedStudentId !== '') {
 }
 
 // 4. Manueller Sofort-Abgleich direkt über den SchoolService
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sync') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     Auth::requireCsrfToken($_POST);
-    if (Auth::hasPermission('school_write')) {
+
+    if ($_POST['action'] === 'sync' && Auth::hasPermission('school_write')) {
         $syncDate = filter_input(INPUT_POST, 'date', FILTER_DEFAULT) ?: $selectedDate;
         $schoolService->syncDate($syncDate);
+        $studentParam = filter_input(INPUT_POST, 'student', FILTER_DEFAULT) ?: $selectedStudentId;
+        header('Location: index.php?date=' . urlencode($syncDate) . '&student=' . urlencode($studentParam));
+        exit;
+    }
+
+    // 4b. Fächer-Filter für ein Schülerprofil speichern (Kind selbst oder Nutzer mit Schreibrechten)
+    if ($_POST['action'] === 'save_subjects') {
+        $targetStudentId = filter_input(INPUT_POST, 'student_id', FILTER_VALIDATE_INT);
+        if ($targetStudentId) {
+            $canEdit = Auth::hasPermission('school_write') 
+                || ($matchedStudent !== null && (int)$matchedStudent['id'] === $targetStudentId);
+
+            if ($canEdit) {
+                $rawExcluded = $_POST['excluded'] ?? [];
+                $excludedList = is_array($rawExcluded) ? $rawExcluded : [];
+                $studentRepo->updateExcludedSubjects($targetStudentId, $excludedList);
+            }
+        }
+        $syncDate = filter_input(INPUT_POST, 'date', FILTER_DEFAULT) ?: $selectedDate;
         $studentParam = filter_input(INPUT_POST, 'student', FILTER_DEFAULT) ?: $selectedStudentId;
         header('Location: index.php?date=' . urlencode($syncDate) . '&student=' . urlencode($studentParam));
         exit;
@@ -247,23 +267,96 @@ $nextLabel = ($nextSchoolDay === $today)
         <!-- Detaillierte Stundenpläne -->
         <?php if (!empty($displaySchedules)): ?>
             <?php foreach ($displaySchedules as $sched): ?>
-                <?php if ($sched['has_plan']): ?>
-                    <section class="card school-plan-card">
-                        <div class="school-card-header">
-                            <h2>
-                                Stundenplan: <?= htmlspecialchars($sched['student']['name'] ?? '', ENT_QUOTES, 'UTF-8') ?> 
-                                (Klasse <?= htmlspecialchars($sched['class_name'], ENT_QUOTES, 'UTF-8') ?>)
-                            </h2>
+                <?php 
+                $st = $sched['student'] ?? [];
+                $stId = (int)($st['id'] ?? 0);
+                $canEditStudent = Auth::hasPermission('school_write') || ($matchedStudent !== null && (int)$matchedStudent['id'] === $stId);
+                $distinctClassSubjects = $planRepo->getDistinctSubjectsForClass($sched['class_name']);
+                $currentExcluded = $sched['excluded_subjects'] ?? [];
+                ?>
+                <section class="card school-plan-card">
+                    <div class="school-card-header">
+                        <h2>
+                            Stundenplan: <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?> 
+                            (Klasse <?= htmlspecialchars($sched['class_name'], ENT_QUOTES, 'UTF-8') ?>)
+                        </h2>
+                        <div class="school-card-actions">
                             <div class="school-card-stats">
-                                <?php if ($sched['cancelled_count'] > 0): ?>
+                                <?php if (!empty($sched['cancelled_count']) && $sched['cancelled_count'] > 0): ?>
                                     <span class="badge school-badge-cancel"><?= $sched['cancelled_count'] ?> Ausfall</span>
                                 <?php endif; ?>
-                                <?php if ($sched['substitution_count'] > 0): ?>
+                                <?php if (!empty($sched['substitution_count']) && $sched['substitution_count'] > 0): ?>
                                     <span class="badge school-badge-subst"><?= $sched['substitution_count'] ?> Änderung</span>
                                 <?php endif; ?>
                             </div>
+                            <?php if ($canEditStudent): ?>
+                                <button type="button" class="btn btn-outline btn-sm school-config-toggle js-school-config-toggle" data-target="school-config-<?= $stId ?>">
+                                    ⚙️ Fächer anpassen
+                                </button>
+                            <?php endif; ?>
                         </div>
+                    </div>
 
+                    <!-- Fächer-Konfigurationspanel (ein-/ausklappbar) -->
+                    <?php if ($canEditStudent): ?>
+                        <div id="school-config-<?= $stId ?>" class="school-config-panel js-school-config-panel" style="display: none;">
+                            <form method="POST" action="index.php" class="school-subjects-form">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="action" value="save_subjects">
+                                <input type="hidden" name="student_id" value="<?= $stId ?>">
+                                <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+
+                                <div class="school-config-intro">
+                                    <strong>Belegte Fächer für <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>:</strong>
+                                    <p class="text-muted">
+                                        Wähle die Fächer ab, die du nicht belegst (z. B. Ethik statt Religion, Französisch statt Latein). 
+                                        Abgewählte Fächer werden aus deinem Stundenplan und deiner Schulschluss-Berechnung entfernt.
+                                    </p>
+                                </div>
+
+                                <div class="school-subjects-grid">
+                                    <?php if (empty($distinctClassSubjects)): ?>
+                                        <p class="text-muted">Noch keine Fächer für Klasse <?= htmlspecialchars($sched['class_name'], ENT_QUOTES, 'UTF-8') ?> erfasst.</p>
+                                    <?php else: ?>
+                                        <?php foreach ($distinctClassSubjects as $subj): ?>
+                                            <?php 
+                                            $isExcluded = in_array(strtoupper($subj), $currentExcluded, true);
+                                            ?>
+                                            <label class="school-subject-item <?= $isExcluded ? 'is-excluded' : 'is-included' ?>">
+                                                <input type="checkbox" 
+                                                       name="excluded[]" 
+                                                       value="<?= htmlspecialchars($subj, ENT_QUOTES, 'UTF-8') ?>" 
+                                                       <?= $isExcluded ? 'checked' : '' ?>
+                                                       data-student-self-edit="1"
+                                                       class="school-subject-checkbox">
+                                                <span class="school-subject-label">
+                                                    <span class="school-subject-name"><?= htmlspecialchars($subj, ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <span class="school-subject-status"><?= $isExcluded ? '❌ Abgewählt' : '✅ Belegt' ?></span>
+                                                </span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="school-config-actions">
+                                    <button type="submit" class="btn btn-save" data-student-self-edit="1">💾 Fächer speichern</button>
+                                    <button type="button" class="btn btn-outline js-school-config-close" data-target="school-config-<?= $stId ?>">Abbrechen</button>
+                                </div>
+                            </form>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($currentExcluded)): ?>
+                        <div class="school-excluded-notice">
+                            <span class="text-muted">Nicht belegte Fächer:</span>
+                            <?php foreach ($currentExcluded as $ex): ?>
+                                <span class="badge badge-outline school-badge-excluded"><?= htmlspecialchars($ex, ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($sched['has_plan']): ?>
                         <div class="table-responsive">
                             <table class="data-table stack-table">
                                 <thead>
@@ -329,8 +422,12 @@ $nextLabel = ($nextSchoolDay === $today)
                                 </tbody>
                             </table>
                         </div>
-                    </section>
-                <?php endif; ?>
+                    <?php else: ?>
+                        <p class="text-muted" style="padding: 1rem 0 0.5rem 0;">
+                            Für diesen Tag liegen noch keine Stunden für <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?> vor.
+                        </p>
+                    <?php endif; ?>
+                </section>
             <?php endforeach; ?>
         <?php endif; ?>
 
