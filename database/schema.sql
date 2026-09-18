@@ -735,3 +735,16 @@ CREATE TABLE IF NOT EXISTS `school_beste_journal` (
     FOREIGN KEY (`student_id`) REFERENCES `school_students`(`id`) ON DELETE CASCADE,
     INDEX `idx_journal_lesson_date` (`lesson_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `school_beste_notes` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `student_id` INT NOT NULL,
+    `lesson_date` DATE NOT NULL,
+    `subject` VARCHAR(255) NOT NULL,
+    `type_name` VARCHAR(255) NOT NULL,
+    `description` TEXT NOT NULL,
+    `api_note_id` BIGINT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `idx_student_note` (`student_id`, `api_note_id`),
+    FOREIGN KEY (`student_id`) REFERENCES `school_students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

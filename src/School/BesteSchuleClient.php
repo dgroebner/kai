@@ -49,6 +49,16 @@ class BesteSchuleClient
         return $this->request('GET', '/journal/lesson-student?filter[student]=' . urlencode($besteSchuleStudentId) . '&include=lesson');
     }
 
+    public function getUpcomingLessonsWithNotes(string $besteSchuleStudentId, string $fromDate, string $toDate): ?array
+    {
+        $path = '/journal/lessons?interpolate=true&append=time'
+              . '&include=notes.type,day,studentsCount,studentsPresentCount,allStudentsCount,statuses.student'
+              . '&filter[range]=' . urlencode("$fromDate,$toDate")
+              . '&filter[student]=' . urlencode($besteSchuleStudentId);
+        
+        return $this->request('GET', $path);
+    }
+
     private function request(string $method, string $path, array $data = []): ?array
     {
         if (!$this->isConfigured()) {

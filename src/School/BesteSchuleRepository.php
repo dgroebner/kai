@@ -68,6 +68,21 @@ class BesteSchuleRepository
         $stmt->execute($journalData);
     }
 
+    public function upsertNote(array $noteData): void
+    {
+        $pdo = $this->db->getConnection();
+        $stmt = $pdo->prepare("
+            INSERT INTO school_beste_notes (student_id, lesson_date, subject, type_name, description, api_note_id, created_at)
+            VALUES (:student_id, :lesson_date, :subject, :type_name, :description, :api_note_id, NOW())
+            ON DUPLICATE KEY UPDATE 
+                lesson_date = VALUES(lesson_date),
+                subject = VALUES(subject),
+                type_name = VALUES(type_name),
+                description = VALUES(description)
+        ");
+        $stmt->execute($noteData);
+    }
+
     // -------------------------------------------------------------------------
     // QUERIES (Lesen pro Kind/er)
     // -------------------------------------------------------------------------
@@ -140,6 +155,28 @@ class BesteSchuleRepository
                   AND j.student_id IN ($placeholders) 
                   AND (j.missing_homework = 1 OR j.missing_equipment = 1)
                 ORDER BY j.lesson_date DESC";
+
+        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getUpcomingNotes(array $studentIds): array
+    {
+        if (empty($studentIds)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+        $today = date('Y-m-d');
+
+        $params = array_values($studentIds);
+        array_unshift($params, $today);
+
+        $sql = "SELECT n.*, s.name as student_name, s.display_color 
+                FROM school_beste_notes n
+                JOIN school_students s ON n.student_id = s.id
+                WHERE n.lesson_date >= ?
+                  AND n.student_id IN ($placeholders)
+                ORDER BY n.lesson_date ASC, n.id ASC";
 
         $stmt = $this->db->getConnection()->prepare($sql);
         $stmt->execute($params);

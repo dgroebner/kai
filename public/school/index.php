@@ -108,26 +108,40 @@ if ($selectedStudentId === 'all') {
     $besteStudentIds = [(int)$selectedStudentId];
 }
 
-$allGrades = $besteRepo->getAllGrades($besteStudentIds);
 $groupedGrades = [];
-foreach ($allGrades as $g) {
-    $sId = $g['student_id'];
-    $sub = $g['subject'];
-    if (!isset($groupedGrades[$sId])) {
-        $groupedGrades[$sId] = [
-            'name' => $g['student_name'],
-            'color' => $g['display_color'],
-            'subjects' => []
-        ];
-    }
-    if (!isset($groupedGrades[$sId]['subjects'][$sub])) {
-        $groupedGrades[$sId]['subjects'][$sub] = [];
-    }
-    $groupedGrades[$sId]['subjects'][$sub][] = $g;
-}
+$besteAbsences = [];
+$besteHomework = [];
+$besteUpcomingNotes = [];
 
-$besteAbsences = $besteRepo->getUnexcusedAbsences($besteStudentIds);
-$besteHomework = $besteRepo->getMissingHomework($besteStudentIds, 14);
+if ($view === 'beste' || $view === 'plan') {
+    $bsRepo = new \Kai\Tools\School\BesteSchuleRepository();
+    $qIds = ($selectedStudentId === 'all') ? array_column($allStudents, 'id') : [(int)$selectedStudentId];
+    
+    if ($view === 'beste') {
+        $allGrades = $bsRepo->getAllGrades($qIds);
+        $besteAbsences = $bsRepo->getUnexcusedAbsences($qIds);
+        $besteHomework = $bsRepo->getMissingHomework($qIds, 14);
+
+        // Gruppiere Noten nach Kind -> Fach
+        foreach ($allGrades as $g) {
+            $sId = $g['student_id'];
+            $sub = $g['subject'];
+            if (!isset($groupedGrades[$sId])) {
+                $groupedGrades[$sId] = [
+                    'name' => $g['student_name'],
+                    'color' => $g['display_color'],
+                    'subjects' => []
+                ];
+            }
+            if (!isset($groupedGrades[$sId]['subjects'][$sub])) {
+                $groupedGrades[$sId]['subjects'][$sub] = [];
+            }
+            $groupedGrades[$sId]['subjects'][$sub][] = $g;
+        }
+    }
+    
+    $besteUpcomingNotes = $bsRepo->getUpcomingNotes($qIds);
+}
 
 // Datumslabels & Navigationstage für Buttons
 $prevDay = $schoolService->getPreviousSchoolDay($selectedDate);
@@ -245,6 +259,31 @@ $nextLabel = ($nextSchoolDay === $today)
 
     <main>
     <?php if ($view === 'plan'): ?>
+        
+        <?php if (!empty($besteUpcomingNotes)): ?>
+        <div class="card school-card school-card-alert" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h3>?? Anstehende Hausaufgaben / Notizen (Beste.Schule)</h3>
+            </div>
+            <div class="card-body">
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    <?php foreach ($besteUpcomingNotes as $note): ?>
+                    <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                        <strong><?= date('d.m. (D)', strtotime($note['lesson_date'])) ?> - <?= htmlspecialchars($note['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <?php if ($selectedStudentId === 'all'): ?>
+                            <span class="badge" style="background-color: <?= htmlspecialchars($note['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($note['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php endif; ?>
+                        <span class="badge" style="margin-left: 5px; background: #64748b;"><?= htmlspecialchars($note['type_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <div style="margin-top: 0.25rem;">
+                            <?= nl2br(htmlspecialchars($note['description'], ENT_QUOTES, 'UTF-8')) ?>
+                        </div>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Hinweis wenn noch kein Plan vorliegt -->
         <?php if ($metadata === null): ?>
             <div class="card school-empty-notice">

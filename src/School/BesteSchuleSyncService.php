@@ -101,6 +101,29 @@ class BesteSchuleSyncService
                     }
                 }
             }
+            
+            // 4. Hausaufgaben (Notes) für die nächsten 14 Tage abrufen
+            $fromDate = date('Y-m-d');
+            $toDate = date('Y-m-d', strtotime('+14 days'));
+            $lessonsWithNotes = $this->client->getUpcomingLessonsWithNotes($bsId, $fromDate, $toDate);
+            if (is_array($lessonsWithNotes)) {
+                if (!isset($stats['notes'])) $stats['notes'] = 0;
+                foreach ($lessonsWithNotes as $lesson) {
+                    if (empty($lesson['notes']) || !is_array($lesson['notes'])) continue;
+                    
+                    foreach ($lesson['notes'] as $note) {
+                        $this->repo->upsertNote([
+                            'student_id' => $kaiId,
+                            'lesson_date' => $lesson['day']['date'] ?? date('Y-m-d'),
+                            'subject' => $lesson['subject']['name'] ?? 'Unbekannt',
+                            'type_name' => $note['type']['name'] ?? 'Notiz',
+                            'description' => $note['description'] ?? '',
+                            'api_note_id' => (int)$note['id']
+                        ]);
+                        $stats['notes']++;
+                    }
+                }
+            }
         }
 
         $this->logger->info("BesteSchuleSyncService: Sync abgeschlossen", $stats);
