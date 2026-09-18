@@ -55,8 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'save_subjects') {
         $targetStudentId = filter_input(INPUT_POST, 'student_id', FILTER_VALIDATE_INT);
         if ($targetStudentId) {
-            $canEdit = Auth::hasPermission('school_write') 
-                || ($matchedStudent !== null && (int)$matchedStudent['id'] === $targetStudentId);
+            $canEdit = Auth::hasPermission('school_write')
+                    || ($matchedStudent !== null && (int)$matchedStudent['id'] === $targetStudentId);
 
             if ($canEdit) {
                 $rawExcluded = $_POST['excluded'] ?? [];
@@ -99,8 +99,8 @@ if ($selectedStudentId === 'all') {
 // Datumslabels für Buttons
 $todayLabel = 'Heute (' . date('d.m.') . ')';
 $nextLabel = ($nextSchoolDay === $today)
-    ? 'Folgetag'
-    : $schoolService->formatDateLabel($nextSchoolDay);
+        ? 'Folgetag'
+        : $schoolService->formatDateLabel($nextSchoolDay);
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -116,7 +116,7 @@ $nextLabel = ($nextSchoolDay === $today)
 <div class="container">
     <header class="page-header">
         <div>
-            <h1>🎒 Schule &amp; Vertretungsplan</h1>
+            <h1>🎒 Schule</h1>
             <?php if (!empty($metadata['plan_timestamp'])): ?>
                 <span class="last-update">Stand Plan: <?= htmlspecialchars($metadata['plan_timestamp'], ENT_QUOTES, 'UTF-8') ?></span>
             <?php endif; ?>
@@ -124,10 +124,13 @@ $nextLabel = ($nextSchoolDay === $today)
         <div class="page-header-actions">
             <?php if (Auth::hasPermission('school_write')): ?>
                 <form method="POST" action="index.php" class="school-sync-form">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="csrf_token"
+                           value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="action" value="sync">
-                    <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
-                    <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="date"
+                           value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="student"
+                           value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
                     <button type="submit" class="btn btn-outline">🔄 Aktualisieren</button>
                 </form>
             <?php endif; ?>
@@ -137,22 +140,24 @@ $nextLabel = ($nextSchoolDay === $today)
 
     <!-- Datum-Umschalter -->
     <div class="period-switcher school-period-switcher">
-        <a href="index.php?date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>" 
+        <a href="index.php?date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
            class="btn <?= $selectedDate === $today ? '' : 'btn-outline' ?>">
-           📅 <?= htmlspecialchars($todayLabel, ENT_QUOTES, 'UTF-8') ?>
+            📅 <?= htmlspecialchars($todayLabel, ENT_QUOTES, 'UTF-8') ?>
         </a>
 
         <?php if ($nextSchoolDay !== $today): ?>
-            <a href="index.php?date=<?= $nextSchoolDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>" 
+            <a href="index.php?date=<?= $nextSchoolDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
                class="btn <?= $selectedDate === $nextSchoolDay ? '' : 'btn-outline' ?>">
-               🚀 <?= htmlspecialchars(ucfirst($nextLabel), ENT_QUOTES, 'UTF-8') ?>
+                🚀 <?= htmlspecialchars(ucfirst($nextLabel), ENT_QUOTES, 'UTF-8') ?>
             </a>
         <?php endif; ?>
 
         <!-- Freie Datumsauswahl -->
         <form method="GET" action="index.php" class="school-date-picker-form">
-            <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
-            <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>" class="school-date-input" aria-label="Anderes Datum wählen">
+            <input type="hidden" name="student"
+                   value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>"
+                   class="school-date-input" aria-label="Anderes Datum wählen">
             <button type="submit" class="btn btn-outline school-date-submit-btn">Anzeigen</button>
         </form>
     </div>
@@ -161,17 +166,19 @@ $nextLabel = ($nextSchoolDay === $today)
     <div class="school-filter-bar">
         <div class="school-student-pills">
             <?php if ($matchedStudent === null): ?>
-                <a href="index.php?date=<?= urlencode($selectedDate) ?>&amp;student=all" 
+                <a href="index.php?date=<?= urlencode($selectedDate) ?>&amp;student=all"
                    class="school-pill <?= $selectedStudentId === 'all' ? 'active' : '' ?>">
-                   Alle Kinder
+                    Alle Kinder
                 </a>
             <?php endif; ?>
 
             <?php foreach ($allStudents as $st): ?>
-                <a href="index.php?date=<?= urlencode($selectedDate) ?>&amp;student=<?= $st['id'] ?>" 
+                <a href="index.php?date=<?= urlencode($selectedDate) ?>&amp;student=<?= $st['id'] ?>"
                    class="school-pill <?= $selectedStudentId === (string)$st['id'] ? 'active' : '' ?>">
-                   <span class="school-pill-dot" style="background-color: <?= htmlspecialchars($st['display_color'], ENT_QUOTES, 'UTF-8') ?>;"></span>
-                   <?= htmlspecialchars($st['name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($st['class_name'], ENT_QUOTES, 'UTF-8') ?>)
+                    <span class="school-pill-dot"
+                          style="background-color: <?= htmlspecialchars($st['display_color'], ENT_QUOTES, 'UTF-8') ?>;"></span>
+                    <?= htmlspecialchars($st['name'], ENT_QUOTES, 'UTF-8') ?>
+                    (<?= htmlspecialchars($st['class_name'], ENT_QUOTES, 'UTF-8') ?>)
                 </a>
             <?php endforeach; ?>
         </div>
@@ -183,21 +190,27 @@ $nextLabel = ($nextSchoolDay === $today)
             <div class="card school-empty-notice">
                 <div class="school-empty-icon">⏳</div>
                 <div class="school-empty-content">
-                    <h2>Kein Plan für <?= htmlspecialchars($schoolService->formatDateLabel($selectedDate), ENT_QUOTES, 'UTF-8') ?> verfügbar</h2>
+                    <h2>Kein Plan
+                        für <?= htmlspecialchars($schoolService->formatDateLabel($selectedDate), ENT_QUOTES, 'UTF-8') ?>
+                        verfügbar</h2>
                     <p class="text-muted">
-                        Die Schule hat für dieses Datum aktuell noch keinen Vertretungsplan bereitgestellt. 
+                        Die Schule hat für dieses Datum aktuell noch keinen Vertretungsplan bereitgestellt.
                         Vertretungspläne für den nächsten Schultag werden in der Regel nachmittags hochgeladen.
                     </p>
                     <div class="school-empty-actions">
-                        <a href="index.php?date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn">
+                        <a href="index.php?date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+                           class="btn">
                             Zu heute (<?= date('d.m.') ?>) wechseln
                         </a>
                         <?php if (Auth::hasPermission('school_write')): ?>
                             <form method="POST" action="index.php" class="school-sync-form">
-                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="csrf_token"
+                                       value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                                 <input type="hidden" name="action" value="sync">
-                                <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
-                                <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="date"
+                                       value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="student"
+                                       value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
                                 <button type="submit" class="btn btn-outline">Jetzt prüfen</button>
                             </form>
                         <?php endif; ?>
@@ -225,14 +238,16 @@ $nextLabel = ($nextSchoolDay === $today)
         <?php if (!empty($displaySchedules)): ?>
             <div class="school-smart-summary-grid">
                 <?php foreach ($displaySchedules as $sched): ?>
-                    <?php 
+                    <?php
                     $st = $sched['student'] ?? [];
                     $color = $st['display_color'] ?? '#2563eb';
                     ?>
-                    <div class="card school-hero-card" style="border-left: 3px solid <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
+                    <div class="card school-hero-card"
+                         style="border-left: 3px solid <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
                         <div class="school-hero-header">
                             <div class="school-hero-title">
-                                <span class="school-avatar" style="background-color: <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
+                                <span class="school-avatar"
+                                      style="background-color: <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
                                     <?= htmlspecialchars(mb_substr($st['name'] ?? 'K', 0, 1), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                                 <strong><?= htmlspecialchars($st['name'] ?? 'Kind', ENT_QUOTES, 'UTF-8') ?></strong>
@@ -267,7 +282,7 @@ $nextLabel = ($nextSchoolDay === $today)
         <!-- Detaillierte Stundenpläne -->
         <?php if (!empty($displaySchedules)): ?>
             <?php foreach ($displaySchedules as $sched): ?>
-                <?php 
+                <?php
                 $st = $sched['student'] ?? [];
                 $stId = (int)($st['id'] ?? 0);
                 $canEditStudent = Auth::hasPermission('school_write') || ($matchedStudent !== null && (int)$matchedStudent['id'] === $stId);
@@ -277,7 +292,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 <section class="card school-plan-card">
                     <div class="school-card-header">
                         <h2>
-                            Stundenplan: <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?> 
+                            Stundenplan: <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                             (Klasse <?= htmlspecialchars($sched['class_name'], ENT_QUOTES, 'UTF-8') ?>)
                         </h2>
                         <div class="school-card-actions">
@@ -290,7 +305,9 @@ $nextLabel = ($nextSchoolDay === $today)
                                 <?php endif; ?>
                             </div>
                             <?php if ($canEditStudent): ?>
-                                <button type="button" class="btn btn-outline btn-sm school-config-toggle js-school-config-toggle" data-target="school-config-<?= $stId ?>">
+                                <button type="button"
+                                        class="btn btn-outline btn-sm school-config-toggle js-school-config-toggle"
+                                        data-target="school-config-<?= $stId ?>">
                                     ⚙️ Fächer anpassen
                                 </button>
                             <?php endif; ?>
@@ -299,35 +316,44 @@ $nextLabel = ($nextSchoolDay === $today)
 
                     <!-- Fächer-Konfigurationspanel (ein-/ausklappbar) -->
                     <?php if ($canEditStudent): ?>
-                        <div id="school-config-<?= $stId ?>" class="school-config-panel js-school-config-panel" style="display: none;">
+                        <div id="school-config-<?= $stId ?>" class="school-config-panel js-school-config-panel"
+                             style="display: none;">
                             <form method="POST" action="index.php" class="school-subjects-form">
-                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="csrf_token"
+                                       value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                                 <input type="hidden" name="action" value="save_subjects">
                                 <input type="hidden" name="student_id" value="<?= $stId ?>">
-                                <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
-                                <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="date"
+                                       value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="student"
+                                       value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
 
                                 <div class="school-config-intro">
-                                    <strong>Belegte Fächer für <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>:</strong>
+                                    <strong>Belegte Fächer
+                                        für <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>:</strong>
                                     <p class="text-muted">
-                                        Wähle die Fächer ab, die du nicht belegst (z. B. Ethik statt Religion, Französisch statt Latein). 
-                                        Abgewählte Fächer werden aus deinem Stundenplan und deiner Schulschluss-Berechnung entfernt.
+                                        Wähle die Fächer ab, die du nicht belegst (z. B. Ethik statt Religion,
+                                        Französisch statt Latein).
+                                        Abgewählte Fächer werden aus deinem Stundenplan und deiner
+                                        Schulschluss-Berechnung entfernt.
                                     </p>
                                 </div>
 
                                 <div class="school-subjects-grid">
                                     <?php if (empty($distinctClassSubjects)): ?>
-                                        <p class="text-muted">Noch keine Fächer für Klasse <?= htmlspecialchars($sched['class_name'], ENT_QUOTES, 'UTF-8') ?> erfasst.</p>
+                                        <p class="text-muted">Noch keine Fächer für
+                                            Klasse <?= htmlspecialchars($sched['class_name'], ENT_QUOTES, 'UTF-8') ?>
+                                            erfasst.</p>
                                     <?php else: ?>
                                         <?php foreach ($distinctClassSubjects as $subj): ?>
-                                            <?php 
+                                            <?php
                                             $isExcluded = in_array(strtoupper($subj), $currentExcluded, true);
                                             ?>
                                             <label class="school-subject-item <?= $isExcluded ? 'is-excluded' : 'is-included' ?>">
-                                                <input type="checkbox" 
-                                                       name="excluded[]" 
-                                                       value="<?= htmlspecialchars($subj, ENT_QUOTES, 'UTF-8') ?>" 
-                                                       <?= $isExcluded ? 'checked' : '' ?>
+                                                <input type="checkbox"
+                                                       name="excluded[]"
+                                                       value="<?= htmlspecialchars($subj, ENT_QUOTES, 'UTF-8') ?>"
+                                                        <?= $isExcluded ? 'checked' : '' ?>
                                                        data-student-self-edit="1"
                                                        class="school-subject-checkbox">
                                                 <span class="school-subject-label">
@@ -340,8 +366,12 @@ $nextLabel = ($nextSchoolDay === $today)
                                 </div>
 
                                 <div class="school-config-actions">
-                                    <button type="submit" class="btn btn-save" data-student-self-edit="1">💾 Fächer speichern</button>
-                                    <button type="button" class="btn btn-outline js-school-config-close" data-target="school-config-<?= $stId ?>">Abbrechen</button>
+                                    <button type="submit" class="btn btn-save" data-student-self-edit="1">💾 Fächer
+                                        speichern
+                                    </button>
+                                    <button type="button" class="btn btn-outline js-school-config-close"
+                                            data-target="school-config-<?= $stId ?>">Abbrechen
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -358,15 +388,15 @@ $nextLabel = ($nextSchoolDay === $today)
 
                     <?php if ($sched['has_plan']): ?>
                         <div class="table-responsive">
-                            <table class="data-table stack-table">
+                            <table class="data-table school-timetable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 80px;">Stunde</th>
-                                        <th style="width: 130px;">Zeit</th>
-                                        <th>Fach</th>
-                                        <th>Lehrer</th>
-                                        <th>Raum</th>
-                                        <th>Information / Vertretung</th>
+                                        <th class="school-col-stunde">Stunde</th>
+                                        <th class="school-col-zeit">Zeit</th>
+                                        <th class="school-col-fach">Fach</th>
+                                        <th class="school-col-lehrer">Lehrer</th>
+                                        <th class="school-col-raum">Raum</th>
+                                        <th class="school-col-info">Information / Vertretung</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -380,41 +410,44 @@ $nextLabel = ($nextSchoolDay === $today)
                                         }
                                         ?>
                                         <tr class="<?= $rowClass ?>">
-                                            <td data-label="Stunde">
+                                            <td class="school-cell-stunde" data-label="Stunde">
                                                 <strong><?= (int)$item['lesson_number'] ?>. Std</strong>
                                             </td>
-                                            <td data-label="Zeit" class="text-muted">
-                                                <?= htmlspecialchars($item['start_time'], ENT_QUOTES, 'UTF-8') ?> – <?= htmlspecialchars($item['end_time'], ENT_QUOTES, 'UTF-8') ?>
+                                            <td class="school-cell-zeit" data-label="Zeit">
+                                                <span class="school-time-text"><?= htmlspecialchars($item['start_time'], ENT_QUOTES, 'UTF-8') ?> – <?= htmlspecialchars($item['end_time'], ENT_QUOTES, 'UTF-8') ?></span>
                                             </td>
-                                            <td data-label="Fach">
+                                            <td class="school-cell-fach" data-label="Fach">
                                                 <?php if (!empty($item['is_cancelled'])): ?>
                                                     <span class="school-item-cancelled">Entfall</span>
+                                                    <?php if (!empty($item['subject_original']) && $item['subject_original'] !== '---'): ?>
+                                                        <span class="school-orig-subject">(<?= htmlspecialchars($item['subject_original'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
-                                                    <strong><?= htmlspecialchars($item['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                                    <strong class="school-subject-name-cell"><?= htmlspecialchars($item['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
                                                     <?php if (!empty($item['course_group'])): ?>
                                                         <span class="school-course-tag"><?= htmlspecialchars($item['course_group'], ENT_QUOTES, 'UTF-8') ?></span>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
-                                            <td data-label="Lehrer">
+                                            <td class="school-cell-lehrer" data-label="Lehrer">
                                                 <?php if (!empty($item['teacher'])): ?>
                                                     <span class="school-teacher-tag"><?= htmlspecialchars($item['teacher'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <?php else: ?>
-                                                    <span class="text-muted">–</span>
+                                                    <span class="text-muted school-cell-empty">–</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td data-label="Raum">
+                                            <td class="school-cell-raum" data-label="Raum">
                                                 <?php if (!empty($item['room'])): ?>
                                                     <span class="school-room-tag"><?= htmlspecialchars($item['room'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <?php else: ?>
-                                                    <span class="text-muted">–</span>
+                                                    <span class="text-muted school-cell-empty">–</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td data-label="Info">
+                                            <td class="school-cell-info" data-label="Info">
                                                 <?php if (!empty($item['info'])): ?>
                                                     <span class="school-info-text"><?= htmlspecialchars($item['info'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <?php else: ?>
-                                                    <span class="text-muted">Planmäßig</span>
+                                                    <span class="text-muted school-cell-plan">Planmäßig</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
@@ -423,7 +456,7 @@ $nextLabel = ($nextSchoolDay === $today)
                             </table>
                         </div>
                     <?php else: ?>
-                        <p class="text-muted" style="padding: 1rem 0 0.5rem 0;">
+                        <p class="text-muted school-empty-schedule-text">
                             Für diesen Tag liegen noch keine Stunden für <?= htmlspecialchars($st['name'] ?? '', ENT_QUOTES, 'UTF-8') ?> vor.
                         </p>
                     <?php endif; ?>
