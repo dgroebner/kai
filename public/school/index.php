@@ -118,7 +118,18 @@ $nextLabel = ($nextSchoolDay === $today)
 <div class="container">
     <header class="page-header">
         <div>
-            <h1>🎒 Schule</h1>
+            <h1 style="display: flex; align-items: center; gap: 0.5rem;">
+                🎒 Schule
+                <?php if (!empty($metadata['school_week'])): ?>
+                    <?php 
+                    $weekDisplay = '';
+                    if ($metadata['school_week'] === '1') $weekDisplay = 'A-Woche';
+                    elseif ($metadata['school_week'] === '2') $weekDisplay = 'B-Woche';
+                    else $weekDisplay = 'Woche ' . $metadata['school_week'];
+                    ?>
+                    <span class="badge badge-outline" style="font-size: 0.85rem; letter-spacing: 0.5px;"><?= htmlspecialchars($weekDisplay, ENT_QUOTES, 'UTF-8') ?></span>
+                <?php endif; ?>
+            </h1>
             <?php if (!empty($metadata['plan_timestamp'])): ?>
                 <span class="last-update">Stand Plan: <?= htmlspecialchars($metadata['plan_timestamp'], ENT_QUOTES, 'UTF-8') ?></span>
             <?php endif; ?>
