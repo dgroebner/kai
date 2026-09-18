@@ -173,7 +173,7 @@ $nextLabel = ($nextSchoolDay === $today)
         <div>
             <h1 style="display: flex; align-items: center; gap: 0.5rem;">
                 🎒 Schule
-                <?php if (!empty($metadata['school_week'])): ?>
+                <?php if ($view === 'plan' && !empty($metadata['school_week'])): ?>
                     <?php 
                     $weekDisplay = '';
                     if ($metadata['school_week'] === '1') $weekDisplay = 'A-Woche';
@@ -183,7 +183,7 @@ $nextLabel = ($nextSchoolDay === $today)
                     <span class="badge badge-outline" style="font-size: 0.85rem; letter-spacing: 0.5px;"><?= htmlspecialchars($weekDisplay, ENT_QUOTES, 'UTF-8') ?></span>
                 <?php endif; ?>
             </h1>
-            <?php if (!empty($metadata['plan_timestamp'])): ?>
+            <?php if ($view === 'plan' && !empty($metadata['plan_timestamp'])): ?>
                 <span class="last-update">Stand Plan: <?= htmlspecialchars($metadata['plan_timestamp'], ENT_QUOTES, 'UTF-8') ?></span>
             <?php endif; ?>
         </div>
@@ -204,65 +204,85 @@ $nextLabel = ($nextSchoolDay === $today)
         </div>
     </header>
 
-    <!-- Datum-Umschalter -->
-    <div class="period-switcher school-period-switcher">
-        <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $prevDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
-           class="btn btn-outline" title="Vorherigen Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>)">
-            &larr; <?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>
-        </a>
-
-        <!-- Freie Datumsauswahl -->
-        <form method="GET" action="index.php" class="school-date-picker-form">
-            <input type="hidden" name="view" value="<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>">
-            <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
-            <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>"
-                   class="school-date-input" aria-label="Anderes Datum wählen">
-            <button type="submit" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.9rem;" title="Datum laden">🔍</button>
-        </form>
-
-        <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $nextDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
-           class="btn btn-outline" title="Nächsten Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?>)">
-            <?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?> &rarr;
-        </a>
-    </div>
-
-    <!-- Info-Bereich (Heute / Nächster Tag / Kind-Filter) -->
-    <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
-        <div class="card school-card school-card-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $selectedDate === $today ? '' : 'btn-outline' ?>" style="flex: 1; text-align: center; justify-content: center; min-width: 120px;">
-                    <?= $todayLabel ?>
-                </a>
-                <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $nextSchoolDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $selectedDate === $nextSchoolDay && $selectedDate !== $today ? '' : 'btn-outline' ?>" style="flex: 1; text-align: center; justify-content: center; min-width: 120px;">
-                    <?= $nextLabel ?>
-                </a>
-            </div>
-
-            <div class="school-student-filters" style="margin-top: 0.5rem;">
-                <span class="text-muted" style="font-size: 0.9rem;">Ansicht:</span>
-                <?php if ($matchedStudent === null): ?>
-                <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $selectedDate ?>&amp;student=all"
-                   class="btn <?= $selectedStudentId === 'all' ? '' : 'btn-outline' ?> btn-small"
-                   style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem;">Alle</a>
-                <?php endif; ?>
-                <?php foreach ($allStudents as $ast): ?>
-                    <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $selectedDate ?>&amp;student=<?= $ast['id'] ?>"
-                       class="btn <?= (string)$selectedStudentId === (string)$ast['id'] ? '' : 'btn-outline' ?> btn-small"
-                       style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem; border-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>;">
-                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-right: 4px;"></span>
-                        <?= htmlspecialchars($ast['name'], ENT_QUOTES, 'UTF-8') ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </div>
-
     <!-- Ansichten-Tabs -->
-    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
         <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">&#128197; Vertretungsplan</a>
         <a href="index.php?view=homework&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'homework' ? '' : 'btn-outline' ?>">&#128221; Hausaufgaben</a>
         <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Noten</a>
     </div>
+
+    <?php if ($view === 'plan'): ?>
+        <!-- Datum-Umschalter (nur Vertretungsplan) -->
+        <div class="period-switcher school-period-switcher">
+            <a href="index.php?view=plan&amp;date=<?= $prevDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+               class="btn btn-outline" title="Vorherigen Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>)">
+                &larr; <?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>
+            </a>
+
+            <!-- Freie Datumsauswahl -->
+            <form method="GET" action="index.php" class="school-date-picker-form">
+                <input type="hidden" name="view" value="plan">
+                <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>"
+                       class="school-date-input" aria-label="Anderes Datum wählen">
+                <button type="submit" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.9rem;" title="Datum laden">🔍</button>
+            </form>
+
+            <a href="index.php?view=plan&amp;date=<?= $nextDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+               class="btn btn-outline" title="Nächsten Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?>)">
+                <?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?> &rarr;
+            </a>
+        </div>
+
+        <!-- Info-Bereich (Heute / Nächster Tag / Kind-Filter für Plan) -->
+        <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
+            <div class="card school-card school-card-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    <a href="index.php?view=plan&amp;date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $selectedDate === $today ? '' : 'btn-outline' ?>" style="flex: 1; text-align: center; justify-content: center; min-width: 120px;">
+                        <?= $todayLabel ?>
+                    </a>
+                    <a href="index.php?view=plan&amp;date=<?= $nextSchoolDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $selectedDate === $nextSchoolDay && $selectedDate !== $today ? '' : 'btn-outline' ?>" style="flex: 1; text-align: center; justify-content: center; min-width: 120px;">
+                        <?= $nextLabel ?>
+                    </a>
+                </div>
+
+                <div class="school-student-filters" style="margin-top: 0.5rem;">
+                    <span class="text-muted" style="font-size: 0.9rem;">Ansicht:</span>
+                    <?php if ($matchedStudent === null): ?>
+                    <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=all"
+                       class="btn <?= $selectedStudentId === 'all' ? '' : 'btn-outline' ?> btn-small"
+                       style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem;">Alle</a>
+                    <?php endif; ?>
+                    <?php foreach ($allStudents as $ast): ?>
+                        <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= $ast['id'] ?>"
+                           class="btn <?= (string)$selectedStudentId === (string)$ast['id'] ? '' : 'btn-outline' ?> btn-small"
+                           style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem; border-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-right: 4px;"></span>
+                            <?= htmlspecialchars($ast['name'], ENT_QUOTES, 'UTF-8') ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <!-- Kind-Filter (für Hausaufgaben & Noten) -->
+        <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="text-muted" style="font-size: 0.9rem; font-weight: 500;">Kind:</span>
+            <?php if ($matchedStudent === null): ?>
+            <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $selectedDate ?>&amp;student=all"
+               class="btn <?= $selectedStudentId === 'all' ? '' : 'btn-outline' ?> btn-small"
+               style="border-radius: 20px; font-size: 0.85rem; padding: 0.15rem 0.75rem;">Alle</a>
+            <?php endif; ?>
+            <?php foreach ($allStudents as $ast): ?>
+                <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $selectedDate ?>&amp;student=<?= $ast['id'] ?>"
+                   class="btn <?= (string)$selectedStudentId === (string)$ast['id'] ? '' : 'btn-outline' ?> btn-small"
+                   style="border-radius: 20px; font-size: 0.85rem; padding: 0.15rem 0.75rem; border-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-right: 4px;"></span>
+                    <?= htmlspecialchars($ast['name'], ENT_QUOTES, 'UTF-8') ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
     <main>
     <?php if ($view === 'plan'): ?>
@@ -737,7 +757,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php if (count($groupedGrades) > 0): ?>
                 <div class="card school-card">
                     <div class="card-header">
-                        <h3>&#128202; Notenübersicht (Laufendes Schuljahr)</h3>
+                        <h3>&#128202; Notenübersicht</h3>
                     </div>
                     <div class="card-body">
                         <?php foreach ($groupedGrades as $sId => $studentData): ?>
