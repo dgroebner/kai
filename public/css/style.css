@@ -4407,10 +4407,24 @@ body {
     background: rgba(245, 158, 11, 0.08);
 }
 
+.school-row-free {
+    background: rgba(148, 163, 184, 0.05);
+}
+
 .school-item-cancelled {
     color: var(--color-red);
     text-decoration: line-through;
     font-weight: 600;
+}
+
+.school-item-free {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.school-info-free {
+    color: var(--color-blue) !important;
 }
 
 .school-teacher-tag,
@@ -4615,6 +4629,11 @@ body {
         background: rgba(245, 158, 11, 0.08) !important;
     }
 
+    .school-timetable tbody tr.school-row-free {
+        border-color: rgba(148, 163, 184, 0.2) !important;
+        background: rgba(148, 163, 184, 0.04) !important;
+    }
+
     .school-timetable td {
         display: inline-flex;
         align-items: center;
@@ -4650,7 +4669,8 @@ body {
         align-items: center;
     }
 
-    .school-timetable .school-row-cancelled .school-cell-empty {
+    .school-timetable .school-row-cancelled .school-cell-empty,
+    .school-timetable .school-row-free .school-cell-empty {
         display: none;
     }
 

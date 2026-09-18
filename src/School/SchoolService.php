@@ -13,6 +13,21 @@ use Throwable;
  */
 class SchoolService
 {
+    /**
+     * Standardtakt der Unterrichtsstunden an der Schule
+     */
+    public const STANDARD_LESSON_TIMES = [
+        1 => ['start' => '07:35', 'end' => '08:20'],
+        2 => ['start' => '08:25', 'end' => '09:10'],
+        3 => ['start' => '09:25', 'end' => '10:10'],
+        4 => ['start' => '10:20', 'end' => '11:05'],
+        5 => ['start' => '11:40', 'end' => '12:25'],
+        6 => ['start' => '12:35', 'end' => '13:20'],
+        7 => ['start' => '13:30', 'end' => '14:15'],
+        8 => ['start' => '14:25', 'end' => '15:10'],
+        9 => ['start' => '15:20', 'end' => '16:05'],
+    ];
+
     private VPPlanClient $client;
     private VPPlanParser $parser;
     private SchoolPlanRepository $planRepo;
@@ -234,6 +249,7 @@ class SchoolService
 
         $className = (string)$student['class_name'];
         $items = $this->planRepo->getPlanItemsForClass($date, $className);
+        $rawClassItems = $items;
         $meta = $this->planRepo->getPlanMetadata($date);
 
         // Semantische Bereinigung für bereits gespeicherte Pläne:
@@ -261,6 +277,9 @@ class SchoolService
 
         if (!empty($excludedList)) {
             $items = array_values(array_filter($items, static function (array $item) use ($excludedList): bool {
+                $subj = strtoupper(trim((string)($item['subject'] ?? '')));
+                $orig = strtoupper(trim((string)($item['subject_original'] ?? '')));
+
                 // Mögliche Identifikatoren für diese Stunde aufbauen:
                 // z. B. "WTH", "WTH (OK)", "WTH:OK", "WTH/OK"
                 $candidates = [];
@@ -372,6 +391,56 @@ class SchoolService
         $dayLabel = $this->formatDateLabel($date);
         $summary = $this->buildSummarySentence($student['name'], $dayLabel, $startTime, $endTime, $firstLessonNum, $lastLessonNum, $cancelledItems);
         $deviations = $this->buildDeviationTexts($items);
+
+        // Unterrichtsfreie Stunden vor Beginn des Unterrichts transparent als Hinweis einfügen
+        // (z. B. wenn 1. Stunde abgewähltes Fach ist oder regulär frei ist)
+        if ($firstLessonNum !== null && $firstLessonNum > 1) {
+            for ($h = 1; $h < $firstLessonNum; $h++) {
+                $hasHour = false;
+                foreach ($items as $it) {
+                    if ((int)($it['lesson_number'] ?? 0) === $h) {
+                        $hasHour = true;
+                        break;
+                    }
+                }
+
+                if (!$hasHour) {
+                    // Zeiten aus Rohdaten oder Standardtakt ermitteln
+                    $hStart = self::STANDARD_LESSON_TIMES[$h]['start'] ?? '07:35';
+                    $hEnd = self::STANDARD_LESSON_TIMES[$h]['end'] ?? '08:20';
+                    foreach ($rawClassItems as $raw) {
+                        if ((int)($raw['lesson_number'] ?? 0) === $h && !empty($raw['start_time']) && !empty($raw['end_time'])) {
+                            $hStart = $raw['start_time'];
+                            $hEnd = $raw['end_time'];
+                            break;
+                        }
+                    }
+
+                    $items[] = [
+                        'plan_date' => $date,
+                        'class_name' => $className,
+                        'lesson_number' => $h,
+                        'start_time' => $hStart,
+                        'end_time' => $hEnd,
+                        'subject' => 'Unterrichtsfrei',
+                        'subject_original' => null,
+                        'teacher' => null,
+                        'teacher_original' => null,
+                        'room' => null,
+                        'room_original' => null,
+                        'course_group' => null,
+                        'info' => "Unterrichtsbeginn erst zur {$firstLessonNum}. Stunde ({$startTime} Uhr)",
+                        'is_cancelled' => 0,
+                        'is_substitution' => 0,
+                        'is_room_change' => 0,
+                        'is_moved' => 0,
+                        'is_free_period' => 1,
+                    ];
+                }
+            }
+
+            usort($items, static fn($a, $b) => ((int)($a['lesson_number'] ?? 0)) <=> ((int)($b['lesson_number'] ?? 0)));
+        }
 
         return [
             'student' => $student,

@@ -409,7 +409,9 @@ $nextLabel = ($nextSchoolDay === $today)
                                     <?php foreach ($sched['items'] as $item): ?>
                                         <?php 
                                         $rowClass = '';
-                                        if (!empty($item['is_cancelled'])) {
+                                        if (!empty($item['is_free_period'])) {
+                                            $rowClass = 'school-row-free';
+                                        } elseif (!empty($item['is_cancelled'])) {
                                             $rowClass = 'school-row-cancelled';
                                         } elseif (!empty($item['is_substitution']) || !empty($item['is_moved'])) {
                                             $rowClass = 'school-row-changed';
@@ -423,7 +425,9 @@ $nextLabel = ($nextSchoolDay === $today)
                                                 <span class="school-time-text"><?= htmlspecialchars($item['start_time'], ENT_QUOTES, 'UTF-8') ?> – <?= htmlspecialchars($item['end_time'], ENT_QUOTES, 'UTF-8') ?></span>
                                             </td>
                                             <td class="school-cell-fach" data-label="Fach">
-                                                <?php if (!empty($item['is_cancelled'])): ?>
+                                                <?php if (!empty($item['is_free_period'])): ?>
+                                                    <span class="school-item-free">Unterrichtsfrei</span>
+                                                <?php elseif (!empty($item['is_cancelled'])): ?>
                                                     <span class="school-item-cancelled">Entfall</span>
                                                     <?php if (!empty($item['subject_original']) && $item['subject_original'] !== '---'): ?>
                                                         <span class="school-orig-subject">(<?= htmlspecialchars($item['subject_original'], ENT_QUOTES, 'UTF-8') ?>)</span>
@@ -451,7 +455,7 @@ $nextLabel = ($nextSchoolDay === $today)
                                             </td>
                                             <td class="school-cell-info" data-label="Info">
                                                 <?php if (!empty($item['info'])): ?>
-                                                    <span class="school-info-text"><?= htmlspecialchars($item['info'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <span class="school-info-text <?= !empty($item['is_free_period']) ? 'school-info-free' : '' ?>"><?= htmlspecialchars($item['info'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <?php else: ?>
                                                     <span class="text-muted school-cell-plan">Planmäßig</span>
                                                 <?php endif; ?>
