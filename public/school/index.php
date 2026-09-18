@@ -425,7 +425,7 @@ $nextLabel = ($nextSchoolDay === $today)
                                             $rowClass = 'school-row-free';
                                         } elseif (!empty($item['is_cancelled'])) {
                                             $rowClass = 'school-row-cancelled';
-                                        } elseif (!empty($item['is_substitution']) || !empty($item['is_moved'])) {
+                                        } elseif (!empty($item['is_substitution']) || !empty($item['is_moved']) || !empty($item['is_room_change'])) {
                                             $rowClass = 'school-row-changed';
                                         }
                                         ?>
@@ -460,7 +460,7 @@ $nextLabel = ($nextSchoolDay === $today)
                                             </td>
                                             <td class="school-cell-raum" data-label="Raum">
                                                 <?php if (!empty($item['room'])): ?>
-                                                    <span class="school-room-tag"><?= htmlspecialchars($item['room'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <span class="school-room-tag <?= !empty($item['is_room_change']) ? 'school-room-changed' : '' ?>"><?= htmlspecialchars($item['room'], ENT_QUOTES, 'UTF-8') ?></span>
                                                 <?php else: ?>
                                                     <span class="text-muted school-cell-empty">–</span>
                                                 <?php endif; ?>
@@ -468,6 +468,10 @@ $nextLabel = ($nextSchoolDay === $today)
                                             <td class="school-cell-info" data-label="Info">
                                                 <?php if (!empty($item['info'])): ?>
                                                     <span class="school-info-text <?= !empty($item['is_free_period']) ? 'school-info-free' : '' ?>"><?= htmlspecialchars($item['info'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php elseif (!empty($item['is_room_change'])): ?>
+                                                    <span class="school-info-text">Raumänderung</span>
+                                                <?php elseif (!empty($item['is_substitution']) || !empty($item['is_moved'])): ?>
+                                                    <span class="school-info-text">Geändert</span>
                                                 <?php else: ?>
                                                     <span class="text-muted school-cell-plan">Planmäßig</span>
                                                 <?php endif; ?>

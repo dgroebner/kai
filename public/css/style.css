@@ -4435,6 +4435,12 @@ body {
     font-size: 0.85rem;
 }
 
+.school-room-changed {
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+    background: transparent;
+}
+
 .school-course-tag {
     background: var(--color-blue-dim);
     color: var(--color-blue);
