@@ -650,7 +650,7 @@ $nextLabel = ($nextSchoolDay === $today)
                     </div>
                 </div>
 
-                <div class="school-smart-summary-grid js-homework-list">
+                <div class="school-notes-list js-homework-list">
                     <?php foreach ($besteUpcomingNotes as $note): ?>
                         <?php 
                         $daysDe = ['Mon' => 'Mo', 'Tue' => 'Di', 'Wed' => 'Mi', 'Thu' => 'Do', 'Fri' => 'Fr', 'Sat' => 'Sa', 'Sun' => 'So'];
@@ -713,7 +713,7 @@ $nextLabel = ($nextSchoolDay === $today)
                         <span>&#9888;&#65039;</span>
                         <span>Vergessen (letzte 14 Tage)</span>
                     </h3>
-                    <div class="school-smart-summary-grid">
+                    <div class="school-notes-list">
                         <?php foreach ($besteHomework as $hw): ?>
                             <?php $studentColor = $hw['display_color'] ?? '#dc2626'; ?>
                             <div class="card school-hero-card" style="border-left: 3px solid var(--danger-color);">

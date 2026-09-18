@@ -4284,6 +4284,13 @@ body {
     margin-bottom: 1.25rem;
 }
 
+.school-notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
 .school-hero-card {
     background: var(--bg-surface);
     padding: 0.75rem 1rem;
