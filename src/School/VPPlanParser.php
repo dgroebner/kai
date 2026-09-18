@@ -89,6 +89,26 @@ class VPPlanParser
                         continue;
                     }
 
+                    // Unterrichts-Lookup für Stammunterricht (UeNr -> [Fa, Le, Gr])
+                    $ueMap = [];
+                    if (isset($kl->Unterricht->Ue)) {
+                        foreach ($kl->Unterricht->Ue as $ue) {
+                            if (isset($ue->UeNr)) {
+                                $ueNr = trim((string)$ue->UeNr);
+                                $ueFa = trim((string)($ue->UeNr['UeFa'] ?? ''));
+                                $ueLe = trim((string)($ue->UeNr['UeLe'] ?? ''));
+                                $ueGr = trim((string)($ue->UeNr['UeGr'] ?? ''));
+                                if ($ueNr !== '') {
+                                    $ueMap[$ueNr] = [
+                                        'subject' => $ueFa !== '' ? $ueFa : null,
+                                        'teacher' => $ueLe !== '' ? $ueLe : null,
+                                        'group' => $ueGr !== '' ? $ueGr : null,
+                                    ];
+                                }
+                            }
+                        }
+                    }
+
                     if (!isset($kl->Pl->Std)) {
                         continue;
                     }
@@ -110,15 +130,31 @@ class VPPlanParser
                         $room = trim((string)($std->Ra ?? ''));
                         $roomChanged = isset($std->Ra['RaAe']);
 
-                        // Kursgruppe & Infotext
+                        // Kursgruppe & Infotext & Unterrichts-Nr
                         $courseGroup = trim((string)($std->Ku2 ?? ''));
                         $info = trim((string)($std->If ?? ''));
+                        $nr = trim((string)($std->Nr ?? ''));
+
+                        // Ursprüngliche Werte aus UeNr ermitteln
+                        $subjectOriginal = null;
+                        $teacherOriginal = null;
+                        if ($nr !== '' && isset($ueMap[$nr])) {
+                            $subjectOriginal = $ueMap[$nr]['subject'] ?? null;
+                            $teacherOriginal = $ueMap[$nr]['teacher'] ?? null;
+                        }
 
                         // Semantische Flags ermitteln
-                        $isCancelled = ($subject === '---' || stripos($info, 'fällt aus') !== false);
+                        $isCancelled = ($subject === '---' || $subject === '');
                         $isMoved = (stripos($info, 'verlegt') !== false || stripos($info, 'statt ') !== false);
-                        $isSubstitution = ($teacherChanged || stripos($info, 'für ') !== false || stripos($info, 'Vertretung') !== false);
+                        $isSubstitution = (!$isCancelled && ($subjectChanged || $teacherChanged || stripos($info, 'für ') !== false || stripos($info, 'Vertretung') !== false || stripos($info, 'fällt aus') !== false));
                         $isRoomChange = ($roomChanged && !$isCancelled);
+
+                        // Fallback für subject_original bei Entfall / Änderung, falls Nr nicht zugeordnet war:
+                        if (($subjectOriginal === null || $subjectOriginal === '') && ($subject === '---' || $subjectChanged || $isCancelled)) {
+                            if ($info !== '' && preg_match('/^([A-Za-z0-9:\/]+)\b/u', $info, $m)) {
+                                $subjectOriginal = $m[1];
+                            }
+                        }
 
                         $items[] = [
                             'plan_date' => $planDate,
@@ -127,9 +163,9 @@ class VPPlanParser
                             'start_time' => $beginn,
                             'end_time' => $ende,
                             'subject' => $subject,
-                            'subject_original' => null,
+                            'subject_original' => $subjectOriginal,
                             'teacher' => $teacher,
-                            'teacher_original' => null,
+                            'teacher_original' => $teacherOriginal,
                             'room' => $room,
                             'room_original' => null,
                             'course_group' => $courseGroup !== '' ? $courseGroup : null,

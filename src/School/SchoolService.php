@@ -236,6 +236,22 @@ class SchoolService
         $items = $this->planRepo->getPlanItemsForClass($date, $className);
         $meta = $this->planRepo->getPlanMetadata($date);
 
+        // Semantische Bereinigung für bereits gespeicherte Pläne:
+        // Wenn ein reguläres Fach (z. B. KU) eingetragen ist, findet Unterricht statt!
+        // Selbst wenn im Infotext "DE ... fällt aus" steht, ist das nur der Grund für Vertretung/Verlegung.
+        foreach ($items as &$item) {
+            $subj = trim((string)($item['subject'] ?? ''));
+            if ($subj !== '' && $subj !== '---') {
+                if (!empty($item['is_cancelled'])) {
+                    $item['is_cancelled'] = 0;
+                    $item['is_substitution'] = 1;
+                }
+            } else {
+                $item['is_cancelled'] = 1;
+            }
+        }
+        unset($item);
+
         // Fach-Filter: Abgewählte Fächer für diesen Schüler herausfiltern
         $excludedRaw = (string)($student['excluded_subjects'] ?? '');
         $excludedList = [];
@@ -245,8 +261,38 @@ class SchoolService
 
         if (!empty($excludedList)) {
             $items = array_values(array_filter($items, static function (array $item) use ($excludedList): bool {
+                // 1. Direktes Fach prüfen
                 $subj = strtoupper(trim((string)($item['subject'] ?? '')));
-                return !in_array($subj, $excludedList, true);
+                if ($subj !== '' && $subj !== '---' && in_array($subj, $excludedList, true)) {
+                    return false;
+                }
+
+                // 2. Ursprüngliches Fach prüfen (falls bekannt)
+                $orig = strtoupper(trim((string)($item['subject_original'] ?? '')));
+                if ($orig !== '' && $orig !== '---' && in_array($orig, $excludedList, true)) {
+                    return false;
+                }
+
+                // 3. Fallback für Entfall (wenn Fach '---' oder leer ist):
+                // Im Infotext steht z.B. "ETH Herr Kunick fällt aus" oder "PH Herr Schmidt fällt aus"
+                if ($subj === '---' || $subj === '') {
+                    $info = trim((string)($item['info'] ?? ''));
+                    if ($info !== '') {
+                        if (preg_match('/^([A-Za-z0-9:\/]+)\b/u', $info, $m)) {
+                            $infoSubj = strtoupper(trim($m[1]));
+                            if (in_array($infoSubj, $excludedList, true)) {
+                                return false;
+                            }
+                        }
+                        foreach ($excludedList as $ex) {
+                            if (preg_match('/\b' . preg_quote($ex, '/') . '\b/i', $info)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+
+                return true;
             }));
         }
 

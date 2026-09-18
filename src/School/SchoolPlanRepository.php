@@ -221,14 +221,25 @@ class SchoolPlanRepository
     public function getDistinctSubjectsForClass(string $className): array
     {
         $stmt = $this->db->getConnection()->prepare("
-            SELECT DISTINCT subject FROM school_plan_items 
-            WHERE UPPER(class_name) = UPPER(:class_name)
-              AND subject IS NOT NULL 
-              AND subject != '' 
-              AND subject != '---'
-            ORDER BY subject ASC
+            SELECT DISTINCT s FROM (
+                SELECT subject AS s FROM school_plan_items 
+                WHERE UPPER(class_name) = UPPER(:class_name1)
+                  AND subject IS NOT NULL 
+                  AND subject != '' 
+                  AND subject != '---'
+                UNION
+                SELECT subject_original AS s FROM school_plan_items 
+                WHERE UPPER(class_name) = UPPER(:class_name2)
+                  AND subject_original IS NOT NULL 
+                  AND subject_original != '' 
+                  AND subject_original != '---'
+            ) sub
+            ORDER BY s ASC
         ");
-        $stmt->execute(['class_name' => trim($className)]);
+        $stmt->execute([
+            'class_name1' => trim($className),
+            'class_name2' => trim($className),
+        ]);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
     }
