@@ -2,7 +2,7 @@
 // Service Worker für die kai PWA
 // Strategie: Network-First für HTML-Seiten, Cache-First für statische Assets
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = `kai-${CACHE_VERSION}`;
 
 // Statische Assets, die beim Install gecacht werden

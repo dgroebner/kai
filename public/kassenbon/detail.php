@@ -52,7 +52,7 @@ try {
 <div class="container">
     <header class="page-header">
         <div>
-            <h1>🛒 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small
+            <h1>🧾 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small
                         class="page-header-sub">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small>
             </h1>
             <div style="margin-top: 0.5rem;">

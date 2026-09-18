@@ -6,9 +6,8 @@
 
 | Modul | Einstiegspunkt | Beschreibung |
 |---|---|---|
-| 🛒 **eBons (Kassenbons)** | `kassenbon/index.php` | Automatische KI-Auswertung von Haushalts-Kassenbons per E-Mail (IMAP) mit Einzelpreis- und Kategorie-Erfassung über Google Gemini. Erfasste Bons werden automatisch mit der passenden Giro- oder Kreditkartenbuchung verknüpft (inkl. Bargeld-Erkennung). |
-| 📈 **Bon-Auswertung** | `kassenbon/auswertung.php` | Dashboard zur grafischen Visualisierung der erfassten Einkäufe nach Zeiträumen und Kategorien (Donut-Chart, Kategorie-Drilldown). |
-| 📝 **Einkaufsliste** | `einkaufsliste/index.php` | Intelligente Einkaufsliste mit Markt-Splitting (Rewe & Globus), Gang-Sortierung, Rezept-Analyse via KI und lernenden Vorschlägen aus Kassenbons. |
+| 🧾 **eBons (Kassenbons)** | `kassenbon/index.php` | Automatische KI-Auswertung von Haushalts-Kassenbons per E-Mail (IMAP) mit Einzelpreis- und Kategorie-Erfassung über Google Gemini. Erfasste Bons werden automatisch mit der passenden Giro- oder Kreditkartenbuchung verknüpft (inkl. Bargeld-Erkennung). Integrierte Bon-Auswertung über Tabs (`kassenbon/auswertung.php`). |
+| 🛒 **Einkaufsliste** | `einkaufsliste/index.php` | Intelligente Einkaufsliste mit Markt-Splitting (Rewe & Globus), Gang-Sortierung, Rezept-Analyse via KI und lernenden Vorschlägen aus Kassenbons. |
 | 🏦 **Finanzen (Bank)** | `bank/index.php` | Girokonto-Umsätze über die **comdirect REST API** (photoTAN-Push-Login), automatische Verschlagwortung per Regelsystem und KI-Tag-Klassifizierung, Tag-Auswertung nach Zeitraum sowie Erkennung wiederkehrender Verträge. |
 | 💳 **Kreditkarte** | `bank/creditcard.php` | Einlesen und Auswertung von Visa-Kreditkartenabrechnungen (PDF-Parsing per Gemini) inklusive Umsatzübersicht je Abrechnungszeitraum und automatischer Verknüpfung mit der Giro-Lastschrift. |
 | 📄 **Verträge** | `bank/contracts.php` | Verwaltung wiederkehrender Zahlungen (Verträge) mit eigenem Regel-Editor und Zuordnung der zugehörigen Buchungen. |

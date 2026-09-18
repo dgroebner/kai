@@ -55,9 +55,15 @@ try {
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
-        <h1>🛒 Meine eBons</h1>
+        <h1>🧾 Meine eBons</h1>
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
+
+    <!-- Tab-Switcher (eBons / Auswertung) -->
+    <div class="period-switcher sub-nav-tabs">
+        <a href="index.php" class="btn">🧾 eBons</a>
+        <a href="auswertung.php" class="btn btn-outline">📈 Auswertung</a>
+    </div>
 
     <section class="card">
         <div class="table-responsive">

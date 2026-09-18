@@ -132,6 +132,12 @@ try {
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
 
+    <!-- Tab-Switcher (eBons / Auswertung) -->
+    <div class="period-switcher sub-nav-tabs">
+        <a href="index.php" class="btn btn-outline">🧾 eBons</a>
+        <a href="auswertung.php" class="btn">📈 Auswertung</a>
+    </div>
+
     <!-- Schnelleinstellungen -->
     <div class="period-switcher">
         <a href="?type=woche&date=<?= htmlspecialchars($refDate) ?>"
