@@ -81,6 +81,11 @@ try {
         $schoolService = new \Kai\Tools\School\SchoolService();
         $schoolResults = $schoolService->syncTodayAndNext();
         $logger->info("Cronjob (mail.php): Schul-Vertretungspläne abgeglichen.", ['results' => $schoolResults]);
+
+        // Auch Beste Schule synchronisieren
+        $besteSync = new \Kai\Tools\School\BesteSchuleSyncService();
+        $besteResults = $besteSync->syncAll();
+        $logger->info("Cronjob (mail.php): Beste Schule abgeglichen.", ['results' => $besteResults]);
     } catch (Throwable $se) {
         $logger->warn("Cronjob (mail.php): Fehler beim Schuldaten-Abgleich.", ['error' => $se->getMessage()]);
     }

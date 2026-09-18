@@ -357,6 +357,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | IMAP-Postfach | Eingang von E-Bons und Abrechnungen | E-Mail-Inhalte und Anhänge |
 | Hosting-Anbieter | Server & Datenbank | Alle gespeicherten Daten |
 | stundenplan24.de (Indiware VPPlan24) | Abruf von Vertretungsplan-Daten | Schulnummer & HTTP Basic Auth Credentials |
+| beste.schule (Beste Schule API) | Abruf von Noten, Hausaufgaben und Fehlzeiten | OAuth Personal Access Token (Lesezugriff) |
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten (falls konfiguriert) |
 | Push-Dienst des Browsers (FCM/APNs) | Web-Push-Benachrichtigungen (via VAPID/RFC 8292) | Endpoint-URL der Subscription; kein Nachrichteninhalt – dieser wird Ende-zu-Ende verschlüsselt übermittelt |
 

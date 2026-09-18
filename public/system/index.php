@@ -559,6 +559,7 @@ function getEventLabel(string $eventType): string
                                                         data-id="<?= (int)$student['id'] ?>"
                                                         data-name="<?= htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8') ?>"
                                                         data-class="<?= htmlspecialchars($student['class_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-besteid="<?= htmlspecialchars($student['beste_schule_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                         data-email="<?= htmlspecialchars($student['user_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                         data-color="<?= htmlspecialchars($student['display_color'], ENT_QUOTES, 'UTF-8') ?>"
                                                         data-excluded="<?= htmlspecialchars($student['excluded_subjects'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
@@ -597,6 +598,10 @@ function getEventLabel(string $eventType): string
                             <div>
                                 <label for="st_class" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Klasse:</label>
                                 <input type="text" id="st_class" name="class_name" class="yield-input" style="width: 100%;" placeholder="z. B. 6A oder 8B" required>
+                            </div>
+                            <div>
+                                <label for="st_beste_id" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Beste Schule ID:</label>
+                                <input type="text" id="st_beste_id" name="beste_schule_id" class="yield-input" style="width: 100%;" placeholder="z. B. 12345">
                             </div>
                             <div>
                                 <label for="st_email" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Google-Konto (E-Mail):</label>

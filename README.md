@@ -184,7 +184,7 @@ Alle Tabellen liegen in `database/schema.sql` (Single Source of Truth, kein Migr
 | Bank | `bank_accounts`, `bank_giro_transactions`, `bank_cc_statements`, `bank_cc_transactions`, `bank_categories`, `bank_tags`, `bank_transaction_tags`, `bank_tag_rules`, `bank_contracts`, `bank_contract_rules` |
 | PV-Anlage | `pv_live`, `pv_telemetry`, `pv_forecast_daily`, `pv_forecast_hourly` |
 | Einkaufsliste | `market_categories`, `product_master`, `shopping_list_items`, `school_holidays` |
-| Schule | `school_students`, `school_plans`, `school_plan_items`, `school_global_notes` |
+| Schule | `school_students`, `school_plans`, `school_plan_items`, `school_global_notes`, `school_beste_grades`, `school_beste_absences`, `school_beste_journal` |
 | Wetter | `weather_sensor_live`, `weather_state`, `weather_forecast_daily`, `weather_forecast_hourly` |
 | Fahrzeug | `vehicle_state`, `vehicle_telemetry_log` |
 | System | `activity_log`, `system_settings`, `user_profiles`, `push_subscriptions`, `users`, `groups`, `group_permissions`, `user_groups` |
@@ -263,6 +263,7 @@ Jede Ausgabe von dynamischen Inhalten (z. B. vom Benutzer manipulierte Strings o
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten und Anlagenparameter |
 | IMAP-Postfach | Eingang von E-Bons und Abrechnungen | E-Mail-Inhalte und Anhänge |
 | stundenplan24.de (Indiware VPPlan24) | Abruf von Vertretungsplan-Daten | Schulnummer & HTTP Basic Auth Credentials |
+| beste.schule (Beste Schule API) | Abruf von Noten, Hausaufgaben und Fehlzeiten | OAuth Personal Access Token (Lesezugriff) |
 | Hosting-Anbieter | Server & Datenbank | Alle gespeicherten Daten |
 
 > Neue Drittanbieter sind zusätzlich in `AGENTS.md` (Abschnitt 7.3) einzutragen, bevor sie in den Code integriert werden.

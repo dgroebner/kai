@@ -46,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'sync' && Auth::hasPermission('school_write')) {
         $syncDate = filter_input(INPUT_POST, 'date', FILTER_DEFAULT) ?: $selectedDate;
         $schoolService->syncDate($syncDate);
+
+        // Auch Beste Schule synchronisieren (für alle Kinder mit Token)
+        $besteSync = new \Kai\Tools\School\BesteSchuleSyncService();
+        $besteSync->syncAll();
+
         $studentParam = filter_input(INPUT_POST, 'student', FILTER_DEFAULT) ?: $selectedStudentId;
         header('Location: index.php?date=' . urlencode($syncDate) . '&student=' . urlencode($studentParam));
         exit;
@@ -88,13 +93,23 @@ if ($metadata === null) {
 // Zeitplan-Daten aufbereiten
 $displaySchedules = [];
 
+// Beste Schule Daten vorbereiten
+$besteRepo = new \Kai\Tools\School\BesteSchuleRepository();
+$besteStudentIds = [];
+
 if ($selectedStudentId === 'all') {
     // Alle aktiven Kinder anzeigen
     $displaySchedules = $schoolService->getAllStudentsOverview($selectedDate);
+    $besteStudentIds = array_column($allStudents, 'id');
 } else {
     // Einzelnes Kind ausgewählt
     $displaySchedules = [$schoolService->getStudentSchedule((int)$selectedStudentId, $selectedDate)];
+    $besteStudentIds = [(int)$selectedStudentId];
 }
+
+$besteGrades = $besteRepo->getRecentGrades($besteStudentIds, 10);
+$besteAbsences = $besteRepo->getUnexcusedAbsences($besteStudentIds);
+$besteHomework = $besteRepo->getMissingHomework($besteStudentIds, 14);
 
 // Datumslabels & Navigationstage für Buttons
 $prevDay = $schoolService->getPreviousSchoolDay($selectedDate);
@@ -501,6 +516,88 @@ $nextLabel = ($nextSchoolDay === $today)
             <?php endforeach; ?>
         <?php endif; ?>
 
+        <?php if (count($besteGrades) > 0 || count($besteAbsences) > 0 || count($besteHomework) > 0): ?>
+            <h2 style="margin-top: 2rem;">Beste Schule</h2>
+            <div class="dashboard-grid">
+                
+                <?php if (count($besteHomework) > 0): ?>
+                <div class="card school-card school-card-alert">
+                    <div class="card-header">
+                        <h3>? Vergessen (letzte 14 Tage)</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <?php foreach ($besteHomework as $hw): ?>
+                            <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                                <strong><?= date('d.m.', strtotime($hw['lesson_date'])) ?> - <?= htmlspecialchars($hw['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                <?php if ($selectedStudentId === 'all'): ?>
+                                    <span class="badge" style="background-color: <?= htmlspecialchars($hw['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($hw['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php endif; ?>
+                                <br>
+                                <span class="text-muted">
+                                    <?= $hw['missing_homework'] ? 'Hausaufgabe vergessen' : '' ?>
+                                    <?= $hw['missing_homework'] && $hw['missing_equipment'] ? ' & ' : '' ?>
+                                    <?= $hw['missing_equipment'] ? 'Material vergessen' : '' ?>
+                                </span>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (count($besteGrades) > 0): ?>
+                <div class="card school-card">
+                    <div class="card-header">
+                        <h3>? Letzte Noten</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <?php foreach ($besteGrades as $g): ?>
+                            <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong><?= htmlspecialchars($g['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php if ($selectedStudentId === 'all'): ?>
+                                        <span class="badge" style="background-color: <?= htmlspecialchars($g['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($g['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php endif; ?>
+                                    <br>
+                                    <span class="text-muted" style="font-size: 0.85em;"><?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?> (<?= date('d.m.', strtotime($g['given_at'])) ?>)</span>
+                                </div>
+                                <div style="font-size: 1.2em; font-weight: bold; <?= !empty($g['read_status']) ? 'color: var(--text-color);' : 'color: var(--primary-color);' ?>">
+                                    <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
+                                </div>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (count($besteAbsences) > 0): ?>
+                <div class="card school-card <?= count($besteAbsences) > 0 ? 'school-card-alert' : '' ?>">
+                    <div class="card-header">
+                        <h3>? Unentschuldigte Fehlzeiten</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <?php foreach ($besteAbsences as $a): ?>
+                            <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                                <strong><?= date('d.m. H:i', strtotime($a['from_time'])) ?> - <?= date('H:i', strtotime($a['to_time'])) ?></strong>
+                                <?php if ($selectedStudentId === 'all'): ?>
+                                    <span class="badge" style="background-color: <?= htmlspecialchars($a['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($a['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php endif; ?>
+                                <br>
+                                <span class="text-muted"><?= htmlspecialchars($a['absence_type'], ENT_QUOTES, 'UTF-8') ?></span>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+            </div>
+        <?php endif; ?>
+
     </main>
 
     <footer class="app-footer">
@@ -512,3 +609,4 @@ $nextLabel = ($nextSchoolDay === $today)
 <script src="../js/school.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>
+

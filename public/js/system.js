@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const id = editBtn.getAttribute('data-id') || '';
             const name = editBtn.getAttribute('data-name') || '';
             const className = editBtn.getAttribute('data-class') || '';
+            const besteId = editBtn.getAttribute('data-besteid') || '';
             const email = editBtn.getAttribute('data-email') || '';
             const color = editBtn.getAttribute('data-color') || '#0284c7';
             const excluded = editBtn.getAttribute('data-excluded') || '';
@@ -122,6 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const idInput = document.getElementById('st_id');
             const nameInput = document.getElementById('st_name');
             const classInput = document.getElementById('st_class');
+            const besteIdInput = document.getElementById('st_beste_id');
             const emailSelect = document.getElementById('st_email');
             const colorInput = document.getElementById('st_color');
             const excludedInput = document.getElementById('st_excluded');
@@ -133,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (idInput) idInput.value = id;
             if (nameInput) nameInput.value = name;
             if (classInput) classInput.value = className;
+            if (besteIdInput) besteIdInput.value = besteId;
             if (emailSelect) emailSelect.value = email;
             if (colorInput) colorInput.value = color;
             if (excludedInput) excludedInput.value = excluded;

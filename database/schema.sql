@@ -634,6 +634,7 @@ CREATE TABLE IF NOT EXISTS `school_students` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `class_name` VARCHAR(20) NOT NULL,
+    `beste_schule_id` VARCHAR(50) NULL,
     `excluded_subjects` VARCHAR(255) NULL,
     `user_email` VARCHAR(255) NULL,
     `display_color` VARCHAR(20) NOT NULL DEFAULT '#2563eb',
@@ -691,3 +692,46 @@ CREATE TABLE IF NOT EXISTS `school_global_notes` (
     INDEX `idx_note_plan_date` (`plan_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ==========================================================================
+-- Domain: Beste Schule (Noten, Fehlzeiten, Journal)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `school_beste_grades` (
+    `id` INT PRIMARY KEY,
+    `student_id` INT NOT NULL,
+    `subject` VARCHAR(255) NOT NULL,
+    `collection_name` VARCHAR(255) NOT NULL,
+    `grade_value` VARCHAR(50) NOT NULL,
+    `given_at` DATE NOT NULL,
+    `read_status` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`student_id`) REFERENCES `school_students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `school_beste_absences` (
+    `id` INT PRIMARY KEY,
+    `student_id` INT NOT NULL,
+    `from_time` DATETIME NOT NULL,
+    `to_time` DATETIME NOT NULL,
+    `absence_type` VARCHAR(100) NOT NULL,
+    `is_unexcused` TINYINT(1) NOT NULL DEFAULT 0,
+    `note` TEXT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`student_id`) REFERENCES `school_students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `school_beste_journal` (
+    `id` INT PRIMARY KEY,
+    `student_id` INT NOT NULL,
+    `lesson_date` DATE NOT NULL,
+    `subject` VARCHAR(255) NOT NULL,
+    `missing_homework` TINYINT(1) NOT NULL DEFAULT 0,
+    `missing_equipment` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`student_id`) REFERENCES `school_students`(`id`) ON DELETE CASCADE,
+    INDEX `idx_journal_lesson_date` (`lesson_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
