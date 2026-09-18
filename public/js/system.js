@@ -102,4 +102,67 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
-});
+
+    // Event-Delegation für Schülerprofil bearbeiten (System -> Tab Schule)
+    document.addEventListener('click', function (e) {
+        const editBtn = e.target.closest('.js-edit-student');
+        if (editBtn) {
+            e.preventDefault();
+            const id = editBtn.getAttribute('data-id') || '';
+            const name = editBtn.getAttribute('data-name') || '';
+            const className = editBtn.getAttribute('data-class') || '';
+            const email = editBtn.getAttribute('data-email') || '';
+            const color = editBtn.getAttribute('data-color') || '#0284c7';
+            const excluded = editBtn.getAttribute('data-excluded') || '';
+            const active = editBtn.getAttribute('data-active') !== '0';
+
+            const form = document.getElementById('student-form');
+            if (!form) return;
+
+            const idInput = document.getElementById('st_id');
+            const nameInput = document.getElementById('st_name');
+            const classInput = document.getElementById('st_class');
+            const emailSelect = document.getElementById('st_email');
+            const colorInput = document.getElementById('st_color');
+            const excludedInput = document.getElementById('st_excluded');
+            const activeCheckbox = document.getElementById('st_active');
+            const title = document.getElementById('student-form-title');
+            const submitBtn = document.getElementById('st_submit_btn');
+            const cancelBtn = document.getElementById('st_cancel_btn');
+
+            if (idInput) idInput.value = id;
+            if (nameInput) nameInput.value = name;
+            if (classInput) classInput.value = className;
+            if (emailSelect) emailSelect.value = email;
+            if (colorInput) colorInput.value = color;
+            if (excludedInput) excludedInput.value = excluded;
+            if (activeCheckbox) activeCheckbox.checked = active;
+
+            if (title) title.textContent = `Schülerprofil bearbeiten: ${name}`;
+            if (submitBtn) submitBtn.textContent = '💾 Änderungen speichern';
+            if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+            const formCard = document.getElementById('student-form-card');
+            if (formCard) {
+                formCard.scrollIntoView({ behavior: 'smooth' });
+            }
+            return;
+        }
+
+        const cancelBtn = e.target.closest('#st_cancel_btn');
+        if (cancelBtn) {
+            e.preventDefault();
+            const form = document.getElementById('student-form');
+            if (form) form.reset();
+
+            const idInput = document.getElementById('st_id');
+            const title = document.getElementById('student-form-title');
+            const submitBtn = document.getElementById('st_submit_btn');
+
+            if (idInput) idInput.value = '';
+            if (title) title.textContent = 'Neuen Schüler anlegen';
+            if (submitBtn) submitBtn.textContent = '➕ Schülerprofil speichern';
+            cancelBtn.style.display = 'none';
+        }
+    });
+});

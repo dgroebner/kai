@@ -553,6 +553,18 @@ function getEventLabel(string $eventType): string
                                         </td>
                                         <td data-label="Aktionen" style="text-align: right;">
                                             <?php if (Auth::hasPermission('system_write')): ?>
+                                                <button type="button" 
+                                                        class="btn btn-outline js-edit-student" 
+                                                        style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin-right: 0.25rem;"
+                                                        data-id="<?= (int)$student['id'] ?>"
+                                                        data-name="<?= htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-class="<?= htmlspecialchars($student['class_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-email="<?= htmlspecialchars($student['user_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-color="<?= htmlspecialchars($student['display_color'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-excluded="<?= htmlspecialchars($student['excluded_subjects'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-active="<?= (int)$student['is_active'] ?>">
+                                                    ✏️ Bearbeiten
+                                                </button>
                                                 <form action="index.php?tab=school" method="POST" style="display: inline;" class="js-confirm-delete" data-confirm-message="Schülerprofil wirklich löschen?">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                                                     <input type="hidden" name="action" value="delete_student">
@@ -570,11 +582,12 @@ function getEventLabel(string $eventType): string
             </section>
 
             <?php if (Auth::hasPermission('system_write')): ?>
-                <section class="card">
-                    <h2>Neuen Schüler anlegen / bearbeiten</h2>
-                    <form action="index.php?tab=school" method="POST">
+                <section class="card" id="student-form-card">
+                    <h2 id="student-form-title">Neuen Schüler anlegen</h2>
+                    <form action="index.php?tab=school" method="POST" id="student-form">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="action" value="save_student">
+                        <input type="hidden" name="student_id" id="st_id" value="">
 
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                             <div>
@@ -610,7 +623,10 @@ function getEventLabel(string $eventType): string
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-save">➕ Schülerprofil speichern</button>
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <button type="submit" id="st_submit_btn" class="btn btn-save">➕ Schülerprofil speichern</button>
+                            <button type="button" id="st_cancel_btn" class="btn btn-outline" style="display: none;">Abbrechen</button>
+                        </div>
                     </form>
                 </section>
             <?php endif; ?>
