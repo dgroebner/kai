@@ -21,6 +21,7 @@ $allStudents = $studentRepo->getActive();
 // 2. Datumsauswahl (inkl. 14:00-Uhr- und Wochenend-Wechsellogik)
 $today = date('Y-m-d');
 $nextSchoolDay = $schoolService->determineEffectiveDate(null);
+$view = filter_input(INPUT_GET, 'view', FILTER_DEFAULT) ?: 'plan';
 $requestedDate = filter_input(INPUT_GET, 'date', FILTER_DEFAULT);
 
 // Wenn kein Datum explizit angefragt wurde: Standard auf den aktuellen Zieltag (heute oder nächster Schultag)
@@ -222,6 +223,65 @@ $nextLabel = ($nextSchoolDay === $today)
         </div>
     </div>
 
+    <!-- Ansichten-Tabs -->
+    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
+        <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">📋 Vertretungsplan</a>
+        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">📊 Leistungen & Fehlzeiten</a>
+    </div>
+
+    <!-- Datum-Umschalter -->
+    <?php if ($view === 'plan'): ?>
+    <div class="period-switcher school-period-switcher">
+        <a href="index.php?view=plan&amp;date=<?= $prevDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+           class="btn btn-outline" title="Vorherigen Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>)">
+            &larr; <?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>
+        </a>
+
+        <!-- Freie Datumsauswahl -->
+        <form method="GET" action="index.php" class="school-date-picker-form">
+            <input type="hidden" name="view" value="plan">
+            <input type="hidden" name="student"
+                   value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>"
+                   class="school-date-input" aria-label="Anderes Datum wählen">
+            <button type="submit" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.9rem;" title="Datum laden">🔍</button>
+        </form>
+
+        <a href="index.php?view=plan&amp;date=<?= $nextDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+           class="btn btn-outline" title="Nächsten Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?>)">
+            <?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?> &rarr;
+        </a>
+    </div>
+
+    <!-- Info-Bereich -->
+    <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
+        <div class="card school-card school-card-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <a href="index.php?view=plan&amp;date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $selectedDate === $today ? '' : 'btn-outline' ?>" style="flex: 1; text-align: center; justify-content: center; min-width: 120px;">
+                    <?= $todayLabel ?>
+                </a>
+                <a href="index.php?view=plan&amp;date=<?= $nextSchoolDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $selectedDate === $nextSchoolDay && $selectedDate !== $today ? '' : 'btn-outline' ?>" style="flex: 1; text-align: center; justify-content: center; min-width: 120px;">
+                    <?= $nextLabel ?>
+                </a>
+            </div>
+
+            <div class="school-student-filters" style="margin-top: 0.5rem;">
+                <span class="text-muted" style="font-size: 0.9rem;">Ansicht:</span>
+                <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=all"
+                   class="btn <?= $selectedStudentId === 'all' ? '' : 'btn-outline' ?> btn-small"
+                   style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem;">Alle</a>
+                <?php foreach ($allStudents as $ast): ?>
+                    <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= $ast['id'] ?>"
+                       class="btn <?= (string)$selectedStudentId === (string)$ast['id'] ? '' : 'btn-outline' ?> btn-small"
+                       style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem; border-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>;">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: <?= htmlspecialchars($ast['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-right: 4px;"></span>
+                        <?= htmlspecialchars($ast['name'], ENT_QUOTES, 'UTF-8') ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+
     <main>
         <!-- Hinweis wenn noch kein Plan vorliegt -->
         <?php if ($metadata === null): ?>
@@ -236,7 +296,7 @@ $nextLabel = ($nextSchoolDay === $today)
                         Vertretungspläne für den nächsten Schultag werden in der Regel nachmittags hochgeladen.
                     </p>
                     <div class="school-empty-actions">
-                        <a href="index.php?date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+                        <a href="index.php?view=plan&amp;date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
                            class="btn">
                             Zu heute (<?= date('d.m.') ?>) wechseln
                         </a>
@@ -516,14 +576,15 @@ $nextLabel = ($nextSchoolDay === $today)
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <?php if (count($besteGrades) > 0 || count($besteAbsences) > 0 || count($besteHomework) > 0): ?>
-            <h2 style="margin-top: 2rem;">Beste Schule</h2>
+        <?php elseif ($view === 'beste'): ?>
+        
+            <?php if (count($besteGrades) > 0 || count($besteAbsences) > 0 || count($besteHomework) > 0): ?>
             <div class="dashboard-grid">
                 
                 <?php if (count($besteHomework) > 0): ?>
                 <div class="card school-card school-card-alert">
                     <div class="card-header">
-                        <h3>? Vergessen (letzte 14 Tage)</h3>
+                        <h3>🚨 Vergessen (letzte 14 Tage)</h3>
                     </div>
                     <div class="card-body">
                         <ul style="list-style: none; padding: 0; margin: 0;">
@@ -549,7 +610,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php if (count($besteGrades) > 0): ?>
                 <div class="card school-card">
                     <div class="card-header">
-                        <h3>? Letzte Noten</h3>
+                        <h3>🎓 Letzte Noten</h3>
                     </div>
                     <div class="card-body">
                         <ul style="list-style: none; padding: 0; margin: 0;">
@@ -576,7 +637,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php if (count($besteAbsences) > 0): ?>
                 <div class="card school-card <?= count($besteAbsences) > 0 ? 'school-card-alert' : '' ?>">
                     <div class="card-header">
-                        <h3>? Unentschuldigte Fehlzeiten</h3>
+                        <h3>⚠️ Unentschuldigte Fehlzeiten</h3>
                     </div>
                     <div class="card-body">
                         <ul style="list-style: none; padding: 0; margin: 0;">
@@ -596,6 +657,16 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php endif; ?>
 
             </div>
+            <?php else: ?>
+                <div class="card school-empty-notice">
+                    <div class="school-empty-icon">✓</div>
+                    <div class="school-empty-content">
+                        <h2>Alles im grünen Bereich</h2>
+                        <p class="text-muted">Es gibt aktuell keine neuen Noten, keine fehlenden Hausaufgaben (letzte 14 Tage) und keine unentschuldigten Fehlzeiten.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+
         <?php endif; ?>
 
     </main>
@@ -609,4 +680,6 @@ $nextLabel = ($nextSchoolDay === $today)
 <script src="../js/school.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>
+
+
 

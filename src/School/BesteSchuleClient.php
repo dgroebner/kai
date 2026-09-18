@@ -69,6 +69,14 @@ class BesteSchuleClient
             ]
         ];
 
+        // Lokaler SSL-Bypass (wie im Rest von KAI für XAMPP/Localhost)
+        if (($_ENV['GEMINI_DISABLE_SSL'] ?? 'false') === 'true') {
+            $options['ssl'] = [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ];
+        }
+
         if ($method !== 'GET' && !empty($data)) {
             $options['http']['content'] = json_encode($data);
         }
