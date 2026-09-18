@@ -72,6 +72,22 @@ class BesteSchuleRepository
     // QUERIES (Lesen pro Kind/er)
     // -------------------------------------------------------------------------
 
+    public function getAllGrades(array $studentIds): array
+    {
+        if (empty($studentIds)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+        $sql = "SELECT g.*, s.name as student_name, s.display_color 
+                FROM school_beste_grades g
+                JOIN school_students s ON g.student_id = s.id
+                WHERE g.student_id IN ($placeholders)
+                ORDER BY s.name ASC, g.subject ASC, g.given_at DESC, g.id DESC";
+
+        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt->execute(array_values($studentIds));
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getRecentGrades(array $studentIds, int $limit = 10): array
     {
         if (empty($studentIds)) return [];

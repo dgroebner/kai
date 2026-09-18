@@ -108,7 +108,24 @@ if ($selectedStudentId === 'all') {
     $besteStudentIds = [(int)$selectedStudentId];
 }
 
-$besteGrades = $besteRepo->getRecentGrades($besteStudentIds, 10);
+$allGrades = $besteRepo->getAllGrades($besteStudentIds);
+$groupedGrades = [];
+foreach ($allGrades as $g) {
+    $sId = $g['student_id'];
+    $sub = $g['subject'];
+    if (!isset($groupedGrades[$sId])) {
+        $groupedGrades[$sId] = [
+            'name' => $g['student_name'],
+            'color' => $g['display_color'],
+            'subjects' => []
+        ];
+    }
+    if (!isset($groupedGrades[$sId]['subjects'][$sub])) {
+        $groupedGrades[$sId]['subjects'][$sub] = [];
+    }
+    $groupedGrades[$sId]['subjects'][$sub][] = $g;
+}
+
 $besteAbsences = $besteRepo->getUnexcusedAbsences($besteStudentIds);
 $besteHomework = $besteRepo->getMissingHomework($besteStudentIds, 14);
 
@@ -523,7 +540,7 @@ $nextLabel = ($nextSchoolDay === $today)
 
         <?php elseif ($view === 'beste'): ?>
         
-            <?php if (count($besteGrades) > 0 || count($besteAbsences) > 0 || count($besteHomework) > 0): ?>
+            <?php if (count($allGrades) > 0 || count($besteAbsences) > 0 || count($besteHomework) > 0): ?>
             <div class="dashboard-grid">
                 
                 <?php if (count($besteHomework) > 0): ?>
@@ -552,29 +569,39 @@ $nextLabel = ($nextSchoolDay === $today)
                 </div>
                 <?php endif; ?>
 
-                <?php if (count($besteGrades) > 0): ?>
+                <?php if (count($groupedGrades) > 0): ?>
                 <div class="card school-card">
                     <div class="card-header">
-                        <h3>🎓 Letzte Noten</h3>
+                        <h3>🎓 Notenübersicht (Laufendes Schuljahr)</h3>
                     </div>
                     <div class="card-body">
-                        <ul style="list-style: none; padding: 0; margin: 0;">
-                            <?php foreach ($besteGrades as $g): ?>
-                            <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <strong><?= htmlspecialchars($g['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                    <?php if ($selectedStudentId === 'all'): ?>
-                                        <span class="badge" style="background-color: <?= htmlspecialchars($g['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($g['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                    <?php endif; ?>
-                                    <br>
-                                    <span class="text-muted" style="font-size: 0.85em;"><?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?> (<?= date('d.m.', strtotime($g['given_at'])) ?>)</span>
-                                </div>
-                                <div style="font-size: 1.2em; font-weight: bold; <?= !empty($g['read_status']) ? 'color: var(--text-color);' : 'color: var(--primary-color);' ?>">
-                                    <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
-                                </div>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
+                        <?php foreach ($groupedGrades as $sId => $studentData): ?>
+                            <?php if ($selectedStudentId === 'all'): ?>
+                                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 2px solid <?= htmlspecialchars($studentData['color'], ENT_QUOTES, 'UTF-8') ?>; display: inline-block;">
+                                    <?= htmlspecialchars($studentData['name'], ENT_QUOTES, 'UTF-8') ?>
+                                </h4>
+                            <?php endif; ?>
+                            
+                            <table class="table-responsive" style="width: 100%; text-align: left; margin-bottom: 1rem; border-collapse: collapse;">
+                                <tbody>
+                                <?php foreach ($studentData['subjects'] as $subject => $grades): ?>
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.5rem 0; width: 40%; vertical-align: top;">
+                                            <strong><?= htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') ?></strong>
+                                        </td>
+                                        <td style="padding: 0.5rem 0; vertical-align: top; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                            <?php foreach ($grades as $g): ?>
+                                                <div title="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?> (<?= date('d.m.', strtotime($g['given_at'])) ?>)" 
+                                                     style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.5rem; font-weight: bold; <?= empty($g['read_status']) ? 'color: var(--primary-color); border-color: var(--primary-color);' : '' ?>">
+                                                    <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endforeach; ?>
                     </div>
                 </div>
                 <?php endif; ?>
