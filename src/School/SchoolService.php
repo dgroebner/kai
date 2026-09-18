@@ -286,7 +286,10 @@ class SchoolService
         $excludedRaw = (string)($student['excluded_subjects'] ?? '');
         $excludedList = [];
         if ($excludedRaw !== '') {
-            $excludedList = array_values(array_filter(array_map('trim', explode(',', strtoupper($excludedRaw)))));
+            $excludedList = array_values(array_filter(array_map(
+                static fn($e): string => preg_replace('/\s+/', ' ', trim(strtoupper($e))),
+                explode(',', $excludedRaw)
+            )));
         }
 
         if (!empty($excludedList)) {
@@ -305,12 +308,19 @@ class SchoolService
                 if ($subj !== '' && $subj !== '---') {
                     $candidates[] = $subj;
                     foreach ($teachers as $t) {
+                        $tClean = trim(rtrim($t, '.'));
                         $candidates[] = "{$subj} ({$t})";
+                        $candidates[] = "{$subj} ({$tClean})";
+                        $candidates[] = "{$subj}({$t})";
+                        $candidates[] = "{$subj}({$tClean})";
                         $candidates[] = "{$subj}:{$t}";
                         $candidates[] = "{$subj}/{$t}";
                     }
                     if ($courseGroup !== '') {
+                        $cgClean = trim(rtrim($courseGroup, '.'));
                         $candidates[] = "{$subj} ({$courseGroup})";
+                        $candidates[] = "{$subj} ({$cgClean})";
+                        $candidates[] = "{$subj}({$courseGroup})";
                         $candidates[] = "{$subj}:{$courseGroup}";
                     }
                 }
@@ -318,19 +328,27 @@ class SchoolService
                 if ($orig !== '' && $orig !== '---') {
                     $candidates[] = $orig;
                     foreach ($teachers as $t) {
+                        $tClean = trim(rtrim($t, '.'));
                         $candidates[] = "{$orig} ({$t})";
+                        $candidates[] = "{$orig} ({$tClean})";
+                        $candidates[] = "{$orig}({$t})";
+                        $candidates[] = "{$orig}({$tClean})";
                         $candidates[] = "{$orig}:{$t}";
                         $candidates[] = "{$orig}/{$t}";
                     }
                     if ($courseGroup !== '') {
+                        $cgClean = trim(rtrim($courseGroup, '.'));
                         $candidates[] = "{$orig} ({$courseGroup})";
+                        $candidates[] = "{$orig} ({$cgClean})";
+                        $candidates[] = "{$orig}({$courseGroup})";
                         $candidates[] = "{$orig}:{$courseGroup}";
                     }
                 }
 
                 // Prüfen ob einer der Kandidaten in der Ausschlussliste ist
                 foreach ($candidates as $cand) {
-                    if (in_array($cand, $excludedList, true)) {
+                    $candNorm = preg_replace('/\s+/', ' ', trim($cand));
+                    if (in_array($candNorm, $excludedList, true)) {
                         return false;
                     }
                 }
