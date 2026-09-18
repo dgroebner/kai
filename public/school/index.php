@@ -22,6 +22,9 @@ $allStudents = $studentRepo->getActive();
 $today = date('Y-m-d');
 $nextSchoolDay = $schoolService->determineEffectiveDate(null);
 $view = filter_input(INPUT_GET, 'view', FILTER_DEFAULT) ?: 'plan';
+if (!in_array($view, ['plan', 'beste', 'homework'])) {
+    $view = 'plan';
+}
 $requestedDate = filter_input(INPUT_GET, 'date', FILTER_DEFAULT);
 
 // Wenn kein Datum explizit angefragt wurde: Standard auf den aktuellen Zieltag (heute oder nächster Schultag)
@@ -252,38 +255,15 @@ $nextLabel = ($nextSchoolDay === $today)
     </div>
 
     <!-- Ansichten-Tabs -->
-    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
-        <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">📋 Vertretungsplan</a>
-        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">📊 Leistungen & Fehlzeiten</a>
+    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+        <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">&#128197; Vertretungsplan</a>
+        <a href="index.php?view=homework&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'homework' ? '' : 'btn-outline' ?>">&#128221; Hausaufgaben</a>
+        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Leistungen & Fehlzeiten</a>
     </div>
 
     <main>
     <?php if ($view === 'plan'): ?>
         
-        <?php if (!empty($besteUpcomingNotes)): ?>
-        <div class="card school-card school-card-alert" style="margin-bottom: 2rem;">
-            <div class="card-header">
-                <h3>?? Anstehende Hausaufgaben / Notizen (Beste.Schule)</h3>
-            </div>
-            <div class="card-body">
-                <ul style="list-style: none; padding: 0; margin: 0;">
-                    <?php foreach ($besteUpcomingNotes as $note): ?>
-                    <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
-                        <strong><?= date('d.m. (D)', strtotime($note['lesson_date'])) ?> - <?= htmlspecialchars($note['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
-                        <?php if ($selectedStudentId === 'all'): ?>
-                            <span class="badge" style="background-color: <?= htmlspecialchars($note['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($note['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                        <?php endif; ?>
-                        <span class="badge" style="margin-left: 5px; background: #64748b;"><?= htmlspecialchars($note['type_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                        <div style="margin-top: 0.25rem;">
-                            <?= nl2br(htmlspecialchars($note['description'], ENT_QUOTES, 'UTF-8')) ?>
-                        </div>
-                    </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <!-- Hinweis wenn noch kein Plan vorliegt -->
         <?php if ($metadata === null): ?>
             <div class="card school-empty-notice">
@@ -577,12 +557,55 @@ $nextLabel = ($nextSchoolDay === $today)
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <?php elseif ($view === 'beste'): ?>
-        
-            <?php if (count($allGrades) > 0 || count($besteAbsences) > 0 || count($besteHomework) > 0): ?>
+            <?php elseif ($view === 'homework'): ?>
+        <?php if (!empty($besteUpcomingNotes) || count($besteHomework) > 0): ?>
             <div class="dashboard-grid">
+                <?php if (!empty($besteUpcomingNotes)): ?>
+                
+        <div class="card school-card school-card-alert" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h3>&#128221; Anstehende Hausaufgaben / Notizen (Beste.Schule)</h3>
+            </div>
+            <div class="card-body">
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    <?php foreach ($besteUpcomingNotes as $note): ?>
+                                                <?php 
+                            $daysDe = ['Mon' => 'Mo', 'Tue' => 'Di', 'Wed' => 'Mi', 'Thu' => 'Do', 'Fri' => 'Fr', 'Sat' => 'Sa', 'Sun' => 'So'];
+                            $dayEn = date('D', strtotime($note['lesson_date']));
+                            $dayDe = $daysDe[$dayEn] ?? $dayEn;
+                            $dateLabel = date('d.m.', strtotime($note['lesson_date'])) . ' (' . $dayDe . ')';
+                            ?>
+                            <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                                <strong><?= $dateLabel ?> - <?= htmlspecialchars($note['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <?php if ($selectedStudentId === 'all'): ?>
+                            <span class="badge" style="background-color: <?= htmlspecialchars($note['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($note['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php endif; ?>
+                                                  <?php 
+                              $noteTypeLower = strtolower($note['type_name']);
+                              if (strpos($noteTypeLower, 'klassenarbeit') !== false || strpos($noteTypeLower, 'klausur') !== false) {
+                                  $typeColor = '#dc2626'; // Red
+                              } elseif (strpos($noteTypeLower, 'test') !== false || strpos($noteTypeLower, 'kontrolle') !== false || strpos($noteTypeLower, 'leistung') !== false) {
+                                  $typeColor = '#ea580c'; // Orange
+                              } elseif (strpos($noteTypeLower, 'info') !== false || strpos($noteTypeLower, 'mitbring') !== false) {
+                                  $typeColor = '#2563eb'; // Blue
+                              } else {
+                                  $typeColor = '#64748b'; // Slate
+                              }
+                          ?>
+                          <span class="badge" style="margin-left: 5px; background: <?= $typeColor ?>;"><?= htmlspecialchars($note['type_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <div style="margin-top: 0.25rem;">
+                            <?= nl2br(htmlspecialchars($note['description'], ENT_QUOTES, 'UTF-8')) ?>
+                        </div>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+        
+                <?php endif; ?>
                 
                 <?php if (count($besteHomework) > 0): ?>
+                
                 <div class="card school-card school-card-alert">
                     <div class="card-header">
                         <h3>🚨 Vergessen (letzte 14 Tage)</h3>
@@ -606,8 +629,23 @@ $nextLabel = ($nextSchoolDay === $today)
                         </ul>
                     </div>
                 </div>
+                
                 <?php endif; ?>
-
+            </div>
+        <?php else: ?>
+            <div class="card school-empty-notice">
+                <div class="school-empty-icon">&#128221;</div>
+                <div class="school-empty-content">
+                    <h2>Alles erledigt</h2>
+                    <p class="text-muted">Es stehen aktuell keine Hausaufgaben an und es wurde in den letzten 14 Tagen nichts vergessen.</p>
+                </div>
+            </div>
+        <?php endif; ?>
+    <?php elseif ($view === 'beste'): ?>
+        
+            <?php if (count($allGrades) > 0 || count($besteAbsences) > 0): ?>
+            <div class="dashboard-grid">
+                
                 <?php if (count($groupedGrades) > 0): ?>
                 <div class="card school-card">
                     <div class="card-header">
