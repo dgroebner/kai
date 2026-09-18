@@ -92,8 +92,8 @@ class BesteSchuleSyncService
                         $this->repo->upsertJournalEntry([
                             'id' => (int)$j['id'],
                             'student_id' => $kaiId,
-                            'lesson_date' => substr($j['time']['start'] ?? $j['lesson']['date'] ?? date('Y-m-d'), 0, 10),
-                            'subject' => 'Journal-Eintrag', // Kann man ggf. noch besser matchen, wenn die API das Fach direkt in lesson mitgibt
+                            'lesson_date' => substr($j['time']['start'] ?? $j['lesson']['date'] ?? $j['lesson']['day']['date'] ?? date('Y-m-d'), 0, 10),
+                            'subject' => $j['lesson']['subject']['name'] ?? 'Unbekanntes Fach',
                             'missing_homework' => $missingHw ? 1 : 0,
                             'missing_equipment' => $missingEq ? 1 : 0
                         ]);

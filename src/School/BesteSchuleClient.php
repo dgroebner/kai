@@ -46,7 +46,7 @@ class BesteSchuleClient
         // Journal/Hausaufgaben etc.
         // Die API hat "/journal/lesson-student", was die Teilnahme an einer Stunde darstellt.
         // missing_homework ist dort enthalten.
-        return $this->request('GET', '/journal/lesson-student?filter[student]=' . urlencode($besteSchuleStudentId) . '&include=lesson');
+        return $this->request('GET', '/journal/lesson-student?filter[student]=' . urlencode($besteSchuleStudentId) . '&include=lesson,lesson.subject');
     }
 
     private function request(string $method, string $path, array $data = []): ?array
