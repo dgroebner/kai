@@ -215,12 +215,19 @@ class SchoolPlanRepository
 
     /**
      * Liefert alle eindeutigen Fächer für eine bestimmte Klasse (alphabetisch sortiert).
+     * Wenn ein Fach in der Klasse parallel in Gruppen mit unterschiedlichen Lehrern
+     * unterrichtet wird (z. B. WTH mit Ok und Ep), werden die Gruppen differenziert
+     * als z. B. "WTH (Ok)" und "WTH (Ep)" aufgeführt.
      *
      * @return array<int, string>
      */
     public function getDistinctSubjectsForClass(string $className): array
     {
-        $stmt = $this->db->getConnection()->prepare("
+        $pdo = $this->db->getConnection();
+        $cleanClass = trim($className);
+
+        // 1. Basis-Fächer der Klasse abrufen
+        $stmt = $pdo->prepare("
             SELECT DISTINCT s FROM (
                 SELECT subject AS s FROM school_plan_items 
                 WHERE UPPER(class_name) = UPPER(:class_name1)
@@ -237,11 +244,76 @@ class SchoolPlanRepository
             ORDER BY s ASC
         ");
         $stmt->execute([
-            'class_name1' => trim($className),
-            'class_name2' => trim($className),
+            'class_name1' => $cleanClass,
+            'class_name2' => $cleanClass,
         ]);
+        $baseSubjects = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
-        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        // 2. Parallelgruppen ermitteln (gleiche Stunde, gleiches Datum, gleiches Fach, unterschiedliche Lehrer)
+        $parallelStmt = $pdo->prepare("
+            SELECT DISTINCT s, t FROM (
+                SELECT 
+                    UPPER(p1.subject) AS s,
+                    COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher) AS t
+                FROM school_plan_items p1
+                JOIN school_plan_items p2 ON p1.plan_date = p2.plan_date 
+                    AND UPPER(p1.class_name) = UPPER(p2.class_name)
+                    AND p1.lesson_number = p2.lesson_number
+                    AND UPPER(p1.subject) = UPPER(p2.subject)
+                    AND UPPER(COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher)) != UPPER(COALESCE(NULLIF(p2.teacher_original, ''), p2.teacher))
+                WHERE UPPER(p1.class_name) = UPPER(:class_name1)
+                  AND p1.subject IS NOT NULL AND p1.subject != '' AND p1.subject != '---'
+                  AND COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher) IS NOT NULL
+                  AND COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher) != ''
+                UNION
+                SELECT 
+                    UPPER(p1.subject_original) AS s,
+                    COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher) AS t
+                FROM school_plan_items p1
+                JOIN school_plan_items p2 ON p1.plan_date = p2.plan_date 
+                    AND UPPER(p1.class_name) = UPPER(p2.class_name)
+                    AND p1.lesson_number = p2.lesson_number
+                    AND UPPER(p1.subject_original) = UPPER(p2.subject_original)
+                    AND UPPER(COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher)) != UPPER(COALESCE(NULLIF(p2.teacher_original, ''), p2.teacher))
+                WHERE UPPER(p1.class_name) = UPPER(:class_name2)
+                  AND p1.subject_original IS NOT NULL AND p1.subject_original != '' AND p1.subject_original != '---'
+                  AND COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher) IS NOT NULL
+                  AND COALESCE(NULLIF(p1.teacher_original, ''), p1.teacher) != ''
+            ) psub
+            ORDER BY s ASC, t ASC
+        ");
+        $parallelStmt->execute([
+            'class_name1' => $cleanClass,
+            'class_name2' => $cleanClass,
+        ]);
+        $parallelRows = $parallelStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $parallelMap = [];
+        foreach ($parallelRows as $row) {
+            $s = strtoupper(trim((string)$row['s']));
+            $t = trim((string)$row['t']);
+            if ($s !== '' && $t !== '') {
+                $parallelMap[$s][$t] = true;
+            }
+        }
+
+        // 3. Wenn Parallelgruppen existieren, das Fach durch die spezifischen Gruppen ersetzen
+        $result = [];
+        foreach ($baseSubjects as $subj) {
+            $upperSubj = strtoupper(trim($subj));
+            if (!empty($parallelMap[$upperSubj]) && count($parallelMap[$upperSubj]) > 1) {
+                $teachers = array_keys($parallelMap[$upperSubj]);
+                sort($teachers, SORT_NATURAL | SORT_FLAG_CASE);
+                foreach ($teachers as $t) {
+                    $result[] = "{$subj} ({$t})";
+                }
+            } else {
+                $result[] = $subj;
+            }
+        }
+
+        sort($result, SORT_NATURAL | SORT_FLAG_CASE);
+        return array_values(array_unique($result));
     }
 
 

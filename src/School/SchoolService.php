@@ -261,20 +261,49 @@ class SchoolService
 
         if (!empty($excludedList)) {
             $items = array_values(array_filter($items, static function (array $item) use ($excludedList): bool {
-                // 1. Direktes Fach prüfen
-                $subj = strtoupper(trim((string)($item['subject'] ?? '')));
-                if ($subj !== '' && $subj !== '---' && in_array($subj, $excludedList, true)) {
-                    return false;
+                // Mögliche Identifikatoren für diese Stunde aufbauen:
+                // z. B. "WTH", "WTH (OK)", "WTH:OK", "WTH/OK"
+                $candidates = [];
+                $curTeacher = strtoupper(trim((string)($item['teacher'] ?? '')));
+                $origTeacher = strtoupper(trim((string)($item['teacher_original'] ?? '')));
+                $teachers = array_values(array_unique(array_filter([$curTeacher, $origTeacher])));
+                $courseGroup = strtoupper(trim((string)($item['course_group'] ?? '')));
+
+                if ($subj !== '' && $subj !== '---') {
+                    $candidates[] = $subj;
+                    foreach ($teachers as $t) {
+                        $candidates[] = "{$subj} ({$t})";
+                        $candidates[] = "{$subj}:{$t}";
+                        $candidates[] = "{$subj}/{$t}";
+                    }
+                    if ($courseGroup !== '') {
+                        $candidates[] = "{$subj} ({$courseGroup})";
+                        $candidates[] = "{$subj}:{$courseGroup}";
+                    }
                 }
 
-                // 2. Ursprüngliches Fach prüfen (falls bekannt)
-                $orig = strtoupper(trim((string)($item['subject_original'] ?? '')));
-                if ($orig !== '' && $orig !== '---' && in_array($orig, $excludedList, true)) {
-                    return false;
+                if ($orig !== '' && $orig !== '---') {
+                    $candidates[] = $orig;
+                    foreach ($teachers as $t) {
+                        $candidates[] = "{$orig} ({$t})";
+                        $candidates[] = "{$orig}:{$t}";
+                        $candidates[] = "{$orig}/{$t}";
+                    }
+                    if ($courseGroup !== '') {
+                        $candidates[] = "{$orig} ({$courseGroup})";
+                        $candidates[] = "{$orig}:{$courseGroup}";
+                    }
                 }
 
-                // 3. Fallback für Entfall (wenn Fach '---' oder leer ist):
-                // Im Infotext steht z.B. "ETH Herr Kunick fällt aus" oder "PH Herr Schmidt fällt aus"
+                // Prüfen ob einer der Kandidaten in der Ausschlussliste ist
+                foreach ($candidates as $cand) {
+                    if (in_array($cand, $excludedList, true)) {
+                        return false;
+                    }
+                }
+
+                // Fallback für Entfall ohne Fach/Lehrer-Zuordnung (wenn Fach '---' oder leer ist):
+                // Im Infotext steht z.B. "ETH Herr Kunick fällt aus" oder "WTH Frau Epperlein fällt aus"
                 if ($subj === '---' || $subj === '') {
                     $info = trim((string)($item['info'] ?? ''));
                     if ($info !== '') {
@@ -285,7 +314,14 @@ class SchoolService
                             }
                         }
                         foreach ($excludedList as $ex) {
-                            if (preg_match('/\b' . preg_quote($ex, '/') . '\b/i', $info)) {
+                            if (preg_match('/^([A-Za-z0-9:\/]+)\s*\(([^)]+)\)/u', $ex, $em)) {
+                                $exSubj = $em[1];
+                                $exTeacher = $em[2];
+                                if (preg_match('/\b' . preg_quote($exSubj, '/') . '\b/i', $info)
+                                    && preg_match('/\b' . preg_quote($exTeacher, '/') . '\b/i', $info)) {
+                                    return false;
+                                }
+                            } elseif (preg_match('/\b' . preg_quote($ex, '/') . '\b/i', $info)) {
                                 return false;
                             }
                         }

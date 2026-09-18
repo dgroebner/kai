@@ -348,6 +348,12 @@ $nextLabel = ($nextSchoolDay === $today)
                                         <?php foreach ($distinctClassSubjects as $subj): ?>
                                             <?php
                                             $isExcluded = in_array(strtoupper($subj), $currentExcluded, true);
+                                            if (!$isExcluded && preg_match('/^([A-Za-z0-9:\/]+)\s*\(/u', $subj, $m)) {
+                                                $baseSubj = strtoupper(trim($m[1]));
+                                                if (in_array($baseSubj, $currentExcluded, true)) {
+                                                    $isExcluded = true;
+                                                }
+                                            }
                                             ?>
                                             <label class="school-subject-item <?= $isExcluded ? 'is-excluded' : 'is-included' ?>">
                                                 <input type="checkbox"
