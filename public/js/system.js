@@ -91,4 +91,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     setInterval(pollNewActivities, 10000);
+
+    // Globaler Confirm-Handler für Lösch- und sensible Formulare
+    document.addEventListener('submit', function (e) {
+        const form = e.target;
+        if (form && form.classList && form.classList.contains('js-confirm-delete')) {
+            const msg = form.getAttribute('data-confirm-message') || 'Diesen Eintrag wirklich löschen?';
+            if (!confirm(msg)) {
+                e.preventDefault();
+            }
+        }
+    });
 });

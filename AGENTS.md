@@ -39,11 +39,15 @@ kai_root/
 │   │                   pwa-register.js registriert den Service Worker
 │   ├── shared/      ← Domainübergreifende Endpunkte (z. B. Cron-Trigger mail.php)
 │   │                   head-pwa.php: zentraler PWA-Head-Include für alle Seiten
+│   ├── assistant/   ← Webhook- und API-Einstiegspunkte für Sprachassistenten
 │   ├── bank/        ← Öffentliche Einstiegspunkte der Domain "Bank"
 │   ├── car/         ← Öffentliche Einstiegspunkte der Domain "Car"
+│   ├── einkaufsliste/ ← Öffentliche Einstiegspunkte der Domain "Einkaufsliste"
 │   ├── kassenbon/   ← Öffentliche Einstiegspunkte der Domain "Kassenbon"
 │   ├── pvcharge/    ← Öffentliche Einstiegspunkte der Domain "PVCharge"
-│   └── system/      ← Öffentliche Einstiegspunkte der Domain "System"
+│   ├── school/      ← Öffentliche Einstiegspunkte der Domain "School" (Stunden- & Vertretungsplan)
+│   ├── system/      ← Öffentliche Einstiegspunkte der Domain "System"
+│   └── weather/     ← Öffentliche Einstiegspunkte der Domain "Weather"
 │
 ├── src/             ← Servercode (nicht öffentlich erreichbar, PSR-4 autoloaded)
 │   ├── Shared/      ← Domainübergreifende Infrastruktur
@@ -52,14 +56,19 @@ kai_root/
 │   │   ├── Log/       ← Logger (Datei-Log), ActivityLogger (Aktivitäts-Log in der DB)
 │   │   ├── Mail/      ← IMAP-Zugriff
 │   │   └── Security/  ← Auth, Sanitizer, TokenEncryptionService
+│   ├── Assistant/   ← Orchestrierung für Sprachassistenten (Google Home / Home Assistant)
 │   ├── Bank/        ← Business-Logik der Domain "Bank" (inkl. Parser/)
 │   ├── Car/         ← Business-Logik der Domain "Car"
+│   ├── Einkaufsliste/ ← Business-Logik der Domain "Einkaufsliste"
 │   ├── Kassenbon/   ← Business-Logik der Domain "Kassenbon"
 │   ├── PVCharge/    ← Business-Logik der Domain "PVCharge"
-│   └── System/      ← Business-Logik der Domain "System" (Aktivitäts-Log, Einstellungen)
+│   ├── School/      ← Business-Logik der Domain "School" (VPPlan24-Client, Parser, Stundenplan)
+│   ├── System/      ← Business-Logik der Domain "System" (Aktivitäts-Log, Einstellungen)
+│   └── Weather/     ← Business-Logik der Domain "Weather"
 │
 ├── database/
-│   └── schema.sql   ← Datenbankschema (versioniert, kein Migrations-Tool)
+│   ├── schema.sql   ← Datenbankschema (versioniert, Basis-Initialisierung)
+│   └── migration.sql ← Inkrementelle Schema-Erweiterungen für Produktiv-Updates
 ├── concepts/        ← Konzept- und Planungsdokumente (Markdown); nicht deployed
 ├── storage/         ← Laufzeitdaten (Logs); nicht im Repo, nicht deployed
 ├── bootstrap.php    ← Globaler Einstiegspunkt: .env laden, Session starten
@@ -153,7 +162,8 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `Bank\BankGiroService` | `Kassenbon\ReceiptMatcher` | Nach dem Import neuer Umsätze werden offene Kassenbons den Buchungen zugeordnet. |
 | `Bank\CreditCardService` | `Kassenbon\ReceiptMatcher` | Analog für importierte Kreditkartenabrechnungen. |
 | `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
-| `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
+| `public/shared/mail.php` | `School\*` | Führt im asynchronen Cronjob den stündlichen Abgleich der Vertretungspläne mit aus. |
+| `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
 Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen);
 Rückwärts- oder Zirkelbezüge sind unzulässig.
@@ -168,6 +178,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | Einkaufsliste | `Kai\Tools\Einkaufsliste\` | `src/Einkaufsliste/` | `public/einkaufsliste/` |
 | Kassenbon | `Kai\Tools\Kassenbon\` | `src/Kassenbon/` | `public/kassenbon/` |
 | PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
+| School | `Kai\Tools\School\` | `src/School/` | `public/school/` |
 | System | `Kai\Tools\System\` | `src/System/` | `public/system/` |
 | Weather | `Kai\Tools\Weather\` | `src/Weather/` | `public/weather/` |
 
@@ -345,6 +356,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | comdirect REST API | Abruf von Girokonto-Umsätzen und Kontostand | Zugangsnummer & PIN beim Login, photoTAN-Freigabe; API-Tokens werden verschlüsselt gespeichert |
 | IMAP-Postfach | Eingang von E-Bons und Abrechnungen | E-Mail-Inhalte und Anhänge |
 | Hosting-Anbieter | Server & Datenbank | Alle gespeicherten Daten |
+| stundenplan24.de (Indiware VPPlan24) | Abruf von Vertretungsplan-Daten | Schulnummer & HTTP Basic Auth Credentials |
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten (falls konfiguriert) |
 | Push-Dienst des Browsers (FCM/APNs) | Web-Push-Benachrichtigungen (via VAPID/RFC 8292) | Endpoint-URL der Subscription; kein Nachrichteninhalt – dieser wird Ende-zu-Ende verschlüsselt übermittelt |
 

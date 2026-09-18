@@ -167,6 +167,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 new Logger()->error('system/index.php: Fehler beim Speichern der Benachrichtigungsprofile.', ['error' => $e->getMessage()]);
                 $errorMessage = "Fehler beim Speichern der Benachrichtigungen.";
             }
+        } elseif ($tab === 'school' || isset($_POST['action']) && in_array($_POST['action'], ['save_student', 'delete_student', 'save_school_settings', 'sync_school'], true)) {
+            $tab = 'school';
+            $studentRepo = new \Kai\Tools\School\SchoolStudentRepository();
+
+            if (isset($_POST['action']) && $_POST['action'] === 'save_student' && Auth::hasPermission('system_write')) {
+                try {
+                    $studentId = !empty($_POST['student_id']) ? (int)$_POST['student_id'] : null;
+                    $studentRepo->save([
+                        'id' => $studentId,
+                        'name' => trim($_POST['name'] ?? ''),
+                        'class_name' => trim($_POST['class_name'] ?? ''),
+                        'user_email' => !empty($_POST['user_email']) ? trim($_POST['user_email']) : null,
+                        'display_color' => trim($_POST['display_color'] ?? '#2563eb'),
+                        'is_active' => isset($_POST['is_active']) ? 1 : 0,
+                    ]);
+                    $successMessage = "Schülerprofil erfolgreich gespeichert.";
+                } catch (Throwable $e) {
+                    $errorMessage = "Fehler beim Speichern des Schülers: " . $e->getMessage();
+                }
+            } elseif (isset($_POST['action']) && $_POST['action'] === 'delete_student' && Auth::hasPermission('system_write')) {
+                try {
+                    $studentId = (int)($_POST['student_id'] ?? 0);
+                    if ($studentId > 0) {
+                        $studentRepo->delete($studentId);
+                        $successMessage = "Schülerprofil gelöscht.";
+                    }
+                } catch (Throwable $e) {
+                    $errorMessage = "Fehler beim Löschen des Schülers.";
+                }
+            } elseif (isset($_POST['action']) && $_POST['action'] === 'save_school_settings' && Auth::hasPermission('system_write')) {
+                try {
+                    $settingsRepo->set('school_number', trim($_POST['school_number'] ?? '10058903'), 'Stundenplan24 Schulnummer');
+                    $settingsRepo->set('school_username', trim($_POST['school_username'] ?? ''), 'Stundenplan24 Benutzername');
+                    if (!empty($_POST['school_password'])) {
+                        $settingsRepo->set('school_password', trim($_POST['school_password']), 'Stundenplan24 Kennwort');
+                    }
+                    $successMessage = "Schuleinstellungen erfolgreich gespeichert.";
+                } catch (Throwable $e) {
+                    $errorMessage = "Fehler beim Speichern der Schuleinstellungen.";
+                }
+            } elseif (isset($_POST['action']) && $_POST['action'] === 'sync_school' && Auth::hasPermission('system_write')) {
+                try {
+                    $schoolService = new \Kai\Tools\School\SchoolService();
+                    $res = $schoolService->syncTodayAndNext();
+                    $successMessage = "Synchronisation erfolgreich durchgeführt (" . count($res) . " Tage geprüft).";
+                } catch (Throwable $e) {
+                    $errorMessage = "Fehler bei der Synchronisation: " . $e->getMessage();
+                }
+            }
         }
     }
 }
@@ -174,6 +223,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Daten für die jeweiligen Tabs laden
 $settings = $settingsRepo->getAll();
 $userPreferences = $userProfileRepo->getPreferences($currentUserEmail);
+
+$schoolStudentRepo = new \Kai\Tools\School\SchoolStudentRepository();
+$students = $schoolStudentRepo->getAll();
+$groupRepoForUsers = new GroupRepository();
+$systemUsers = $groupRepoForUsers->getAllUsers();
 
 $groups = [];
 $users = [];
@@ -220,6 +274,7 @@ $csrfToken = Auth::csrfToken();
 function getEventIcon(string $eventType): string
 {
     return match ($eventType) {
+        'school_plan_updated' => '🎒',
         'car_telemetry_loaded' => '🚐',
         'pv_forecast_loaded' => '☀️',
         'receipt_created' => '🧾',
@@ -234,6 +289,7 @@ function getEventIcon(string $eventType): string
 function getEventLabel(string $eventType): string
 {
     return match ($eventType) {
+        'school_plan_updated' => 'Schul-Vertretungsplan aktualisiert',
         'receipt_created' => 'Neuer E-Bon erfasst',
         'creditcard_statement_created' => 'Neue Kreditkartenabrechnung erfasst',
         'bank_data_imported' => 'Neue Bankdaten importiert',
@@ -270,6 +326,8 @@ function getEventLabel(string $eventType): string
             Benachrichtigungen</a>
         <a href="index.php?tab=settings" class="btn <?= $tab === 'settings' ? '' : 'btn-outline' ?>">🛠️
             System-Einstellungen</a>
+        <a href="index.php?tab=school" class="btn <?= $tab === 'school' ? '' : 'btn-outline' ?>">🎒
+            Schule</a>
         <?php if (Auth::hasPermission('system_write')): ?>
             <a href="index.php?tab=roles" class="btn <?= $tab === 'roles' ? '' : 'btn-outline' ?>">👥
                 Rollen & Rechte</a>
@@ -394,6 +452,155 @@ function getEventLabel(string $eventType): string
                     </div>
                 </form>
             </section>
+        <?php elseif ($tab === 'school'): ?>
+            <!-- Tab: Schule & Schülerverwaltung -->
+            <section class="card" style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <h2>🎒 Zugangsdaten Stundenplan24</h2>
+                        <p class="text-muted">Zugangsdaten der Schule für den automatischen Abruf der Vertretungspläne via HTTP Basic Auth.</p>
+                    </div>
+                    <?php if (Auth::hasPermission('system_write')): ?>
+                        <form action="index.php?tab=school" method="POST">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="action" value="sync_school">
+                            <button type="submit" class="btn btn-outline">🔄 Jetzt synchronisieren</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+
+                <form action="index.php?tab=school" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="action" value="save_school_settings">
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label for="school_number" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Schulnummer:</label>
+                            <input type="text" id="school_number" name="school_number" value="<?= htmlspecialchars($settingsRepo->get('school_number', '10058903'), ENT_QUOTES, 'UTF-8') ?>" class="yield-input" style="width: 100%;" required>
+                        </div>
+                        <div>
+                            <label for="school_username" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Benutzername:</label>
+                            <input type="text" id="school_username" name="school_username" value="<?= htmlspecialchars($settingsRepo->get('school_username', ''), ENT_QUOTES, 'UTF-8') ?>" class="yield-input" style="width: 100%;" placeholder="z. B. schueler">
+                        </div>
+                        <div>
+                            <label for="school_password" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Kennwort:</label>
+                            <input type="password" id="school_password" name="school_password" value="" class="yield-input" style="width: 100%;" placeholder="<?= $settingsRepo->get('school_password', '') !== '' ? '•••••••• (gespeichert)' : 'Kennwort eingeben' ?>">
+                        </div>
+                    </div>
+
+                    <?php if (Auth::hasPermission('system_write')): ?>
+                        <button type="submit" class="btn btn-save">💾 Schuleinstellungen speichern</button>
+                    <?php endif; ?>
+                </form>
+            </section>
+
+            <!-- Schüler-Profile verwalten -->
+            <section class="card" style="margin-bottom: 2rem;">
+                <h2>Kinder &amp; Klassen-Zuordnung</h2>
+                <p class="text-muted" style="margin-bottom: 1.5rem;">
+                    Hier werden die Kinder mit ihrer aktuellen Klasse und optional ihrer Google-E-Mail-Adresse verknüpft.
+                    Wenn sich ein Kind anmeldet, filtert das Dashboard automatisch auf dessen Klasse.
+                </p>
+
+                <div class="table-responsive">
+                    <table class="data-table stack-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Klasse</th>
+                                <th>Verknüpftes Google-Konto</th>
+                                <th>Farbe</th>
+                                <th style="text-align: center;">Status</th>
+                                <th style="text-align: right;">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($students)): ?>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Noch keine Schüler angelegt.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($students as $student): ?>
+                                    <tr>
+                                        <td data-label="Name">
+                                            <strong><?= htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                        </td>
+                                        <td data-label="Klasse">
+                                            <span class="badge badge-outline"><?= htmlspecialchars($student['class_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                        </td>
+                                        <td data-label="E-Mail">
+                                            <?php if (!empty($student['user_email'])): ?>
+                                                <small><?= htmlspecialchars($student['user_email'], ENT_QUOTES, 'UTF-8') ?></small>
+                                            <?php else: ?>
+                                                <span class="text-muted">–</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-label="Farbe">
+                                            <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background-color: <?= htmlspecialchars($student['display_color'], ENT_QUOTES, 'UTF-8') ?>; vertical-align: middle; margin-right: 0.35rem;"></span>
+                                            <small class="text-muted"><?= htmlspecialchars($student['display_color'], ENT_QUOTES, 'UTF-8') ?></small>
+                                        </td>
+                                        <td data-label="Status" style="text-align: center;">
+                                            <?= $student['is_active'] ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?>
+                                        </td>
+                                        <td data-label="Aktionen" style="text-align: right;">
+                                            <?php if (Auth::hasPermission('system_write')): ?>
+                                                <form action="index.php?tab=school" method="POST" style="display: inline;" class="js-confirm-delete" data-confirm-message="Schülerprofil wirklich löschen?">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                                                    <input type="hidden" name="action" value="delete_student">
+                                                    <input type="hidden" name="student_id" value="<?= (int)$student['id'] ?>">
+                                                    <button type="submit" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; color: var(--color-red);">Löschen</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <?php if (Auth::hasPermission('system_write')): ?>
+                <section class="card">
+                    <h2>Neuen Schüler anlegen / bearbeiten</h2>
+                    <form action="index.php?tab=school" method="POST">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="action" value="save_student">
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div>
+                                <label for="st_name" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Name des Kindes:</label>
+                                <input type="text" id="st_name" name="name" class="yield-input" style="width: 100%;" placeholder="z. B. Enya oder Zoé" required>
+                            </div>
+                            <div>
+                                <label for="st_class" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Klasse:</label>
+                                <input type="text" id="st_class" name="class_name" class="yield-input" style="width: 100%;" placeholder="z. B. 6A oder 8B" required>
+                            </div>
+                            <div>
+                                <label for="st_email" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Google-Konto (E-Mail):</label>
+                                <select id="st_email" name="user_email" class="yield-input" style="width: 100%;">
+                                    <option value="">– Kein Google-Konto zugeordnet –</option>
+                                    <?php foreach ($systemUsers as $u): ?>
+                                        <option value="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>">
+                                            <?= htmlspecialchars($u['name'] ? "{$u['name']} ({$u['email']})" : $u['email'], ENT_QUOTES, 'UTF-8') ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="st_color" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Badge-Farbe:</label>
+                                <input type="color" id="st_color" name="display_color" value="#0284c7" class="yield-input" style="width: 100%; height: 38px; padding: 2px;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding-top: 1.5rem;">
+                                <input type="checkbox" id="st_active" name="is_active" value="1" checked style="transform: scale(1.3);">
+                                <label for="st_active">Profil aktiv</label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-save">➕ Schülerprofil speichern</button>
+                    </form>
+                </section>
+            <?php endif; ?>
         <?php elseif ($tab === 'roles' && Auth::hasPermission('system_write')): ?>
             <?php
             $adminEmail = $_ENV['ADMIN_EMAIL'] ?? null;
@@ -482,6 +689,8 @@ function getEventLabel(string $eventType): string
                                     'recipe_read', 'recipe_write',
                                     // Einkaufsliste — Historie & E-Bons-Tab
                                     'history_read', 'history_write',
+                                    // Schule & Vertretungsplan
+                                    'school_read', 'school_write',
                             ];
                             ?>
 

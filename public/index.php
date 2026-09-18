@@ -44,6 +44,13 @@ Auth::requirePage();
                 </a>
             <?php endif; ?>
 
+            <?php if (Auth::hasPermission('school_read')): ?>
+                <a href="school/index.php" class="card tool-card">
+                    <span class="tool-card-icon">🎒</span>
+                    <span class="tool-card-title">Schule</span>
+                </a>
+            <?php endif; ?>
+
             <?php if (Auth::hasPermission('pv_read')): ?>
                 <a href="pvcharge/index.php" class="card tool-card">
                     <span class="tool-card-icon">⚡</span>

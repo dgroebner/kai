@@ -6,6 +6,7 @@ use Kai\Tools\Car\VehicleDashboardRepository;
 use Kai\Tools\Einkaufsliste\ProductMasterRepository;
 use Kai\Tools\Einkaufsliste\ShoppingListRepository;
 use Kai\Tools\PVCharge\PvDashboardService;
+use Kai\Tools\School\SchoolService;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\ActivityLogger;
@@ -28,6 +29,7 @@ class AssistantService
     private ProductMasterRepository $productRepo;
     private WeatherService $weatherService;
     private WeatherEvaluator $weatherEvaluator;
+    private SchoolService $schoolService;
     private ActivityLogger $activityLogger;
     private Logger $logger;
 
@@ -38,6 +40,7 @@ class AssistantService
         ?ProductMasterRepository $productRepo = null,
         ?WeatherService $weatherService = null,
         ?WeatherEvaluator $weatherEvaluator = null,
+        ?SchoolService $schoolService = null,
         ?ActivityLogger $activityLogger = null,
         ?Logger $logger = null
     ) {
@@ -47,6 +50,7 @@ class AssistantService
         $this->productRepo = $productRepo ?? new ProductMasterRepository();
         $this->weatherService = $weatherService ?? new WeatherService();
         $this->weatherEvaluator = $weatherEvaluator ?? new WeatherEvaluator();
+        $this->schoolService = $schoolService ?? new SchoolService();
         $this->activityLogger = $activityLogger ?? new ActivityLogger(Database::getInstance());
         $this->logger = $logger ?? new Logger();
     }
@@ -79,6 +83,10 @@ class AssistantService
                 isset($payload['unit']) ? (string)$payload['unit'] : null
             ),
             'get_weather_status', 'weather_status', 'wetter' => $this->getWeatherStatus(),
+            'get_school_status', 'school_status', 'schule', 'stundenplan', 'vertretungsplan' => $this->getSchoolStatus(
+                isset($payload['child']) ? (string)$payload['child'] : (isset($payload['name']) ? (string)$payload['name'] : null),
+                isset($payload['date']) ? (string)$payload['date'] : null
+            ),
             'get_summary', 'summary', 'uebersicht', 'status' => $this->getSummary(),
             'get_intro', 'intro', 'hallo', 'wer_bist_du' => $this->getIntro(),
             'voice_command', 'query', 'command' => $this->parseVoiceCommand(
@@ -448,6 +456,21 @@ class AssistantService
             $parts[] = "Draußen sind es {$temp} Grad.";
         }
 
+        // Schule Kurzinformation
+        $today = date('Y-m-d');
+        $schoolOverview = $this->schoolService->getAllStudentsOverview($today);
+        if (!empty($schoolOverview)) {
+            $schoolSentences = [];
+            foreach ($schoolOverview as $studentData) {
+                if ($studentData['has_plan'] && !empty($studentData['end_time'])) {
+                    $schoolSentences[] = "{$studentData['student']['name']} hat bis {$studentData['end_time']} Uhr Schule.";
+                }
+            }
+            if (!empty($schoolSentences)) {
+                $parts[] = implode(' ', $schoolSentences);
+            }
+        }
+
         $speech = !empty($parts)
             ? 'Hier ist deine Kai-Zusammenfassung: ' . implode(' ', $parts)
             : 'Es liegen derzeit keine Statusdaten im Kai Toolset vor.';
@@ -461,8 +484,90 @@ class AssistantService
                 'car' => $car['data'],
                 'shopping' => $shopping['data'],
                 'weather' => $weather['data'],
+                'school' => $schoolOverview,
             ],
         ];
+    }
+
+    /**
+     * Liefert den Stundenplan- und Vertretungsstatus für ein oder alle Kinder.
+     */
+    public function getSchoolStatus(?string $child = null, ?string $date = null): array
+    {
+        try {
+            $targetDate = $this->schoolService->determineEffectiveDate($date);
+
+            // Prüfen, ob der Nutzer explizit nach morgen gefragt hat, morgen aber ein Wochenende ist:
+            $isTomorrowWeekend = false;
+            if ($date === date('Y-m-d', strtotime('+1 day'))) {
+                $w = (int)date('N', strtotime($date));
+                if ($w >= 6) {
+                    $isTomorrowWeekend = true;
+                }
+            }
+
+            if (!empty($child)) {
+                $speech = $this->schoolService->getNaturalLanguageSummary($child, $targetDate);
+                if ($isTomorrowWeekend) {
+                    $speech = "Morgen ist Wochenende und schulfrei! " . $speech;
+                }
+                $schedule = $this->schoolService->getStudentSchedule($child, $targetDate);
+
+                return [
+                    'success' => true,
+                    'action' => 'get_school_status',
+                    'speech' => $speech,
+                    'data' => [
+                        'date' => $targetDate,
+                        'child' => $child,
+                        'schedule' => $schedule,
+                    ],
+                ];
+            }
+
+            // Für alle Kinder
+            $overview = $this->schoolService->getAllStudentsOverview($targetDate);
+            if (empty($overview)) {
+                return [
+                    'success' => true,
+                    'action' => 'get_school_status',
+                    'speech' => 'Es sind aktuell keine Schüler im System hinterlegt.',
+                    'data' => ['date' => $targetDate, 'overview' => []],
+                ];
+            }
+
+            $speeches = [];
+            foreach ($overview as $sched) {
+                if ($sched['has_plan']) {
+                    $speeches[] = $this->schoolService->getNaturalLanguageSummary($sched['student']['name'], $targetDate);
+                } else {
+                    $speeches[] = $sched['summary_sentence'];
+                }
+            }
+
+            $speech = implode(' ', $speeches);
+            if ($isTomorrowWeekend) {
+                $speech = "Morgen ist schulfrei! " . $speech;
+            }
+
+            return [
+                'success' => true,
+                'action' => 'get_school_status',
+                'speech' => $speech,
+                'data' => [
+                    'date' => $targetDate,
+                    'overview' => $overview,
+                ],
+            ];
+        } catch (Throwable $e) {
+            $this->logger->error('AssistantService: Fehler bei getSchoolStatus.', ['error' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'action' => 'get_school_status',
+                'speech' => 'Fehler beim Abrufen der Schuldaten.',
+                'data' => [],
+            ];
+        }
     }
 
     /**
@@ -539,7 +644,29 @@ class AssistantService
             return $this->getWeatherStatus();
         }
 
-        // 6. Regex-Muster: Zusammenfassung / Überblick / Status
+        // 6. Regex-Muster: Schule / Stundenplan / Vertretungsplan / Ausfall / Schulschluss
+        if (preg_match('/(?:stundenplan|vertretungsplan|ausfall|schule|unterricht|schulschluss)/iu', $text)
+            || preg_match('/(?:wann\s+hat|wie\s+lange\s+hat)\s+(?:denn\s+)?(enya|zo[eé])/iu', $text)) {
+            $child = null;
+            if (preg_match('/enya/iu', $text)) {
+                $child = 'Enya';
+            } elseif (preg_match('/zo[eé]/iu', $text)) {
+                $child = 'Zoé';
+            }
+
+            $targetDate = null;
+            if (preg_match('/heute/iu', $text)) {
+                $targetDate = date('Y-m-d');
+            } elseif (preg_match('/morgen/iu', $text)) {
+                $targetDate = date('Y-m-d', strtotime('+1 day'));
+            } elseif (preg_match('/montag/iu', $text)) {
+                $targetDate = date('Y-m-d', strtotime('next Monday'));
+            }
+
+            return $this->getSchoolStatus($child, $targetDate);
+        }
+
+        // 7. Regex-Muster: Zusammenfassung / Überblick / Status
         if (preg_match('/(?:zusammenfassung|übersicht|uebersicht|überblick|ueberblick|status|briefing|guten morgen)/iu', $text)) {
             return $this->getSummary();
         }

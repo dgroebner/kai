@@ -8,13 +8,14 @@
 |---|---|---|
 | 🧾 **eBons (Kassenbons)** | `kassenbon/index.php` | Automatische KI-Auswertung von Haushalts-Kassenbons per E-Mail (IMAP) mit Einzelpreis- und Kategorie-Erfassung über Google Gemini. Erfasste Bons werden automatisch mit der passenden Giro- oder Kreditkartenbuchung verknüpft (inkl. Bargeld-Erkennung). Integrierte Bon-Auswertung über Tabs (`kassenbon/auswertung.php`). |
 | 🛒 **Einkaufsliste** | `einkaufsliste/index.php` | Intelligente Einkaufsliste mit Markt-Splitting (Rewe & Globus), Gang-Sortierung, Rezept-Analyse via KI und lernenden Vorschlägen aus Kassenbons. |
+| 🎒 **Schule** | `school/index.php` | Stunden- und Vertretungsplan (Indiware VPPlan24 / stundenplan24.de) mit automatischer Klassenfilterung für angemeldete Kinder, intelligenter 14:00-Uhr-/Wochenend-Schaltlogik (Freitagnachmittag/Wochenende -> Montag), Ausfall- und Abweichungs-Meldungen in natürlicher Sprache, Google Home Sprachabfrage und Schüler-Verwaltung in der Systemadministration. |
 | 🏦 **Finanzen (Bank)** | `bank/index.php` | Girokonto-Umsätze über die **comdirect REST API** (photoTAN-Push-Login), automatische Verschlagwortung per Regelsystem und KI-Tag-Klassifizierung, Tag-Auswertung nach Zeitraum sowie Erkennung wiederkehrender Verträge. |
 | 💳 **Kreditkarte** | `bank/creditcard.php` | Einlesen und Auswertung von Visa-Kreditkartenabrechnungen (PDF-Parsing per Gemini) inklusive Umsatzübersicht je Abrechnungszeitraum und automatischer Verknüpfung mit der Giro-Lastschrift. |
 | 📄 **Verträge** | `bank/contracts.php` | Verwaltung wiederkehrender Zahlungen (Verträge) mit eigenem Regel-Editor und Zuordnung der zugehörigen Buchungen. |
 | ⚡ **Energie-Dashboard** | `pvcharge/index.php` | Live-Telemetrie der Photovoltaikanlage (PV-Leistung, Hauslast, Netzbezug/-einspeisung, Batterie-SoC) mit Energiefluss-Diagramm sowie Ertragsprognose über die forecast.solar API inkl. Soll-/Ist-Vergleich. |
 | 🚐 **VW ID.Buzz Telemetrie** | `car/index.php` | Live-Fahrzeugstatus (Ladestand, Reichweite, Temperaturen, Verriegelung) und Verlaufshistorie inkl. Effizienz-Auswertung. |
 | ⛅ **Wetter** | `weather/index.php` | Aktuelles Wetter-Diorama für den Standort mit stündlicher 12-Stunden-Prognose, 7-Tage-Trend und visueller Empfehlung (Schirm, Jacke, etc.) sowie historischen Daten. |
-| ⚙️ **System & Verwaltung** | `system/index.php` | Aktivitäts-Log aller System-Ereignisse sowie Pflege globaler Parameter (z. B. Strom-Bezugs- und Einspeisepreise) über den `system_settings`-Key-Value-Store. |
+| ⚙️ **System & Verwaltung** | `system/index.php` | Aktivitäts-Log aller System-Ereignisse sowie Pflege globaler Parameter (z. B. Strom-Bezugs- und Einspeisepreise, Stundenplan24-Zugangsdaten, Schülerprofile) über den `system_settings`-Key-Value-Store. |
 
 ### Maschinen- & Cron-Endpunkte
 
@@ -23,7 +24,8 @@ Diese Endpunkte besitzen keine Benutzersession und werden über den `CRON_TOKEN`
 
 | Endpunkt | Methode | Zweck |
 |---|---|---|
-| `shared/mail.php` | GET | Zentraler Cron-Trigger: liest das IMAP-Postfach und verteilt Kassenbons, Kreditkartenabrechnungen und Bankdaten über den `MailDispatcher`. Läuft nach dem Senden der Antwort asynchron weiter. |
+| `shared/mail.php` | GET | Zentraler Cron-Trigger: liest das IMAP-Postfach, verteilt Kassenbons, Kreditkartenabrechnungen und Bankdaten über den `MailDispatcher` und führt den stündlichen Stundenplan-Abgleich (Schule) aus. Läuft nach dem Senden der Antwort asynchron weiter. |
+| `school/cron.php` | GET / POST | Standalone Cron-Trigger zum Synchronisieren des heutigen und kommenden Stunden- und Vertretungsplans von stundenplan24.de. |
 | `pvcharge/cron_forecast.php` | GET | Holt die Tages- und Stundenprognose von forecast.solar und schreibt sie in die Datenbank. |
 | `pvcharge/ingest.php` | POST | Nimmt Live- und Telemetriedaten der PV-Anlage entgegen (`{"type":"live\|telemetry","data":{…}}`). Spaltennamen werden gegen eine Allowlist geprüft. |
 | `car/telemetry/index.php` | POST | Nimmt die Telemetrie des VW ID.Buzz entgegen. Akzeptiert den Token **nur** per Header, nicht als Query-Parameter. |
@@ -74,12 +76,14 @@ kai_root/
 │   │                          pwa-register.js zur Service-Worker-Registrierung
 │   ├── shared/              ← Domainübergreifende Endpunkte (mail.php als Cron-Trigger)
 │   │                          head-pwa.php als zentraler Include für PWA-Meta-Tags
+│   ├── assistant/           ← Endpunkte & Webhooks für Google Assistant / Home Assistant
 │   ├── bank/                ← Controller für Giro, Kreditkarte, Verträge und die Bank-API
 │   ├── car/                 ← Controller für das VW ID.Buzz Modul
 │   │   └── telemetry/       ← JSON-Endpunkt zur Entgegennahme der Fahrzeug-Telemetrie
 │   ├── einkaufsliste/       ← Controller & API für die intelligente Einkaufsliste
 │   ├── kassenbon/           ← Controller & API für Kassenbons
 │   ├── pvcharge/            ← Controller, Live-API, Ingest- und Cron-Endpunkt der PV-Anlage
+│   ├── school/              ← Controller, Cron- & JSON-Sync für Stunden- und Vertretungsplan
 │   ├── system/              ← Aktivitäts-Log und globale Systemeinstellungen
 │   └── weather/             ← Controller & API für das Wetter-Dashboard
 │
@@ -90,17 +94,20 @@ kai_root/
 │   │   ├── Log/             ← Logger (Datei-Log), ActivityLogger (Aktivitäts-Log in der DB)
 │   │   ├── Mail/            ← ImapClient, MailDispatcher
 │   │   └── Security/        ← Auth (Guards, CSRF, Cron-Token), Sanitizer, TokenEncryptionService
+│   ├── Assistant/           ← Smart-Home- & Sprachassistent-Logik (Google Assistant / Home Assistant)
 │   ├── Bank/                ← Giro- & Kreditkarten-Logik, Regel-/Vertrags-Matching, ComdirectClient
 │   │   └── Parser/          ← VisaPdfParser
 │   ├── Car/                 ← Repositories für das ID.Buzz Modul
 │   ├── Einkaufsliste/       ← Logik für die intelligente Einkaufsliste und KI-Rezept-Parser
 │   ├── Kassenbon/           ← Bon-Analyse (Gemini), Kategorie-Auswertung und Buchungs-Matching
 │   ├── PVCharge/            ← Solarprognose und Telemetrie-Ingest der PV-Anlage
+│   ├── School/              ← Stunden- und Vertretungsplan-Logik, VPPlan24-Client & Parser
 │   ├── System/              ← Aktivitäts-Log-Repository und System-Einstellungen
 │   └── Weather/             ← Wetterdaten-Abruf und Historien-Analyse
 │
 ├── database/
-│   └── schema.sql           ← Versioniertes Datenbankschema (MariaDB/MySQL)
+│   ├── schema.sql           ← Versioniertes Datenbankschema (MariaDB/MySQL)
+│   └── migration.sql        ← Inkrementelle SQL-Migration für bestehende Installationen
 ├── concepts/                ← Konzept- und Planungsdokumente (vom Deployment ausgeschlossen)
 ├── storage/                 ← Lokale Logs (vom Deployment ausgeschlossen)
 ├── AGENTS.md                ← Verbindlicher Leitfaden für KI-Agenten (Architektur & Konventionen)
@@ -116,10 +123,10 @@ kai_root/
 ### Domain-Trennung
 
 Jede fachliche Domäne ist ein eigenständiges Modul: Namespace `Kai\Tools\{Domain}\`, Servercode in
-`src/{Domain}/`, Einstiegspunkte in `public/{domain}/`. Aktuelle Domains sind **Bank**, **Car**, **Einkaufsliste**,
-**Kassenbon**, **PVCharge**, **System** und **Weather**. Domains dürfen **nicht** direkt Klassen einer anderen
+`src/{Domain}/`, Einstiegspunkte in `public/{domain}/`. Aktuelle Domains sind **Assistant**, **Bank**, **Car**, **Einkaufsliste**,
+**Kassenbon**, **PVCharge**, **School**, **System** und **Weather**. Domains dürfen **nicht** direkt Klassen einer anderen
 Domain importieren — geteilte Funktionalität wird ausschließlich über `src/Shared/` bezogen.
-Die wenigen bewusst gesetzten Ausnahmen (z. B. Bon-zu-Buchung-Matching) sind in AGENTS.md § 4 dokumentiert.
+Die wenigen bewusst gesetzten Ausnahmen (z. B. Bon-zu-Buchung-Matching, Mail-Cron-Orchestrierung) sind in AGENTS.md § 4 dokumentiert.
 
 > Die vollständigen Architektur-, Namens- und Sicherheitskonventionen sind in **[AGENTS.md](AGENTS.md)** beschrieben.
 
@@ -177,6 +184,7 @@ Alle Tabellen liegen in `database/schema.sql` (Single Source of Truth, kein Migr
 | Bank | `bank_accounts`, `bank_giro_transactions`, `bank_cc_statements`, `bank_cc_transactions`, `bank_categories`, `bank_tags`, `bank_transaction_tags`, `bank_tag_rules`, `bank_contracts`, `bank_contract_rules` |
 | PV-Anlage | `pv_live`, `pv_telemetry`, `pv_forecast_daily`, `pv_forecast_hourly` |
 | Einkaufsliste | `market_categories`, `product_master`, `shopping_list_items`, `school_holidays` |
+| Schule | `school_students`, `school_plans`, `school_plan_items`, `school_global_notes` |
 | Wetter | `weather_sensor_live`, `weather_state`, `weather_forecast_daily`, `weather_forecast_hourly` |
 | Fahrzeug | `vehicle_state`, `vehicle_telemetry_log` |
 | System | `activity_log`, `system_settings`, `user_profiles`, `push_subscriptions`, `users`, `groups`, `group_permissions`, `user_groups` |
@@ -254,6 +262,7 @@ Jede Ausgabe von dynamischen Inhalten (z. B. vom Benutzer manipulierte Strings o
 | comdirect REST API | Abruf von Girokonto-Umsätzen und Kontostand | Zugangsnummer/PIN beim Login, photoTAN-Freigabe |
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten und Anlagenparameter |
 | IMAP-Postfach | Eingang von E-Bons und Abrechnungen | E-Mail-Inhalte und Anhänge |
+| stundenplan24.de (Indiware VPPlan24) | Abruf von Vertretungsplan-Daten | Schulnummer & HTTP Basic Auth Credentials |
 | Hosting-Anbieter | Server & Datenbank | Alle gespeicherten Daten |
 
 > Neue Drittanbieter sind zusätzlich in `AGENTS.md` (Abschnitt 7.3) einzutragen, bevor sie in den Code integriert werden.

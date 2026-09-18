@@ -625,3 +625,68 @@ CREATE TABLE IF NOT EXISTS `user_groups` (
     FOREIGN KEY (`user_email`) REFERENCES `users`(`email`) ON DELETE CASCADE,
     FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================================================
+-- DOMAIN: SCHOOL (Vertretungsplan & Schüler-Verwaltung)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `school_students` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `class_name` VARCHAR(20) NOT NULL,
+    `user_email` VARCHAR(255) NULL,
+    `display_color` VARCHAR(20) NOT NULL DEFAULT '#2563eb',
+    `sort_order` INT NOT NULL DEFAULT 0,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_user_email` (`user_email`),
+    INDEX `idx_class_name` (`class_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `school_plans` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `plan_date` DATE NOT NULL UNIQUE,
+    `plan_timestamp` VARCHAR(100) NULL,
+    `school_week` VARCHAR(20) NULL,
+    `raw_hash` VARCHAR(64) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_plan_date` (`plan_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `school_plan_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `plan_date` DATE NOT NULL,
+    `class_name` VARCHAR(20) NOT NULL,
+    `lesson_number` INT NOT NULL,
+    `start_time` VARCHAR(10) NOT NULL,
+    `end_time` VARCHAR(10) NOT NULL,
+    `subject` VARCHAR(50) NOT NULL,
+    `subject_original` VARCHAR(50) NULL,
+    `teacher` VARCHAR(50) NULL,
+    `teacher_original` VARCHAR(50) NULL,
+    `room` VARCHAR(50) NULL,
+    `room_original` VARCHAR(50) NULL,
+    `course_group` VARCHAR(50) NULL,
+    `info` TEXT NULL,
+    `is_cancelled` TINYINT(1) NOT NULL DEFAULT 0,
+    `is_substitution` TINYINT(1) NOT NULL DEFAULT 0,
+    `is_room_change` TINYINT(1) NOT NULL DEFAULT 0,
+    `is_moved` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`plan_date`) REFERENCES `school_plans`(`plan_date`) ON DELETE CASCADE,
+    INDEX `idx_plan_date_class` (`plan_date`, `class_name`),
+    INDEX `idx_lesson_number` (`lesson_number`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `school_global_notes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `plan_date` DATE NOT NULL,
+    `note_text` TEXT NOT NULL,
+    `sort_order` INT NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`plan_date`) REFERENCES `school_plans`(`plan_date`) ON DELETE CASCADE,
+    INDEX `idx_note_plan_date` (`plan_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

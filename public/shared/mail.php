@@ -76,6 +76,15 @@ try {
 
     $logger->info("Cronjob (mail.php): MailDispatcher im Hintergrund erfolgreich beendet.");
 
+    // 5. Schule / Vertretungsplan synchronisieren (heute und nächster Schultag)
+    try {
+        $schoolService = new \Kai\Tools\School\SchoolService();
+        $schoolResults = $schoolService->syncTodayAndNext();
+        $logger->info("Cronjob (mail.php): Schul-Vertretungspläne abgeglichen.", ['results' => $schoolResults]);
+    } catch (Throwable $se) {
+        $logger->warn("Cronjob (mail.php): Fehler beim Schuldaten-Abgleich.", ['error' => $se->getMessage()]);
+    }
+
 } catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [
         'error' => $e->getMessage()
