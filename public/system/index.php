@@ -178,6 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'id' => $studentId,
                         'name' => trim($_POST['name'] ?? ''),
                         'class_name' => trim($_POST['class_name'] ?? ''),
+                        'beste_schule_id' => !empty($_POST['beste_schule_id']) ? trim($_POST['beste_schule_id']) : null,
                         'excluded_subjects' => !empty($_POST['excluded_subjects']) ? trim($_POST['excluded_subjects']) : null,
                         'user_email' => !empty($_POST['user_email']) ? trim($_POST['user_email']) : null,
                         'display_color' => trim($_POST['display_color'] ?? '#2563eb'),
