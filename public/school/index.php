@@ -96,7 +96,9 @@ if ($selectedStudentId === 'all') {
     $displaySchedules = [$schoolService->getStudentSchedule((int)$selectedStudentId, $selectedDate)];
 }
 
-// Datumslabels für Buttons
+// Datumslabels & Navigationstage für Buttons
+$prevDay = $schoolService->getPreviousSchoolDay($selectedDate);
+$nextDay = $schoolService->getNextSchoolDay($selectedDate);
 $todayLabel = 'Heute (' . date('d.m.') . ')';
 $nextLabel = ($nextSchoolDay === $today)
         ? 'Folgetag'
@@ -140,6 +142,11 @@ $nextLabel = ($nextSchoolDay === $today)
 
     <!-- Datum-Umschalter -->
     <div class="period-switcher school-period-switcher">
+        <a href="index.php?date=<?= $prevDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+           class="btn btn-outline" title="Vorherigen Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($prevDay), ENT_QUOTES, 'UTF-8') ?>)">
+            &larr; Letzter Tag
+        </a>
+
         <a href="index.php?date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
            class="btn <?= $selectedDate === $today ? '' : 'btn-outline' ?>">
             📅 <?= htmlspecialchars($todayLabel, ENT_QUOTES, 'UTF-8') ?>
@@ -151,6 +158,11 @@ $nextLabel = ($nextSchoolDay === $today)
                 🚀 <?= htmlspecialchars(ucfirst($nextLabel), ENT_QUOTES, 'UTF-8') ?>
             </a>
         <?php endif; ?>
+
+        <a href="index.php?date=<?= $nextDay ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+           class="btn btn-outline" title="Nächsten Schultag anzeigen (<?= htmlspecialchars($schoolService->formatDateLabel($nextDay), ENT_QUOTES, 'UTF-8') ?>)">
+            Nächster Tag &rarr;
+        </a>
 
         <!-- Freie Datumsauswahl -->
         <form method="GET" action="index.php" class="school-date-picker-form">

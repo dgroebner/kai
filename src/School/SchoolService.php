@@ -108,6 +108,20 @@ class SchoolService
     }
 
     /**
+     * Liefert den vorherigen Schultag (ohne Samstag/Sonntag) ausgehend von einem Datum.
+     */
+    public function getPreviousSchoolDay(string $date): string
+    {
+        $dt = new DateTimeImmutable($date);
+        $prev = $dt->modify('-1 day');
+        while ((int)$prev->format('N') >= 6) {
+            $prev = $prev->modify('-1 day');
+        }
+
+        return $prev->format('Y-m-d');
+    }
+
+    /**
      * Synchronisiert den Plan für ein bestimmtes Datum von stundenplan24.de.
      *
      * @return array{success: bool, date: string, status: int, message: string, changed: bool}
