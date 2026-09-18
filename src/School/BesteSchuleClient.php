@@ -32,7 +32,7 @@ class BesteSchuleClient
 
     public function getGrades(string $besteSchuleStudentId): ?array
     {
-        return $this->request('GET', '/grades?filter[student]=' . urlencode($besteSchuleStudentId) . '&include=subject,collection');
+        return $this->request('GET', '/grades?filter[student]=' . urlencode($besteSchuleStudentId) . '&include=collection,collection.subject');
     }
 
     public function getAbsences(string $besteSchuleStudentId): ?array
