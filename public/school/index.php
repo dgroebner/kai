@@ -237,22 +237,19 @@ $nextLabel = ($nextSchoolDay === $today)
                     $st = $sched['student'] ?? [];
                     $color = $st['display_color'] ?? '#2563eb';
                     ?>
-                    <div class="card school-hero-card" style="border-left: 4px solid <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
+                    <div class="card school-hero-card" style="border-left: 3px solid <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
                         <div class="school-hero-header">
                             <div class="school-hero-title">
                                 <span class="school-avatar" style="background-color: <?= htmlspecialchars($color, ENT_QUOTES, 'UTF-8') ?>;">
                                     <?= htmlspecialchars(mb_substr($st['name'] ?? 'K', 0, 1), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
-                                <div>
-                                    <strong><?= htmlspecialchars($st['name'] ?? 'Kind', ENT_QUOTES, 'UTF-8') ?></strong>
-                                    <span class="badge badge-outline">Klasse <?= htmlspecialchars($sched['class_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
-                                </div>
+                                <strong><?= htmlspecialchars($st['name'] ?? 'Kind', ENT_QUOTES, 'UTF-8') ?></strong>
+                                <span class="badge badge-outline">Kl. <?= htmlspecialchars($sched['class_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
                             </div>
                             <?php if ($sched['has_plan'] && $sched['end_time']): ?>
-                                <div class="school-hero-time-badge">
-                                    <span class="school-time-label">Schulschluss</span>
-                                    <span class="school-time-val"><?= htmlspecialchars($sched['end_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</span>
-                                </div>
+                                <span class="school-hero-time-pill">
+                                    Schluss: <strong><?= htmlspecialchars($sched['end_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</strong>
+                                </span>
                             <?php endif; ?>
                         </div>
 
@@ -262,7 +259,7 @@ $nextLabel = ($nextSchoolDay === $today)
 
                         <?php if (!empty($sched['deviations'])): ?>
                             <div class="school-hero-deviations">
-                                <span class="school-deviations-title">Besonderheiten heute:</span>
+                                <span class="school-deviations-title">Besonderheiten:</span>
                                 <ul>
                                     <?php foreach ($sched['deviations'] as $dev): ?>
                                         <li><?= htmlspecialchars($dev, ENT_QUOTES, 'UTF-8') ?></li>
