@@ -82,22 +82,28 @@ class BesteSchuleClient
         }
 
         $context  = stream_context_create($options);
+        
+        $this->logger->info("BesteSchuleClient: Sende API-Request", ['method' => $method, 'url' => $url]);
+        
         $result = @file_get_contents($url, false, $context);
 
         if ($result === false) {
-            $this->logger->error("BesteSchuleClient: Network error for {$path}");
+            $error = error_get_last();
+            $this->logger->error("BesteSchuleClient: Netzwerkfehler bei {$path}", ['error' => $error]);
             return null;
         }
 
         $responseCode = $http_response_header[0] ?? '';
         if (strpos($responseCode, '200') === false) {
-            $this->logger->warn("BesteSchuleClient: Non-200 response for {$path}", ['response' => $result, 'headers' => $http_response_header]);
+            $this->logger->warn("BesteSchuleClient: Fehlgeschlagener API-Request", ['path' => $path, 'status' => $responseCode, 'response' => $result]);
             return null;
         }
 
+        $this->logger->info("BesteSchuleClient: API-Request erfolgreich", ['path' => $path, 'status' => $responseCode]);
+
         $json = json_decode($result, true);
         if (!is_array($json)) {
-            $this->logger->error("BesteSchuleClient: Invalid JSON response for {$path}");
+            $this->logger->error("BesteSchuleClient: Ungültiges JSON in der Antwort", ['path' => $path]);
             return null;
         }
 

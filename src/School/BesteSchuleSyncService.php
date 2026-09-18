@@ -21,14 +21,18 @@ class BesteSchuleSyncService
     public function syncAll(): array
     {
         if (!$this->client->isConfigured()) {
+            $this->logger->info("BesteSchuleSync: Übersprungen, da kein API Token konfiguriert ist.");
             return ['success' => false, 'message' => 'API Token nicht konfiguriert'];
         }
 
+        $this->logger->info("BesteSchuleSync: Starte Synchronisation...");
+        
         $pdo = Database::getInstance()->getConnection();
         $stmt = $pdo->query("SELECT id, name, beste_schule_id FROM school_students WHERE is_active = 1 AND beste_schule_id IS NOT NULL AND beste_schule_id != ''");
         $students = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         if (empty($students)) {
+            $this->logger->info("BesteSchuleSync: Abbruch, keine aktiven Schüler mit beste_schule_id gefunden.");
             return ['success' => true, 'message' => 'Keine aktiven Schüler mit beste_schule_id gefunden'];
         }
 
@@ -37,6 +41,8 @@ class BesteSchuleSyncService
         foreach ($students as $student) {
             $kaiId = (int)$student['id'];
             $bsId = $student['beste_schule_id'];
+            
+            $this->logger->info("BesteSchuleSync: Frage Daten für Schüler ab...", ['kai_id' => $kaiId, 'beste_schule_id' => $bsId, 'name' => $student['name']]);
 
             // 1. Noten abrufen
             $grades = $this->client->getGrades($bsId);
