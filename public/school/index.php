@@ -33,11 +33,11 @@ $selectedDate = $schoolService->determineEffectiveDate($requestedDate);
 // 3. Filter-Auswahl (Kind)
 $requestedStudentId = filter_input(INPUT_GET, 'student', FILTER_DEFAULT);
 
-if ($requestedStudentId !== null && $requestedStudentId !== '') {
-    $selectedStudentId = $requestedStudentId;
-} elseif ($matchedStudent !== null) {
-    // Kind ist selbst eingeloggt -> Direktfilter auf dieses Kind
+if ($matchedStudent !== null) {
+    // Kind ist selbst eingeloggt -> ZWINGEND auf das eigene Profil festlegen (kein Zugriff auf Geschwister)
     $selectedStudentId = (string)$matchedStudent['id'];
+} elseif ($requestedStudentId !== null && $requestedStudentId !== '') {
+    $selectedStudentId = $requestedStudentId;
 } else {
     // Eltern / Admin -> Standardmäßig alle Kinder
     $selectedStudentId = 'all';
@@ -101,8 +101,12 @@ $displaySchedules = [];
 $besteRepo = new \Kai\Tools\School\BesteSchuleRepository();
 $besteStudentIds = [];
 
-if ($selectedStudentId === 'all') {
-    // Alle aktiven Kinder anzeigen
+if ($matchedStudent !== null) {
+    // Kind ist selbst eingeloggt -> ausschließlich eigenes Profil laden
+    $displaySchedules = [$schoolService->getStudentSchedule((int)$matchedStudent['id'], $selectedDate)];
+    $besteStudentIds = [(int)$matchedStudent['id']];
+} elseif ($selectedStudentId === 'all') {
+    // Alle aktiven Kinder anzeigen (nur für Eltern / Admin)
     $displaySchedules = $schoolService->getAllStudentsOverview($selectedDate);
     $besteStudentIds = array_column($allStudents, 'id');
 } else {
@@ -118,7 +122,9 @@ $besteUpcomingNotes = [];
 
 if (in_array($view, ['beste', 'plan', 'homework'])) {
     $bsRepo = new \Kai\Tools\School\BesteSchuleRepository();
-    $qIds = ($selectedStudentId === 'all') ? array_column($allStudents, 'id') : [(int)$selectedStudentId];
+    $qIds = ($matchedStudent !== null)
+        ? [(int)$matchedStudent['id']]
+        : (($selectedStudentId === 'all') ? array_column($allStudents, 'id') : [(int)$selectedStudentId]);
     
     if ($view === 'beste') {
         $allGrades = $bsRepo->getAllGrades($qIds);
@@ -246,13 +252,12 @@ $nextLabel = ($nextSchoolDay === $today)
                     </a>
                 </div>
 
+                <?php if ($matchedStudent === null): ?>
                 <div class="school-student-filters" style="margin-top: 0.5rem;">
                     <span class="text-muted" style="font-size: 0.9rem;">Ansicht:</span>
-                    <?php if ($matchedStudent === null): ?>
                     <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=all"
                        class="btn <?= $selectedStudentId === 'all' ? '' : 'btn-outline' ?> btn-small"
                        style="border-radius: 20px; font-size: 0.85rem; padding: 0.1rem 0.6rem;">Alle</a>
-                    <?php endif; ?>
                     <?php foreach ($allStudents as $ast): ?>
                         <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= $ast['id'] ?>"
                            class="btn <?= (string)$selectedStudentId === (string)$ast['id'] ? '' : 'btn-outline' ?> btn-small"
@@ -262,17 +267,17 @@ $nextLabel = ($nextSchoolDay === $today)
                         </a>
                     <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     <?php else: ?>
+        <?php if ($matchedStudent === null): ?>
         <!-- Kind-Filter (für Hausaufgaben & Noten) -->
         <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <span class="text-muted" style="font-size: 0.9rem; font-weight: 500;">Kind:</span>
-            <?php if ($matchedStudent === null): ?>
             <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $selectedDate ?>&amp;student=all"
                class="btn <?= $selectedStudentId === 'all' ? '' : 'btn-outline' ?> btn-small"
                style="border-radius: 20px; font-size: 0.85rem; padding: 0.15rem 0.75rem;">Alle</a>
-            <?php endif; ?>
             <?php foreach ($allStudents as $ast): ?>
                 <a href="index.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>&amp;date=<?= $selectedDate ?>&amp;student=<?= $ast['id'] ?>"
                    class="btn <?= (string)$selectedStudentId === (string)$ast['id'] ? '' : 'btn-outline' ?> btn-small"
@@ -282,6 +287,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 </a>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <main>
