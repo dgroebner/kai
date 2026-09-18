@@ -184,7 +184,9 @@ class AssistantService
             $plug = (bool)($state['plug_connected'] ?? false);
 
             $carName = !empty($customName) ? $customName : 'Das Auto';
-            $speech = "{$carName} hat aktuell {$soc} Prozent Ladestand und eine Reichweite von {$range} Kilometern.";
+            $speech = $range > 0
+                ? "{$carName} hat aktuell {$soc} Prozent Ladestand und eine Reichweite von {$range} Kilometern."
+                : "{$carName} hat aktuell {$soc} Prozent Ladestand.";
 
             if ($chargeKw > 0.1 || $chargingState === 'charging') {
                 $chargeKwText = number_format($chargeKw, 1, ',', '.');
@@ -426,8 +428,10 @@ class AssistantService
         // Auto Kurzinformation
         if (!empty($car['data']['soc_percent'])) {
             $carSoc = $car['data']['soc_percent'];
-            $range = $car['data']['range_km'] ?? 0;
-            $parts[] = "Das Auto hat {$carSoc} Prozent Akku und {$range} Kilometer Reichweite.";
+            $range = (int)($car['data']['range_km'] ?? 0);
+            $parts[] = $range > 0
+                ? "Das Auto hat {$carSoc} Prozent Akku und {$range} Kilometer Reichweite."
+                : "Das Auto hat {$carSoc} Prozent Akku.";
         }
 
         // Einkaufsliste Kurzinformation

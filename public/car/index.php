@@ -239,7 +239,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
                 <div class="kpi-card">
                     <div class="kpi-label">Reichweite</div>
                     <div class="kpi-value kpi-value-sm text-info">
-                        <?= number_format($state['range_km'], 0, ',', '.') ?><span class="kpi-unit"> km</span>
+                        <?= $state['range_km'] > 0 ? number_format($state['range_km'], 0, ',', '.') . '<span class="kpi-unit"> km</span>' : '<span class="text-muted">–</span>' ?>
                     </div>
                 </div>
 

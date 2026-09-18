@@ -45,14 +45,9 @@ class TelemetryRepository
             $mileageKm = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
             $outdoorTempC = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
 
-            // Reichweite ermitteln / interpolieren
-            $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
-                ? (int)$data['status']['range_km']
-                : null;
-
-            if ($rangeKm === null && $socPercent !== null) {
-                $rangeKm = $this->calculateInterpolatedRange($vin, $socPercent, $outdoorTempC);
-            }
+            // Reichweite wird bei automatischen Telemetrie-Updates nicht erfasst/geschätzt,
+            // sondern ausschließlich manuell durch den Benutzer im Dashboard gepflegt.
+            $rangeKm = 0;
 
             $stmtState = $this->dbCon->prepare("
 					INSERT INTO `vehicle_state` (
@@ -96,6 +91,7 @@ class TelemetryRepository
 						`plug_connected`      = VALUES(`plug_connected`),
 						`is_locked`           = VALUES(`is_locked`),
 						`mileage_km`          = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
+						`range_km`            = CASE WHEN VALUES(`car_captured_at`) != `car_captured_at` THEN 0 ELSE `range_km` END,
 						`outdoor_temp_c`      = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
 						`estimated_finish_at` = VALUES(`estimated_finish_at`),
 						`updated_at`          = CURRENT_TIMESTAMP
@@ -127,64 +123,6 @@ class TelemetryRepository
     }
 
     /**
-     * Schätzt die Reichweite basierend auf historischen Daten.
-     * Berücksichtigt bevorzugt Datenpunkte in einem ähnlichen Temperaturbereich (±5°C).
-     */
-    private function calculateInterpolatedRange(string $vin, int $socPercent, ?float $outdoorTempC = null): int
-    {
-        if ($socPercent <= 0) {
-            return 0;
-        }
-
-        try {
-            $avgFactor = null;
-
-            // 1. Wenn eine Außentemperatur vorliegt, primär im Fenster ±5°C suchen
-            if ($outdoorTempC !== null) {
-                $stmtTemp = $this->dbCon->prepare("
-                    SELECT AVG(range_km / soc_percent) as avg_factor
-                    FROM vehicle_telemetry_log
-                    WHERE vin = :vin 
-                      AND range_km IS NOT NULL 
-                      AND range_km > 0 
-                      AND soc_percent > 0
-                      AND outdoor_temp_c BETWEEN :temp_min AND :temp_max
-                ");
-                $stmtTemp->execute([
-                    ':vin' => $vin,
-                    ':temp_min' => $outdoorTempC - 5.0,
-                    ':temp_max' => $outdoorTempC + 5.0
-                ]);
-                $avgFactor = $stmtTemp->fetchColumn();
-            }
-
-            // 2. Fallback: Wenn noch keine Logs im Temperaturbereich existieren, globalen Durchschnitt nehmen
-            if (!$avgFactor || $avgFactor <= 0) {
-                $stmtGlobal = $this->dbCon->prepare("
-                    SELECT AVG(range_km / soc_percent) as avg_factor
-                    FROM vehicle_telemetry_log
-                    WHERE vin = :vin 
-                      AND range_km IS NOT NULL 
-                      AND range_km > 0 
-                      AND soc_percent > 0
-                ");
-                $stmtGlobal->execute([':vin' => $vin]);
-                $avgFactor = $stmtGlobal->fetchColumn();
-            }
-
-            // 3. Fallback: Harter Standardwert (ca. 3.8 km / % SoC), falls die DB noch komplett leer ist
-            if (!$avgFactor || $avgFactor <= 0) {
-                $avgFactor = 3.8;
-            }
-
-            return (int)round($socPercent * $avgFactor);
-
-        } catch (Exception) {
-            return (int)round($socPercent * 3.8);
-        }
-    }
-
-    /**
      * Schreibt einen Log-Eintrag in vehicle_telemetry_log.
      */
     public function saveLog(array $data): bool
@@ -195,7 +133,7 @@ class TelemetryRepository
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
             $stmtCurrent = $this->dbCon->prepare("
-                SELECT mileage_km, range_km, outdoor_temp_c 
+                SELECT mileage_km, outdoor_temp_c 
                 FROM vehicle_state 
                 WHERE vin = :vin
             ");
@@ -209,14 +147,8 @@ class TelemetryRepository
                 ? (int)$data['status']['mileage_km']
                 : (int)($currentState['mileage_km'] ?? 0);
 
-            // Reichweite bestimmen / interpolieren
-            $rangeKm = isset($data['status']['range_km']) && (int)$data['status']['range_km'] > 0
-                ? (int)$data['status']['range_km']
-                : null;
-
-            if ($rangeKm === null || $rangeKm === 0) {
-                $rangeKm = (int)($currentState['range_km'] ?? 0);
-            }
+            // Reichweite wird bei automatischen Telemetrie-Updates nicht erfasst (wird manuell gepflegt)
+            $rangeKm = 0;
 
             $outdoorTempC = isset($data['status']['outdoor_temp_c'])
                 ? (float)$data['status']['outdoor_temp_c']
