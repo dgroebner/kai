@@ -2,10 +2,10 @@
  * school.js - Interaktionen für das Schul- & Vertretungsplan-Board
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Automatische Navigation bei Klassen-Auswahl im Dropdown
-    const classSelect = document.querySelector('.school-class-select');
-    if (classSelect) {
-        classSelect.addEventListener('change', (e) => {
+    // 2. Automatisches Absenden bei Datumsauswahl im Date-Picker
+    const dateInput = document.querySelector('.school-date-input');
+    if (dateInput) {
+        dateInput.addEventListener('change', (e) => {
             const form = e.target.closest('form');
             if (form) {
                 form.submit();
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Button-Feedback beim Absenden der Formulare (Aktualisieren / Jetzt prüfen)
+    // 3. Button-Feedback beim Absenden der Formulare (Aktualisieren / Jetzt prüfen)
     document.addEventListener('submit', (e) => {
         const form = e.target.closest('.school-sync-form');
         if (!form) return;

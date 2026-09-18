@@ -26,9 +26,8 @@ $requestedDate = filter_input(INPUT_GET, 'date', FILTER_DEFAULT);
 // Wenn kein Datum explizit angefragt wurde: Standard auf den aktuellen Zieltag (heute oder nächster Schultag)
 $selectedDate = $schoolService->determineEffectiveDate($requestedDate);
 
-// 3. Filter-Auswahl (Kind / Klasse)
+// 3. Filter-Auswahl (Kind)
 $requestedStudentId = filter_input(INPUT_GET, 'student', FILTER_DEFAULT);
-$requestedClass = filter_input(INPUT_GET, 'class', FILTER_DEFAULT);
 
 if ($requestedStudentId !== null && $requestedStudentId !== '') {
     $selectedStudentId = $requestedStudentId;
@@ -55,32 +54,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // 5. Daten für das gewählte Datum laden
 $metadata = $planRepo->getPlanMetadata($selectedDate);
 $globalNotes = $planRepo->getGlobalNotes($selectedDate);
-$availableClasses = $planRepo->getAvailableClasses($selectedDate);
 $availableDates = $planRepo->getAvailableDates();
 
-// Wenn Datum noch nicht in der Datenbank existiert, aber heute/nächster Schultag ist, versuchen wir einen Sync
-if ($metadata === null && ($selectedDate === $today || $selectedDate === $nextSchoolDay)) {
+// Wenn für das gewählte Datum noch kein Plan in der Datenbank existiert, versuchen wir einen Sync
+if ($metadata === null) {
     $syncResult = $schoolService->syncDate($selectedDate);
     if ($syncResult['success']) {
         $metadata = $planRepo->getPlanMetadata($selectedDate);
         $globalNotes = $planRepo->getGlobalNotes($selectedDate);
-        $availableClasses = $planRepo->getAvailableClasses($selectedDate);
     }
 }
 
 // Zeitplan-Daten aufbereiten
 $displaySchedules = [];
-$customClassSchedule = null;
 
-if (!empty($requestedClass)) {
-    // Spezifische Klasse aus dem Dropdown gewählt
-    $classItems = $planRepo->getPlanItemsForClass($selectedDate, $requestedClass);
-    $customClassSchedule = [
-        'class_name' => $requestedClass,
-        'has_plan' => !empty($classItems),
-        'items' => $classItems,
-    ];
-} elseif ($selectedStudentId === 'all') {
+if ($selectedStudentId === 'all') {
     // Alle aktiven Kinder anzeigen
     $displaySchedules = $schoolService->getAllStudentsOverview($selectedDate);
 } else {
@@ -144,45 +132,29 @@ $nextLabel = ($nextSchoolDay === $today)
         <!-- Freie Datumsauswahl -->
         <form method="GET" action="index.php" class="school-date-picker-form">
             <input type="hidden" name="student" value="<?= htmlspecialchars($selectedStudentId, ENT_QUOTES, 'UTF-8') ?>">
-            <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>" class="yield-input school-date-input" aria-label="Anderes Datum wählen">
-            <button type="submit" class="btn btn-outline">Anzeigen</button>
+            <input type="date" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>" class="school-date-input" aria-label="Anderes Datum wählen">
+            <button type="submit" class="btn btn-outline school-date-submit-btn">Anzeigen</button>
         </form>
     </div>
 
-    <!-- Kinder- & Klassen-Filter -->
+    <!-- Kinder-Filter -->
     <div class="school-filter-bar">
         <div class="school-student-pills">
             <?php if ($matchedStudent === null): ?>
                 <a href="index.php?date=<?= urlencode($selectedDate) ?>&amp;student=all" 
-                   class="school-pill <?= $selectedStudentId === 'all' && empty($requestedClass) ? 'active' : '' ?>">
+                   class="school-pill <?= $selectedStudentId === 'all' ? 'active' : '' ?>">
                    Alle Kinder
                 </a>
             <?php endif; ?>
 
             <?php foreach ($allStudents as $st): ?>
                 <a href="index.php?date=<?= urlencode($selectedDate) ?>&amp;student=<?= $st['id'] ?>" 
-                   class="school-pill <?= $selectedStudentId === (string)$st['id'] && empty($requestedClass) ? 'active' : '' ?>">
+                   class="school-pill <?= $selectedStudentId === (string)$st['id'] ? 'active' : '' ?>">
                    <span class="school-pill-dot" style="background-color: <?= htmlspecialchars($st['display_color'], ENT_QUOTES, 'UTF-8') ?>;"></span>
                    <?= htmlspecialchars($st['name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($st['class_name'], ENT_QUOTES, 'UTF-8') ?>)
                 </a>
             <?php endforeach; ?>
         </div>
-
-        <?php if (!empty($availableClasses)): ?>
-            <div class="school-class-select-box">
-                <form method="GET" action="index.php">
-                    <input type="hidden" name="date" value="<?= htmlspecialchars($selectedDate, ENT_QUOTES, 'UTF-8') ?>">
-                    <select name="class" class="yield-input school-class-select" aria-label="Schulklasse auswählen">
-                        <option value="">– Alle Klassen (<?= count($availableClasses) ?>) –</option>
-                        <?php foreach ($availableClasses as $c): ?>
-                            <option value="<?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>" <?= $requestedClass === $c ? 'selected' : '' ?>>
-                                Klasse <?= htmlspecialchars($c, ENT_QUOTES, 'UTF-8') ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
-            </div>
-        <?php endif; ?>
     </div>
 
     <main>
@@ -230,7 +202,7 @@ $nextLabel = ($nextSchoolDay === $today)
         <?php endif; ?>
 
         <!-- Smart-Banner: Kern-Auskunft & Abweichungen in natürlicher Sprache -->
-        <?php if (!empty($displaySchedules) && empty($requestedClass)): ?>
+        <?php if (!empty($displaySchedules)): ?>
             <div class="school-smart-summary-grid">
                 <?php foreach ($displaySchedules as $sched): ?>
                     <?php 
@@ -273,7 +245,7 @@ $nextLabel = ($nextSchoolDay === $today)
         <?php endif; ?>
 
         <!-- Detaillierte Stundenpläne -->
-        <?php if (!empty($displaySchedules) && empty($requestedClass)): ?>
+        <?php if (!empty($displaySchedules)): ?>
             <?php foreach ($displaySchedules as $sched): ?>
                 <?php if ($sched['has_plan']): ?>
                     <section class="card school-plan-card">
@@ -362,55 +334,6 @@ $nextLabel = ($nextSchoolDay === $today)
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <!-- Ansicht für spezifische Schulklasse (Dropdown) -->
-        <?php if (!empty($customClassSchedule)): ?>
-            <section class="card school-plan-card">
-                <div class="school-card-header">
-                    <h2>Klasse <?= htmlspecialchars($customClassSchedule['class_name'], ENT_QUOTES, 'UTF-8') ?></h2>
-                    <a href="index.php?date=<?= urlencode($selectedDate) ?>" class="btn btn-outline">Zurück zu den Kindern</a>
-                </div>
-
-                <?php if (empty($customClassSchedule['items'])): ?>
-                    <p class="text-muted">Für diese Klasse liegen keine Daten an diesem Tag vor.</p>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="data-table stack-table">
-                            <thead>
-                                <tr>
-                                    <th>Stunde</th>
-                                    <th>Zeit</th>
-                                    <th>Fach</th>
-                                    <th>Lehrer</th>
-                                    <th>Raum</th>
-                                    <th>Information / Vertretung</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($customClassSchedule['items'] as $item): ?>
-                                    <?php 
-                                    $rowClass = !empty($item['is_cancelled']) ? 'school-row-cancelled' : (!empty($item['is_substitution']) ? 'school-row-changed' : '');
-                                    ?>
-                                    <tr class="<?= $rowClass ?>">
-                                        <td data-label="Stunde"><strong><?= (int)$item['lesson_number'] ?>. Std</strong></td>
-                                        <td data-label="Zeit" class="text-muted"><?= htmlspecialchars($item['start_time'], ENT_QUOTES, 'UTF-8') ?> – <?= htmlspecialchars($item['end_time'], ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td data-label="Fach">
-                                            <?php if (!empty($item['is_cancelled'])): ?>
-                                                <span class="school-item-cancelled">Entfall</span>
-                                            <?php else: ?>
-                                                <strong><?= htmlspecialchars($item['subject'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Lehrer"><?= htmlspecialchars($item['teacher'] ?? '–', ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td data-label="Raum"><?= htmlspecialchars($item['room'] ?? '–', ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td data-label="Info"><?= htmlspecialchars($item['info'] ?? 'Planmäßig', ENT_QUOTES, 'UTF-8') ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </section>
-        <?php endif; ?>
     </main>
 
     <footer class="app-footer">

@@ -4149,22 +4149,42 @@ body {
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
-    margin-bottom: 1.5rem;
+    justify-content: flex-start;
+    margin-bottom: 1.25rem;
 }
 
 .school-date-picker-form {
-    display: flex;
-    gap: 0.5rem;
+    display: inline-flex;
+    gap: 0.4rem;
     align-items: center;
+    margin: 0;
 }
 
 .school-date-input {
-    padding: 0.4rem 0.6rem;
+    padding: 0.55rem 0.75rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--bg-surface-hover);
     background: var(--bg-surface);
     color: var(--text-main);
     font-size: 0.9rem;
+    font-family: inherit;
+    width: 145px;
+    min-width: 140px;
+    box-sizing: border-box;
+    color-scheme: dark;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.school-date-input:hover,
+.school-date-input:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+.school-date-submit-btn {
+    min-width: auto !important;
+    padding: 0.55rem 0.85rem !important;
 }
 
 .school-filter-bar {
@@ -4212,15 +4232,6 @@ body {
     height: 8px;
     border-radius: 50%;
     display: inline-block;
-}
-
-.school-class-select {
-    padding: 0.45rem 0.8rem;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--bg-surface-hover);
-    background: var(--bg-surface);
-    color: var(--text-main);
-    font-size: 0.9rem;
 }
 
 .school-empty-notice {
