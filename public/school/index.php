@@ -261,7 +261,7 @@ $nextLabel = ($nextSchoolDay === $today)
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
         <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">&#128197; Vertretungsplan</a>
         <a href="index.php?view=homework&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'homework' ? '' : 'btn-outline' ?>">&#128221; Hausaufgaben</a>
-        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Leistungen & Fehlzeiten</a>
+        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Noten</a>
     </div>
 
     <main>
