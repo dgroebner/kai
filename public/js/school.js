@@ -81,3 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+    // 6. Klick auf eine Note -> Popup mit Details
+    document.addEventListener('click', (e) => {
+        const gradeDiv = e.target.closest('.js-grade-details');
+        if (gradeDiv) {
+            const subject = gradeDiv.getAttribute('data-subject');
+            const grade = gradeDiv.getAttribute('data-grade');
+            const date = gradeDiv.getAttribute('data-date');
+            const details = gradeDiv.getAttribute('data-details');
+            
+            alert(`Fach: ${subject}\nNote: ${grade}\nDatum: ${date}\nDetails: ${details}`);
+        }
+    });

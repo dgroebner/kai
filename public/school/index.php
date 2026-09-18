@@ -116,7 +116,7 @@ $besteAbsences = [];
 $besteHomework = [];
 $besteUpcomingNotes = [];
 
-if ($view === 'beste' || $view === 'plan') {
+if (in_array($view, ['beste', 'plan', 'homework'])) {
     $bsRepo = new \Kai\Tools\School\BesteSchuleRepository();
     $qIds = ($selectedStudentId === 'all') ? array_column($allStudents, 'id') : [(int)$selectedStudentId];
     
@@ -141,9 +141,12 @@ if ($view === 'beste' || $view === 'plan') {
             }
             $groupedGrades[$sId]['subjects'][$sub][] = $g;
         }
+    } elseif ($view === 'homework') {
+        $besteHomework = $bsRepo->getMissingHomework($qIds, 14);
+        $besteUpcomingNotes = $bsRepo->getUpcomingNotes($qIds);
+    } elseif ($view === 'plan') {
+        $besteUpcomingNotes = $bsRepo->getUpcomingNotes($qIds);
     }
-    
-    $besteUpcomingNotes = $bsRepo->getUpcomingNotes($qIds);
 }
 
 // Datumslabels & Navigationstage für Buttons
@@ -608,7 +611,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 
                 <div class="card school-card school-card-alert">
                     <div class="card-header">
-                        <h3>🚨 Vergessen (letzte 14 Tage)</h3>
+                        <h3>&#9888;&#65039; Vergessen (letzte 14 Tage)</h3>
                     </div>
                     <div class="card-body">
                         <ul style="list-style: none; padding: 0; margin: 0;">
@@ -649,7 +652,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php if (count($groupedGrades) > 0): ?>
                 <div class="card school-card">
                     <div class="card-header">
-                        <h3>🎓 Notenübersicht (Laufendes Schuljahr)</h3>
+                        <h3>&#128202; Notenübersicht (Laufendes Schuljahr)</h3>
                     </div>
                     <div class="card-body">
                         <?php foreach ($groupedGrades as $sId => $studentData): ?>
@@ -668,10 +671,15 @@ $nextLabel = ($nextSchoolDay === $today)
                                         </td>
                                         <td style="padding: 0.5rem 0; vertical-align: top; display: flex; flex-wrap: wrap; gap: 0.5rem;">
                                             <?php foreach ($grades as $g): ?>
-                                                <div title="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?> (<?= date('d.m.', strtotime($g['given_at'])) ?>)" 
-                                                     style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.5rem; font-weight: bold; <?= empty($g['read_status']) ? 'color: var(--primary-color); border-color: var(--primary-color);' : '' ?>">
-                                                    <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
-                                                </div>
+                                                                                                  <div class="js-grade-details"
+                                                       data-subject="<?= htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') ?>"
+                                                       data-grade="<?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>"
+                                                       data-date="<?= date('d.m.Y', strtotime($g['given_at'])) ?>"
+                                                       data-details="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                       title="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?> (<?= date('d.m.', strtotime($g['given_at'])) ?>)" 
+                                                       style="cursor: pointer; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.5rem; font-weight: bold; <?= empty($g['read_status']) ? 'color: var(--primary-color); border-color: var(--primary-color);' : '' ?>">
+                                                      <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
+                                                  </div>
                                             <?php endforeach; ?>
                                         </td>
                                     </tr>
@@ -686,7 +694,7 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php if (count($besteAbsences) > 0): ?>
                 <div class="card school-card <?= count($besteAbsences) > 0 ? 'school-card-alert' : '' ?>">
                     <div class="card-header">
-                        <h3>⚠️ Unentschuldigte Fehlzeiten</h3>
+                        <h3>&#10060; Unentschuldigte Fehlzeiten</h3>
                     </div>
                     <div class="card-body">
                         <ul style="list-style: none; padding: 0; margin: 0;">
