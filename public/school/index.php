@@ -33,14 +33,26 @@ $selectedDate = $schoolService->determineEffectiveDate($requestedDate);
 // 3. Filter-Auswahl (Kind)
 $requestedStudentId = filter_input(INPUT_GET, 'student', FILTER_DEFAULT);
 
-if ($matchedStudent !== null) {
-    // Kind ist selbst eingeloggt -> ZWINGEND auf das eigene Profil festlegen (kein Zugriff auf Geschwister)
-    $selectedStudentId = (string)$matchedStudent['id'];
-} elseif ($requestedStudentId !== null && $requestedStudentId !== '') {
-    $selectedStudentId = $requestedStudentId;
+if ($view === 'plan') {
+    // Vertretungsplan: Kinder dürfen gegenseitig Pläne oder "Alle" einsehen
+    if ($requestedStudentId !== null && $requestedStudentId !== '') {
+        $selectedStudentId = $requestedStudentId;
+    } elseif ($matchedStudent !== null) {
+        // Standardmäßig auf das eigene Profil fokussieren
+        $selectedStudentId = (string)$matchedStudent['id'];
+    } else {
+        // Eltern / Admin -> Standardmäßig alle Kinder
+        $selectedStudentId = 'all';
+    }
 } else {
-    // Eltern / Admin -> Standardmäßig alle Kinder
-    $selectedStudentId = 'all';
+    // Noten & Hausaufgaben: ZWINGEND auf das eigene Profil festlegen (strikte Trennung)
+    if ($matchedStudent !== null) {
+        $selectedStudentId = (string)$matchedStudent['id'];
+    } elseif ($requestedStudentId !== null && $requestedStudentId !== '') {
+        $selectedStudentId = $requestedStudentId;
+    } else {
+        $selectedStudentId = 'all';
+    }
 }
 
 // 4. Manueller Sofort-Abgleich direkt über den SchoolService
@@ -101,12 +113,8 @@ $displaySchedules = [];
 $besteRepo = new \Kai\Tools\School\BesteSchuleRepository();
 $besteStudentIds = [];
 
-if ($matchedStudent !== null) {
-    // Kind ist selbst eingeloggt -> ausschließlich eigenes Profil laden
-    $displaySchedules = [$schoolService->getStudentSchedule((int)$matchedStudent['id'], $selectedDate)];
-    $besteStudentIds = [(int)$matchedStudent['id']];
-} elseif ($selectedStudentId === 'all') {
-    // Alle aktiven Kinder anzeigen (nur für Eltern / Admin)
+if ($selectedStudentId === 'all') {
+    // Alle aktiven Kinder anzeigen
     $displaySchedules = $schoolService->getAllStudentsOverview($selectedDate);
     $besteStudentIds = array_column($allStudents, 'id');
 } else {
@@ -211,10 +219,13 @@ $nextLabel = ($nextSchoolDay === $today)
     </header>
 
     <!-- Ansichten-Tabs -->
+    <?php
+    $studentParamForTabs = ($matchedStudent !== null) ? (string)$matchedStudent['id'] : $selectedStudentId;
+    ?>
     <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
         <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">&#128197; Vertretungsplan</a>
-        <a href="index.php?view=homework&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'homework' ? '' : 'btn-outline' ?>">&#128221; Hausaufgaben</a>
-        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Noten</a>
+        <a href="index.php?view=homework&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($studentParamForTabs) ?>" class="btn <?= $view === 'homework' ? '' : 'btn-outline' ?>">&#128221; Hausaufgaben</a>
+        <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($studentParamForTabs) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Noten</a>
     </div>
 
     <?php if ($view === 'plan'): ?>
@@ -252,7 +263,6 @@ $nextLabel = ($nextSchoolDay === $today)
                     </a>
                 </div>
 
-                <?php if ($matchedStudent === null): ?>
                 <div class="school-student-filters" style="margin-top: 0.5rem;">
                     <span class="text-muted" style="font-size: 0.9rem;">Ansicht:</span>
                     <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=all"
@@ -267,7 +277,6 @@ $nextLabel = ($nextSchoolDay === $today)
                         </a>
                     <?php endforeach; ?>
                 </div>
-                <?php endif; ?>
             </div>
         </div>
     <?php else: ?>
