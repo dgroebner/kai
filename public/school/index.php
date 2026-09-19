@@ -689,8 +689,9 @@ $nextLabel = ($nextSchoolDay === $today)
                             </div>
                             
                             <?php if (!empty(trim($note['description'] ?? ''))): ?>
+                                <?php $cleanDesc = \Kai\Tools\School\BesteSchuleRepository::formatNoteDescription($note['description']); ?>
                                 <div class="school-hero-deviations" style="border-left-color: <?= $typeColor ?>;">
-                                    <div style="white-space: pre-wrap; word-break: break-word;"><?= htmlspecialchars($note['description'], ENT_QUOTES, 'UTF-8') ?></div>
+                                    <div style="white-space: pre-wrap; word-break: break-word;"><?= htmlspecialchars($cleanDesc, ENT_QUOTES, 'UTF-8') ?></div>
                                 </div>
                             <?php endif; ?>
                         </div>

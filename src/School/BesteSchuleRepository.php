@@ -68,9 +68,26 @@ class BesteSchuleRepository
         $stmt->execute($journalData);
     }
 
+    /**
+     * Bereinigt und formatiert Notiztexte (z. B. HTML-Entities auflösen, Pfeil-Schreibweisen vereinheitlichen).
+     */
+    public static function formatNoteDescription(?string $text): string
+    {
+        if ($text === null || $text === '') {
+            return '';
+        }
+
+        // HTML-Entities dekodieren (z. B. &gt; -> >, &amp; -> &)
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Gängige Pfeil-Schreibweisen vereinheitlichen
+        return str_replace(['—>', '–>', '-->', '->', '==>', '=>'], '→', $text);
+    }
+
     public function upsertNote(array $noteData): void
     {
         $pdo = $this->db->getConnection();
+        $noteData['description'] = self::formatNoteDescription($noteData['description'] ?? '');
 
         // Prüfen, ob für dasselbe Kind am selben Tag im selben Fach bereits exakt dieselbe Notiz existiert (z. B. bei Doppelstunden)
         $checkStmt = $pdo->prepare("
