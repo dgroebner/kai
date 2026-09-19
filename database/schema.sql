@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS `vehicle_telemetry_log` (
     `mileage_km` INT NOT NULL,
     `outdoor_temp_c` DECIMAL(4, 1) NOT NULL,
     `raw_payload` LONGTEXT NOT NULL,
-    INDEX `idx_vin_timestamp` (`vin`, `timestamp`)
+    INDEX `idx_vin_timestamp` (`vin`, `timestamp`),
+    UNIQUE KEY `uq_vin_car_captured_at` (`vin`, `car_captured_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================================================

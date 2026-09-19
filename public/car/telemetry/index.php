@@ -48,6 +48,9 @@ if ($validationError !== null) {
 try {
     $repo = new TelemetryRepository();
 
+    // Plausibilisierung/Korrektur gegen Artefakte (z.B. Start-Ladestand aus raw_payload)
+    $repo->sanitizePayload($data);
+
     // Prüfen, ob SoC Telemetrie enthalten ist
     $hasTelemetry = (isset($data['battery']['soc']) && $data['battery']['soc'] > 0);
 

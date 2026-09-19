@@ -49,6 +49,17 @@ class TelemetryRepository
             // sondern ausschließlich manuell durch den Benutzer im Dashboard gepflegt.
             $rangeKm = 0;
 
+            // Prüfen, ob der eingehende Stand älter ist als der bereits gespeicherte State
+            $stmtCurrent = $this->dbCon->prepare("SELECT car_captured_at FROM vehicle_state WHERE vin = :vin");
+            $stmtCurrent->execute([':vin' => $vin]);
+            $currentState = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+            if ($currentState && !empty($currentState['car_captured_at'])) {
+                if (strtotime($carCapturedAt) < strtotime($currentState['car_captured_at'])) {
+                    $this->logger->info("TelemetryRepository: saveState übersprungen, empfangener Stand ($carCapturedAt) ist älter als vorhandener Stand ({$currentState['car_captured_at']}).");
+                    return true;
+                }
+            }
+
             $stmtState = $this->dbCon->prepare("
 					INSERT INTO `vehicle_state` (
 						`vin`, 
@@ -205,6 +216,102 @@ class TelemetryRepository
         } catch (Exception $e) {
             $this->logger->error("TelemetryRepository: Fehler bei saveLog.", ['error' => $e->getMessage()]);
             throw $e;
+        }
+    }
+
+    /**
+     * Plausibilisiert und korrigiert ggf. empfangene Telemetriedaten anhand des rohen Payloads.
+     * Schützt vor bekannten Artefakten des VW EU Data Act Portals:
+     * - Ignoriert Key 7bddd5e7... (Start-Ladestand bei Ladebeginn)
+     * - Bevorzugt battery_level_HV.value (direkte BMS-Messung) bzw. Key 506cb83e... (aktueller Live-SoC)
+     */
+    public function sanitizePayload(array &$data): void
+    {
+        if (!isset($data['raw_payload']['Data']) || !is_array($data['raw_payload']['Data'])) {
+            return;
+        }
+
+        $rawData = $data['raw_payload']['Data'];
+        $currentSoc = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
+
+        $hvCandidates = [];
+        $liveSocCandidates = [];
+        $otherSocCandidates = [];
+        $chargeStartSoc = null;
+
+        $currentDt = null;
+        foreach ($rawData as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $fn = $item['dataFieldName'] ?? '';
+            $val = $item['value'] ?? null;
+            $key = $item['key'] ?? '';
+
+            if (in_array($fn, ['car_captured_time', 'timestamp'], true) && is_string($val)) {
+                $time = strtotime($val);
+                if ($time !== false) {
+                    $currentDt = $time;
+                }
+            }
+
+            if ($val === null || $val === '') {
+                continue;
+            }
+
+            // Start-Ladestand bei Ladebeginn merken
+            if ($key === '7bddd5e7-43a4-3878-bd63-9502782f77a5') {
+                $chargeStartSoc = (int)round((float)$val);
+                continue;
+            }
+
+            // 1. Priorität: battery_level_HV.value (BMS-Messwert)
+            if ($fn === 'battery_level_HV.value' || $key === 'ac1108b1-b8cc-3db9-a663-03d387e42223') {
+                $num = (int)round((float)$val);
+                if ($num >= 0 && $num <= 100) {
+                    $hvCandidates[] = ['time' => $currentDt, 'val' => $num];
+                }
+            } elseif ($fn === 'battery_state_report.soc') {
+                $num = (int)round((float)$val);
+                if ($num >= 0 && $num <= 100) {
+                    if ($key === '506cb83e-f99f-3af3-bbeb-0429b69a78d9') {
+                        $liveSocCandidates[] = ['time' => $currentDt, 'val' => $num];
+                    } else {
+                        $otherSocCandidates[] = ['time' => $currentDt, 'val' => $num];
+                    }
+                }
+            }
+        }
+
+        $selectBest = function (array $candidates): ?int {
+            if (empty($candidates)) {
+                return null;
+            }
+            $withTime = array_filter($candidates, fn($c) => $c['time'] !== null);
+            if (!empty($withTime)) {
+                usort($withTime, fn($a, $b) => $a['time'] <=> $b['time']);
+                return end($withTime)['val'];
+            }
+            return end($candidates)['val'];
+        };
+
+        $reliableSoc = $selectBest($hvCandidates) 
+            ?? $selectBest($liveSocCandidates) 
+            ?? $selectBest($otherSocCandidates);
+
+        if ($reliableSoc !== null && $reliableSoc !== $currentSoc) {
+            $reason = ($currentSoc === $chargeStartSoc)
+                ? "Start-Ladestand ($currentSoc %) durch echten Live-SoC ($reliableSoc %) ersetzt"
+                : "SoC von $currentSoc % auf verlässlichen Live-Wert ($reliableSoc %) korrigiert";
+
+            $this->logger->info("TelemetryRepository: $reason.", [
+                'vin' => $data['vin'] ?? 'unknown',
+                'original_soc' => $currentSoc,
+                'corrected_soc' => $reliableSoc,
+                'charge_start_soc' => $chargeStartSoc,
+            ]);
+
+            $data['battery']['soc'] = $reliableSoc;
         }
     }
 }
