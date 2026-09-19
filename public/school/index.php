@@ -391,6 +391,15 @@ $nextLabel = ($nextSchoolDay === $today)
                                 </ul>
                             </div>
                         <?php endif; ?>
+
+                        <?php if (!empty($sched['needed_subjects'])): ?>
+                            <div class="school-hero-subjects">
+                                <span class="school-hero-subjects-label">🎒 Ranzen:</span>
+                                <?php foreach ($sched['needed_subjects'] as $sub): ?>
+                                    <span class="school-subject-pill"><?= htmlspecialchars($sub, ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>

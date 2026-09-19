@@ -258,6 +258,7 @@ class SchoolService
                 'date' => $date,
                 'summary_sentence' => 'Schüler nicht gefunden.',
                 'items' => [],
+                'needed_subjects' => [],
             ];
         }
 
@@ -395,6 +396,7 @@ class SchoolService
                 'deviations' => [],
                 'start_time' => null,
                 'end_time' => null,
+                'needed_subjects' => [],
                 'excluded_subjects' => $excludedList,
             ];
         }
@@ -474,6 +476,21 @@ class SchoolService
             usort($items, static fn($a, $b) => ((int)($a['lesson_number'] ?? 0)) <=> ((int)($b['lesson_number'] ?? 0)));
         }
 
+        // Benötigte Fächer für den Ranzen ermitteln (nur stattfindende Fächer in Tagesreihenfolge)
+        $neededSubjects = [];
+        foreach ($items as $item) {
+            if (!empty($item['is_cancelled']) || !empty($item['is_free_period'])) {
+                continue;
+            }
+            $subj = trim((string)($item['subject'] ?? ''));
+            if ($subj === '' || $subj === '---' || $subj === 'Unterrichtsfrei') {
+                continue;
+            }
+            if (!in_array($subj, $neededSubjects, true)) {
+                $neededSubjects[] = $subj;
+            }
+        }
+
         return [
             'student' => $student,
             'has_plan' => true,
@@ -490,6 +507,7 @@ class SchoolService
             'summary_sentence' => $summary,
             'deviations' => $deviations,
             'items' => $items,
+            'needed_subjects' => $neededSubjects,
             'excluded_subjects' => $excludedList,
         ];
     }
