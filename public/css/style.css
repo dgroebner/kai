@@ -2463,11 +2463,45 @@ body {
 
 .shopping-quick-add-card {
     margin-bottom: 1.25rem;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(30, 41, 59, 0.75) 100%);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .shopping-quick-add-card h3 {
     font-size: 1.05rem;
     margin-bottom: 0.75rem;
+    color: #93c5fd;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.shopping-add-input-wrapper {
+    flex-basis: 100%;
+}
+
+.shopping-quick-add-input {
+    background-color: #0b1120 !important;
+    border: 2px solid var(--accent) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 1.1rem !important;
+    color: var(--text-main) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+.shopping-quick-add-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.shopping-quick-add-input:focus {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    background-color: #020617 !important;
+    outline: none !important;
 }
 
 .shopping-add-grid {

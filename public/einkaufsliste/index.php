@@ -192,33 +192,28 @@ try {
                 <h3>+ Artikel hinzufügen</h3>
                 <form id="shopping-add-form" class="shopping-add-form">
                     <div class="shopping-add-grid">
-                        <div class="form-group flex-2" style="flex-basis: 100%;">
+                        <div class="form-group flex-2 shopping-add-input-wrapper">
                             <label for="input-item-name" class="sr-only">Artikelname</label>
-                            <input type="text" id="input-item-name" name="name" class="form-control"
+                            <input type="text" id="input-item-name" name="name" class="form-control shopping-quick-add-input"
                                    list="known-products-datalist" placeholder="z.B. Milch, Butter, Kaffee..."
-                                   required autocomplete="off" style="font-size: 1.1rem; padding: 0.75rem;">
+                                   required autocomplete="off">
                             <datalist id="known-products-datalist">
-                                <?php foreach ($allProducts
-
-                                as $p): ?>
+                                <?php foreach ($allProducts as $p): ?>
                                 <option value="<?= htmlspecialchars($p['display_name'] ?? $p['name'], ENT_QUOTES, 'UTF-8') ?>"
                                         data-market="<?= htmlspecialchars($p['preferred_market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?>"
                                         data-category="<?= htmlspecialchars($p['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>"
                                         data-unit="<?= htmlspecialchars($p['default_unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>">
-                                    <?php endforeach; ?>
+                                <?php endforeach; ?>
                             </datalist>
                         </div>
                     </div>
 
-                    <div class="shopping-add-options"
-                         style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                        <label style="cursor: pointer;">
+                    <div class="shopping-add-options">
+                        <label class="checkbox-label">
                             <input type="checkbox" id="input-is-spontaneous" name="is_spontaneous" value="1">
                             ⚡ Spontaner Einkauf (akuter Bedarf)
                         </label>
-                        <button type="button" class="btn btn-primary" id="btn-quick-start-next">Details & Hinzufügen
-                            &rarr;
-                        </button>
+                        <button type="button" class="btn btn-primary" id="btn-quick-start-next">Details &amp; Hinzufügen &rarr;</button>
                     </div>
                 </form>
             </section>
