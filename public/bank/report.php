@@ -259,8 +259,8 @@ $canEdit = Auth::hasPermission('finance_write');
         </div>
         <div class="kpi-card report-kpi-savings">
             <div class="kpi-label">🎯 Sparquote</div>
-            <div class="kpi-value-sm">
-                <?= number_format($savingsRate, 1, ',', '.') ?> %
+            <div class="kpi-value-sm <?= $savingsRate >= 0 ? ($savingsRate >= 20.0 ? 'text-green' : '') : 'text-red' ?>">
+                <?= $savingsRate > 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
             </div>
         </div>
         <div class="kpi-card">
@@ -319,8 +319,8 @@ $canEdit = Auth::hasPermission('finance_write');
                     <circle cx="160" cy="130" r="3" fill="#ffffff" />
 
                     <!-- Großer Prozentwert im Zentrum -->
-                    <text x="160" y="112" text-anchor="middle" fill="<?= $netBalance >= 0 ? '#10b981' : '#ef4444' ?>" font-size="22" font-weight="800">
-                        <?= $netBalance >= 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
+                    <text x="160" y="112" text-anchor="middle" fill="<?= $savingsRate >= 0 ? '#10b981' : '#ef4444' ?>" font-size="22" font-weight="800">
+                        <?= $savingsRate > 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
                     </text>
 
                     <!-- Status-Badge im SVG -->
@@ -402,13 +402,13 @@ $canEdit = Auth::hasPermission('finance_write');
                     <div class="report-budget-stat-item">
                         <div class="report-budget-stat-header">
                             <span>Sparen</span>
-                            <span><?= $pctSaved >= 20.0 ? '✅' : ($netBalance >= 0 ? '🟡' : '🔴') ?></span>
+                            <span><?= $savingsRate >= 20.0 ? '✅' : ($netBalance >= 0 ? '🟡' : '🔴') ?></span>
                         </div>
                         <div class="report-budget-stat-val <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
-                            <?= $pctSaved ?> %
+                            <?= $savingsRate > 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
                         </div>
                         <div class="report-budget-stat-sub">
-                            <?= number_format(max(0, $netBalance), 2, ',', '.') ?> € (Soll: &ge; 20%)
+                            <?= ($netBalance >= 0 ? '+' : '') . number_format($netBalance, 2, ',', '.') ?> € (Soll: &ge; 20%)
                         </div>
                     </div>
                 </div>
@@ -486,7 +486,7 @@ $canEdit = Auth::hasPermission('finance_write');
                                 . "📈 Einnahmen: +" . number_format($m['total_income'], 2, ',', '.') . " €<br>"
                                 . "📉 Ausgaben: -" . number_format($m['total_expenses'], 2, ',', '.') . " €<br>"
                                 . "💰 Netto-Saldo: " . ($m['net_balance'] >= 0 ? '+' : '') . number_format($m['net_balance'], 2, ',', '.') . " €<br>"
-                                . "🎯 Sparquote: " . number_format($m['savings_rate_percent'], 1, ',', '.') . " %";
+                                . "🎯 Sparquote: " . ($m['savings_rate_percent'] > 0 ? '+' : '') . number_format($m['savings_rate_percent'], 1, ',', '.') . " %";
 
                         $trendNodes[] = [
                             'x' => $xCenter,

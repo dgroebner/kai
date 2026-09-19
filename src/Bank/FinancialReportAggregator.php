@@ -152,7 +152,9 @@ class FinancialReportAggregator
 
         $savingsRate = 0.0;
         if ($totalIncome > 0.01) {
-            $savingsRate = max(0.0, round(($netBalance / $totalIncome) * 100, 1));
+            $savingsRate = round(($netBalance / $totalIncome) * 100, 1);
+        } elseif ($totalExpenses > 0.01) {
+            $savingsRate = -100.0;
         }
 
         return [
@@ -611,8 +613,13 @@ class FinancialReportAggregator
         foreach ($monthKeys as $key => $label) {
             $income = $dataByKey[$key]['income'] ?? 0.0;
             $expenses = $dataByKey[$key]['expenses'] ?? 0.0;
-            $net = $income - $expenses;
-            $savingsRate = $income > 0.01 ? max(0.0, round(($net / $income) * 100, 1)) : 0.0;
+            if ($income > 0.01) {
+                $savingsRate = round(($net / $income) * 100, 1);
+            } elseif ($expenses > 0.01) {
+                $savingsRate = -100.0;
+            } else {
+                $savingsRate = 0.0;
+            }
 
             $history[] = [
                 'month_key' => $key,
