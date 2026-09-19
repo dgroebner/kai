@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS `vehicle_state` (
     `charge_power_kw` DECIMAL(5, 2) NOT NULL,
     `battery_temp_max` DECIMAL(4, 1) NOT NULL,
     `battery_temp_min` DECIMAL(4, 1) NOT NULL,
-    `charging_state` VARCHAR(20) NOT NULL,
+    `charging_state` VARCHAR(50) NOT NULL,
     `plug_connected` TINYINT(1) NOT NULL,
     `is_locked` TINYINT(1) NOT NULL,
     `mileage_km` INT NOT NULL,

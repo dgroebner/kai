@@ -42,12 +42,19 @@ function socColor(int $soc): string
 
 function chargingLabel(string $state): array
 {
-    return match ($state) {
-        'CHARGE_STATE_CHARGING_HV_BATTERY' => ['icon' => '⚡', 'label' => 'Lädt', 'color' => '#10b981'],
-        'CHARGE_STATE_DISCHARGING' => ['icon' => '🔋', 'label' => 'Erhaltung', 'color' => '#3b82f6'],
-        'CHARGE_STATE_READY_FOR_CHARGING' => ['icon' => '🔌', 'label' => 'Bereit', 'color' => '#f59e0b'],
-        default => ['icon' => '💤', 'label' => 'Aus', 'color' => '#64748b'],
-    };
+    $st = strtoupper(trim($state));
+    if (str_contains($st, 'CHARGING_HV_BATTERY') || str_contains($st, 'CHARGIN') || $st === 'CHARGE_STATE_CHARGING' || $st === 'CHARGING') {
+        if (!str_contains($st, 'NOT_READY')) {
+            return ['icon' => '⚡', 'label' => 'Lädt', 'color' => '#10b981'];
+        }
+    }
+    if (str_contains($st, 'DISCHARGING')) {
+        return ['icon' => '🔋', 'label' => 'Erhaltung', 'color' => '#3b82f6'];
+    }
+    if (str_contains($st, 'READY_FOR_CHARGING') || str_contains($st, 'READY_F')) {
+        return ['icon' => '🔌', 'label' => 'Bereit', 'color' => '#f59e0b'];
+    }
+    return ['icon' => '💤', 'label' => 'Aus', 'color' => '#64748b'];
 }
 
 // ----------------------------------------------------

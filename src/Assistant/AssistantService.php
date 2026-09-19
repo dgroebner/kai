@@ -196,7 +196,10 @@ class AssistantService
                 ? "{$carName} hat aktuell {$soc} Prozent Ladestand und eine Reichweite von {$range} Kilometern."
                 : "{$carName} hat aktuell {$soc} Prozent Ladestand.";
 
-            if ($chargeKw > 0.1 || $chargingState === 'charging') {
+            $isCharging = $chargeKw > 0.1 
+                || (str_contains($chargingState, 'charging') && !str_contains($chargingState, 'not_ready'));
+
+            if ($isCharging) {
                 $chargeKwText = number_format($chargeKw, 1, ',', '.');
                 $speech .= " Es lädt derzeit mit {$chargeKwText} Kilowatt auf das Ladeziel von {$targetSoc} Prozent.";
             } elseif ($plug) {

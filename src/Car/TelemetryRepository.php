@@ -93,22 +93,21 @@ class TelemetryRepository
 						:estimated_finish_at
 					) ON DUPLICATE KEY UPDATE
 						`car_captured_at`     = VALUES(`car_captured_at`),
-						`soc_percent`         = CASE WHEN VALUES(`soc_percent`) = 0 THEN `soc_percent` ELSE VALUES(`soc_percent`) END,
-						`target_soc`          = CASE WHEN VALUES(`target_soc`) = 0 THEN `target_soc` ELSE VALUES(`target_soc`) END,
+						`soc_percent`         = CASE WHEN :upd_soc IS NULL THEN `soc_percent` ELSE :upd_soc END,
+						`target_soc`          = CASE WHEN :upd_target_soc IS NULL THEN `target_soc` ELSE :upd_target_soc END,
 						`charge_power_kw`     = VALUES(`charge_power_kw`),
-						`battery_temp_max`    = CASE WHEN VALUES(`battery_temp_max`) = 0.0 THEN `battery_temp_max` ELSE VALUES(`battery_temp_max`) END,
-						`battery_temp_min`    = CASE WHEN VALUES(`battery_temp_min`) = 0.0 THEN `battery_temp_min` ELSE VALUES(`battery_temp_min`) END,
-						`charging_state`      = CASE WHEN VALUES(`charging_state`) = 'unknown' THEN `charging_state` ELSE VALUES(`charging_state`) END,
+						`battery_temp_max`    = CASE WHEN :upd_battery_temp_max IS NULL THEN `battery_temp_max` ELSE :upd_battery_temp_max END,
+						`battery_temp_min`    = CASE WHEN :upd_battery_temp_min IS NULL THEN `battery_temp_min` ELSE :upd_battery_temp_min END,
+						`charging_state`      = CASE WHEN :upd_charging_state IS NULL THEN `charging_state` ELSE :upd_charging_state END,
 						`plug_connected`      = VALUES(`plug_connected`),
 						`is_locked`           = VALUES(`is_locked`),
-						`mileage_km`          = CASE WHEN VALUES(`mileage_km`) = 0 THEN `mileage_km` ELSE VALUES(`mileage_km`) END,
+						`mileage_km`          = CASE WHEN :upd_mileage_km IS NULL OR :upd_mileage_km = 0 THEN `mileage_km` ELSE :upd_mileage_km END,
 						`range_km`            = CASE WHEN VALUES(`car_captured_at`) != `car_captured_at` THEN 0 ELSE `range_km` END,
-						`outdoor_temp_c`      = CASE WHEN VALUES(`outdoor_temp_c`) = 0.0 THEN `outdoor_temp_c` ELSE VALUES(`outdoor_temp_c`) END,
+						`outdoor_temp_c`      = CASE WHEN :upd_outdoor_temp_c IS NULL THEN `outdoor_temp_c` ELSE :upd_outdoor_temp_c END,
 						`estimated_finish_at` = VALUES(`estimated_finish_at`),
 						`updated_at`          = CURRENT_TIMESTAMP
 				");
 
-            // Exakt 14 Parameter im Execute-Array (muss genau zu den 14 Named Parameters oben passen)
             $stmtState->execute([
                 ':vin' => $vin,
                 ':car_captured_at' => $carCapturedAt,
@@ -123,7 +122,14 @@ class TelemetryRepository
                 ':mileage_km' => $mileageKm,
                 ':range_km' => $rangeKm,
                 ':outdoor_temp_c' => $outdoorTempC,
-                ':estimated_finish_at' => $estimatedFinishAt
+                ':estimated_finish_at' => $estimatedFinishAt,
+                ':upd_soc' => $socPercent,
+                ':upd_target_soc' => $targetSoc,
+                ':upd_battery_temp_max' => $batteryTempMax,
+                ':upd_battery_temp_min' => $batteryTempMin,
+                ':upd_charging_state' => $chargingState,
+                ':upd_mileage_km' => $mileageKm,
+                ':upd_outdoor_temp_c' => $outdoorTempC,
             ]);
 
             return true;
@@ -312,6 +318,14 @@ class TelemetryRepository
             ]);
 
             $data['battery']['soc'] = $reliableSoc;
+        }
+
+        // Plausibilisierung: Wer aktiv lädt, ist auch angesteckt
+        if (!empty($data['status']['charging_state'])) {
+            $cs = strtoupper((string)$data['status']['charging_state']);
+            if (str_contains($cs, 'CHARGING') && !str_contains($cs, 'NOT_READY')) {
+                $data['status']['plug_connected'] = true;
+            }
         }
     }
 }
