@@ -40,13 +40,16 @@ class ShoppingListRepository
         $sql = "
             SELECT 
                 s.*,
-                COALESCE(mc.sort_order, 999) AS aisle_order,
+                COALESCE(mc.sort_order, mc_fallback.sort_order, 999) AS aisle_order,
                 pm.avg_interval_days,
                 pm.last_purchased_at
             FROM shopping_list_items s
             LEFT JOIN market_categories mc 
-                ON (mc.market = s.market OR (s.market = 'Übergreifend' AND mc.market = :join_market))
+                ON mc.market = :join_market
                 AND s.category = mc.category_name
+            LEFT JOIN market_categories mc_fallback 
+                ON mc_fallback.market = s.market
+                AND s.category = mc_fallback.category_name
             LEFT JOIN product_master pm 
                 ON s.product_id = pm.id
             WHERE 1=1

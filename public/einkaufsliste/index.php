@@ -29,9 +29,18 @@ if ($activeTab === 'recipe' && !Auth::hasPermission('recipe_read') && !Auth::has
 if ($activeTab === 'history' && !Auth::hasPermission('history_read') && !Auth::hasPermission('history_write')) {
     $activeTab = 'list';
 }
-$activeMarket = $_GET['market'] ?? 'all';
-if (!in_array($activeMarket, ['all', 'Rewe', 'Globus'], true)) {
-    $activeMarket = 'all';
+$rawMarket = $_GET['market'] ?? 'Rewe';
+if ($rawMarket === 'Globus') {
+    $activeMarket = 'Globus';
+} else {
+    $activeMarket = 'Rewe';
+}
+
+if (isset($_GET['all'])) {
+    $showAll = (string)$_GET['all'] === '1';
+} else {
+    // Wenn 'market' nicht explizit gesetzt war oder 'market=all', standardmäßig alle Artikel anzeigen
+    $showAll = (!isset($_GET['market']) || $_GET['market'] === 'all');
 }
 
 try {
@@ -46,8 +55,9 @@ try {
     // Daten für die Ansichten laden
     $activeSession = $sessionRepo->getActiveSession();
     $recentSessions = $sessionRepo->getRecentSessions(10);
-    $marketFilter = $activeMarket === 'all' ? null : $activeMarket;
-    $items = $listRepo->getItems($marketFilter, true);
+    $sortMarket = $activeMarket;
+    $allItems = $listRepo->getItems(null, true, null, $sortMarket);
+    $items = $showAll ? $allItems : array_values(array_filter($allItems, fn($i) => $i['market'] === $activeMarket || $i['market'] === 'Übergreifend'));
     $marketCounts = $listRepo->getItemCountsByMarket();
     $holidayContext = $holidayService->getHolidayContext();
     $categoriesGrouped = $categoryRepo->getAllCategoriesGrouped();
@@ -87,6 +97,8 @@ try {
           content="<?= htmlspecialchars(json_encode($categoriesGrouped ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="unique-cats" content="<?= htmlspecialchars(json_encode($uniqueCats ?? []), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="active-market" content="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="show-all" content="<?= $showAll ? '1' : '0' ?>">
+    <meta name="shopping-items-data" content="<?= htmlspecialchars(json_encode($allItems ?? []), ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
@@ -233,19 +245,20 @@ try {
             <div class="card shopping-market-filter-card">
                 <div class="shopping-market-chips">
                     <button type="button"
-                            class="btn btn-sm <?= $activeMarket === 'all' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter"
-                            data-market="all">
-                        Alle Märkte (<?= (int)$marketCounts['all']['open'] ?>)
-                    </button>
-                    <button type="button"
-                            class="btn btn-sm <?= $activeMarket === 'Rewe' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-rewe"
+                            class="btn btn-sm <?= ($activeMarket === 'Rewe') ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-rewe"
                             data-market="Rewe">
-                        🔴 Rewe (<?= (int)$marketCounts['Rewe']['open'] ?>)
+                        🔴 Rewe (<span id="count-rewe"><?= (int)$marketCounts['Rewe']['open'] ?></span>)
                     </button>
                     <button type="button"
-                            class="btn btn-sm <?= $activeMarket === 'Globus' ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-globus"
+                            class="btn btn-sm <?= ($activeMarket === 'Globus') ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-globus"
                             data-market="Globus">
-                        🟠 Globus (<?= (int)$marketCounts['Globus']['open'] ?>)
+                        🟠 Globus (<span id="count-globus"><?= (int)$marketCounts['Globus']['open'] ?></span>)
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm <?= $showAll ? 'btn-active-filter' : 'btn-outline' ?> js-main-all-toggle"
+                            id="btn-main-all-items"
+                            title="Artikel des anderen Marktes in der Gangreihenfolge des aktuellen Marktes einblenden">
+                        📋 Alle Artikel (<span id="count-all"><?= (int)$marketCounts['all']['open'] ?></span>)
                     </button>
                     <button type="button" class="btn btn-sm btn-outline js-toggle-main-weekly <?= ($activeSession['session_type'] ?? '') === 'spontaneinkauf' ? '' : 'hidden' ?>" id="btn-toggle-main-weekly">
                         + Wocheneinkauf
@@ -254,10 +267,9 @@ try {
 
                 <?php if ((int)$marketCounts['all']['checked'] > 0): ?>
                     <button type="button" class="btn btn-success js-complete-shopping-btn"
-                            data-market="<?= htmlspecialchars($activeMarket, ENT_QUOTES, 'UTF-8') ?>">
+                            data-market="<?= htmlspecialchars($showAll ? 'all' : $activeMarket, ENT_QUOTES, 'UTF-8') ?>">
                         ✔️ Einkauf abschließen
-                        (<?= (int)($activeMarket === 'all' ? $marketCounts['all']['checked'] : $marketCounts[$activeMarket]['checked']) ?>
-                        )
+                        (<?= (int)($showAll ? $marketCounts['all']['checked'] : $marketCounts[$activeMarket]['checked']) ?>)
                     </button>
                 <?php endif; ?>
             </div>
@@ -270,9 +282,11 @@ try {
 
                 // Gruppieren der offenen Artikel nach Gang/Kategorie
                 $groupedOpen = [];
+                $categoryOrderMap = $categoryRepo->getAisleOrderMap($sortMarket);
+
                 foreach ($openItems as $item) {
                     $cat = !empty($item['category']) ? $item['category'] : 'Sonstiges';
-                    $order = (int)($item['aisle_order'] ?? 999);
+                    $order = $categoryOrderMap[$cat] ?? (int)($item['aisle_order'] ?? 999);
                     if (!isset($groupedOpen[$cat])) {
                         $groupedOpen[$cat] = [
                                 'name' => $cat,
@@ -284,7 +298,12 @@ try {
                 }
 
                 // Gänge sortieren
-                uasort($groupedOpen, fn($a, $b) => $a['order'] <=> $b['order']);
+                uasort($groupedOpen, function ($a, $b) {
+                    if ($a['order'] !== $b['order']) {
+                        return $a['order'] <=> $b['order'];
+                    }
+                    return strcmp($a['name'], $b['name']);
+                });
                 ?>
 
                 <?php if (empty($openItems)): ?>
@@ -907,14 +926,14 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 </div>
             </div>
             <div class="shopping-live-filter-chips">
-                <button type="button" class="btn btn-sm btn-active-filter js-live-market-filter" data-market="all">Alle
-                    Märkte
-                </button>
                 <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-rewe" data-market="Rewe">
                     🔴 Rewe
                 </button>
-                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus"
-                        data-market="Globus">🟠 Globus
+                <button type="button" class="btn btn-sm btn-outline js-live-market-filter chip-globus" data-market="Globus">
+                    🟠 Globus
+                </button>
+                <button type="button" class="btn btn-sm btn-outline js-live-all-toggle" id="btn-live-all-items" title="Artikel des anderen Marktes in der Gangreihenfolge des aktuellen Marktes einblenden">
+                    📋 Alle Artikel
                 </button>
                 <button type="button" class="btn btn-sm btn-outline js-toggle-live-weekly hidden" id="btn-toggle-live-weekly">
                     + Wocheneinkauf
