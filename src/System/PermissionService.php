@@ -75,5 +75,54 @@ class PermissionService
         $permissions = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $_SESSION["permissions"] = $permissions;
     }
+
+    /**
+     * Ermittelt alle Berechtigungen eines Benutzers anhand seiner Gruppen.
+     * Admin-Benutzer besitzen implizit alle Rechte.
+     *
+     * @return string[]
+     */
+    public function getPermissionsForUser(string $email): array
+    {
+        $adminEmail = $_ENV['ADMIN_EMAIL'] ?? null;
+        if ($adminEmail && strtolower(trim($email)) === strtolower(trim($adminEmail))) {
+            return [
+                'weather_read', 'weather_write',
+                'shopping_read', 'shopping_write', 'shopping_master',
+                'suggestions_read', 'suggestions_write',
+                'recipe_read', 'recipe_write',
+                'history_read', 'history_write',
+                'school_read', 'school_write',
+                'pv_read', 'pv_write',
+                'ebon_read', 'ebon_write',
+                'finance_read', 'finance_write',
+                'car_read', 'car_write',
+                'system_read', 'system_write',
+            ];
+        }
+
+        $stmt = $this->db->getConnection()->prepare("
+            SELECT DISTINCT gp.permission 
+            FROM group_permissions gp
+            JOIN user_groups ug ON gp.group_id = ug.group_id
+            WHERE ug.user_email = :email
+        ");
+        $stmt->execute(['email' => $email]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Prüft, ob ein Benutzer über eine bestimmte Berechtigung verfügt.
+     */
+    public function userHasPermission(string $email, string $permission): bool
+    {
+        $adminEmail = $_ENV['ADMIN_EMAIL'] ?? null;
+        if ($adminEmail && strtolower(trim($email)) === strtolower(trim($adminEmail))) {
+            return true;
+        }
+
+        $permissions = $this->getPermissionsForUser($email);
+        return in_array($permission, $permissions, true);
+    }
 }
 

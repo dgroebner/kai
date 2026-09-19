@@ -4631,6 +4631,59 @@ body {
     padding: 0.1rem 0.45rem;
 }
 
+/* ==========================================================================
+   Profil & Benachrichtigungseinstellungen
+   ========================================================================== */
+.profile-push-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.profile-push-status {
+    font-size: 0.9rem;
+}
+
+.profile-section-card {
+    margin-top: 1.5rem;
+}
+
+.profile-group-header {
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-group-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    background: var(--bg-hover);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.profile-event-icon {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.profile-checkbox-cell {
+    width: 100px;
+    text-align: center;
+}
+
+.profile-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
 
 @media (max-width: 768px) {
     .school-smart-summary-grid {

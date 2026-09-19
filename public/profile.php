@@ -12,6 +12,94 @@ $currentUserEmail = $_SESSION['user_email'] ?? '';
 $successMessage = null;
 $errorMessage = null;
 
+$eventGroups = [
+    'Schule' => [
+        'permission' => 'school_read',
+        'events' => [
+            'school_plan_updated' => [
+                'icon' => '📅',
+                'label' => 'Vertretungsplan aktualisiert',
+                'desc' => 'Änderungen im Stunden- und Vertretungsplan'
+            ],
+            'school_notes_updated' => [
+                'icon' => '📝',
+                'label' => 'Hausaufgaben & Tests',
+                'desc' => 'Neue Hausaufgaben, Tests oder Unterrichtsnotizen'
+            ],
+            'school_grades_updated' => [
+                'icon' => '🎓',
+                'label' => 'Neue Noten',
+                'desc' => 'Neu eingetragene Noten und Leistungsnachweise'
+            ],
+        ],
+    ],
+    'Finanzen' => [
+        'permission' => 'finance_read',
+        'events' => [
+            'financial_report_generated' => [
+                'icon' => '📊',
+                'label' => 'Finanzberichte (Monat/Jahr)',
+                'desc' => 'Automatische KI-Finanzanalysen nach Monatsabschluss'
+            ],
+            'bank_data_imported' => [
+                'icon' => '🏦',
+                'label' => 'Bankumsätze importiert',
+                'desc' => 'Neue Girokonto-Umsätze via API'
+            ],
+            'creditcard_statement_created' => [
+                'icon' => '💳',
+                'label' => 'Kreditkartenabrechnungen',
+                'desc' => 'Neue Kreditkartenabrechnungen per E-Mail erfasst'
+            ],
+        ],
+    ],
+    'E-Bons' => [
+        'permission' => 'ebon_read',
+        'events' => [
+            'receipt_created' => [
+                'icon' => '🧾',
+                'label' => 'Neuer Kassenbon',
+                'desc' => 'E-Bons aus E-Mail-Postfächern digital erfasst'
+            ],
+        ],
+    ],
+    'Einkaufsliste' => [
+        'permission' => 'shopping_read',
+        'events' => [
+            'shopping_completed' => [
+                'icon' => '🛒',
+                'label' => 'Einkauf abgeschlossen',
+                'desc' => 'Benachrichtigung, wenn ein Einkauf als erledigt markiert wird'
+            ],
+        ],
+    ],
+    'Photovoltaik & Speicher' => [
+        'permission' => 'pv_read',
+        'events' => [
+            'pv_forecast_loaded' => [
+                'icon' => '☀️',
+                'label' => 'PV-Ertragsprognose',
+                'desc' => 'Tägliche Solarprognose für den Folgetag geladen'
+            ],
+            'battery_fully_charged' => [
+                'icon' => '🔋',
+                'label' => 'Hausspeicher voll geladen (100%)',
+                'desc' => 'Benachrichtigung sobald der PV-Speicher 100% erreicht'
+            ],
+        ],
+    ],
+    'Elektrofahrzeug' => [
+        'permission' => 'car_read',
+        'events' => [
+            'car_telemetry_loaded' => [
+                'icon' => '🚐',
+                'label' => 'Fahrzeug-Telemetrie',
+                'desc' => 'Neue Fahrzeug- und Batteriedaten empfangen'
+            ],
+        ],
+    ],
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Auth::isValidCsrfToken($_POST['csrf_token'] ?? null)) {
         http_response_code(403);
@@ -19,10 +107,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $rawPreferences = $_POST['notifications'] ?? [];
         $currentPrefs = $userProfileRepo->getPreferences($currentUserEmail);
-        $updatedPrefs = [];
+        $updatedPrefs = $currentPrefs;
 
-        foreach ($currentPrefs as $key => $defaultValue) {
-            $updatedPrefs[$key] = isset($rawPreferences[$key]) && (string)$rawPreferences[$key] === '1';
+        foreach ($eventGroups as $group) {
+            if (!Auth::hasPermission($group['permission'])) {
+                continue;
+            }
+            foreach ($group['events'] as $eventType => $meta) {
+                $updatedPrefs[$eventType] = isset($rawPreferences[$eventType]) && (string)$rawPreferences[$eventType] === '1';
+            }
         }
 
         try {
@@ -38,32 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $userPreferences = $userProfileRepo->getPreferences($currentUserEmail);
 $csrfToken = Auth::csrfToken();
 
-function getEventIcon(string $eventType): string
-{
-    return match ($eventType) {
-        'car_telemetry_loaded' => '🚐',
-        'pv_forecast_loaded' => '☀️',
-        'receipt_created' => '🧾',
-        'bank_data_imported' => '🏦',
-        'creditcard_statement_created' => '💳',
-        'battery_fully_charged' => '🔋',
-        'shopping_completed' => '🛒',
-        default => '📌',
-    };
-}
-
-function getEventLabel(string $eventType): string
-{
-    return match ($eventType) {
-        'receipt_created' => 'Neuer E-Bon erfasst',
-        'creditcard_statement_created' => 'Neue Kreditkartenabrechnung erfasst',
-        'bank_data_imported' => 'Neue Bankdaten importiert',
-        'pv_forecast_loaded' => 'Neue PV-Prognose geladen',
-        'car_telemetry_loaded' => 'Neue Fahrzeugdaten geladen',
-        'shopping_completed' => 'Einkauf abgeschlossen',
-        default => ucfirst(str_replace('_', ' ', $eventType)),
-    };
-}
+$visibleGroups = array_filter($eventGroups, function ($group) {
+    return Auth::hasPermission($group['permission']);
+});
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -84,65 +154,75 @@ function getEventLabel(string $eventType): string
 
     <main>
         <?php if ($successMessage): ?>
-            <div class="alert alert-success" style="margin-bottom: 1rem;"><?= htmlspecialchars($successMessage, ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="alert alert-success"><?= htmlspecialchars($successMessage, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
         <?php if ($errorMessage): ?>
-            <div class="alert alert-danger" style="margin-bottom: 1rem;"><?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="alert alert-danger"><?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
         <section class="card">
             <h2>Web Push</h2>
-            <p class="text-muted" style="margin-bottom: 1rem;">
+            <p class="text-muted">
                 Web Push ermöglicht native Benachrichtigungen – auch wenn die App gerade nicht geöffnet ist.
                 Die Aktivierung gilt nur für <strong>dieses Gerät / diesen Browser</strong>.
             </p>
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div class="profile-push-row">
                 <button id="push-toggle-btn" class="btn" type="button">🔔 Web Push aktivieren</button>
-                <span id="push-status-text" class="text-muted" style="font-size: 0.9rem;"></span>
+                <span id="push-status-text" class="text-muted profile-push-status"></span>
             </div>
         </section>
 
-        <section class="card" style="margin-top: 1.5rem;">
+        <section class="card profile-section-card">
             <h2>Benachrichtigungsklassen</h2>
-            <p class="text-muted" style="margin-bottom: 1.5rem;">Legen Sie fest, für welche Aktivitäts-Kategorien
-                Sie Benachrichtigungen erhalten möchten.</p>
+            <p class="text-muted">Legen Sie fest, für welche Aktivitäts-Kategorien Sie Benachrichtigungen erhalten möchten.</p>
 
-            <form action="profile.php" method="POST">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+            <?php if (empty($visibleGroups)): ?>
+                <p class="text-muted">Für Ihr Benutzerkonto sind derzeit keine konfigurierbaren Benachrichtigungsklassen freigeschaltet.</p>
+            <?php else: ?>
+                <form action="profile.php" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 
-                <div class="table-responsive">
-                    <table class="data-table stack-table">
-                        <thead>
-                        <tr>
-                            <th>Kategorie / Event</th>
-                            <th style="width: 120px; text-align: center;">Aktiviert</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($userPreferences as $eventType => $isEnabled): ?>
-                            <tr>
-                                <td data-label="Kategorie">
-                                    <span style="font-size: 1.2rem; margin-right: 0.5rem;"><?= getEventIcon($eventType) ?></span>
-                                    <strong><?= htmlspecialchars(getEventLabel($eventType), ENT_QUOTES, 'UTF-8') ?></strong>
-                                    <br><small class="text-muted"><?= htmlspecialchars($eventType, ENT_QUOTES, 'UTF-8') ?></small>
-                                </td>
-                                <td data-label="Aktiviert" style="text-align: center;">
-                                    <input type="checkbox" name="notifications[<?= htmlspecialchars($eventType, ENT_QUOTES, 'UTF-8') ?>]" value="1" <?= $isEnabled ? 'checked' : '' ?> style="transform: scale(1.3);">
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                    <?php foreach ($visibleGroups as $groupTitle => $group): ?>
+                        <div class="profile-group-header">
+                            <span class="profile-group-badge"><?= htmlspecialchars($groupTitle, ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table stack-table">
+                                <thead>
+                                <tr>
+                                    <th>Ereignis</th>
+                                    <th class="profile-checkbox-cell">Aktiviert</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($group['events'] as $eventType => $meta): ?>
+                                    <?php $isEnabled = $userPreferences[$eventType] ?? true; ?>
+                                    <tr>
+                                        <td data-label="Ereignis">
+                                            <span class="profile-event-icon"><?= $meta['icon'] ?></span>
+                                            <strong><?= htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <br><small class="text-muted"><?= htmlspecialchars($meta['desc'], ENT_QUOTES, 'UTF-8') ?></small>
+                                        </td>
+                                        <td data-label="Aktiviert" class="profile-checkbox-cell">
+                                            <input type="checkbox" name="notifications[<?= htmlspecialchars($eventType, ENT_QUOTES, 'UTF-8') ?>]" value="1" <?= $isEnabled ? 'checked' : '' ?> class="profile-checkbox">
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endforeach; ?>
 
-                <div class="form-actions" style="margin-top: 1.5rem;">
-                    <button type="submit" class="btn btn-save">💾 Benachrichtigungen speichern</button>
-                </div>
-            </form>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-save">💾 Benachrichtigungen speichern</button>
+                    </div>
+                </form>
+            <?php endif; ?>
         </section>
     </main>
 </div>
 <?php include __DIR__ . '/shared/footer_scripts.php'; ?>
 <script src="js/http.js" defer></script>
+<script src="js/push.js" defer></script>
 </body>
 </html>

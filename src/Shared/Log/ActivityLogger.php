@@ -3,19 +3,36 @@
 namespace Kai\Tools\Shared\Log;
 
 use Exception;
+use Kai\Tools\School\SchoolStudentRepository;
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Push\PushSubscriptionRepository;
 use Kai\Tools\Shared\Push\WebPushService;
+use Kai\Tools\System\PermissionService;
 use Kai\Tools\System\UserProfileRepository;
 
 class ActivityLogger
 {
     private Database $db;
     private Logger $logger;
+    private PermissionService $permissionService;
+    private SchoolStudentRepository $studentRepo;
+    private UserProfileRepository $userProfileRepo;
+    private PushSubscriptionRepository $subscriptionRepo;
 
-    public function __construct(Database $db)
-    {
+    public function __construct(
+        Database $db,
+        ?Logger $logger = null,
+        ?PermissionService $permissionService = null,
+        ?SchoolStudentRepository $studentRepo = null,
+        ?UserProfileRepository $userProfileRepo = null,
+        ?PushSubscriptionRepository $subscriptionRepo = null
+    ) {
         $this->db = $db;
-        $this->logger = new Logger();
+        $this->logger = $logger ?? new Logger();
+        $this->permissionService = $permissionService ?? new PermissionService($this->db);
+        $this->studentRepo = $studentRepo ?? new SchoolStudentRepository($this->db);
+        $this->userProfileRepo = $userProfileRepo ?? new UserProfileRepository($this->db);
+        $this->subscriptionRepo = $subscriptionRepo ?? new PushSubscriptionRepository($this->db);
     }
 
     public function logReceipt(int $receiptId, string $storeName = ''): void
@@ -58,41 +75,58 @@ class ActivityLogger
             $this->logger->error("ActivityLogger: Fehler bei save log.", ['error' => $e->getMessage()]);
         }
 
-        // Web-Push-Benachrichtigung versenden, wenn VAPID konfiguriert und Benutzer eingeloggt
-        $this->dispatchPushNotification($eventType, $message, $linkUrl);
+        // Web-Push-Benachrichtigung an alle berechtigten und interessierten Abonnenten versenden
+        $this->dispatchPushNotification($eventType, $message, $linkUrl, $entityId);
     }
 
     /**
-     * Sendet eine Web-Push-Benachrichtigung an den aktuell eingeloggten Benutzer,
-     * sofern er für diesen Event-Typ Push-Benachrichtigungen aktiviert hat.
+     * Sendet eine Web-Push-Benachrichtigung an alle berechtigten Benutzer,
+     * die für diesen Event-Typ Push-Benachrichtigungen aktiviert haben.
      * Fehler beim Push-Versand werden geloggt, aber nie nach außen weitergegeben.
      */
-    private function dispatchPushNotification(string $eventType, string $message, ?string $linkUrl): void
+    private function dispatchPushNotification(string $eventType, string $message, ?string $linkUrl, ?int $entityId = null): void
     {
         // Nur wenn VAPID konfiguriert ist
         if (empty($_ENV['VAPID_PUBLIC_KEY']) || empty($_ENV['VAPID_PRIVATE_KEY'])) {
             return;
         }
 
-        // Benutzer-E-Mail aus Session — kann auch in Cron-Kontexten fehlen
-        $userEmail = $_SESSION['user_email'] ?? '';
-        if (empty($userEmail)) {
-            return;
-        }
-
         try {
-            $profileRepo = new UserProfileRepository();
-            $preferences = $profileRepo->getPreferences($userEmail);
-
-            // Nur senden, wenn für diesen Event-Typ Push aktiviert
-            if (isset($preferences[$eventType]) && !$preferences[$eventType]) {
+            $subscribedEmails = $this->subscriptionRepo->findAllSubscribedEmails();
+            if (empty($subscribedEmails)) {
                 return;
             }
 
+            $requiredPermission = UserProfileRepository::EVENT_PERMISSIONS[$eventType] ?? null;
+            $webPushService = new WebPushService($this->subscriptionRepo, $this->logger);
             $url = !empty($linkUrl) ? (rtrim(APP_URL, '/') . $linkUrl) : APP_URL;
 
-            new WebPushService()->sendToUser($userEmail, 'Kai – Neue Aktivität', $message, $url);
-        } catch (Exception $e) {
+            foreach ($subscribedEmails as $userEmail) {
+                // 1. Berechtigungsprüfung: Hat der Nutzer das nötige Recht für dieses Modul/Event?
+                if ($requiredPermission !== null && !$this->permissionService->userHasPermission($userEmail, $requiredPermission)) {
+                    continue;
+                }
+
+                // 2. Präferenzprüfung: Hat der Nutzer Benachrichtigungen für diesen Event-Typ aktiviert?
+                $preferences = $this->userProfileRepo->getPreferences($userEmail);
+                if (isset($preferences[$eventType]) && !$preferences[$eventType]) {
+                    continue;
+                }
+
+                // 3. Datenschutz-Prüfung für Schulkinder:
+                // Wenn es sich um kinderspezifische Schulereignisse handelt (Noten, Hausaufgaben):
+                // - Schüler dürfen ausschließlich Benachrichtigungen für ihr eigenes Profil erhalten
+                // - Eltern / Admins (nicht mit einem Schülerprofil verknüpft) erhalten Benachrichtigungen für alle Kinder
+                if (in_array($eventType, ['school_grades_updated', 'school_notes_updated'], true) && $entityId !== null) {
+                    $matchedStudent = $this->studentRepo->getByEmail($userEmail);
+                    if ($matchedStudent !== null && (int)$matchedStudent['id'] !== $entityId) {
+                        continue;
+                    }
+                }
+
+                $webPushService->sendToUser($userEmail, 'Kai – Neue Aktivität', $message, $url);
+            }
+        } catch (\Throwable $e) {
             $this->logger->error("ActivityLogger: Fehler beim Web-Push-Versand.", ['error' => $e->getMessage()]);
         }
     }

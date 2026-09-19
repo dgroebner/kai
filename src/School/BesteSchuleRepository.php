@@ -18,7 +18,7 @@ class BesteSchuleRepository
     // UPSERT (Schreiben)
     // -------------------------------------------------------------------------
 
-    public function upsertGrade(array $gradeData): void
+    public function upsertGrade(array $gradeData): bool
     {
         $pdo = $this->db->getConnection();
         $stmt = $pdo->prepare("
@@ -33,6 +33,7 @@ class BesteSchuleRepository
                 updated_at = NOW()
         ");
         $stmt->execute($gradeData);
+        return $stmt->rowCount() === 1;
     }
 
     public function upsertAbsence(array $absenceData): void
@@ -84,7 +85,7 @@ class BesteSchuleRepository
         return str_replace(['—>', '–>', '-->', '->', '==>', '=>'], '→', $text);
     }
 
-    public function upsertNote(array $noteData): void
+    public function upsertNote(array $noteData): bool
     {
         $pdo = $this->db->getConnection();
         $noteData['description'] = self::formatNoteDescription($noteData['description'] ?? '');
@@ -119,7 +120,7 @@ class BesteSchuleRepository
                 ':api_note_id' => $noteData['api_note_id'],
                 ':id' => $existingId
             ]);
-            return;
+            return false;
         }
 
         $stmt = $pdo->prepare("
@@ -132,6 +133,7 @@ class BesteSchuleRepository
                 description = VALUES(description)
         ");
         $stmt->execute($noteData);
+        return $stmt->rowCount() === 1;
     }
 
     /**

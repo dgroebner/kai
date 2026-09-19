@@ -3,6 +3,7 @@
 namespace Kai\Tools\School;
 
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Log\ActivityLogger;
 use Kai\Tools\Shared\Db\Database;
 
 class BesteSchuleSyncService
@@ -10,12 +11,14 @@ class BesteSchuleSyncService
     private BesteSchuleClient $client;
     private BesteSchuleRepository $repo;
     private Logger $logger;
+    private ActivityLogger $activityLogger;
 
     public function __construct()
     {
         $this->client = new BesteSchuleClient();
         $this->repo = new BesteSchuleRepository();
         $this->logger = new Logger();
+        $this->activityLogger = new ActivityLogger(Database::getInstance());
     }
 
     public function syncAll(): array
@@ -47,8 +50,9 @@ class BesteSchuleSyncService
             // 1. Noten abrufen
             $grades = $this->client->getGrades($bsId);
             if (is_array($grades)) {
+                $newGrades = [];
                 foreach ($grades as $g) {
-                    $this->repo->upsertGrade([
+                    $isNew = $this->repo->upsertGrade([
                         'id' => (int)$g['id'],
                         'student_id' => $kaiId,
                         'subject' => $g['subject']['name'] ?? 'Unbekannt',
@@ -58,6 +62,27 @@ class BesteSchuleSyncService
                         'read_status' => !empty($g['read']) ? 1 : 0
                     ]);
                     $stats['grades']++;
+                    if ($isNew) {
+                        $newGrades[] = [
+                            'subject' => $g['subject']['name'] ?? 'Unbekannt',
+                            'grade' => (string)($g['value'] ?? '')
+                        ];
+                    }
+                }
+
+                if (!empty($newGrades)) {
+                    if (count($newGrades) === 1) {
+                        $msg = "Neue Note für {$student['name']} in {$newGrades[0]['subject']}: {$newGrades[0]['grade']}";
+                    } else {
+                        $count = count($newGrades);
+                        $msg = "{$count} neue Noten für {$student['name']} erfasst";
+                    }
+                    $this->activityLogger->log(
+                        'school_grades_updated',
+                        $msg,
+                        "/school/index.php?view=beste&student={$kaiId}",
+                        $kaiId
+                    );
                 }
             }
 
@@ -108,11 +133,12 @@ class BesteSchuleSyncService
             $lessonsWithNotes = $this->client->getUpcomingLessonsWithNotes($bsId, $fromDate, $toDate);
             if (is_array($lessonsWithNotes)) {
                 if (!isset($stats['notes'])) $stats['notes'] = 0;
+                $newNotes = [];
                 foreach ($lessonsWithNotes as $lesson) {
                     if (empty($lesson['notes']) || !is_array($lesson['notes'])) continue;
                     
                     foreach ($lesson['notes'] as $note) {
-                        $this->repo->upsertNote([
+                        $isNew = $this->repo->upsertNote([
                             'student_id' => $kaiId,
                             'lesson_date' => $lesson['day']['date'] ?? date('Y-m-d'),
                             'subject' => $lesson['subject']['name'] ?? 'Unbekannt',
@@ -121,7 +147,28 @@ class BesteSchuleSyncService
                             'api_note_id' => (int)$note['id']
                         ]);
                         $stats['notes']++;
+                        if ($isNew) {
+                            $newNotes[] = [
+                                'subject' => $lesson['subject']['name'] ?? 'Unbekannt',
+                                'type' => $note['type']['name'] ?? 'Notiz',
+                            ];
+                        }
                     }
+                }
+
+                if (!empty($newNotes)) {
+                    if (count($newNotes) === 1) {
+                        $msg = "Neue {$newNotes[0]['type']} für {$student['name']} ({$newNotes[0]['subject']})";
+                    } else {
+                        $count = count($newNotes);
+                        $msg = "{$count} neue Aufgaben/Notizen für {$student['name']} erfasst";
+                    }
+                    $this->activityLogger->log(
+                        'school_notes_updated',
+                        $msg,
+                        "/school/index.php?view=homework",
+                        $kaiId
+                    );
                 }
             }
         }

@@ -10,6 +10,34 @@ class UserProfileRepository
 {
     private Database $db;
 
+    public const DEFAULT_PREFERENCES = [
+        'financial_report_generated' => true,
+        'bank_data_imported' => true,
+        'creditcard_statement_created' => true,
+        'receipt_created' => true,
+        'school_plan_updated' => true,
+        'school_notes_updated' => true,
+        'school_grades_updated' => true,
+        'shopping_completed' => true,
+        'pv_forecast_loaded' => true,
+        'battery_fully_charged' => true,
+        'car_telemetry_loaded' => true,
+    ];
+
+    public const EVENT_PERMISSIONS = [
+        'financial_report_generated' => 'finance_read',
+        'bank_data_imported' => 'finance_read',
+        'creditcard_statement_created' => 'finance_read',
+        'receipt_created' => 'ebon_read',
+        'school_plan_updated' => 'school_read',
+        'school_notes_updated' => 'school_read',
+        'school_grades_updated' => 'school_read',
+        'shopping_completed' => 'shopping_read',
+        'pv_forecast_loaded' => 'pv_read',
+        'battery_fully_charged' => 'pv_read',
+        'car_telemetry_loaded' => 'car_read',
+    ];
+
     public function __construct(?Database $db = null)
     {
         $this->db = $db ?? Database::getInstance();
@@ -28,13 +56,7 @@ class UserProfileRepository
         $stmt->execute(['email' => $email]);
 
         if (!$stmt->fetch()) {
-            $defaultPreferences = json_encode([
-                'receipt_created' => true,
-                'creditcard_statement_created' => true,
-                'bank_data_imported' => true,
-                'pv_forecast_loaded' => true,
-                'car_telemetry_loaded' => true,
-            ], JSON_THROW_ON_ERROR);
+            $defaultPreferences = json_encode(self::DEFAULT_PREFERENCES, JSON_THROW_ON_ERROR);
 
             $insertStmt = $dbCon->prepare("
                 INSERT INTO user_profiles (user_email, notification_preferences, created_at, updated_at) 
@@ -60,18 +82,12 @@ class UserProfileRepository
         if ($row && !empty($row['notification_preferences'])) {
             $decoded = json_decode($row['notification_preferences'], true);
             if (is_array($decoded)) {
-                return $decoded;
+                return array_merge(self::DEFAULT_PREFERENCES, $decoded);
             }
         }
 
         // Fallback / Defaults
-        return [
-            'receipt_created' => true,
-            'creditcard_statement_created' => true,
-            'bank_data_imported' => true,
-            'pv_forecast_loaded' => true,
-            'car_telemetry_loaded' => true,
-        ];
+        return self::DEFAULT_PREFERENCES;
     }
 
     /**

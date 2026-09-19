@@ -275,24 +275,12 @@ class BankGiroService
                 $reportService = new FinancialReportService($reportRepo);
                 $reportService->generateReport('month', $prevMonth);
 
-                $activityLogger = new ActivityLogger($this->db);
-                $activityLogger->log(
-                    'finance',
-                    "KI-Finanzreport für $prevMonth nach Bankdatenabruf automatisch generiert.",
-                    "/bank/report.php?type=monat&period=" . $prevMonth
-                );
-
                 // Jahreswechsel-Check: Im Januar auch das Vorjahr automatisch analysieren
                 if ((int)date('n') === 1) {
                     $prevYear = (string)((int)date('Y') - 1);
                     if ($reportRepo->getReport('year', $prevYear) === null) {
                         $this->logger->info("BankGiroService: Januar-Sync erkannt. Generiere automatischen Jahresreport für $prevYear...");
                         $reportService->generateReport('year', $prevYear);
-                        $activityLogger->log(
-                            'finance',
-                            "KI-Jahresreport für $prevYear automatisch generiert.",
-                            "/bank/report.php?type=jahr&period=" . $prevYear
-                        );
                     }
                 }
 
