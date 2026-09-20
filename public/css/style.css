@@ -5315,6 +5315,8 @@ body {
     white-space: nowrap !important;
     font-size: 0.85rem;
     line-height: 1.3;
+}
+
 .gamif-weekday-picker {
     display: flex;
     gap: 0.5rem;
@@ -5353,6 +5355,113 @@ body {
     background: rgba(59, 130, 246, 0.2);
     border-color: var(--accent);
     color: #93c5fd;
+}
+
+/* Gamification Emoji Picker */
+.gamif-emoji-picker-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.gamif-emoji-preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 6px;
+    background: var(--bg-main);
+    border: 1px solid var(--bg-surface-hover);
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.modal-card--emoji {
+    max-width: 520px;
+    width: 95%;
+}
+
+.gamif-emoji-filter-wrap {
+    margin-bottom: 0.75rem;
+}
+
+.gamif-emoji-categories {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gamif-emoji-cat-btn {
+    background: var(--bg-main);
+    border: 1px solid var(--bg-surface-hover);
+    color: var(--text-muted);
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.gamif-emoji-cat-btn:hover {
+    color: var(--text-main);
+    border-color: var(--accent);
+}
+
+.gamif-emoji-cat-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--accent);
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+.gamif-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 0.4rem;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 0.25rem;
+}
+
+.gamif-emoji-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    height: 44px;
+    border-radius: 6px;
+    background: var(--bg-main);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.1s ease, border-color 0.1s ease;
+    user-select: none;
+}
+
+.gamif-emoji-tile:hover {
+    background: var(--bg-surface-hover);
+    border-color: var(--accent);
+    transform: scale(1.18);
+}
+
+.gamif-emoji-tile:active {
+    transform: scale(0.95);
+}
+
+.gamif-avatar--clickable {
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gamif-avatar--clickable:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
 }
 
 @media (max-width: 768px) {

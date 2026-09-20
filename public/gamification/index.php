@@ -62,7 +62,7 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
     <section class="gamif-hud">
         <div class="gamif-hud-header">
             <div class="gamif-hud-profile">
-                <div class="gamif-avatar"><?= htmlspecialchars($currentProfile['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="gamif-avatar gamif-avatar--clickable js-open-avatar-picker" title="Tippe hier, um dein Spieler-Symbol zu ändern!"><?= htmlspecialchars($currentProfile['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></div>
                 <div class="gamif-profile-info">
                     <h2><?= htmlspecialchars($currentProfile['display_name'] ?? 'Held', ENT_QUOTES, 'UTF-8') ?></h2>
                     <span class="gamif-rank-title">Level <?= $levelProgress['level'] ?>: <?= htmlspecialchars($levelProgress['rank_title'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -520,6 +520,7 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
 </div>
 
 <script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/gamification-emoji-picker.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/gamification.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>

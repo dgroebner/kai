@@ -341,4 +341,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 10. Spieler-Symbol / Avatar ändern
+    const avatarEl = document.querySelector('.js-open-avatar-picker');
+    if (avatarEl && window.GamifEmojiPicker) {
+        avatarEl.addEventListener('click', () => {
+            GamifEmojiPicker.open({
+                onSelect: async (emoji) => {
+                    avatarEl.textContent = emoji;
+                    const res = await KaiHttp.postJson('api.php', {
+                        action: 'profile_update',
+                        avatar_icon: emoji
+                    });
+                    if (res.success) {
+                        showFeedback('Neues Symbol gewählt! ✨', `Dein Mitspieler-Symbol wurde auf ${emoji} geändert.`);
+                    } else {
+                        showFeedback('Fehler', res.message || 'Symbol konnte nicht gespeichert werden.');
+                    }
+                }
+            });
+        });
+    }
 });

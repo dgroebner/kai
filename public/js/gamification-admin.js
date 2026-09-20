@@ -516,6 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
             formReward.reset();
             document.getElementById('reward-id').value = '';
             document.getElementById('modal-reward-heading').textContent = 'Neue Prämie anlegen';
+            const rewPreview = document.getElementById('reward-icon-preview');
+            if (rewPreview) rewPreview.textContent = '🎁';
             openModal(modalReward);
         });
     }
@@ -530,6 +532,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('reward-desc').value = rewData.description || '';
                 document.getElementById('reward-cost').value = rewData.coin_cost || 100;
                 document.getElementById('reward-icon').value = rewData.icon || '🎁';
+                const rewPreview = document.getElementById('reward-icon-preview');
+                if (rewPreview) rewPreview.textContent = rewData.icon || '🎁';
                 document.getElementById('reward-type').value = rewData.type || 'privilege';
                 document.getElementById('reward-cooldown').value = rewData.cooldown_days || 0;
                 document.getElementById('modal-reward-heading').textContent = 'Prämie bearbeiten';
@@ -623,6 +627,8 @@ document.addEventListener('DOMContentLoaded', () => {
             formBadge.reset();
             document.getElementById('badge-id').value = '';
             document.getElementById('modal-badge-heading').textContent = 'Neues Abzeichen anlegen';
+            const badgePreview = document.getElementById('badge-icon-preview');
+            if (badgePreview) badgePreview.textContent = '🏆';
             if (badgeParamGroup) badgeParamGroup.style.display = 'none';
             openModal(modalBadge);
         });
@@ -637,6 +643,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('badge-title').value = badgeData.title || '';
                 document.getElementById('badge-desc').value = badgeData.description || '';
                 document.getElementById('badge-icon').value = badgeData.icon || '🏆';
+                const badgePreview = document.getElementById('badge-icon-preview');
+                if (badgePreview) badgePreview.textContent = badgeData.icon || '🏆';
                 document.getElementById('badge-metric-type').value = badgeData.metric_type || 'task_count';
                 document.getElementById('badge-metric-target').value = badgeData.metric_target || 1;
                 document.getElementById('badge-coins').value = badgeData.reward_coins || 50;
@@ -688,9 +696,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (openCreateProfileBtn && modalCreateProfile && formCreateProfile) {
         openCreateProfileBtn.addEventListener('click', () => {
             formCreateProfile.reset();
+            const profPreview = document.getElementById('new-profile-avatar-preview');
+            if (profPreview) profPreview.textContent = '⭐';
             openModal(modalCreateProfile);
         });
     }
+
+    // Live preview sync for manual typing in emoji inputs
+    [
+        { input: '#new-profile-avatar', preview: '#new-profile-avatar-preview' },
+        { input: '#reward-icon', preview: '#reward-icon-preview' },
+        { input: '#badge-icon', preview: '#badge-icon-preview' }
+    ].forEach(({ input, preview }) => {
+        const inEl = document.querySelector(input);
+        const prevEl = document.querySelector(preview);
+        if (inEl && prevEl) {
+            inEl.addEventListener('input', () => {
+                prevEl.textContent = inEl.value.trim() || '❓';
+            });
+        }
+    });
 
     if (formCreateProfile) {
         formCreateProfile.addEventListener('submit', async (e) => {
@@ -715,4 +740,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 14. Bestehendes Mitspieler-Symbol nachträglich ändern
+    document.addEventListener('click', (e) => {
+        const avatarSpan = e.target.closest('.js-change-profile-avatar');
+        if (avatarSpan && window.GamifEmojiPicker) {
+            const profileId = avatarSpan.getAttribute('data-profile-id');
+            const name = avatarSpan.getAttribute('data-name');
+            GamifEmojiPicker.open({
+                onSelect: async (emoji) => {
+                    avatarSpan.textContent = emoji;
+                    const res = await KaiHttp.postJson('api.php', {
+                        action: 'profile_update',
+                        profile_id: parseInt(profileId, 10),
+                        avatar_icon: emoji
+                    });
+                    if (res.success) {
+                        showFeedback('Symbol geändert ✨', `Das Symbol von ${name} wurde auf ${emoji} geändert.`);
+                    } else {
+                        showFeedback('Fehler', res.message || 'Symbol konnte nicht gespeichert werden.');
+                    }
+                }
+            });
+        }
+    });
 });

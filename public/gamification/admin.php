@@ -426,7 +426,7 @@ $metricTypeMap = [
             ?>
                 <div class="gamif-card">
                     <div style="display:flex; align-items:center; gap:0.75rem;">
-                        <span style="font-size:2rem;"><?= htmlspecialchars($p['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="gamif-avatar gamif-avatar--clickable js-change-profile-avatar" data-profile-id="<?= (int)$p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?>" title="Symbol ändern" style="font-size:2rem; width:2.8rem; height:2.8rem; display:inline-flex; align-items:center; justify-content:center;"><?= htmlspecialchars($p['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></span>
                         <div>
                             <h4 style="margin:0;"><?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?></h4>
                             <span class="text-muted" style="font-size:0.85rem;">Level <?= $lvlProg['level'] ?> · <?= htmlspecialchars($lvlProg['rank_title'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -579,7 +579,11 @@ $metricTypeMap = [
                         </div>
                         <div class="form-group">
                             <label for="reward-icon">Symbol / Emoji:</label>
-                            <input type="text" id="reward-icon" name="icon" class="form-control" value="🎁">
+                            <div class="gamif-emoji-picker-group">
+                                <span class="gamif-emoji-preview" id="reward-icon-preview">🎁</span>
+                                <input type="text" id="reward-icon" name="icon" class="form-control" value="🎁" style="max-width:70px; text-align:center; font-size:1.2rem;">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#reward-icon" data-target-preview="#reward-icon-preview">🎨 Wählen</button>
+                            </div>
                         </div>
                     </div>
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
@@ -628,7 +632,11 @@ $metricTypeMap = [
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
                         <div class="form-group">
                             <label for="badge-icon">Symbol / Emoji:</label>
-                            <input type="text" id="badge-icon" name="icon" class="form-control" value="🏆">
+                            <div class="gamif-emoji-picker-group">
+                                <span class="gamif-emoji-preview" id="badge-icon-preview">🏆</span>
+                                <input type="text" id="badge-icon" name="icon" class="form-control" value="🏆" style="max-width:70px; text-align:center; font-size:1.2rem;">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#badge-icon" data-target-preview="#badge-icon-preview">🎨 Wählen</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="badge-metric-type">Art der Bedingung:</label>
@@ -899,7 +907,11 @@ $metricTypeMap = [
                         </div>
                         <div class="form-group">
                             <label for="new-profile-avatar">Start-Symbol / Emoji:</label>
-                            <input type="text" id="new-profile-avatar" name="avatar_icon" class="form-control" value="⭐">
+                            <div class="gamif-emoji-picker-group">
+                                <span class="gamif-emoji-preview" id="new-profile-avatar-preview">⭐</span>
+                                <input type="text" id="new-profile-avatar" name="avatar_icon" class="form-control" value="⭐" style="max-width:70px; text-align:center; font-size:1.2rem;">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#new-profile-avatar" data-target-preview="#new-profile-avatar-preview">🎨 Wählen</button>
+                            </div>
                         </div>
                     </div>
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
@@ -927,6 +939,7 @@ $metricTypeMap = [
 </div>
 
 <script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/gamification-emoji-picker.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/gamification-admin.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>
