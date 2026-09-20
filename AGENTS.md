@@ -163,6 +163,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `Bank\CreditCardService` | `Kassenbon\ReceiptMatcher` | Analog für importierte Kreditkartenabrechnungen. |
 | `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
 | `public/shared/mail.php` | `School\*` | Führt im asynchronen Cronjob den stündlichen Abgleich der Vertretungspläne mit aus. |
+| `public/shared/mail.php` | `Gamification\*` | Führt im asynchronen Cronjob den stündlichen Abgleich überfälliger Aufgaben und Generierung anstehender Tagesaufgaben durch. |
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
 Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen);
@@ -176,6 +177,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | Bank | `Kai\Tools\Bank\` | `src/Bank/` (inkl. `Parser/`) | `public/bank/` |
 | Car | `Kai\Tools\Car\` | `src/Car/` | `public/car/` |
 | Einkaufsliste | `Kai\Tools\Einkaufsliste\` | `src/Einkaufsliste/` | `public/einkaufsliste/` |
+| Gamification | `Kai\Tools\Gamification\` | `src/Gamification/` | `public/gamification/` |
 | Kassenbon | `Kai\Tools\Kassenbon\` | `src/Kassenbon/` | `public/kassenbon/` |
 | PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
 | School | `Kai\Tools\School\` | `src/School/` | `public/school/` |

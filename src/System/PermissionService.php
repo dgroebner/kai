@@ -98,6 +98,7 @@ class PermissionService
                 'finance_read', 'finance_write',
                 'car_read', 'car_write',
                 'system_read', 'system_write',
+                'gamification_read', 'gamification_write', 'gamification_admin',
             ];
         }
 

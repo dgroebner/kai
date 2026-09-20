@@ -90,6 +90,23 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Schuldaten-Abgleich.", ['error' => $se->getMessage()]);
     }
 
+    // 6. Gamification / Familien-Quests Fristen und Tagesaufgaben abgleichen
+    try {
+        $escalationService = new \Kai\Tools\Gamification\GamificationEscalationService(
+            db: $db,
+            logger: $logger,
+            activityLogger: new \Kai\Tools\Shared\Log\ActivityLogger($db)
+        );
+        $gamifService = new \Kai\Tools\Gamification\GamificationService(
+            db: $db,
+            escalationService: $escalationService
+        );
+        $gamifService->syncDailyState();
+        $logger->info("Cronjob (mail.php): Familien-Quests Fristen und Tagesaufgaben synchronisiert.");
+    } catch (Throwable $ge) {
+        $logger->warn("Cronjob (mail.php): Fehler beim Gamification-Abgleich.", ['error' => $ge->getMessage()]);
+    }
+
 } catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [
         'error' => $e->getMessage()

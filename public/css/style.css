@@ -4881,5 +4881,387 @@ body {
     }
 }
 
+/* ==========================================================================
+   DOMAIN: GAMIFICATION / FAMILIEN-QUESTS
+   ========================================================================== */
+.gamif-hud {
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gamif-hud-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.gamif-hud-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.gamif-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    border: 2px solid var(--accent);
+    flex-shrink: 0;
+}
+
+.gamif-profile-info h2 {
+    font-size: 1.25rem;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.gamif-rank-title {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.gamif-hud-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.gamif-stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: var(--bg-main);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gamif-stat-chip--coins {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.gamif-stat-chip--xp {
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.gamif-stat-chip--streak {
+    color: #f97316;
+    border-color: rgba(249, 115, 22, 0.3);
+    background: rgba(249, 115, 22, 0.1);
+}
+
+.gamif-xp-container {
+    margin-top: 0.5rem;
+}
+
+.gamif-xp-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.gamif-xp-track {
+    width: 100%;
+    height: 10px;
+    background: var(--bg-main);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gamif-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #2563eb);
+    border-radius: 5px;
+    transition: width 0.4s ease;
+}
+
+.gamif-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.5rem;
+    overflow-x: auto;
+}
+
+.gamif-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.gamif-tab-btn:hover {
+    color: var(--text-main);
+    background: var(--bg-surface-hover);
+}
+
+.gamif-tab-btn.active {
+    color: var(--text-main);
+    background: var(--accent);
+}
+
+.gamif-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.gamif-card {
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+.gamif-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.gamif-card--rescue {
+    border-left: 4px solid #f97316;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.07), var(--bg-surface));
+}
+
+.gamif-card--completed {
+    opacity: 0.75;
+    border-left: 4px solid var(--color-green);
+}
+
+.gamif-card--in-review {
+    border-left: 4px solid var(--color-orange);
+}
+
+.gamif-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.gamif-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.gamif-card-meta {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.35rem;
+}
+
+.gamif-tag {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    background: var(--bg-main);
+    color: var(--text-muted);
+}
+
+.gamif-tag--rescue {
+    background: rgba(249, 115, 22, 0.2);
+    color: #f97316;
+    font-weight: 600;
+}
+
+.gamif-tag--bounty {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.gamif-tag--time {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
+.gamif-card-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.gamif-card-reward {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.gamif-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gamif-badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.gamif-badge-card {
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.15s;
+}
+
+.gamif-badge-card--locked {
+    opacity: 0.5;
+    filter: grayscale(0.8);
+}
+
+.gamif-badge-card--unlocked {
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+}
+
+.gamif-badge-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.gamif-badge-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.gamif-badge-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.gamif-badge-progress {
+    width: 100%;
+    margin-top: 0.35rem;
+}
+
+.gamif-reward-card {
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.gamif-reward-icon {
+    font-size: 2rem;
+}
+
+.gamif-reward-cost {
+    font-weight: 700;
+    color: #f59e0b;
+    font-size: 1.1rem;
+}
+
+.gamif-empty-box {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-surface);
+    border-radius: var(--border-radius);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+}
+
+.gamif-empty-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.gamif-triage-card {
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.gamif-triage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.gamif-triage-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 768px) {
+    .gamif-hud-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .gamif-hud-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .gamif-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
 
 
