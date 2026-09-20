@@ -265,12 +265,23 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
         <h3>Belohnungskatalog</h3>
         <p class="text-muted">Tausche deine hart verdienten Münzen gegen tolle Belohnungen und Privilegien ein!</p>
         <div class="gamif-grid" style="margin-top: 1rem;">
-            <?php foreach ($rewards as $reward): 
+            <?php 
+            $rewardTypeMap = [
+                'privilege' => 'Privileg / Freiheit',
+                'voucher'   => 'Gutschein',
+                'allowance' => 'Taschengeld-Zuschuss',
+                'event'     => 'Ausflug / Erlebnis',
+                'item'      => 'Gegenstand',
+            ];
+            foreach ($rewards as $reward): 
                 $canAfford = (int)$currentProfile['coins'] >= (int)$reward['coin_cost'];
             ?>
                 <div class="gamif-reward-card">
                     <div>
-                        <div class="gamif-reward-icon"><?= htmlspecialchars($reward['icon'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div class="gamif-reward-icon"><?= htmlspecialchars($reward['icon'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <span class="gamif-tag"><?= htmlspecialchars($rewardTypeMap[$reward['type']] ?? ucfirst($reward['type']), ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
                         <h4 style="margin: 0.5rem 0 0.25rem 0;"><?= htmlspecialchars($reward['title'], ENT_QUOTES, 'UTF-8') ?></h4>
                         <?php if (!empty($reward['description'])): ?>
                             <p class="text-muted" style="font-size: 0.85rem;"><?= htmlspecialchars($reward['description'], ENT_QUOTES, 'UTF-8') ?></p>

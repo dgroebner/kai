@@ -29,6 +29,25 @@ $rewards = $rewardRepo->getAllRewards();
 $achievements = $achievementService->getAllAchievements();
 $profiles = $profileRepo->getAllProfiles();
 $childProfiles = $profileRepo->getChildProfiles();
+
+// Deutsche Bezeichnungen für Typen & Metriken
+$rewardTypeMap = [
+    'privilege' => 'Privileg / Freiheit',
+    'voucher'   => 'Gutschein',
+    'allowance' => 'Taschengeld-Zuschuss',
+    'event'     => 'Ausflug / Erlebnis',
+    'item'      => 'Gegenstand',
+];
+
+$metricTypeMap = [
+    'rescue_count'       => 'Rettungen überfälliger Aufgaben',
+    'task_count'         => 'Erledigte Aufgaben gesamt',
+    'category_count'     => 'Aufgaben einer Kategorie',
+    'streak_days'        => 'Zuverlässigkeits-Serie (Tage)',
+    'initiative_count'   => 'Spontane Hilfen / Initiativen',
+    'cooking_rating_avg' => 'Koch-Sterne im Schnitt',
+    'xp_total'           => 'Gesamte Erfahrungspunkte (XP)',
+];
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -125,8 +144,8 @@ $childProfiles = $profileRepo->getChildProfiles();
                             <?php endif; ?>
 
                             <div class="gamif-triage-actions">
-                                <button type="button" class="btn btn-outline btn-sm js-triage-reject-btn" data-task-id="<?= (int)$t['id'] ?>">Ablehnen / Nachbessern</button>
-                                <button type="button" class="btn btn-primary btn-sm js-triage-approve-btn" data-task-id="<?= (int)$t['id'] ?>" data-coins="<?= (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'] ?>" data-xp="<?= (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'] ?>">Bestätigen & Punkte gutschreiben ✓</button>
+                                <button type="button" class="btn btn-outline btn-sm js-triage-reject-btn" data-task-id="<?= (int)$t['id'] ?>">❌ Ablehnen / Nachbessern</button>
+                                <button type="button" class="btn btn-primary btn-sm js-triage-approve-btn" data-task-id="<?= (int)$t['id'] ?>" data-coins="<?= (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'] ?>" data-xp="<?= (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'] ?>">✅ Bestätigen & Punkte gutschreiben</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -152,8 +171,8 @@ $childProfiles = $profileRepo->getChildProfiles();
                                 <p class="text-muted" style="font-size:0.9rem;">Mithilfe-Notiz: <?= htmlspecialchars($h['note'], ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
                             <div class="gamif-triage-actions">
-                                <button type="button" class="btn btn-outline btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-approved="0">Ablehnen</button>
-                                <button type="button" class="btn btn-primary btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-approved="1">Mithilfe anerkennen (+<?= (int)$h['bonus_coins'] ?> Münzen) ✓</button>
+                                <button type="button" class="btn btn-outline btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-approved="0">❌ Ablehnen</button>
+                                <button type="button" class="btn btn-primary btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-approved="1">✅ Mithilfe anerkennen (+<?= (int)$h['bonus_coins'] ?> Münzen)</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -180,8 +199,8 @@ $childProfiles = $profileRepo->getChildProfiles();
                                 <p class="text-muted" style="font-size:0.9rem;">Wunsch-Notiz: <?= htmlspecialchars($r['request_note'], ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
                             <div class="gamif-triage-actions">
-                                <button type="button" class="btn btn-outline btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-action="reject">Ablehnen (Münzen erstatten)</button>
-                                <button type="button" class="btn btn-primary btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-action="approve">Genehmigen ✓</button>
+                                <button type="button" class="btn btn-outline btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-action="reject">❌ Ablehnen (Münzen erstatten)</button>
+                                <button type="button" class="btn btn-primary btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-action="approve">✅ Genehmigen</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -232,11 +251,14 @@ $childProfiles = $profileRepo->getChildProfiles();
                                 </td>
                                 <td><?= !empty($tmpl['due_time']) ? htmlspecialchars(substr($tmpl['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') . ' Uhr' : 'Keine' ?></td>
                                 <td><?= !empty($tmpl['assigned_name']) ? htmlspecialchars($tmpl['assigned_name'], ENT_QUOTES, 'UTF-8') : '<span class="text-muted">Schwarzes Brett</span>' ?></td>
-                                <td>🪙 +<?= (int)$tmpl['base_coins'] ?> | ⭐ +<?= (int)$tmpl['base_xp'] ?></td>
+                                <td>
+                                    <div><strong class="text-warning">🪙 +<?= (int)$tmpl['base_coins'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">Münzen</span></div>
+                                    <div><strong class="text-info">⭐ +<?= (int)$tmpl['base_xp'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">XP</span></div>
+                                </td>
                                 <td><?= (int)$tmpl['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-outline btn-sm js-edit-template-btn" data-template='<?= htmlspecialchars(json_encode($tmpl), ENT_QUOTES, 'UTF-8') ?>'>Bearbeiten</button>
-                                    <button type="button" class="btn btn-outline btn-sm js-delete-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>">Löschen</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-edit-template-btn" data-template='<?= htmlspecialchars(json_encode($tmpl), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-delete-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -250,7 +272,7 @@ $childProfiles = $profileRepo->getChildProfiles();
     <section id="tab-rewards" class="gamif-tab-content hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h3>Prämien & Belohnungen</h3>
-            <button type="button" class="btn btn-primary btn-sm js-open-reward-modal">+ Neue Prämie anlegen</button>
+            <button type="button" class="btn btn-primary btn-sm js-open-reward-modal">➕ Neue Prämie anlegen</button>
         </div>
 
         <div class="table-responsive">
@@ -280,12 +302,12 @@ $childProfiles = $profileRepo->getChildProfiles();
                                     <?php endif; ?>
                                 </td>
                                 <td><strong class="text-warning">🪙 <?= (int)$rew['coin_cost'] ?></strong></td>
-                                <td><?= htmlspecialchars($rew['type'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><span class="gamif-tag"><?= htmlspecialchars($rewardTypeMap[$rew['type']] ?? ucfirst($rew['type']), ENT_QUOTES, 'UTF-8') ?></span></td>
                                 <td><?= (int)$rew['cooldown_days'] > 0 ? (int)$rew['cooldown_days'] . ' Tage' : 'Keine' ?></td>
                                 <td><?= (int)$rew['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Pausiert</span>' ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-outline btn-sm js-edit-reward-btn" data-reward='<?= htmlspecialchars(json_encode($rew), ENT_QUOTES, 'UTF-8') ?>'>Bearbeiten</button>
-                                    <button type="button" class="btn btn-outline btn-sm js-delete-reward-btn" data-reward-id="<?= (int)$rew['id'] ?>">Löschen</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-edit-reward-btn" data-reward='<?= htmlspecialchars(json_encode($rew), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-delete-reward-btn" data-reward-id="<?= (int)$rew['id'] ?>" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -299,7 +321,7 @@ $childProfiles = $profileRepo->getChildProfiles();
     <section id="tab-badges" class="gamif-tab-content hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h3>Erfolgs-Regeln & Abzeichen</h3>
-            <button type="button" class="btn btn-primary btn-sm js-open-badge-modal">+ Neues Abzeichen anlegen</button>
+            <button type="button" class="btn btn-primary btn-sm js-open-badge-modal">➕ Neues Abzeichen anlegen</button>
         </div>
 
         <div class="table-responsive">
@@ -318,7 +340,36 @@ $childProfiles = $profileRepo->getChildProfiles();
                     <?php if (empty($achievements)): ?>
                         <tr><td colspan="6" class="text-center text-muted">Noch keine Abzeichen definiert.</td></tr>
                     <?php else: ?>
-                        <?php foreach ($achievements as $ach): ?>
+                        <?php foreach ($achievements as $ach): 
+                            $conditionText = '';
+                            $target = (int)$ach['metric_target'];
+                            switch ($ach['metric_type']) {
+                                case 'rescue_count':
+                                    $conditionText = "Mind. {$target}× überfällige Aufgabe retten";
+                                    break;
+                                case 'task_count':
+                                    $conditionText = "Mind. {$target} Aufgaben erledigen";
+                                    break;
+                                case 'category_count':
+                                    $cat = ucfirst($ach['metric_parameter'] ?? 'Haushalt');
+                                    $conditionText = "Mind. {$target} Aufgaben in „{$cat}“";
+                                    break;
+                                case 'streak_days':
+                                    $conditionText = "Mind. {$target} Tage Serie ohne Fristversäumnis";
+                                    break;
+                                case 'initiative_count':
+                                    $conditionText = "Mind. {$target}× eigene Spontan-Hilfe einreichen";
+                                    break;
+                                case 'cooking_rating_avg':
+                                    $conditionText = "Mind. {$target} Sterne im Koch-Bewertungsschnitt";
+                                    break;
+                                case 'xp_total':
+                                    $conditionText = "Mind. {$target} Erfahrungspunkte (XP) erreichen";
+                                    break;
+                                default:
+                                    $conditionText = ($metricTypeMap[$ach['metric_type']] ?? $ach['metric_type']) . ": {$target}";
+                            }
+                        ?>
                             <tr>
                                 <td style="font-size:1.5rem;"><?= htmlspecialchars($ach['icon'], ENT_QUOTES, 'UTF-8') ?></td>
                                 <td>
@@ -326,14 +377,17 @@ $childProfiles = $profileRepo->getChildProfiles();
                                     <div class="text-muted" style="font-size:0.85rem;"><?= htmlspecialchars($ach['description'], ENT_QUOTES, 'UTF-8') ?></div>
                                 </td>
                                 <td>
-                                    <?= htmlspecialchars($ach['metric_type'], ENT_QUOTES, 'UTF-8') ?>:
-                                    <strong><?= (int)$ach['metric_target'] ?></strong>
+                                    <strong><?= htmlspecialchars($conditionText, ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <div class="text-muted" style="font-size:0.8rem;"><?= htmlspecialchars($metricTypeMap[$ach['metric_type']] ?? $ach['metric_type'], ENT_QUOTES, 'UTF-8') ?></div>
                                 </td>
-                                <td>🪙 +<?= (int)$ach['reward_coins'] ?> | ⭐ +<?= (int)$ach['reward_xp'] ?></td>
+                                <td>
+                                    <div><strong class="text-warning">🪙 +<?= (int)$ach['reward_coins'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">Münzen</span></div>
+                                    <div><strong class="text-info">⭐ +<?= (int)$ach['reward_xp'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">XP</span></div>
+                                </td>
                                 <td><?= (int)$ach['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-outline btn-sm js-edit-badge-btn" data-badge='<?= htmlspecialchars(json_encode($ach), ENT_QUOTES, 'UTF-8') ?>'>Bearbeiten</button>
-                                    <button type="button" class="btn btn-outline btn-sm js-delete-badge-btn" data-badge-id="<?= (int)$ach['id'] ?>">Löschen</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-edit-badge-btn" data-badge='<?= htmlspecialchars(json_encode($ach), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-delete-badge-btn" data-badge-id="<?= (int)$ach['id'] ?>" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -500,6 +554,71 @@ $childProfiles = $profileRepo->getChildProfiles();
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
                         <button type="submit" class="btn btn-primary">Prämie speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Abzeichen erstellen / bearbeiten -->
+    <div id="modal-badge" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-badge-heading">Abzeichen verwalten</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-badge">
+                    <input type="hidden" id="badge-id" name="id">
+                    <div class="form-group">
+                        <label for="badge-title">Titel des Abzeichens:</label>
+                        <input type="text" id="badge-title" name="title" class="form-control" required placeholder="z. B. Die Feuerwehr">
+                    </div>
+                    <div class="form-group">
+                        <label for="badge-desc">Beschreibung:</label>
+                        <textarea id="badge-desc" name="description" class="form-control" rows="2" placeholder="Was muss das Kind dafür erreichen?"></textarea>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="badge-icon">Symbol / Emoji:</label>
+                            <input type="text" id="badge-icon" name="icon" class="form-control" value="🏆">
+                        </div>
+                        <div class="form-group">
+                            <label for="badge-metric-type">Art der Bedingung:</label>
+                            <select id="badge-metric-type" name="metric_type" class="form-control">
+                                <option value="rescue_count">Rettungen überfälliger Aufgaben</option>
+                                <option value="task_count">Erledigte Aufgaben gesamt</option>
+                                <option value="category_count">Aufgaben einer bestimmten Kategorie</option>
+                                <option value="streak_days">Zuverlässigkeits-Serie (Tage)</option>
+                                <option value="initiative_count">Spontane Hilfen / Initiativen</option>
+                                <option value="cooking_rating_avg">Koch-Sterne im Schnitt</option>
+                                <option value="xp_total">Gesamte Erfahrungspunkte (XP)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="badge-metric-target">Zielwert (Anzahl / Tage / Sterne):</label>
+                            <input type="number" id="badge-metric-target" name="metric_target" class="form-control" value="1" min="1" required>
+                        </div>
+                        <div class="form-group" id="group-badge-param" style="display:none;">
+                            <label for="badge-param">Kategorie (z. B. haushalt, kochen):</label>
+                            <input type="text" id="badge-param" name="metric_parameter" class="form-control" placeholder="haushalt">
+                        </div>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="badge-coins">Belohnungs-Münzen:</label>
+                            <input type="number" id="badge-coins" name="reward_coins" class="form-control" value="50" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="badge-xp">Erfahrungspunkte (XP):</label>
+                            <input type="number" id="badge-xp" name="reward_xp" class="form-control" value="100" min="0">
+                        </div>
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Abzeichen speichern</button>
                     </div>
                 </form>
             </div>

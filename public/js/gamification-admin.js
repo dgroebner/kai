@@ -406,4 +406,100 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 11. Abzeichen & Meilensteine anlegen / bearbeiten / löschen
+    const modalBadge = document.getElementById('modal-badge');
+    const formBadge = document.getElementById('form-badge');
+    const openBadgeBtn = document.querySelector('.js-open-badge-modal');
+    const badgeMetricSelect = document.getElementById('badge-metric-type');
+    const badgeParamGroup = document.getElementById('group-badge-param');
+
+    if (badgeMetricSelect && badgeParamGroup) {
+        badgeMetricSelect.addEventListener('change', () => {
+            badgeParamGroup.style.display = badgeMetricSelect.value === 'category_count' ? 'block' : 'none';
+        });
+    }
+
+    if (openBadgeBtn && modalBadge && formBadge) {
+        openBadgeBtn.addEventListener('click', () => {
+            formBadge.reset();
+            document.getElementById('badge-id').value = '';
+            document.getElementById('modal-badge-heading').textContent = 'Neues Abzeichen anlegen';
+            if (badgeParamGroup) badgeParamGroup.style.display = 'none';
+            modalBadge.classList.remove('hidden');
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const editBadgeBtn = e.target.closest('.js-edit-badge-btn');
+        if (editBadgeBtn) {
+            const badgeData = JSON.parse(editBadgeBtn.getAttribute('data-badge'));
+            if (formBadge && modalBadge) {
+                document.getElementById('badge-id').value = badgeData.id || '';
+                document.getElementById('badge-title').value = badgeData.title || '';
+                document.getElementById('badge-desc').value = badgeData.description || '';
+                document.getElementById('badge-icon').value = badgeData.icon || '🏆';
+                document.getElementById('badge-metric-type').value = badgeData.metric_type || 'task_count';
+                document.getElementById('badge-metric-target').value = badgeData.metric_target || 1;
+                document.getElementById('badge-coins').value = badgeData.reward_coins || 50;
+                document.getElementById('badge-xp').value = badgeData.reward_xp || 100;
+
+                if (badgeParamGroup) {
+                    document.getElementById('badge-param').value = badgeData.metric_parameter || '';
+                    badgeParamGroup.style.display = badgeData.metric_type === 'category_count' ? 'block' : 'none';
+                }
+
+                document.getElementById('modal-badge-heading').textContent = 'Abzeichen bearbeiten';
+                modalBadge.classList.remove('hidden');
+            }
+        }
+    });
+
+    if (formBadge) {
+        formBadge.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(formBadge);
+            const payload = {
+                action: 'achievement_save',
+                id: formData.get('id') || null,
+                title: formData.get('title'),
+                description: formData.get('description'),
+                icon: formData.get('icon'),
+                metric_type: formData.get('metric_type'),
+                metric_target: parseInt(formData.get('metric_target'), 10),
+                metric_parameter: formData.get('metric_parameter') || null,
+                reward_coins: parseInt(formData.get('reward_coins'), 10),
+                reward_xp: parseInt(formData.get('reward_xp'), 10)
+            };
+
+            const res = await KaiHttp.postJson('api.php', payload);
+            if (res.success) {
+                alert(res.message || 'Abzeichen gespeichert!');
+                window.location.reload();
+            } else {
+                alert(res.message || 'Fehler beim Speichern des Abzeichens.');
+            }
+        });
+    }
+
+    // Abzeichen löschen
+    document.addEventListener('click', async (e) => {
+        const delBadgeBtn = e.target.closest('.js-delete-badge-btn');
+        if (delBadgeBtn) {
+            const achId = delBadgeBtn.getAttribute('data-badge-id');
+            if (!confirm('Dieses Abzeichen wirklich löschen?')) return;
+
+            const res = await KaiHttp.postJson('api.php', {
+                action: 'achievement_delete',
+                achievement_id: parseInt(achId, 10)
+            });
+
+            if (res.success) {
+                window.location.reload();
+            } else {
+                alert(res.message || 'Fehler beim Löschen.');
+            }
+        }
+    });
 });
+
