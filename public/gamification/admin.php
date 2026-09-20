@@ -238,13 +238,19 @@ $metricTypeMap = [
                         <?php foreach ($templates as $tmpl): ?>
                             <tr>
                                 <td>
-                                    <strong><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                    <?php if (!empty($tmpl['is_cooking_day'])): ?>
-                                        <span class="gamif-tag" style="background:rgba(236,72,153,0.2); color:#f472b6;">🍳 Koch-Tag</span>
-                                    <?php endif; ?>
-                                    <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
-                                        <span class="gamif-tag" style="background:rgba(107,114,128,0.2); color:#9ca3af;" title="Bleibt beim Kind, rutscht nicht auf das Schwarze Brett">📌 Keine Rettung</span>
-                                    <?php endif; ?>
+                                    <div class="gamif-title-cell">
+                                        <strong><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <?php if (!empty($tmpl['is_cooking_day']) || (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0)): ?>
+                                            <div class="gamif-tag-row">
+                                                <?php if (!empty($tmpl['is_cooking_day'])): ?>
+                                                    <span class="gamif-tag" style="background:rgba(236,72,153,0.2); color:#f472b6;">🍳 Koch-Tag</span>
+                                                <?php endif; ?>
+                                                <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
+                                                    <span class="gamif-tag" style="background:rgba(107,114,128,0.2); color:#9ca3af;" title="Bleibt beim Kind, rutscht nicht auf das Schwarze Brett">📌 Keine Rettung</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td><?= htmlspecialchars(ucfirst($tmpl['category']), ENT_QUOTES, 'UTF-8') ?></td>
                                 <td>

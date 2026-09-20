@@ -5116,12 +5116,30 @@ body {
     margin-top: 0.35rem;
 }
 
+.gamif-title-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+}
+
+.gamif-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
 .gamif-tag {
     font-size: 0.75rem;
     padding: 0.15rem 0.5rem;
     border-radius: 12px;
     background: var(--bg-main);
     color: var(--text-muted);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .gamif-tag--rescue {
