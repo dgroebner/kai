@@ -164,7 +164,13 @@ try {
             if (!empty($input['display_name'])) {
                 $data['display_name'] = trim((string)$input['display_name']);
             }
-            $ok = $profileRepo->updateProfile((int)$currentProfile['id'], $data);
+
+            $targetId = (int)$currentProfile['id'];
+            if (!empty($input['profile_id']) && Auth::hasPermission('gamification_admin')) {
+                $targetId = (int)$input['profile_id'];
+            }
+
+            $ok = $profileRepo->updateProfile($targetId, $data);
             echo json_encode(['success' => $ok, 'message' => 'Profil aktualisiert.']);
             break;
 
