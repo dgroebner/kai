@@ -5158,6 +5158,116 @@ body {
     color: #60a5fa;
 }
 
+.gamif-tag--cooking {
+    background: rgba(236, 72, 153, 0.2);
+    color: #f472b6;
+}
+
+.gamif-tag--no-rescue {
+    background: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+}
+
+.gamif-tag[data-gamif-tooltip] {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+.gamif-tag[data-gamif-tooltip]:hover,
+.gamif-tag[data-gamif-tooltip].is-active {
+    filter: brightness(1.25);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.gamif-tooltip {
+    position: fixed;
+    display: none;
+    opacity: 0;
+    width: max-content;
+    max-width: 290px;
+    background: #1e293b;
+    border: 1px solid var(--accent, #3b82f6);
+    color: #f8fafc;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 6px 10px -4px rgba(0, 0, 0, 0.4);
+    z-index: 99999;
+    pointer-events: auto;
+    transition: opacity 0.15s ease;
+    box-sizing: border-box;
+}
+
+.gamif-tooltip.is-visible {
+    display: block;
+    opacity: 1;
+}
+
+.gamif-tooltip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.gamif-tooltip-title {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.gamif-tooltip-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #94a3b8);
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    margin: 0;
+    transition: color 0.15s ease;
+}
+
+.gamif-tooltip-close:hover {
+    color: #fff;
+}
+
+.gamif-tooltip-body {
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    word-break: normal;
+}
+
+.gamif-tooltip-arrow {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #1e293b;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.gamif-tooltip-arrow--bottom {
+    bottom: -5px;
+    border-bottom: 1px solid var(--accent, #3b82f6);
+    border-right: 1px solid var(--accent, #3b82f6);
+}
+
+.gamif-tooltip-arrow--top {
+    top: -5px;
+    border-top: 1px solid var(--accent, #3b82f6);
+    border-left: 1px solid var(--accent, #3b82f6);
+}
+
 .gamif-stat-chip {
     display: inline-flex;
     align-items: center;

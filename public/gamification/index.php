@@ -131,7 +131,10 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                                     <span class="gamif-tag gamif-tag--time">⏰ Bis <?= htmlspecialchars(substr($task['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') ?> Uhr</span>
                                 <?php endif; ?>
                                 <?php if (!empty($task['is_cooking_day'])): ?>
-                                    <span class="gamif-tag" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">🍳 Koch-Tag</span>
+                                    <span class="gamif-tag gamif-tag--cooking" data-gamif-title="🍳 Koch-Tag" data-gamif-tooltip="Aufgabe zur Essenszubereitung: Du darfst ein Gericht vorschlagen! Nach Eltern-Freigabe wandern Zutaten auf die Einkaufsliste und nach dem Kochen bewerten alle das Essen.">🍳 Koch-Tag</span>
+                                <?php endif; ?>
+                                <?php if (isset($task['can_escalate']) && (int)$task['can_escalate'] === 0): ?>
+                                    <span class="gamif-tag gamif-tag--no-rescue" data-gamif-title="📌 Keine Rettung" data-gamif-tooltip="Feste Routine: Bleibt fest bei dir und wandert bei Fristversäumnis nicht auf das Schwarze Brett (kann nicht von Geschwistern übernommen werden).">📌 Keine Rettung</span>
                                 <?php endif; ?>
                             </div>
 
@@ -520,6 +523,7 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
 </div>
 
 <script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/gamification-tooltip.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/gamification-emoji-picker.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/gamification.js?v=<?= APP_VERSION ?>"></script>
 </body>

@@ -243,10 +243,10 @@ $metricTypeMap = [
                                         <?php if (!empty($tmpl['is_cooking_day']) || (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0)): ?>
                                             <div class="gamif-tag-row">
                                                 <?php if (!empty($tmpl['is_cooking_day'])): ?>
-                                                    <span class="gamif-tag" style="background:rgba(236,72,153,0.2); color:#f472b6;">🍳 Koch-Tag</span>
+                                                    <span class="gamif-tag gamif-tag--cooking" data-gamif-title="🍳 Koch-Tag" data-gamif-tooltip="Aufgabe zur Essenszubereitung: Das Kind schlägt ein Gericht vor. Nach Eltern-Freigabe wandern Zutaten auf die Einkaufsliste und nach dem Kochen bewerten alle das Essen.">🍳 Koch-Tag</span>
                                                 <?php endif; ?>
                                                 <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
-                                                    <span class="gamif-tag" style="background:rgba(107,114,128,0.2); color:#9ca3af;" title="Bleibt beim Kind, rutscht nicht auf das Schwarze Brett">📌 Keine Rettung</span>
+                                                    <span class="gamif-tag gamif-tag--no-rescue" data-gamif-title="📌 Keine Rettung" data-gamif-tooltip="Feste Routine: Bleibt fest beim Kind und wandert bei Fristversäumnis nicht auf das Schwarze Brett. Geschwister können sie nicht als Belohnung übernehmen.">📌 Keine Rettung</span>
                                                 <?php endif; ?>
                                             </div>
                                         <?php endif; ?>
@@ -1002,6 +1002,7 @@ $metricTypeMap = [
 </div>
 
 <script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
+<script src="../js/gamification-tooltip.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/gamification-emoji-picker.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/gamification-admin.js?v=<?= APP_VERSION ?>"></script>
 </body>
