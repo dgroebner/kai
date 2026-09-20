@@ -103,6 +103,46 @@ class GamificationProfileRepository
     }
 
     /**
+     * Erstellt ein neues Profil manuell (z. B. durch Eltern vorab angelegt).
+     */
+    public function createProfile(
+        string $email,
+        string $displayName,
+        string $role = 'child',
+        string $avatar = '⭐',
+        string $color = '#3b82f6',
+        int $initialCoins = 0,
+        int $initialXp = 0
+    ): int {
+        $email = strtolower(trim($email));
+        $pdo = $this->db->getConnection();
+
+        // Benutzer in users sicherstellen (wegen Fremdschlüssel)
+        $uStmt = $pdo->prepare("INSERT IGNORE INTO users (email, name) VALUES (:email, :name)");
+        $uStmt->execute(['email' => $email, 'name' => $displayName]);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO gamification_profiles (user_email, display_name, role, avatar_icon, color, xp, coins, streak_days)
+            VALUES (:email, :name, :role, :avatar, :color, :xp, :coins, 0)
+            ON DUPLICATE KEY UPDATE display_name = :name2, role = :role2
+        ");
+        $stmt->execute([
+            'email' => $email,
+            'name' => $displayName,
+            'role' => $role,
+            'avatar' => $avatar,
+            'color' => $color,
+            'xp' => max(0, $initialXp),
+            'coins' => max(0, $initialCoins),
+            'name2' => $displayName,
+            'role2' => $role,
+        ]);
+
+        $existing = $this->getProfileByEmail($email);
+        return $existing ? (int)$existing['id'] : (int)$pdo->lastInsertId();
+    }
+
+    /**
      * Aktualisiert Profildaten (z. B. Anzeigename, Icon, Farbe).
      */
     public function updateProfile(int $id, array $data): bool

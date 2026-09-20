@@ -295,6 +295,24 @@ try {
             echo json_encode(['success' => $ok, 'message' => 'Abzeichen gelöscht.']);
             break;
 
+        case 'profile_create':
+            Auth::requireApi('gamification_admin');
+            $name = trim((string)($input['display_name'] ?? ''));
+            $email = trim((string)($input['user_email'] ?? ''));
+            $role = in_array($input['role'] ?? '', ['child', 'parent'], true) ? $input['role'] : 'child';
+            $avatar = trim((string)($input['avatar_icon'] ?? '⭐')) ?: '⭐';
+            $color = trim((string)($input['color'] ?? '#3b82f6')) ?: '#3b82f6';
+            $coins = max(0, (int)($input['initial_coins'] ?? 0));
+            $xp = max(0, (int)($input['initial_xp'] ?? 0));
+
+            if ($name === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                Auth::sendJsonError(400, 'Bitte gib einen Namen und eine gültige E-Mail-Adresse an.');
+            }
+
+            $profileId = $profileRepo->createProfile($email, $name, $role, $avatar, $color, $coins, $xp);
+            echo json_encode(['success' => true, 'profile_id' => $profileId, 'message' => "Mitspieler „{$name}“ erfolgreich angelegt!"]);
+            break;
+
         case 'profile_adjust':
             Auth::requireApi('gamification_admin');
             $profileId = filter_var($input['profile_id'] ?? null, FILTER_VALIDATE_INT);

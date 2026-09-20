@@ -679,4 +679,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 13. Neuen Mitspieler / Profil manuell anlegen
+    const modalCreateProfile = document.getElementById('modal-create-profile');
+    const formCreateProfile = document.getElementById('form-create-profile');
+    const openCreateProfileBtn = document.querySelector('.js-open-create-profile-modal');
+
+    if (openCreateProfileBtn && modalCreateProfile && formCreateProfile) {
+        openCreateProfileBtn.addEventListener('click', () => {
+            formCreateProfile.reset();
+            openModal(modalCreateProfile);
+        });
+    }
+
+    if (formCreateProfile) {
+        formCreateProfile.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(formCreateProfile);
+            const payload = {
+                action: 'profile_create',
+                display_name: formData.get('display_name'),
+                user_email: formData.get('user_email'),
+                role: formData.get('role'),
+                avatar_icon: formData.get('avatar_icon'),
+                initial_coins: parseInt(formData.get('initial_coins'), 10) || 0,
+                initial_xp: parseInt(formData.get('initial_xp'), 10) || 0
+            };
+
+            closeModal(modalCreateProfile);
+            const res = await KaiHttp.postJson('api.php', payload);
+            if (res.success) {
+                showFeedback('Mitspieler angelegt 👤', res.message || 'Neues Profil erfolgreich angelegt!', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Anlegen des Profils.');
+            }
+        });
+    }
 });

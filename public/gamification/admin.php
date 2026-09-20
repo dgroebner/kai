@@ -29,6 +29,7 @@ $rewards = $rewardRepo->getAllRewards();
 $achievements = $achievementService->getAllAchievements();
 $profiles = $profileRepo->getAllProfiles();
 $childProfiles = $profileRepo->getChildProfiles();
+$systemUsers = (new \Kai\Tools\System\GroupRepository())->getAllUsers();
 
 // Deutsche Bezeichnungen für Typen & Metriken
 $rewardTypeMap = [
@@ -411,8 +412,13 @@ $metricTypeMap = [
 
     <!-- Reiter 5: Punktekonten & Familie -->
     <section id="tab-accounts" class="gamif-tab-content hidden">
-        <h3>Punktekonten der Familienmitglieder</h3>
-        <p class="text-muted">Hier kannst du Punktestände und Münzguthaben einsehen oder bei Bedarf korrigieren.</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <div>
+                <h3 style="margin:0;">Punktekonten der Familienmitglieder</h3>
+                <p class="text-muted" style="margin:0;">Hier kannst du Punktestände und Münzguthaben einsehen oder bei Bedarf korrigieren.</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm js-open-create-profile-modal">➕ Mitspieler anlegen</button>
+        </div>
 
         <div class="gamif-grid" style="margin-top:1rem;">
             <?php foreach ($profiles as $p): 
@@ -856,6 +862,61 @@ $metricTypeMap = [
                 <div class="modal-actions" style="display:flex; justify-content:flex-end; margin-top:1rem;">
                     <button type="button" id="btn-feedback-ok" class="btn btn-primary modal-close">OK</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Neuen Mitspieler anlegen -->
+    <div id="modal-create-profile" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Neuen Mitspieler anlegen 👤</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-create-profile">
+                    <div class="form-group">
+                        <label for="new-profile-name">Name des Kindes / Mitspielers:</label>
+                        <input type="text" id="new-profile-name" name="display_name" class="form-control" required placeholder="z. B. Zoé oder Enya">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-profile-email">Google-Konto (E-Mail):</label>
+                        <input type="email" id="new-profile-email" name="user_email" class="form-control" list="known-users-list" required placeholder="z. B. kind@gmail.com">
+                        <datalist id="known-users-list">
+                            <?php foreach ($systemUsers as $u): ?>
+                                <option value="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($u['name'] ?: $u['email'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </datalist>
+                        <small class="text-muted">Mit dieser E-Mail meldet sich das Kind über Google an.</small>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="new-profile-role">Rolle:</label>
+                            <select id="new-profile-role" name="role" class="form-control">
+                                <option value="child" selected>Kind (Mitspieler)</option>
+                                <option value="parent">Elternteil (Admin)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-profile-avatar">Start-Symbol / Emoji:</label>
+                            <input type="text" id="new-profile-avatar" name="avatar_icon" class="form-control" value="⭐">
+                        </div>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="new-profile-coins">Start-Münzen:</label>
+                            <input type="number" id="new-profile-coins" name="initial_coins" class="form-control" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-profile-xp">Start-XP:</label>
+                            <input type="number" id="new-profile-xp" name="initial_xp" class="form-control" value="0" min="0">
+                        </div>
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Mitspieler speichern</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
