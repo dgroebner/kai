@@ -56,6 +56,7 @@ class GamificationEscalationService
             JOIN gamification_profiles p ON t.assigned_profile_id = p.id
             WHERE t.status IN ('planned', 'in_progress')
               AND t.is_bounty = 0
+              AND (t.can_escalate IS NULL OR t.can_escalate = 1)
               AND t.assigned_profile_id IS NOT NULL
               AND t.due_date IS NOT NULL
               AND (

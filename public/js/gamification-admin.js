@@ -433,6 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-template-heading').textContent = 'Neue Vorlage anlegen';
             document.querySelectorAll('input[name="recurrence_day_check"]').forEach(cb => { cb.checked = false; });
             if (recurrenceDaysGroup) recurrenceDaysGroup.style.display = 'none';
+            const escCb = document.getElementById('tmpl-escalate');
+            if (escCb) escCb.checked = true;
             openModal(modalTemplate);
         });
     }
@@ -452,6 +454,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('tmpl-coins').value = tmplData.base_coins || 20;
                 document.getElementById('tmpl-xp').value = tmplData.base_xp || 50;
                 document.getElementById('tmpl-cooking').checked = tmplData.is_cooking_day == 1;
+                const escCb = document.getElementById('tmpl-escalate');
+                if (escCb) escCb.checked = (tmplData.can_escalate === undefined || tmplData.can_escalate == 1);
 
                 if (recurrenceDaysGroup) {
                     const selectedDays = (tmplData.recurrence_days || '').split(',').map(s => s.trim());
@@ -493,7 +497,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 due_time: formData.get('due_time'),
                 base_coins: parseInt(formData.get('base_coins'), 10),
                 base_xp: parseInt(formData.get('base_xp'), 10),
-                is_cooking_day: formData.get('is_cooking_day') ? 1 : 0
+                is_cooking_day: formData.get('is_cooking_day') ? 1 : 0,
+                can_escalate: formData.get('can_escalate') ? 1 : 0
             };
 
             closeModal(modalTemplate);

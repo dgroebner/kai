@@ -242,6 +242,9 @@ $metricTypeMap = [
                                     <?php if (!empty($tmpl['is_cooking_day'])): ?>
                                         <span class="gamif-tag" style="background:rgba(236,72,153,0.2); color:#f472b6;">🍳 Koch-Tag</span>
                                     <?php endif; ?>
+                                    <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
+                                        <span class="gamif-tag" style="background:rgba(107,114,128,0.2); color:#9ca3af;" title="Bleibt beim Kind, rutscht nicht auf das Schwarze Brett">📌 Keine Rettung</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars(ucfirst($tmpl['category']), ENT_QUOTES, 'UTF-8') ?></td>
                                 <td>
@@ -548,6 +551,10 @@ $metricTypeMap = [
                     <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
                         <input type="checkbox" id="tmpl-cooking" name="is_cooking_day" value="1">
                         <label for="tmpl-cooking" style="margin:0;">Koch-Tag (aktiviert Rezept-Pitch & Bewertung)</label>
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
+                        <input type="checkbox" id="tmpl-escalate" name="can_escalate" value="1" checked>
+                        <label for="tmpl-escalate" style="margin:0;">Bei Fristversäumnis auf das Schwarze Brett verschieben (Geschwister-Rettung mit Bonus)</label>
                     </div>
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
