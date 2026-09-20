@@ -431,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formTemplate.reset();
             document.getElementById('template-id').value = '';
             document.getElementById('modal-template-heading').textContent = 'Neue Vorlage anlegen';
+            document.querySelectorAll('input[name="recurrence_day_check"]').forEach(cb => { cb.checked = false; });
             if (recurrenceDaysGroup) recurrenceDaysGroup.style.display = 'none';
             openModal(modalTemplate);
         });
@@ -453,7 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('tmpl-cooking').checked = tmplData.is_cooking_day == 1;
 
                 if (recurrenceDaysGroup) {
-                    document.getElementById('tmpl-recurrence-days').value = tmplData.recurrence_days || '';
+                    const selectedDays = (tmplData.recurrence_days || '').split(',').map(s => s.trim());
+                    document.querySelectorAll('input[name="recurrence_day_check"]').forEach(cb => {
+                        cb.checked = selectedDays.includes(cb.value);
+                    });
                     recurrenceDaysGroup.style.display = tmplData.recurrence === 'weekly' ? 'block' : 'none';
                 }
 
@@ -467,6 +471,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formTemplate.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(formTemplate);
+            const recurrence = formData.get('recurrence');
+            let recurrenceDays = null;
+            if (recurrence === 'weekly') {
+                const checkedBoxes = Array.from(document.querySelectorAll('input[name="recurrence_day_check"]:checked'));
+                recurrenceDays = checkedBoxes
+                    .map(cb => cb.value)
+                    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+                    .join(',');
+            }
+
             const payload = {
                 action: 'template_save',
                 id: formData.get('id') || null,
@@ -474,8 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 description: formData.get('description'),
                 category: formData.get('category'),
                 assigned_profile_id: formData.get('assigned_profile_id') || null,
-                recurrence: formData.get('recurrence'),
-                recurrence_days: formData.get('recurrence_days'),
+                recurrence: recurrence,
+                recurrence_days: recurrenceDays,
                 due_time: formData.get('due_time'),
                 base_coins: parseInt(formData.get('base_coins'), 10),
                 base_xp: parseInt(formData.get('base_xp'), 10),

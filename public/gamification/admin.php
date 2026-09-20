@@ -246,7 +246,15 @@ $metricTypeMap = [
                                 <td>
                                     <?php 
                                     $recMap = ['none' => 'Einmalig', 'daily' => 'Täglich', 'weekly' => 'Wöchentlich', 'interval' => 'Intervall'];
-                                    echo htmlspecialchars($recMap[$tmpl['recurrence']] ?? $tmpl['recurrence'], ENT_QUOTES, 'UTF-8');
+                                    $recText = $recMap[$tmpl['recurrence']] ?? $tmpl['recurrence'];
+                                    if ($tmpl['recurrence'] === 'weekly' && !empty($tmpl['recurrence_days'])) {
+                                        $dayNames = [1 => 'Mo', 2 => 'Di', 3 => 'Mi', 4 => 'Do', 5 => 'Fr', 6 => 'Sa', 7 => 'So'];
+                                        $activeDays = array_map(fn($d) => $dayNames[(int)$d] ?? $d, array_filter(array_map('trim', explode(',', $tmpl['recurrence_days']))));
+                                        if (!empty($activeDays)) {
+                                            $recText .= ' (' . implode(', ', $activeDays) . ')';
+                                        }
+                                    }
+                                    echo htmlspecialchars($recText, ENT_QUOTES, 'UTF-8');
                                     ?>
                                 </td>
                                 <td><?= !empty($tmpl['due_time']) ? htmlspecialchars(substr($tmpl['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') . ' Uhr' : 'Keine' ?></td>
@@ -485,8 +493,37 @@ $metricTypeMap = [
                         </div>
                     </div>
                     <div class="form-group" id="group-recurrence-days" style="display:none;">
-                        <label>Wochentage (Mo=1 bis So=7 kommagetrennt, z. B. 1,3,5):</label>
-                        <input type="text" id="tmpl-recurrence-days" name="recurrence_days" class="form-control" placeholder="1,2,3,4,5">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Wiederholen an Wochentagen:</label>
+                        <div class="gamif-weekday-picker">
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="1">
+                                <span>Mo</span>
+                            </label>
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="2">
+                                <span>Di</span>
+                            </label>
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="3">
+                                <span>Mi</span>
+                            </label>
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="4">
+                                <span>Do</span>
+                            </label>
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="5">
+                                <span>Fr</span>
+                            </label>
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="6">
+                                <span>Sa</span>
+                            </label>
+                            <label class="gamif-weekday-pill">
+                                <input type="checkbox" name="recurrence_day_check" value="7">
+                                <span>So</span>
+                            </label>
+                        </div>
                     </div>
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
                         <div class="form-group">
