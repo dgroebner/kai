@@ -5299,17 +5299,19 @@ body {
     margin-top: 1rem;
     padding-top: 0.75rem;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .gamif-reward-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.25rem !important;
     white-space: nowrap !important;
 }
 
 .gamif-reward-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
     white-space: nowrap !important;
     font-size: 0.85rem;
     line-height: 1.3;
