@@ -144,8 +144,8 @@ $metricTypeMap = [
                             <?php endif; ?>
 
                             <div class="gamif-triage-actions">
-                                <button type="button" class="btn btn-outline btn-sm js-triage-reject-btn" data-task-id="<?= (int)$t['id'] ?>">❌ Ablehnen / Nachbessern</button>
-                                <button type="button" class="btn btn-primary btn-sm js-triage-approve-btn" data-task-id="<?= (int)$t['id'] ?>" data-coins="<?= (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'] ?>" data-xp="<?= (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'] ?>">✅ Bestätigen & Punkte gutschreiben</button>
+                                <button type="button" class="btn btn-outline btn-sm js-triage-reject-btn" data-task-id="<?= (int)$t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>">❌ Ablehnen / Nachbessern</button>
+                                <button type="button" class="btn btn-primary btn-sm js-triage-approve-btn" data-task-id="<?= (int)$t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>" data-recipient="<?= htmlspecialchars($recipientName, ENT_QUOTES, 'UTF-8') ?>" data-coins="<?= (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'] ?>" data-xp="<?= (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'] ?>">✅ Bestätigen & Punkte gutschreiben</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -171,8 +171,8 @@ $metricTypeMap = [
                                 <p class="text-muted" style="font-size:0.9rem;">Mithilfe-Notiz: <?= htmlspecialchars($h['note'], ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
                             <div class="gamif-triage-actions">
-                                <button type="button" class="btn btn-outline btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-approved="0">❌ Ablehnen</button>
-                                <button type="button" class="btn btn-primary btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-approved="1">✅ Mithilfe anerkennen (+<?= (int)$h['bonus_coins'] ?> Münzen)</button>
+                                <button type="button" class="btn btn-outline btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-helper-name="<?= htmlspecialchars($h['helper_name'], ENT_QUOTES, 'UTF-8') ?>" data-task-title="<?= htmlspecialchars($h['task_title'], ENT_QUOTES, 'UTF-8') ?>" data-coins="<?= (int)$h['bonus_coins'] ?>" data-action="reject">❌ Ablehnen</button>
+                                <button type="button" class="btn btn-primary btn-sm js-review-helper-btn" data-helper-id="<?= (int)$h['id'] ?>" data-helper-name="<?= htmlspecialchars($h['helper_name'], ENT_QUOTES, 'UTF-8') ?>" data-task-title="<?= htmlspecialchars($h['task_title'], ENT_QUOTES, 'UTF-8') ?>" data-coins="<?= (int)$h['bonus_coins'] ?>" data-action="approve">✅ Mithilfe anerkennen (+<?= (int)$h['bonus_coins'] ?> Münzen)</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -199,8 +199,8 @@ $metricTypeMap = [
                                 <p class="text-muted" style="font-size:0.9rem;">Wunsch-Notiz: <?= htmlspecialchars($r['request_note'], ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
                             <div class="gamif-triage-actions">
-                                <button type="button" class="btn btn-outline btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-action="reject">❌ Ablehnen (Münzen erstatten)</button>
-                                <button type="button" class="btn btn-primary btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-action="approve">✅ Genehmigen</button>
+                                <button type="button" class="btn btn-outline btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-profile-name="<?= htmlspecialchars($r['profile_name'], ENT_QUOTES, 'UTF-8') ?>" data-reward-title="<?= htmlspecialchars($r['reward_title'], ENT_QUOTES, 'UTF-8') ?>" data-reward-icon="<?= htmlspecialchars($r['reward_icon'] ?? '🎁', ENT_QUOTES, 'UTF-8') ?>" data-cost="<?= (int)$r['coin_cost'] ?>" data-note="<?= htmlspecialchars($r['request_note'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-action="reject">❌ Ablehnen (Münzen erstatten)</button>
+                                <button type="button" class="btn btn-primary btn-sm js-review-redemption-btn" data-redemption-id="<?= (int)$r['id'] ?>" data-profile-name="<?= htmlspecialchars($r['profile_name'], ENT_QUOTES, 'UTF-8') ?>" data-reward-title="<?= htmlspecialchars($r['reward_title'], ENT_QUOTES, 'UTF-8') ?>" data-reward-icon="<?= htmlspecialchars($r['reward_icon'] ?? '🎁', ENT_QUOTES, 'UTF-8') ?>" data-cost="<?= (int)$r['coin_cost'] ?>" data-note="<?= htmlspecialchars($r['request_note'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-action="approve">✅ Genehmigen</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -252,13 +252,15 @@ $metricTypeMap = [
                                 <td><?= !empty($tmpl['due_time']) ? htmlspecialchars(substr($tmpl['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') . ' Uhr' : 'Keine' ?></td>
                                 <td><?= !empty($tmpl['assigned_name']) ? htmlspecialchars($tmpl['assigned_name'], ENT_QUOTES, 'UTF-8') : '<span class="text-muted">Schwarzes Brett</span>' ?></td>
                                 <td>
-                                    <div><strong class="text-warning">🪙 +<?= (int)$tmpl['base_coins'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">Münzen</span></div>
-                                    <div><strong class="text-info">⭐ +<?= (int)$tmpl['base_xp'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">XP</span></div>
+                                    <div class="gamif-reward-cell">
+                                        <span class="gamif-reward-row text-warning"><strong>🪙 +<?= (int)$tmpl['base_coins'] ?></strong> <span class="text-muted">Münzen</span></span>
+                                        <span class="gamif-reward-row text-info"><strong>⭐ +<?= (int)$tmpl['base_xp'] ?></strong> <span class="text-muted">XP</span></span>
+                                    </div>
                                 </td>
                                 <td><?= (int)$tmpl['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?></td>
                                 <td>
                                     <button type="button" class="btn btn-outline btn-sm js-edit-template-btn" data-template='<?= htmlspecialchars(json_encode($tmpl), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
-                                    <button type="button" class="btn btn-outline btn-sm js-delete-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" title="Löschen">🗑️</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-delete-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -307,7 +309,7 @@ $metricTypeMap = [
                                 <td><?= (int)$rew['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Pausiert</span>' ?></td>
                                 <td>
                                     <button type="button" class="btn btn-outline btn-sm js-edit-reward-btn" data-reward='<?= htmlspecialchars(json_encode($rew), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
-                                    <button type="button" class="btn btn-outline btn-sm js-delete-reward-btn" data-reward-id="<?= (int)$rew['id'] ?>" title="Löschen">🗑️</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-delete-reward-btn" data-reward-id="<?= (int)$rew['id'] ?>" data-title="<?= htmlspecialchars($rew['title'], ENT_QUOTES, 'UTF-8') ?>" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -381,13 +383,15 @@ $metricTypeMap = [
                                     <div class="text-muted" style="font-size:0.8rem;"><?= htmlspecialchars($metricTypeMap[$ach['metric_type']] ?? $ach['metric_type'], ENT_QUOTES, 'UTF-8') ?></div>
                                 </td>
                                 <td>
-                                    <div><strong class="text-warning">🪙 +<?= (int)$ach['reward_coins'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">Münzen</span></div>
-                                    <div><strong class="text-info">⭐ +<?= (int)$ach['reward_xp'] ?></strong> <span class="text-muted" style="font-size:0.8rem;">XP</span></div>
+                                    <div class="gamif-reward-cell">
+                                        <span class="gamif-reward-row text-warning"><strong>🪙 +<?= (int)$ach['reward_coins'] ?></strong> <span class="text-muted">Münzen</span></span>
+                                        <span class="gamif-reward-row text-info"><strong>⭐ +<?= (int)$ach['reward_xp'] ?></strong> <span class="text-muted">XP</span></span>
+                                    </div>
                                 </td>
                                 <td><?= (int)$ach['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?></td>
                                 <td>
                                     <button type="button" class="btn btn-outline btn-sm js-edit-badge-btn" data-badge='<?= htmlspecialchars(json_encode($ach), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
-                                    <button type="button" class="btn btn-outline btn-sm js-delete-badge-btn" data-badge-id="<?= (int)$ach['id'] ?>" title="Löschen">🗑️</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-delete-badge-btn" data-badge-id="<?= (int)$ach['id'] ?>" data-title="<?= htmlspecialchars($ach['title'], ENT_QUOTES, 'UTF-8') ?>" title="Löschen">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -669,6 +673,7 @@ $metricTypeMap = [
                 <form id="form-review">
                     <input type="hidden" id="review-task-id" name="task_id">
                     <input type="hidden" id="review-sub-action" name="sub_action" value="reject">
+                    <p id="review-task-title-display" class="text-muted"></p>
                     <div class="form-group">
                         <label for="review-feedback">Rückmeldung an das Kind:</label>
                         <textarea id="review-feedback" name="feedback" class="form-control" rows="3" placeholder="Bitte räume noch den Tisch ab..." required></textarea>
@@ -678,6 +683,142 @@ $metricTypeMap = [
                         <button type="submit" class="btn btn-danger">Zurückweisen</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Aufgabe genehmigen & Belohnung anpassen -->
+    <div id="modal-approve-task" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Aufgabe genehmigen & belohnen ✅</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-approve-task">
+                    <input type="hidden" id="approve-task-id" name="task_id">
+                    <p id="approve-task-desc" class="text-muted"></p>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="approve-coins">Münzen gutschreiben:</label>
+                            <input type="number" id="approve-coins" name="custom_coins" class="form-control" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="approve-xp">XP gutschreiben:</label>
+                            <input type="number" id="approve-xp" name="custom_xp" class="form-control" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="approve-feedback">Lob / Notiz an das Kind (optional):</label>
+                        <input type="text" id="approve-feedback" name="feedback" class="form-control" placeholder="Super gemacht! Weiter so!">
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">✅ Bestätigen & Gutschreiben</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Geschwister-Mithilfe bewerten -->
+    <div id="modal-review-helper" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3 id="review-helper-heading">Mithilfe bewerten 🤝</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-review-helper">
+                    <input type="hidden" id="helper-id" name="helper_id">
+                    <input type="hidden" id="helper-approved" name="approved" value="1">
+                    <p id="helper-desc" class="text-muted"></p>
+                    <div class="form-group" id="group-helper-coins">
+                        <label for="helper-coins">Helfer-Münzen:</label>
+                        <input type="number" id="helper-coins" name="custom_coins" class="form-control" min="0" value="10">
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" id="helper-submit-btn" class="btn btn-primary">Bestätigen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Prämien-Antrag prüfen -->
+    <div id="modal-review-redemption" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="redemption-heading">Prämien-Wunsch prüfen 🎁</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-review-redemption">
+                    <input type="hidden" id="redemption-id" name="redemption_id">
+                    <input type="hidden" id="redemption-action" name="sub_action" value="approve">
+                    <p id="redemption-desc" class="text-muted"></p>
+                    <div class="form-group">
+                        <label for="redemption-parent-note">Notiz / Vereinbarung (optional):</label>
+                        <input type="text" id="redemption-parent-note" name="parent_note" class="form-control" placeholder="z. B. Vereinbart für Samstag Nachmittag">
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" id="redemption-submit-btn" class="btn btn-primary">Genehmigen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Löschen bestätigen -->
+    <div id="modal-confirm-delete" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3 id="confirm-delete-heading">Eintrag löschen 🗑️</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-delete-msg">Möchtest du dieses Element wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+                <input type="hidden" id="delete-type" value="">
+                <input type="hidden" id="delete-id" value="">
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                    <button type="button" id="btn-confirm-delete-execute" class="btn btn-danger">🗑️ Unwiderruflich löschen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Fristen & Aufgaben manuell synchronisieren -->
+    <div id="modal-sync-escalation" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3>Fristen & Aufgaben abgleichen ⏱️</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Möchtest du die Fristen jetzt sofort prüfen? Überfällige Aufgaben werden auf das Schwarze Brett eskaliert (+50% Retter-Bonus) und fällige Tagesaufgaben vorbereitet.</p>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                    <button type="button" id="btn-execute-sync-escalation" class="btn btn-primary">⏱️ Jetzt prüfen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Rückmeldung / Feedback -->
+    <div id="modal-feedback" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3 id="feedback-heading">Hinweis</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="feedback-msg"></p>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" id="btn-feedback-ok" class="btn btn-primary modal-close">OK</button>
+                </div>
             </div>
         </div>
     </div>

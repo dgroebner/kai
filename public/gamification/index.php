@@ -220,12 +220,12 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                             <?php if ($isClaimedByMe): ?>
                                 <span class="text-warning">🔒 Von dir reserviert</span>
                                 <div style="display:flex; gap:0.5rem;">
-                                    <button type="button" class="btn btn-outline btn-sm js-release-claim-btn" data-task-id="<?= (int)$task['id'] ?>">Freigeben</button>
+                                    <button type="button" class="btn btn-outline btn-sm js-release-claim-btn" data-task-id="<?= (int)$task['id'] ?>" data-title="<?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?>">Freigeben</button>
                                     <button type="button" class="btn btn-primary btn-sm js-submit-task-btn" data-task-id="<?= (int)$task['id'] ?>" data-title="<?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?>">Erledigt ✓</button>
                                 </div>
                             <?php else: ?>
                                 <span class="text-muted">Verfügbar für alle</span>
-                                <button type="button" class="btn btn-primary btn-sm js-claim-task-btn" data-task-id="<?= (int)$task['id'] ?>">Quest schnappen ⚡</button>
+                                <button type="button" class="btn btn-primary btn-sm js-claim-task-btn" data-task-id="<?= (int)$task['id'] ?>" data-title="<?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?>" data-coins="<?= $totalCoins ?>" data-xp="<?= $totalXp ?>">Quest schnappen ⚡</button>
                             <?php endif; ?>
                         </div>
                     </article>
@@ -458,6 +458,58 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                         <button type="submit" class="btn btn-primary">Antrag stellen</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Quest schnappen (Claim) -->
+    <div id="modal-claim-task" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3>⚡ Quest annehmen</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="claim-task-id" value="">
+                <p id="claim-task-msg">Möchtest du dir diese Quest schnappen und für 12 Stunden für dich reservieren?</p>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                    <button type="button" id="btn-confirm-claim" class="btn btn-primary">⚡ Quest jetzt starten!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Quest freigeben (Release) -->
+    <div id="modal-release-task" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3>↩️ Quest zurückgeben</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="release-task-id" value="">
+                <p id="release-task-msg">Möchtest du diese Quest wirklich wieder auf das Schwarze Brett legen, damit ein anderes Geschwisterkind sie übernehmen kann?</p>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="button" class="btn btn-outline modal-close">Behalten</button>
+                    <button type="button" id="btn-confirm-release" class="btn btn-outline">↩️ Wieder freigeben</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Rückmeldung / Feedback -->
+    <div id="modal-feedback" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3 id="feedback-heading">Hinweis</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="feedback-msg"></p>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" id="btn-feedback-ok" class="btn btn-primary modal-close">OK</button>
+                </div>
             </div>
         </div>
     </div>
