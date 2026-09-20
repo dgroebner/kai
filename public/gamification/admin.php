@@ -580,9 +580,9 @@ $metricTypeMap = [
                         <div class="form-group">
                             <label for="reward-icon">Symbol / Emoji:</label>
                             <div class="gamif-emoji-picker-group">
-                                <span class="gamif-emoji-preview" id="reward-icon-preview">🎁</span>
-                                <input type="text" id="reward-icon" name="icon" class="form-control" value="🎁" style="max-width:70px; text-align:center; font-size:1.2rem;">
-                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#reward-icon" data-target-preview="#reward-icon-preview">🎨 Wählen</button>
+                                <button type="button" class="gamif-emoji-preview js-open-emoji-picker" id="reward-icon-preview" data-target-input="#reward-icon" data-target-preview="#reward-icon-preview" title="Klicken, um Symbol zu wählen">🎁</button>
+                                <input type="hidden" id="reward-icon" name="icon" value="🎁">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#reward-icon" data-target-preview="#reward-icon-preview">🎨 Symbol wählen</button>
                             </div>
                         </div>
                     </div>
@@ -633,9 +633,9 @@ $metricTypeMap = [
                         <div class="form-group">
                             <label for="badge-icon">Symbol / Emoji:</label>
                             <div class="gamif-emoji-picker-group">
-                                <span class="gamif-emoji-preview" id="badge-icon-preview">🏆</span>
-                                <input type="text" id="badge-icon" name="icon" class="form-control" value="🏆" style="max-width:70px; text-align:center; font-size:1.2rem;">
-                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#badge-icon" data-target-preview="#badge-icon-preview">🎨 Wählen</button>
+                                <button type="button" class="gamif-emoji-preview js-open-emoji-picker" id="badge-icon-preview" data-target-input="#badge-icon" data-target-preview="#badge-icon-preview" title="Klicken, um Symbol zu wählen">🏆</button>
+                                <input type="hidden" id="badge-icon" name="icon" value="🏆">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#badge-icon" data-target-preview="#badge-icon-preview">🎨 Symbol wählen</button>
                             </div>
                         </div>
                         <div class="form-group">
@@ -908,9 +908,9 @@ $metricTypeMap = [
                         <div class="form-group">
                             <label for="new-profile-avatar">Start-Symbol / Emoji:</label>
                             <div class="gamif-emoji-picker-group">
-                                <span class="gamif-emoji-preview" id="new-profile-avatar-preview">⭐</span>
-                                <input type="text" id="new-profile-avatar" name="avatar_icon" class="form-control" value="⭐" style="max-width:70px; text-align:center; font-size:1.2rem;">
-                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#new-profile-avatar" data-target-preview="#new-profile-avatar-preview">🎨 Wählen</button>
+                                <button type="button" class="gamif-emoji-preview js-open-emoji-picker" id="new-profile-avatar-preview" data-target-input="#new-profile-avatar" data-target-preview="#new-profile-avatar-preview" title="Klicken, um Symbol zu wählen">⭐</button>
+                                <input type="hidden" id="new-profile-avatar" name="avatar_icon" value="⭐">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#new-profile-avatar" data-target-preview="#new-profile-avatar-preview">🎨 Symbol wählen</button>
                             </div>
                         </div>
                     </div>

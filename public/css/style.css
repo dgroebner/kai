@@ -5369,13 +5369,20 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 1.6rem;
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: 6px;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 8px;
     background: var(--bg-main);
     border: 1px solid var(--bg-surface-hover);
     user-select: none;
     flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.gamif-emoji-preview:hover {
+    border-color: var(--accent);
+    transform: scale(1.08);
 }
 
 .modal-card--emoji {

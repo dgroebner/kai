@@ -696,6 +696,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (openCreateProfileBtn && modalCreateProfile && formCreateProfile) {
         openCreateProfileBtn.addEventListener('click', () => {
             formCreateProfile.reset();
+            const avatarIn = document.getElementById('new-profile-avatar');
+            if (avatarIn) avatarIn.value = '⭐';
             const profPreview = document.getElementById('new-profile-avatar-preview');
             if (profPreview) profPreview.textContent = '⭐';
             openModal(modalCreateProfile);
