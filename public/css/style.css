@@ -5294,6 +5294,26 @@ body {
     color: #ef4444;
 }
 
+.gamif-stat-chip--shield {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.gamif-freeze-banner {
+    margin-top: 0.85rem;
+    padding: 0.6rem 1rem;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: var(--border-radius, 8px);
+    color: #93c5fd;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .gamif-card-desc {
     font-size: 0.9rem;
     color: var(--text-muted);

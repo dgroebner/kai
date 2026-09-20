@@ -170,6 +170,17 @@ try {
             if (isset($input['role']) && Auth::hasPermission('gamification_admin') && in_array($input['role'], ['parent', 'child'], true)) {
                 $data['role'] = $input['role'];
             }
+            if (Auth::hasPermission('gamification_admin')) {
+                if (isset($input['streak_shields'])) {
+                    $data['streak_shields'] = max(0, (int)$input['streak_shields']);
+                }
+                if (array_key_exists('streak_freeze_until', $input)) {
+                    $data['streak_freeze_until'] = !empty($input['streak_freeze_until']) ? trim((string)$input['streak_freeze_until']) : null;
+                }
+                if (array_key_exists('streak_freeze_reason', $input)) {
+                    $data['streak_freeze_reason'] = !empty($input['streak_freeze_reason']) ? trim((string)$input['streak_freeze_reason']) : null;
+                }
+            }
 
             $targetId = (int)$currentProfile['id'];
             if (!empty($input['profile_id']) && Auth::hasPermission('gamification_admin')) {
@@ -178,6 +189,26 @@ try {
 
             $ok = $profileRepo->updateProfile($targetId, $data);
             echo json_encode(['success' => $ok, 'message' => 'Profil aktualisiert.']);
+            break;
+
+        case 'set_streak_freeze':
+            Auth::requireApi('gamification_admin');
+            $targetId = (int)($input['profile_id'] ?? 0);
+            $until = !empty($input['until_date']) ? trim((string)$input['until_date']) : null;
+            $reason = !empty($input['reason']) ? trim((string)$input['reason']) : null;
+            $ok = $profileRepo->updateProfile($targetId, [
+                'streak_freeze_until' => $until,
+                'streak_freeze_reason' => $reason,
+            ]);
+            echo json_encode(['success' => $ok, 'message' => $until ? 'Pausenschutz aktiviert.' : 'Pausenschutz aufgehoben.']);
+            break;
+
+        case 'adjust_streak_shields':
+            Auth::requireApi('gamification_admin');
+            $targetId = (int)($input['profile_id'] ?? 0);
+            $delta = (int)($input['delta'] ?? 0);
+            $profileRepo->updateStreakShields($targetId, $delta);
+            echo json_encode(['success' => true, 'message' => 'Streak-Schilde angepasst.']);
             break;
 
         // -------------------------------------------------------------

@@ -166,6 +166,20 @@ class GamificationProfileRepository
             $fields[] = "color = :color";
             $params['color'] = trim($data['color']);
         }
+        if (isset($data['streak_shields'])) {
+            $fields[] = "streak_shields = :streak_shields";
+            $params['streak_shields'] = max(0, (int)$data['streak_shields']);
+        }
+        if (array_key_exists('streak_freeze_until', $data)) {
+            $fields[] = "streak_freeze_until = :streak_freeze_until";
+            $freezeDate = !empty($data['streak_freeze_until']) ? trim($data['streak_freeze_until']) : null;
+            $params['streak_freeze_until'] = $freezeDate;
+        }
+        if (array_key_exists('streak_freeze_reason', $data)) {
+            $fields[] = "streak_freeze_reason = :streak_freeze_reason";
+            $reason = !empty($data['streak_freeze_reason']) ? trim($data['streak_freeze_reason']) : null;
+            $params['streak_freeze_reason'] = $reason;
+        }
 
         if (empty($fields)) {
             return false;
@@ -258,10 +272,11 @@ class GamificationProfileRepository
 
             $txStmt = $pdo->prepare("
                 INSERT INTO gamification_transactions (profile_id, amount_xp, amount_coins, reason, reference_type, reference_id)
-                VALUES (:profile_id, 0, :amount_coins, :reason, :ref_type, :ref_id)
+                VALUES (:profile_id, :amount_xp, :amount_coins, :reason, :ref_type, :ref_id)
             ");
             $txStmt->execute([
                 'profile_id' => $id,
+                'amount_xp' => 0,
                 'amount_coins' => -$coins,
                 'reason' => $reason,
                 'ref_type' => $refType,
@@ -277,26 +292,49 @@ class GamificationProfileRepository
     }
 
     /**
+     * Ändert den Bestand an Streak-Schilden eines Profils (positiver oder negativer Betrag).
+     */
+    public function updateStreakShields(int $id, int $delta): void
+    {
+        $stmt = $this->db->getConnection()->prepare("
+            UPDATE gamification_profiles 
+            SET streak_shields = GREATEST(0, CAST(streak_shields AS SIGNED) + :delta)
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'delta' => $delta,
+            'id' => $id,
+        ]);
+    }
+
+    /**
      * Aktualisiert den Zuverlässigkeits-Streak (Erhöhen bei Erledigung, Zurücksetzen bei Versäumnis).
      */
     public function updateStreak(int $id, bool $increment): void
     {
         $today = date('Y-m-d');
-        if ($increment) {
-            $profile = $this->getProfileById($id);
-            if (!$profile) {
-                return;
-            }
+        $profile = $this->getProfileById($id);
+        if (!$profile) {
+            return;
+        }
 
+        if ($increment) {
             // Wenn heute bereits eine Aufgabe den Streak erhöht hat, nicht mehrfach pro Tag hochzählen
             if ($profile['last_completed_date'] === $today) {
                 return;
             }
 
             $yesterday = date('Y-m-d', strtotime('-1 day'));
-            $newStreak = ($profile['last_completed_date'] === $yesterday || $profile['streak_days'] === 0)
-                ? $profile['streak_days'] + 1
-                : 1;
+            $isContinuous = ($profile['last_completed_date'] === $yesterday || (int)$profile['streak_days'] === 0);
+
+            // Prüfen, ob durch Urlaubs- / Pausenschutz (streak_freeze_until) überbrückt wurde:
+            if (!$isContinuous && !empty($profile['streak_freeze_until']) && !empty($profile['last_completed_date'])) {
+                if ($profile['streak_freeze_until'] >= $yesterday) {
+                    $isContinuous = true;
+                }
+            }
+
+            $newStreak = $isContinuous ? ((int)$profile['streak_days'] + 1) : 1;
 
             $stmt = $this->db->getConnection()->prepare("
                 UPDATE gamification_profiles 
@@ -310,6 +348,41 @@ class GamificationProfileRepository
             ]);
         } else {
             // Pädagogischer Streak-Reset bei Fristversäumnis
+
+            // 1. Urlaubs- / Pausenschutz aktiv?
+            if (!empty($profile['streak_freeze_until']) && $profile['streak_freeze_until'] >= $today) {
+                return; // Keine Säumnis-Strafe während des Urlaubs/Klassenfahrt
+            }
+
+            // 2. Streak-Schild vorhanden?
+            $shields = (int)($profile['streak_shields'] ?? 0);
+            if ($shields > 0) {
+                // Schild verbrauchen und Serie retten!
+                $stmt = $this->db->getConnection()->prepare("
+                    UPDATE gamification_profiles 
+                    SET streak_shields = streak_shields - 1,
+                        last_completed_date = :yesterday
+                    WHERE id = :id AND streak_shields > 0
+                ");
+                $stmt->execute([
+                    'yesterday' => date('Y-m-d', strtotime('-1 day')),
+                    'id' => $id,
+                ]);
+
+                // Journal-Eintrag zur Transparenz
+                $txStmt = $this->db->getConnection()->prepare("
+                    INSERT INTO gamification_transactions (profile_id, amount_xp, amount_coins, reason, reference_type, reference_id)
+                    VALUES (:profile_id, 0, 0, :reason, 'streak_shield', NULL)
+                ");
+                $txStmt->execute([
+                    'profile_id' => $id,
+                    'reason' => '🛡️ Streak-Schild hat deine Tages-Serie vor Säumnis gerettet!',
+                ]);
+
+                return;
+            }
+
+            // Kein Schutz -> Streak auf 0 setzen
             $stmt = $this->db->getConnection()->prepare("
                 UPDATE gamification_profiles 
                 SET streak_days = 0 

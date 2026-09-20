@@ -444,10 +444,16 @@ $metricTypeMap = [
                         </div>
                         <span class="gamif-tag <?= $p['role'] === 'parent' ? 'gamif-tag--rescue' : '' ?>"><?= $p['role'] === 'parent' ? '👑 Eltern' : 'Kind' ?></span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-top:0.5rem;">
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.5rem;">
                         <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 <?= (int)$p['coins'] ?> Münzen</span>
                         <span class="gamif-stat-chip gamif-stat-chip--streak">🔥 <?= (int)$p['streak_days'] ?> Tage</span>
                         <span class="gamif-stat-chip gamif-stat-chip--xp">⭐ <?= (int)$p['xp'] ?> XP</span>
+                        <?php if ((int)($p['streak_shields'] ?? 0) > 0): ?>
+                            <span class="gamif-stat-chip gamif-stat-chip--shield" data-gamif-title="🛡️ Streak-Schilde" data-gamif-tooltip="Schützt die Serie automatisch vor Säumnis (noch <?= (int)$p['streak_shields'] ?> verfügbar).">🛡️ <?= (int)$p['streak_shields'] ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($p['streak_freeze_until']) && $p['streak_freeze_until'] >= date('Y-m-d')): ?>
+                            <span class="gamif-tag" style="background:rgba(59,130,246,0.2); color:#60a5fa;" data-gamif-title="🏖️ Urlaubs-Pausenschutz" data-gamif-tooltip="Serie ist pausiert und vor Säumnis geschützt bis <?= htmlspecialchars(date('d.m.Y', strtotime($p['streak_freeze_until'])), ENT_QUOTES, 'UTF-8') ?><?= !empty($p['streak_freeze_reason']) ? ' (' . htmlspecialchars($p['streak_freeze_reason'], ENT_QUOTES, 'UTF-8') . ')' : '' ?>.">🏖️ Pause bis <?= htmlspecialchars(date('d.m.', strtotime($p['streak_freeze_until'])), ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php endif; ?>
                     </div>
                     <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(255,255,255,0.05); display:flex; justify-content:flex-end; gap:0.5rem;">
                         <button type="button" class="btn btn-outline btn-sm js-edit-profile-btn" data-profile="<?= htmlspecialchars(json_encode($p), ENT_QUOTES, 'UTF-8') ?>">✏️ Bearbeiten</button>
@@ -927,6 +933,24 @@ $metricTypeMap = [
                                 <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#edit-profile-avatar" data-target-preview="#edit-profile-avatar-preview">🎨 Symbol wählen</button>
                             </div>
                         </div>
+                    </div>
+                    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:1rem 0;">
+                    <h4 style="margin:0 0 0.5rem 0; font-size:0.95rem; color:var(--text-light, #fff);">🛡️ Serien-Schutz &amp; Urlaub</h4>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="edit-profile-shields">Aktive Streak-Schilde:</label>
+                            <input type="number" id="edit-profile-shields" name="streak_shields" class="form-control" min="0" max="99" value="0">
+                            <span class="text-muted small">Rettet die Serie automatisch bei Säumnis.</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-profile-freeze-until">Urlaub / Pause bis einschl.:</label>
+                            <input type="date" id="edit-profile-freeze-until" name="streak_freeze_until" class="form-control">
+                            <span class="text-muted small">Kein Fristverfall während dieses Zeitraums.</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-profile-freeze-reason">Grund für Pause / Urlaub (optional):</label>
+                        <input type="text" id="edit-profile-freeze-reason" name="streak_freeze_reason" class="form-control" placeholder="z. B. Klassenfahrt, Sommerurlaub, Krank">
                     </div>
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>

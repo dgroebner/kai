@@ -75,6 +75,11 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                 <div class="gamif-stat-chip gamif-stat-chip--streak" title="Tage in Folge zuverlässig erledigt">
                     🔥 <span><?= (int)$currentProfile['streak_days'] ?></span> <?= (int)$currentProfile['streak_days'] === 1 ? 'Tag' : 'Tage' ?> Serie
                 </div>
+                <?php if ((int)($currentProfile['streak_shields'] ?? 0) > 0): ?>
+                    <div class="gamif-stat-chip gamif-stat-chip--shield" data-gamif-title="🛡️ Streak-Schild aktiv" data-gamif-tooltip="Schützt deine Flamme automatisch, falls du mal einen Tag versäumst (noch <?= (int)$currentProfile['streak_shields'] ?> verfügbar).">
+                        🛡️ <span><?= (int)$currentProfile['streak_shields'] ?></span> <?= (int)$currentProfile['streak_shields'] === 1 ? 'Schild' : 'Schilde' ?>
+                    </div>
+                <?php endif; ?>
                 <div class="gamif-stat-chip gamif-stat-chip--xp" title="Gesamte Erfahrungspunkte">
                     ⭐ <span><?= (int)$currentProfile['xp'] ?></span> XP
                 </div>
@@ -90,6 +95,16 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                 <div class="gamif-xp-fill" style="width: <?= $levelProgress['percent'] ?>%;"></div>
             </div>
         </div>
+
+        <?php if (!empty($currentProfile['streak_freeze_until']) && $currentProfile['streak_freeze_until'] >= date('Y-m-d')): ?>
+            <div class="gamif-freeze-banner">
+                🏖️ <strong>Urlaubs- &amp; Pausenschutz aktiv bis <?= htmlspecialchars(date('d.m.Y', strtotime($currentProfile['streak_freeze_until'])), ENT_QUOTES, 'UTF-8') ?></strong>
+                <?php if (!empty($currentProfile['streak_freeze_reason'])): ?>
+                    <span>(<?= htmlspecialchars($currentProfile['streak_freeze_reason'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                <?php endif; ?>
+                — Deine Serie bleibt sicher eingefroren!
+            </div>
+        <?php endif; ?>
     </section>
 
     <!-- Navigation Tabs -->

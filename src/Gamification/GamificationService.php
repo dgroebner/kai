@@ -105,6 +105,22 @@ class GamificationService
             if (!$stmt->fetch()) {
                 $pdo->exec("ALTER TABLE gamification_tasks ADD COLUMN can_escalate TINYINT(1) NOT NULL DEFAULT 1 AFTER is_bounty");
             }
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_profiles LIKE 'streak_shields'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE gamification_profiles ADD COLUMN streak_shields INT UNSIGNED NOT NULL DEFAULT 0 AFTER streak_days");
+            }
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_profiles LIKE 'streak_freeze_until'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE gamification_profiles ADD COLUMN streak_freeze_until DATE NULL AFTER streak_shields");
+            }
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_profiles LIKE 'streak_freeze_reason'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE gamification_profiles ADD COLUMN streak_freeze_reason VARCHAR(100) NULL AFTER streak_freeze_until");
+            }
+            $rewardCheck = $pdo->query("SELECT id FROM gamification_rewards WHERE title LIKE '%Streak-Schild%' LIMIT 1");
+            if (!$rewardCheck->fetch()) {
+                $pdo->exec("INSERT INTO gamification_rewards (title, description, coin_cost, icon, type, min_age, cooldown_days, is_active) VALUES ('Streak-Schild', 'Schützt deine Tages-Serie einmalig vor dem Zerbrechen, falls du mal einen Tag versäumst.', 40, '🛡️', 'item', NULL, 0, 1)");
+            }
         } catch (\Throwable $e) {
             (new Logger())->warn('Gamification: Automatische Schema-Prüfung fehlgeschlagen.', ['error' => $e->getMessage()]);
         }

@@ -803,6 +803,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('edit-profile-avatar').value = p.avatar_icon || '⭐';
             const prev = document.getElementById('edit-profile-avatar-preview');
             if (prev) prev.textContent = p.avatar_icon || '⭐';
+            const shieldsInput = document.getElementById('edit-profile-shields');
+            if (shieldsInput) shieldsInput.value = p.streak_shields ?? 0;
+            const freezeUntilInput = document.getElementById('edit-profile-freeze-until');
+            if (freezeUntilInput) freezeUntilInput.value = p.streak_freeze_until || '';
+            const freezeReasonInput = document.getElementById('edit-profile-freeze-reason');
+            if (freezeReasonInput) freezeReasonInput.value = p.streak_freeze_reason || '';
 
             openModal(modalEditProfile);
         }
@@ -817,7 +823,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 profile_id: parseInt(formData.get('profile_id'), 10),
                 display_name: formData.get('display_name'),
                 role: formData.get('role'),
-                avatar_icon: formData.get('avatar_icon')
+                avatar_icon: formData.get('avatar_icon'),
+                streak_shields: parseInt(formData.get('streak_shields') || '0', 10),
+                streak_freeze_until: formData.get('streak_freeze_until') || '',
+                streak_freeze_reason: formData.get('streak_freeze_reason') || ''
             };
 
             closeModal(modalEditProfile);

@@ -294,6 +294,10 @@ class GamificationRewardRepository
         }
 
         // Genehmigen
+        if (stripos($redemption['reward_title'], 'Streak-Schild') !== false) {
+            $this->profileRepo->updateStreakShields($profileId, 1);
+        }
+
         $updStmt = $this->db->getConnection()->prepare("
             UPDATE gamification_redemptions SET
                 status = 'approved',
