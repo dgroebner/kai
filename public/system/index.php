@@ -562,8 +562,8 @@ function getEventLabel(string $eventType): string
                                         <td data-label="Aktionen" style="text-align: right;">
                                             <?php if (Auth::hasPermission('system_write')): ?>
                                                 <button type="button" 
-                                                        class="btn btn-outline js-edit-student" 
-                                                        style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin-right: 0.25rem;"
+                                                        class="btn btn-outline btn-icon-only js-edit-student" 
+                                                        style="margin-right: 0.25rem;"
                                                         data-id="<?= (int)$student['id'] ?>"
                                                         data-name="<?= htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8') ?>"
                                                         data-class="<?= htmlspecialchars($student['class_name'], ENT_QUOTES, 'UTF-8') ?>"
@@ -571,14 +571,16 @@ function getEventLabel(string $eventType): string
                                                         data-email="<?= htmlspecialchars($student['user_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                                         data-color="<?= htmlspecialchars($student['display_color'], ENT_QUOTES, 'UTF-8') ?>"
                                                         data-excluded="<?= htmlspecialchars($student['excluded_subjects'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                                                        data-active="<?= (int)$student['is_active'] ?>">
-                                                    ✏️ Bearbeiten
+                                                        data-active="<?= (int)$student['is_active'] ?>"
+                                                        title="Bearbeiten"
+                                                        aria-label="Bearbeiten">
+                                                    ✏️
                                                 </button>
                                                 <form action="index.php?tab=school" method="POST" style="display: inline;" class="js-confirm-delete" data-confirm-message="Schülerprofil wirklich löschen?">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                                                     <input type="hidden" name="action" value="delete_student">
                                                     <input type="hidden" name="student_id" value="<?= (int)$student['id'] ?>">
-                                                    <button type="submit" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; color: var(--color-red);">Löschen</button>
+                                                    <button type="submit" class="btn btn-outline btn-icon-only" style="color: var(--color-red);" title="Löschen" aria-label="Löschen">🗑️</button>
                                                 </form>
                                             <?php endif; ?>
                                         </td>
