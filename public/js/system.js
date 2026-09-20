@@ -103,8 +103,37 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Event-Delegation für Schülerprofil bearbeiten (System -> Tab Schule)
+    // Event-Delegation für Schülerpflege (System -> Tab Schule)
     document.addEventListener('click', function (e) {
+        // Neuen Schüler anlegen Modal öffnen
+        const addBtn = e.target.closest('.js-add-student');
+        if (addBtn) {
+            e.preventDefault();
+            const form = document.getElementById('student-form');
+            if (form) form.reset();
+
+            const idInput = document.getElementById('st_id');
+            const colorInput = document.getElementById('st_color');
+            const activeCheckbox = document.getElementById('st_active');
+            const title = document.getElementById('student-modal-title');
+            const submitBtn = document.getElementById('st_submit_btn');
+
+            if (idInput) idInput.value = '';
+            if (colorInput) colorInput.value = '#0284c7';
+            if (activeCheckbox) activeCheckbox.checked = true;
+            if (title) title.textContent = 'Neuen Schüler anlegen';
+            if (submitBtn) submitBtn.textContent = '➕ Schülerprofil speichern';
+
+            const modal = document.getElementById('student-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                const nameInput = document.getElementById('st_name');
+                if (nameInput) nameInput.focus();
+            }
+            return;
+        }
+
+        // Bestehenden Schüler bearbeiten
         const editBtn = e.target.closest('.js-edit-student');
         if (editBtn) {
             e.preventDefault();
@@ -128,9 +157,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const colorInput = document.getElementById('st_color');
             const excludedInput = document.getElementById('st_excluded');
             const activeCheckbox = document.getElementById('st_active');
-            const title = document.getElementById('student-form-title');
+            const title = document.getElementById('student-modal-title');
             const submitBtn = document.getElementById('st_submit_btn');
-            const cancelBtn = document.getElementById('st_cancel_btn');
 
             if (idInput) idInput.value = id;
             if (nameInput) nameInput.value = name;
@@ -143,29 +171,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (title) title.textContent = `Schülerprofil bearbeiten: ${name}`;
             if (submitBtn) submitBtn.textContent = '💾 Änderungen speichern';
-            if (cancelBtn) cancelBtn.style.display = 'inline-block';
 
-            const formCard = document.getElementById('student-form-card');
-            if (formCard) {
-                formCard.scrollIntoView({ behavior: 'smooth' });
+            const modal = document.getElementById('student-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                if (nameInput) nameInput.focus();
             }
             return;
         }
 
-        const cancelBtn = e.target.closest('#st_cancel_btn');
-        if (cancelBtn) {
+        // Modal schließen
+        const closeBtn = e.target.closest('.js-close-student-modal');
+        if (closeBtn) {
             e.preventDefault();
-            const form = document.getElementById('student-form');
-            if (form) form.reset();
+            const modal = document.getElementById('student-modal');
+            if (modal) modal.classList.add('hidden');
+            return;
+        }
 
-            const idInput = document.getElementById('st_id');
-            const title = document.getElementById('student-form-title');
-            const submitBtn = document.getElementById('st_submit_btn');
+        // Backdrop-Klick schließt das Modal
+        const studentModal = document.getElementById('student-modal');
+        if (studentModal && e.target === studentModal) {
+            studentModal.classList.add('hidden');
+        }
+    });
 
-            if (idInput) idInput.value = '';
-            if (title) title.textContent = 'Neuen Schüler anlegen';
-            if (submitBtn) submitBtn.textContent = '➕ Schülerprofil speichern';
-            cancelBtn.style.display = 'none';
+    // Escape-Taste schließt das Schüler-Modal
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const studentModal = document.getElementById('student-modal');
+            if (studentModal && !studentModal.classList.contains('hidden')) {
+                studentModal.classList.add('hidden');
+            }
         }
     });
 });

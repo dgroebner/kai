@@ -498,7 +498,14 @@ function getEventLabel(string $eventType): string
 
             <!-- Schüler-Profile verwalten -->
             <section class="card" style="margin-bottom: 2rem;">
-                <h2>Kinder &amp; Klassen-Zuordnung</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h2 style="margin: 0;">Kinder &amp; Klassen-Zuordnung</h2>
+                    <?php if (Auth::hasPermission('system_write')): ?>
+                        <button type="button" class="btn js-add-student" id="btn-add-student">
+                            ➕ Neuer Schüler
+                        </button>
+                    <?php endif; ?>
+                </div>
                 <p class="text-muted" style="margin-bottom: 1.5rem;">
                     Hier werden die Kinder mit ihrer aktuellen Klasse und optional ihrer Google-E-Mail-Adresse verknüpft.
                     Wenn sich ein Kind anmeldet, filtert das Dashboard automatisch auf dessen Klasse.
@@ -584,57 +591,63 @@ function getEventLabel(string $eventType): string
             </section>
 
             <?php if (Auth::hasPermission('system_write')): ?>
-                <section class="card" id="student-form-card">
-                    <h2 id="student-form-title">Neuen Schüler anlegen</h2>
-                    <form action="index.php?tab=school" method="POST" id="student-form">
+                <div id="student-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="student-modal-title">
+                    <form action="index.php?tab=school" method="POST" id="student-form" class="modal-card modal-card--lg">
+                        <div class="modal-header">
+                            <h3 id="student-modal-title">Neuen Schüler anlegen</h3>
+                            <button type="button" class="modal-close js-close-student-modal" aria-label="Schließen">✕</button>
+                        </div>
+
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="action" value="save_student">
                         <input type="hidden" name="student_id" id="st_id" value="">
 
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                            <div>
-                                <label for="st_name" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Name des Kindes:</label>
-                                <input type="text" id="st_name" name="name" class="yield-input" style="width: 100%;" placeholder="z. B. Enya oder Zoé" required>
+                        <div class="modal-body">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                                <div>
+                                    <label for="st_name" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Name des Kindes:</label>
+                                    <input type="text" id="st_name" name="name" class="yield-input" style="width: 100%;" placeholder="z. B. Enya oder Zoé" required>
+                                </div>
+                                <div>
+                                    <label for="st_class" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Klasse:</label>
+                                    <input type="text" id="st_class" name="class_name" class="yield-input" style="width: 100%;" placeholder="z. B. 6A oder 8B" required>
+                                </div>
+                                <div>
+                                    <label for="st_beste_id" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Beste Schule ID:</label>
+                                    <input type="text" id="st_beste_id" name="beste_schule_id" class="yield-input" style="width: 100%;" placeholder="z. B. 12345">
+                                </div>
+                                <div>
+                                    <label for="st_email" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Google-Konto (E-Mail):</label>
+                                    <select id="st_email" name="user_email" class="yield-input" style="width: 100%;">
+                                        <option value="">– Kein Google-Konto zugeordnet –</option>
+                                        <?php foreach ($systemUsers as $u): ?>
+                                            <option value="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>">
+                                                <?= htmlspecialchars($u['name'] ? "{$u['name']} ({$u['email']})" : $u['email'], ENT_QUOTES, 'UTF-8') ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="st_color" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Badge-Farbe:</label>
+                                    <input type="color" id="st_color" name="display_color" value="#0284c7" class="yield-input" style="width: 100%; height: 38px; padding: 2px;">
+                                </div>
+                                <div>
+                                    <label for="st_excluded" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Abgewählte Fächer (optional):</label>
+                                    <input type="text" id="st_excluded" name="excluded_subjects" class="yield-input" style="width: 100%;" placeholder="z. B. ETH, F (kommagetrennt)">
+                                </div>
                             </div>
-                            <div>
-                                <label for="st_class" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Klasse:</label>
-                                <input type="text" id="st_class" name="class_name" class="yield-input" style="width: 100%;" placeholder="z. B. 6A oder 8B" required>
-                            </div>
-                            <div>
-                                <label for="st_beste_id" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Beste Schule ID:</label>
-                                <input type="text" id="st_beste_id" name="beste_schule_id" class="yield-input" style="width: 100%;" placeholder="z. B. 12345">
-                            </div>
-                            <div>
-                                <label for="st_email" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Google-Konto (E-Mail):</label>
-                                <select id="st_email" name="user_email" class="yield-input" style="width: 100%;">
-                                    <option value="">– Kein Google-Konto zugeordnet –</option>
-                                    <?php foreach ($systemUsers as $u): ?>
-                                        <option value="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>">
-                                            <?= htmlspecialchars($u['name'] ? "{$u['name']} ({$u['email']})" : $u['email'], ENT_QUOTES, 'UTF-8') ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="st_color" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Badge-Farbe:</label>
-                                <input type="color" id="st_color" name="display_color" value="#0284c7" class="yield-input" style="width: 100%; height: 38px; padding: 2px;">
-                            </div>
-                            <div>
-                                <label for="st_excluded" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Abgewählte Fächer (optional):</label>
-                                <input type="text" id="st_excluded" name="excluded_subjects" class="yield-input" style="width: 100%;" placeholder="z. B. ETH, F (kommagetrennt)">
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; padding-top: 1.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
                                 <input type="checkbox" id="st_active" name="is_active" value="1" checked style="transform: scale(1.3);">
-                                <label for="st_active">Profil aktiv</label>
+                                <label for="st_active" style="margin: 0; cursor: pointer;">Profil aktiv</label>
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline js-close-student-modal" id="st_cancel_btn">Abbrechen</button>
                             <button type="submit" id="st_submit_btn" class="btn btn-save">➕ Schülerprofil speichern</button>
-                            <button type="button" id="st_cancel_btn" class="btn btn-outline" style="display: none;">Abbrechen</button>
                         </div>
                     </form>
-                </section>
+                </div>
             <?php endif; ?>
         <?php elseif ($tab === 'roles' && Auth::hasPermission('system_write')): ?>
             <?php
