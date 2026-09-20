@@ -49,16 +49,31 @@ class TelemetryRepository
             // sondern ausschließlich manuell durch den Benutzer im Dashboard gepflegt.
             $rangeKm = 0;
 
-            // Prüfen, ob der eingehende Stand älter ist als der bereits gespeicherte State
-            $stmtCurrent = $this->dbCon->prepare("SELECT car_captured_at FROM vehicle_state WHERE vin = :vin");
+            // Vorhandenen State für diesen VIN abrufen
+            $stmtCurrent = $this->dbCon->prepare("SELECT * FROM vehicle_state WHERE vin = :vin");
             $stmtCurrent->execute([':vin' => $vin]);
             $currentState = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+
+            // Prüfen, ob der eingehende Stand älter ist als der bereits gespeicherte State
             if ($currentState && !empty($currentState['car_captured_at'])) {
                 if (strtotime($carCapturedAt) < strtotime($currentState['car_captured_at'])) {
                     $this->logger->info("TelemetryRepository: saveState übersprungen, empfangener Stand ($carCapturedAt) ist älter als vorhandener Stand ({$currentState['car_captured_at']}).");
                     return true;
                 }
             }
+
+            // Mergen: Eingehende Werte verwenden; falls null, bestehende Werte beibehalten (Partial Updates)
+            $finalSoc = $socPercent ?? ($currentState ? (int)$currentState['soc_percent'] : 0);
+            $finalTargetSoc = $targetSoc ?? ($currentState ? (int)$currentState['target_soc'] : 80);
+            $finalChargeKw = $chargePowerKw ?? ($currentState ? (float)$currentState['charge_power_kw'] : 0.0);
+            $finalTempMax = $batteryTempMax ?? ($currentState ? (float)$currentState['battery_temp_max'] : 0.0);
+            $finalTempMin = $batteryTempMin ?? ($currentState ? (float)$currentState['battery_temp_min'] : 0.0);
+            $finalChargingState = $chargingState ?? ($currentState ? $currentState['charging_state'] : 'unknown');
+            $finalPlug = $plugConnected ?? ($currentState ? (int)$currentState['plug_connected'] : 0);
+            $finalLocked = $isLocked ?? ($currentState ? (int)$currentState['is_locked'] : 1);
+            $finalMileage = ($mileageKm !== null && $mileageKm > 0) ? $mileageKm : ($currentState ? (int)$currentState['mileage_km'] : 0);
+            $finalOutdoorTemp = $outdoorTempC ?? ($currentState ? (float)$currentState['outdoor_temp_c'] : 0.0);
+            $finalEstimatedFinish = $estimatedFinishAt ?? ($currentState ? $currentState['estimated_finish_at'] : null);
 
             $stmtState = $this->dbCon->prepare("
 					INSERT INTO `vehicle_state` (
@@ -74,62 +89,56 @@ class TelemetryRepository
 						`is_locked`, 
 						`mileage_km`, 
 						`range_km`, 
-						`outdoor_temp_c`,
+						`outdoor_temp_c`, 
 						`estimated_finish_at`
 					) VALUES (
 						:vin, 
 						:car_captured_at, 
-						COALESCE(:soc_percent, 0), 
-						COALESCE(:target_soc, 0), 
-						COALESCE(:charge_power_kw, 0.0), 
-						COALESCE(:battery_temp_max, 0.0), 
-						COALESCE(:battery_temp_min, 0.0), 
-						COALESCE(:charging_state, 'unknown'), 
-						COALESCE(:plug_connected, 0), 
-						COALESCE(:is_locked, 1), 
-						COALESCE(:mileage_km, 0), 
-						COALESCE(:range_km, 0), 
-						COALESCE(:outdoor_temp_c, 0.0),
+						:soc_percent, 
+						:target_soc, 
+						:charge_power_kw, 
+						:battery_temp_max, 
+						:battery_temp_min, 
+						:charging_state, 
+						:plug_connected, 
+						:is_locked, 
+						:mileage_km, 
+						:range_km, 
+						:outdoor_temp_c, 
 						:estimated_finish_at
 					) ON DUPLICATE KEY UPDATE
 						`car_captured_at`     = VALUES(`car_captured_at`),
-						`soc_percent`         = CASE WHEN :upd_soc IS NULL THEN `soc_percent` ELSE :upd_soc END,
-						`target_soc`          = CASE WHEN :upd_target_soc IS NULL THEN `target_soc` ELSE :upd_target_soc END,
+						`soc_percent`         = VALUES(`soc_percent`),
+						`target_soc`          = VALUES(`target_soc`),
 						`charge_power_kw`     = VALUES(`charge_power_kw`),
-						`battery_temp_max`    = CASE WHEN :upd_battery_temp_max IS NULL THEN `battery_temp_max` ELSE :upd_battery_temp_max END,
-						`battery_temp_min`    = CASE WHEN :upd_battery_temp_min IS NULL THEN `battery_temp_min` ELSE :upd_battery_temp_min END,
-						`charging_state`      = CASE WHEN :upd_charging_state IS NULL THEN `charging_state` ELSE :upd_charging_state END,
+						`battery_temp_max`    = VALUES(`battery_temp_max`),
+						`battery_temp_min`    = VALUES(`battery_temp_min`),
+						`charging_state`      = VALUES(`charging_state`),
 						`plug_connected`      = VALUES(`plug_connected`),
 						`is_locked`           = VALUES(`is_locked`),
-						`mileage_km`          = CASE WHEN :upd_mileage_km IS NULL OR :upd_mileage_km = 0 THEN `mileage_km` ELSE :upd_mileage_km END,
+						`mileage_km`          = VALUES(`mileage_km`),
 						`range_km`            = CASE WHEN VALUES(`car_captured_at`) != `car_captured_at` THEN 0 ELSE `range_km` END,
-						`outdoor_temp_c`      = CASE WHEN :upd_outdoor_temp_c IS NULL THEN `outdoor_temp_c` ELSE :upd_outdoor_temp_c END,
+						`outdoor_temp_c`      = VALUES(`outdoor_temp_c`),
 						`estimated_finish_at` = VALUES(`estimated_finish_at`),
 						`updated_at`          = CURRENT_TIMESTAMP
 				");
 
+            // Exakt 14 Parameter für 14 eindeutige Slots im Prepared Statement
             $stmtState->execute([
                 ':vin' => $vin,
                 ':car_captured_at' => $carCapturedAt,
-                ':soc_percent' => $socPercent,
-                ':target_soc' => $targetSoc,
-                ':charge_power_kw' => $chargePowerKw,
-                ':battery_temp_max' => $batteryTempMax,
-                ':battery_temp_min' => $batteryTempMin,
-                ':charging_state' => $chargingState,
-                ':plug_connected' => $plugConnected,
-                ':is_locked' => $isLocked,
-                ':mileage_km' => $mileageKm,
+                ':soc_percent' => $finalSoc,
+                ':target_soc' => $finalTargetSoc,
+                ':charge_power_kw' => $finalChargeKw,
+                ':battery_temp_max' => $finalTempMax,
+                ':battery_temp_min' => $finalTempMin,
+                ':charging_state' => $finalChargingState,
+                ':plug_connected' => $finalPlug,
+                ':is_locked' => $finalLocked,
+                ':mileage_km' => $finalMileage,
                 ':range_km' => $rangeKm,
-                ':outdoor_temp_c' => $outdoorTempC,
-                ':estimated_finish_at' => $estimatedFinishAt,
-                ':upd_soc' => $socPercent,
-                ':upd_target_soc' => $targetSoc,
-                ':upd_battery_temp_max' => $batteryTempMax,
-                ':upd_battery_temp_min' => $batteryTempMin,
-                ':upd_charging_state' => $chargingState,
-                ':upd_mileage_km' => $mileageKm,
-                ':upd_outdoor_temp_c' => $outdoorTempC,
+                ':outdoor_temp_c' => $finalOutdoorTemp,
+                ':estimated_finish_at' => $finalEstimatedFinish,
             ]);
 
             return true;
