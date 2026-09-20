@@ -237,8 +237,11 @@ class TelemetryRepository
     /**
      * Plausibilisiert und korrigiert ggf. empfangene Telemetriedaten anhand des rohen Payloads.
      * Schützt vor bekannten Artefakten des VW EU Data Act Portals:
-     * - Ignoriert Key 7bddd5e7... (Start-Ladestand bei Ladebeginn)
-     * - Bevorzugt battery_level_HV.value (direkte BMS-Messung) bzw. Key 506cb83e... (aktueller Live-SoC)
+     * - Ignoriert Keys 93b55324..., 7bddd5e7..., bd4b6d50... (Start-Ladestand bei Ladebeginn)
+     * - Bevorzugt Key 506cb83e... (Kundenanzeige-SoC) vor BMS-Rohwerten
+     * - Bevorzugt Key 96c211b4... (Live-Ladezustand) vor veralteten Cache-Werten
+     * - Bevorzugt Key 44ed0d61... (tatsächliche Ladeleistung) vor 0.0 kW Cache
+     * - Bevorzugt Key cad65f6f... (verbleibende Restladezeit)
      */
     public function sanitizePayload(array &$data): void
     {
@@ -249,12 +252,25 @@ class TelemetryRepository
         $rawData = $data['raw_payload']['Data'];
         $currentSoc = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
 
-        $hvCandidates = [];
-        $liveSocCandidates = [];
+        $startChargeKeys = [
+            '93b55324-6628-36df-8f76-8eba797fc59c',
+            '7bddd5e7-43a4-3878-bd63-9502782f77a5',
+            'bd4b6d50-b574-31e6-8141-8787ca5fec8c',
+        ];
+
+        $customerDisplayCandidates = [];
+        $filteredHvCandidates = [];
+        $rawBmsCandidates = [];
         $otherSocCandidates = [];
         $chargeStartSoc = null;
 
         $currentDt = null;
+        $canonicalChargeState = null;
+        $activeChargeStates = [];
+        $canonicalChargePower = null;
+        $positiveChargePowers = [];
+        $canonicalRemSeconds = null;
+
         foreach ($rawData as $item) {
             if (!is_array($item)) {
                 continue;
@@ -275,25 +291,73 @@ class TelemetryRepository
             }
 
             // Start-Ladestand bei Ladebeginn merken
-            if ($key === '7bddd5e7-43a4-3878-bd63-9502782f77a5') {
+            if (in_array($key, $startChargeKeys, true)) {
                 $chargeStartSoc = (int)round((float)$val);
                 continue;
             }
 
-            // 1. Priorität: battery_level_HV.value (BMS-Messwert)
-            if ($fn === 'battery_level_HV.value' || $key === 'ac1108b1-b8cc-3db9-a663-03d387e42223') {
+            // 1. Priorität: Offizieller Kundenanzeige-SoC (Display-Wert im Auto)
+            if ($key === '506cb83e-f99f-3af3-bbeb-0429b69a78d9') {
                 $num = (int)round((float)$val);
                 if ($num >= 0 && $num <= 100) {
-                    $hvCandidates[] = ['time' => $currentDt, 'val' => $num];
+                    $customerDisplayCandidates[] = ['time' => $currentDt, 'val' => $num];
                 }
-            } elseif ($fn === 'battery_state_report.soc') {
+            } elseif ($key === '162c2a75-edf4-3990-b8ed-7c600b3dbc40' || $fn === 'battery_level_HV.battery_level_HV.value') {
+                // 2. Priorität: Gefilterter BMS-Wert
                 $num = (int)round((float)$val);
                 if ($num >= 0 && $num <= 100) {
-                    if ($key === '506cb83e-f99f-3af3-bbeb-0429b69a78d9') {
-                        $liveSocCandidates[] = ['time' => $currentDt, 'val' => $num];
-                    } else {
-                        $otherSocCandidates[] = ['time' => $currentDt, 'val' => $num];
-                    }
+                    $filteredHvCandidates[] = ['time' => $currentDt, 'val' => $num];
+                }
+            } elseif ($key === 'ac1108b1-b8cc-3db9-a663-03d387e42223' || $fn === 'battery_level_HV.value') {
+                // 3. Priorität: Ungefilterter Roh-BMS-Wert
+                $num = (int)round((float)$val);
+                if ($num >= 0 && $num <= 100) {
+                    $rawBmsCandidates[] = ['time' => $currentDt, 'val' => $num];
+                }
+            } elseif ($fn === 'battery_state_report.soc' || str_contains(strtolower($fn), 'soc')) {
+                $num = (int)round((float)$val);
+                if ($num >= 0 && $num <= 100) {
+                    $otherSocCandidates[] = ['time' => $currentDt, 'val' => $num];
+                }
+            }
+
+            // Ladezustand erfassen
+            if ($key === '96c211b4-f8fb-3f40-b7cf-6a1cd12cce6d') {
+                $canonicalChargeState = (string)$val;
+            }
+            if ($fn === 'charging_state_report.current_charge_state') {
+                $valUpper = strtoupper((string)$val);
+                if (str_contains($valUpper, 'CHARGING') && !str_contains($valUpper, 'NOT_READY')) {
+                    $activeChargeStates[] = (string)$val;
+                }
+            }
+            if ($fn === 'charging_state_report.charging_scenario') {
+                $valUpper = strtoupper((string)$val);
+                if (str_contains($valUpper, 'ACTIVE') && str_contains($valUpper, 'CHARGING')) {
+                    $activeChargeStates[] = 'CHARGE_STATE_CHARGING_HV_BATTERY';
+                }
+            }
+
+            // Ladeleistung erfassen
+            if ($key === '44ed0d61-98c4-36df-b860-b077929a5797') {
+                $p = (float)$val;
+                if ($p > 0) {
+                    $canonicalChargePower = round($p, 2);
+                }
+            }
+            if ($fn === 'battery_state_report.charge_power') {
+                $p = (float)$val;
+                if ($p > 0) {
+                    $positiveChargePowers[] = round($p, 2);
+                }
+            }
+
+            // Restladezeit erfassen
+            if ($key === 'cad65f6f-17c5-377b-b030-821ffaf27dd5') {
+                $cleanSec = str_replace('s', '', (string)$val);
+                $sec = (int)round((float)$cleanSec);
+                if ($sec > 0) {
+                    $canonicalRemSeconds = $sec;
                 }
             }
         }
@@ -310,8 +374,9 @@ class TelemetryRepository
             return end($candidates)['val'];
         };
 
-        $reliableSoc = $selectBest($hvCandidates) 
-            ?? $selectBest($liveSocCandidates) 
+        $reliableSoc = $selectBest($customerDisplayCandidates)
+            ?? $selectBest($filteredHvCandidates)
+            ?? $selectBest($rawBmsCandidates)
             ?? $selectBest($otherSocCandidates);
 
         if ($reliableSoc !== null && $reliableSoc !== $currentSoc) {
@@ -329,11 +394,31 @@ class TelemetryRepository
             $data['battery']['soc'] = $reliableSoc;
         }
 
-        // Plausibilisierung: Wer aktiv lädt, ist auch angesteckt
-        if (!empty($data['status']['charging_state'])) {
-            $cs = strtoupper((string)$data['status']['charging_state']);
-            if (str_contains($cs, 'CHARGING') && !str_contains($cs, 'NOT_READY')) {
-                $data['status']['plug_connected'] = true;
+        // Ladeleistung korrigieren, falls canonical oder aktive Leistung vorhanden
+        $bestPower = $canonicalChargePower ?? (!empty($positiveChargePowers) ? max($positiveChargePowers) : null);
+        if ($bestPower !== null && ($data['battery']['charge_power_kw'] ?? 0.0) <= 0.0) {
+            $data['battery']['charge_power_kw'] = $bestPower;
+        }
+
+        // Ladezustand korrigieren, falls aktives Laden statt NOT_READY gemeldet wurde
+        $currentCs = strtoupper((string)($data['status']['charging_state'] ?? ''));
+        $bestCs = $canonicalChargeState ?? (!empty($activeChargeStates) ? end($activeChargeStates) : null);
+        if ($bestCs && (empty($currentCs) || str_contains($currentCs, 'NOT_READY') || $currentCs === 'UNKNOWN')) {
+            $data['status']['charging_state'] = $bestCs;
+            $currentCs = strtoupper($bestCs);
+        }
+
+        // Plausibilisierung: Wer aktiv lädt oder Ladeleistung zieht, ist auch angesteckt
+        if ((str_contains($currentCs, 'CHARGING') && !str_contains($currentCs, 'NOT_READY')) || ($data['battery']['charge_power_kw'] ?? 0) > 0) {
+            $data['status']['plug_connected'] = true;
+        }
+
+        // Restladezeit / estimated_finish_at nachberechnen, falls leer
+        if ($canonicalRemSeconds !== null && empty($data['battery']['estimated_finish_at']) && !empty($data['captured_at'])) {
+            $capTime = strtotime($data['captured_at']);
+            if ($capTime !== false) {
+                $finishTime = $capTime + $canonicalRemSeconds;
+                $data['battery']['estimated_finish_at'] = gmdate('Y-m-d H:i:s', $finishTime);
             }
         }
     }

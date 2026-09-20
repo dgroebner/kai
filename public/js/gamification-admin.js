@@ -7,20 +7,36 @@
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
-    // 1. Tab-Wechsel
+    // 1. Tab-Wechsel mit Zustandsspeicherung
+    function switchTab(targetTab) {
+        if (!targetTab) return;
+        const targetBtn = document.querySelector(`.gamif-tab-btn[data-tab="${targetTab}"]`);
+        const targetContent = document.getElementById(targetTab);
+        if (!targetBtn || !targetContent) return;
+
+        document.querySelectorAll('.gamif-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.gamif-tab-content').forEach(c => c.classList.add('hidden'));
+
+        targetBtn.classList.add('active');
+        targetContent.classList.remove('hidden');
+
+        try {
+            sessionStorage.setItem('gamif_admin_active_tab', targetTab);
+            history.replaceState(null, '', '#' + targetTab);
+        } catch (e) {}
+    }
+
     document.querySelectorAll('.gamif-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const targetTab = btn.getAttribute('data-tab');
-            document.querySelectorAll('.gamif-tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.gamif-tab-content').forEach(c => c.classList.add('hidden'));
-
-            btn.classList.add('active');
-            const content = document.getElementById(targetTab);
-            if (content) {
-                content.classList.remove('hidden');
-            }
+            switchTab(btn.getAttribute('data-tab'));
         });
     });
+
+    // Gespeicherten Tab beim Laden wiederherstellen
+    const savedAdminTab = window.location.hash.replace('#', '') || sessionStorage.getItem('gamif_admin_active_tab');
+    if (savedAdminTab && document.getElementById(savedAdminTab)) {
+        switchTab(savedAdminTab);
+    }
 
     // 2. Modals Steuerung (Öffnen, Schließen, Feedback)
     let reloadAfterFeedback = false;

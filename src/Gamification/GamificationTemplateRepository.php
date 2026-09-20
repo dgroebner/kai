@@ -77,7 +77,10 @@ class GamificationTemplateRepository
         $canEscalate = isset($data['can_escalate']) ? (int)(bool)$data['can_escalate'] : 1;
         $isActive = isset($data['is_active']) ? (int)(bool)$data['is_active'] : 1;
 
+        $hasCol = $this->hasCanEscalateColumn('gamification_task_templates');
+
         if ($id) {
+            $escalateSql = $hasCol ? "can_escalate = :can_escalate," : "";
             $stmt = $this->db->getConnection()->prepare("
                 UPDATE gamification_task_templates SET
                     title = :title,
@@ -90,11 +93,11 @@ class GamificationTemplateRepository
                     due_time = :due_time,
                     assigned_profile_id = :assigned_profile_id,
                     is_cooking_day = :is_cooking_day,
-                    can_escalate = :can_escalate,
+                    {$escalateSql}
                     is_active = :is_active
                 WHERE id = :id
             ");
-            $stmt->execute([
+            $params = [
                 'title' => $title,
                 'description' => $description,
                 'category' => $category,
@@ -105,25 +108,30 @@ class GamificationTemplateRepository
                 'due_time' => $dueTime,
                 'assigned_profile_id' => $assignedProfileId,
                 'is_cooking_day' => $isCookingDay,
-                'can_escalate' => $canEscalate,
                 'is_active' => $isActive,
                 'id' => $id,
-            ]);
+            ];
+            if ($hasCol) {
+                $params['can_escalate'] = $canEscalate;
+            }
+            $stmt->execute($params);
             return $id;
         }
 
+        $colSql = $hasCol ? ", can_escalate" : "";
+        $valSql = $hasCol ? ", :can_escalate" : "";
         $stmt = $this->db->getConnection()->prepare("
             INSERT INTO gamification_task_templates (
                 title, description, category, base_xp, base_coins,
                 recurrence, recurrence_days, due_time, assigned_profile_id,
-                is_cooking_day, can_escalate, is_active
+                is_cooking_day{$colSql}, is_active
             ) VALUES (
                 :title, :description, :category, :base_xp, :base_coins,
                 :recurrence, :recurrence_days, :due_time, :assigned_profile_id,
-                :is_cooking_day, :can_escalate, :is_active
+                :is_cooking_day{$valSql}, :is_active
             )
         ");
-        $stmt->execute([
+        $params = [
             'title' => $title,
             'description' => $description,
             'category' => $category,
@@ -134,9 +142,12 @@ class GamificationTemplateRepository
             'due_time' => $dueTime,
             'assigned_profile_id' => $assignedProfileId,
             'is_cooking_day' => $isCookingDay,
-            'can_escalate' => $canEscalate,
             'is_active' => $isActive,
-        ]);
+        ];
+        if ($hasCol) {
+            $params['can_escalate'] = $canEscalate;
+        }
+        $stmt->execute($params);
 
         return (int)$this->db->getConnection()->lastInsertId();
     }
@@ -153,9 +164,9 @@ class GamificationTemplateRepository
     }
 
     /**
-     * Erzeugt anstehende Aufgaben für ein bestimmtes Zieldatum anhand der aktiven Vorlagen.
+     * Generiert fällige Aufgaben aus Vorlagen für ein bestimmtes Datum.
      *
-     * @param string $targetDate Format: YYYY-MM-DD
+     * @param string $targetDate Format YYYY-MM-DD
      * @return int Anzahl neu erzeugter Aufgaben
      */
     public function generateTasksForDate(string $targetDate): int
@@ -164,6 +175,7 @@ class GamificationTemplateRepository
         $dayOfWeek = (int)date('N', strtotime($targetDate)); // 1 (Mo) bis 7 (So)
         $createdCount = 0;
         $pdo = $this->db->getConnection();
+        $hasTaskCol = $this->hasCanEscalateColumn('gamification_tasks');
 
         foreach ($templates as $tmpl) {
             $shouldGenerate = false;
@@ -201,18 +213,21 @@ class GamificationTemplateRepository
             $isBounty = ($assignedId === null) ? 1 : 0;
             $canEscalate = isset($tmpl['can_escalate']) ? (int)$tmpl['can_escalate'] : 1;
 
+            $colSql = $hasTaskCol ? ", can_escalate" : "";
+            $valSql = $hasTaskCol ? ", :can_escalate" : "";
+
             $insertStmt = $pdo->prepare("
                 INSERT INTO gamification_tasks (
                     template_id, title, description, category,
                     assigned_profile_id, origin_profile_id, status, is_bounty,
-                    due_date, due_time, base_xp, base_coins, is_cooking_day, can_escalate
+                    due_date, due_time, base_xp, base_coins, is_cooking_day{$colSql}
                 ) VALUES (
                     :template_id, :title, :description, :category,
                     :assigned_profile_id, :origin_profile_id, 'planned', :is_bounty,
-                    :due_date, :due_time, :base_xp, :base_coins, :is_cooking_day, :can_escalate
+                    :due_date, :due_time, :base_xp, :base_coins, :is_cooking_day{$valSql}
                 )
             ");
-            $insertStmt->execute([
+            $params = [
                 'template_id' => $tmpl['id'],
                 'title' => $tmpl['title'],
                 'description' => $tmpl['description'],
@@ -225,12 +240,30 @@ class GamificationTemplateRepository
                 'base_xp' => $tmpl['base_xp'],
                 'base_coins' => $tmpl['base_coins'],
                 'is_cooking_day' => $tmpl['is_cooking_day'],
-                'can_escalate' => $canEscalate,
-            ]);
+            ];
+            if ($hasTaskCol) {
+                $params['can_escalate'] = $canEscalate;
+            }
+            $insertStmt->execute($params);
 
             $createdCount++;
         }
 
         return $createdCount;
+    }
+
+    private function hasCanEscalateColumn(string $table): bool
+    {
+        static $hasCol = [];
+        if (isset($hasCol[$table])) {
+            return $hasCol[$table];
+        }
+        try {
+            $stmt = $this->db->getConnection()->query("SHOW COLUMNS FROM {$table} LIKE 'can_escalate'");
+            $hasCol[$table] = (bool)$stmt->fetch();
+        } catch (\Throwable) {
+            $hasCol[$table] = false;
+        }
+        return $hasCol[$table];
     }
 }

@@ -83,11 +83,40 @@ class GamificationService
         return $this->escalationService;
     }
 
+    private static bool $schemaChecked = false;
+
+    /**
+     * Stellt sicher, dass neue Spalten wie can_escalate in der Datenbank vorhanden sind.
+     */
+    public function ensureSchema(): void
+    {
+        if (self::$schemaChecked) {
+            return;
+        }
+        self::$schemaChecked = true;
+
+        try {
+            $pdo = $this->db->getConnection();
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_task_templates LIKE 'can_escalate'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE gamification_task_templates ADD COLUMN can_escalate TINYINT(1) NOT NULL DEFAULT 1 AFTER is_cooking_day");
+            }
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_tasks LIKE 'can_escalate'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE gamification_tasks ADD COLUMN can_escalate TINYINT(1) NOT NULL DEFAULT 1 AFTER is_bounty");
+            }
+        } catch (\Throwable $e) {
+            (new Logger())->warn('Gamification: Automatische Schema-Prüfung fehlgeschlagen.', ['error' => $e->getMessage()]);
+        }
+    }
+
     /**
      * Bereitet den heutigen Tag vor: generiert Aufgaben aus Vorlagen und prüft Fristen.
      */
     public function syncDailyState(): void
     {
+        $this->ensureSchema();
+
         $today = date('Y-m-d');
         // Vorlagen generieren
         $this->templateRepo->generateTasksForDate($today);

@@ -50,13 +50,17 @@ class GamificationEscalationService
         // 1. Überfällige persönliche Pflichtaufgaben finden
         // Kriterium: status IN ('planned', 'in_progress'), is_bounty = 0, assigned_profile_id IS NOT NULL,
         // und entweder due_date < today ODER (due_date = today UND due_time <= currentTime)
+        $canEscalateCondition = $this->hasCanEscalateColumn($pdo)
+            ? "AND (t.can_escalate IS NULL OR t.can_escalate = 1)"
+            : "";
+
         $stmt = $pdo->prepare("
             SELECT t.*, p.display_name AS assigned_name
             FROM gamification_tasks t
             JOIN gamification_profiles p ON t.assigned_profile_id = p.id
             WHERE t.status IN ('planned', 'in_progress')
               AND t.is_bounty = 0
-              AND (t.can_escalate IS NULL OR t.can_escalate = 1)
+              {$canEscalateCondition}
               AND t.assigned_profile_id IS NOT NULL
               AND t.due_date IS NOT NULL
               AND (
@@ -139,5 +143,20 @@ class GamificationEscalationService
             'escalated_count' => $escalatedCount,
             'uncurbed_claims' => $uncurbedClaims,
         ];
+    }
+
+    private function hasCanEscalateColumn(\PDO $pdo): bool
+    {
+        static $hasCol = null;
+        if ($hasCol !== null) {
+            return $hasCol;
+        }
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_tasks LIKE 'can_escalate'");
+            $hasCol = (bool)$stmt->fetch();
+        } catch (\Throwable) {
+            $hasCol = false;
+        }
+        return $hasCol;
     }
 }
