@@ -514,7 +514,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 base_coins: parseInt(formData.get('base_coins'), 10),
                 base_xp: parseInt(formData.get('base_xp'), 10),
                 is_cooking_day: formData.get('is_cooking_day') ? 1 : 0,
-                can_escalate: formData.get('can_escalate') ? 1 : 0
+                can_escalate: formData.get('can_escalate') ? 1 : 0,
+                spawn_immediately: formData.get('spawn_immediately') ? 1 : 0
             };
 
             closeModal(modalTemplate);
@@ -836,6 +837,129 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 showFeedback('Fehler', res.message || 'Fehler beim Speichern des Profils.');
             }
+        });
+    }
+
+    // 16. Vorlage als Aufgabe aktivieren
+    const modalSpawn        = document.getElementById('modal-spawn-template');
+    const formSpawn         = document.getElementById('form-spawn-template');
+    const spawnTemplSel     = document.getElementById('spawn-template-select');
+    const spawnTemplSelGrp  = document.getElementById('group-spawn-template-select');
+
+    /** Öffnet das Spawn-Modal für eine bekannte Vorlage (Zeilen-Button) */
+    function openSpawnModal(templateId, title, assignedId) {
+        const idInput   = document.getElementById('spawn-template-id');
+        const descEl    = document.getElementById('spawn-template-desc');
+        const assignSel = document.getElementById('spawn-assigned');
+        const dateInput = document.getElementById('spawn-date');
+
+        if (idInput)   idInput.value = templateId || '';
+        if (descEl)    descEl.textContent = title ? `Vorlage „${title}" einmalig als aktive Aufgabe anlegen.` : '';
+        if (assignSel) assignSel.value = (assignedId && assignedId !== '0') ? assignedId : '';
+        if (dateInput) dateInput.value = new Date().toISOString().substring(0, 10);
+
+        // Vorlagen-Auswahl nur im Quick-Modus zeigen
+        if (spawnTemplSelGrp) spawnTemplSelGrp.style.display = templateId ? 'none' : 'block';
+        if (spawnTemplSel)    spawnTemplSel.value = '';
+
+        if (modalSpawn) openModal(modalSpawn);
+    }
+
+    // Zeilen-Button ▶️ in der Vorlagen-Tabelle
+    document.addEventListener('click', (e) => {
+        const spawnBtn = e.target.closest('.js-spawn-template-btn');
+        if (spawnBtn) {
+            openSpawnModal(
+                spawnBtn.getAttribute('data-template-id'),
+                spawnBtn.getAttribute('data-title'),
+                spawnBtn.getAttribute('data-assigned-id')
+            );
+        }
+
+        // Schnell-Spawn-Button (ohne vorausgewählte Vorlage)
+        if (e.target.closest('.js-open-spawn-quick-btn')) {
+            openSpawnModal('', '', '');
+        }
+    });
+
+    // Wenn Vorlage im Dropdown gewählt → Zuweisung vorbelegen
+    if (spawnTemplSel) {
+        spawnTemplSel.addEventListener('change', () => {
+            const opt       = spawnTemplSel.options[spawnTemplSel.selectedIndex];
+            const assignId  = opt ? opt.getAttribute('data-assigned') : '';
+            const assignSel = document.getElementById('spawn-assigned');
+            if (assignSel) assignSel.value = (assignId && assignId !== '0') ? assignId : '';
+        });
+    }
+
+    if (formSpawn) {
+        formSpawn.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(formSpawn);
+
+            // Im Quick-Modus kommt die template_id aus dem Dropdown
+            let templateId = parseInt(formData.get('template_id'), 10) || 0;
+            if (!templateId && spawnTemplSel) {
+                templateId = parseInt(spawnTemplSel.value, 10) || 0;
+            }
+            if (!templateId) {
+                showFeedback('Hinweis', 'Bitte wähle zuerst eine Vorlage aus.');
+                return;
+            }
+
+            const payload = {
+                action:              'template_spawn_task',
+                template_id:         templateId,
+                assigned_profile_id: formData.get('assigned_profile_id') || null,
+                due_date:            formData.get('due_date') || null
+            };
+
+            closeModal(modalSpawn);
+            const res = await KaiHttp.postJson('api.php', payload);
+            if (res.success) {
+                showFeedback('Aufgabe angelegt ▶️', res.message || 'Die Aufgabe wurde erfolgreich angelegt und ist jetzt aktiv.', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Anlegen der Aufgabe.');
+            }
+        });
+    }
+
+    // 17. Schnellfilter für die Vorlagen-Tabelle
+    const filterCat  = document.getElementById('filter-tmpl-category');
+    const filterAsgn = document.getElementById('filter-tmpl-assigned');
+    const filterRec  = document.getElementById('filter-tmpl-recurrence');
+    const filterReset = document.getElementById('btn-filter-tmpl-reset');
+    const tmplEmpty  = document.getElementById('filter-tmpl-empty');
+
+    function applyTemplateFilter() {
+        const cat  = filterCat  ? filterCat.value  : '';
+        const asgn = filterAsgn ? filterAsgn.value : '';
+        const rec  = filterRec  ? filterRec.value  : '';
+        const rows = document.querySelectorAll('#tbl-templates tbody tr[data-tmpl-category]');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const matchCat  = !cat  || row.getAttribute('data-tmpl-category')  === cat;
+            const matchAsgn = !asgn || row.getAttribute('data-tmpl-assigned')  === asgn;
+            const matchRec  = !rec  || row.getAttribute('data-tmpl-recurrence') === rec;
+            const visible   = matchCat && matchAsgn && matchRec;
+            row.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+
+        if (tmplEmpty) tmplEmpty.style.display = (rows.length > 0 && visibleCount === 0) ? 'block' : 'none';
+    }
+
+    if (filterCat)  filterCat.addEventListener('change', applyTemplateFilter);
+    if (filterAsgn) filterAsgn.addEventListener('change', applyTemplateFilter);
+    if (filterRec)  filterRec.addEventListener('change', applyTemplateFilter);
+
+    if (filterReset) {
+        filterReset.addEventListener('click', () => {
+            if (filterCat)  filterCat.value  = '';
+            if (filterAsgn) filterAsgn.value = '';
+            if (filterRec)  filterRec.value  = '';
+            applyTemplateFilter();
         });
     }
 });

@@ -5337,6 +5337,67 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Trennlinie zwischen regulären und Abruf-Aufgaben */
+.gamif-section-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.gamif-section-divider::before,
+.gamif-section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Abruf-Aufgaben-Karte: dezent eingerahmt */
+.gamif-card--ondemand {
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+/* Schnellfilter-Leiste über Tabellen */
+.gamif-filter-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--border-radius, 8px);
+}
+.gamif-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+.gamif-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.form-control--sm {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    height: auto;
+    min-width: 130px;
+    max-width: 180px;
+}
+
 .gamif-badge-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

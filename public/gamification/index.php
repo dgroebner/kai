@@ -24,6 +24,9 @@ $taskRepo = $gamifService->getTaskRepository();
 $myTasks = $taskRepo->getMyTasks($profileId);
 $bountyTasks = $taskRepo->getBountyBoard($profileId);
 
+// Abruf-Vorlagen laden (recurrence = 'none', keine aktive Aufgabe für heute)
+$onDemandTemplates = $gamifService->getTemplateRepository()->getOnDemandTemplatesForProfile($profileId);
+
 // Abzeichen & Belohnungen laden
 $achievements = $gamifService->getAchievementService()->getProfileAchievementsWithProgress($profileId);
 $rewards = $gamifService->getRewardRepository()->getAllRewards(true);
@@ -182,6 +185,41 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                                 <button type="button" class="btn btn-outline btn-sm js-coop-btn" data-task-id="<?= (int)$task['id'] ?>" data-title="<?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?>">Geschwisterhilfe anfragen</button>
                                 <button type="button" class="btn btn-primary btn-sm js-submit-task-btn" data-task-id="<?= (int)$task['id'] ?>" data-title="<?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?>">Erledigt melden ✓</button>
                             <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($onDemandTemplates)): ?>
+            <div class="gamif-section-divider">
+                <span>📋 Bereitstehende Aufgaben (auf Abruf)</span>
+            </div>
+            <div class="gamif-grid">
+                <?php foreach ($onDemandTemplates as $tmpl): ?>
+                    <article class="gamif-card gamif-card--ondemand">
+                        <div>
+                            <div class="gamif-card-header">
+                                <h3 class="gamif-card-title"><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></h3>
+                                <div class="gamif-card-reward">
+                                    <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 +<?= (int)$tmpl['base_coins'] ?></span>
+                                    <span class="gamif-stat-chip gamif-stat-chip--xp">⭐ +<?= (int)$tmpl['base_xp'] ?></span>
+                                </div>
+                            </div>
+                            <div class="gamif-card-meta">
+                                <span class="gamif-tag"><?= htmlspecialchars(ucfirst($tmpl['category']), ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="gamif-tag">📋 Auf Abruf</span>
+                            </div>
+                            <?php if (!empty($tmpl['description'])): ?>
+                                <p class="gamif-card-desc"><?= htmlspecialchars($tmpl['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="gamif-card-footer">
+                            <button type="button" class="btn btn-primary btn-sm js-start-ondemand-btn"
+                                data-template-id="<?= (int)$tmpl['id'] ?>"
+                                data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>"
+                                data-coins="<?= (int)$tmpl['base_coins'] ?>"
+                                data-xp="<?= (int)$tmpl['base_xp'] ?>">▶️ Jetzt erledigen</button>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -399,6 +437,30 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
                         <button type="submit" class="btn btn-primary">Jetzt einreichen ✓</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Abruf-Aufgabe starten & direkt abschließen -->
+    <div id="modal-ondemand-start" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3 id="ondemand-modal-title">Aufgabe erledigen ▶️</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-ondemand-start">
+                    <input type="hidden" id="ondemand-template-id" name="template_id">
+                    <p id="ondemand-modal-desc" class="text-muted"></p>
+                    <div class="form-group">
+                        <label for="ondemand-notes">Kurze Notiz (optional):</label>
+                        <input type="text" id="ondemand-notes" name="notes" class="form-control" placeholder="z. B. Flaschen komplett aufgefüllt!">
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">▶️ Erledigen &amp; einreichen</button>
                     </div>
                 </form>
             </div>

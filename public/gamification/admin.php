@@ -212,13 +212,40 @@ $metricTypeMap = [
 
     <!-- Reiter 2: Aufgaben-Vorlagen verwalten -->
     <section id="tab-templates" class="gamif-tab-content hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h3>Regelmäßige Aufgaben & Vorlagen</h3>
-            <button type="button" class="btn btn-primary btn-sm js-open-template-modal">+ Neue Vorlage anlegen</button>
+        <div class="gamif-filter-bar">
+            <div class="gamif-filter-group">
+                <select id="filter-tmpl-category" class="form-control form-control--sm" title="Nach Kategorie filtern">
+                    <option value="">Alle Kategorien</option>
+                    <option value="haushalt">Haushalt & Küche</option>
+                    <option value="tiere">Tiere & Fütterung</option>
+                    <option value="zimmer">Zimmer & Ordnung</option>
+                    <option value="garten">Garten</option>
+                    <option value="kochen">Kochen & Mahlzeiten</option>
+                </select>
+                <select id="filter-tmpl-assigned" class="form-control form-control--sm" title="Nach Zuweisung filtern">
+                    <option value="">Alle Zuweisungen</option>
+                    <option value="0">Schwarzes Brett</option>
+                    <?php foreach ($childProfiles as $c): ?>
+                        <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['display_name'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <select id="filter-tmpl-recurrence" class="form-control form-control--sm" title="Nach Wiederholung filtern">
+                    <option value="">Alle Typen</option>
+                    <option value="none">Nur manuell</option>
+                    <option value="daily">Täglich</option>
+                    <option value="weekly">Wöchentlich</option>
+                </select>
+                <button type="button" id="btn-filter-tmpl-reset" class="btn btn-outline btn-sm">✕ Zurücksetzen</button>
+            </div>
+            <div class="gamif-filter-actions">
+                <button type="button" class="btn btn-outline btn-sm js-open-spawn-quick-btn" title="Vorlage sofort als Aufgabe aktivieren">▶️ Aufgabe starten</button>
+                <button type="button" class="btn btn-primary btn-sm js-open-template-modal">+ Neue Vorlage</button>
+            </div>
         </div>
+        <p id="filter-tmpl-empty" class="text-muted text-center" style="display:none; margin-top:1rem;">Keine Vorlagen entsprechen dem Filter.</p>
 
         <div class="table-responsive">
-            <table class="table">
+            <table class="table" id="tbl-templates">
                 <thead>
                     <tr>
                         <th>Titel</th>
@@ -236,7 +263,9 @@ $metricTypeMap = [
                         <tr><td colspan="8" class="text-center text-muted">Noch keine Vorlagen angelegt.</td></tr>
                     <?php else: ?>
                         <?php foreach ($templates as $tmpl): ?>
-                            <tr>
+                            <tr data-tmpl-category="<?= htmlspecialchars($tmpl['category'], ENT_QUOTES, 'UTF-8') ?>"
+                                data-tmpl-assigned="<?= (int)($tmpl['assigned_profile_id'] ?? 0) ?>"
+                                data-tmpl-recurrence="<?= htmlspecialchars($tmpl['recurrence'], ENT_QUOTES, 'UTF-8') ?>">
                                 <td>
                                     <div class="gamif-title-cell">
                                         <strong><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></strong>
@@ -277,6 +306,7 @@ $metricTypeMap = [
                                 </td>
                                 <td><?= (int)$tmpl['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?></td>
                                 <td>
+                                    <button type="button" class="btn btn-outline btn-sm js-spawn-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" data-assigned-id="<?= (int)($tmpl['assigned_profile_id'] ?? 0) ?>" title="Jetzt für heute als Aufgabe anlegen">▶️</button>
                                     <button type="button" class="btn btn-outline btn-sm js-edit-template-btn" data-template='<?= htmlspecialchars(json_encode($tmpl), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
                                     <button type="button" class="btn btn-outline btn-sm js-delete-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" title="Löschen">🗑️</button>
                                 </td>
@@ -569,10 +599,61 @@ $metricTypeMap = [
                             <input type="checkbox" id="tmpl-escalate" name="can_escalate" value="1" checked>
                             <span>Verschieben auf Schwarzes Brett bei Fristversäumnis</span>
                         </label>
+                        <label class="gamif-checkbox-row" for="tmpl-spawn-now">
+                            <input type="checkbox" id="tmpl-spawn-now" name="spawn_immediately" value="1">
+                            <span>🚀 Sofort für heute als aktive Aufgabe starten</span>
+                        </label>
                     </div>
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
                         <button type="submit" class="btn btn-primary">Vorlage speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Vorlage als Aufgabe starten -->
+    <div id="modal-spawn-template" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3>Aufgabe aktivieren ▶️</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-spawn-template">
+                    <input type="hidden" id="spawn-template-id" name="template_id">
+                    <p id="spawn-template-desc" style="font-size:0.95rem; margin-bottom:1rem;"></p>
+                    <!-- Vorlagen-Auswahl: nur im Schnell-Spawn-Modus sichtbar -->
+                    <div class="form-group" id="group-spawn-template-select" style="display:none;">
+                        <label for="spawn-template-select">Vorlage auswählen:</label>
+                        <select id="spawn-template-select" class="form-control">
+                            <option value="">— Bitte wählen —</option>
+                            <?php foreach ($templates as $t): ?>
+                                <option value="<?= (int)$t['id'] ?>"
+                                    data-assigned="<?= (int)($t['assigned_profile_id'] ?? 0) ?>">
+                                    <?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>
+                                    (<?= htmlspecialchars(ucfirst($t['category']), ENT_QUOTES, 'UTF-8') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="spawn-assigned">Zuweisen an:</label>
+                        <select id="spawn-assigned" name="assigned_profile_id" class="form-control">
+                            <option value="">Schwarzes Brett (Offen für alle)</option>
+                            <?php foreach ($childProfiles as $c): ?>
+                                <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['display_name'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="spawn-date">Fälligkeitsdatum:</label>
+                        <input type="date" id="spawn-date" name="due_date" class="form-control" value="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">🚀 Aufgabe jetzt starten</button>
                     </div>
                 </form>
             </div>

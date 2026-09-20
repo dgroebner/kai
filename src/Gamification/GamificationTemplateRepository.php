@@ -266,4 +266,93 @@ class GamificationTemplateRepository
         }
         return $hasCol[$table];
     }
+
+    /**
+     * Erzeugt eine konkrete Aufgabe aus einer Vorlage für ein bestimmtes Datum.
+     */
+    public function instantiateTaskFromTemplate(
+        int $templateId,
+        ?string $dueDate = null,
+        ?int $assignedProfileId = null,
+        string $status = 'planned'
+    ): int {
+        $tmpl = $this->getTemplateById($templateId);
+        if (!$tmpl) {
+            throw new \InvalidArgumentException("Vorlage nicht gefunden.");
+        }
+
+        $targetDate = $dueDate ?? date('Y-m-d');
+        $assignedId = ($assignedProfileId !== null) ? $assignedProfileId : $tmpl['assigned_profile_id'];
+        $isBounty = ($assignedId === null) ? 1 : 0;
+        $canEscalate = isset($tmpl['can_escalate']) ? (int)$tmpl['can_escalate'] : 1;
+        $hasTaskCol = $this->hasCanEscalateColumn('gamification_tasks');
+
+        $colSql = $hasTaskCol ? ", can_escalate" : "";
+        $valSql = $hasTaskCol ? ", :can_escalate" : "";
+
+        $stmt = $this->db->getConnection()->prepare("
+            INSERT INTO gamification_tasks (
+                template_id, title, description, category,
+                assigned_profile_id, origin_profile_id, status, is_bounty,
+                due_date, due_time, base_xp, base_coins, is_cooking_day{$colSql}
+            ) VALUES (
+                :template_id, :title, :description, :category,
+                :assigned_profile_id, :origin_profile_id, :status, :is_bounty,
+                :due_date, :due_time, :base_xp, :base_coins, :is_cooking_day{$valSql}
+            )
+        ");
+        $params = [
+            'template_id' => $tmpl['id'],
+            'title' => $tmpl['title'],
+            'description' => $tmpl['description'],
+            'category' => $tmpl['category'],
+            'assigned_profile_id' => $assignedId,
+            'origin_profile_id' => $assignedId,
+            'status' => $status,
+            'is_bounty' => $isBounty,
+            'due_date' => $targetDate,
+            'due_time' => $tmpl['due_time'],
+            'base_xp' => (int)$tmpl['base_xp'],
+            'base_coins' => (int)$tmpl['base_coins'],
+            'is_cooking_day' => (int)$tmpl['is_cooking_day'],
+        ];
+        if ($hasTaskCol) {
+            $params['can_escalate'] = $canEscalate;
+        }
+        $stmt->execute($params);
+
+        return (int)$this->db->getConnection()->lastInsertId();
+    }
+
+    /**
+     * Liefert Vorlagen im Modus "Nur manuell" (on-demand), die dem Kind zugewiesen sind
+     * und für die heute noch keine offene/aktive Aufgabe existiert.
+     */
+    public function getOnDemandTemplatesForProfile(int $profileId, ?string $date = null): array
+    {
+        $today = $date ?? date('Y-m-d');
+        $stmt = $this->db->getConnection()->prepare("
+            SELECT t.* 
+            FROM gamification_task_templates t
+            WHERE t.is_active = 1
+              AND t.recurrence = 'none'
+              AND (t.assigned_profile_id = :pid OR t.assigned_profile_id IS NULL)
+              AND t.id NOT IN (
+                  SELECT template_id FROM gamification_tasks 
+                  WHERE template_id IS NOT NULL 
+                    AND due_date = :today 
+                    AND status IN ('planned', 'in_progress', 'submitted', 'in_review')
+                    AND (assigned_profile_id = :pid2 OR claimed_by_profile_id = :pid3)
+              )
+            ORDER BY t.title ASC
+        ");
+        $stmt->execute([
+            'pid' => $profileId,
+            'today' => $today,
+            'pid2' => $profileId,
+            'pid3' => $profileId,
+        ]);
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+    }
 }

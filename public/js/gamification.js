@@ -358,7 +358,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 10. Spieler-Symbol / Avatar ändern
+    // 10. Abruf-Aufgabe starten (Bereitstehende Aufgaben)
+    const modalOndemand = document.getElementById('modal-ondemand-start');
+    const formOndemand  = document.getElementById('form-ondemand-start');
+
+    document.addEventListener('click', (e) => {
+        const startBtn = e.target.closest('.js-start-ondemand-btn');
+        if (startBtn && modalOndemand) {
+            const templateId = startBtn.getAttribute('data-template-id');
+            const title      = startBtn.getAttribute('data-title');
+            const coins      = startBtn.getAttribute('data-coins');
+            const xp         = startBtn.getAttribute('data-xp');
+
+            const titleEl = document.getElementById('ondemand-modal-title');
+            const descEl  = document.getElementById('ondemand-modal-desc');
+            const idInput = document.getElementById('ondemand-template-id');
+            const notesEl = document.getElementById('ondemand-notes');
+
+            if (titleEl) titleEl.textContent = `▶️ ${title}`;
+            if (descEl)  descEl.textContent  = `Möchtest du „${title}" jetzt erledigen und einreichen? Du bekommst 🪙 +${coins} Münzen und ⭐ +${xp} XP.`;
+            if (idInput) idInput.value = templateId;
+            if (notesEl) notesEl.value = '';
+
+            openModal(modalOndemand);
+        }
+    });
+
+    if (formOndemand) {
+        formOndemand.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const templateId = document.getElementById('ondemand-template-id').value;
+            const notes      = document.getElementById('ondemand-notes').value.trim();
+
+            closeModal(modalOndemand);
+            const res = await KaiHttp.postJson('api.php', {
+                action:           'task_start_ondemand',
+                template_id:      parseInt(templateId, 10),
+                submit_immediately: 1,
+                notes:            notes
+            });
+
+            if (res.success) {
+                showFeedback('Aufgabe eingereicht! ✅', res.message || 'Super! Deine Eltern prüfen das gleich.', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Starten der Aufgabe.');
+            }
+        });
+    }
+
+    // 11. Spieler-Symbol / Avatar ändern
     const avatarEl = document.querySelector('.js-open-avatar-picker');
     if (avatarEl && window.GamifEmojiPicker) {
         avatarEl.addEventListener('click', () => {

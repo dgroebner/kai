@@ -134,6 +134,36 @@ try {
             echo json_encode(['success' => $success, 'message' => 'Danke für dein Feedback! Du hast +5 XP und +2 Münzen Kritiker-Bonus erhalten.']);
             break;
 
+        case 'task_start_ondemand':
+            Auth::requireApi('gamification_write');
+            $tmplId = filter_var($input['template_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$tmplId) {
+                Auth::sendJsonError(400, 'Ungültige Vorlagen-ID');
+            }
+            $notes = isset($input['notes']) ? trim((string)$input['notes']) : null;
+            $submitImmediately = !empty($input['submit_immediately']);
+            $status = $submitImmediately ? 'submitted' : 'in_progress';
+
+            $taskId = $gamifService->getTemplateRepository()->instantiateTaskFromTemplate(
+                $tmplId,
+                date('Y-m-d'),
+                (int)$currentProfile['id'],
+                $status
+            );
+
+            if ($submitImmediately) {
+                $gamifService->getTaskRepository()->submitTask($taskId, (int)$currentProfile['id'], $notes);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'task_id' => $taskId,
+                'message' => $submitImmediately
+                    ? 'Super gemacht! Die Aufgabe wurde direkt zur Prüfung eingereicht.'
+                    : 'Aufgabe gestartet! Du findest sie unter deinen aktiven Missionen.'
+            ]);
+            break;
+
         case 'reward_redeem':
             Auth::requireApi('gamification_write');
             $rewardId = filter_var($input['reward_id'] ?? null, FILTER_VALIDATE_INT);
@@ -293,7 +323,41 @@ try {
         case 'template_save':
             Auth::requireApi('gamification_admin');
             $tmplId = $gamifService->getTemplateRepository()->saveTemplate($input);
-            echo json_encode(['success' => true, 'template_id' => $tmplId, 'message' => 'Aufgaben-Vorlage gespeichert.']);
+            $spawnedTaskId = null;
+            if (!empty($input['spawn_immediately'])) {
+                $assignedId = isset($input['assigned_profile_id']) && $input['assigned_profile_id'] !== ''
+                    ? (int)$input['assigned_profile_id']
+                    : null;
+                $spawnedTaskId = $gamifService->getTemplateRepository()->instantiateTaskFromTemplate(
+                    $tmplId,
+                    date('Y-m-d'),
+                    $assignedId
+                );
+            }
+            echo json_encode([
+                'success' => true,
+                'template_id' => $tmplId,
+                'task_id' => $spawnedTaskId,
+                'message' => $spawnedTaskId ? 'Vorlage gespeichert und Aufgabe sofort für heute aktiviert!' : 'Aufgaben-Vorlage gespeichert.'
+            ]);
+            break;
+
+        case 'template_spawn_task':
+            Auth::requireApi('gamification_admin');
+            $tmplId = filter_var($input['template_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$tmplId) {
+                Auth::sendJsonError(400, 'Ungültige Vorlagen-ID');
+            }
+            $targetDate = !empty($input['due_date']) ? trim((string)$input['due_date']) : date('Y-m-d');
+            $assignedId = array_key_exists('assigned_profile_id', $input) && $input['assigned_profile_id'] !== ''
+                ? (int)$input['assigned_profile_id']
+                : null;
+            $taskId = $gamifService->getTemplateRepository()->instantiateTaskFromTemplate($tmplId, $targetDate, $assignedId);
+            echo json_encode([
+                'success' => true,
+                'task_id' => $taskId,
+                'message' => 'Aufgabe wurde für heute erfolgreich aktiviert und ins Spiel gebracht!'
+            ]);
             break;
 
         case 'template_delete':
