@@ -161,8 +161,14 @@ try {
             if (!empty($input['color'])) {
                 $data['color'] = trim((string)$input['color']);
             }
-            if (!empty($input['display_name'])) {
-                $data['display_name'] = trim((string)$input['display_name']);
+            if (isset($input['display_name'])) {
+                $trimmedName = trim((string)$input['display_name']);
+                if ($trimmedName !== '') {
+                    $data['display_name'] = $trimmedName;
+                }
+            }
+            if (isset($input['role']) && Auth::hasPermission('gamification_admin') && in_array($input['role'], ['parent', 'child'], true)) {
+                $data['role'] = $input['role'];
             }
 
             $targetId = (int)$currentProfile['id'];

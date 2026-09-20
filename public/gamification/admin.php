@@ -425,20 +425,24 @@ $metricTypeMap = [
                 $lvlProg = $profileRepo->calculateLevelProgress((int)$p['xp']);
             ?>
                 <div class="gamif-card">
-                    <div style="display:flex; align-items:center; gap:0.75rem;">
-                        <span class="gamif-avatar gamif-avatar--clickable js-change-profile-avatar" data-profile-id="<?= (int)$p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?>" title="Symbol ändern" style="font-size:2rem; width:2.8rem; height:2.8rem; display:inline-flex; align-items:center; justify-content:center;"><?= htmlspecialchars($p['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></span>
-                        <div>
-                            <h4 style="margin:0;"><?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?></h4>
-                            <span class="text-muted" style="font-size:0.85rem;">Level <?= $lvlProg['level'] ?> · <?= htmlspecialchars($lvlProg['rank_title'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="gamif-avatar gamif-avatar--clickable js-change-profile-avatar" data-profile-id="<?= (int)$p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?>" title="Symbol ändern" style="font-size:2rem; width:2.8rem; height:2.8rem; display:inline-flex; align-items:center; justify-content:center;"><?= htmlspecialchars($p['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></span>
+                            <div>
+                                <h4 style="margin:0;"><?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?></h4>
+                                <span class="text-muted" style="font-size:0.85rem;">Level <?= $lvlProg['level'] ?> · <?= htmlspecialchars($lvlProg['rank_title'], ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
                         </div>
+                        <span class="gamif-tag <?= $p['role'] === 'parent' ? 'gamif-tag--rescue' : '' ?>"><?= $p['role'] === 'parent' ? '👑 Eltern' : 'Kind' ?></span>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:0.5rem;">
                         <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 <?= (int)$p['coins'] ?> Münzen</span>
                         <span class="gamif-stat-chip gamif-stat-chip--streak">🔥 <?= (int)$p['streak_days'] ?> Tage</span>
                         <span class="gamif-stat-chip gamif-stat-chip--xp">⭐ <?= (int)$p['xp'] ?> XP</span>
                     </div>
-                    <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(255,255,255,0.05); display:flex; justify-content:flex-end;">
-                        <button type="button" class="btn btn-outline btn-sm js-adjust-points-btn" data-profile-id="<?= (int)$p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?>">Punkte anpassen</button>
+                    <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid rgba(255,255,255,0.05); display:flex; justify-content:flex-end; gap:0.5rem;">
+                        <button type="button" class="btn btn-outline btn-sm js-edit-profile-btn" data-profile="<?= htmlspecialchars(json_encode($p), ENT_QUOTES, 'UTF-8') ?>">✏️ Bearbeiten</button>
+                        <button type="button" class="btn btn-outline btn-sm js-adjust-points-btn" data-profile-id="<?= (int)$p['id'] ?>" data-name="<?= htmlspecialchars($p['display_name'], ENT_QUOTES, 'UTF-8') ?>">🪙 Punkte</button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -870,6 +874,50 @@ $metricTypeMap = [
                 <div class="modal-actions" style="display:flex; justify-content:flex-end; margin-top:1rem;">
                     <button type="button" id="btn-feedback-ok" class="btn btn-primary modal-close">OK</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Mitspieler-Profil bearbeiten -->
+    <div id="modal-edit-profile" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Mitspieler bearbeiten ✏️</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-edit-profile">
+                    <input type="hidden" id="edit-profile-id" name="profile_id">
+                    <div class="form-group">
+                        <label for="edit-profile-name">Name des Mitspielers:</label>
+                        <input type="text" id="edit-profile-name" name="display_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-profile-email">Google-Konto / E-Mail:</label>
+                        <input type="text" id="edit-profile-email" class="form-control" readonly disabled>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="edit-profile-role">Rolle:</label>
+                            <select id="edit-profile-role" name="role" class="form-control">
+                                <option value="child">Kind (Mitspieler)</option>
+                                <option value="parent">Elternteil (Admin)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-profile-avatar">Symbol / Emoji:</label>
+                            <div class="gamif-emoji-picker-group">
+                                <button type="button" class="gamif-emoji-preview js-open-emoji-picker" id="edit-profile-avatar-preview" data-target-input="#edit-profile-avatar" data-target-preview="#edit-profile-avatar-preview" title="Klicken, um Symbol zu wählen">⭐</button>
+                                <input type="hidden" id="edit-profile-avatar" name="avatar_icon" value="⭐">
+                                <button type="button" class="btn btn-outline btn-sm js-open-emoji-picker" data-target-input="#edit-profile-avatar" data-target-preview="#edit-profile-avatar-preview">🎨 Symbol wählen</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

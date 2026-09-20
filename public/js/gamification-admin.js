@@ -766,4 +766,46 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    // 15. Mitspieler-Profil bearbeiten (Name, Rolle, Symbol)
+    const modalEditProfile = document.getElementById('modal-edit-profile');
+    const formEditProfile = document.getElementById('form-edit-profile');
+
+    document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.js-edit-profile-btn');
+        if (editBtn && modalEditProfile && formEditProfile) {
+            const p = JSON.parse(editBtn.getAttribute('data-profile'));
+            document.getElementById('edit-profile-id').value = p.id || '';
+            document.getElementById('edit-profile-name').value = p.display_name || '';
+            document.getElementById('edit-profile-email').value = p.user_email || '';
+            document.getElementById('edit-profile-role').value = p.role || 'child';
+            document.getElementById('edit-profile-avatar').value = p.avatar_icon || '⭐';
+            const prev = document.getElementById('edit-profile-avatar-preview');
+            if (prev) prev.textContent = p.avatar_icon || '⭐';
+
+            openModal(modalEditProfile);
+        }
+    });
+
+    if (formEditProfile) {
+        formEditProfile.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(formEditProfile);
+            const payload = {
+                action: 'profile_update',
+                profile_id: parseInt(formData.get('profile_id'), 10),
+                display_name: formData.get('display_name'),
+                role: formData.get('role'),
+                avatar_icon: formData.get('avatar_icon')
+            };
+
+            closeModal(modalEditProfile);
+            const res = await KaiHttp.postJson('api.php', payload);
+            if (res.success) {
+                showFeedback('Profil aktualisiert 👤', res.message || 'Die Änderungen wurden erfolgreich gespeichert!', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Speichern des Profils.');
+            }
+        });
+    }
 });
