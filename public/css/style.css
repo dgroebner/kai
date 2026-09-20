@@ -5471,6 +5471,31 @@ body {
     box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
 }
 
+.gamif-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.gamif-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    cursor: pointer;
+    font-weight: normal;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.gamif-checkbox-row input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+    transform: scale(1.15);
+    accent-color: var(--accent);
+}
+
 @media (max-width: 768px) {
     .gamif-hud-header {
         flex-direction: column;

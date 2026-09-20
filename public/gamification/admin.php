@@ -548,13 +548,15 @@ $metricTypeMap = [
                             <input type="number" id="tmpl-xp" name="base_xp" class="form-control" value="50" min="1">
                         </div>
                     </div>
-                    <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
-                        <input type="checkbox" id="tmpl-cooking" name="is_cooking_day" value="1">
-                        <label for="tmpl-cooking" style="margin:0;">Koch-Tag (aktiviert Rezept-Pitch & Bewertung)</label>
-                    </div>
-                    <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
-                        <input type="checkbox" id="tmpl-escalate" name="can_escalate" value="1" checked>
-                        <label for="tmpl-escalate" style="margin:0;">Bei Fristversäumnis auf das Schwarze Brett verschieben (Geschwister-Rettung mit Bonus)</label>
+                    <div class="gamif-checkbox-group">
+                        <label class="gamif-checkbox-row" for="tmpl-cooking">
+                            <input type="checkbox" id="tmpl-cooking" name="is_cooking_day" value="1">
+                            <span>Koch-Tag (Rezept vorschlagen & bewerten)</span>
+                        </label>
+                        <label class="gamif-checkbox-row" for="tmpl-escalate">
+                            <input type="checkbox" id="tmpl-escalate" name="can_escalate" value="1" checked>
+                            <span>Verschieben auf Schwarzes Brett bei Fristversäumnis</span>
+                        </label>
                     </div>
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
