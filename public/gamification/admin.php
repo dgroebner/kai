@@ -139,6 +139,7 @@ $metricTypeMap = [
                                                 <?php if ($isOverdue): ?><span class="gamif-tag gamif-tag--rescue" style="font-size:0.7rem; padding:0.1rem 0.4rem;">⚠ überfällig</span><?php endif; ?>
                                                 <?php if (!empty($at['due_time'])): ?><span class="text-muted" style="font-size:0.75rem;">bis <?= htmlspecialchars(substr($at['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') ?> Uhr</span><?php endif; ?>
                                                 <button type="button" class="btn btn-outline btn-sm js-spawn-for-child-btn" style="padding:0.1rem 0.5rem; font-size:0.75rem;" data-profile-id="<?= $pid ?>" title="Weitere Aufgabe für <?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?> anlegen">+</button>
+                                                <button type="button" class="btn btn-outline btn-sm js-delete-task-btn" style="padding:0.1rem 0.5rem; font-size:0.75rem; color:#ef4444;" data-task-id="<?= (int)$at['id'] ?>" data-title="<?= htmlspecialchars($at['title'], ENT_QUOTES, 'UTF-8') ?>" title="Aufgabe löschen">🗑️</button>
                                             </span>
                                         </li>
                                     <?php endforeach; ?>
@@ -551,6 +552,24 @@ $metricTypeMap = [
             <?php endforeach; ?>
         </div>
     </section>
+
+    <!-- Modal: Aufgabe löschen (Admin / Test-Modus) -->
+    <div id="modal-delete-task" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3>🗑️ Aufgabe löschen</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Soll die Aufgabe <strong id="delete-task-title"></strong> wirklich unwiderruflich gelöscht werden?</p>
+                <input type="hidden" id="delete-task-id">
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                    <button type="button" id="btn-confirm-delete-task" class="btn btn-primary" style="background:#ef4444; border-color:#ef4444;">🗑️ Löschen</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal: Vorlage erstellen / bearbeiten -->
     <div id="modal-template" class="modal-overlay hidden">

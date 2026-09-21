@@ -370,6 +370,21 @@ try {
             echo json_encode(['success' => $ok, 'message' => 'Vorlage gelöscht.']);
             break;
 
+        case 'task_delete':
+            Auth::requireApi('gamification_admin');
+            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$taskId) {
+                Auth::sendJsonError(400, 'Ungültige Aufgaben-ID');
+            }
+            try {
+                $ok = $gamifService->getTaskRepository()->deleteTask($taskId);
+                echo json_encode(['success' => $ok, 'message' => $ok ? 'Aufgabe gelöscht.' : 'Aufgabe nicht gefunden.']);
+            } catch (\Throwable $e) {
+                (new Logger())->error('task_delete: Fehler', ['error' => $e->getMessage()]);
+                Auth::sendJsonError(500, 'Interner Fehler');
+            }
+            break;
+
         case 'reward_save':
             Auth::requireApi('gamification_admin');
             $rewardId = $gamifService->getRewardRepository()->saveReward($input);

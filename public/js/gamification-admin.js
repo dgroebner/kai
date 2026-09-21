@@ -976,4 +976,38 @@ document.addEventListener('DOMContentLoaded', () => {
             applyTemplateFilter();
         });
     }
+
+    // 18. Aufgabe löschen (Test-Modus, nur Admin)
+    const modalDeleteTask     = document.getElementById('modal-delete-task');
+    const deleteTitleEl       = document.getElementById('delete-task-title');
+    const deleteTaskIdInput   = document.getElementById('delete-task-id');
+    const btnConfirmDeleteTask = document.getElementById('btn-confirm-delete-task');
+
+    document.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('.js-delete-task-btn');
+        if (delBtn && modalDeleteTask) {
+            const taskId = delBtn.getAttribute('data-task-id');
+            const title  = delBtn.getAttribute('data-title');
+            if (deleteTitleEl)     deleteTitleEl.textContent = `„${title}"`;
+            if (deleteTaskIdInput) deleteTaskIdInput.value   = taskId;
+            openModal(modalDeleteTask);
+        }
+    });
+
+    if (btnConfirmDeleteTask) {
+        btnConfirmDeleteTask.addEventListener('click', async () => {
+            const taskId = deleteTaskIdInput ? deleteTaskIdInput.value : '';
+            if (!taskId) return;
+            closeModal(modalDeleteTask);
+            const res = await KaiHttp.postJson('api.php', {
+                action:  'task_delete',
+                task_id: parseInt(taskId, 10)
+            });
+            if (res.success) {
+                showFeedback('Aufgabe gelöscht 🗑️', res.message || 'Die Aufgabe wurde entfernt.', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Aufgabe konnte nicht gelöscht werden.');
+            }
+        });
+    }
 });

@@ -196,6 +196,28 @@ class GamificationTaskRepository
     }
 
     /**
+     * Löscht eine Aufgabe vollständig (inkl. Helfer-Einträge und Koch-Rezept).
+     * Nur für Admins im Test-/Entwicklungsmodus gedacht.
+     */
+    public function deleteTask(int $taskId): bool
+    {
+        $pdo = $this->db->getConnection();
+        $pdo->beginTransaction();
+        try {
+            // Abhängige Zeilen vorher entfernen
+            $pdo->prepare("DELETE FROM gamification_task_helpers WHERE task_id = :id")->execute([':id' => $taskId]);
+            $pdo->prepare("DELETE FROM gamification_cooking_recipes WHERE task_id = :id")->execute([':id' => $taskId]);
+            $stmt = $pdo->prepare("DELETE FROM gamification_tasks WHERE id = :id");
+            $stmt->execute([':id' => $taskId]);
+            $pdo->commit();
+            return $stmt->rowCount() > 0;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
      * Sichert sich eine Quest vom Schwarzen Brett (Claiming mit 12-Stunden-Lock).
      */
     public function claimTask(int $taskId, int $profileId): bool
