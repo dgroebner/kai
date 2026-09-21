@@ -23,6 +23,15 @@ $pendingHelpers = $helperRepo->getPendingHelpers();
 $pendingRedemptions = $rewardRepo->getPendingRedemptions();
 $totalPending = count($pendingTasks) + count($pendingHelpers) + count($pendingRedemptions);
 
+// Laufende Aufgaben aller Kinder für die Übersicht
+$allActiveTasksFlat = $taskRepo->getAllActiveTasksByProfile();
+// Nach Profil-ID gruppieren
+$activeTasksByProfile = [];
+foreach ($allActiveTasksFlat as $t) {
+    $pid = (int)$t['assigned_profile_id'];
+    $activeTasksByProfile[$pid][] = $t;
+}
+
 // Stammdaten laden
 $templates = $templateRepo->getAllTemplates();
 $rewards = $rewardRepo->getAllRewards();
@@ -95,10 +104,59 @@ $metricTypeMap = [
 
     <!-- Reiter 1: Freigaben & Prüfung (Triage) -->
     <section id="tab-approvals" class="gamif-tab-content">
+
+        <!-- Übersicht: Laufende Aufgaben aller Kinder -->
+        <?php if (!empty($activeTasksByProfile)): ?>
+            <div class="gamif-active-overview">
+                <h3 class="gamif-section-title">📋 Laufende Aufgaben der Kinder</h3>
+                <div class="gamif-active-grid">
+                    <?php foreach ($childProfiles as $cp):
+                        $pid = (int)$cp['id'];
+                        $tasks = $activeTasksByProfile[$pid] ?? [];
+                        $lvl = $profileRepo->calculateLevelProgress((int)$cp['xp']);
+                    ?>
+                        <div class="gamif-active-child-card">
+                            <div class="gamif-active-child-header">
+                                <span class="gamif-avatar" style="font-size:1.4rem; width:2rem; height:2rem;"><?= htmlspecialchars($cp['avatar_icon'] ?? '⭐', ENT_QUOTES, 'UTF-8') ?></span>
+                                <div>
+                                    <strong><?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <span class="text-muted" style="font-size:0.8rem; display:block;">Level <?= $lvl['level'] ?> · 🔥 <?= (int)$cp['streak_days'] ?> Tage · 🪙 <?= (int)$cp['coins'] ?></span>
+                                </div>
+                                <span class="gamif-active-count"><?= count($tasks) ?></span>
+                            </div>
+                            <?php if (empty($tasks)): ?>
+                                <p class="gamif-active-empty">Alle Aufgaben erledigt 🎉</p>
+                            <?php else: ?>
+                                <ul class="gamif-active-task-list">
+                                    <?php foreach ($tasks as $at):
+                                        $isInProgress = $at['status'] === 'in_progress';
+                                        $isOverdue = !empty($at['due_date']) && $at['due_date'] < date('Y-m-d');
+                                    ?>
+                                        <li class="gamif-active-task-item <?= $isInProgress ? 'gamif-active-task-item--active' : '' ?> <?= $isOverdue ? 'gamif-active-task-item--overdue' : '' ?>">
+                                            <span class="gamif-active-task-name"><?= htmlspecialchars($at['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            <span class="gamif-active-task-meta">
+                                                <?php if ($isInProgress): ?><span class="gamif-tag" style="font-size:0.7rem; padding:0.1rem 0.4rem;">▶ läuft</span><?php endif; ?>
+                                                <?php if ($isOverdue): ?><span class="gamif-tag gamif-tag--rescue" style="font-size:0.7rem; padding:0.1rem 0.4rem;">⚠ überfällig</span><?php endif; ?>
+                                                <?php if (!empty($at['due_time'])): ?><span class="text-muted" style="font-size:0.75rem;">bis <?= htmlspecialchars(substr($at['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') ?> Uhr</span><?php endif; ?>
+                                                <button type="button" class="btn btn-outline btn-sm js-spawn-for-child-btn" style="padding:0.1rem 0.5rem; font-size:0.75rem;" data-profile-id="<?= $pid ?>" title="Weitere Aufgabe für <?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?> anlegen">+</button>
+                                            </span>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
+                            <div class="gamif-active-child-footer">
+                                <button type="button" class="btn btn-outline btn-sm js-spawn-for-child-btn" data-profile-id="<?= $pid ?>" data-profile-name="<?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?>">▶️ Aufgabe anlegen</button>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <?php if ($totalPending === 0): ?>
-            <div class="gamif-empty-box">
+            <div class="gamif-empty-box" style="margin-top: 1rem;">
                 <span class="gamif-empty-icon">☕</span>
-                <h3>Alles erledigt!</h3>
+                <h3>Keine offenen Freigaben</h3>
                 <p>Aktuell warten keine Aufgaben, Mithilfen oder Prämien-Anträge auf deine Bestätigung.</p>
             </div>
         <?php else: ?>

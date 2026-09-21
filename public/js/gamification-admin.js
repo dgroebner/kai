@@ -23,7 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             sessionStorage.setItem('gamif_admin_active_tab', targetTab);
             history.replaceState(null, '', '#' + targetTab);
-        } catch (e) {}
+        } catch (e) {
+        }
     }
 
     document.querySelectorAll('.gamif-tab-btn').forEach(btn => {
@@ -100,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExecuteSyncEscalation.addEventListener('click', async () => {
             btnExecuteSyncEscalation.disabled = true;
             closeModal(modalSyncEscalation);
-            const res = await KaiHttp.postJson('api.php', { action: 'run_escalation' });
+            const res = await KaiHttp.postJson('api.php', {action: 'run_escalation'});
             btnExecuteSyncEscalation.disabled = false;
             if (res.success) {
                 showFeedback('Fristen & Tagesaufgaben', res.message || 'Fristen erfolgreich geprüft und aktualisiert!', true);
@@ -413,11 +414,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let res;
             if (type === 'template') {
-                res = await KaiHttp.postJson('api.php', { action: 'template_delete', template_id: id });
+                res = await KaiHttp.postJson('api.php', {action: 'template_delete', template_id: id});
             } else if (type === 'reward') {
-                res = await KaiHttp.postJson('api.php', { action: 'reward_delete', reward_id: id });
+                res = await KaiHttp.postJson('api.php', {action: 'reward_delete', reward_id: id});
             } else if (type === 'badge') {
-                res = await KaiHttp.postJson('api.php', { action: 'achievement_delete', achievement_id: id });
+                res = await KaiHttp.postJson('api.php', {action: 'achievement_delete', achievement_id: id});
             }
 
             btnConfirmDeleteExecute.disabled = false;
@@ -447,7 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
             formTemplate.reset();
             document.getElementById('template-id').value = '';
             document.getElementById('modal-template-heading').textContent = 'Neue Vorlage anlegen';
-            document.querySelectorAll('input[name="recurrence_day_check"]').forEach(cb => { cb.checked = false; });
+            document.querySelectorAll('input[name="recurrence_day_check"]').forEach(cb => {
+                cb.checked = false;
+            });
             if (recurrenceDaysGroup) recurrenceDaysGroup.style.display = 'none';
             const escCb = document.getElementById('tmpl-escalate');
             if (escCb) escCb.checked = true;
@@ -469,9 +472,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('tmpl-duetime').value = tmplData.due_time ? tmplData.due_time.substring(0, 5) : '18:00';
                 document.getElementById('tmpl-coins').value = tmplData.base_coins || 20;
                 document.getElementById('tmpl-xp').value = tmplData.base_xp || 50;
-                document.getElementById('tmpl-cooking').checked = tmplData.is_cooking_day == 1;
+                document.getElementById('tmpl-cooking').checked = tmplData.is_cooking_day === 1;
                 const escCb = document.getElementById('tmpl-escalate');
-                if (escCb) escCb.checked = (tmplData.can_escalate === undefined || tmplData.can_escalate == 1);
+                if (escCb) escCb.checked = (tmplData.can_escalate === undefined || tmplData.can_escalate === 1);
 
                 if (recurrenceDaysGroup) {
                     const selectedDays = (tmplData.recurrence_days || '').split(',').map(s => s.trim());
@@ -728,10 +731,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Live preview sync for manual typing in emoji inputs
     [
-        { input: '#new-profile-avatar', preview: '#new-profile-avatar-preview' },
-        { input: '#reward-icon', preview: '#reward-icon-preview' },
-        { input: '#badge-icon', preview: '#badge-icon-preview' }
-    ].forEach(({ input, preview }) => {
+        {input: '#new-profile-avatar', preview: '#new-profile-avatar-preview'},
+        {input: '#reward-icon', preview: '#reward-icon-preview'},
+        {input: '#badge-icon', preview: '#badge-icon-preview'}
+    ].forEach(({input, preview}) => {
         const inEl = document.querySelector(input);
         const prevEl = document.querySelector(preview);
         if (inEl && prevEl) {
@@ -841,26 +844,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 16. Vorlage als Aufgabe aktivieren
-    const modalSpawn        = document.getElementById('modal-spawn-template');
-    const formSpawn         = document.getElementById('form-spawn-template');
-    const spawnTemplSel     = document.getElementById('spawn-template-select');
-    const spawnTemplSelGrp  = document.getElementById('group-spawn-template-select');
+    const modalSpawn = document.getElementById('modal-spawn-template');
+    const formSpawn = document.getElementById('form-spawn-template');
+    const spawnTemplSel = document.getElementById('spawn-template-select');
+    const spawnTemplSelGrp = document.getElementById('group-spawn-template-select');
 
     /** Öffnet das Spawn-Modal für eine bekannte Vorlage (Zeilen-Button) */
     function openSpawnModal(templateId, title, assignedId) {
-        const idInput   = document.getElementById('spawn-template-id');
-        const descEl    = document.getElementById('spawn-template-desc');
+        const idInput = document.getElementById('spawn-template-id');
+        const descEl = document.getElementById('spawn-template-desc');
         const assignSel = document.getElementById('spawn-assigned');
         const dateInput = document.getElementById('spawn-date');
 
-        if (idInput)   idInput.value = templateId || '';
-        if (descEl)    descEl.textContent = title ? `Vorlage „${title}" einmalig als aktive Aufgabe anlegen.` : '';
+        if (idInput) idInput.value = templateId || '';
+        if (descEl) descEl.textContent = title ? `Vorlage „${title}" einmalig als aktive Aufgabe anlegen.` : '';
         if (assignSel) assignSel.value = (assignedId && assignedId !== '0') ? assignedId : '';
         if (dateInput) dateInput.value = new Date().toISOString().substring(0, 10);
 
         // Vorlagen-Auswahl nur im Quick-Modus zeigen
         if (spawnTemplSelGrp) spawnTemplSelGrp.style.display = templateId ? 'none' : 'block';
-        if (spawnTemplSel)    spawnTemplSel.value = '';
+        if (spawnTemplSel) spawnTemplSel.value = '';
 
         if (modalSpawn) openModal(modalSpawn);
     }
@@ -880,13 +883,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.js-open-spawn-quick-btn')) {
             openSpawnModal('', '', '');
         }
+
+        // Aufgabe für ein bestimmtes Kind anlegen (aus Übersicht laufender Aufgaben)
+        const spawnForChild = e.target.closest('.js-spawn-for-child-btn');
+        if (spawnForChild) {
+            const profileId = spawnForChild.getAttribute('data-profile-id');
+            const profileName = spawnForChild.getAttribute('data-profile-name') || '';
+            openSpawnModal('', profileName ? `Aufgabe für ${profileName} anlegen` : '', '');
+            // Zuweisung direkt vorbelegen
+            const assignSel = document.getElementById('spawn-assigned');
+            if (assignSel && profileId) assignSel.value = profileId;
+        }
     });
 
     // Wenn Vorlage im Dropdown gewählt → Zuweisung vorbelegen
     if (spawnTemplSel) {
         spawnTemplSel.addEventListener('change', () => {
-            const opt       = spawnTemplSel.options[spawnTemplSel.selectedIndex];
-            const assignId  = opt ? opt.getAttribute('data-assigned') : '';
+            const opt = spawnTemplSel.options[spawnTemplSel.selectedIndex];
+            const assignId = opt ? opt.getAttribute('data-assigned') : '';
             const assignSel = document.getElementById('spawn-assigned');
             if (assignSel) assignSel.value = (assignId && assignId !== '0') ? assignId : '';
         });
@@ -908,10 +922,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const payload = {
-                action:              'template_spawn_task',
-                template_id:         templateId,
+                action: 'template_spawn_task',
+                template_id: templateId,
                 assigned_profile_id: formData.get('assigned_profile_id') || null,
-                due_date:            formData.get('due_date') || null
+                due_date: formData.get('due_date') || null
             };
 
             closeModal(modalSpawn);
@@ -925,24 +939,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 17. Schnellfilter für die Vorlagen-Tabelle
-    const filterCat  = document.getElementById('filter-tmpl-category');
+    const filterCat = document.getElementById('filter-tmpl-category');
     const filterAsgn = document.getElementById('filter-tmpl-assigned');
-    const filterRec  = document.getElementById('filter-tmpl-recurrence');
+    const filterRec = document.getElementById('filter-tmpl-recurrence');
     const filterReset = document.getElementById('btn-filter-tmpl-reset');
-    const tmplEmpty  = document.getElementById('filter-tmpl-empty');
+    const tmplEmpty = document.getElementById('filter-tmpl-empty');
 
     function applyTemplateFilter() {
-        const cat  = filterCat  ? filterCat.value  : '';
+        const cat = filterCat ? filterCat.value : '';
         const asgn = filterAsgn ? filterAsgn.value : '';
-        const rec  = filterRec  ? filterRec.value  : '';
+        const rec = filterRec ? filterRec.value : '';
         const rows = document.querySelectorAll('#tbl-templates tbody tr[data-tmpl-category]');
         let visibleCount = 0;
 
         rows.forEach(row => {
-            const matchCat  = !cat  || row.getAttribute('data-tmpl-category')  === cat;
-            const matchAsgn = !asgn || row.getAttribute('data-tmpl-assigned')  === asgn;
-            const matchRec  = !rec  || row.getAttribute('data-tmpl-recurrence') === rec;
-            const visible   = matchCat && matchAsgn && matchRec;
+            const matchCat = !cat || row.getAttribute('data-tmpl-category') === cat;
+            const matchAsgn = !asgn || row.getAttribute('data-tmpl-assigned') === asgn;
+            const matchRec = !rec || row.getAttribute('data-tmpl-recurrence') === rec;
+            const visible = matchCat && matchAsgn && matchRec;
             row.style.display = visible ? '' : 'none';
             if (visible) visibleCount++;
         });
@@ -950,15 +964,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tmplEmpty) tmplEmpty.style.display = (rows.length > 0 && visibleCount === 0) ? 'block' : 'none';
     }
 
-    if (filterCat)  filterCat.addEventListener('change', applyTemplateFilter);
+    if (filterCat) filterCat.addEventListener('change', applyTemplateFilter);
     if (filterAsgn) filterAsgn.addEventListener('change', applyTemplateFilter);
-    if (filterRec)  filterRec.addEventListener('change', applyTemplateFilter);
+    if (filterRec) filterRec.addEventListener('change', applyTemplateFilter);
 
     if (filterReset) {
         filterReset.addEventListener('click', () => {
-            if (filterCat)  filterCat.value  = '';
+            if (filterCat) filterCat.value = '';
             if (filterAsgn) filterAsgn.value = '';
-            if (filterRec)  filterRec.value  = '';
+            if (filterRec) filterRec.value = '';
             applyTemplateFilter();
         });
     }

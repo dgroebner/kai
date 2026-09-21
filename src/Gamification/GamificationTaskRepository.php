@@ -166,6 +166,36 @@ class GamificationTaskRepository
     }
 
     /**
+     * Liefert alle noch offenen Aufgaben aller Kind-Profile für die Eltern-Übersicht.
+     * Gibt eine flache Liste zurück, sortiert nach Profil-ID, dann Status und Fälligkeit.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllActiveTasksByProfile(): array
+    {
+        $stmt = $this->db->getConnection()->query("
+            SELECT t.*,
+                   pa.display_name AS assigned_name,
+                   pa.avatar_icon  AS assigned_avatar,
+                   pa.color        AS assigned_color,
+                   pc.display_name AS claimed_name
+            FROM gamification_tasks t
+            LEFT JOIN gamification_profiles pa ON t.assigned_profile_id = pa.id
+            LEFT JOIN gamification_profiles pc ON t.claimed_by_profile_id = pc.id
+            WHERE pa.role = 'child'
+              AND t.status IN ('planned', 'in_progress')
+              AND t.is_bounty = 0
+            ORDER BY
+                t.assigned_profile_id ASC,
+                CASE WHEN t.status = 'in_progress' THEN 1 ELSE 2 END,
+                t.due_date ASC,
+                t.due_time ASC
+        ");
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
      * Sichert sich eine Quest vom Schwarzen Brett (Claiming mit 12-Stunden-Lock).
      */
     public function claimTask(int $taskId, int $profileId): bool
