@@ -111,9 +111,30 @@ class TronitySyncService
         }
 
         // 3. Normalisierung der Felder
-        $soc = isset($record['level']) && is_numeric($record['level']) ? (int)round((float)$record['level']) : null;
-        $range = isset($record['range']) && is_numeric($record['range']) ? (int)round((float)$record['range']) : 0;
-        $odometer = isset($record['odometer']) && is_numeric($record['odometer']) ? (int)round((float)$record['odometer']) : null;
+        $soc = null;
+        if (isset($record['level']) && is_numeric($record['level'])) {
+            $soc = (int)round((float)$record['level']);
+        } elseif (isset($record['soc']) && is_numeric($record['soc'])) {
+            $soc = (int)round((float)$record['soc']);
+        } elseif (isset($record['batteryLevel']) && is_numeric($record['batteryLevel'])) {
+            $soc = (int)round((float)$record['batteryLevel']);
+        }
+
+        $range = 0;
+        if (isset($record['range']) && is_numeric($record['range'])) {
+            $range = (int)round((float)$record['range']);
+        } elseif (isset($record['remainingRange']) && is_numeric($record['remainingRange'])) {
+            $range = (int)round((float)$record['remainingRange']);
+        } elseif (isset($record['range_km']) && is_numeric($record['range_km'])) {
+            $range = (int)round((float)$record['range_km']);
+        }
+
+        $odometer = null;
+        if (isset($record['odometer']) && is_numeric($record['odometer'])) {
+            $odometer = (int)round((float)$record['odometer']);
+        } elseif (isset($record['mileage']) && is_numeric($record['mileage'])) {
+            $odometer = (int)round((float)$record['mileage']);
+        }
         
         // Ladeleistung (kW)
         $chargePower = null;
@@ -121,27 +142,44 @@ class TronitySyncService
             $chargePower = round((float)$record['chargerPower'], 2);
         } elseif (isset($record['chargePower']) && is_numeric($record['chargePower'])) {
             $chargePower = round((float)$record['chargePower'], 2);
+        } elseif (isset($record['power']) && is_numeric($record['power'])) {
+            $chargePower = round((float)$record['power'], 2);
         }
 
         // Ladezustand normalisieren
-        $chargingRaw = $record['charging'] ?? null;
+        $chargingRaw = $record['charging'] ?? ($record['chargingState'] ?? ($record['chargeState'] ?? null));
         $chargingState = $this->normalizeChargingState($chargingRaw, $chargePower);
 
         // Steckerstatus
         $plugged = false;
         if (isset($record['plugged'])) {
             $plugged = (bool)$record['plugged'];
+        } elseif (isset($record['isPluggedIn'])) {
+            $plugged = (bool)$record['isPluggedIn'];
         }
         if (str_contains($chargingState, 'CHARGING') && !str_contains($chargingState, 'NOT_READY')) {
             $plugged = true;
         }
 
         // GPS-Koordinaten
-        $latitude = isset($record['latitude']) && is_numeric($record['latitude']) ? (float)$record['latitude'] : null;
-        $longitude = isset($record['longitude']) && is_numeric($record['longitude']) ? (float)$record['longitude'] : null;
+        $latitude = null;
+        if (isset($record['latitude']) && is_numeric($record['latitude'])) {
+            $latitude = (float)$record['latitude'];
+        } elseif (isset($record['lat']) && is_numeric($record['lat'])) {
+            $latitude = (float)$record['lat'];
+        }
+
+        $longitude = null;
+        if (isset($record['longitude']) && is_numeric($record['longitude'])) {
+            $longitude = (float)$record['longitude'];
+        } elseif (isset($record['lng']) && is_numeric($record['lng'])) {
+            $longitude = (float)$record['lng'];
+        } elseif (isset($record['lon']) && is_numeric($record['lon'])) {
+            $longitude = (float)$record['lon'];
+        }
 
         // Erfassungszeitpunkt in UTC
-        $capturedAtUtc = $this->parseTimestampToUtc($record['timestamp'] ?? ($record['lastUpdate'] ?? null));
+        $capturedAtUtc = $this->parseTimestampToUtc($record['timestamp'] ?? ($record['lastUpdate'] ?? ($record['updatedAt'] ?? null)));
 
         // Restladezeit & voraussichtliche Fertigstellung
         $estimatedFinishAt = null;

@@ -147,16 +147,69 @@ class TronityClient
 
     /**
      * Ruft den aktuellsten Telemetrie-Snapshot eines Fahrzeugs ab.
-     * Endpunkt: GET /v1/vehicles/{vehicleId}/last_record
+     * Prüft primär den konsolidierten /bulk Endpunkt der TRONITY API und fällt bei Bedarf
+     * auf die spezialisierten Einzelendpunkte (/battery, /odometer, /location) zurück.
      */
     public function getLastRecord(string $vehicleId): ?array
     {
         $cleanId = urlencode($vehicleId);
-        $response = $this->request('GET', "/v1/vehicles/{$cleanId}/last_record");
-        if (isset($response['data']) && is_array($response['data'])) {
-            return $response['data'];
+
+        // 1. Primär: /bulk abrufen (enthält konsolidierte Snapshot-Daten)
+        try {
+            $response = $this->request('GET', "/v1/vehicles/{$cleanId}/bulk", null, true);
+            $record = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
+            if (!empty($record) && is_array($record)) {
+                return $record;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->info("TRONITY API: /bulk nicht verfügbar ({$e->getMessage()}), teste Einzel-Endpunkte...");
         }
-        return is_array($response) ? $response : null;
+
+        // 2. Einzelne Endpunkte abfragen und zusammenführen (/battery, /odometer, /location)
+        $merged = [];
+        try {
+            $battery = $this->request('GET', "/v1/vehicles/{$cleanId}/battery", null, true);
+            if (is_array($battery)) {
+                $merged = array_merge($merged, $battery['data'] ?? $battery);
+            }
+        } catch (\Throwable) {}
+
+        try {
+            $odometer = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
+            if (is_array($odometer)) {
+                $merged = array_merge($merged, $odometer['data'] ?? $odometer);
+            }
+        } catch (\Throwable) {}
+
+        try {
+            $location = $this->request('GET', "/v1/vehicles/{$cleanId}/location", null, true);
+            if (is_array($location)) {
+                $merged = array_merge($merged, $location['data'] ?? $location);
+            }
+        } catch (\Throwable) {}
+
+        if (!empty($merged)) {
+            return $merged;
+        }
+
+        // 3. Fallback: /last_record
+        try {
+            $response = $this->request('GET', "/v1/vehicles/{$cleanId}/last_record", null, true);
+            $record = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
+            if (!empty($record) && is_array($record)) {
+                return $record;
+            }
+        } catch (\Throwable) {}
+
+        // 4. Fallback: Basis-Fahrzeugdetails
+        try {
+            $veh = $this->request('GET', "/v1/vehicles/{$cleanId}", null, true);
+            if (is_array($veh) && !empty($veh)) {
+                return $veh['data'] ?? $veh;
+            }
+        } catch (\Throwable) {}
+
+        return null;
     }
 
     /**
@@ -184,7 +237,7 @@ class TronityClient
     /**
      * Führt eine autorisierte HTTP-Anfrage an die TRONITY API aus.
      */
-    private function request(string $method, string $path, ?array $body = null): mixed
+    private function request(string $method, string $path, ?array $body = null, bool $silent = false): mixed
     {
         $token = $this->getAccessToken();
         $url = self::BASE_URL . $path;
@@ -215,7 +268,9 @@ class TronityClient
         curl_close($ch);
 
         if ($response === false) {
-            $this->logger->error("TRONITY API: Request fehlgeschlagen für {$path}.", ['error' => $curlError]);
+            if (!$silent) {
+                $this->logger->error("TRONITY API: Request fehlgeschlagen für {$path}.", ['error' => $curlError]);
+            }
             throw new Exception("TRONITY API: Fehler bei Anfrage an {$path}: {$curlError}");
         }
 
@@ -244,9 +299,11 @@ class TronityClient
 
         $data = json_decode($response, true);
         if ($httpCode < 200 || $httpCode >= 300) {
-            $this->logger->error("TRONITY API: Unerwarteter HTTP-Status {$httpCode} für {$path}.", [
-                'response' => substr($response, 0, 300)
-            ]);
+            if (!$silent) {
+                $this->logger->error("TRONITY API: Unerwarteter HTTP-Status {$httpCode} für {$path}.", [
+                    'response' => substr($response, 0, 300)
+                ]);
+            }
             throw new Exception("TRONITY API Fehler ({$httpCode}): " . ($data['message'] ?? 'Unbekannter Fehler'));
         }
 
