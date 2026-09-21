@@ -178,8 +178,25 @@ class TronitySyncService
             $longitude = (float)$record['lon'];
         }
 
-        // Erfassungszeitpunkt in UTC
-        $capturedAtUtc = $this->parseTimestampToUtc($record['timestamp'] ?? ($record['lastUpdate'] ?? ($record['updatedAt'] ?? null)));
+        // 4. Bisherigen Fahrzeugstatus für Differenzprüfung abrufen
+        $dashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
+        $currentState = $dashboardRepo->getLatestState();
+
+        // 5. Erfassungszeitpunkt aus TRONITY-Record ermitteln
+        $rawTimestamp = $this->extractTimestampFromRecord($record);
+        $this->logger->info("TRONITY: Snapshot Details empfangen.", [
+            'raw_timestamp' => $rawTimestamp,
+            'record_keys' => array_keys($record),
+        ]);
+
+        if (!empty($rawTimestamp)) {
+            $capturedAtUtc = $this->parseTimestampToUtc($rawTimestamp);
+        } elseif ($currentState && !empty($currentState['car_captured_at'])) {
+            // Falls TRONITY keinen eigenen Zeitstempel liefert: bisherigen Zeitstempel beibehalten!
+            $capturedAtUtc = (string)$currentState['car_captured_at'];
+        } else {
+            $capturedAtUtc = gmdate('Y-m-d H:i:s');
+        }
 
         // Restladezeit & voraussichtliche Fertigstellung
         $estimatedFinishAt = null;
@@ -202,7 +219,56 @@ class TronitySyncService
             $vin = 'WV2ZZZEBXVH003011'; // Fallback auf bekannten ID.Buzz
         }
 
-        // 4. Payload für TelemetryRepository aufbauen
+        // 6. Prüfen, ob sich relevante Fahrzeugdaten tatsächlich geändert haben
+        $hasMetricsChanged = false;
+        if (!$currentState) {
+            $hasMetricsChanged = true;
+        } else {
+            if ($soc !== null && (int)$currentState['soc_percent'] !== (int)$soc) {
+                $hasMetricsChanged = true;
+            }
+            if ($odometer !== null && (int)$currentState['mileage_km'] !== (int)$odometer) {
+                $hasMetricsChanged = true;
+            }
+            if ($range > 0 && abs((int)$currentState['range_km'] - (int)$range) >= 2) {
+                $hasMetricsChanged = true;
+            }
+            if ($chargingState !== null && $currentState['charging_state'] !== $chargingState) {
+                $hasMetricsChanged = true;
+            }
+            if ($chargePower !== null && abs((float)$currentState['charge_power_kw'] - (float)$chargePower) > 0.2) {
+                $hasMetricsChanged = true;
+            }
+            if ($plugged !== null && (int)$currentState['plug_connected'] !== (int)$plugged) {
+                $hasMetricsChanged = true;
+            }
+            if ($latitude !== null && $currentState['latitude'] !== null && round((float)$currentState['latitude'], 4) !== round((float)$latitude, 4)) {
+                $hasMetricsChanged = true;
+            }
+            if ($longitude !== null && $currentState['longitude'] !== null && round((float)$currentState['longitude'], 4) !== round((float)$longitude, 4)) {
+                $hasMetricsChanged = true;
+            }
+        }
+
+        // Zeitstempel-Differenz prüfen
+        $hasNewTimestamp = false;
+        if ($currentState && !empty($currentState['car_captured_at'])) {
+            $currentTs = strtotime((string)$currentState['car_captured_at']);
+            $newTs = strtotime($capturedAtUtc);
+            if ($newTs > $currentTs) {
+                $hasNewTimestamp = true;
+            }
+        }
+
+        // Wenn sich die Messwerte NICHT geändert haben, bleibt auch der Fahrzeug-Erfassungszeitpunkt beim alten Stand!
+        if (!$hasMetricsChanged && $currentState && !empty($currentState['car_captured_at'])) {
+            $capturedAtUtc = (string)$currentState['car_captured_at'];
+        }
+
+        // Neuer Verlaufs-Eintrag nur, wenn sich die Messwerte wirklich geändert haben (oder neuer Zeitstempel mit geänderten Daten)
+        $isNewData = $hasMetricsChanged;
+
+        // 7. Payload für TelemetryRepository aufbauen
         $payload = [
             'vin' => $vin,
             'captured_at' => $capturedAtUtc,
@@ -232,23 +298,11 @@ class TronitySyncService
             ]
         ];
 
-        // 5. In Datenbank speichern
-        $dashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
-        $currentState = $dashboardRepo->getLatestState();
-        $isNewData = true;
-
-        if ($currentState && !empty($currentState['car_captured_at'])) {
-            $currentTs = strtotime((string)$currentState['car_captured_at']);
-            $newTs = strtotime($capturedAtUtc);
-            if ($newTs <= $currentTs) {
-                $isNewData = false;
-            }
-        }
-
-        // Live-State aktualisieren
+        // 8. In Datenbank speichern
+        // Live-State wird berührt (aktualisiert updated_at für Letzter-Kontakt)
         $this->telemetryRepo->saveState($payload);
 
-        // Verlaufs-Log wird NUR bei tatsächlich neuem Fahrzeug-Zeitstempel geschrieben
+        // Verlaufs-Log wird NUR bei tatsächlich geänderten Fahrzeugwerten geschrieben!
         if ($isNewData && $soc !== null && $soc > 0) {
             $this->telemetryRepo->saveLog($payload);
         }
@@ -263,7 +317,7 @@ class TronitySyncService
                 'captured_at' => $capturedAtUtc,
             ]);
         } else {
-            $this->logger->info("TRONITY: Datenstand ist unverändert ({$capturedAtUtc}), Historien-Log übersprungen.");
+            $this->logger->info("TRONITY: Fahrzeugdaten sind unverändert ({$capturedAtUtc}), Historien-Log übersprungen.");
         }
 
         return [
@@ -307,6 +361,38 @@ class TronitySyncService
         }
 
         return 'CHARGE_STATE_NOT_READY_FOR_CHARGING';
+    }
+
+    /**
+     * Sucht rekursiv nach Zeitstempel-Feldern im gelieferten TRONITY-Record.
+     */
+    private function extractTimestampFromRecord(array $record): mixed
+    {
+        $candidateKeys = [
+            'timestamp', 'lastUpdate', 'last_update', 'updatedAt', 'updated_at',
+            'car_captured_time', 'car_captured_at', 'time', 'date', 'lastRecord',
+            'last_record', 'recordDate', 'record_date'
+        ];
+
+        // 1. Direkt auf oberster Ebene
+        foreach ($candidateKeys as $key) {
+            if (!empty($record[$key])) {
+                return $record[$key];
+            }
+        }
+
+        // 2. In verschachtelten Objekten (z. B. battery, odometer, location, data)
+        foreach (['battery', 'odometer', 'location', 'data', 'record'] as $sub) {
+            if (isset($record[$sub]) && is_array($record[$sub])) {
+                foreach ($candidateKeys as $key) {
+                    if (!empty($record[$sub][$key])) {
+                        return $record[$sub][$key];
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
