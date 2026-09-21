@@ -284,6 +284,7 @@ a:hover {
     font-weight: 700;
     color: var(--accent);
     line-height: 1.1;
+    white-space: nowrap;
 }
 
 /* Universelles Dashboard Tile-Grid */
@@ -1222,6 +1223,7 @@ tr.is-today-row {
 
 .kpi-value-sm {
     font-size: 1.4rem;
+    white-space: nowrap;
 }
 
 .kpi-note {
