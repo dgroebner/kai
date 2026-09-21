@@ -227,6 +227,7 @@ Jeder Endpunkt in `public/` verwendet ausschließlich die Guards der Klasse
 | `Auth::requireCronToken()` | Schützt Cronjob-Endpunkte über `CRON_TOKEN` (zeitkonstant, `hash_equals`) |
 | `Auth::cronTokenMatches(false)` | Token-Prüfung ohne Query-Parameter (nur Header) für Maschinen-APIs |
 | `Auth::assistantTokenMatches()` | Token-Prüfung über Bearer-Token oder X-API-Key für Smart Home / Assistant APIs (ASSISTANT_API_KEY / CRON_TOKEN) |
+| `Auth::tronityWebhookTokenMatches()` | Token-Prüfung für TRONITY Webhooks über URL-Query, Header oder Secret (TRONITY_WEBHOOK_SECRET / CRON_TOKEN) |
 | `Auth::sendJsonError($status, $msg)` | Beendet den Request mit generischer JSON-Fehlerantwort |
 
 **Neue Shared-Klassen anlegen,** wenn dieselbe Infrastruktur von mehr als einer Domain

@@ -41,9 +41,10 @@ class TronitySyncService
      * Führt eine Synchronisation des aktuellen Fahrzeugstatus durch.
      *
      * @param string|null $targetVehicleId Optionale TRONITY Vehicle ID (sonst aus ENV oder erstem Auto)
+     * @param array|null $incomingPayload Optionaler Payload aus einem TRONITY Webhook
      * @return array Ergebnis-Metadaten für API-Antwort oder Logs
      */
-    public function sync(?string $targetVehicleId = null): array
+    public function sync(?string $targetVehicleId = null, ?array $incomingPayload = null): array
     {
         if (!$this->isConfigured()) {
             throw new Exception("TRONITY ist nicht konfiguriert. Bitte TRONITY_CLIENT_ID und TRONITY_CLIENT_SECRET in der .env pflegen.");
@@ -52,6 +53,13 @@ class TronitySyncService
         // 1. Vehicle ID ermitteln
         $vehicleId = $targetVehicleId ?? ($_ENV['TRONITY_VEHICLE_ID'] ?? '');
         $vin = $_ENV['CAR_VIN'] ?? '';
+
+        if (empty($vehicleId) && !empty($incomingPayload)) {
+            $vehicleId = (string)($incomingPayload['vehicleId'] ?? $incomingPayload['vehicle_id'] ?? '');
+            if (empty($vin) && !empty($incomingPayload['vin'])) {
+                $vin = (string)$incomingPayload['vin'];
+            }
+        }
 
         if (empty($vehicleId)) {
             $vehicles = $this->client->getVehicles();
@@ -83,8 +91,21 @@ class TronitySyncService
             throw new Exception("TRONITY: Konnte keine gültige Fahrzeug-ID ermitteln.");
         }
 
-        // 2. Aktuellsten Telemetrie-Snapshot abrufen
-        $record = $this->client->getLastRecord($vehicleId);
+        // 2. Aktuellsten Telemetrie-Snapshot abrufen oder aus Payload entnehmen
+        $record = null;
+        if (!empty($incomingPayload)) {
+            if (isset($incomingPayload['level']) || isset($incomingPayload['odometer'])) {
+                $record = $incomingPayload;
+            } elseif (isset($incomingPayload['data']) && is_array($incomingPayload['data']) && (isset($incomingPayload['data']['level']) || isset($incomingPayload['data']['odometer']))) {
+                $record = $incomingPayload['data'];
+            }
+        }
+
+        // Falls kein vollständiger Record im Payload enthalten war (z. B. Event-Trigger), via API abrufen
+        if (empty($record) || !is_array($record)) {
+            $record = $this->client->getLastRecord($vehicleId);
+        }
+
         if (empty($record) || !is_array($record)) {
             throw new Exception("TRONITY: Kein aktueller Telemetrie-Datensatz für Fahrzeug '{$vehicleId}' gefunden.");
         }

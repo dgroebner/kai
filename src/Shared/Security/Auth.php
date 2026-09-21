@@ -266,6 +266,50 @@ final class Auth
     }
 
     /**
+     * Prüft zeitkonstant, ob der übermittelte Token für TRONITY Webhooks gültig ist.
+     * Prüft gegen TRONITY_WEBHOOK_SECRET mit Fallback auf CRON_TOKEN.
+     */
+    public static function tronityWebhookTokenMatches(?string $payloadToken = null): bool
+    {
+        $expected = (string)($_ENV['TRONITY_WEBHOOK_SECRET'] ?? $_ENV['CRON_TOKEN'] ?? '');
+        $received = self::extractCronToken(true, $payloadToken);
+
+        return $expected !== '' && $received !== null && hash_equals($expected, $received);
+    }
+
+    /**
+     * Prüft die HMAC-SHA256 Signatur eines Webhooks gegen TRONITY_WEBHOOK_SECRET.
+     */
+    public static function verifyTronitySignature(string $rawPayload): bool
+    {
+        $secret = (string)($_ENV['TRONITY_WEBHOOK_SECRET'] ?? '');
+        if ($secret === '' || $rawPayload === '') {
+            return false;
+        }
+
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $sigHeader = $_SERVER['HTTP_X_TRONITY_SIGNATURE']
+            ?? $_SERVER['HTTP_X_SIGNATURE']
+            ?? $_SERVER['HTTP_X_HUB_SIGNATURE']
+            ?? $headers['X-Tronity-Signature']
+            ?? $headers['x-tronity-signature']
+            ?? $headers['X-Signature']
+            ?? $headers['x-signature']
+            ?? null;
+
+        if (!$sigHeader || !is_string($sigHeader)) {
+            return false;
+        }
+
+        if (str_starts_with($sigHeader, 'sha256=')) {
+            $sigHeader = substr($sigHeader, 7);
+        }
+
+        $expectedSig = hash_hmac('sha256', $rawPayload, $secret);
+        return hash_equals($expectedSig, $sigHeader);
+    }
+
+    /**
      * Liest den Cron-Token aus Query-String oder den gängigen Auth-Headern aus.
      */
     private static function extractCronToken(bool $allowQueryParam = true, ?string $payloadToken = null): ?string
