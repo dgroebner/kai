@@ -233,23 +233,42 @@ class TronitySyncService
         ];
 
         // 5. In Datenbank speichern
+        $dashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
+        $currentState = $dashboardRepo->getLatestState();
+        $isNewData = true;
+
+        if ($currentState && !empty($currentState['car_captured_at'])) {
+            $currentTs = strtotime((string)$currentState['car_captured_at']);
+            $newTs = strtotime($capturedAtUtc);
+            if ($newTs <= $currentTs) {
+                $isNewData = false;
+            }
+        }
+
+        // Live-State aktualisieren
         $this->telemetryRepo->saveState($payload);
 
-        if ($soc !== null && $soc > 0) {
+        // Verlaufs-Log wird NUR bei tatsächlich neuem Fahrzeug-Zeitstempel geschrieben
+        if ($isNewData && $soc !== null && $soc > 0) {
             $this->telemetryRepo->saveLog($payload);
         }
 
-        $this->logger->info("TRONITY: Telemetriedaten erfolgreich synchronisiert.", [
-            'vin' => $vin,
-            'soc' => $soc,
-            'range_km' => $range,
-            'charging_state' => $chargingState,
-            'charge_power_kw' => $chargePower,
-            'captured_at' => $capturedAtUtc,
-        ]);
+        if ($isNewData) {
+            $this->logger->info("TRONITY: Neue Telemetriedaten erfolgreich gespeichert.", [
+                'vin' => $vin,
+                'soc' => $soc,
+                'range_km' => $range,
+                'charging_state' => $chargingState,
+                'charge_power_kw' => $chargePower,
+                'captured_at' => $capturedAtUtc,
+            ]);
+        } else {
+            $this->logger->info("TRONITY: Datenstand ist unverändert ({$capturedAtUtc}), Historien-Log übersprungen.");
+        }
 
         return [
             'success' => true,
+            'is_new' => $isNewData,
             'vin' => $vin,
             'soc' => $soc,
             'range_km' => $range,

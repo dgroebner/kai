@@ -28,9 +28,13 @@ try {
 
     $result = $service->sync();
 
+    $msg = !empty($result['is_new'])
+        ? 'Fahrzeugdaten erfolgreich über TRONITY synchronisiert.'
+        : 'Fahrzeugdaten sind unverändert (Stand: ' . ($result['captured_at'] ?? '–') . ').';
+
     echo json_encode([
         'success' => true,
-        'message' => 'Fahrzeugdaten erfolgreich über TRONITY synchronisiert.',
+        'message' => $msg,
         'data' => $result,
     ]);
 } catch (Throwable $e) {
