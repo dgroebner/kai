@@ -92,7 +92,7 @@ class TronityClient
         }
 
         $data = json_decode($response, true);
-        if ($httpCode !== 200 || empty($data['access_token'])) {
+        if ($httpCode < 200 || $httpCode >= 300 || empty($data['access_token'])) {
             $msg = $data['message'] ?? ($data['error'] ?? "HTTP {$httpCode}");
             $this->logger->error("TRONITY API: Authentifizierung fehlgeschlagen.", [
                 'http_code' => $httpCode,
@@ -102,8 +102,27 @@ class TronityClient
         }
 
         $this->cachedToken = (string)$data['access_token'];
-        $expiresIn = (int)($data['expires_in'] ?? 3600);
-        $this->tokenExpiresAt = $now + $expiresIn;
+
+        // expiresIn kann ein Integer (Sekunden) oder ein String wie "1h", "60m" sein
+        $rawExpires = $data['expiresIn'] ?? ($data['expires_in'] ?? 3600);
+        $expiresIn = 3600;
+        if (is_numeric($rawExpires)) {
+            $expiresIn = (int)$rawExpires;
+        } elseif (is_string($rawExpires)) {
+            $rawTrimmed = trim($rawExpires);
+            if (preg_match('/^(\d+)\s*h$/i', $rawTrimmed, $m)) {
+                $expiresIn = (int)$m[1] * 3600;
+            } elseif (preg_match('/^(\d+)\s*m$/i', $rawTrimmed, $m)) {
+                $expiresIn = (int)$m[1] * 60;
+            } elseif (preg_match('/^(\d+)\s*d$/i', $rawTrimmed, $m)) {
+                $expiresIn = (int)$m[1] * 86400;
+            } elseif (is_numeric($rawTrimmed)) {
+                $expiresIn = (int)$rawTrimmed;
+            }
+        }
+
+        // Puffer von 60s abziehen, damit der Token vor tatsächlichem Ablauf erneuert wird
+        $this->tokenExpiresAt = $now + max(60, $expiresIn - 60);
 
         // In transienten File-Cache schreiben
         @file_put_contents($cacheFile, json_encode([
@@ -120,6 +139,9 @@ class TronityClient
     public function getVehicles(): array
     {
         $response = $this->request('GET', '/v1/vehicles');
+        if (isset($response['data']) && is_array($response['data'])) {
+            return $response['data'];
+        }
         return is_array($response) ? $response : [];
     }
 
@@ -131,6 +153,9 @@ class TronityClient
     {
         $cleanId = urlencode($vehicleId);
         $response = $this->request('GET', "/v1/vehicles/{$cleanId}/last_record");
+        if (isset($response['data']) && is_array($response['data'])) {
+            return $response['data'];
+        }
         return is_array($response) ? $response : null;
     }
 
