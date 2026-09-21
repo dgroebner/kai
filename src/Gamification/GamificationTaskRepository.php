@@ -204,9 +204,8 @@ class GamificationTaskRepository
         $pdo = $this->db->getConnection();
         $pdo->beginTransaction();
         try {
-            // Abhängige Zeilen vorher entfernen
+            // Abhängige Helfer-Einträge vorher entfernen
             $pdo->prepare("DELETE FROM gamification_task_helpers WHERE task_id = :id")->execute([':id' => $taskId]);
-            $pdo->prepare("DELETE FROM gamification_cooking_recipes WHERE task_id = :id")->execute([':id' => $taskId]);
             $stmt = $pdo->prepare("DELETE FROM gamification_tasks WHERE id = :id");
             $stmt->execute([':id' => $taskId]);
             $pdo->commit();
