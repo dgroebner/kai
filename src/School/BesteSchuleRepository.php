@@ -90,8 +90,40 @@ class BesteSchuleRepository
         $pdo = $this->db->getConnection();
         $noteData['description'] = self::formatNoteDescription($noteData['description'] ?? '');
 
-        // Prüfen, ob für dasselbe Kind am selben Tag im selben Fach bereits exakt dieselbe Notiz existiert (z. B. bei Doppelstunden)
-        $checkStmt = $pdo->prepare("
+        // 1. Prüfen, ob für diese api_note_id bei diesem Kind bereits ein Eintrag existiert
+        $stmtCheckApi = $pdo->prepare("
+            SELECT id FROM school_beste_notes 
+            WHERE student_id = :student_id AND api_note_id = :api_note_id 
+            LIMIT 1
+        ");
+        $stmtCheckApi->execute([
+            ':student_id' => $noteData['student_id'],
+            ':api_note_id' => $noteData['api_note_id'],
+        ]);
+        $existingApiId = $stmtCheckApi->fetchColumn();
+
+        if ($existingApiId) {
+            // Bereits vorhanden -> Felder aktualisieren (ohne api_note_id anzutasten), kein Duplikat/Neu-Event
+            $updateStmt = $pdo->prepare("
+                UPDATE school_beste_notes 
+                SET lesson_date = :lesson_date,
+                    subject = :subject,
+                    type_name = :type_name,
+                    description = :description
+                WHERE id = :id
+            ");
+            $updateStmt->execute([
+                ':lesson_date' => $noteData['lesson_date'],
+                ':subject' => $noteData['subject'],
+                ':type_name' => $noteData['type_name'],
+                ':description' => $noteData['description'],
+                ':id' => $existingApiId,
+            ]);
+            return false;
+        }
+
+        // 2. Prüfen, ob für dasselbe Kind am selben Tag im selben Fach bereits exakt dieselbe Notiz existiert (z. B. bei Doppelstunden mit abweichender api_note_id)
+        $checkDuplicateContent = $pdo->prepare("
             SELECT id FROM school_beste_notes 
             WHERE student_id = :student_id 
               AND lesson_date = :lesson_date 
@@ -99,30 +131,18 @@ class BesteSchuleRepository
               AND description = :description
             LIMIT 1
         ");
-        $checkStmt->execute([
+        $checkDuplicateContent->execute([
             ':student_id' => $noteData['student_id'],
             ':lesson_date' => $noteData['lesson_date'],
             ':subject' => $noteData['subject'],
             ':description' => $noteData['description'],
         ]);
-        $existingId = $checkStmt->fetchColumn();
-
-        if ($existingId) {
-            // Bereits vorhanden -> nur Typ und API-Note-ID aktualisieren, kein Duplikat anlegen
-            $updateStmt = $pdo->prepare("
-                UPDATE school_beste_notes 
-                SET type_name = :type_name,
-                    api_note_id = :api_note_id
-                WHERE id = :id
-            ");
-            $updateStmt->execute([
-                ':type_name' => $noteData['type_name'],
-                ':api_note_id' => $noteData['api_note_id'],
-                ':id' => $existingId
-            ]);
+        if ($checkDuplicateContent->fetchColumn()) {
+            // Inhaltlich identischer Eintrag existiert bereits -> überspringen, kein Duplikat anlegen
             return false;
         }
 
+        // 3. Neu anlegen (mit ON DUPLICATE KEY UPDATE zur ultimativen Absicherung)
         $stmt = $pdo->prepare("
             INSERT INTO school_beste_notes (student_id, lesson_date, subject, type_name, description, api_note_id, created_at)
             VALUES (:student_id, :lesson_date, :subject, :type_name, :description, :api_note_id, NOW())

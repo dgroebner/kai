@@ -128,6 +128,7 @@ class BesteSchuleSyncService
             }
             
             // 4. Hausaufgaben (Notes) für die nächsten 14 Tage abrufen
+            $this->repo->deleteDuplicateNotes();
             $fromDate = date('Y-m-d');
             $toDate = date('Y-m-d', strtotime('+14 days'));
             $lessonsWithNotes = $this->client->getUpcomingLessonsWithNotes($bsId, $fromDate, $toDate);
