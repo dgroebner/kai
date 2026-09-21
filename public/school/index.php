@@ -370,10 +370,19 @@ $nextLabel = ($nextSchoolDay === $today)
                                 <strong><?= htmlspecialchars($st['name'] ?? 'Kind', ENT_QUOTES, 'UTF-8') ?></strong>
                                 <span class="badge badge-outline">Kl. <?= htmlspecialchars($sched['class_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
                             </div>
-                            <?php if ($sched['has_plan'] && $sched['end_time']): ?>
-                                <span class="school-hero-time-pill">
-                                    Schluss: <strong><?= htmlspecialchars($sched['end_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</strong>
-                                </span>
+                            <?php if ($sched['has_plan'] && ($sched['start_time'] || $sched['end_time'])): ?>
+                                <div class="school-hero-times">
+                                    <?php if ($sched['start_time']): ?>
+                                        <span class="school-hero-time-pill">
+                                            Start: <strong><?= htmlspecialchars($sched['start_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</strong>
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($sched['end_time']): ?>
+                                        <span class="school-hero-time-pill">
+                                            Schluss: <strong><?= htmlspecialchars($sched['end_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</strong>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                             <?php endif; ?>
                         </div>
 
