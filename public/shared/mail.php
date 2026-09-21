@@ -107,6 +107,17 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Gamification-Abgleich.", ['error' => $ge->getMessage()]);
     }
 
+    // 7. Fahrzeug-Telemetrie via TRONITY abgleichen (falls konfiguriert)
+    try {
+        $tronitySync = new \Kai\Tools\Car\Tronity\TronitySyncService(logger: $logger);
+        if ($tronitySync->isConfigured()) {
+            $syncRes = $tronitySync->sync();
+            $logger->info("Cronjob (mail.php): TRONITY-Fahrzeugdaten abgeglichen.", ['result' => $syncRes]);
+        }
+    } catch (Throwable $te) {
+        $logger->warn("Cronjob (mail.php): Fehler beim TRONITY-Telemetrieabgleich.", ['error' => $te->getMessage()]);
+    }
+
 } catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [
         'error' => $e->getMessage()

@@ -194,6 +194,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
                 <?php if ($state): ?>
                     <span class="last-update">Fahrzeugdaten von: <?= formatToLocalTime($state['car_captured_at']) ?> Uhr</span>
                 <?php endif; ?>
+                <button type="button" id="btn-tronity-sync" class="btn btn-outline" title="Live-Daten über TRONITY abrufen">🔄 Aktualisieren</button>
                 <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
             </div>
         </div>
@@ -208,7 +209,7 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
             <div class="no-data">
                 Noch keine Telemetriedaten vorhanden.<br>
                 <small>Der erste Datenpunkt erscheint nach dem ersten erfolgreichen API-Call an
-                    <code>/car/telemetry</code>.</small>
+                    <code>/car/telemetry</code> oder Klick auf <strong>„Aktualisieren“</strong>.</small>
             </div>
         <?php else:
             $charging = chargingLabel($state['charging_state']);
@@ -238,6 +239,17 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
 						</span>
                         </div>
                     </div>
+                    <?php if (!empty($state['latitude']) && !empty($state['longitude'])): ?>
+                        <div class="car-info-item">
+                            <span class="info-label">Standort</span>
+                            <div>
+                                <a href="https://www.openstreetmap.org/?mlat=<?= urlencode((string)$state['latitude']) ?>&mlon=<?= urlencode((string)$state['longitude']) ?>#map=16/<?= urlencode((string)$state['latitude']) ?>/<?= urlencode((string)$state['longitude']) ?>"
+                                   target="_blank" rel="noopener noreferrer" class="status-pill status-pill-location">
+                                    📍 Auf Karte anzeigen
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

@@ -164,6 +164,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
 | `public/shared/mail.php` | `School\*` | Führt im asynchronen Cronjob den stündlichen Abgleich der Vertretungspläne mit aus. |
 | `public/shared/mail.php` | `Gamification\*` | Führt im asynchronen Cronjob den stündlichen Abgleich überfälliger Aufgaben und Generierung anstehender Tagesaufgaben durch. |
+| `public/shared/mail.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY durch. |
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
 Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen);
@@ -362,6 +363,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | beste.schule (Beste Schule API) | Abruf von Noten, Hausaufgaben und Fehlzeiten | OAuth Personal Access Token (Lesezugriff) |
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten (falls konfiguriert) |
 | Push-Dienst des Browsers (FCM/APNs) | Web-Push-Benachrichtigungen (via VAPID/RFC 8292) | Endpoint-URL der Subscription; kein Nachrichteninhalt – dieser wird Ende-zu-Ende verschlüsselt übermittelt |
+| TRONITY Platform API | Abruf von Fahrzeug-Telemetriedaten (Ladezustand, Reichweite, GPS-Position) | OAuth Client Credentials zur Autorisierung; Empfang von Fahrzeugdaten der verknüpften VIN |
 
 > **Neue Drittanbieter** müssen in dieser Tabelle dokumentiert werden, bevor sie
 > in den Code integriert werden.

@@ -7,3 +7,9 @@ ALTER TABLE `gamification_profiles` ADD COLUMN `streak_shields` INT UNSIGNED NOT
 ALTER TABLE `gamification_profiles` ADD COLUMN `streak_freeze_until` DATE NULL AFTER `streak_shields`;
 ALTER TABLE `gamification_profiles` ADD COLUMN `streak_freeze_reason` VARCHAR(100) NULL AFTER `streak_freeze_until`;
 
+-- Migration: TRONITY Telemetrie GPS-Koordinaten
+ALTER TABLE `vehicle_state` ADD COLUMN `latitude` DECIMAL(10, 7) NULL AFTER `outdoor_temp_c`;
+ALTER TABLE `vehicle_state` ADD COLUMN `longitude` DECIMAL(10, 7) NULL AFTER `latitude`;
+ALTER TABLE `vehicle_telemetry_log` ADD COLUMN `latitude` DECIMAL(10, 7) NULL AFTER `outdoor_temp_c`;
+ALTER TABLE `vehicle_telemetry_log` ADD COLUMN `longitude` DECIMAL(10, 7) NULL AFTER `latitude`;
+

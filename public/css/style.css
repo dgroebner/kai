@@ -1205,6 +1205,16 @@ tr.is-today-row {
     --pill-color: var(--color-red);
 }
 
+.status-pill-location {
+    --pill-color: var(--accent, #3b82f6);
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.status-pill-location:hover {
+    opacity: 0.85;
+}
+
 /* Farbige KPI-Werte / Zusatzzeilen — Farbe dynamisch über --value-color */
 .kpi-value-colored {
     color: var(--value-color, var(--text-main));

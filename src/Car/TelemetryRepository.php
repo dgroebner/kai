@@ -45,9 +45,12 @@ class TelemetryRepository
             $mileageKm = isset($data['status']['mileage_km']) ? (int)$data['status']['mileage_km'] : null;
             $outdoorTempC = isset($data['status']['outdoor_temp_c']) ? (float)$data['status']['outdoor_temp_c'] : null;
 
-            // Reichweite wird bei automatischen Telemetrie-Updates nicht erfasst/geschätzt,
-            // sondern ausschließlich manuell durch den Benutzer im Dashboard gepflegt.
-            $rangeKm = 0;
+            $latitude = isset($data['status']['latitude']) && is_numeric($data['status']['latitude']) ? (float)$data['status']['latitude'] : null;
+            $longitude = isset($data['status']['longitude']) && is_numeric($data['status']['longitude']) ? (float)$data['status']['longitude'] : null;
+
+            // Reale Reichweite (z. B. aus TRONITY) übernehmen, falls vorhanden (> 0)
+            $incomingRange = isset($data['status']['range_km']) ? (int)$data['status']['range_km'] : 0;
+            $rangeKm = $incomingRange > 0 ? $incomingRange : 0;
 
             // Vorhandenen State für diesen VIN abrufen
             $stmtCurrent = $this->dbCon->prepare("SELECT * FROM vehicle_state WHERE vin = :vin");
@@ -74,6 +77,13 @@ class TelemetryRepository
             $finalMileage = ($mileageKm !== null && $mileageKm > 0) ? $mileageKm : ($currentState ? (int)$currentState['mileage_km'] : 0);
             $finalOutdoorTemp = $outdoorTempC ?? ($currentState ? (float)$currentState['outdoor_temp_c'] : 0.0);
             $finalEstimatedFinish = $estimatedFinishAt ?? ($currentState ? $currentState['estimated_finish_at'] : null);
+            $finalLat = $latitude ?? ($currentState ? ($currentState['latitude'] ?? null) : null);
+            $finalLon = $longitude ?? ($currentState ? ($currentState['longitude'] ?? null) : null);
+
+            $hasLoc = $this->hasLocationColumns('vehicle_state');
+            $locColSql = $hasLoc ? ", `latitude`, `longitude`" : "";
+            $locValSql = $hasLoc ? ", :latitude, :longitude" : "";
+            $locUpdSql = $hasLoc ? ", `latitude` = VALUES(`latitude`), `longitude` = VALUES(`longitude`)" : "";
 
             $stmtState = $this->dbCon->prepare("
 					INSERT INTO `vehicle_state` (
@@ -89,7 +99,7 @@ class TelemetryRepository
 						`is_locked`, 
 						`mileage_km`, 
 						`range_km`, 
-						`outdoor_temp_c`, 
+						`outdoor_temp_c`{$locColSql}, 
 						`estimated_finish_at`
 					) VALUES (
 						:vin, 
@@ -104,7 +114,7 @@ class TelemetryRepository
 						:is_locked, 
 						:mileage_km, 
 						:range_km, 
-						:outdoor_temp_c, 
+						:outdoor_temp_c{$locValSql}, 
 						:estimated_finish_at
 					) ON DUPLICATE KEY UPDATE
 						`car_captured_at`     = VALUES(`car_captured_at`),
@@ -117,14 +127,13 @@ class TelemetryRepository
 						`plug_connected`      = VALUES(`plug_connected`),
 						`is_locked`           = VALUES(`is_locked`),
 						`mileage_km`          = VALUES(`mileage_km`),
-						`range_km`            = CASE WHEN VALUES(`car_captured_at`) != `car_captured_at` THEN 0 ELSE `range_km` END,
-						`outdoor_temp_c`      = VALUES(`outdoor_temp_c`),
+						`range_km`            = CASE WHEN VALUES(`range_km`) > 0 THEN VALUES(`range_km`) WHEN VALUES(`car_captured_at`) != `car_captured_at` THEN 0 ELSE `range_km` END,
+						`outdoor_temp_c`      = VALUES(`outdoor_temp_c`){$locUpdSql},
 						`estimated_finish_at` = VALUES(`estimated_finish_at`),
 						`updated_at`          = CURRENT_TIMESTAMP
 				");
 
-            // Exakt 14 Parameter für 14 eindeutige Slots im Prepared Statement
-            $stmtState->execute([
+            $params = [
                 ':vin' => $vin,
                 ':car_captured_at' => $carCapturedAt,
                 ':soc_percent' => $finalSoc,
@@ -139,7 +148,13 @@ class TelemetryRepository
                 ':range_km' => $rangeKm,
                 ':outdoor_temp_c' => $finalOutdoorTemp,
                 ':estimated_finish_at' => $finalEstimatedFinish,
-            ]);
+            ];
+            if ($hasLoc) {
+                $params[':latitude'] = $finalLat;
+                $params[':longitude'] = $finalLon;
+            }
+
+            $stmtState->execute($params);
 
             return true;
         } catch (Exception $e) {
@@ -173,14 +188,23 @@ class TelemetryRepository
                 ? (int)$data['status']['mileage_km']
                 : (int)($currentState['mileage_km'] ?? 0);
 
-            // Reichweite wird bei automatischen Telemetrie-Updates nicht erfasst (wird manuell gepflegt)
-            $rangeKm = 0;
+            // Reale Reichweite (z. B. aus TRONITY) übernehmen, sonst vorhandener Wert aus dem State
+            $incomingRange = isset($data['status']['range_km']) ? (int)$data['status']['range_km'] : 0;
+            $rangeKm = $incomingRange > 0 ? $incomingRange : (int)($currentState['range_km'] ?? 0);
 
             $outdoorTempC = isset($data['status']['outdoor_temp_c'])
                 ? (float)$data['status']['outdoor_temp_c']
                 : (float)($currentState['outdoor_temp_c'] ?? 0.0);
 
+            $latitude = isset($data['status']['latitude']) && is_numeric($data['status']['latitude']) ? (float)$data['status']['latitude'] : null;
+            $longitude = isset($data['status']['longitude']) && is_numeric($data['status']['longitude']) ? (float)$data['status']['longitude'] : null;
+
             $rawPayload = json_encode($data);
+
+            $hasLoc = $this->hasLocationColumns('vehicle_telemetry_log');
+            $locColSql = $hasLoc ? ", `latitude`, `longitude`" : "";
+            $locValSql = $hasLoc ? ", :latitude, :longitude" : "";
+            $locUpdSql = $hasLoc ? ", `latitude` = VALUES(`latitude`), `longitude` = VALUES(`longitude`)" : "";
 
             $stmtLog = $this->dbCon->prepare("
                 INSERT INTO `vehicle_telemetry_log` (
@@ -190,7 +214,7 @@ class TelemetryRepository
                     `charge_power_kw`, 
                     `range_km`, 
                     `mileage_km`, 
-                    `outdoor_temp_c`, 
+                    `outdoor_temp_c`{$locColSql}, 
                     `raw_payload`
                 ) VALUES (
                     :vin, 
@@ -199,17 +223,18 @@ class TelemetryRepository
                     :charge_power_kw, 
                     :range_km, 
                     :mileage_km, 
-                    :outdoor_temp_c, 
+                    :outdoor_temp_c{$locValSql}, 
                     :raw_payload
                 ) ON DUPLICATE KEY UPDATE
                     `soc_percent`     = VALUES(`soc_percent`),
                     `charge_power_kw` = VALUES(`charge_power_kw`),
+                    `range_km`        = IF(VALUES(`range_km`) > 0, VALUES(`range_km`), `range_km`),
                     `mileage_km`      = IF(VALUES(`mileage_km`) > 0, VALUES(`mileage_km`), `mileage_km`),
-                    `outdoor_temp_c`  = VALUES(`outdoor_temp_c`),
+                    `outdoor_temp_c`  = VALUES(`outdoor_temp_c`){$locUpdSql},
                     `raw_payload`     = VALUES(`raw_payload`)
             ");
 
-            $stmtLog->execute([
+            $params = [
                 ':vin' => $vin,
                 ':car_captured_at' => $carCapturedAt,
                 ':soc_percent' => $socPercent,
@@ -218,7 +243,13 @@ class TelemetryRepository
                 ':mileage_km' => $mileageKm,
                 ':outdoor_temp_c' => $outdoorTempC,
                 ':raw_payload' => $rawPayload
-            ]);
+            ];
+            if ($hasLoc) {
+                $params[':latitude'] = $latitude;
+                $params[':longitude'] = $longitude;
+            }
+
+            $stmtLog->execute($params);
 
             $affectedRows = $stmtLog->rowCount();
             if ($affectedRows === 1) {
@@ -232,6 +263,21 @@ class TelemetryRepository
             $this->logger->error("TelemetryRepository: Fehler bei saveLog.", ['error' => $e->getMessage()]);
             throw $e;
         }
+    }
+
+    private function hasLocationColumns(string $table): bool
+    {
+        static $hasCol = [];
+        if (isset($hasCol[$table])) {
+            return $hasCol[$table];
+        }
+        try {
+            $stmt = $this->dbCon->query("SHOW COLUMNS FROM `{$table}` LIKE 'latitude'");
+            $hasCol[$table] = (bool)$stmt->fetch();
+        } catch (\Throwable) {
+            $hasCol[$table] = false;
+        }
+        return $hasCol[$table];
     }
 
     /**

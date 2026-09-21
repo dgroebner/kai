@@ -80,4 +80,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // =========================================================
+    // 3. TRONITY Sofort-Synchronisation (AJAX)
+    // =========================================================
+    const syncBtn = document.getElementById('btn-tronity-sync');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', async () => {
+            syncBtn.disabled = true;
+            const originalHtml = syncBtn.innerHTML;
+            syncBtn.innerHTML = '🔄 Synchronisiere...';
+
+            try {
+                const res = await KaiHttp.postJson('sync.php', {});
+                if (res.success) {
+                    syncBtn.innerHTML = '✅ Aktualisiert!';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                } else {
+                    alert('Synchronisation fehlgeschlagen: ' + (res.message || 'Unbekannter Fehler'));
+                    syncBtn.disabled = false;
+                    syncBtn.innerHTML = originalHtml;
+                }
+            } catch (err) {
+                alert('Netzwerkfehler bei der Synchronisation mit TRONITY.');
+                syncBtn.disabled = false;
+                syncBtn.innerHTML = originalHtml;
+            }
+        });
+    }
 });
