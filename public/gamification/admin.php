@@ -55,7 +55,6 @@ $metricTypeMap = [
     'category_count'     => 'Aufgaben einer Kategorie',
     'streak_days'        => 'Zuverlässigkeits-Serie (Tage)',
     'initiative_count'   => 'Spontane Hilfen / Initiativen',
-    'cooking_rating_avg' => 'Koch-Sterne im Schnitt',
     'xp_total'           => 'Gesamte Erfahrungspunkte (XP)',
 ];
 ?>
@@ -279,7 +278,6 @@ $metricTypeMap = [
                     <option value="tiere">Tiere & Fütterung</option>
                     <option value="zimmer">Zimmer & Ordnung</option>
                     <option value="garten">Garten</option>
-                    <option value="kochen">Kochen & Mahlzeiten</option>
                 </select>
                 <select id="filter-tmpl-assigned" class="form-control form-control--sm" title="Nach Zuweisung filtern">
                     <option value="">Alle Zuweisungen</option>
@@ -328,14 +326,9 @@ $metricTypeMap = [
                                 <td>
                                     <div class="gamif-title-cell">
                                         <strong><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                        <?php if (!empty($tmpl['is_cooking_day']) || (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0)): ?>
+                                        <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
                                             <div class="gamif-tag-row">
-                                                <?php if (!empty($tmpl['is_cooking_day'])): ?>
-                                                    <span class="gamif-tag gamif-tag--cooking" data-gamif-title="🍳 Koch-Tag" data-gamif-tooltip="Aufgabe zur Essenszubereitung: Das Kind schlägt ein Gericht vor. Nach Eltern-Freigabe wandern Zutaten auf die Einkaufsliste und nach dem Kochen bewerten alle das Essen.">🍳 Koch-Tag</span>
-                                                <?php endif; ?>
-                                                <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
-                                                    <span class="gamif-tag gamif-tag--no-rescue" data-gamif-title="📌 Keine Rettung" data-gamif-tooltip="Feste Routine: Bleibt fest beim Kind und wandert bei Fristversäumnis nicht auf das Schwarze Brett. Geschwister können sie nicht als Belohnung übernehmen.">📌 Keine Rettung</span>
-                                                <?php endif; ?>
+                                                <span class="gamif-tag gamif-tag--no-rescue" data-gamif-title="📌 Keine Rettung" data-gamif-tooltip="Feste Routine: Bleibt fest beim Kind und wandert bei Fristversäumnis nicht auf das Schwarze Brett. Geschwister können sie nicht als Belohnung übernehmen.">📌 Keine Rettung</span>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -469,9 +462,6 @@ $metricTypeMap = [
                                 case 'initiative_count':
                                     $conditionText = "Mind. {$target}× eigene Spontan-Hilfe einreichen";
                                     break;
-                                case 'cooking_rating_avg':
-                                    $conditionText = "Mind. {$target} Sterne im Koch-Bewertungsschnitt";
-                                    break;
                                 case 'xp_total':
                                     $conditionText = "Mind. {$target} Erfahrungspunkte (XP) erreichen";
                                     break;
@@ -597,7 +587,6 @@ $metricTypeMap = [
                                 <option value="tiere">Tiere & Fütterung</option>
                                 <option value="zimmer">Zimmer & Ordnung</option>
                                 <option value="garten">Garten</option>
-                                <option value="kochen">Kochen & Mahlzeiten</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -668,10 +657,6 @@ $metricTypeMap = [
                         </div>
                     </div>
                     <div class="gamif-checkbox-group">
-                        <label class="gamif-checkbox-row" for="tmpl-cooking">
-                            <input type="checkbox" id="tmpl-cooking" name="is_cooking_day" value="1">
-                            <span>Koch-Tag (Rezept vorschlagen & bewerten)</span>
-                        </label>
                         <label class="gamif-checkbox-row" for="tmpl-escalate">
                             <input type="checkbox" id="tmpl-escalate" name="can_escalate" value="1" checked>
                             <span>Verschieben auf Schwarzes Brett bei Fristversäumnis</span>
@@ -829,7 +814,6 @@ $metricTypeMap = [
                                 <option value="category_count">Aufgaben einer bestimmten Kategorie</option>
                                 <option value="streak_days">Zuverlässigkeits-Serie (Tage)</option>
                                 <option value="initiative_count">Spontane Hilfen / Initiativen</option>
-                                <option value="cooking_rating_avg">Koch-Sterne im Schnitt</option>
                                 <option value="xp_total">Gesamte Erfahrungspunkte (XP)</option>
                             </select>
                         </div>
@@ -840,7 +824,7 @@ $metricTypeMap = [
                             <input type="number" id="badge-metric-target" name="metric_target" class="form-control" value="1" min="1" required>
                         </div>
                         <div class="form-group" id="group-badge-param" style="display:none;">
-                            <label for="badge-param">Kategorie (z. B. haushalt, kochen):</label>
+                            <label for="badge-param">Kategorie (z. B. haushalt, schule):</label>
                             <input type="text" id="badge-param" name="metric_parameter" class="form-control" placeholder="haushalt">
                         </div>
                     </div>

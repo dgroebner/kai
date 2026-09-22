@@ -299,18 +299,6 @@ class GamificationAchievementService
                 $stmt->execute(['pid' => $profileId]);
                 return (int)$stmt->fetchColumn();
 
-            case 'cooking_rating_avg':
-                // Bewertungsdurchschnitt beim Kochen
-                $stmt = $pdo->prepare("
-                    SELECT AVG(r.rating_stars)
-                    FROM gamification_ratings r
-                    JOIN gamification_tasks t ON r.task_id = t.id
-                    WHERE t.assigned_profile_id = :pid AND t.is_cooking_day = 1 AND t.status = 'completed'
-                ");
-                $stmt->execute(['pid' => $profileId]);
-                $avg = $stmt->fetchColumn();
-                return $avg !== false && $avg !== null ? (int)round((float)$avg) : 0;
-
             case 'xp_total':
                 return (int)($profile['xp'] ?? 0);
 

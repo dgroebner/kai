@@ -73,7 +73,6 @@ class GamificationTemplateRepository
         $recurrenceDays = !empty($data['recurrence_days']) ? trim($data['recurrence_days']) : null;
         $dueTime = !empty($data['due_time']) ? trim($data['due_time']) : null;
         $assignedProfileId = !empty($data['assigned_profile_id']) ? (int)$data['assigned_profile_id'] : null;
-        $isCookingDay = !empty($data['is_cooking_day']) ? 1 : 0;
         $canEscalate = isset($data['can_escalate']) ? (int)(bool)$data['can_escalate'] : 1;
         $isActive = isset($data['is_active']) ? (int)(bool)$data['is_active'] : 1;
 
@@ -92,7 +91,6 @@ class GamificationTemplateRepository
                     recurrence_days = :recurrence_days,
                     due_time = :due_time,
                     assigned_profile_id = :assigned_profile_id,
-                    is_cooking_day = :is_cooking_day,
                     {$escalateSql}
                     is_active = :is_active
                 WHERE id = :id
@@ -107,7 +105,6 @@ class GamificationTemplateRepository
                 'recurrence_days' => $recurrenceDays,
                 'due_time' => $dueTime,
                 'assigned_profile_id' => $assignedProfileId,
-                'is_cooking_day' => $isCookingDay,
                 'is_active' => $isActive,
                 'id' => $id,
             ];
@@ -123,12 +120,10 @@ class GamificationTemplateRepository
         $stmt = $this->db->getConnection()->prepare("
             INSERT INTO gamification_task_templates (
                 title, description, category, base_xp, base_coins,
-                recurrence, recurrence_days, due_time, assigned_profile_id,
-                is_cooking_day{$colSql}, is_active
+                recurrence, recurrence_days, due_time, assigned_profile_id{$colSql}, is_active
             ) VALUES (
                 :title, :description, :category, :base_xp, :base_coins,
-                :recurrence, :recurrence_days, :due_time, :assigned_profile_id,
-                :is_cooking_day{$valSql}, :is_active
+                :recurrence, :recurrence_days, :due_time, :assigned_profile_id{$valSql}, :is_active
             )
         ");
         $params = [
@@ -141,7 +136,6 @@ class GamificationTemplateRepository
             'recurrence_days' => $recurrenceDays,
             'due_time' => $dueTime,
             'assigned_profile_id' => $assignedProfileId,
-            'is_cooking_day' => $isCookingDay,
             'is_active' => $isActive,
         ];
         if ($hasCol) {
@@ -220,11 +214,11 @@ class GamificationTemplateRepository
                 INSERT INTO gamification_tasks (
                     template_id, title, description, category,
                     assigned_profile_id, origin_profile_id, status, is_bounty,
-                    due_date, due_time, base_xp, base_coins, is_cooking_day{$colSql}
+                    due_date, due_time, base_xp, base_coins{$colSql}
                 ) VALUES (
                     :template_id, :title, :description, :category,
                     :assigned_profile_id, :origin_profile_id, 'planned', :is_bounty,
-                    :due_date, :due_time, :base_xp, :base_coins, :is_cooking_day{$valSql}
+                    :due_date, :due_time, :base_xp, :base_coins{$valSql}
                 )
             ");
             $params = [
@@ -239,7 +233,6 @@ class GamificationTemplateRepository
                 'due_time' => $tmpl['due_time'],
                 'base_xp' => $tmpl['base_xp'],
                 'base_coins' => $tmpl['base_coins'],
-                'is_cooking_day' => $tmpl['is_cooking_day'],
             ];
             if ($hasTaskCol) {
                 $params['can_escalate'] = $canEscalate;
@@ -294,11 +287,11 @@ class GamificationTemplateRepository
             INSERT INTO gamification_tasks (
                 template_id, title, description, category,
                 assigned_profile_id, origin_profile_id, status, is_bounty,
-                due_date, due_time, base_xp, base_coins, is_cooking_day{$colSql}
+                due_date, due_time, base_xp, base_coins{$colSql}
             ) VALUES (
                 :template_id, :title, :description, :category,
                 :assigned_profile_id, :origin_profile_id, :status, :is_bounty,
-                :due_date, :due_time, :base_xp, :base_coins, :is_cooking_day{$valSql}
+                :due_date, :due_time, :base_xp, :base_coins{$valSql}
             )
         ");
         $params = [
@@ -314,7 +307,6 @@ class GamificationTemplateRepository
             'due_time' => $tmpl['due_time'],
             'base_xp' => (int)$tmpl['base_xp'],
             'base_coins' => (int)$tmpl['base_coins'],
-            'is_cooking_day' => (int)$tmpl['is_cooking_day'],
         ];
         if ($hasTaskCol) {
             $params['can_escalate'] = $canEscalate;

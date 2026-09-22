@@ -814,7 +814,6 @@ CREATE TABLE IF NOT EXISTS `gamification_task_templates` (
     `recurrence_days` VARCHAR(50) NULL,
     `due_time` TIME NULL,
     `assigned_profile_id` INT NULL,
-    `is_cooking_day` TINYINT(1) NOT NULL DEFAULT 0,
     `can_escalate` TINYINT(1) NOT NULL DEFAULT 1,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -848,10 +847,6 @@ CREATE TABLE IF NOT EXISTS `gamification_tasks` (
     `submission_notes` TEXT NULL,
     `rejection_reason` TEXT NULL,
     `parent_feedback` TEXT NULL,
-    `is_cooking_day` TINYINT(1) NOT NULL DEFAULT 0,
-    `recipe_title` VARCHAR(255) NULL,
-    `recipe_details` TEXT NULL,
-    `recipe_status` ENUM('none', 'pitched', 'approved', 'rejected') NOT NULL DEFAULT 'none',
     `submitted_at` DATETIME NULL,
     `reviewed_at` DATETIME NULL,
     `completed_at` DATETIME NULL,
@@ -878,25 +873,13 @@ CREATE TABLE IF NOT EXISTS `gamification_task_helpers` (
     FOREIGN KEY (`helper_profile_id`) REFERENCES `gamification_profiles`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `gamification_ratings` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `task_id` INT NOT NULL,
-    `rater_profile_id` INT NOT NULL,
-    `rating_stars` TINYINT UNSIGNED NOT NULL,
-    `comment` TEXT NULL,
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY `uq_gamif_task_rater` (`task_id`, `rater_profile_id`),
-    FOREIGN KEY (`task_id`) REFERENCES `gamification_tasks`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`rater_profile_id`) REFERENCES `gamification_profiles`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS `gamification_achievements` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `key_name` VARCHAR(100) NOT NULL UNIQUE,
     `title` VARCHAR(150) NOT NULL,
     `description` TEXT NOT NULL,
     `icon` VARCHAR(50) NOT NULL DEFAULT '🏆',
-    `metric_type` ENUM('rescue_count', 'task_count', 'category_count', 'streak_days', 'cooking_rating_avg', 'initiative_count', 'xp_total') NOT NULL,
+    `metric_type` ENUM('rescue_count', 'task_count', 'category_count', 'streak_days', 'initiative_count', 'xp_total') NOT NULL,
     `metric_target` INT UNSIGNED NOT NULL,
     `metric_parameter` VARCHAR(100) NULL,
     `reward_xp` INT UNSIGNED NOT NULL DEFAULT 100,
@@ -963,13 +946,11 @@ INSERT IGNORE INTO `gamification_achievements` (`key_name`, `title`, `descriptio
 ('streak_3', 'Am Ball bleiben', 'Erledige an 3 Tagen in Folge Aufgaben ohne Versäumnis', '🔥', 'streak_days', 3, NULL, 150, 50),
 ('streak_7', 'Wochen-Champion', 'Erledige an 7 Tagen in Folge Aufgaben ohne Versäumnis', '⚡', 'streak_days', 7, NULL, 300, 100),
 ('initiative_starter', 'Macher-Geist', 'Reiche deine erste Spontan-Hilfe selbstständig ein', '💡', 'initiative_count', 1, NULL, 100, 50),
-('cooking_star', 'Sternekoch', 'Koche ein Familienessen mit einem Schnitt von mind. 4 Sternen', '👨‍🍳', 'cooking_rating_avg', 4, NULL, 200, 100),
 ('task_10', 'Fleißiges Bienchen', 'Erledige insgesamt 10 Aufgaben erfolgreich', '🐝', 'task_count', 10, NULL, 200, 100);
 
 -- Initial-Stammdaten für Belohnungen
 INSERT IGNORE INTO `gamification_rewards` (`title`, `description`, `coin_cost`, `icon`, `type`, `cooldown_days`) VALUES
 ('30 Min. extra Bildschirmzeit', 'Einlösbar nach Absprache für Tablet, Konsole oder PC', 100, '📱', 'privilege', 1),
-('Wunsch-Essen am Wochenende', 'Du bestimmst, was samstags oder sonntags gekocht wird', 150, '🍕', 'privilege', 7),
 ('Ausflugsziel aussuchen', 'Gemeinsamer Familienausflug an einen Ort deiner Wahl', 300, '🎢', 'event', 14),
 ('5 € Taschengeld-Zuschuss', 'Direkte Auszahlung auf dein Taschengeld', 250, '💶', 'allowance', 14);
 

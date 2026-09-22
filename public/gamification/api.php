@@ -70,25 +70,6 @@ try {
             echo json_encode(['success' => true, 'message' => 'Super gemacht! Die Aufgabe wurde zur Prüfung eingereicht.']);
             break;
 
-        case 'task_pitch':
-            Auth::requireApi('gamification_write');
-            $title = trim((string)($input['title'] ?? ''));
-            $description = trim((string)($input['description'] ?? ''));
-            $category = trim((string)($input['category'] ?? 'haushalt'));
-            $notes = trim((string)($input['notes'] ?? ''));
-            if ($title === '') {
-                Auth::sendJsonError(400, 'Bitte gib einen Titel für deine Hilfe ein.');
-            }
-            $newId = $gamifService->getTaskRepository()->createPitch(
-                (int)$currentProfile['id'],
-                $title,
-                $description ?: null,
-                $category,
-                $notes ?: null
-            );
-            echo json_encode(['success' => true, 'task_id' => $newId, 'message' => 'Klasse Initiative! Deine Hilfe wurde eingereicht.']);
-            break;
-
         case 'helper_claim':
             Auth::requireApi('gamification_write');
             $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT);
@@ -98,40 +79,6 @@ try {
             }
             $claimId = $gamifService->getHelperRepository()->registerHelp($taskId, (int)$currentProfile['id'], $note);
             echo json_encode(['success' => true, 'helper_claim_id' => $claimId, 'message' => 'Mithilfe gemeldet! Deine Eltern bestätigen deinen Helfer-Bonus.']);
-            break;
-
-        case 'cooking_pitch':
-            Auth::requireApi('gamification_write');
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT);
-            $recipeTitle = trim((string)($input['recipe_title'] ?? ''));
-            $recipeDetails = trim((string)($input['recipe_details'] ?? ''));
-            if (!$taskId || $recipeTitle === '') {
-                Auth::sendJsonError(400, 'Bitte gib einen Gerichtsnamen an.');
-            }
-            $success = $gamifService->getTaskRepository()->updateCookingPitch(
-                $taskId,
-                (int)$currentProfile['id'],
-                $recipeTitle,
-                $recipeDetails ?: null
-            );
-            echo json_encode(['success' => $success, 'message' => 'Rezept-Vorschlag eingereicht!']);
-            break;
-
-        case 'rate_cooking':
-            Auth::requireApi('gamification_write');
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT);
-            $stars = filter_var($input['stars'] ?? null, FILTER_VALIDATE_INT);
-            $comment = isset($input['comment']) ? trim((string)$input['comment']) : null;
-            if (!$taskId || !$stars || $stars < 1 || $stars > 5) {
-                Auth::sendJsonError(400, 'Bitte wähle zwischen 1 und 5 Sternen.');
-            }
-            $success = $gamifService->getRatingRepository()->submitRating(
-                $taskId,
-                (int)$currentProfile['id'],
-                $stars,
-                $comment
-            );
-            echo json_encode(['success' => $success, 'message' => 'Danke für dein Feedback! Du hast +5 XP und +2 Münzen Kritiker-Bonus erhalten.']);
             break;
 
         case 'task_start_ondemand':
@@ -304,20 +251,6 @@ try {
 
             $ok = $gamifService->getRewardRepository()->reviewRedemption($redemptionId, $subAction, $currentUserEmail, $parentNote);
             echo json_encode(['success' => $ok, 'message' => $subAction === 'approve' ? 'Prämie genehmigt!' : 'Antrag abgelehnt und Münzen erstattet.']);
-            break;
-
-        case 'triage_review_cooking_pitch':
-            Auth::requireApi('gamification_admin');
-            $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT);
-            $approved = !empty($input['approved']);
-            $feedback = isset($input['feedback']) ? trim((string)$input['feedback']) : null;
-
-            if (!$taskId) {
-                Auth::sendJsonError(400, 'Ungültige Aufgaben-ID');
-            }
-
-            $ok = $gamifService->getTaskRepository()->reviewCookingPitch($taskId, $approved, $feedback);
-            echo json_encode(['success' => $ok, 'message' => $approved ? 'Gericht freigegeben!' : 'Rückmeldung an das Kind übermittelt.']);
             break;
 
         case 'template_save':

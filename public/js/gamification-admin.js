@@ -472,7 +472,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('tmpl-duetime').value = tmplData.due_time ? tmplData.due_time.substring(0, 5) : '18:00';
                 document.getElementById('tmpl-coins').value = tmplData.base_coins || 20;
                 document.getElementById('tmpl-xp').value = tmplData.base_xp || 50;
-                document.getElementById('tmpl-cooking').checked = tmplData.is_cooking_day === 1;
                 const escCb = document.getElementById('tmpl-escalate');
                 if (escCb) escCb.checked = (tmplData.can_escalate === undefined || tmplData.can_escalate === 1);
 
@@ -516,7 +515,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 due_time: formData.get('due_time'),
                 base_coins: parseInt(formData.get('base_coins'), 10),
                 base_xp: parseInt(formData.get('base_xp'), 10),
-                is_cooking_day: formData.get('is_cooking_day') ? 1 : 0,
                 can_escalate: formData.get('can_escalate') ? 1 : 0,
                 spawn_immediately: formData.get('spawn_immediately') ? 1 : 0
             };

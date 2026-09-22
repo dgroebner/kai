@@ -99,7 +99,7 @@ class GamificationService
             $pdo = $this->db->getConnection();
             $stmt = $pdo->query("SHOW COLUMNS FROM gamification_task_templates LIKE 'can_escalate'");
             if (!$stmt->fetch()) {
-                $pdo->exec("ALTER TABLE gamification_task_templates ADD COLUMN can_escalate TINYINT(1) NOT NULL DEFAULT 1 AFTER is_cooking_day");
+                $pdo->exec("ALTER TABLE gamification_task_templates ADD COLUMN can_escalate TINYINT(1) NOT NULL DEFAULT 1");
             }
             $stmt = $pdo->query("SHOW COLUMNS FROM gamification_tasks LIKE 'can_escalate'");
             if (!$stmt->fetch()) {

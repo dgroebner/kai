@@ -244,43 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 7. Rezept vorschlagen (Kochtag via Modal: modal-recipe)
-    const modalRecipe = document.getElementById('modal-recipe');
-    const recipeTaskIdInput = document.getElementById('recipe-task-id');
-
-    document.addEventListener('click', (e) => {
-        const recipeBtn = e.target.closest('.js-open-recipe-modal');
-        if (recipeBtn && modalRecipe) {
-            const taskId = recipeBtn.getAttribute('data-task-id');
-            if (recipeTaskIdInput) recipeTaskIdInput.value = taskId;
-            openModal(modalRecipe);
-        }
-    });
-
-    const formRecipe = document.getElementById('form-recipe');
-    if (formRecipe) {
-        formRecipe.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const taskId = recipeTaskIdInput.value;
-            const title = document.getElementById('recipe-title').value.trim();
-            const details = document.getElementById('recipe-details').value.trim();
-
-            closeModal(modalRecipe);
-            const res = await KaiHttp.postJson('api.php', {
-                action: 'cooking_pitch',
-                task_id: parseInt(taskId, 10),
-                recipe_title: title,
-                recipe_details: details
-            });
-
-            if (res.success) {
-                showFeedback('Rezept eingereicht! 🍳', res.message || 'Dein Koch-Vorschlag wurde gespeichert!', true);
-            } else {
-                showFeedback('Fehler', res.message || 'Fehler beim Einreichen.');
-            }
-        });
-    }
-
     // 8. Geschwisterhilfe melden (Co-Op via Modal: modal-coop)
     const modalCoop = document.getElementById('modal-coop');
     const coopTaskIdInput = document.getElementById('coop-task-id');
