@@ -220,11 +220,11 @@ if ($tab === 'trips') {
     </header>
 
     <main class="u-mt-lg">
-        <nav class="tabs-nav u-mb-md">
-            <a href="?tab=dashboard" class="tab-link <?= $tab === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
-            <a href="?tab=trips" class="tab-link <?= $tab === 'trips' ? 'active' : '' ?>">Fahrten</a>
-            <a href="?tab=charges" class="tab-link <?= $tab === 'charges' ? 'active' : '' ?>">Ladevorgänge</a>
-        </nav>
+        <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
+            <a href="index.php?tab=dashboard" class="btn <?= $tab === 'dashboard' ? '' : 'btn-outline' ?>">📊 Dashboard</a>
+            <a href="index.php?tab=trips" class="btn <?= $tab === 'trips' ? '' : 'btn-outline' ?>">🛣️ Fahrten</a>
+            <a href="index.php?tab=charges" class="btn <?= $tab === 'charges' ? '' : 'btn-outline' ?>">🔌 Ladevorgänge</a>
+        </div>
 
         <?php if ($tab === 'dashboard'): ?>
 
