@@ -25,4 +25,19 @@ class SystemSettingsService
     {
         $this->repository->set($key, $value, $label);
     }
+
+    public function getHomeLatitude(): float
+    {
+        return (float)$this->repository->get('home_latitude', 51.2956492);
+    }
+
+    public function getHomeLongitude(): float
+    {
+        return (float)$this->repository->get('home_longitude', 12.4541829);
+    }
+
+    public function getHomeGeofenceRadius(): int
+    {
+        return (int)$this->repository->get('home_geofence_radius_m', 200);
+    }
 }

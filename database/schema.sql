@@ -753,6 +753,58 @@ CREATE TABLE IF NOT EXISTS `school_beste_notes` (
     UNIQUE KEY `idx_student_note` (`student_id`, `api_note_id`),
     FOREIGN KEY (`student_id`) REFERENCES `school_students`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    
+CREATE TABLE IF NOT EXISTS `vehicle_trips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tronity_trip_id` VARCHAR(100) NOT NULL UNIQUE,
+    `start_time` DATETIME NOT NULL,
+    `end_time` DATETIME NOT NULL,
+    `duration_min` INT NOT NULL,
+    `mileage_start_km` INT NOT NULL,
+    `mileage_end_km` INT NOT NULL,
+    `distance_km` DECIMAL(6,1) NOT NULL,
+    `avg_speed_kmh` DECIMAL(5,1) NOT NULL,
+    `soc_start_pct` INT NOT NULL,
+    `soc_end_pct` INT NOT NULL,
+    `delta_soc_pct` INT NOT NULL,
+    `consumed_kwh` DECIMAL(5,2) NOT NULL,
+    `avg_consumption_kwh_100km` DECIMAL(5,2) NOT NULL,
+    `temperature_c` DECIMAL(4,1) NULL,
+    `start_lat` DECIMAL(10, 7) NULL,
+    `start_lon` DECIMAL(10, 7) NULL,
+    `end_lat` DECIMAL(10, 7) NULL,
+    `end_lon` DECIMAL(10, 7) NULL,
+    `start_location` VARCHAR(100) NULL,
+    `end_location` VARCHAR(100) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_start_time` (`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `vehicle_charges` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tronity_charge_id` VARCHAR(100) NOT NULL UNIQUE,
+    `start_time` DATETIME NOT NULL,
+    `end_time` DATETIME NOT NULL,
+    `duration_min` INT NOT NULL,
+    `soc_start_pct` INT NOT NULL,
+    `soc_end_pct` INT NOT NULL,
+    `delta_soc_pct` INT NOT NULL,
+    `charged_net_kwh` DECIMAL(6,2) NOT NULL,
+    `avg_charge_power_kw` DECIMAL(5,2) NOT NULL,
+    `charge_mode` VARCHAR(10) NULL,
+    `lat` DECIMAL(10, 7) NULL,
+    `lon` DECIMAL(10, 7) NULL,
+    `location_type` ENUM('HOME', 'PUBLIC', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    `tariff_category` VARCHAR(50) NULL,
+    `home_meter_kwh` DECIMAL(6,2) NULL,
+    `home_pv_kwh` DECIMAL(6,2) NULL,
+    `home_grid_kwh` DECIMAL(6,2) NULL,
+    `loss_kwh` DECIMAL(6,2) NULL,
+    `loss_pct` DECIMAL(5,1) NULL,
+    `cost_eur` DECIMAL(6,2) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_start_time` (`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================================================
 -- DOMAIN: GAMIFICATION (Familien-Quests & Aufgaben-Ökosystem)

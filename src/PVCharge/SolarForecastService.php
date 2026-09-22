@@ -19,7 +19,10 @@ class SolarForecastService {
             
             // Kompakt und absolut sauber:
             $prefix = $apiKey ? $apiKey . '/' : '';
-            $apiUrl = 'https://api.forecast.solar/' . $prefix . 'estimate/51.2956492/12.4541829/45/0/4.2';
+            $settingsService = new \Kai\Tools\System\SystemSettingsService();
+            $lat = $settingsService->getHomeLatitude();
+            $lon = $settingsService->getHomeLongitude();
+            $apiUrl = 'https://api.forecast.solar/' . $prefix . 'estimate/' . $lat . '/' . $lon . '/45/0/4.2';
         }
 
         $this->apiUrl = $apiUrl;

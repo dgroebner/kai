@@ -64,6 +64,11 @@ try {
     $syncService = new TronitySyncService();
     $result = $syncService->sync(null, is_array($data) ? $data : null);
 
+    if (in_array($eventType, ['trip', 'charge'])) {
+        $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync();
+        $telemetrySync->syncTripsAndCharges();
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'Webhook empfangen und verarbeitet',

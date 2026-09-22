@@ -10,6 +10,7 @@ Auth::requirePage('car_read');
 $csrfToken = Auth::csrfToken();
 
 $vehicleDashboardRepository = new VehicleDashboardRepository();
+$tab = $_GET['tab'] ?? 'dashboard';
 
 // ----------------------------------------------------
 // Hilfsfunktionen (inkl. Zeitzonenkonvertierung)
@@ -171,6 +172,21 @@ $totalPages = max(1, ceil($totalEntries / $perPage));
 
 $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDateUtc, $perPage, $offset);
 
+$tripStats = [];
+$chargeStats = [];
+$trips = [];
+$charges = [];
+
+if ($tab === 'trips') {
+    $tripRepo = new \Kai\Tools\Car\VehicleTripRepository();
+    $tripStats = $tripRepo->getTripStats($startDateUtc, $endDateUtc);
+    $trips = $tripRepo->getTrips(100, 0); // TODO: proper pagination
+} elseif ($tab === 'charges') {
+    $chargeRepo = new \Kai\Tools\Car\VehicleChargeRepository();
+    $chargeStats = $chargeRepo->getChargeStats($startDateUtc, $endDateUtc);
+    $charges = $chargeRepo->getCharges(100, 0); // TODO: proper pagination
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -204,6 +220,13 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
     </header>
 
     <main class="u-mt-lg">
+        <nav class="tabs-nav u-mb-md">
+            <a href="?tab=dashboard" class="tab-link <?= $tab === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
+            <a href="?tab=trips" class="tab-link <?= $tab === 'trips' ? 'active' : '' ?>">Fahrten</a>
+            <a href="?tab=charges" class="tab-link <?= $tab === 'charges' ? 'active' : '' ?>">Ladevorgänge</a>
+        </nav>
+
+        <?php if ($tab === 'dashboard'): ?>
 
         <?php if (!$state): ?>
             <div class="no-data">
@@ -646,6 +669,124 @@ $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDa
 
         <?php endif; ?>
 
+        <?php elseif ($tab === 'trips'): ?>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Gesamtstrecke (Zeitraum)</span>
+                    <span class="kpi-value"><?= number_format($tripStats['total_distance'] ?? 0, 1, ',', '.') ?> km</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Durchschnittsverbrauch</span>
+                    <span class="kpi-value"><?= number_format($tripStats['avg_consumption'] ?? 0, 1, ',', '.') ?> kWh/100km</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Fahrtenanzahl</span>
+                    <span class="kpi-value"><?= $tripStats['trip_count'] ?? 0 ?></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Fahrten</h2>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Startort</th>
+                            <th>Zielort</th>
+                            <th>Distanz</th>
+                            <th>Dauer</th>
+                            <th>Verbrauch</th>
+                            <th>Ø Verbrauch</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($trips as $trip): ?>
+                            <tr>
+                                <td><?= formatToLocalTime($trip['start_time']) ?></td>
+                                <td><?= htmlspecialchars($trip['start_location'] ?? 'Unbekannt') ?></td>
+                                <td><?= htmlspecialchars($trip['end_location'] ?? 'Unbekannt') ?></td>
+                                <td><?= number_format($trip['distance_km'], 1, ',', '.') ?> km</td>
+                                <td><?= $trip['duration_min'] ?> Min</td>
+                                <td><?= number_format($trip['consumed_kwh'], 1, ',', '.') ?> kWh</td>
+                                <td><?= number_format($trip['avg_consumption_kwh_100km'], 1, ',', '.') ?> kWh/100km</td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        <?php elseif ($tab === 'charges'): ?>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Geladen Gesamt</span>
+                    <span class="kpi-value"><?= number_format($chargeStats['total_charged'] ?? 0, 1, ',', '.') ?> kWh</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">PV-Anteil</span>
+                    <span class="kpi-value"><?= number_format($chargeStats['total_pv'] ?? 0, 1, ',', '.') ?> kWh</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Netzbezug</span>
+                    <span class="kpi-value"><?= number_format($chargeStats['total_grid'] ?? 0, 1, ',', '.') ?> kWh</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Ladekosten</span>
+                    <span class="kpi-value"><?= number_format($chargeStats['total_cost'] ?? 0, 2, ',', '.') ?> €</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Ladevorgänge</h2>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Ort</th>
+                            <th>Geladen</th>
+                            <th>PV / Netz</th>
+                            <th>Kosten</th>
+                            <th>Dauer</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($charges as $charge): ?>
+                            <tr>
+                                <td><?= formatToLocalTime($charge['start_time']) ?></td>
+                                <td>
+                                    <?php if ($charge['location_type'] === 'HOME'): ?>
+                                        <span class="badge badge-success">Zuhause</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">Unterwegs</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= number_format($charge['charged_net_kwh'], 1, ',', '.') ?> kWh<br><small>+<?= $charge['delta_soc_pct'] ?>%</small></td>
+                                <td>
+                                    <?php if ($charge['location_type'] === 'HOME'): ?>
+                                        ☀️ <?= number_format($charge['home_pv_kwh'] ?? 0, 1, ',', '.') ?> kWh<br>
+                                        ⚡ <?= number_format($charge['home_grid_kwh'] ?? 0, 1, ',', '.') ?> kWh
+                                    <?php else: ?>
+                                        <span class="u-muted">–</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($charge['cost_eur'] > 0): ?>
+                                        <?= number_format($charge['cost_eur'], 2, ',', '.') ?> €
+                                    <?php else: ?>
+                                        <span class="u-muted">–</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= $charge['duration_min'] ?> Min</td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        <?php endif; ?>
     </main>
 </div>
 

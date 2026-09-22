@@ -1,15 +1,51 @@
--- Migration: can_escalate für Gamification-Vorlagen und Aufgaben
-ALTER TABLE `gamification_task_templates` ADD COLUMN `can_escalate` TINYINT(1) NOT NULL DEFAULT 1 AFTER `is_cooking_day`;
-ALTER TABLE `gamification_tasks` ADD COLUMN `can_escalate` TINYINT(1) NOT NULL DEFAULT 1 AFTER `is_bounty`;
+CREATE TABLE IF NOT EXISTS `vehicle_trips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tronity_trip_id` VARCHAR(100) NOT NULL UNIQUE,
+    `start_time` DATETIME NOT NULL,
+    `end_time` DATETIME NOT NULL,
+    `duration_min` INT NOT NULL,
+    `mileage_start_km` INT NOT NULL,
+    `mileage_end_km` INT NOT NULL,
+    `distance_km` DECIMAL(6,1) NOT NULL,
+    `avg_speed_kmh` DECIMAL(5,1) NOT NULL,
+    `soc_start_pct` INT NOT NULL,
+    `soc_end_pct` INT NOT NULL,
+    `delta_soc_pct` INT NOT NULL,
+    `consumed_kwh` DECIMAL(5,2) NOT NULL,
+    `avg_consumption_kwh_100km` DECIMAL(5,2) NOT NULL,
+    `temperature_c` DECIMAL(4,1) NULL,
+    `start_lat` DECIMAL(10, 7) NULL,
+    `start_lon` DECIMAL(10, 7) NULL,
+    `end_lat` DECIMAL(10, 7) NULL,
+    `end_lon` DECIMAL(10, 7) NULL,
+    `start_location` VARCHAR(100) NULL,
+    `end_location` VARCHAR(100) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_start_time` (`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Migration: Streak-Schild & Urlaubs-/Klassenfahrts-Pausenschutz
-ALTER TABLE `gamification_profiles` ADD COLUMN `streak_shields` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `streak_days`;
-ALTER TABLE `gamification_profiles` ADD COLUMN `streak_freeze_until` DATE NULL AFTER `streak_shields`;
-ALTER TABLE `gamification_profiles` ADD COLUMN `streak_freeze_reason` VARCHAR(100) NULL AFTER `streak_freeze_until`;
-
--- Migration: TRONITY Telemetrie GPS-Koordinaten
-ALTER TABLE `vehicle_state` ADD COLUMN `latitude` DECIMAL(10, 7) NULL AFTER `outdoor_temp_c`;
-ALTER TABLE `vehicle_state` ADD COLUMN `longitude` DECIMAL(10, 7) NULL AFTER `latitude`;
-ALTER TABLE `vehicle_telemetry_log` ADD COLUMN `latitude` DECIMAL(10, 7) NULL AFTER `outdoor_temp_c`;
-ALTER TABLE `vehicle_telemetry_log` ADD COLUMN `longitude` DECIMAL(10, 7) NULL AFTER `latitude`;
-
+CREATE TABLE IF NOT EXISTS `vehicle_charges` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tronity_charge_id` VARCHAR(100) NOT NULL UNIQUE,
+    `start_time` DATETIME NOT NULL,
+    `end_time` DATETIME NOT NULL,
+    `duration_min` INT NOT NULL,
+    `soc_start_pct` INT NOT NULL,
+    `soc_end_pct` INT NOT NULL,
+    `delta_soc_pct` INT NOT NULL,
+    `charged_net_kwh` DECIMAL(6,2) NOT NULL,
+    `avg_charge_power_kw` DECIMAL(5,2) NOT NULL,
+    `charge_mode` VARCHAR(10) NULL,
+    `lat` DECIMAL(10, 7) NULL,
+    `lon` DECIMAL(10, 7) NULL,
+    `location_type` ENUM('HOME', 'PUBLIC', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    `tariff_category` VARCHAR(50) NULL,
+    `home_meter_kwh` DECIMAL(6,2) NULL,
+    `home_pv_kwh` DECIMAL(6,2) NULL,
+    `home_grid_kwh` DECIMAL(6,2) NULL,
+    `loss_kwh` DECIMAL(6,2) NULL,
+    `loss_pct` DECIMAL(5,1) NULL,
+    `cost_eur` DECIMAL(6,2) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_start_time` (`start_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
