@@ -419,6 +419,7 @@ DB-Spalten:   snake_case      → car_captured_at, soc_percent
 - **Erweiterungsprinzip:** Wenn neue Styles für ein Feature benötigt werden, dürfen diese nicht ad-hoc im Controller abgelegt werden. Sie müssen das zentrale Styleschema in `public/css/style.css` an geeigneter Stelle ergänzen und dokumentieren, sodass sie für zukünftige Entwicklungen im gesamten Projekt zur Verfügung stehen.
 - **Stack-Tabellen und data-labels** verwenden um die Tabellen in mobilen Ansichten übersichtlich darzustellen.
 - **Cleanup-Pflicht bei Refactoring**: Wenn bestehende Features oder PHP-Views umgebaut oder entfernt werden, sind die dazugehörigen, nicht mehr benötigten Klassen aus der public/css/style.css zu entfernen, um Code-Müll zu vermeiden.
+- **Cache-Busting / Versionsinkrement**: Wann immer Änderungen an CSS- (`public/css/style.css`) oder JavaScript-Dateien (`public/js/*.js`) vorgenommen werden, muss die Konstante `APP_VERSION` in `bootstrap.php` hochgezählt werden (z. B. `1.12.2` → `1.12.3`), damit Browser und PWAs die neuen Assets sofort frisch laden und keine veralteten Cache-Stände anzeigen.
 
 ---
 
