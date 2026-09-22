@@ -1216,6 +1216,14 @@ tr.is-today-row {
     opacity: 0.85;
 }
 
+.status-pill-home {
+    --pill-color: var(--color-green, #10b981);
+}
+
+.status-pill-away {
+    --pill-color: var(--accent, #3b82f6);
+}
+
 /* Farbige KPI-Werte / Zusatzzeilen — Farbe dynamisch über --value-color */
 .kpi-value-colored {
     color: var(--value-color, var(--text-main));

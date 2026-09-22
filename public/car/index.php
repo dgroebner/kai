@@ -79,6 +79,12 @@ if ($state && $state['soc_percent'] > 0 && $state['range_km'] > 0) {
     }
 }
 
+// Geofencing für Standort („Zuhause“ / „Unterwegs“)
+$geofenceService = new \Kai\Tools\Car\Tronity\GeofenceService();
+$isHome = ($state && !empty($state['latitude']) && !empty($state['longitude']))
+    ? $geofenceService->isHome((float)$state['latitude'], (float)$state['longitude'])
+    : null;
+
 // ----------------------------------------------------
 // 2. Zeitraum-Berechnung (Woche, Monat, Jahr in Ortszeit)
 // ----------------------------------------------------
@@ -255,17 +261,22 @@ if ($tab === 'charges') {
 						</span>
                         </div>
                     </div>
-                    <?php if (!empty($state['latitude']) && !empty($state['longitude'])): ?>
-                        <div class="car-info-item">
-                            <span class="info-label">Standort</span>
-                            <div>
-                                <a href="https://www.openstreetmap.org/?mlat=<?= urlencode((string)$state['latitude']) ?>&mlon=<?= urlencode((string)$state['longitude']) ?>#map=16/<?= urlencode((string)$state['latitude']) ?>/<?= urlencode((string)$state['longitude']) ?>"
-                                   target="_blank" rel="noopener noreferrer" class="status-pill status-pill-location">
-                                    📍 Auf Karte anzeigen
-                                </a>
-                            </div>
+                    <div class="car-info-item">
+                        <span class="info-label">Standort</span>
+                        <div>
+                        <?php if (!empty($state['latitude']) && !empty($state['longitude'])): ?>
+                            <span class="status-pill <?= $isHome ? 'status-pill-home' : 'status-pill-away' ?>">
+                                <?= $isHome ? '🏠 Zuhause' : '🚗 Unterwegs' ?>
+                            </span>
+                            <a href="https://www.openstreetmap.org/?mlat=<?= urlencode((string)$state['latitude']) ?>&mlon=<?= urlencode((string)$state['longitude']) ?>#map=16/<?= urlencode((string)$state['latitude']) ?>/<?= urlencode((string)$state['longitude']) ?>"
+                               target="_blank" rel="noopener noreferrer" class="status-pill status-pill-location" title="Auf Karte öffnen">
+                                📍 Karte
+                            </a>
+                        <?php else: ?>
+                            <span class="status-pill" style="--pill-color: var(--text-muted, #94a3b8);">–</span>
+                        <?php endif; ?>
                         </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
