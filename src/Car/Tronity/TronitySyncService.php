@@ -42,9 +42,10 @@ class TronitySyncService
      *
      * @param string|null $targetVehicleId Optionale TRONITY Vehicle ID (sonst aus ENV oder erstem Auto)
      * @param array|null $incomingPayload Optionaler Payload aus einem TRONITY Webhook
+     * @param bool $force Wenn true, wird der Live-State in der DB forciert aktualisiert
      * @return array Ergebnis-Metadaten für API-Antwort oder Logs
      */
-    public function sync(?string $targetVehicleId = null, ?array $incomingPayload = null): array
+    public function sync(?string $targetVehicleId = null, ?array $incomingPayload = null, bool $force = false): array
     {
         if (!$this->isConfigured()) {
             throw new Exception("TRONITY ist nicht konfiguriert. Bitte TRONITY_CLIENT_ID und TRONITY_CLIENT_SECRET in der .env pflegen.");
@@ -275,15 +276,21 @@ class TronitySyncService
             if ($newTs > $currentTs) {
                 $hasNewTimestamp = true;
             }
+            // Falls in der DB bereits ein neuerer Zeitstempel steht (z. B. durch früheren Server-Fallback),
+            // aber Messwerte sich geändert haben (z. B. Kilometerstand 1482 > 1307) oder force aktiv ist:
+            // Mindestens den bisherigen DB-Stand beibehalten, damit saveState den Datensatz nicht als "veraltet" verwirft.
+            if (($hasMetricsChanged || $force) && $newTs < $currentTs) {
+                $capturedAtUtc = (string)$currentState['car_captured_at'];
+            }
         }
 
-        // Wenn sich die Messwerte NICHT geändert haben, bleibt auch der Fahrzeug-Erfassungszeitpunkt beim alten Stand!
-        if (!$hasMetricsChanged && $currentState && !empty($currentState['car_captured_at'])) {
+        // Wenn sich die Messwerte NICHT geändert haben und kein force anliegt, Erfassungszeitpunkt beim alten Stand belassen
+        if (!$hasMetricsChanged && !$force && $currentState && !empty($currentState['car_captured_at'])) {
             $capturedAtUtc = (string)$currentState['car_captured_at'];
         }
 
-        // Neuer Verlaufs-Eintrag nur, wenn sich die Messwerte wirklich geändert haben (oder neuer Zeitstempel mit geänderten Daten)
-        $isNewData = $hasMetricsChanged;
+        // Neuer Verlaufs-Eintrag nur, wenn sich die Messwerte wirklich geändert haben (oder force anliegt)
+        $isNewData = $hasMetricsChanged || $force;
 
         // 7. Payload für TelemetryRepository aufbauen
         $payload = [
@@ -316,10 +323,10 @@ class TronitySyncService
         ];
 
         // 8. In Datenbank speichern
-        // Live-State wird berührt (aktualisiert updated_at für Letzter-Kontakt)
-        $this->telemetryRepo->saveState($payload);
+        // Live-State wird forciert aktualisiert, falls force anliegt oder Messwerte sich geändert haben
+        $this->telemetryRepo->saveState($payload, force: $force || $hasMetricsChanged);
 
-        // Verlaufs-Log wird NUR bei tatsächlich geänderten Fahrzeugwerten geschrieben!
+        // Verlaufs-Log wird bei geänderten Fahrzeugwerten oder force geschrieben
         if ($isNewData && $soc !== null && $soc > 0) {
             $this->telemetryRepo->saveLog($payload);
         }

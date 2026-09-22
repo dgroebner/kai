@@ -26,11 +26,14 @@ try {
         Auth::sendJsonError(400, 'TRONITY ist nicht konfiguriert (TRONITY_CLIENT_ID oder TRONITY_CLIENT_SECRET fehlt).');
     }
 
-    $result = $service->sync();
+    $result = $service->sync(force: true);
 
-    $msg = !empty($result['is_new'])
-        ? 'Fahrzeugdaten erfolgreich über TRONITY synchronisiert.'
-        : 'Fahrzeugdaten sind unverändert (Stand: ' . ($result['captured_at'] ?? '–') . ').';
+    $odoStr = isset($result['mileage_km']) && $result['mileage_km'] > 0
+        ? number_format((int)$result['mileage_km'], 0, ',', '.') . ' km'
+        : '–';
+    $socStr = isset($result['soc_percent']) ? $result['soc_percent'] . '%' : '–';
+
+    $msg = "Fahrzeugdaten erfolgreich über TRONITY aktualisiert (Kilometerstand: {$odoStr}, Akku: {$socStr}).";
 
     echo json_encode([
         'success' => true,

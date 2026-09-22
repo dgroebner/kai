@@ -241,28 +241,33 @@ class TronityClient
             $this->logger->info("TRONITY API: /bulk nicht verfügbar ({$e->getMessage()}), teste Einzel-Endpunkte...");
         }
 
-        // 2. Odometer prüfen & ggf. dedizierten Endpunkt /odometer abrufen
-        // Falls /bulk keinen gültigen Kilometerstand (> 0) geliefert hat oder /bulk fehlgeschlagen ist
-        $odoVal = self::extractOdometer($merged);
-        if ($odoVal !== null) {
-            $merged['odometer'] = $odoVal;
-        } else {
-            try {
-                $odometer = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
-                if (is_array($odometer)) {
-                    $extractedOdo = self::extractOdometer($odometer);
-                    if ($extractedOdo !== null) {
-                        $merged['odometer'] = $extractedOdo;
-                    }
-                    $odoData = $odometer['data'] ?? $odometer;
-                    if (is_array($odoData)) {
-                        if (empty($merged['timestamp']) && !empty($odoData['timestamp'])) {
-                            $merged['timestamp'] = $odoData['timestamp'];
-                        }
+        // 2. Dedizierten Endpunkt /odometer IMMER abfragen
+        // Oft liefert /bulk veraltete Cachedaten (oder kein Odometer), während /odometer den echten Live-Stand liefert.
+        $bulkOdo = self::extractOdometer($merged);
+        try {
+            $odometer = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
+            if (is_array($odometer)) {
+                $endpointOdo = self::extractOdometer($odometer);
+                $finalOdo = max((int)$bulkOdo, (int)$endpointOdo);
+                if ($finalOdo > 0) {
+                    $merged['odometer'] = $finalOdo;
+                }
+                $odoData = $odometer['data'] ?? $odometer;
+                if (is_array($odoData) && !empty($odoData['timestamp'])) {
+                    // Falls /odometer einen neueren Zeitstempel liefert
+                    $bulkTs = !empty($merged['timestamp']) ? (int)$merged['timestamp'] : 0;
+                    $odoTs = (int)$odoData['timestamp'];
+                    if ($odoTs > $bulkTs) {
+                        $merged['timestamp'] = $odoData['timestamp'];
                     }
                 }
-            } catch (\Throwable $e) {
-                $this->logger->debug("TRONITY API: /odometer nicht verfügbar ({$e->getMessage()})");
+            } elseif ($bulkOdo !== null) {
+                $merged['odometer'] = $bulkOdo;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug("TRONITY API: /odometer nicht verfügbar ({$e->getMessage()})");
+            if ($bulkOdo !== null) {
+                $merged['odometer'] = $bulkOdo;
             }
         }
 

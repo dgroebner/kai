@@ -25,7 +25,7 @@ class TelemetryRepository
     /**
      * Speichert / aktualisiert den Live-Status in vehicle_state.
      */
-    public function saveState(array $data): bool
+    public function saveState(array $data, bool $force = false): bool
     {
         try {
             $vin = $data['vin'];
@@ -58,10 +58,19 @@ class TelemetryRepository
             $currentState = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
 
             // Prüfen, ob der eingehende Stand älter ist als der bereits gespeicherte State
-            if ($currentState && !empty($currentState['car_captured_at'])) {
-                if (strtotime($carCapturedAt) < strtotime($currentState['car_captured_at'])) {
-                    $this->logger->info("TelemetryRepository: saveState übersprungen, empfangener Stand ($carCapturedAt) ist älter als vorhandener Stand ({$currentState['car_captured_at']}).");
-                    return true;
+            if ($currentState && !empty($currentState['car_captured_at']) && !$force) {
+                $isOlder = strtotime($carCapturedAt) < strtotime($currentState['car_captured_at']);
+                $hasHigherMileage = ($mileageKm !== null && $mileageKm > (int)($currentState['mileage_km'] ?? 0));
+
+                if ($isOlder) {
+                    if ($hasHigherMileage) {
+                        $this->logger->info("TelemetryRepository: Stand ($carCapturedAt) ist zeitlich älter als DB ({$currentState['car_captured_at']}), aber Kilometerstand ist höher ($mileageKm > {$currentState['mileage_km']}) – State wird aktualisiert.");
+                        // Um Zeitstempel-Rückschritte in vehicle_state zu vermeiden, behalten wir den neueren DB-Zeitstempel
+                        $carCapturedAt = $currentState['car_captured_at'];
+                    } else {
+                        $this->logger->info("TelemetryRepository: saveState übersprungen, empfangener Stand ($carCapturedAt) ist älter als vorhandener Stand ({$currentState['car_captured_at']}).");
+                        return true;
+                    }
                 }
             }
 
