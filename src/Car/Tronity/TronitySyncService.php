@@ -144,6 +144,9 @@ class TronitySyncService
 
         // Kilometerstand (unterstützt Zahlen, verschachtelte Objekte und alternative Keys)
         $odometer = TronityClient::extractOdometer($record);
+        if ($odometer === null) {
+            $odometer = $this->client->resolveLatestOdometer($vehicleId);
+        }
         
         // Ladeleistung (kW)
         $chargePower = null;
