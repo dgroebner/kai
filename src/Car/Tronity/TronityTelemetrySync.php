@@ -55,14 +55,14 @@ class TronityTelemetrySync
 
         try {
             $this->syncTrips($vehicleId);
-        } catch (Exception $e) {
-            $this->logger->error("TronityTelemetrySync: Fehler beim Sync der Fahrten.", ['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $this->logger->info("TronityTelemetrySync: Fahrten-Sync übersprungen oder nicht verfügbar ({$e->getMessage()}).");
         }
 
         try {
             $this->syncCharges($vehicleId);
-        } catch (Exception $e) {
-            $this->logger->error("TronityTelemetrySync: Fehler beim Sync der Ladevorgänge.", ['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $this->logger->info("TronityTelemetrySync: Ladevorgänge-Sync übersprungen ({$e->getMessage()}).");
         }
     }
 

@@ -34,7 +34,8 @@ try {
     $odoStr = isset($result['mileage_km']) && $result['mileage_km'] > 0
         ? number_format((int)$result['mileage_km'], 0, ',', '.') . ' km'
         : '–';
-    $socStr = isset($result['soc_percent']) ? $result['soc_percent'] . '%' : '–';
+    $socVal = $result['soc'] ?? ($result['soc_percent'] ?? null);
+    $socStr = $socVal !== null ? $socVal . '%' : '–';
 
     $msg = "Fahrzeugdaten erfolgreich über TRONITY aktualisiert (Kilometerstand: {$odoStr}, Akku: {$socStr}).";
 

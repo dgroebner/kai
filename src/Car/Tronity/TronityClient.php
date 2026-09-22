@@ -80,6 +80,9 @@ class TronityClient
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 15,
         ]);
+        if (PHP_OS_FAMILY === 'Windows') {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        }
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -210,10 +213,8 @@ class TronityClient
     /**
      * Ermittelt den aktuellsten Kilometerstand über alle verfügbaren TRONITY-Endpunkte:
      * 1. /tronity/vehicles/{id}/last_record (evcc-Endpunkt)
-     * 2. /v1/vehicles/{id}/trips & /tronity/vehicles/{id}/trips (End-Stand der letzten Fahrt)
-     * 3. /v1/vehicles/{id}/charges & /tronity/vehicles/{id}/charges (Stand der letzten Ladung)
-     * 4. /v1/vehicles/{id} (Fahrzeugdetails)
-     * 5. /v1/vehicles/{id}/odometer (Dedizierter Endpunkt)
+     * 2. /tronity/vehicles/{id}/charges (Stand der letzten Ladung)
+     * 3. /v1/vehicles/{id} (Fahrzeugdetails)
      */
     public function resolveLatestOdometer(string $vehicleId, ?int $existingOdo = null): ?int
     {
@@ -229,55 +230,25 @@ class TronityClient
             }
         } catch (\Throwable) {}
 
-        // 2. Letzte Fahrten (Trips)
-        foreach (["/v1/vehicles/{$cleanId}/trips", "/tronity/vehicles/{$cleanId}/trips"] as $path) {
-            try {
-                $trips = $this->request('GET', $path, null, true);
-                $tripList = isset($trips['data']) && is_array($trips['data']) ? $trips['data'] : (is_array($trips) ? $trips : []);
-                if (!empty($tripList)) {
-                    foreach ($tripList as $trip) {
-                        if (!is_array($trip)) continue;
-                        $val = self::extractOdometer($trip);
-                        if ($val !== null && $val > $highest) {
-                            $highest = $val;
-                        }
-                    }
-                    if ($highest > 0) break;
-                }
-            } catch (\Throwable) {}
-        }
-
-        // 3. Letzte Ladungen (Charges)
-        foreach (["/v1/vehicles/{$cleanId}/charges", "/tronity/vehicles/{$cleanId}/charges"] as $path) {
-            try {
-                $charges = $this->request('GET', $path, null, true);
-                $chargeList = isset($charges['data']) && is_array($charges['data']) ? $charges['data'] : (is_array($charges) ? $charges : []);
-                if (!empty($chargeList)) {
-                    foreach ($chargeList as $ch) {
-                        if (!is_array($ch)) continue;
-                        $val = self::extractOdometer($ch);
-                        if ($val !== null && $val > $highest) {
-                            $highest = $val;
-                        }
-                    }
-                    if ($highest > 0) break;
-                }
-            } catch (\Throwable) {}
-        }
-
-        // 4. Fahrzeug-Stammdaten: /v1/vehicles/{id}
+        // 2. Letzte Ladungen (Charges)
         try {
-            $veh = $this->request('GET', "/v1/vehicles/{$cleanId}", null, true);
-            $val = self::extractOdometer($veh);
-            if ($val !== null && $val > $highest) {
-                $highest = $val;
+            $charges = $this->request('GET', "/tronity/vehicles/{$cleanId}/charges", null, true);
+            $chargeList = isset($charges['data']) && is_array($charges['data']) ? $charges['data'] : (is_array($charges) ? $charges : []);
+            if (!empty($chargeList)) {
+                foreach ($chargeList as $ch) {
+                    if (!is_array($ch)) continue;
+                    $val = self::extractOdometer($ch);
+                    if ($val !== null && $val > $highest) {
+                        $highest = $val;
+                    }
+                }
             }
         } catch (\Throwable) {}
 
-        // 5. Dedizierter Endpunkt: /v1/vehicles/{id}/odometer (oft 403 Forbidden)
+        // 3. Fahrzeug-Stammdaten: /v1/vehicles/{id}
         try {
-            $odoResp = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
-            $val = self::extractOdometer($odoResp);
+            $veh = $this->request('GET', "/v1/vehicles/{$cleanId}", null, true);
+            $val = self::extractOdometer($veh);
             if ($val !== null && $val > $highest) {
                 $highest = $val;
             }
@@ -296,60 +267,66 @@ class TronityClient
 
     /**
      * Ruft den aktuellsten Telemetrie-Snapshot eines Fahrzeugs ab.
-     * Prüft primär den konsolidierten /bulk Endpunkt der TRONITY API.
-     * Sollten essenzielle Metriken wie Odometer, Batterie oder Standort in /bulk fehlen
-     * oder verschachtelt sein, werden alternative Endpunkte gezielt ergänzend abgefragt.
+     * Prüft primär den /tronity/vehicles/{id}/last_record Endpunkt (wie in evcc),
+     * der Odometer, Akkustand, Reichweite, Ladezustand und GPS in einem Aufruf liefert.
+     * Ergänzt bei Bedarf fehlende Felder aus /v1/vehicles/{id}/bulk oder Einzelendpunkten.
      */
     public function getLastRecord(string $vehicleId): ?array
     {
         $cleanId = urlencode($vehicleId);
         $merged = [];
 
-        // 1. Primär: /bulk abrufen (enthält konsolidierte Snapshot-Daten)
+        // 1. Primär: /tronity/vehicles/{id}/last_record abrufen
         try {
-            $response = $this->request('GET', "/v1/vehicles/{$cleanId}/bulk", null, true);
-            $record = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
+            $lastRec = $this->request('GET', "/tronity/vehicles/{$cleanId}/last_record", null, true);
+            $record = isset($lastRec['data']) && is_array($lastRec['data']) ? $lastRec['data'] : $lastRec;
             if (!empty($record) && is_array($record)) {
                 $merged = $record;
             }
         } catch (\Throwable $e) {
-            $this->logger->info("TRONITY API: /bulk nicht verfügbar ({$e->getMessage()}), teste Einzel-Endpunkte...");
+            $this->logger->info("TRONITY API: /tronity/vehicles/last_record nicht verfügbar ({$e->getMessage()}), teste Alternativen...");
         }
 
-        // Falls /bulk leer ist: evcc-Endpunkt /tronity/vehicles/{id}/last_record testen
-        if (empty($merged)) {
-            try {
-                $lastRec = $this->request('GET', "/tronity/vehicles/{$cleanId}/last_record", null, true);
-                $record = isset($lastRec['data']) && is_array($lastRec['data']) ? $lastRec['data'] : $lastRec;
-                if (!empty($record) && is_array($record)) {
-                    $merged = $record;
+        // 2. Sekundär / Ergänzung: /v1/vehicles/{id}/bulk abrufen
+        try {
+            $response = $this->request('GET', "/v1/vehicles/{$cleanId}/bulk", null, true);
+            $bulkRecord = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
+            if (!empty($bulkRecord) && is_array($bulkRecord)) {
+                foreach ($bulkRecord as $k => $v) {
+                    if (!isset($merged[$k]) || $merged[$k] === null) {
+                        $merged[$k] = $v;
+                    }
                 }
-            } catch (\Throwable) {}
+            }
+        } catch (\Throwable) {}
+
+        // 3. Kilometerstand sicherstellen
+        $currentOdo = self::extractOdometer($merged);
+        if ($currentOdo === null) {
+            $resolvedOdo = $this->resolveLatestOdometer($vehicleId);
+            if ($resolvedOdo !== null) {
+                $merged['odometer'] = $resolvedOdo;
+            }
+        } else {
+            $merged['odometer'] = $currentOdo;
         }
 
-        // 2. Kilometerstand über alle verfügbaren Quellen auflösen (Bulk, Trips, Charges, etc.)
-        $bulkOdo = self::extractOdometer($merged);
-        $resolvedOdo = $this->resolveLatestOdometer($vehicleId, $bulkOdo);
-        if ($resolvedOdo !== null) {
-            $merged['odometer'] = $resolvedOdo;
-        }
-
-        // 3. Falls Batteriedaten in $merged fehlen: /battery abrufen
+        // 4. Falls Batteriedaten in $merged fehlen: /battery abrufen
         $hasBattery = isset($merged['level']) || isset($merged['soc']) || isset($merged['batteryLevel']) || isset($merged['battery']);
         if (!$hasBattery) {
             try {
-                $battery = $this->request('GET', "/v1/vehicles/{$cleanId}/battery", null, true);
+                $battery = $this->request('GET', "/v1/vehicles/{cleanId}/battery", null, true);
                 if (is_array($battery)) {
                     $merged = array_merge($merged, $battery['data'] ?? $battery);
                 }
             } catch (\Throwable) {}
         }
 
-        // 4. Falls Standort in $merged fehlt: /location abrufen
+        // 5. Falls Standort in $merged fehlt: /location abrufen
         $hasLocation = isset($merged['latitude']) || isset($merged['lat']) || isset($merged['location']);
         if (!$hasLocation) {
             try {
-                $location = $this->request('GET', "/v1/vehicles/{$cleanId}/location", null, true);
+                $location = $this->request('GET', "/v1/vehicles/{cleanId}/location", null, true);
                 if (is_array($location)) {
                     $merged = array_merge($merged, $location['data'] ?? $location);
                 }
@@ -360,18 +337,9 @@ class TronityClient
             return $merged;
         }
 
-        // 5. Fallback: /last_record
-        try {
-            $response = $this->request('GET', "/v1/vehicles/{$cleanId}/last_record", null, true);
-            $record = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
-            if (!empty($record) && is_array($record)) {
-                return $record;
-            }
-        } catch (\Throwable) {}
-
         // 6. Fallback: Basis-Fahrzeugdetails
         try {
-            $veh = $this->request('GET', "/v1/vehicles/{$cleanId}", null, true);
+            $veh = $this->request('GET', "/v1/vehicles/{cleanId}", null, true);
             if (is_array($veh) && !empty($veh)) {
                 return $veh['data'] ?? $veh;
             }
@@ -382,24 +350,37 @@ class TronityClient
 
     /**
      * Ruft die Ladehistorie eines Fahrzeugs ab.
-     * Endpunkt: GET /v1/vehicles/{vehicleId}/charges
+     * Endpunkt: GET /tronity/vehicles/{vehicleId}/charges
      */
     public function getCharges(string $vehicleId): array
     {
         $cleanId = urlencode($vehicleId);
-        $response = $this->request('GET', "/v1/vehicles/{$cleanId}/charges");
-        return is_array($response) ? $response : [];
+        try {
+            $response = $this->request('GET', "/tronity/vehicles/{$cleanId}/charges", null, true);
+            return is_array($response) ? $response : [];
+        } catch (\Throwable) {
+            try {
+                $response = $this->request('GET', "/v1/vehicles/{$cleanId}/charge", null, true);
+                return is_array($response) ? $response : [];
+            } catch (\Throwable) {
+                return [];
+            }
+        }
     }
 
     /**
      * Ruft die Fahrtenhistorie eines Fahrzeugs ab.
-     * Endpunkt: GET /v1/vehicles/{vehicleId}/trips
+     * Falls nicht durch TRONITY-Scope oder Fahrzeugtyp unterstützt, wird ein leeres Array zurückgegeben.
      */
     public function getTrips(string $vehicleId): array
     {
         $cleanId = urlencode($vehicleId);
-        $response = $this->request('GET', "/v1/vehicles/{$cleanId}/trips");
-        return is_array($response) ? $response : [];
+        try {
+            $response = $this->request('GET', "/tronity/vehicles/{$cleanId}/trips", null, true);
+            return is_array($response) ? $response : [];
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -422,6 +403,9 @@ class TronityClient
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 20,
         ]);
+        if (PHP_OS_FAMILY === 'Windows') {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        }
 
         if ($body !== null) {
             $json = json_encode($body);
@@ -460,6 +444,9 @@ class TronityClient
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 20,
             ]);
+            if (PHP_OS_FAMILY === 'Windows') {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            }
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
