@@ -16,7 +16,6 @@ class GamificationService
     private GamificationTaskRepository $taskRepo;
     private GamificationTemplateRepository $templateRepo;
     private GamificationHelperRepository $helperRepo;
-    private GamificationRatingRepository $ratingRepo;
     private GamificationRewardRepository $rewardRepo;
     private GamificationAchievementService $achievementService;
     private GamificationEscalationService $escalationService;
@@ -27,7 +26,6 @@ class GamificationService
         ?GamificationTaskRepository $taskRepo = null,
         ?GamificationTemplateRepository $templateRepo = null,
         ?GamificationHelperRepository $helperRepo = null,
-        ?GamificationRatingRepository $ratingRepo = null,
         ?GamificationRewardRepository $rewardRepo = null,
         ?GamificationAchievementService $achievementService = null,
         ?GamificationEscalationService $escalationService = null
@@ -37,7 +35,6 @@ class GamificationService
         $this->taskRepo = $taskRepo ?? new GamificationTaskRepository($this->db, $this->profileRepo);
         $this->templateRepo = $templateRepo ?? new GamificationTemplateRepository($this->db);
         $this->helperRepo = $helperRepo ?? new GamificationHelperRepository($this->db, $this->profileRepo);
-        $this->ratingRepo = $ratingRepo ?? new GamificationRatingRepository($this->db, $this->profileRepo);
         $this->rewardRepo = $rewardRepo ?? new GamificationRewardRepository($this->db, $this->profileRepo);
         $this->achievementService = $achievementService ?? new GamificationAchievementService($this->db, $this->profileRepo);
         $this->escalationService = $escalationService ?? new GamificationEscalationService($this->db, $this->profileRepo);
@@ -62,13 +59,7 @@ class GamificationService
     {
         return $this->helperRepo;
     }
-
-    public function getRatingRepository(): GamificationRatingRepository
-    {
-        return $this->ratingRepo;
-    }
-
-    public function getRewardRepository(): GamificationRewardRepository
+public function getRewardRepository(): GamificationRewardRepository
     {
         return $this->rewardRepo;
     }
