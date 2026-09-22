@@ -672,16 +672,22 @@ if ($tab === 'trips') {
         <?php elseif ($tab === 'trips'): ?>
             <div class="kpi-grid">
                 <div class="kpi-card">
-                    <span class="kpi-label">Gesamtstrecke (Zeitraum)</span>
-                    <span class="kpi-value"><?= number_format($tripStats['total_distance'] ?? 0, 1, ',', '.') ?> km</span>
+                    <div class="kpi-label">Gesamtstrecke (Zeitraum)</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= number_format($tripStats['total_distance'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">km</span>
+                    </div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Durchschnittsverbrauch</span>
-                    <span class="kpi-value"><?= number_format($tripStats['avg_consumption'] ?? 0, 1, ',', '.') ?> kWh/100km</span>
+                    <div class="kpi-label">Durchschnittsverbrauch</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= number_format($tripStats['avg_consumption'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">kWh/100km</span>
+                    </div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Fahrtenanzahl</span>
-                    <span class="kpi-value"><?= $tripStats['trip_count'] ?? 0 ?></span>
+                    <div class="kpi-label">Fahrtenanzahl</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= $tripStats['trip_count'] ?? 0 ?>
+                    </div>
                 </div>
             </div>
 
@@ -720,20 +726,28 @@ if ($tab === 'trips') {
         <?php elseif ($tab === 'charges'): ?>
             <div class="kpi-grid">
                 <div class="kpi-card">
-                    <span class="kpi-label">Geladen Gesamt</span>
-                    <span class="kpi-value"><?= number_format($chargeStats['total_charged'] ?? 0, 1, ',', '.') ?> kWh</span>
+                    <div class="kpi-label">Geladen Gesamt</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= number_format($chargeStats['total_charged'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                    </div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">PV-Anteil</span>
-                    <span class="kpi-value"><?= number_format($chargeStats['total_pv'] ?? 0, 1, ',', '.') ?> kWh</span>
+                    <div class="kpi-label">PV-Anteil</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= number_format($chargeStats['total_pv'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                    </div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Netzbezug</span>
-                    <span class="kpi-value"><?= number_format($chargeStats['total_grid'] ?? 0, 1, ',', '.') ?> kWh</span>
+                    <div class="kpi-label">Netzbezug</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= number_format($chargeStats['total_grid'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">kWh</span>
+                    </div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">Ladekosten</span>
-                    <span class="kpi-value"><?= number_format($chargeStats['total_cost'] ?? 0, 2, ',', '.') ?> €</span>
+                    <div class="kpi-label">Ladekosten</div>
+                    <div class="kpi-value kpi-value-sm text-info">
+                        <?= number_format($chargeStats['total_cost'] ?? 0, 2, ',', '.') ?> <span class="kpi-unit">€</span>
+                    </div>
                 </div>
             </div>
 
