@@ -146,53 +146,153 @@ class TronityClient
     }
 
     /**
+     * Extrahiert den Kilometerstand flexibel aus beliebigen TRONITY-Datenstrukturen
+     * (Zahlen, verschachtelte Objekte, data-Wrapper oder alternative Schlüssel).
+     */
+    public static function extractOdometer(mixed $data): ?int
+    {
+        if ($data === null) {
+            return null;
+        }
+
+        // Falls $data selbst eine gültige positive Zahl ist
+        if (is_numeric($data)) {
+            $val = (int)round((float)$data);
+            return $val > 0 ? $val : null;
+        }
+
+        if (!is_array($data)) {
+            return null;
+        }
+
+        // data-Wrapper auspacken
+        if (isset($data['data']) && (is_array($data['data']) || is_numeric($data['data']))) {
+            $nested = self::extractOdometer($data['data']);
+            if ($nested !== null) {
+                return $nested;
+            }
+        }
+
+        // Mögliche Schlüssel für Kilometerstand in TRONITY
+        $candidateKeys = [
+            'odometer',
+            'mileage',
+            'distance',
+            'total_distance',
+            'mileage_km',
+            'odometer_km',
+            'value',
+        ];
+
+        foreach ($candidateKeys as $key) {
+            if (isset($data[$key])) {
+                if (is_numeric($data[$key])) {
+                    $val = (int)round((float)$data[$key]);
+                    if ($val > 0) {
+                        return $val;
+                    }
+                } elseif (is_array($data[$key])) {
+                    $nested = self::extractOdometer($data[$key]);
+                    if ($nested !== null) {
+                        return $nested;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Ruft gezielt den Kilometerstand eines Fahrzeugs über den dedizierten /odometer Endpunkt ab.
+     */
+    public function getOdometer(string $vehicleId): ?int
+    {
+        $cleanId = urlencode($vehicleId);
+        try {
+            $response = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
+            return self::extractOdometer($response);
+        } catch (\Throwable $e) {
+            $this->logger->debug("TRONITY API: /odometer nicht erreichbar ({$e->getMessage()})");
+            return null;
+        }
+    }
+
+    /**
      * Ruft den aktuellsten Telemetrie-Snapshot eines Fahrzeugs ab.
-     * Prüft primär den konsolidierten /bulk Endpunkt der TRONITY API und fällt bei Bedarf
-     * auf die spezialisierten Einzelendpunkte (/battery, /odometer, /location) zurück.
+     * Prüft primär den konsolidierten /bulk Endpunkt der TRONITY API.
+     * Sollten essenzielle Metriken wie Odometer, Batterie oder Standort in /bulk fehlen
+     * oder verschachtelt sein, werden die spezialisierten Einzelendpunkte (/odometer,
+     * /battery, /location) gezielt ergänzend abgefragt und zusammengeführt.
      */
     public function getLastRecord(string $vehicleId): ?array
     {
         $cleanId = urlencode($vehicleId);
+        $merged = [];
 
         // 1. Primär: /bulk abrufen (enthält konsolidierte Snapshot-Daten)
         try {
             $response = $this->request('GET', "/v1/vehicles/{$cleanId}/bulk", null, true);
             $record = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
             if (!empty($record) && is_array($record)) {
-                return $record;
+                $merged = $record;
             }
         } catch (\Throwable $e) {
             $this->logger->info("TRONITY API: /bulk nicht verfügbar ({$e->getMessage()}), teste Einzel-Endpunkte...");
         }
 
-        // 2. Einzelne Endpunkte abfragen und zusammenführen (/battery, /odometer, /location)
-        $merged = [];
-        try {
-            $battery = $this->request('GET', "/v1/vehicles/{$cleanId}/battery", null, true);
-            if (is_array($battery)) {
-                $merged = array_merge($merged, $battery['data'] ?? $battery);
+        // 2. Odometer prüfen & ggf. dedizierten Endpunkt /odometer abrufen
+        // Falls /bulk keinen gültigen Kilometerstand (> 0) geliefert hat oder /bulk fehlgeschlagen ist
+        $odoVal = self::extractOdometer($merged);
+        if ($odoVal !== null) {
+            $merged['odometer'] = $odoVal;
+        } else {
+            try {
+                $odometer = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
+                if (is_array($odometer)) {
+                    $extractedOdo = self::extractOdometer($odometer);
+                    if ($extractedOdo !== null) {
+                        $merged['odometer'] = $extractedOdo;
+                    }
+                    $odoData = $odometer['data'] ?? $odometer;
+                    if (is_array($odoData)) {
+                        if (empty($merged['timestamp']) && !empty($odoData['timestamp'])) {
+                            $merged['timestamp'] = $odoData['timestamp'];
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->logger->debug("TRONITY API: /odometer nicht verfügbar ({$e->getMessage()})");
             }
-        } catch (\Throwable) {}
+        }
 
-        try {
-            $odometer = $this->request('GET', "/v1/vehicles/{$cleanId}/odometer", null, true);
-            if (is_array($odometer)) {
-                $merged = array_merge($merged, $odometer['data'] ?? $odometer);
-            }
-        } catch (\Throwable) {}
+        // 3. Falls Batteriedaten in $merged fehlen: /battery abrufen
+        $hasBattery = isset($merged['level']) || isset($merged['soc']) || isset($merged['batteryLevel']) || isset($merged['battery']);
+        if (!$hasBattery) {
+            try {
+                $battery = $this->request('GET', "/v1/vehicles/{$cleanId}/battery", null, true);
+                if (is_array($battery)) {
+                    $merged = array_merge($merged, $battery['data'] ?? $battery);
+                }
+            } catch (\Throwable) {}
+        }
 
-        try {
-            $location = $this->request('GET', "/v1/vehicles/{$cleanId}/location", null, true);
-            if (is_array($location)) {
-                $merged = array_merge($merged, $location['data'] ?? $location);
-            }
-        } catch (\Throwable) {}
+        // 4. Falls Standort in $merged fehlt: /location abrufen
+        $hasLocation = isset($merged['latitude']) || isset($merged['lat']) || isset($merged['location']);
+        if (!$hasLocation) {
+            try {
+                $location = $this->request('GET', "/v1/vehicles/{$cleanId}/location", null, true);
+                if (is_array($location)) {
+                    $merged = array_merge($merged, $location['data'] ?? $location);
+                }
+            } catch (\Throwable) {}
+        }
 
         if (!empty($merged)) {
             return $merged;
         }
 
-        // 3. Fallback: /last_record
+        // 5. Fallback: /last_record
         try {
             $response = $this->request('GET', "/v1/vehicles/{$cleanId}/last_record", null, true);
             $record = isset($response['data']) && is_array($response['data']) ? $response['data'] : $response;
@@ -201,7 +301,7 @@ class TronityClient
             }
         } catch (\Throwable) {}
 
-        // 4. Fallback: Basis-Fahrzeugdetails
+        // 6. Fallback: Basis-Fahrzeugdetails
         try {
             $veh = $this->request('GET', "/v1/vehicles/{$cleanId}", null, true);
             if (is_array($veh) && !empty($veh)) {

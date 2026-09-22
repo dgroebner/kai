@@ -118,6 +118,12 @@ class TronitySyncService
             $soc = (int)round((float)$record['soc']);
         } elseif (isset($record['batteryLevel']) && is_numeric($record['batteryLevel'])) {
             $soc = (int)round((float)$record['batteryLevel']);
+        } elseif (isset($record['battery']['level']) && is_numeric($record['battery']['level'])) {
+            $soc = (int)round((float)$record['battery']['level']);
+        } elseif (isset($record['battery']['soc']) && is_numeric($record['battery']['soc'])) {
+            $soc = (int)round((float)$record['battery']['soc']);
+        } elseif (isset($record['data']['level']) && is_numeric($record['data']['level'])) {
+            $soc = (int)round((float)$record['data']['level']);
         }
 
         $range = 0;
@@ -127,14 +133,16 @@ class TronitySyncService
             $range = (int)round((float)$record['remainingRange']);
         } elseif (isset($record['range_km']) && is_numeric($record['range_km'])) {
             $range = (int)round((float)$record['range_km']);
+        } elseif (isset($record['battery']['range']) && is_numeric($record['battery']['range'])) {
+            $range = (int)round((float)$record['battery']['range']);
+        } elseif (isset($record['battery']['remainingRange']) && is_numeric($record['battery']['remainingRange'])) {
+            $range = (int)round((float)$record['battery']['remainingRange']);
+        } elseif (isset($record['data']['range']) && is_numeric($record['data']['range'])) {
+            $range = (int)round((float)$record['data']['range']);
         }
 
-        $odometer = null;
-        if (isset($record['odometer']) && is_numeric($record['odometer'])) {
-            $odometer = (int)round((float)$record['odometer']);
-        } elseif (isset($record['mileage']) && is_numeric($record['mileage'])) {
-            $odometer = (int)round((float)$record['mileage']);
-        }
+        // Kilometerstand (unterstützt Zahlen, verschachtelte Objekte und alternative Keys)
+        $odometer = TronityClient::extractOdometer($record);
         
         // Ladeleistung (kW)
         $chargePower = null;
@@ -144,10 +152,15 @@ class TronitySyncService
             $chargePower = round((float)$record['chargePower'], 2);
         } elseif (isset($record['power']) && is_numeric($record['power'])) {
             $chargePower = round((float)$record['power'], 2);
+        } elseif (isset($record['charging']['chargerPower']) && is_numeric($record['charging']['chargerPower'])) {
+            $chargePower = round((float)$record['charging']['chargerPower'], 2);
         }
 
         // Ladezustand normalisieren
         $chargingRaw = $record['charging'] ?? ($record['chargingState'] ?? ($record['chargeState'] ?? null));
+        if (is_array($chargingRaw)) {
+            $chargingRaw = $chargingRaw['charging'] ?? ($chargingRaw['status'] ?? ($chargingRaw['state'] ?? null));
+        }
         $chargingState = $this->normalizeChargingState($chargingRaw, $chargePower);
 
         // Steckerstatus
@@ -156,6 +169,8 @@ class TronitySyncService
             $plugged = (bool)$record['plugged'];
         } elseif (isset($record['isPluggedIn'])) {
             $plugged = (bool)$record['isPluggedIn'];
+        } elseif (isset($record['charging']['plugged'])) {
+            $plugged = (bool)$record['charging']['plugged'];
         }
         if (str_contains($chargingState, 'CHARGING') && !str_contains($chargingState, 'NOT_READY')) {
             $plugged = true;
@@ -167,6 +182,8 @@ class TronitySyncService
             $latitude = (float)$record['latitude'];
         } elseif (isset($record['lat']) && is_numeric($record['lat'])) {
             $latitude = (float)$record['lat'];
+        } elseif (isset($record['location']['latitude']) && is_numeric($record['location']['latitude'])) {
+            $latitude = (float)$record['location']['latitude'];
         }
 
         $longitude = null;
@@ -176,6 +193,8 @@ class TronitySyncService
             $longitude = (float)$record['lng'];
         } elseif (isset($record['lon']) && is_numeric($record['lon'])) {
             $longitude = (float)$record['lon'];
+        } elseif (isset($record['location']['longitude']) && is_numeric($record['location']['longitude'])) {
+            $longitude = (float)$record['location']['longitude'];
         }
 
         // 4. Bisherigen Fahrzeugstatus für Differenzprüfung abrufen
@@ -186,14 +205,12 @@ class TronitySyncService
         $rawTimestamp = $this->extractTimestampFromRecord($record);
         $this->logger->info("TRONITY: Snapshot Details empfangen.", [
             'raw_timestamp' => $rawTimestamp,
+            'extracted_odometer' => $odometer,
             'record_keys' => array_keys($record),
         ]);
 
         if (!empty($rawTimestamp)) {
             $capturedAtUtc = $this->parseTimestampToUtc($rawTimestamp);
-        } elseif ($currentState && !empty($currentState['car_captured_at'])) {
-            // Falls TRONITY keinen eigenen Zeitstempel liefert: bisherigen Zeitstempel beibehalten!
-            $capturedAtUtc = (string)$currentState['car_captured_at'];
         } else {
             $capturedAtUtc = gmdate('Y-m-d H:i:s');
         }
