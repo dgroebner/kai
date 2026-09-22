@@ -315,7 +315,7 @@ class TronityClient
         $hasBattery = isset($merged['level']) || isset($merged['soc']) || isset($merged['batteryLevel']) || isset($merged['battery']);
         if (!$hasBattery) {
             try {
-                $battery = $this->request('GET', "/v1/vehicles/{cleanId}/battery", null, true);
+                $battery = $this->request('GET', "/v1/vehicles/{$cleanId}/battery", null, true);
                 if (is_array($battery)) {
                     $merged = array_merge($merged, $battery['data'] ?? $battery);
                 }
@@ -326,7 +326,7 @@ class TronityClient
         $hasLocation = isset($merged['latitude']) || isset($merged['lat']) || isset($merged['location']);
         if (!$hasLocation) {
             try {
-                $location = $this->request('GET', "/v1/vehicles/{cleanId}/location", null, true);
+                $location = $this->request('GET', "/v1/vehicles/{$cleanId}/location", null, true);
                 if (is_array($location)) {
                     $merged = array_merge($merged, $location['data'] ?? $location);
                 }

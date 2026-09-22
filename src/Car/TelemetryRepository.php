@@ -282,7 +282,18 @@ class TelemetryRepository
         }
         try {
             $stmt = $this->dbCon->query("SHOW COLUMNS FROM `{$table}` LIKE 'latitude'");
-            $hasCol[$table] = (bool)$stmt->fetch();
+            $exists = (bool)$stmt->fetch();
+            if (!$exists) {
+                try {
+                    $this->dbCon->exec("ALTER TABLE `{$table}` ADD COLUMN `latitude` DECIMAL(10, 7) NULL AFTER `outdoor_temp_c`, ADD COLUMN `longitude` DECIMAL(10, 7) NULL AFTER `latitude`");
+                    $exists = true;
+                    $this->logger->info("TelemetryRepository: Spalten latitude und longitude automatisch zu {$table} hinzugefügt.");
+                } catch (\Throwable $e) {
+                    $this->logger->warn("TelemetryRepository: Spalten latitude/longitude konnten nicht automatisch zu {$table} hinzugefügt werden.", ['error' => $e->getMessage()]);
+                    $exists = false;
+                }
+            }
+            $hasCol[$table] = $exists;
         } catch (\Throwable) {
             $hasCol[$table] = false;
         }
