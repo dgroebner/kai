@@ -64,9 +64,9 @@ try {
     $syncService = new TronitySyncService();
     $result = $syncService->sync(null, is_array($data) ? $data : null);
 
-    if (in_array($eventType, ['trip', 'charge'])) {
+    if ($eventType === 'charge') {
         $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync();
-        $telemetrySync->syncTripsAndCharges();
+        $telemetrySync->syncCharges();
     }
 
     echo json_encode([

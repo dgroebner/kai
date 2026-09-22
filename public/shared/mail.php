@@ -115,7 +115,7 @@ try {
             $logger->info("Cronjob (mail.php): TRONITY-Fahrzeugdaten abgeglichen.", ['result' => $syncRes]);
 
             $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync(logger: $logger);
-            $telemetrySync->syncTripsAndCharges();
+            $telemetrySync->syncCharges();
         }
     } catch (Throwable $te) {
         $logger->warn("Cronjob (mail.php): Fehler beim TRONITY-Telemetrieabgleich.", ['error' => $te->getMessage()]);

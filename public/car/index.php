@@ -172,16 +172,10 @@ $totalPages = max(1, ceil($totalEntries / $perPage));
 
 $recentLog = $vehicleDashboardRepository->getTelemetryPage($startDateUtc, $endDateUtc, $perPage, $offset);
 
-$tripStats = [];
 $chargeStats = [];
-$trips = [];
 $charges = [];
 
-if ($tab === 'trips') {
-    $tripRepo = new \Kai\Tools\Car\VehicleTripRepository();
-    $tripStats = $tripRepo->getTripStats($startDateUtc, $endDateUtc);
-    $trips = $tripRepo->getTrips(100, 0); // TODO: proper pagination
-} elseif ($tab === 'charges') {
+if ($tab === 'charges') {
     $chargeRepo = new \Kai\Tools\Car\VehicleChargeRepository();
     $chargeStats = $chargeRepo->getChargeStats($startDateUtc, $endDateUtc);
     $charges = $chargeRepo->getCharges(100, 0); // TODO: proper pagination
@@ -222,7 +216,6 @@ if ($tab === 'trips') {
     <main class="u-mt-lg">
         <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
             <a href="index.php?tab=dashboard" class="btn <?= $tab === 'dashboard' ? '' : 'btn-outline' ?>">📊 Dashboard</a>
-            <a href="index.php?tab=trips" class="btn <?= $tab === 'trips' ? '' : 'btn-outline' ?>">🛣️ Fahrten</a>
             <a href="index.php?tab=charges" class="btn <?= $tab === 'charges' ? '' : 'btn-outline' ?>">🔌 Ladevorgänge</a>
         </div>
 
@@ -668,61 +661,6 @@ if ($tab === 'trips') {
             </div>
 
         <?php endif; ?>
-
-        <?php elseif ($tab === 'trips'): ?>
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-label">Gesamtstrecke (Zeitraum)</div>
-                    <div class="kpi-value kpi-value-sm text-info">
-                        <?= number_format($tripStats['total_distance'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">km</span>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-label">Durchschnittsverbrauch</div>
-                    <div class="kpi-value kpi-value-sm text-info">
-                        <?= number_format($tripStats['avg_consumption'] ?? 0, 1, ',', '.') ?> <span class="kpi-unit">kWh/100km</span>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-label">Fahrtenanzahl</div>
-                    <div class="kpi-value kpi-value-sm text-info">
-                        <?= $tripStats['trip_count'] ?? 0 ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>Fahrten</h2>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Startort</th>
-                            <th>Zielort</th>
-                            <th>Distanz</th>
-                            <th>Dauer</th>
-                            <th>Verbrauch</th>
-                            <th>Ø Verbrauch</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($trips as $trip): ?>
-                            <tr>
-                                <td><?= formatToLocalTime($trip['start_time']) ?></td>
-                                <td><?= htmlspecialchars($trip['start_location'] ?? 'Unbekannt') ?></td>
-                                <td><?= htmlspecialchars($trip['end_location'] ?? 'Unbekannt') ?></td>
-                                <td><?= number_format($trip['distance_km'], 1, ',', '.') ?> km</td>
-                                <td><?= $trip['duration_min'] ?> Min</td>
-                                <td><?= number_format($trip['consumed_kwh'], 1, ',', '.') ?> kWh</td>
-                                <td><?= number_format($trip['avg_consumption_kwh_100km'], 1, ',', '.') ?> kWh/100km</td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         <?php elseif ($tab === 'charges'): ?>
             <div class="kpi-grid">
                 <div class="kpi-card">

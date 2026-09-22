@@ -369,21 +369,6 @@ class TronityClient
     }
 
     /**
-     * Ruft die Fahrtenhistorie eines Fahrzeugs ab.
-     * Falls nicht durch TRONITY-Scope oder Fahrzeugtyp unterstützt, wird ein leeres Array zurückgegeben.
-     */
-    public function getTrips(string $vehicleId): array
-    {
-        $cleanId = urlencode($vehicleId);
-        try {
-            $response = $this->request('GET', "/tronity/vehicles/{$cleanId}/trips", null, true);
-            return is_array($response) ? $response : [];
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    /**
      * Führt eine autorisierte HTTP-Anfrage an die TRONITY API aus.
      */
     private function request(string $method, string $path, ?array $body = null, bool $silent = false): mixed

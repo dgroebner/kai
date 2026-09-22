@@ -29,7 +29,7 @@ try {
     $result = $service->sync(force: true);
 
     $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync(logger: $logger);
-    $telemetrySync->syncTripsAndCharges();
+    $telemetrySync->syncCharges();
 
     $odoStr = isset($result['mileage_km']) && $result['mileage_km'] > 0
         ? number_format((int)$result['mileage_km'], 0, ',', '.') . ' km'
