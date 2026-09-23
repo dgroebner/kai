@@ -67,13 +67,22 @@ class VehicleChargeRepository
         ]);
     }
 
-    public function getCharges(int $limit = 50, int $offset = 0): array
+    public function getCharges(string $startDate, string $endDate, int $limit = 50, int $offset = 0): array
     {
-        $stmt = $this->db->prepare("SELECT * FROM vehicle_charges ORDER BY start_time DESC LIMIT :limit OFFSET :offset");
+        $stmt = $this->db->prepare("SELECT * FROM vehicle_charges WHERE start_time >= :start AND start_time <= :end ORDER BY start_time DESC LIMIT :limit OFFSET :offset");
+        $stmt->bindValue(':start', $startDate, PDO::PARAM_STR);
+        $stmt->bindValue(':end', $endDate, PDO::PARAM_STR);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function countCharges(string $startDate, string $endDate): int
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM vehicle_charges WHERE start_time >= :start AND start_time <= :end");
+        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        return (int)$stmt->fetchColumn();
     }
 
     public function getChargeStats(string $startDate, string $endDate): array

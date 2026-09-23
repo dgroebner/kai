@@ -83,12 +83,19 @@ class TronityTelemetrySync
                 
                 // If location is missing from charge API, try to fetch from recent telemetry...
                 if ($lat === null || $lon === null) {
-                    $stmt = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection()->prepare("SELECT latitude, longitude FROM vehicle_telemetry_log WHERE car_captured_at <= :t AND latitude IS NOT NULL ORDER BY car_captured_at DESC LIMIT 1");
-                    $stmt->execute([':t' => $startTimeUtc]);
+                    $stmt = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection()->prepare("
+                        SELECT latitude, longitude 
+                        FROM vehicle_telemetry_log 
+                        WHERE latitude IS NOT NULL 
+                        AND car_captured_at BETWEEN :start - INTERVAL 2 HOUR AND :end + INTERVAL 2 HOUR
+                        ORDER BY ABS(TIMESTAMPDIFF(SECOND, car_captured_at, :start)) ASC 
+                        LIMIT 1
+                    ");
+                    $stmt->execute([':start' => $startTimeUtc, ':end' => $endTimeUtc]);
                     $locRow = $stmt->fetch(\PDO::FETCH_ASSOC);
                     if ($locRow) {
-                        $lat = $locRow['latitude'];
-                        $lon = $locRow['longitude'];
+                        $lat = (float)$locRow['latitude'];
+                        $lon = (float)$locRow['longitude'];
                     }
                 }
 

@@ -184,7 +184,11 @@ $charges = [];
 if ($tab === 'charges') {
     $chargeRepo = new \Kai\Tools\Car\VehicleChargeRepository();
     $chargeStats = $chargeRepo->getChargeStats($startDateUtc, $endDateUtc);
-    $charges = $chargeRepo->getCharges(100, 0); // TODO: proper pagination
+    
+    $totalChargeEntries = $chargeRepo->countCharges($startDateUtc, $endDateUtc);
+    $totalChargePages = max(1, ceil($totalChargeEntries / $perPage));
+    
+    $charges = $chargeRepo->getCharges($startDateUtc, $endDateUtc, $perPage, $offset);
 }
 
 ?>
@@ -702,51 +706,92 @@ if ($tab === 'charges') {
 
             <div class="card">
                 <h2>Ladevorgänge</h2>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Ort</th>
-                            <th>Geladen</th>
-                            <th>PV / Netz</th>
-                            <th>Kosten</th>
-                            <th>Dauer</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($charges as $charge): ?>
-                            <tr>
-                                <td><?= formatToLocalTime($charge['start_time']) ?></td>
-                                <td>
-                                    <?php if ($charge['location_type'] === 'HOME'): ?>
-                                        <span class="badge badge-success">Zuhause</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-secondary">Unterwegs</span>
+                
+                <?php if (empty($charges)): ?>
+                    <div class="no-data u-mt-md">Keine Ladevorgänge im gewählten Zeitraum.</div>
+                <?php else: ?>
+                    <div class="list-group u-mt-md">
+                        <?php foreach ($charges as $charge): 
+                            $isHome = $charge['location_type'] === 'HOME';
+                            $startTm = formatToLocalTime($charge['start_time'], 'H:i');
+                            $endTm = formatToLocalTime($charge['end_time'], 'H:i');
+                            $dateStr = formatToLocalTime($charge['start_time'], 'd.m.Y');
+                            
+                            $durHours = floor($charge['duration_min'] / 60);
+                            $durMins = $charge['duration_min'] % 60;
+                            $durStr = $durHours > 0 ? "{$durHours}h {$durMins}m" : "{$durMins}m";
+                            
+                            $modeIcon = $charge['charge_mode'] === 'DC' ? '⚡ DC' : '🔌 AC';
+                        ?>
+                            <div class="list-item" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                                    <div>
+                                        <strong><?= $dateStr ?></strong> <span class="u-muted" style="margin: 0 0.5rem;">|</span> 
+                                        <?= $startTm ?> (<?= $charge['soc_start_pct'] ?>%) &rarr; <?= $endTm ?> (<?= $charge['soc_end_pct'] ?>%)
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <?php if ($isHome): ?>
+                                            <span class="badge badge-success">🏠 Zuhause</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-secondary">📍 Unterwegs</span>
+                                        <?php endif; ?>
+                                        <span class="badge badge-info"><?= $modeIcon ?></span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.9rem;">
+                                    <div>
+                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Geladen</div>
+                                        <strong><?= number_format($charge['charged_net_kwh'], 1, ',', '.') ?> kWh</strong> 
+                                        <span class="text-success">(+<?= $charge['delta_soc_pct'] ?>%)</span>
+                                    </div>
+                                    <div>
+                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Max. Leistung</div>
+                                        <strong><?= number_format($charge['avg_charge_power_kw'], 1, ',', '.') ?> kW</strong>
+                                    </div>
+                                    <div>
+                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Dauer</div>
+                                        <strong><?= $durStr ?></strong>
+                                    </div>
+                                    
+                                    <?php if ($isHome): ?>
+                                        <div>
+                                            <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Solar (PV)</div>
+                                            <strong class="text-success">☀️ <?= number_format($charge['home_pv_kwh'] ?? 0, 1, ',', '.') ?> kWh</strong>
+                                        </div>
+                                        <div>
+                                            <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Netzbezug</div>
+                                            <strong class="text-danger">⚡ <?= number_format($charge['home_grid_kwh'] ?? 0, 1, ',', '.') ?> kWh</strong>
+                                        </div>
                                     <?php endif; ?>
-                                </td>
-                                <td><?= number_format($charge['charged_net_kwh'], 1, ',', '.') ?> kWh<br><small>+<?= $charge['delta_soc_pct'] ?>%</small></td>
-                                <td>
-                                    <?php if ($charge['location_type'] === 'HOME'): ?>
-                                        ☀️ <?= number_format($charge['home_pv_kwh'] ?? 0, 1, ',', '.') ?> kWh<br>
-                                        ⚡ <?= number_format($charge['home_grid_kwh'] ?? 0, 1, ',', '.') ?> kWh
-                                    <?php else: ?>
-                                        <span class="u-muted">–</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
+                                    
                                     <?php if ($charge['cost_eur'] > 0): ?>
-                                        <?= number_format($charge['cost_eur'], 2, ',', '.') ?> €
-                                    <?php else: ?>
-                                        <span class="u-muted">–</span>
+                                        <div>
+                                            <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Kosten</div>
+                                            <strong><?= number_format($charge['cost_eur'], 2, ',', '.') ?> €</strong>
+                                        </div>
                                     <?php endif; ?>
-                                </td>
-                                <td><?= $charge['duration_min'] ?> Min</td>
-                            </tr>
+                                </div>
+                            </div>
                         <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                    </div>
+                    
+                    <!-- Paginierung -->
+                    <?php if ($totalChargePages > 1): ?>
+                        <div class="pagination u-mt-lg">
+                            <?php if ($page > 1): ?>
+                                <a href="?tab=charges&type=<?= $type ?>&date=<?= $dateParam ?>&page=<?= $page - 1 ?>" class="btn btn-outline">&larr; Zurück</a>
+                            <?php endif; ?>
+
+                            <span class="page-info">Seite <?= $page ?> von <?= $totalChargePages ?></span>
+
+                            <?php if ($page < $totalChargePages): ?>
+                                <a href="?tab=charges&type=<?= $type ?>&date=<?= $dateParam ?>&page=<?= $page + 1 ?>" class="btn btn-outline">Weiter &rarr;</a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                <?php endif; ?>
             </div>
 
         <?php endif; ?>
