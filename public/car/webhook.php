@@ -64,10 +64,9 @@ try {
     $syncService = new TronitySyncService();
     $result = $syncService->sync(null, is_array($data) ? $data : null);
 
-    if ($eventType === 'charge') {
-        $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync();
-        $telemetrySync->syncCharges();
-    }
+    // Ladevorgänge bei jedem Webhook-Aufruf synchronisieren (schnelles Fallback)
+    $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync();
+    $telemetrySync->syncCharges();
 
     echo json_encode([
         'success' => true,

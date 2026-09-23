@@ -68,30 +68,45 @@ class TronityTelemetrySync
 
             $synced = 0;
             foreach ($charges as $charge) {
-                if (empty($charge['id']) || empty($charge['record_date'])) {
+                if (empty($charge['id']) || empty($charge['startTime'])) {
                     continue;
                 }
 
-                $startTimeUtc = $this->parseToUtc($charge['start_time'] ?? $charge['record_date']);
-                $endTimeUtc = $this->parseToUtc($charge['end_time'] ?? $charge['record_date']);
+                $startTimeUtc = $this->parseToUtc($charge['startTime']);
+                $endTimeUtc = $this->parseToUtc($charge['endTime'] ?? $charge['createdAt'] ?? $charge['startTime']);
 
-                $lat = $charge['location']['latitude'] ?? null;
-                $lon = $charge['location']['longitude'] ?? null;
+                // Tronity returns startTime in ms
+                $durationMin = isset($charge['endTime']) && isset($charge['startTime']) ? round(($charge['endTime'] - $charge['startTime']) / 60000) : 0;
+
+                $lat = $charge['location']['latitude'] ?? $charge['latitude'] ?? null;
+                $lon = $charge['location']['longitude'] ?? $charge['longitude'] ?? null;
+                
+                // If location is missing from charge API, try to fetch from recent telemetry...
+                if ($lat === null || $lon === null) {
+                    $stmt = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection()->prepare("SELECT latitude, longitude FROM vehicle_telemetry_log WHERE car_captured_at <= :t AND latitude IS NOT NULL ORDER BY car_captured_at DESC LIMIT 1");
+                    $stmt->execute([':t' => $startTimeUtc]);
+                    $locRow = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    if ($locRow) {
+                        $lat = $locRow['latitude'];
+                        $lon = $locRow['longitude'];
+                    }
+                }
+
                 $locationType = $this->geofenceService->getLocationType($lat, $lon);
 
-                $chargedNetKwh = round((float)($charge['charge_energy'] ?? 0), 2);
+                $chargedNetKwh = round((float)($charge['kWh'] ?? $charge['charge_energy'] ?? 0), 2);
 
                 $data = [
                     'tronity_charge_id' => (string)$charge['id'],
                     'start_time' => $startTimeUtc,
                     'end_time' => $endTimeUtc,
-                    'duration_min' => (int)($charge['duration'] ?? 0),
-                    'soc_start_pct' => (int)($charge['soc_start'] ?? 0),
-                    'soc_end_pct' => (int)($charge['soc_end'] ?? 0),
-                    'delta_soc_pct' => (int)(abs(($charge['soc_end'] ?? 0) - ($charge['soc_start'] ?? 0))),
+                    'duration_min' => (int)$durationMin,
+                    'soc_start_pct' => (int)($charge['startLevel'] ?? $charge['soc_start'] ?? 0),
+                    'soc_end_pct' => (int)($charge['endLevel'] ?? $charge['soc_end'] ?? 0),
+                    'delta_soc_pct' => (int)(abs(($charge['endLevel'] ?? $charge['soc_end'] ?? 0) - ($charge['startLevel'] ?? $charge['soc_start'] ?? 0))),
                     'charged_net_kwh' => $chargedNetKwh,
-                    'avg_charge_power_kw' => round((float)($charge['average_power'] ?? 0), 2),
-                    'charge_mode' => $charge['charge_mode'] ?? null,
+                    'avg_charge_power_kw' => round((float)($charge['max'] ?? $charge['average_power'] ?? 0), 2),
+                    'charge_mode' => isset($charge['ac']) ? ($charge['ac'] ? 'AC' : 'DC') : null,
                     'lat' => $lat,
                     'lon' => $lon,
                     'location_type' => $locationType,
