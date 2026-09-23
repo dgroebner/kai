@@ -765,12 +765,16 @@ if ($tab === 'charges') {
                                         </div>
                                     <?php endif; ?>
                                     
-                                    <?php if ($charge['cost_eur'] > 0): ?>
-                                        <div>
-                                            <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Kosten</div>
+                                    <div>
+                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Kosten</div>
+                                        <?php if ($charge['cost_eur'] > 0): ?>
                                             <strong><?= number_format($charge['cost_eur'], 2, ',', '.') ?> €</strong>
-                                        </div>
-                                    <?php endif; ?>
+                                        <?php elseif ($isHome): ?>
+                                            <strong class="text-success" title="Ladung erfolgte komplett kostenfrei (100% PV)">0,00 € ☀️</strong>
+                                        <?php else: ?>
+                                            <span class="u-muted">–</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         <?php endforeach; ?>
