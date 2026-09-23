@@ -168,7 +168,7 @@ class TronitySyncService
         $chargingState = $this->normalizeChargingState($chargingRaw, $chargePower);
 
         // Steckerstatus
-        $plugged = false;
+        $plugged = null;
         if (isset($record['plugged'])) {
             $plugged = (bool)$record['plugged'];
         } elseif (isset($record['isPluggedIn'])) {
@@ -263,10 +263,10 @@ class TronitySyncService
             if ($plugged !== null && (int)$currentState['plug_connected'] !== (int)$plugged) {
                 $hasMetricsChanged = true;
             }
-            if ($latitude !== null && $currentState['latitude'] !== null && round((float)$currentState['latitude'], 4) !== round((float)$latitude, 4)) {
+            if ($latitude !== null && $currentState['latitude'] !== null && abs((float)$currentState['latitude'] - (float)$latitude) > 0.005) {
                 $hasMetricsChanged = true;
             }
-            if ($longitude !== null && $currentState['longitude'] !== null && round((float)$currentState['longitude'], 4) !== round((float)$longitude, 4)) {
+            if ($longitude !== null && $currentState['longitude'] !== null && abs((float)$currentState['longitude'] - (float)$longitude) > 0.005) {
                 $hasMetricsChanged = true;
             }
         }
