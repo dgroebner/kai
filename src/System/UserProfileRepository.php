@@ -22,6 +22,7 @@ class UserProfileRepository
         'pv_forecast_loaded' => true,
         'battery_fully_charged' => true,
         'car_telemetry_loaded' => true,
+        'car_charge_captured' => true,
     ];
 
     public const EVENT_PERMISSIONS = [
@@ -36,6 +37,7 @@ class UserProfileRepository
         'pv_forecast_loaded' => 'pv_read',
         'battery_fully_charged' => 'pv_read',
         'car_telemetry_loaded' => 'car_read',
+        'car_charge_captured' => 'car_read',
     ];
 
     public function __construct(?Database $db = null)

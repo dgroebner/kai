@@ -65,6 +65,16 @@ class VehicleChargeRepository
             ':loss_pct' => $data['loss_pct'] ?? null,
             ':cost_eur' => $data['cost_eur'] ?? null,
         ]);
+
+        if ($stmt->rowCount() === 1) { // 1 = INSERT (neu), 2 = UPDATE (bestehend)
+            $isHome = ($data['location_type'] ?? 'UNKNOWN') === 'HOME';
+            $logger = new \Kai\Tools\Shared\Log\ActivityLogger(Database::getInstance());
+            $logger->logCarChargeCaptured(
+                (float)$data['charged_net_kwh'], 
+                $isHome, 
+                $data['cost_eur'] ?? null
+            );
+        }
     }
 
     public function getCharges(string $startDate, string $endDate, int $limit = 50, int $offset = 0): array

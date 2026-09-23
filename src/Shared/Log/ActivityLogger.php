@@ -180,6 +180,19 @@ class ActivityLogger
         );
     }
 
+    public function logCarChargeCaptured(float $chargedKwh, bool $isHome, ?float $costEur = null): void
+    {
+        $chargedStr = number_format($chargedKwh, 1, ',', '.');
+        $costStr = $costEur > 0 ? " (" . number_format($costEur, 2, ',', '.') . " €)" : ($isHome ? " (Kostenfrei)" : "");
+        $loc = $isHome ? "Zuhause" : "Unterwegs";
+        
+        $this->log(
+            'car_charge_captured',
+            "Ladevorgang erfasst: {$chargedStr} kWh {$loc}{$costStr}",
+            "/car/index.php?tab=charges"
+        );
+    }
+
     public function logShoppingCompleted(int $itemCount = 0, string $market = 'Einkauf'): void
     {
         $message = "Einkauf abgeschlossen ({$market}, {$itemCount} Artikel)";

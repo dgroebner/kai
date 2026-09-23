@@ -278,6 +278,7 @@ function getEventIcon(string $eventType): string
     return match ($eventType) {
         'school_plan_updated' => '🎒',
         'car_telemetry_loaded' => '🚐',
+        'car_charge_captured' => '🔌',
         'pv_forecast_loaded' => '☀️',
         'receipt_created' => '🧾',
         'bank_data_imported' => '🏦',
@@ -297,6 +298,7 @@ function getEventLabel(string $eventType): string
         'bank_data_imported' => 'Neue Bankdaten importiert',
         'pv_forecast_loaded' => 'Neue PV-Prognose geladen',
         'car_telemetry_loaded' => 'Neue Fahrzeugdaten geladen',
+        'car_charge_captured' => 'Ladevorgang erfasst',
         'shopping_completed' => 'Einkauf abgeschlossen',
         default => ucfirst(str_replace('_', ' ', $eventType)),
     };
