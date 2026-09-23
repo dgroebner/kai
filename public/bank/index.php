@@ -611,7 +611,15 @@ try {
                                 <td data-label="Vertrag">
                                     <?php if (!empty($tx['contract_id'])): ?>
                                         <button type="button" class="btn-rule-indicator active js-open-contract-rule"
-                                                data-contract-id="<?= $tx['contract_id'] ?>" title="Vertrag verknüpft">
+                                                data-contract-id="<?= $tx['contract_id'] ?>"
+                                                data-tx-id="<?= $tx['id'] ?>"
+                                                data-mandate-id="<?= htmlspecialchars($tx['dc_mandate_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-remitter="<?= htmlspecialchars($tx['remitter'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-creditor="<?= htmlspecialchars($tx['creditor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-creditor-id="<?= htmlspecialchars($tx['dc_creditor_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-debitor="<?= htmlspecialchars($tx['debitor'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-remittance-info="<?= htmlspecialchars($tx['remittance_info'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                title="Vertrag verknüpft (Klicken zum Ändern)">
                                             📑
                                         </button>
                                     <?php else: ?>

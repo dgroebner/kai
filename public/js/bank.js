@@ -1696,6 +1696,8 @@ async function openContractRuleBuilderModal(btn) {
 
     document.body.appendChild(overlay);
 
+    const existingContractId = btn.dataset.contractId || '';
+
     // Verträge async laden und Select befüllen
     try {
         const res = await KaiHttp.postJson('api.php', {action: 'get_contracts'});
@@ -1705,6 +1707,9 @@ async function openContractRuleBuilderModal(btn) {
                 const opt = document.createElement('option');
                 opt.value = c.id;
                 opt.textContent = `${c.name} (${c.type})`;
+                if (String(c.id) === existingContractId) {
+                    opt.selected = true;
+                }
                 selectEl.appendChild(opt);
             });
         }
