@@ -96,6 +96,11 @@ $eventGroups = [
                 'label' => 'Fahrzeug-Telemetrie',
                 'desc' => 'Neue Fahrzeug- und Batteriedaten empfangen'
             ],
+            'car_charge_captured' => [
+                'icon' => '🔌',
+                'label' => 'Ladevorgang erfasst',
+                'desc' => 'Zusammenfassung eines abgeschlossenen Ladevorgangs'
+            ],
         ],
     ],
 ];
