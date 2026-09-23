@@ -18,6 +18,11 @@ $csrfToken = Auth::csrfToken();
 $telemetryRepository = new PvTelemetryRepository();
 $forecastRepository = new PvForecastRepository();
 $dashboardService = new PvDashboardService($telemetryRepository);
+$settingsService = new \Kai\Tools\System\SystemSettingsService();
+
+$tab = $_GET['tab'] ?? 'live';
+$importPrice = $settingsService->getGridImportPrice();
+$exportPrice = $settingsService->getGridExportPrice();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_real_yield') {
     // CSRF-Token prüfen
@@ -37,7 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     }
 }
 
-// --- Live-Daten & Tages-Kennzahlen ---
+$dashboardData = [];
+$liveData = [];
+if ($tab === 'live') {
+    // --- Live-Daten & Tages-Kennzahlen ---
 $dashboardData = $dashboardService->getDashboardData();
 $liveData = $dashboardData['live'];
 $todayPeakW = $dashboardData['kpis']['todayPeakW'];
@@ -169,6 +177,23 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ]);
     exit;
 }
+} // End if ($tab === 'live')
+
+// --- Daten für den Tab "Historie" laden ---
+$historyPage = max(1, (int)($_GET['hpage'] ?? 1));
+$historyPerPage = 10;
+$totalHistoryDays = 0;
+$historyDays = [];
+$historyTotalPages = 1;
+
+if ($tab === 'history') {
+    $totalHistoryDays = $telemetryRepository->countDailyAggregates();
+    $historyTotalPages = max(1, (int)ceil($totalHistoryDays / $historyPerPage));
+    $historyPage = min($historyPage, $historyTotalPages);
+    $historyOffset = ($historyPage - 1) * $historyPerPage;
+
+    $historyDays = $telemetryRepository->getDailyAggregates($historyPerPage, $historyOffset);
+}
 
 ?>
 <!DOCTYPE html>
@@ -190,7 +215,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         <div class="page-header">
             <h1>⚡ Energie-Dashboard</h1>
             <div class="page-header-actions">
-                <?php if (!empty($liveData['last_update'])): ?>
+                <?php if ($tab === 'live' && !empty($liveData['last_update'])): ?>
                     <span class="last-update">Live-Daten: <?= date('d.m.Y H:i:s', strtotime($liveData['last_update'])) ?></span>
                 <?php endif; ?>
                 <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
@@ -201,7 +226,97 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         </div>
     </header>
 
+    <!-- Tab-Switcher -->
+    <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
+        <a href="index.php?tab=live" class="btn <?= $tab === 'live' ? '' : 'btn-outline' ?>">⚡ Live & Prognose</a>
+        <a href="index.php?tab=history" class="btn <?= $tab === 'history' ? '' : 'btn-outline' ?>">📅 Tageswerte (Historie)</a>
+    </div>
+
     <main>
+        <?php if ($tab === 'history'): ?>
+            <div class="section-title">Tageswerte der vergangenen Tage</div>
+            <p class="text-muted" style="margin-bottom: 1.5rem;">Hier sehen Sie den PV-Ertrag, Verbrauch sowie geschätzte Kosten und Erlöse pro Tag.</p>
+            
+            <div style="display: grid; gap: 1rem;">
+                <?php if (empty($historyDays)): ?>
+                    <div class="no-data">Keine historischen Tageswerte gefunden.</div>
+                <?php else: ?>
+                    <?php foreach ($historyDays as $day): 
+                        $dateObj = DateTime::createFromFormat('Y-m-d', $day['date']);
+                        $yieldKwh = (float)$day['yield_kwh'];
+                        $importKwh = (float)$day['grid_import_kwh'];
+                        $exportKwh = (float)$day['grid_export_kwh'];
+                        $houseLoadKwh = (float)$day['house_load_kwh'];
+                        
+                        $cost = $importKwh * $importPrice;
+                        $revenue = $exportKwh * $exportPrice;
+                        $netto = $revenue - $cost;
+                    ?>
+                        <div class="card" style="padding: 1rem 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                <h3 style="margin: 0; font-size: 1.1rem;">
+                                    📅 <?= $dateObj->format('d.m.Y') ?>
+                                </h3>
+                                <div style="font-weight: bold; <?= $netto >= 0 ? 'color: var(--pv-green);' : 'color: var(--color-red);' ?>">
+                                    Bilanz: <?= $netto >= 0 ? '+' : '' ?><?= number_format($netto, 2, ',', '.') ?> €
+                                </div>
+                            </div>
+                            
+                            <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem;">
+                                <div style="background: var(--bg-surface-hover); padding: 0.75rem; border-radius: 8px;">
+                                    <div class="kpi-label" style="font-size: 0.8rem; margin-bottom: 0.25rem;">☀️ PV-Ertrag</div>
+                                    <div style="font-weight: 600; font-size: 1rem; color: var(--pv-green);">
+                                        <?= number_format($yieldKwh, 1, ',', '.') ?> kWh
+                                    </div>
+                                </div>
+                                <div style="background: var(--bg-surface-hover); padding: 0.75rem; border-radius: 8px;">
+                                    <div class="kpi-label" style="font-size: 0.8rem; margin-bottom: 0.25rem;">🏠 Verbrauch</div>
+                                    <div style="font-weight: 600; font-size: 1rem; color: var(--color-text);">
+                                        <?= number_format($houseLoadKwh, 1, ',', '.') ?> kWh
+                                    </div>
+                                </div>
+                                <div style="background: var(--bg-surface-hover); padding: 0.75rem; border-radius: 8px;">
+                                    <div class="kpi-label" style="font-size: 0.8rem; margin-bottom: 0.25rem;">⚡ Netzbezug</div>
+                                    <div style="font-weight: 600; font-size: 1rem; color: var(--color-red);">
+                                        <?= number_format($importKwh, 1, ',', '.') ?> kWh
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">
+                                        (~<?= number_format($cost, 2, ',', '.') ?> €)
+                                    </div>
+                                </div>
+                                <div style="background: var(--bg-surface-hover); padding: 0.75rem; border-radius: 8px;">
+                                    <div class="kpi-label" style="font-size: 0.8rem; margin-bottom: 0.25rem;">📤 Netzeinspeisung</div>
+                                    <div style="font-weight: 600; font-size: 1rem; color: var(--pv-green);">
+                                        <?= number_format($exportKwh, 1, ',', '.') ?> kWh
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">
+                                        (~<?= number_format($revenue, 2, ',', '.') ?> €)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Paginierung Historie -->
+            <div class="pagination" style="margin-top: 2rem;">
+                <?php if ($historyPage > 1): ?>
+                    <a href="?tab=history&hpage=<?= $historyPage - 1 ?>" class="btn btn-outline">&larr; Zurück</a>
+                <?php else: ?>
+                    <span class="btn btn-outline disabled">&larr; Zurück</span>
+                <?php endif; ?>
+
+                <span class="page-info">Seite <?= $historyPage ?> von <?= $historyTotalPages ?></span>
+
+                <?php if ($historyPage < $historyTotalPages): ?>
+                    <a href="?tab=history&hpage=<?= $historyPage + 1 ?>" class="btn btn-outline">Weiter &rarr;</a>
+                <?php else: ?>
+                    <span class="btn btn-outline disabled">Weiter &rarr;</span>
+                <?php endif; ?>
+            </div>
+
+        <?php else: // $tab === 'live' ?>
 
         <!-- Sektion 1: Live-Energiefluss-Diagramm -->
         <div class="section-title">Live-Energiefluss</div>
@@ -563,7 +678,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 </div>
             <?php endif; ?>
         </div>
-
+        <?php endif; // End tab switch ?>
     </main>
 </div>
 

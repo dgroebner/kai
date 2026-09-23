@@ -162,4 +162,43 @@ class PvTelemetryRepository
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Lädt die aggregierten Tageswerte (Ertrag, Netzbezug, Netzeinspeisung, Hausverbrauch).
+     */
+    public function getDailyAggregates(int $limit, int $offset): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                DATE(last_update) AS `date`,
+                MAX(yield_daily_kwh) AS yield_kwh,
+                SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) / 12000 AS grid_import_kwh,
+                SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) / 12000 AS grid_export_kwh,
+                SUM(house_load_w) / 12000 AS house_load_kwh
+            FROM pv_telemetry
+            WHERE DATE(last_update) < CURDATE()
+            GROUP BY DATE(last_update)
+            ORDER BY `date` DESC
+            LIMIT :limit OFFSET :offset
+        ");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Zählt die Anzahl der verfügbaren Tage für die Paginierung der Tageswerte.
+     */
+    public function countDailyAggregates(): int
+    {
+        $stmt = $this->pdo->query("
+            SELECT COUNT(DISTINCT DATE(last_update))
+            FROM pv_telemetry
+            WHERE DATE(last_update) < CURDATE()
+        ");
+
+        return (int)$stmt->fetchColumn();
+    }
 }
