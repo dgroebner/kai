@@ -87,9 +87,9 @@ class HomeChargeAnalyzer
 
         // Kosten berechnen
         $gridPrice = $this->settings->getGridImportPrice(); // z.B. 0.2689
-        $pvPrice = $this->settings->getGridExportPrice(); // Opportunitätskosten, z.B. 0.06
 
-        $costEur = ($carGridKwh * $gridPrice) + ($carPvKwh * $pvPrice);
+        // Dem Nutzer keine Einspeisevergütung als Kosten für selbst genutzten PV-Strom berechnen
+        $costEur = $carGridKwh * $gridPrice;
 
         return [
             'home_meter_kwh' => round($homeMeterKwh, 2),
