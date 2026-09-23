@@ -81,17 +81,18 @@ class TronityTelemetrySync
                 $lat = $charge['location']['latitude'] ?? $charge['latitude'] ?? null;
                 $lon = $charge['location']['longitude'] ?? $charge['longitude'] ?? null;
                 
-                // If location is missing from charge API, try to fetch from recent telemetry...
+                // Falls die TRONITY-API beim Ladevorgang keine Koordinaten liefert (oft der Fall),
+                // suchen wir die letzte bekannte Position des Fahrzeugs vor/während der Ladung.
                 if ($lat === null || $lon === null) {
                     $stmt = \Kai\Tools\Shared\Db\Database::getInstance()->getConnection()->prepare("
                         SELECT latitude, longitude 
                         FROM vehicle_telemetry_log 
                         WHERE latitude IS NOT NULL 
-                        AND car_captured_at BETWEEN :start - INTERVAL 2 HOUR AND :end + INTERVAL 2 HOUR
-                        ORDER BY ABS(TIMESTAMPDIFF(SECOND, car_captured_at, :start)) ASC 
+                        AND car_captured_at <= :end
+                        ORDER BY car_captured_at DESC 
                         LIMIT 1
                     ");
-                    $stmt->execute([':start' => $startTimeUtc, ':end' => $endTimeUtc]);
+                    $stmt->execute([':end' => $endTimeUtc]);
                     $locRow = $stmt->fetch(\PDO::FETCH_ASSOC);
                     if ($locRow) {
                         $lat = (float)$locRow['latitude'];

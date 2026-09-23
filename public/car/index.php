@@ -723,7 +723,7 @@ if ($tab === 'charges') {
                             
                             $modeIcon = $charge['charge_mode'] === 'DC' ? '⚡ DC' : '🔌 AC';
                         ?>
-                            <div class="list-item" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                            <div class="list-item" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1.2rem; margin-bottom: 1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                                     <div>
                                         <strong><?= $dateStr ?></strong> <span class="u-muted" style="margin: 0 0.5rem;">|</span> 
