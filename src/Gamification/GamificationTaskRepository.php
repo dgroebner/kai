@@ -171,6 +171,26 @@ class GamificationTaskRepository
      *
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * Holt alle offenen Bounties für das Admin-Dashboard.
+     */
+    public function getAllBounties(): array
+    {
+        $stmt = $this->db->getConnection()->query("
+            SELECT t.*, 
+                   po.display_name AS origin_name,
+                   pc.display_name AS claimed_name
+            FROM gamification_tasks t
+            LEFT JOIN gamification_profiles po ON t.origin_profile_id = po.id
+            LEFT JOIN gamification_profiles pc ON t.claimed_by_profile_id = pc.id
+            WHERE t.is_bounty = 1
+              AND t.status IN ('planned', 'escalated', 'in_progress')
+            ORDER BY t.created_at ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+
     public function getAllActiveTasksByProfile(): array
     {
         $stmt = $this->db->getConnection()->query("
@@ -349,12 +369,16 @@ class GamificationTaskRepository
                 return false;
             }
 
-            $finalXp = $customXp ?? ((int)$task['base_xp'] + (int)$task['bounty_bonus_xp']);
+            $isSelfRescue = ($recipientId === (int)$task['origin_profile_id']);
+            $earnedBountyXp = $isSelfRescue ? 0 : (int)$task['bounty_bonus_xp'];
+            $earnedBountyCoins = $isSelfRescue ? 0 : (int)$task['bounty_bonus_coins'];
+
+            $finalXp = $customXp ?? ((int)$task['base_xp'] + $earnedBountyXp);
             $finalCoins = $customCoins ?? (
                 (int)$task['base_coins']
                 + (int)$task['planning_bonus_coins']
                 + (int)$task['initiative_bonus_coins']
-                + (int)$task['bounty_bonus_coins']
+                + $earnedBountyCoins
             );
 
             $stmt = $pdo->prepare("
@@ -376,7 +400,7 @@ class GamificationTaskRepository
 
             // Gutschrift auf das Profil
             $reason = "Erledigt: " . $task['title'];
-            if (!empty($task['bounty_bonus_coins'])) {
+            if (!empty($task['bounty_bonus_coins']) && !$isSelfRescue) {
                 $reason .= " (inkl. Retter-Bonus)";
             }
             $this->profileRepo->addXpAndCoins($recipientId, $finalXp, $finalCoins, $reason, 'task', $taskId);
