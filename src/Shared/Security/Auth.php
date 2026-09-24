@@ -241,28 +241,53 @@ final class Auth
 
     /**
      * Prüft zeitkonstant, ob der übermittelte Cron-/API-Token gültig ist.
+     * Akzeptiert CRON_TOKEN sowie optional ASSISTANT_API_KEY.
      *
-     * @param bool $allowQueryParam Ob der Token auch als ?token=… akzeptiert wird.
+     * @param bool $allowQueryParam Ob der Token auch als URL-Parameter (?token=…, ?api_key=…, ?key=…) akzeptiert wird.
      */
     public static function cronTokenMatches(bool $allowQueryParam = true): bool
     {
-        $expected = (string)($_ENV['CRON_TOKEN'] ?? '');
         $received = self::extractCronToken($allowQueryParam);
+        if ($received === null) {
+            return false;
+        }
 
-        return $expected !== '' && $received !== null && hash_equals($expected, $received);
+        $cronToken = (string)($_ENV['CRON_TOKEN'] ?? '');
+        if ($cronToken !== '' && hash_equals($cronToken, $received)) {
+            return true;
+        }
+
+        $assistantKey = (string)($_ENV['ASSISTANT_API_KEY'] ?? '');
+        if ($assistantKey !== '' && hash_equals($assistantKey, $received)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
      * Prüft zeitkonstant, ob der übermittelte Assistant-Token gültig ist.
      * Erwartet Bearer- oder X-API-Key-Header (oder optional Payload-Token).
-     * Validiert gegen ASSISTANT_API_KEY mit Fallback auf CRON_TOKEN.
+     * Validiert gegen ASSISTANT_API_KEY oder CRON_TOKEN.
      */
     public static function assistantTokenMatches(?string $payloadToken = null): bool
     {
-        $expected = (string)($_ENV['ASSISTANT_API_KEY'] ?? $_ENV['CRON_TOKEN'] ?? '');
         $received = self::extractCronToken(false, $payloadToken);
+        if ($received === null) {
+            return false;
+        }
 
-        return $expected !== '' && $received !== null && hash_equals($expected, $received);
+        $assistantKey = (string)($_ENV['ASSISTANT_API_KEY'] ?? '');
+        if ($assistantKey !== '' && hash_equals($assistantKey, $received)) {
+            return true;
+        }
+
+        $cronToken = (string)($_ENV['CRON_TOKEN'] ?? '');
+        if ($cronToken !== '' && hash_equals($cronToken, $received)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -319,6 +344,12 @@ final class Auth
             $payloadToken,
         ];
 
+        if ($payloadToken === null) {
+            $candidates[] = $_POST['token'] ?? null;
+            $candidates[] = $_POST['api_key'] ?? null;
+            $candidates[] = $_POST['apiKey'] ?? null;
+        }
+
         $authHeader = $_SERVER['HTTP_AUTHORIZATION']
             ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
             ?? '';
@@ -342,8 +373,14 @@ final class Auth
 
         if ($allowQueryParam) {
             $candidates[] = $_GET['token'] ?? null;
+            $candidates[] = $_GET['api_key'] ?? null;
+            $candidates[] = $_GET['apiKey'] ?? null;
+            $candidates[] = $_GET['apikey'] ?? null;
+            $candidates[] = $_GET['api-key'] ?? null;
+            $candidates[] = $_GET['key'] ?? null;
         }
 
-        return array_find($candidates, static fn($candidate): bool => is_string($candidate) && $candidate !== '');
+        $found = array_find($candidates, static fn($candidate): bool => is_string($candidate) && trim($candidate) !== '');
+        return $found !== null ? trim($found) : null;
     }
 }

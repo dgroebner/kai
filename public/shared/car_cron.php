@@ -4,7 +4,10 @@ require_once __DIR__ . '/../../bootstrap.php';
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
-Auth::requireCronToken('shared/car_cron.php');
+// 1. Auth-Check: Cron-/API-Token erforderlich (oder angemeldeter Benutzer mit car_write)
+if (!Auth::cronTokenMatches() && !Auth::hasPermission('car_write')) {
+    Auth::requireCronToken('shared/car_cron.php');
+}
 
 // -------------------------------------------------------------------------
 // ASYNCHRONE ENTKOPPLUNG: HTTP-Verbindung sofort schließen
