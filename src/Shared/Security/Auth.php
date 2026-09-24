@@ -227,8 +227,11 @@ final class Auth
     public static function requireCronToken(?string $context = null): void
     {
         if (!self::cronTokenMatches()) {
+            $received = self::extractCronToken(true);
             new Logger()->error('Auth: Unbefugter Zugriff auf geschützten Endpunkt.', [
                 'endpoint' => $context ?? ($_SERVER['SCRIPT_NAME'] ?? 'unbekannt'),
+                'token_provided' => $received !== null,
+                'token_length' => $received !== null ? strlen($received) : 0,
             ]);
             http_response_code(403);
             if (!headers_sent()) {
@@ -381,6 +384,7 @@ final class Auth
         }
 
         $found = array_find($candidates, static fn($candidate): bool => is_string($candidate) && trim($candidate) !== '');
-        return $found !== null ? trim($found) : null;
+        
+        return $found;
     }
 }

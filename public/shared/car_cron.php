@@ -5,7 +5,7 @@ use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 
 // 1. Auth-Check: Cron-/API-Token erforderlich (oder angemeldeter Benutzer mit car_write)
-if (!Auth::cronTokenMatches() && !Auth::hasPermission('car_write')) {
+if (!Auth::cronTokenMatches() && !Auth::tronityWebhookTokenMatches() && !Auth::hasPermission('car_write')) {
     Auth::requireCronToken('shared/car_cron.php');
 }
 
