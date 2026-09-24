@@ -5130,11 +5130,6 @@ body {
     gap: 0.5rem;
 }
 
-.gamif-card-header > div:first-child {
-    flex: 1;
-    min-width: 0;
-}
-
 .gamif-card-title {
     font-size: 1.1rem;
     font-weight: 600;
@@ -5169,7 +5164,7 @@ body {
     border-radius: 12px;
     background: var(--bg-main);
     color: var(--text-muted);
-    white-space: normal;
+    white-space: nowrap;
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;

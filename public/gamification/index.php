@@ -228,14 +228,7 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                     <article class="gamif-card <?= $isRescue ? 'gamif-card--rescue' : '' ?>" data-task-id="<?= (int)$task['id'] ?>">
                         <div>
                             <div class="gamif-card-header">
-                                <div>
-                                    <h3 class="gamif-card-title"><?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?></h3>
-                                    <?php if ($isRescue): ?>
-                                        <span class="gamif-tag gamif-tag--rescue">🔥 RETTUNGS-QUEST (+50% Bonus-Münzen!)</span>
-                                    <?php else: ?>
-                                        <span class="gamif-tag gamif-tag--bounty">Offene Gemeinschaftsaufgabe</span>
-                                    <?php endif; ?>
-                                </div>
+                                <h3 class="gamif-card-title"><?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?></h3>
                                 <div class="gamif-card-reward">
                                     <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 +<?= $totalCoins ?></span>
                                     <span class="gamif-stat-chip gamif-stat-chip--xp">⭐ +<?= $totalXp ?></span>
@@ -243,6 +236,11 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                             </div>
 
                             <div class="gamif-card-meta">
+                                <?php if ($isRescue): ?>
+                                    <span class="gamif-tag gamif-tag--rescue">🔥 RETTUNGS-QUEST (+50% Bonus-Münzen!)</span>
+                                <?php else: ?>
+                                    <span class="gamif-tag gamif-tag--bounty">Offene Gemeinschaftsaufgabe</span>
+                                <?php endif; ?>
                                 <span class="gamif-tag"><?= htmlspecialchars(ucfirst($task['category']), ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php if (!empty($task['origin_name'])): ?>
                                     <span class="gamif-tag">Ursprünglich von <?= htmlspecialchars($task['origin_name'], ENT_QUOTES, 'UTF-8') ?></span>
