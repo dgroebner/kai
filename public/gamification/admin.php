@@ -25,6 +25,7 @@ $totalPending = count($pendingTasks) + count($pendingHelpers) + count($pendingRe
 
 // Laufende Aufgaben aller Kinder für die Übersicht
 $allActiveTasksFlat = $taskRepo->getAllActiveTasksByProfile();
+$allBounties = $taskRepo->getAllBounties();
 // Nach Profil-ID gruppieren
 $activeTasksByProfile = [];
 foreach ($allActiveTasksFlat as $t) {
