@@ -7,8 +7,11 @@ use Kai\Tools\Shared\Log\Logger;
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Nutze den Cron-Token Mechanismus, analog zu PV-Daten
-Auth::cronTokenMatches(false);
+// Nutze den Cron-Token Mechanismus, analog zu PV-Daten (Header X-API-Key oder Bearer)
+if (!Auth::cronTokenMatches(false)) {
+    (new Logger())->error('Weather Ingest Meteo: Unbefugter Zugriff versucht (Ungültiges oder fehlendes Token).');
+    Auth::sendJsonError(401, 'Unauthorized');
+}
 Auth::requireMethod('POST');
 
 $input = json_decode(file_get_contents('php://input'), true);

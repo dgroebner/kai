@@ -7,8 +7,8 @@ use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');
 
-// 1. Auth-Check — nur authentifizierte Benutzer
-Auth::requireApi();
+// 1. Auth-Check — Schreibberechtigung für das Car-Modul erforderlich
+Auth::requireApi('car_write');
 
 // 2. HTTP-Methoden-Check
 Auth::requireMethod('POST');
@@ -46,5 +46,5 @@ try {
     ]);
 } catch (Throwable $e) {
     $logger->error('public/car/sync.php: Fehler beim TRONITY-Sync.', ['error' => $e->getMessage()]);
-    Auth::sendJsonError(500, 'Synchronisation fehlgeschlagen: ' . $e->getMessage());
+    Auth::sendJsonError(500, 'Synchronisation fehlgeschlagen.');
 }

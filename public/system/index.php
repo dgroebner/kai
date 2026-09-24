@@ -186,7 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                     $successMessage = "Schülerprofil erfolgreich gespeichert.";
                 } catch (Throwable $e) {
-                    $errorMessage = "Fehler beim Speichern des Schülers: " . $e->getMessage();
+                    (new Logger())->error('system/index.php: Fehler beim Speichern des Schülers.', ['error' => $e->getMessage()]);
+                    $errorMessage = "Fehler beim Speichern des Schülerprofils.";
                 }
             } elseif (isset($_POST['action']) && $_POST['action'] === 'delete_student' && Auth::hasPermission('system_write')) {
                 try {
@@ -215,7 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $res = $schoolService->syncTodayAndNext();
                     $successMessage = "Synchronisation erfolgreich durchgeführt (" . count($res) . " Tage geprüft).";
                 } catch (Throwable $e) {
-                    $errorMessage = "Fehler bei der Synchronisation: " . $e->getMessage();
+                    (new Logger())->error('system/index.php: Fehler bei der Schul-Synchronisation.', ['error' => $e->getMessage()]);
+                    $errorMessage = "Fehler bei der Synchronisation der Schuldaten.";
                 }
             }
         }

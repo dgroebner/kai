@@ -883,8 +883,9 @@ Artikel-Liste:
                     'sync_hash' => $syncHash,
                     'items' => $archivedItems
                 ]);
-            } catch (Exception $e) {
-                Auth::sendJsonError(500, $e->getMessage());
+            } catch (\Throwable $e) {
+                $logger->error('API complete_session: Fehler beim Abschließen des Einkaufs.', ['error' => $e->getMessage()]);
+                Auth::sendJsonError(500, 'Interner Fehler beim Abschließen des Einkaufs.');
             }
             break;
 
