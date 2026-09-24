@@ -210,6 +210,22 @@ class BesteSchuleRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getAllAbsences(array $studentIds): array
+    {
+        if (empty($studentIds)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+        $sql = "SELECT a.*, s.name as student_name, s.display_color 
+                FROM school_beste_absences a
+                JOIN school_students s ON a.student_id = s.id
+                WHERE a.student_id IN ($placeholders) 
+                ORDER BY a.from_time DESC";
+
+        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt->execute(array_values($studentIds));
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getUnexcusedAbsences(array $studentIds): array
     {
         if (empty($studentIds)) return [];

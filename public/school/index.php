@@ -22,7 +22,7 @@ $allStudents = $studentRepo->getActive();
 $today = date('Y-m-d');
 $nextSchoolDay = $schoolService->determineEffectiveDate(null);
 $view = filter_input(INPUT_GET, 'view', FILTER_DEFAULT) ?: 'plan';
-if (!in_array($view, ['plan', 'beste', 'homework'])) {
+if (!in_array($view, ['plan', 'beste', 'homework', 'absences'], true)) {
     $view = 'plan';
 }
 $requestedDate = filter_input(INPUT_GET, 'date', FILTER_DEFAULT);
@@ -125,10 +125,12 @@ if ($selectedStudentId === 'all') {
 
 $groupedGrades = [];
 $besteAbsences = [];
+$allAbsences = [];
+$groupedAbsences = [];
 $besteHomework = [];
 $besteUpcomingNotes = [];
 
-if (in_array($view, ['beste', 'plan', 'homework'])) {
+if (in_array($view, ['beste', 'plan', 'homework', 'absences'], true)) {
     $bsRepo = new \Kai\Tools\School\BesteSchuleRepository();
     $qIds = ($matchedStudent !== null)
         ? [(int)$matchedStudent['id']]
@@ -158,6 +160,33 @@ if (in_array($view, ['beste', 'plan', 'homework'])) {
     } elseif ($view === 'homework') {
         $besteHomework = $bsRepo->getMissingHomework($qIds, 14);
         $besteUpcomingNotes = $bsRepo->getUpcomingNotes($qIds);
+    } elseif ($view === 'absences') {
+        $allAbsences = $bsRepo->getAllAbsences($qIds);
+        $groupedAbsences = [];
+        foreach ($qIds as $id) {
+            foreach ($allStudents as $ast) {
+                if ((int)$ast['id'] === (int)$id) {
+                    $groupedAbsences[$id] = [
+                        'name' => $ast['name'],
+                        'color' => $ast['display_color'] ?? '#2563eb',
+                        'absences' => []
+                    ];
+                    break;
+                }
+            }
+        }
+        foreach ($allAbsences as $a) {
+            $sId = (int)$a['student_id'];
+            if (isset($groupedAbsences[$sId])) {
+                $groupedAbsences[$sId]['absences'][] = $a;
+            } else {
+                $groupedAbsences[$sId] = [
+                    'name' => $a['student_name'] ?? 'Kind',
+                    'color' => $a['display_color'] ?? '#2563eb',
+                    'absences' => [$a]
+                ];
+            }
+        }
     } elseif ($view === 'plan') {
         $besteUpcomingNotes = $bsRepo->getUpcomingNotes($qIds);
     }
@@ -226,6 +255,7 @@ $nextLabel = ($nextSchoolDay === $today)
         <a href="index.php?view=plan&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($selectedStudentId) ?>" class="btn <?= $view === 'plan' ? '' : 'btn-outline' ?>">&#128197; Vertretungsplan</a>
         <a href="index.php?view=homework&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($studentParamForTabs) ?>" class="btn <?= $view === 'homework' ? '' : 'btn-outline' ?>">&#128221; Hausaufgaben</a>
         <a href="index.php?view=beste&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($studentParamForTabs) ?>" class="btn <?= $view === 'beste' ? '' : 'btn-outline' ?>">&#128202; Noten</a>
+        <a href="index.php?view=absences&amp;date=<?= $selectedDate ?>&amp;student=<?= urlencode($studentParamForTabs) ?>" class="btn <?= $view === 'absences' ? '' : 'btn-outline' ?>">&#129658; Abwesenheiten</a>
     </div>
 
     <?php if ($view === 'plan'): ?>
@@ -831,23 +861,10 @@ $nextLabel = ($nextSchoolDay === $today)
                 <?php endif; ?>
 
                 <?php if (count($besteAbsences) > 0): ?>
-                <div class="card school-card <?= count($besteAbsences) > 0 ? 'school-card-alert' : '' ?>">
-                    <div class="card-header">
-                        <h3>&#10060; Unentschuldigte Fehlzeiten</h3>
-                    </div>
-                    <div class="card-body">
-                        <ul style="list-style: none; padding: 0; margin: 0;">
-                            <?php foreach ($besteAbsences as $a): ?>
-                            <li style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
-                                <strong><?= date('d.m. H:i', strtotime($a['from_time'])) ?> - <?= date('H:i', strtotime($a['to_time'])) ?></strong>
-                                <?php if ($selectedStudentId === 'all'): ?>
-                                    <span class="badge" style="background-color: <?= htmlspecialchars($a['display_color'], ENT_QUOTES, 'UTF-8') ?>; margin-left: 5px;"><?= htmlspecialchars($a['student_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <?php endif; ?>
-                                <br>
-                                <span class="text-muted"><?= htmlspecialchars($a['absence_type'], ENT_QUOTES, 'UTF-8') ?></span>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
+                <div class="card school-card school-card-alert">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <h3 style="margin: 0;">&#10060; Unentschuldigte Fehlzeiten vorhanden (<?= count($besteAbsences) ?>)</h3>
+                        <a href="index.php?view=absences&amp;student=<?= urlencode($studentParamForTabs) ?>" class="btn btn-outline btn-small">Zu den Abwesenheiten &rarr;</a>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -857,8 +874,114 @@ $nextLabel = ($nextSchoolDay === $today)
                 <div class="card school-empty-notice">
                     <div class="school-empty-icon">✓</div>
                     <div class="school-empty-content">
-                        <h2>Alles im grünen Bereich</h2>
-                        <p class="text-muted">Es gibt aktuell keine neuen Noten, keine fehlenden Hausaufgaben (letzte 14 Tage) und keine unentschuldigten Fehlzeiten.</p>
+                        <h2>Keine Noten erfasst</h2>
+                        <p class="text-muted">Für den gewählten Filter liegen aktuell keine Noten aus beste.schule vor.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+        <?php elseif ($view === 'absences'): ?>
+
+            <?php if (!empty($groupedAbsences)): ?>
+                <div class="school-absences-container" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <?php foreach ($groupedAbsences as $sId => $studentData): ?>
+                        <?php
+                        $absences = $studentData['absences'];
+                        $unexcusedCount = count(array_filter($absences, static fn($a) => !empty($a['is_unexcused'])));
+                        $excusedCount = count($absences) - $unexcusedCount;
+                        ?>
+                        <section class="card school-plan-card" style="border-left: 3px solid <?= htmlspecialchars($studentData['color'], ENT_QUOTES, 'UTF-8') ?>; margin-bottom: 0;">
+                            <div class="school-card-header">
+                                <h2 style="display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 1.15rem;">
+                                    <span class="school-avatar" style="background-color: <?= htmlspecialchars($studentData['color'], ENT_QUOTES, 'UTF-8') ?>;">
+                                        <?= htmlspecialchars(mb_substr($studentData['name'], 0, 1), ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                    Abwesenheiten: <?= htmlspecialchars($studentData['name'], ENT_QUOTES, 'UTF-8') ?>
+                                </h2>
+                                <div class="school-card-stats">
+                                    <span class="badge badge-outline"><?= count($absences) ?> Gesamt</span>
+                                    <?php if ($unexcusedCount > 0): ?>
+                                        <span class="badge badge-danger"><?= $unexcusedCount ?> unentschuldigt</span>
+                                    <?php endif; ?>
+                                    <?php if ($excusedCount > 0): ?>
+                                        <span class="badge badge-success"><?= $excusedCount ?> entschuldigt</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <?php if (empty($absences)): ?>
+                                <div class="school-empty-notice" style="padding: 1.25rem; margin: 0.5rem 0 0 0; box-shadow: none; border: 1px dashed var(--bg-surface-hover);">
+                                    <div class="school-empty-icon">&#10003;</div>
+                                    <div class="school-empty-content">
+                                        <h3 style="margin: 0 0 0.25rem 0; font-size: 1rem;">Keine Abwesenheiten erfasst</h3>
+                                        <p class="text-muted" style="margin: 0; font-size: 0.9rem;">Für <?= htmlspecialchars($studentData['name'], ENT_QUOTES, 'UTF-8') ?> liegen aktuell keine Fehlzeiten vor.</p>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="table-responsive" style="margin-top: 0.5rem;">
+                                    <table class="data-table stack-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Zeitraum</th>
+                                                <th>Art / Grund</th>
+                                                <th>Status</th>
+                                                <th>Bemerkung</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($absences as $a): ?>
+                                                <?php
+                                                $fromDate = date('d.m.Y', strtotime($a['from_time']));
+                                                $toDate = date('d.m.Y', strtotime($a['to_time']));
+                                                $fromClock = date('H:i', strtotime($a['from_time']));
+                                                $toClock = date('H:i', strtotime($a['to_time']));
+
+                                                if ($fromDate === $toDate) {
+                                                    if ($fromClock === '00:00' && ($toClock === '23:59' || $toClock === '00:00')) {
+                                                        $timeStr = $fromDate . ' <small class="text-muted">(ganztägig)</small>';
+                                                    } else {
+                                                        $timeStr = $fromDate . ', ' . $fromClock . ' – ' . $toClock . ' Uhr';
+                                                    }
+                                                } else {
+                                                    $timeStr = $fromDate . ' (' . $fromClock . ') – ' . $toDate . ' (' . $toClock . ')';
+                                                }
+                                                ?>
+                                                <tr>
+                                                    <td data-label="Zeitraum">
+                                                        <strong><?= $timeStr ?></strong>
+                                                    </td>
+                                                    <td data-label="Art">
+                                                        <span class="badge badge-outline"><?= htmlspecialchars($a['absence_type'] ?: 'Fehlzeit', ENT_QUOTES, 'UTF-8') ?></span>
+                                                    </td>
+                                                    <td data-label="Status">
+                                                        <?php if (!empty($a['is_unexcused'])): ?>
+                                                            <span class="badge badge-danger">❌ Unentschuldigt</span>
+                                                        <?php else: ?>
+                                                            <span class="badge badge-success">✓ Entschuldigt</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td data-label="Bemerkung">
+                                                        <?php if (!empty($a['note'])): ?>
+                                                            <span><?= htmlspecialchars($a['note'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">–</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="card school-empty-notice">
+                    <div class="school-empty-icon">&#10003;</div>
+                    <div class="school-empty-content">
+                        <h2>Keine Abwesenheiten</h2>
+                        <p class="text-muted">Es liegen für das ausgewählte Profil keine Fehlzeiten vor.</p>
                     </div>
                 </div>
             <?php endif; ?>
