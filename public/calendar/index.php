@@ -384,12 +384,15 @@ $csrfToken = Auth::csrfToken();
                     </div>
                     <div>
                         <label for="event-category">Kategorie</label>
-                        <input type="text" id="event-category" name="category" class="form-control" list="category-datalist" value="Familie" placeholder="Familie, Freunde...">
-                        <datalist id="category-datalist">
+                        <select id="event-category" name="category" class="form-control">
                             <?php foreach ($categories as $cat): ?>
-                                <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>">
+                                <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>" <?= $cat === 'Familie' ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>
+                                </option>
                             <?php endforeach; ?>
-                        </datalist>
+                            <option value="__custom__">➕ Eigene Kategorie...</option>
+                        </select>
+                        <input type="text" id="event-category-custom" class="form-control hidden" placeholder="Eigene Kategorie eingeben..." style="margin-top: 6px;" maxlength="50">
                     </div>
                 </div>
 

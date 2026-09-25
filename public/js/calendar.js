@@ -12,11 +12,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const eventIdInput = document.getElementById('event-id');
     const titleInput = document.getElementById('event-title');
     const typeSelect = document.getElementById('event-type');
-    const categoryInput = document.getElementById('event-category');
+    const categorySelect = document.getElementById('event-category');
+    const categoryCustomInput = document.getElementById('event-category-custom');
     const daySelect = document.getElementById('event-day');
     const monthSelect = document.getElementById('event-month');
     const yearInput = document.getElementById('event-year');
     const notesInput = document.getElementById('event-notes');
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function () {
+            if (this.value === '__custom__') {
+                if (categoryCustomInput) {
+                    categoryCustomInput.classList.remove('hidden');
+                    categoryCustomInput.focus();
+                }
+            } else {
+                if (categoryCustomInput) {
+                    categoryCustomInput.classList.add('hidden');
+                    categoryCustomInput.value = '';
+                }
+            }
+        });
+    }
 
     // Modal: Horoskop & Ereignis-Details
     const modalDetails = document.getElementById('modal-event-details');
@@ -71,7 +88,11 @@ document.addEventListener('DOMContentLoaded', function () {
         form.reset();
         if (eventIdInput) eventIdInput.value = '';
         if (typeSelect) typeSelect.value = 'birthday';
-        if (categoryInput) categoryInput.value = 'Familie';
+        if (categorySelect) categorySelect.value = 'Familie';
+        if (categoryCustomInput) {
+            categoryCustomInput.value = '';
+            categoryCustomInput.classList.add('hidden');
+        }
 
         const today = new Date();
         if (daySelect) daySelect.value = String(today.getDate());
@@ -336,7 +357,38 @@ document.addEventListener('DOMContentLoaded', function () {
             if (eventIdInput) eventIdInput.value = ev.id;
             if (titleInput) titleInput.value = ev.title || '';
             if (typeSelect) typeSelect.value = ev.event_type || 'birthday';
-            if (categoryInput) categoryInput.value = ev.category || 'Familie';
+            if (categorySelect) {
+                const catVal = ev.category || 'Familie';
+                let optionExists = false;
+                for (let i = 0; i < categorySelect.options.length; i++) {
+                    if (categorySelect.options[i].value === catVal) {
+                        optionExists = true;
+                        break;
+                    }
+                }
+                if (optionExists) {
+                    categorySelect.value = catVal;
+                    if (categoryCustomInput) {
+                        categoryCustomInput.classList.add('hidden');
+                        categoryCustomInput.value = '';
+                    }
+                } else {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = catVal;
+                    newOpt.textContent = catVal;
+                    const customOpt = categorySelect.querySelector('option[value="__custom__"]');
+                    if (customOpt) {
+                        categorySelect.insertBefore(newOpt, customOpt);
+                    } else {
+                        categorySelect.appendChild(newOpt);
+                    }
+                    categorySelect.value = catVal;
+                    if (categoryCustomInput) {
+                        categoryCustomInput.classList.add('hidden');
+                        categoryCustomInput.value = '';
+                    }
+                }
+            }
             if (daySelect) daySelect.value = String(ev.event_day);
             if (monthSelect) monthSelect.value = String(ev.event_month);
             if (yearInput) yearInput.value = ev.event_year ? String(ev.event_year) : '';
@@ -565,12 +617,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 advanceDays.push(parseInt(cb.value, 10));
             });
 
+            let finalCategory = categorySelect ? categorySelect.value : 'Familie';
+            if (finalCategory === '__custom__') {
+                finalCategory = categoryCustomInput ? categoryCustomInput.value.trim() : '';
+                if (!finalCategory) {
+                    alert('Bitte geben Sie einen Namen für die eigene Kategorie ein.');
+                    if (categoryCustomInput) categoryCustomInput.focus();
+                    if (saveBtn) saveBtn.disabled = false;
+                    return;
+                }
+            }
+
             const payload = {
                 action: 'save_event',
                 id: eventIdInput && eventIdInput.value ? parseInt(eventIdInput.value, 10) : null,
                 title: titleInput ? titleInput.value.trim() : '',
                 event_type: typeSelect ? typeSelect.value : 'birthday',
-                category: categoryInput ? categoryInput.value.trim() : 'Familie',
+                category: finalCategory,
                 event_day: daySelect ? parseInt(daySelect.value, 10) : 1,
                 event_month: monthSelect ? parseInt(monthSelect.value, 10) : 1,
                 event_year: yearInput && yearInput.value.trim() !== '' ? parseInt(yearInput.value.trim(), 10) : null,
