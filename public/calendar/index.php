@@ -86,7 +86,6 @@ function getUrgencyMeta(int $daysRemaining): array {
             'row_class' => 'cal-row-urgency cal-row--today',
             'badge_class' => 'cal-urgency-badge cal-urgency-badge--today',
             'badge_text' => 'Heute! 🎉',
-            'subtext' => 'Heute',
         ];
     }
     if ($daysRemaining === 1) {
@@ -95,7 +94,6 @@ function getUrgencyMeta(int $daysRemaining): array {
             'row_class' => 'cal-row-urgency cal-row--tomorrow',
             'badge_class' => 'cal-urgency-badge cal-urgency-badge--tomorrow',
             'badge_text' => 'Morgen ⏰',
-            'subtext' => 'In 1 Tag',
         ];
     }
     if ($daysRemaining <= 7) {
@@ -104,7 +102,6 @@ function getUrgencyMeta(int $daysRemaining): array {
             'row_class' => 'cal-row-urgency cal-row--week',
             'badge_class' => 'cal-urgency-badge cal-urgency-badge--week',
             'badge_text' => "In {$daysRemaining} Tagen",
-            'subtext' => 'Nächste 7 Tage',
         ];
     }
     if ($daysRemaining <= 14) {
@@ -113,7 +110,6 @@ function getUrgencyMeta(int $daysRemaining): array {
             'row_class' => 'cal-row-urgency cal-row--fortnight',
             'badge_class' => 'cal-urgency-badge cal-urgency-badge--fortnight',
             'badge_text' => "In {$daysRemaining} Tagen",
-            'subtext' => 'Nächste 14 Tage',
         ];
     }
     $text = $daysRemaining > 60 ? ('In ~' . round($daysRemaining / 30.4) . ' Mon.') : "In {$daysRemaining} Tagen";
@@ -122,7 +118,6 @@ function getUrgencyMeta(int $daysRemaining): array {
         'row_class' => 'cal-row-urgency cal-row--later',
         'badge_class' => 'cal-urgency-badge cal-urgency-badge--later',
         'badge_text' => $text,
-        'subtext' => 'Später',
     ];
 }
 
@@ -245,34 +240,34 @@ $csrfToken = Auth::csrfToken();
                                         <span class="<?= $urgency['badge_class'] ?>">
                                             <?= htmlspecialchars($urgency['badge_text'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
-                                        <div class="cal-urgency-subtext"><?= htmlspecialchars($urgency['subtext'], ENT_QUOTES, 'UTF-8') ?></div>
                                     </td>
 
                                     <!-- 2. Datum & Wochentag -->
                                     <td>
                                         <div class="cal-table-date">
-                                            <span class="cal-weekday-pill cal-weekday-pill--<?= !empty($ev['is_weekend']) ? 'weekend' : 'workday' ?>">
-                                                <?= htmlspecialchars($ev['next_weekday_short'] ?? '', ENT_QUOTES, 'UTF-8') ?>
-                                            </span>
-                                            <strong><?= sprintf('%02d.%02d.', (int)$ev['event_day'], (int)$ev['event_month']) ?></strong>
+                                            <?= sprintf('%02d.%02d.', (int)$ev['event_day'], (int)$ev['event_month']) ?>
                                         </div>
-                                        <div class="cal-table-subdate">
-                                            <?= htmlspecialchars($ev['next_weekday_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>, <?= date('d.m.Y', strtotime($ev['next_date'])) ?>
+                                        <div class="cal-table-subdate <?= !empty($ev['is_weekend']) ? 'cal-subdate--weekend' : '' ?>">
+                                            <?= htmlspecialchars($ev['next_weekday_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>, <?= date('Y', strtotime($ev['next_date'])) ?>
                                         </div>
                                     </td>
 
                                     <!-- 3. Name & Anlass -->
                                     <td>
-                                        <div class="cal-table-title-row">
-                                            <span class="cal-table-type-icon"><?= $typeIcon ?></span>
-                                            <strong class="cal-table-title"><?= htmlspecialchars($ev['title'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <span class="badge cal-table-category"><?= htmlspecialchars($ev['category'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        </div>
-                                        <?php if (!empty($ev['notes'])): ?>
-                                            <div class="cal-table-notes" title="<?= htmlspecialchars($ev['notes'], ENT_QUOTES, 'UTF-8') ?>">
-                                                💡 <?= htmlspecialchars(mb_strimwidth($ev['notes'], 0, 75, '...'), ENT_QUOTES, 'UTF-8') ?>
+                                        <div class="cal-table-name-cell">
+                                            <div class="cal-table-title-row">
+                                                <span class="cal-table-type-icon"><?= $typeIcon ?></span>
+                                                <strong class="cal-table-title"><?= htmlspecialchars($ev['title'], ENT_QUOTES, 'UTF-8') ?></strong>
                                             </div>
-                                        <?php endif; ?>
+                                            <div class="cal-table-cat-row">
+                                                <span class="badge cal-table-category"><?= htmlspecialchars($ev['category'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            </div>
+                                            <?php if (!empty($ev['notes'])): ?>
+                                                <div class="cal-table-notes" title="<?= htmlspecialchars($ev['notes'], ENT_QUOTES, 'UTF-8') ?>">
+                                                    💡 <?= htmlspecialchars(mb_strimwidth($ev['notes'], 0, 75, '...'), ENT_QUOTES, 'UTF-8') ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
 
                                     <!-- 4. Alter / Jubiläum -->

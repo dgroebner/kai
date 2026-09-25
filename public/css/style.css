@@ -6603,10 +6603,20 @@ button.btn-text:hover {
 }
 
 /* Tabellenzellen-Inhalte */
+.cal-table th,
+.cal-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--bg-surface-hover);
+    vertical-align: middle;
+    text-align: left;
+}
+
+.cal-table th.text-right,
+.cal-table td.text-right {
+    text-align: right;
+}
+
 .cal-table-date {
-    display: flex;
-    align-items: center;
-    gap: 5px;
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--accent);
@@ -6614,55 +6624,55 @@ button.btn-text:hover {
 }
 
 .cal-table-subdate {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 3px;
+    white-space: nowrap;
 }
 
-.cal-weekday-pill {
-    display: inline-block;
-    padding: 1px 5px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    border-radius: 4px;
-    line-height: 1.2;
-    vertical-align: middle;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-}
-
-.cal-weekday-pill--workday {
-    background: var(--bg-surface-hover);
-    color: var(--text-main);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.cal-weekday-pill--weekend {
-    background: rgba(245, 158, 11, 0.18);
+.cal-subdate--weekend {
     color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.4);
+    font-weight: 600;
+}
+
+/* Name / Anlass Zelle: Saubere, einheitliche Ausrichtung */
+.cal-table-name-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    text-align: left;
 }
 
 .cal-table-title-row {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    gap: 6px;
+    text-align: left;
+    white-space: nowrap;
 }
 
 .cal-table-type-icon {
     font-size: 1.15rem;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .cal-table-title {
     font-size: 0.98rem;
     color: var(--text-main);
+    line-height: 1.3;
+}
+
+.cal-table-cat-row {
+    display: block;
+    line-height: 1;
 }
 
 .cal-table-category {
     font-size: 0.72rem;
-    padding: 1px 6px;
+    padding: 1px 7px;
     background: var(--bg-surface-hover);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -6670,7 +6680,7 @@ button.btn-text:hover {
 .cal-table-notes {
     font-size: 0.8rem;
     color: var(--text-muted);
-    margin-top: 3px;
+    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

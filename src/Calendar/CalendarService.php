@@ -128,9 +128,9 @@ class CalendarService
             $nextAge = $targetYear - $year;
             $type = $event['event_type'] ?? 'birthday';
             if ($type === 'birthday') {
-                $ageText = $daysRemaining === 0 ? "wird heute {$nextAge} Jahre" : "wird {$nextAge} Jahre";
+                $ageText = "{$nextAge} Jahre";
             } elseif ($type === 'anniversary') {
-                $ageText = "{$nextAge}. Jubiläum ({$nextAge} Jahre)";
+                $ageText = "{$nextAge}. Jubiläum";
             } elseif ($type === 'memorial') {
                 $ageText = "{$nextAge}. Gedenkjahr";
             } else {
