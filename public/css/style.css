@@ -6220,3 +6220,451 @@ body {
 
 .tool-card-title { white-space: normal; line-height: 1.25; }
 
+
+/* ==========================================================================
+   FIXES & MULTI-LINE BADGE LAYOUT (Geburtstage & Jahrestage)
+   ========================================================================== */
+
+/* Globale Link- und Button-Farbsicherheit */
+button {
+    color: inherit;
+    font-family: inherit;
+}
+
+.btn-primary,
+a.btn-primary,
+button.btn-primary {
+    background-color: var(--accent) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--accent) !important;
+}
+
+a.btn-outline,
+button.btn-outline,
+.btn-outline {
+    background-color: transparent !important;
+    border: 1px solid var(--bg-surface-hover) !important;
+    color: var(--text-main) !important;
+}
+
+a.btn-outline:hover,
+button.btn-outline:hover,
+.btn-outline:hover {
+    background-color: var(--bg-surface-hover) !important;
+    color: #ffffff !important;
+}
+
+.btn-text,
+a.btn-text,
+button.btn-text {
+    background: transparent !important;
+    border: none !important;
+    color: var(--accent) !important;
+    cursor: pointer;
+    padding: 0.3rem 0.6rem;
+    text-decoration: none;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-text:hover,
+a.btn-text:hover,
+button.btn-text:hover {
+    color: var(--accent-hover) !important;
+    text-decoration: underline !important;
+}
+
+/* Mehrzeiliger Eintrag (angelehnt an E-Auto Ladeübersicht) */
+.cal-entry-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 1.2rem;
+    margin-bottom: 0.85rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.cal-entry-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.cal-entry-item--today {
+    border-color: var(--color-orange) !important;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+}
+
+.cal-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.cal-entry-title-wrap {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    font-size: 1.05rem;
+}
+
+.cal-entry-date {
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.cal-entry-name {
+    font-size: 1.1rem;
+    color: var(--text-main);
+    word-break: break-word;
+}
+
+.cal-entry-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.cal-entry-grid {
+    display: flex;
+    gap: 1.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.35rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.9rem;
+}
+
+.cal-entry-col {
+    min-width: 140px;
+}
+
+.cal-entry-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    color: var(--text-muted);
+}
+
+.cal-entry-val {
+    font-size: 0.98rem;
+    color: var(--text-main);
+}
+
+.cal-entry-notes {
+    flex: 1 1 240px;
+}
+
+/* Klickbarer Zodiac-Badge (deutlich lesbar auf dunklem Hintergrund) */
+.cal-zodiac-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: var(--bg-surface-hover);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-main) !important;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.cal-zodiac-badge:hover {
+    background: var(--bg-surface);
+    border-color: var(--accent);
+    color: #ffffff !important;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Heute-Badge mit perfektem Kontrast */
+.cal-badge-today {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+    color: #f59e0b !important;
+    border: 1px solid #f59e0b !important;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 9999px;
+}
+
+.cal-badge-soon {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    color: #60a5fa !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 9999px;
+}
+
+.cal-badge-later {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 9999px;
+}
+
+/* ==========================================================================
+   URGENCY TABLE & BADGES (Geburtstage & Jahrestage)
+   ========================================================================== */
+
+.cal-table-header-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+/* Dringlichkeits-Legende */
+.cal-urgency-legend {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.cal-urgency-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.cal-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.cal-legend-dot--today {
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
+}
+
+.cal-legend-dot--tomorrow {
+    background: #f97316;
+    box-shadow: 0 0 5px rgba(249, 115, 22, 0.6);
+}
+
+.cal-legend-dot--week {
+    background: #3b82f6;
+}
+
+.cal-legend-dot--fortnight {
+    background: #10b981;
+}
+
+/* Tabelle Styling */
+.cal-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.cal-table th {
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--bg-surface-hover);
+}
+
+.cal-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--bg-surface-hover);
+    vertical-align: middle;
+}
+
+/* Zeilen-Hervorhebung nach Dringlichkeit */
+.cal-row-urgency {
+    transition: background 0.15s ease;
+}
+
+/* 1. Heute: Gold / Bernstein */
+.cal-row--today td {
+    background: rgba(245, 158, 11, 0.12) !important;
+}
+.cal-row--today td:first-child {
+    border-left: 4px solid #f59e0b;
+}
+.cal-row--today:hover td {
+    background: rgba(245, 158, 11, 0.18) !important;
+}
+
+/* 2. Morgen: Warmes Orange */
+.cal-row--tomorrow td {
+    background: rgba(249, 115, 22, 0.08) !important;
+}
+.cal-row--tomorrow td:first-child {
+    border-left: 4px solid #f97316;
+}
+.cal-row--tomorrow:hover td {
+    background: rgba(249, 115, 22, 0.13) !important;
+}
+
+/* 3. Nächste 7 Tage: Blau / Akzent */
+.cal-row--week td {
+    background: rgba(59, 130, 246, 0.06) !important;
+}
+.cal-row--week td:first-child {
+    border-left: 4px solid #3b82f6;
+}
+.cal-row--week:hover td {
+    background: rgba(59, 130, 246, 0.10) !important;
+}
+
+/* 4. Nächste 14 Tage: Smaragd / Grün */
+.cal-row--fortnight td {
+    background: rgba(16, 185, 129, 0.04) !important;
+}
+.cal-row--fortnight td:first-child {
+    border-left: 4px solid #10b981;
+}
+.cal-row--fortnight:hover td {
+    background: rgba(16, 185, 129, 0.08) !important;
+}
+
+/* 5. Später: Neutral */
+.cal-row--later td:first-child {
+    border-left: 4px solid transparent;
+}
+
+/* Dringlichkeits-Badges (Pills) */
+.cal-urgency-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.cal-urgency-badge--today {
+    background-color: rgba(245, 158, 11, 0.25) !important;
+    color: #f59e0b !important;
+    border: 1px solid #f59e0b !important;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.cal-urgency-badge--tomorrow {
+    background-color: rgba(249, 115, 22, 0.2) !important;
+    color: #fb923c !important;
+    border: 1px solid #f97316 !important;
+    font-weight: 600;
+}
+
+.cal-urgency-badge--week {
+    background-color: rgba(59, 130, 246, 0.18) !important;
+    color: #60a5fa !important;
+    border: 1px solid rgba(59, 130, 246, 0.4) !important;
+    font-weight: 600;
+}
+
+.cal-urgency-badge--fortnight {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    font-weight: 500;
+}
+
+.cal-urgency-badge--later {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    font-weight: 500;
+}
+
+.cal-urgency-subtext {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+/* Tabellenzellen-Inhalte */
+.cal-table-date {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.2;
+}
+
+.cal-table-subdate {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.cal-table-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.cal-table-type-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.cal-table-title {
+    font-size: 0.98rem;
+    color: var(--text-main);
+}
+
+.cal-table-category {
+    font-size: 0.72rem;
+    padding: 1px 6px;
+    background: var(--bg-surface-hover);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cal-table-notes {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+
+.cal-table-age {
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.cal-table-recipients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.cal-table-advance {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+

@@ -173,6 +173,51 @@ class CalendarService
     }
 
     /**
+     * Liefert alle Ereignisse chronologisch nach nächstem Fälligkeitsdatum sortiert (ab heute),
+     * inklusive Paginierungsdaten.
+     *
+     * @return array{events: array<int, array<string, mixed>>, total: int, page: int, per_page: int, total_pages: int}
+     */
+    public function getPaginatedEventsChronological(
+        ?string $forUserEmail = null,
+        ?string $category = null,
+        ?string $eventType = null,
+        ?string $search = null,
+        int $page = 1,
+        int $perPage = 15
+    ): array {
+        $allEvents = $this->eventRepo->getAll($forUserEmail, $category, $eventType, $search);
+        $calculatedEvents = [];
+
+        foreach ($allEvents as $event) {
+            $calculatedEvents[] = $this->calculateEventDetails($event);
+        }
+
+        // Chronologische Sortierung: Nächste Ereignisse zuerst (ab heute)
+        usort($calculatedEvents, function ($a, $b) {
+            if ($a['days_remaining'] === $b['days_remaining']) {
+                return $a['title'] <=> $b['title'];
+            }
+            return $a['days_remaining'] <=> $b['days_remaining'];
+        });
+
+        $total = count($calculatedEvents);
+        $totalPages = max(1, (int)ceil($total / $perPage));
+        $page = max(1, min($page, $totalPages));
+        $offset = ($page - 1) * $perPage;
+
+        $pagedEvents = array_slice($calculatedEvents, $offset, $perPage);
+
+        return [
+            'events' => $pagedEvents,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total_pages' => $totalPages,
+        ];
+    }
+
+    /**
      * Gruppiert alle Ereignisse nach Monaten (1 bis 12).
      *
      * @return array<int, array{month: int, month_name: string, events: array<int, array<string, mixed>>}>

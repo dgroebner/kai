@@ -13,22 +13,29 @@ $currentUserEmail = strtolower(trim((string)($_SESSION['user_email'] ?? '')));
 $calendarService = new CalendarService();
 $eventRepo = $calendarService->getEventRepository();
 
-// Filter-Parameter auslesen
+// Filter- und Paginierungs-Parameter auslesen
 $filterScope = $_GET['scope'] ?? 'all';
 $filterType = $_GET['type'] ?? '';
 $filterCategory = $_GET['category'] ?? '';
 $filterSearch = trim((string)($_GET['q'] ?? ''));
+$page = max(1, filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT) ?: 1);
+$perPage = 15;
 
 $scopeEmail = ($filterScope === 'mine') ? $currentUserEmail : null;
 
-// Daten abrufen
-$upcomingEvents = $calendarService->getUpcomingEvents(30, $scopeEmail);
-$monthsData = $calendarService->getEventsGroupedByMonth(
+// Paginierte Daten chronologisch abrufen (Nächste Ereignisse zuerst!)
+$pagedData = $calendarService->getPaginatedEventsChronological(
     $scopeEmail,
     $filterCategory !== '' ? $filterCategory : null,
     $filterType !== '' ? $filterType : null,
-    $filterSearch !== '' ? $filterSearch : null
+    $filterSearch !== '' ? $filterSearch : null,
+    $page,
+    $perPage
 );
+
+$events = $pagedData['events'];
+$totalEvents = $pagedData['total'];
+$totalPages = $pagedData['total_pages'];
 
 $allUsers = $eventRepo->getAllPossibleUsers();
 $categories = $eventRepo->getCategories();
@@ -54,6 +61,70 @@ $advanceLabels = [
     7 => '1 Woche vorher',
     14 => '2 Wochen vorher',
 ];
+
+function buildCalUrl(int $targetPage, string $scope, string $type, string $cat, string $q): string {
+    $p = ['page' => $targetPage];
+    if ($scope !== 'all') {
+        $p['scope'] = $scope;
+    }
+    if ($type !== '') {
+        $p['type'] = $type;
+    }
+    if ($cat !== '') {
+        $p['category'] = $cat;
+    }
+    if ($q !== '') {
+        $p['q'] = $q;
+    }
+    return 'index.php?' . http_build_query($p);
+}
+
+function getUrgencyMeta(int $daysRemaining): array {
+    if ($daysRemaining === 0) {
+        return [
+            'level' => 'today',
+            'row_class' => 'cal-row-urgency cal-row--today',
+            'badge_class' => 'cal-urgency-badge cal-urgency-badge--today',
+            'badge_text' => 'Heute! 🎉',
+            'subtext' => 'Heute',
+        ];
+    }
+    if ($daysRemaining === 1) {
+        return [
+            'level' => 'tomorrow',
+            'row_class' => 'cal-row-urgency cal-row--tomorrow',
+            'badge_class' => 'cal-urgency-badge cal-urgency-badge--tomorrow',
+            'badge_text' => 'Morgen ⏰',
+            'subtext' => 'In 1 Tag',
+        ];
+    }
+    if ($daysRemaining <= 7) {
+        return [
+            'level' => 'week',
+            'row_class' => 'cal-row-urgency cal-row--week',
+            'badge_class' => 'cal-urgency-badge cal-urgency-badge--week',
+            'badge_text' => "In {$daysRemaining} Tagen",
+            'subtext' => 'Nächste 7 Tage',
+        ];
+    }
+    if ($daysRemaining <= 14) {
+        return [
+            'level' => 'fortnight',
+            'row_class' => 'cal-row-urgency cal-row--fortnight',
+            'badge_class' => 'cal-urgency-badge cal-urgency-badge--fortnight',
+            'badge_text' => "In {$daysRemaining} Tagen",
+            'subtext' => 'Nächste 14 Tage',
+        ];
+    }
+    $text = $daysRemaining > 60 ? ('In ~' . round($daysRemaining / 30.4) . ' Mon.') : "In {$daysRemaining} Tagen";
+    return [
+        'level' => 'later',
+        'row_class' => 'cal-row-urgency cal-row--later',
+        'badge_class' => 'cal-urgency-badge cal-urgency-badge--later',
+        'badge_text' => $text,
+        'subtext' => 'Später',
+    ];
+}
 
 $csrfToken = Auth::csrfToken();
 ?>
@@ -83,11 +154,11 @@ $csrfToken = Auth::csrfToken();
         <!-- Filter & Suchleiste -->
         <section class="card cal-filter-bar">
             <div class="cal-filter-group">
-                <a href="?scope=all<?= $filterType ? '&type=' . urlencode($filterType) : '' ?><?= $filterCategory ? '&category=' . urlencode($filterCategory) : '' ?><?= $filterSearch ? '&q=' . urlencode($filterSearch) : '' ?>"
+                <a href="<?= buildCalUrl(1, 'all', $filterType, $filterCategory, $filterSearch) ?>"
                    class="btn btn-sm <?= $filterScope !== 'mine' ? 'btn-primary' : 'btn-outline' ?>">
                     Alle Kontakte
                 </a>
-                <a href="?scope=mine<?= $filterType ? '&type=' . urlencode($filterType) : '' ?><?= $filterCategory ? '&category=' . urlencode($filterCategory) : '' ?><?= $filterSearch ? '&q=' . urlencode($filterSearch) : '' ?>"
+                <a href="<?= buildCalUrl(1, 'mine', $filterType, $filterCategory, $filterSearch) ?>"
                    class="btn btn-sm <?= $filterScope === 'mine' ? 'btn-primary' : 'btn-outline' ?>">
                     👤 Nur für mich
                 </a>
@@ -123,211 +194,159 @@ $csrfToken = Auth::csrfToken();
             </form>
         </section>
 
-        <!-- Sektion 1: Demnächst anstehend (nächste 30 Tage) -->
-        <section>
-            <div class="section-header">
-                <h2>🎉 Demnächst anstehend (Nächste 30 Tage)</h2>
-                <span class="text-muted"><?= count($upcomingEvents) ?> Ereignisse</span>
+        <!-- Hauptsektion: Paginierte Tabelle aller Ereignisse (chronologisch sortiert, nächste zuerst) -->
+        <section class="card">
+            <div class="cal-table-header-wrap">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.25rem;">Anstehende Ereignisse</h2>
+                    <span class="u-muted" style="font-size: 0.85rem;"><?= $totalEvents ?> Ereignis(se) gesamt &bull; Nächste Termine zuerst</span>
+                </div>
+                <!-- Dringlichkeits-Legende -->
+                <div class="cal-urgency-legend">
+                    <span class="cal-urgency-legend-item"><span class="cal-legend-dot cal-legend-dot--today"></span> Heute</span>
+                    <span class="cal-urgency-legend-item"><span class="cal-legend-dot cal-legend-dot--tomorrow"></span> Morgen</span>
+                    <span class="cal-urgency-legend-item"><span class="cal-legend-dot cal-legend-dot--week"></span> Nächste 7 Tage</span>
+                    <span class="cal-urgency-legend-item"><span class="cal-legend-dot cal-legend-dot--fortnight"></span> Nächste 14 Tage</span>
+                </div>
             </div>
 
-            <?php if (empty($upcomingEvents)): ?>
-                <div class="card text-center text-muted" style="padding: 24px;">
-                    <p style="margin: 0; font-size: 1rem;">In den nächsten 30 Tagen stehen keine erfassten Geburtstage oder Jahrestage an.</p>
+            <?php if (empty($events)): ?>
+                <div class="no-data u-mt-md text-center text-muted" style="padding: 2.5rem 1rem;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📅</div>
+                    <p style="margin: 0; font-size: 1.05rem;">Keine passenden Geburtstage oder Jahrestage gefunden.</p>
+                    <?php if ($filterType || $filterCategory || $filterSearch || $filterScope === 'mine'): ?>
+                        <div style="margin-top: 1rem;">
+                            <a href="index.php" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
-                <div class="cal-upcoming-grid">
-                    <?php foreach ($upcomingEvents as $ev): ?>
-                        <?php
-                        $isToday = $ev['days_remaining'] === 0;
-                        $typeIcon = $typeIcons[$ev['event_type']] ?? '📅';
-                        $cardClass = $isToday ? 'cal-card cal-card--today' : 'cal-card';
-                        $badgeClass = $isToday ? 'cal-badge-pill cal-badge-today' : ($ev['days_remaining'] <= 3 ? 'cal-badge-pill cal-badge-soon' : 'cal-badge-pill cal-badge-later');
-                        ?>
-                        <div class="<?= $cardClass ?>" data-event-id="<?= (int)$ev['id'] ?>">
-                            <div>
-                                <div class="cal-card-header">
-                                    <div class="cal-date-badge">
-                                        <span class="cal-date-badge-day"><?= sprintf('%02d', (int)$ev['event_day']) ?></span>
-                                        <span class="cal-date-badge-month"><?= mb_substr(CalendarService::MONTH_NAMES_DE[(int)$ev['event_month']], 0, 3, 'UTF-8') ?></span>
-                                    </div>
-                                    <div class="cal-card-info">
-                                        <h3 class="cal-card-title">
-                                            <span><?= $typeIcon ?></span>
-                                            <span><?= htmlspecialchars($ev['title'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        </h3>
-                                        <div class="cal-card-sub">
-                                            <span class="<?= $badgeClass ?>"><?= htmlspecialchars($ev['badge_text'], ENT_QUOTES, 'UTF-8') ?></span>
-                                            <?php if (!empty($ev['age_text'])): ?>
-                                                &bull; <strong><?= htmlspecialchars($ev['age_text'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <?php endif; ?>
+                <div class="table-responsive u-mt-md">
+                    <table class="data-table cal-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">Fälligkeit</th>
+                                <th style="width: 110px;">Datum</th>
+                                <th>Name / Anlass</th>
+                                <th style="width: 150px;">Alter / Jubiläum</th>
+                                <th style="width: 190px;">Sternzeichen</th>
+                                <th>Benachrichtigung</th>
+                                <th style="width: 135px; text-align: right;">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($events as $ev): ?>
+                                <?php
+                                $urgency = getUrgencyMeta((int)$ev['days_remaining']);
+                                $typeIcon = $typeIcons[$ev['event_type']] ?? '📅';
+                                ?>
+                                <tr class="<?= $urgency['row_class'] ?>" data-event-id="<?= (int)$ev['id'] ?>">
+                                    <!-- 1. Dringlichkeit / Fälligkeit -->
+                                    <td>
+                                        <span class="<?= $urgency['badge_class'] ?>">
+                                            <?= htmlspecialchars($urgency['badge_text'], ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                        <div class="cal-urgency-subtext"><?= htmlspecialchars($urgency['subtext'], ENT_QUOTES, 'UTF-8') ?></div>
+                                    </td>
+
+                                    <!-- 2. Datum -->
+                                    <td>
+                                        <div class="cal-table-date"><?= sprintf('%02d.%02d.', (int)$ev['event_day'], (int)$ev['event_month']) ?></div>
+                                        <div class="cal-table-subdate"><?= date('D, d.m.Y', strtotime($ev['next_date'])) ?></div>
+                                    </td>
+
+                                    <!-- 3. Name & Anlass -->
+                                    <td>
+                                        <div class="cal-table-title-row">
+                                            <span class="cal-table-type-icon"><?= $typeIcon ?></span>
+                                            <strong class="cal-table-title"><?= htmlspecialchars($ev['title'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <span class="badge cal-table-category"><?= htmlspecialchars($ev['category'], ENT_QUOTES, 'UTF-8') ?></span>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div class="text-muted" style="font-size: 0.8rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                                    <span class="badge"><?= htmlspecialchars($ev['category'], ENT_QUOTES, 'UTF-8') ?></span>
-                                    <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Sternzeichen &amp; Horoskop anzeigen">
-                                        <?= $ev['western_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['western_zodiac']['name'], ENT_QUOTES, 'UTF-8') ?>
-                                        <?php if (!empty($ev['chinese_zodiac'])): ?>
-                                            &bull; <?= $ev['chinese_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['chinese_zodiac']['animal'], ENT_QUOTES, 'UTF-8') ?>
+                                        <?php if (!empty($ev['notes'])): ?>
+                                            <div class="cal-table-notes" title="<?= htmlspecialchars($ev['notes'], ENT_QUOTES, 'UTF-8') ?>">
+                                                💡 <?= htmlspecialchars(mb_strimwidth($ev['notes'], 0, 75, '...'), ENT_QUOTES, 'UTF-8') ?>
+                                            </div>
                                         <?php endif; ?>
-                                    </button>
-                                </div>
+                                    </td>
 
-                                <!-- Empfänger-Badges -->
-                                <?php if (!empty($ev['recipients'])): ?>
-                                    <div class="cal-recipient-tags">
-                                        <?php foreach ($ev['recipients'] as $rec): ?>
-                                            <span class="cal-recipient-tag" title="Wird benachrichtigt: <?= htmlspecialchars($rec['email'], ENT_QUOTES, 'UTF-8') ?>">
-                                                👤 <?= htmlspecialchars($rec['name'], ENT_QUOTES, 'UTF-8') ?>
-                                            </span>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="cal-recipient-tags">
-                                        <span class="cal-recipient-tag text-muted" style="opacity: 0.7;">Keine Benachrichtigung</span>
-                                    </div>
-                                <?php endif; ?>
+                                    <!-- 4. Alter / Jubiläum -->
+                                    <td>
+                                        <?php if (!empty($ev['age_text'])): ?>
+                                            <strong class="cal-table-age"><?= htmlspecialchars($ev['age_text'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <?php if (!empty($ev['event_year'])): ?>
+                                                <div class="cal-table-subdate">(*<?= (int)$ev['event_year'] ?>)</div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="u-muted">–</span>
+                                        <?php endif; ?>
+                                    </td>
 
-                                <?php if (!empty($ev['notes'])): ?>
-                                    <div class="cal-notes-box">
-                                        💡 <?= nl2br(htmlspecialchars($ev['notes'], ENT_QUOTES, 'UTF-8')) ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
+                                    <!-- 5. Sternzeichen (klickbar für Horoskop) -->
+                                    <td>
+                                        <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Horoskop &amp; Details anzeigen">
+                                            <span><?= $ev['western_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['western_zodiac']['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php if (!empty($ev['chinese_zodiac'])): ?>
+                                                <span class="u-muted" style="margin: 0 2px;">•</span>
+                                                <span><?= $ev['chinese_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['chinese_zodiac']['animal'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php endif; ?>
+                                        </button>
+                                    </td>
 
-                            <div class="cal-card-actions">
-                                <button type="button" class="btn btn-sm btn-outline js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Sternzeichen &amp; Horoskop-Details">
-                                    ✨ Horoskop
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline js-test-push" data-id="<?= (int)$ev['id'] ?>" title="Test-Push an mich senden">
-                                    🔔
-                                </button>
-                                <?php if ($canWrite): ?>
-                                    <button type="button" class="btn btn-sm btn-outline js-edit-event" data-id="<?= (int)$ev['id'] ?>" title="Bearbeiten">
-                                        ✏️
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-danger js-delete-event" data-id="<?= (int)$ev['id'] ?>" title="Löschen">
-                                        🗑️
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </section>
+                                    <!-- 6. Benachrichtigung an -->
+                                    <td>
+                                        <?php if (!empty($ev['recipients'])): ?>
+                                            <div class="cal-table-recipients">
+                                                <?php foreach ($ev['recipients'] as $rec): ?>
+                                                    <span class="cal-recipient-tag">👤 <?= htmlspecialchars($rec['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                            <div class="cal-table-advance">
+                                                ⏰ <?= implode(', ', array_map(fn($d) => $d === 0 ? 'am Tag' : "{$d}d vor", $ev['advance_days_list'] ?? [0, 1, 3])) ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="u-muted" style="font-size: 0.85rem;">–</span>
+                                        <?php endif; ?>
+                                    </td>
 
-        <!-- Sektion 2: Jahreskalender (12 Monate) -->
-        <section>
-            <div class="section-header">
-                <h2>📅 Jahreskalender (Januar – Dezember)</h2>
-            </div>
-
-            <?php
-            $hasAnyMonthEvents = false;
-            foreach ($monthsData as $m) {
-                if (!empty($m['events'])) {
-                    $hasAnyMonthEvents = true;
-                    break;
-                }
-            }
-            ?>
-
-            <?php if (!$hasAnyMonthEvents): ?>
-                <div class="card text-center text-muted" style="padding: 24px;">
-                    <p style="margin: 0;">Keine Einträge für die aktuellen Filter gefunden.</p>
-                </div>
-            <?php else: ?>
-                <?php foreach ($monthsData as $mNum => $mData): ?>
-                    <?php if (empty($mData['events'])) continue; ?>
-                    <div class="cal-month-card">
-                        <div class="cal-month-header">
-                            <h3 class="cal-month-title">
-                                <span>🗓️ <?= htmlspecialchars($mData['month_name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="cal-month-count">(<?= count($mData['events']) ?>)</span>
-                            </h3>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="data-table stack-table">
-                                <thead>
-                                <tr>
-                                    <th style="width: 80px;">Tag</th>
-                                    <th>Typ &amp; Name</th>
-                                    <th>Alter / Jubiläum</th>
-                                    <th>Kategorie</th>
-                                    <th>Benachrichtigung an</th>
-                                    <th style="width: 140px; text-align: right;">Aktionen</th>
+                                    <!-- 7. Aktionen -->
+                                    <td style="text-align: right; white-space: nowrap;">
+                                        <button type="button" class="btn btn-sm btn-outline js-test-push" data-id="<?= (int)$ev['id'] ?>" title="Test-Push an mich senden">
+                                            🔔
+                                        </button>
+                                        <?php if ($canWrite): ?>
+                                            <button type="button" class="btn btn-sm btn-outline js-edit-event" data-id="<?= (int)$ev['id'] ?>" title="Bearbeiten">
+                                                ✏️
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger js-delete-event" data-id="<?= (int)$ev['id'] ?>" title="Löschen">
+                                                🗑️
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
-                                </thead>
-                                <tbody>
-                                <?php foreach ($mData['events'] as $ev): ?>
-                                    <?php $typeIcon = $typeIcons[$ev['event_type']] ?? '📅'; ?>
-                                    <tr data-event-id="<?= (int)$ev['id'] ?>">
-                                        <td data-label="Tag">
-                                            <strong><?= sprintf('%02d.%02d.', (int)$ev['event_day'], (int)$ev['event_month']) ?></strong>
-                                        </td>
-                                        <td data-label="Typ &amp; Name">
-                                            <span><?= $typeIcon ?></span>
-                                            <strong><?= htmlspecialchars($ev['title'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" style="margin-left: 6px;" title="Sternzeichen &amp; Horoskop anzeigen">
-                                                <?= $ev['western_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['western_zodiac']['name'], ENT_QUOTES, 'UTF-8') ?>
-                                                <?php if (!empty($ev['chinese_zodiac'])): ?>
-                                                    &bull; <?= $ev['chinese_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['chinese_zodiac']['animal'], ENT_QUOTES, 'UTF-8') ?>
-                                                <?php endif; ?>
-                                            </button>
-                                            <?php if (!empty($ev['notes'])): ?>
-                                                <br><small class="text-muted">💡 <?= htmlspecialchars($ev['notes'], ENT_QUOTES, 'UTF-8') ?></small>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Alter / Jubiläum">
-                                            <?php if (!empty($ev['age_text'])): ?>
-                                                <?= htmlspecialchars($ev['age_text'], ENT_QUOTES, 'UTF-8') ?>
-                                                <?php if (!empty($ev['event_year'])): ?>
-                                                    <small class="text-muted">(*<?= (int)$ev['event_year'] ?>)</small>
-                                                <?php endif; ?>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Kategorie">
-                                            <span class="badge"><?= htmlspecialchars($ev['category'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        </td>
-                                        <td data-label="Benachrichtigung an">
-                                            <?php if (!empty($ev['recipients'])): ?>
-                                                <div class="cal-recipient-tags">
-                                                    <?php foreach ($ev['recipients'] as $rec): ?>
-                                                        <span class="cal-recipient-tag">👤 <?= htmlspecialchars($rec['name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="text-muted" style="font-size: 0.8rem;">Keine</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label="Aktionen" style="text-align: right;">
-                                            <button type="button" class="btn btn-sm btn-outline js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Sternzeichen &amp; Horoskop-Details">
-                                                ✨
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline js-test-push" data-id="<?= (int)$ev['id'] ?>" title="Test-Push an mich senden">
-                                                🔔
-                                            </button>
-                                            <?php if ($canWrite): ?>
-                                                <button type="button" class="btn btn-sm btn-outline js-edit-event" data-id="<?= (int)$ev['id'] ?>" title="Bearbeiten">
-                                                    ✏️
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-danger js-delete-event" data-id="<?= (int)$ev['id'] ?>" title="Löschen">
-                                                    🗑️
-                                                </button>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
+
+                <!-- Paginierung -->
+                <?php if ($totalPages > 1): ?>
+                    <div class="pagination u-mt-lg">
+                        <?php if ($page > 1): ?>
+                            <a href="<?= buildCalUrl($page - 1, $filterScope, $filterType, $filterCategory, $filterSearch) ?>" class="btn btn-outline">&larr; Zurück</a>
+                        <?php else: ?>
+                            <span class="btn btn-outline" style="opacity: 0.4; cursor: not-allowed;">&larr; Zurück</span>
+                        <?php endif; ?>
+
+                        <span class="page-info">Seite <?= $page ?> von <?= $totalPages ?> (<?= $totalEvents ?> Ereignisse)</span>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a href="<?= buildCalUrl($page + 1, $filterScope, $filterType, $filterCategory, $filterSearch) ?>" class="btn btn-outline">Weiter &rarr;</a>
+                        <?php else: ?>
+                            <span class="btn btn-outline" style="opacity: 0.4; cursor: not-allowed;">Weiter &rarr;</span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
         </section>
     </main>
 </div>
@@ -415,7 +434,7 @@ $csrfToken = Auth::csrfToken();
                         <?php endforeach; ?>
                     </div>
 
-                    <div style="border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 10px;">
+                    <div style="border-top: 1px solid var(--bg-surface-hover); margin-top: 10px; padding-top: 10px;">
                         <span style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Vorlaufzeit (Wann erinnern?):</span>
                         <div class="cal-advance-options">
                             <?php foreach ($advanceLabels as $days => $label): ?>
@@ -454,10 +473,10 @@ $csrfToken = Auth::csrfToken();
                 <span>⏳ Details werden geladen...</span>
             </div>
             <div id="modal-details-body" class="hidden">
-                <div class="card" style="margin-bottom: 12px; background: var(--bg-hover);">
+                <div class="card" style="margin-bottom: 12px; background: var(--bg-surface-hover);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
                         <div>
-                            <h4 id="det-title" style="margin: 0 0 4px 0; font-size: 1.25rem;"></h4>
+                            <h4 id="det-title" style="margin: 0 0 4px 0; font-size: 1.25rem; color: var(--text-main);"></h4>
                             <div class="text-muted" id="det-subtitle" style="font-size: 0.9rem;"></div>
                         </div>
                         <div id="det-badge-wrap"></div>
