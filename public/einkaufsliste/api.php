@@ -63,7 +63,9 @@ $masterActions = [
     'save_ebon_mapping', 'delete_ebon_mapping', 'resolve_inbox',
     'merge_products', 'ai_suggest_merges'
 ];
-if (in_array($action, $masterActions, true) && !Auth::hasPermission('shopping_master')) {
+if (in_array($action, $masterActions, true)
+    && !Auth::hasPermission('shopping_master')
+    && !($action === 'toggle_product_ignore' && Auth::hasPermission('suggestions_write'))) {
     Auth::sendJsonError(403, 'Fehlendes Schreibrecht für den Artikelstamm (shopping_master)');
 }
 

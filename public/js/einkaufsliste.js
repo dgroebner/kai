@@ -502,6 +502,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 acceptBtn.disabled = false;
             }
         }
+
+        // --- Vorschlag dauerhaft ignorieren / nicht mehr vorschlagen ---
+        const ignoreSuggBtn = e.target.closest('.js-ignore-suggestion-btn');
+        if (ignoreSuggBtn) {
+            const productId = parseInt(ignoreSuggBtn.dataset.id, 10);
+            const name = ignoreSuggBtn.dataset.name || 'Artikel';
+            if (!productId) return;
+
+            if (!confirm(`Möchtest du "${name}" künftig ignorieren? Der Artikel wird dann nicht mehr für den Wocheneinkauf vorgeschlagen.`)) {
+                return;
+            }
+
+            ignoreSuggBtn.disabled = true;
+
+            try {
+                const res = await KaiHttp.postJson(API_URL, {
+                    action: 'toggle_product_ignore',
+                    id: productId,
+                    is_ignored: true
+                });
+
+                if (res.success) {
+                    showToast(`"${name}" wird künftig nicht mehr vorgeschlagen`);
+                    const tr = ignoreSuggBtn.closest('tr');
+                    if (tr) {
+                        tr.remove();
+                    }
+                    const tbody = document.querySelector('#suggestions-list-container tbody');
+                    if (tbody && tbody.children.length === 0) {
+                        setTimeout(() => window.location.reload(), 600);
+                    }
+                } else {
+                    showToast(res.message || 'Fehler beim Ignorieren', true);
+                    ignoreSuggBtn.disabled = false;
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler', true);
+                ignoreSuggBtn.disabled = false;
+            }
+        }
     });
 
     // --- Alle Vorschläge übernehmen ---

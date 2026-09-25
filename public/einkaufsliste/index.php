@@ -549,12 +549,20 @@ try {
                                                 </span>
                                             </td>
                                             <?php if (Auth::hasPermission('suggestions_write')): ?>
-                                                <td data-label="Aktion" class="text-right">
+                                                <td data-label="Aktion" class="text-right" style="white-space:nowrap;">
                                                     <button type="button"
                                                             class="btn btn-sm btn-primary js-accept-single-suggestion"
                                                             data-id="<?= (int)$sug['product_id'] ?>"
-                                                            data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>">
+                                                            data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>"
+                                                            title="Zur Einkaufsliste hinzufügen">
                                                         + Übernehmen
+                                                    </button>
+                                                    <button type="button"
+                                                            class="btn-icon js-ignore-suggestion-btn"
+                                                            data-id="<?= (int)$sug['product_id'] ?>"
+                                                            data-name="<?= htmlspecialchars($sug['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                            title="Künftig nicht mehr vorschlagen (ignorieren)">
+                                                        🚫
                                                     </button>
                                                 </td>
                                             <?php endif; ?>
