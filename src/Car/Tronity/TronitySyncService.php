@@ -292,8 +292,8 @@ class TronitySyncService
             $capturedAtUtc = (string)$currentState['car_captured_at'];
         }
 
-        // Neuer Verlaufs-Eintrag nur, wenn sich die Messwerte wirklich geändert haben (oder force anliegt)
-        $isNewData = $hasMetricsChanged || $force;
+        // Neuer Verlaufs-Eintrag nur, wenn sich die Messwerte wirklich geändert haben (force erzwingt nur State-Update, kein neues Log!)
+        $isNewData = $hasMetricsChanged;
 
         // Outdoor temp from weather module
         $outdoorTemp = null;
