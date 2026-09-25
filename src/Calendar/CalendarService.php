@@ -150,9 +150,19 @@ class CalendarService
         $rawAdvance = !empty($event['notify_days_advance']) ? explode(',', (string)$event['notify_days_advance']) : ['0', '1', '3'];
         $advanceDaysList = array_map('intval', array_filter(array_map('trim', $rawAdvance), 'is_numeric'));
 
-        // Sternzeichen ermitteln
-        $westernZodiac = $this->getWesternZodiac($day, $month);
-        $chineseZodiac = $this->getChineseZodiac($year, $month, $day);
+        $eventType = $event['event_type'] ?? 'birthday';
+
+        // Sternzeichen (bei Geburtstag) ODER Hochzeitsjubiläum (bei Jahrestag) ermitteln
+        $westernZodiac = null;
+        $chineseZodiac = null;
+        $weddingAnniversary = null;
+
+        if ($eventType === 'anniversary') {
+            $weddingAnniversary = $this->getWeddingAnniversaryInfo($nextAge);
+        } elseif ($eventType === 'birthday') {
+            $westernZodiac = $this->getWesternZodiac($day, $month);
+            $chineseZodiac = $this->getChineseZodiac($year, $month, $day);
+        }
 
         // Wochentage berechnen (nächster Termin & ggf. Geburtswochentag)
         $nextWeekdayNum = (int)$nextDate->format('w');
@@ -179,6 +189,7 @@ class CalendarService
         $event['zodiac'] = $westernZodiac;
         $event['western_zodiac'] = $westernZodiac;
         $event['chinese_zodiac'] = $chineseZodiac;
+        $event['wedding_anniversary'] = $weddingAnniversary;
         $event['formatted_day_month'] = sprintf('%02d.%02d.', $day, $month);
         $event['next_weekday_num'] = $nextWeekdayNum;
         $event['next_weekday_name'] = $nextWeekdayName;
@@ -738,4 +749,116 @@ class CalendarService
             'description' => $animalData['description'],
         ];
     }
+
+    /**
+     * Bekannte deutsche Hochzeitsjubiläen und Bedeutungen.
+     *
+     * @var array<int, array{name: string, symbol: string, meaning: string, gift: string}>
+     */
+    public const WEDDING_ANNIVERSARIES = [
+        1 => ['name' => 'Papierhochzeit', 'symbol' => '📄', 'meaning' => 'Die Ehe ist noch zart, unbeschrieben und formbar wie ein weißes Blatt Papier.', 'gift' => 'Brief, Buch, gemeinsames Fotoalbum oder Konzertkarten.'],
+        2 => ['name' => 'Baumwollhochzeit', 'symbol' => '🌱', 'meaning' => 'Die Verbindung ist schon spürbar reißfester, weicher und wärmer geworden.', 'gift' => 'Kuscheldecke, hochwertige Handtücher oder Kissen.'],
+        3 => ['name' => 'Lederne Hochzeit', 'symbol' => '👞', 'meaning' => 'Die Beziehung hat Zähigkeit, Beständigkeit und Wetterfestigkeit bewiesen.', 'gift' => 'Lederaccessoires, Geldbörse oder Notizbuch mit Ledereinband.'],
+        4 => ['name' => 'Seidene Hochzeit', 'symbol' => '🧣', 'meaning' => 'Glatt, geschmeidig und kostbar – die ersten Jahre wurden elegant gemeistert.', 'gift' => 'Seidenschal, Seidenkissen oder edle Nachtwäsche.'],
+        5 => ['name' => 'Hölzerne Hochzeit (Holzhochzeit)', 'symbol' => '🪵', 'meaning' => 'Beständig und fest wie ein Baum. Die Ehe hat ein festes Fundament geschlagen.', 'gift' => 'Graviertes Holz-Schneidebrett, Holzbank oder ein gemeinsam gepflanzter Baum.'],
+        6 => ['name' => 'Zinnerne Hochzeit', 'symbol' => '🪙', 'meaning' => 'Zinn braucht wie die Liebe regelmäßige Pflege und Politur, um seinen Glanz zu bewahren.', 'gift' => 'Zinnbecher oder polierte Dekoartikel.'],
+        7 => ['name' => 'Kupferne Hochzeit', 'symbol' => '🪙', 'meaning' => 'Kupfer leitet Wärme hervorragend und lässt sich zu Wunderschönem formen.', 'gift' => 'Kupferbecher (z.B. für Drinks) oder Kupferschmuck.'],
+        8 => ['name' => 'Blecherne Hochzeit', 'symbol' => '🥫', 'meaning' => 'Die Ehe ist alltagserprobt, stabil und rostfrei geblieben.', 'gift' => 'Schöne Vorratsdose aus Blech, Kuchenform oder ein witziges Blechschild.'],
+        9 => ['name' => 'Keramikhochzeit', 'symbol' => '🏺', 'meaning' => 'Aus weichem Ton geformt und im Feuer des Alltags zu Beständigkeit gebrannt.', 'gift' => 'Töpferware, schönes Kaffeeservice oder ein gemeinsamer Töpferabend.'],
+        10 => ['name' => 'Rosenhochzeit', 'symbol' => '🌹', 'meaning' => 'Das erste große runde Jubiläum! Die Liebe blüht trotz mancher kleiner Dornen prächtig.', 'gift' => 'Ein Strauß aus 10 roten Rosen oder edle Rosenpflanzen.'],
+        11 => ['name' => 'Stählerne Hochzeit', 'symbol' => '⚔️', 'meaning' => 'Gehärtet und unzerbrechlich wie solider Edelstahl.', 'gift' => 'Hochwertiges Küchenmesser, Edelstahlschmuck oder Grillzubehör.'],
+        12 => ['name' => 'Nickelhochzeit', 'symbol' => '🪙', 'meaning' => 'Glänzend und extrem widerstandsfähig gegen äußere Einflüsse.', 'gift' => 'Glänzende Accessoires oder Münzgeschenke.'],
+        13 => ['name' => 'Spitzenhochzeit', 'symbol' => '🕸️', 'meaning' => 'Filigran, kunstvoll und detailreich wie handgewebte Spitze.', 'gift' => 'Spitzendecke, Tischläufer oder feine Textilien.'],
+        14 => ['name' => 'Elfenbeinhochzeit', 'symbol' => '🐘', 'meaning' => 'Kostbar, langlebig und von unvergänglicher Anmut.', 'gift' => 'Helle Deko, Elefanten-Glücksbringer oder edles Dinner.'],
+        15 => ['name' => 'Gläserne Hochzeit (Kristallhochzeit)', 'symbol' => '🥂', 'meaning' => 'Klar und transparent: Das Paar kennt sich in- und auswendig, braucht aber Achtsamkeit.', 'gift' => 'Gravierte Kristallgläser, Champagner oder eine Karaffe.'],
+        16 => ['name' => 'Saphirhochzeit', 'symbol' => '🔷', 'meaning' => 'Tiefblau und treu wie der kostbare Saphir.', 'gift' => 'Schmuckstück mit blauem Stein oder saphirblaue Geschenke.'],
+        17 => ['name' => 'Orchideenhochzeit', 'symbol' => '🌸', 'meaning' => 'Exotisch, anmutig und benötigt liebevolle Fürsorge.', 'gift' => 'Eine blühende Orchidee im edlen Übertopf.'],
+        18 => ['name' => 'Türkishochzeit', 'symbol' => '🩵', 'meaning' => 'Türkis symbolisiert Schutz, Treue und positives Lebensgefühl.', 'gift' => 'Türkis-Schmuck oder ein Ausflug ans Meer.'],
+        19 => ['name' => 'Perlmutthochzeit', 'symbol' => '🦪', 'meaning' => 'Schicht für Schicht über fast zwei Jahrzehnte zu edlem Glanz gereift.', 'gift' => 'Perlmutt-Schmuck, Schatulle oder Füllfederhalter.'],
+        20 => ['name' => 'Porzellanhochzeit', 'symbol' => '☕', 'meaning' => 'Das „weiße Gold": Wertvoll, edel und glanzvoll, verdient einen festlichen Toast.', 'gift' => 'Neues Porzellanservice, edle Tassen oder Figuren.'],
+        21 => ['name' => 'Buchenhochzeit', 'symbol' => '🌳', 'meaning' => 'Tief verwurzelt und standhaft wie eine Buche im Wald.', 'gift' => 'Buchenholz-Deko oder Natur-Ausflug.'],
+        22 => ['name' => 'Bronzehochzeit', 'symbol' => '🥉', 'meaning' => 'Widerstandsfähige Legierung, die mit den Jahren eine edle Patina entwickelt.', 'gift' => 'Bronze-Skulptur oder Kunsthandwerk.'],
+        23 => ['name' => 'Titanhochzeit', 'symbol' => '🛡️', 'meaning' => 'Leicht und unzerstörbar wie das High-Tech-Metall Titan.', 'gift' => 'Titanschmuck oder technischer Begleiter.'],
+        24 => ['name' => 'Satinhochzeit', 'symbol' => '✨', 'meaning' => 'Glänzend und geschmeidig, die Vorstufe zum großen Silberjubiläum.', 'gift' => 'Satin-Bettwäsche oder feine Kleidung.'],
+        25 => ['name' => 'Silberne Hochzeit (Silberhochzeit)', 'symbol' => '🥈', 'meaning' => 'Ein ganzes Vierteljahrhundert! Ein wahrer Meilenstein voller Glanz, Treue und Beständigkeit.', 'gift' => 'Silberschmuck, Silberkranz oder ein großes Jubiläumsfest.'],
+        30 => ['name' => 'Perlenhochzeit', 'symbol' => '🦪', 'meaning' => '30 gemeinsame Jahre – aufgereiht wie die Perlen einer kostbaren Halskette.', 'gift' => 'Perlenkette, Perlenohrringe oder Urlaub am Meer.'],
+        35 => ['name' => 'Leinwandhochzeit', 'symbol' => '🎨', 'meaning' => 'Fest verwoben; die gemeinsame Lebensleinwand ist bunt und reich bemalt.', 'gift' => 'Ein Familienportrait auf echter Künstler-Leinwand.'],
+        40 => ['name' => 'Rubinhochzeit', 'symbol' => '💎', 'meaning' => 'Feurig rot wie die Glut der Liebe und kostbar wie der Edelstein Rubin.', 'gift' => 'Schmuck mit rotem Rubin oder 40 rote Rosen.'],
+        45 => ['name' => 'Messinghochzeit', 'symbol' => '🎺', 'meaning' => 'Goldfarben, klangvoll und von beeindruckender Langlebigkeit.', 'gift' => 'Messingleuchter oder Besuch eines festlichen Konzerts.'],
+        50 => ['name' => 'Goldene Hochzeit', 'symbol' => '🥇', 'meaning' => 'Ein halbes Jahrhundert voller Liebe, Treue und gegenseitigem Respekt. Unvergänglich wie Gold.', 'gift' => 'Goldschmuck, goldene Erinnerungsstücke oder eine Familienfeier.'],
+        55 => ['name' => 'Platinhochzeit', 'symbol' => '👑', 'meaning' => 'Noch kostbarer und seltener als Gold – 55 Jahre unerschütterliche Verbundenheit.', 'gift' => 'Kostbarer Schmuck oder erlesene Geschenke.'],
+        60 => ['name' => 'Diamantene Hochzeit', 'symbol' => '💎', 'meaning' => 'Rein, unvergänglich und durch nichts auf der Welt mehr zu trennen.', 'gift' => 'Diamantschmuck oder festliche Familienehrung.'],
+        65 => ['name' => 'Eiserne Hochzeit', 'symbol' => '⚙️', 'meaning' => 'Eiserner Lebenswille und gemeinsame Kraft über sechseinhalb Jahrzehnte.', 'gift' => 'Glückwünsche und gemeinsame Familienzeit.'],
+        70 => ['name' => 'Gnadenhochzeit', 'symbol' => '🕊️', 'meaning' => 'Ein seltenes Gottesgeschenk: Sieben Jahrzehnte gemeinsamer Lebensweg.', 'gift' => 'Segenswünsche und liebevolle Würdigung.'],
+        75 => ['name' => 'Kronjuwelenhochzeit', 'symbol' => '👑', 'meaning' => 'Die königliche Vollendung eines erfüllten Lebens zu zweit.', 'gift' => 'Familienchronik und königliche Blumen.'],
+        80 => ['name' => 'Eichenhochzeit', 'symbol' => '🌳', 'meaning' => 'Standhaft und erhaben wie eine uralte Eiche durch alle Stürme der Zeit.', 'gift' => 'Eichenpflanze oder liebevolle Erinnerungen.'],
+    ];
+
+    /**
+     * Ermittelt Hochzeitsjubiläums-Informationen für eine gegebene Anzahl an Ehejahren.
+     *
+     * @return array{name: string, years: int|null, symbol: string, badge_label: string, meaning: string, gift: string, milestones: array<int, array{years: int, name: string}>}
+     */
+    public function getWeddingAnniversaryInfo(?int $years): array
+    {
+        if ($years === null || $years <= 0) {
+            return [
+                'name' => 'Jahrestag',
+                'years' => null,
+                'symbol' => '💍',
+                'badge_label' => '💍 Jahrestag',
+                'meaning' => 'Ein persönlicher Jahrestag oder Hochzeitstag ohne hinterlegtes Jahr.',
+                'gift' => 'Gemeinsame Zeit, Blumen oder ein feines Abendessen.',
+                'milestones' => $this->getUpcomingWeddingMilestones(0),
+            ];
+        }
+
+        $info = self::WEDDING_ANNIVERSARIES[$years] ?? null;
+
+        if ($info === null) {
+            $name = "{$years}. Hochzeitstag";
+            $meaning = "Ein weiterer wertvoller Meilenstein auf dem gemeinsamen Lebensweg.";
+            $gift = "Gemeinsame Zeit, Blumen oder ein schönes Ausflugserlebnis.";
+            $symbol = '💍';
+        } else {
+            $name = $info['name'];
+            $meaning = $info['meaning'];
+            $gift = $info['gift'];
+            $symbol = $info['symbol'];
+        }
+
+        return [
+            'name' => $name,
+            'years' => $years,
+            'symbol' => $symbol,
+            'badge_label' => "💍 {$years}. {$name}",
+            'meaning' => $meaning,
+            'gift' => $gift,
+            'milestones' => $this->getUpcomingWeddingMilestones($years),
+        ];
+    }
+
+    /**
+     * Liefert die nächsten Meilensteine ausgehend von den aktuellen Ehejahren.
+     *
+     * @return array<int, array{years: int, name: string}>
+     */
+    public function getUpcomingWeddingMilestones(int $currentYears): array
+    {
+        $milestoneYears = [1, 5, 10, 15, 20, 25, 30, 40, 50, 60, 65, 70];
+        $result = [];
+
+        foreach ($milestoneYears as $mYear) {
+            if ($mYear > $currentYears) {
+                $name = self::WEDDING_ANNIVERSARIES[$mYear]['name'] ?? "{$mYear}. Hochzeitstag";
+                $result[] = ['years' => $mYear, 'name' => $name];
+                if (count($result) >= 4) {
+                    break;
+                }
+            }
+        }
+
+        return $result;
+    }
 }
+

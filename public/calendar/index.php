@@ -224,7 +224,7 @@ $csrfToken = Auth::csrfToken();
                                 <th style="width: 140px;">Datum &amp; Wochentag</th>
                                 <th>Name / Anlass</th>
                                 <th style="width: 160px;">Alter / Jubiläum</th>
-                                <th style="width: 200px;">Sternzeichen</th>
+                                <th style="width: 200px;">Sternzeichen / Jubiläum</th>
                                 <th style="width: 135px; text-align: right;">Aktionen</th>
                             </tr>
                         </thead>
@@ -284,15 +284,33 @@ $csrfToken = Auth::csrfToken();
                                         <?php endif; ?>
                                     </td>
 
-                                    <!-- 5. Sternzeichen (klickbar für Horoskop & Details) -->
+                                    <!-- 5. Sternzeichen (Geburtstag) ODER Hochzeitsjubiläum (Jahrestag) -->
                                     <td>
-                                        <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Horoskop &amp; Details anzeigen">
-                                            <span><?= $ev['western_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['western_zodiac']['name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                            <?php if (!empty($ev['chinese_zodiac'])): ?>
-                                                <span class="u-muted" style="margin: 0 2px;">•</span>
-                                                <span><?= $ev['chinese_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['chinese_zodiac']['animal'], ENT_QUOTES, 'UTF-8') ?></span>
-                                            <?php endif; ?>
-                                        </button>
+                                        <?php if ($ev['event_type'] === 'anniversary'): ?>
+                                            <?php
+                                            $weddingInfo = $ev['wedding_anniversary'] ?? null;
+                                            $badgeText = $weddingInfo['badge_label'] ?? '💍 Jahrestag';
+                                            ?>
+                                            <button type="button" class="cal-zodiac-badge cal-wedding-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Hochzeitsjubiläum &amp; Bräuche anzeigen">
+                                                <span><?= htmlspecialchars($badgeText, ENT_QUOTES, 'UTF-8') ?></span>
+                                            </button>
+                                        <?php elseif ($ev['event_type'] === 'memorial'): ?>
+                                            <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Gedenktag-Details anzeigen">
+                                                <span>🕯️ Gedenktag</span>
+                                            </button>
+                                        <?php elseif ($ev['event_type'] === 'other'): ?>
+                                            <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Details anzeigen">
+                                                <span>📅 Ereignis</span>
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Horoskop &amp; Details anzeigen">
+                                                <span><?= $ev['western_zodiac']['symbol'] ?? '✨' ?> <?= htmlspecialchars($ev['western_zodiac']['name'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php if (!empty($ev['chinese_zodiac'])): ?>
+                                                    <span class="u-muted" style="margin: 0 2px;">•</span>
+                                                    <span><?= $ev['chinese_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['chinese_zodiac']['animal'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php endif; ?>
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
 
                                     <!-- 6. Aktionen -->
@@ -471,7 +489,8 @@ $csrfToken = Auth::csrfToken();
                     </div>
                 </div>
 
-                <div class="cal-zodiac-grid">
+                <!-- Sternzeichen & Horoskop (bei Geburtstag) -->
+                <div id="det-zodiac-section" class="cal-zodiac-grid">
                     <!-- Westliches Sternzeichen -->
                     <div class="cal-zodiac-card">
                         <div>
@@ -517,6 +536,49 @@ $csrfToken = Auth::csrfToken();
                             </p>
                             <button type="button" class="btn btn-sm btn-outline" id="det-btn-add-year">✏️ Geburtsjahr nachtragen</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Hochzeitsjubiläum (bei Jahrestag) -->
+                <div id="det-wedding-section" class="hidden">
+                    <div class="cal-wedding-card">
+                        <div class="cal-wedding-card-header">
+                            <div class="cal-wedding-symbol-big" id="det-wedding-symbol">💍</div>
+                            <div>
+                                <h4 class="cal-wedding-card-title" id="det-wedding-name">Rosenhochzeit</h4>
+                                <div class="cal-wedding-card-sub" id="det-wedding-years">10. Hochzeitstag</div>
+                            </div>
+                        </div>
+                        <div class="cal-wedding-meaning-box" style="margin-top: 10px;">
+                            <strong style="color: var(--accent);">Bedeutung &amp; Symbolik:</strong>
+                            <p id="det-wedding-meaning" style="margin: 4px 0 0 0; font-size: 0.92rem; line-height: 1.45; color: var(--text-main);"></p>
+                        </div>
+                        <div class="cal-wedding-gift-box" style="margin-top: 10px;">
+                            <strong style="color: #f59e0b;">🎁 Tradition &amp; Geschenkideen:</strong>
+                            <p id="det-wedding-gift" style="margin: 4px 0 0 0; font-size: 0.88rem; color: var(--text-muted);"></p>
+                        </div>
+                        <div id="det-wedding-milestones-box" style="margin-top: 14px; border-top: 1px solid var(--bg-surface-hover); padding-top: 10px;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+                                🌟 Nächste Meilensteine:
+                            </div>
+                            <div id="det-wedding-milestones" class="cal-milestone-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gedenktag & Sonstiges -->
+                <div id="det-memorial-section" class="hidden">
+                    <div class="cal-wedding-card" style="border-left: 4px solid var(--text-muted);">
+                        <div class="cal-wedding-card-header">
+                            <div class="cal-wedding-symbol-big">🕯️</div>
+                            <div>
+                                <h4 class="cal-wedding-card-title" id="det-memorial-title">Gedenktag</h4>
+                                <div class="cal-wedding-card-sub">In stillem Gedenken</div>
+                            </div>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">
+                            Ein persönlicher Tag des Innehaltens und der Erinnerung.
+                        </p>
                     </div>
                 </div>
 

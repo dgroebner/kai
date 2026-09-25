@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Modal: Horoskop & Ereignis-Details
     const modalDetails = document.getElementById('modal-event-details');
+    const modalDetailsTitle = document.getElementById('modal-details-title');
     const modalDetailsLoading = document.getElementById('modal-details-loading');
     const modalDetailsBody = document.getElementById('modal-details-body');
     let currentDetailEventId = null;
@@ -151,65 +152,115 @@ document.addEventListener('DOMContentLoaded', function () {
                 detBadgeWrap.innerHTML = `<span class="${badgeClass}">${window.KaiHtml.escape(details.badge_text || '')}</span>`;
             }
 
-            // Westliches Sternzeichen
-            const w = details.western_zodiac;
-            if (w) {
-                const wSymbol = document.getElementById('det-west-symbol');
-                const wName = document.getElementById('det-west-name');
-                const wRange = document.getElementById('det-west-range');
-                const wElement = document.getElementById('det-west-element');
-                const wTraits = document.getElementById('det-west-traits');
-                const wDesc = document.getElementById('det-west-desc');
+            // Sektionen steuern je nach Ereignis-Typ
+            const zodiacSection = document.getElementById('det-zodiac-section');
+            const weddingSection = document.getElementById('det-wedding-section');
+            const memorialSection = document.getElementById('det-memorial-section');
 
-                if (wSymbol) wSymbol.textContent = w.symbol || '✨';
-                if (wName) wName.textContent = w.name || '';
-                if (wRange) wRange.textContent = w.date_range || '';
-                if (wElement) wElement.textContent = w.element || '';
-                if (wDesc) wDesc.textContent = w.description || '';
+            if (ev.event_type === 'anniversary') {
+                if (modalDetailsTitle) modalDetailsTitle.textContent = '💍 Hochzeitsjubiläum & Details';
+                if (zodiacSection) zodiacSection.classList.add('hidden');
+                if (memorialSection) memorialSection.classList.add('hidden');
+                if (weddingSection) {
+                    weddingSection.classList.remove('hidden');
+                    const wed = details.wedding_anniversary || {};
+                    const wedSymbol = document.getElementById('det-wedding-symbol');
+                    const wedName = document.getElementById('det-wedding-name');
+                    const wedYears = document.getElementById('det-wedding-years');
+                    const wedMeaning = document.getElementById('det-wedding-meaning');
+                    const wedGift = document.getElementById('det-wedding-gift');
+                    const wedMilestones = document.getElementById('det-wedding-milestones');
 
-                if (wTraits && Array.isArray(w.traits)) {
-                    wTraits.innerHTML = w.traits.map(t =>
-                        `<span class="cal-trait-pill">${window.KaiHtml.escape(t)}</span>`
-                    ).join('');
+                    if (wedSymbol) wedSymbol.textContent = wed.symbol || '💍';
+                    if (wedName) wedName.textContent = wed.name || 'Jahrestag';
+                    if (wedYears) {
+                        wedYears.textContent = wed.years ? `${wed.years}. Hochzeitstag` : 'Jahrestag ohne Jahresangabe';
+                    }
+                    if (wedMeaning) wedMeaning.textContent = wed.meaning || 'Ein besonderer Jahrestag der Liebe und Treue.';
+                    if (wedGift) wedGift.textContent = wed.gift || 'Gemeinsame Zeit oder ein schönes Geschenk.';
+
+                    if (wedMilestones) {
+                        if (Array.isArray(wed.milestones) && wed.milestones.length > 0) {
+                            wedMilestones.innerHTML = wed.milestones.map(m =>
+                                `<span class="cal-milestone-pill">💍 <strong>${m.years} J.:</strong> ${window.KaiHtml.escape(m.name)}</span>`
+                            ).join('');
+                        } else {
+                            wedMilestones.innerHTML = '<span class="text-muted" style="font-size: 0.8rem;">Keine weiteren Meilensteine</span>';
+                        }
+                    }
                 }
-            }
-
-            // Chinesisches Tierkreiszeichen
-            const c = details.chinese_zodiac;
-            const cWrap = document.getElementById('det-chinese-wrap');
-            const cMissing = document.getElementById('det-chinese-missing');
-
-            if (c) {
-                if (cWrap) cWrap.classList.remove('hidden');
-                if (cMissing) cMissing.classList.add('hidden');
-
-                const cSymbol = document.getElementById('det-chinese-symbol');
-                const cName = document.getElementById('det-chinese-name');
-                const cYear = document.getElementById('det-chinese-year');
-                const cElement = document.getElementById('det-chinese-element');
-                const cPolarity = document.getElementById('det-chinese-polarity');
-                const cTraits = document.getElementById('det-chinese-traits');
-                const cDesc = document.getElementById('det-chinese-desc');
-                const cNumbers = document.getElementById('det-chinese-numbers');
-                const cColors = document.getElementById('det-chinese-colors');
-
-                if (cSymbol) cSymbol.textContent = c.symbol || '🏮';
-                if (cName) cName.textContent = c.full_name || '';
-                if (cYear) cYear.textContent = `Mondjahr ${c.lunar_year}`;
-                if (cElement) cElement.textContent = c.element || '';
-                if (cPolarity) cPolarity.textContent = c.polarity || '';
-                if (cDesc) cDesc.textContent = c.description || '';
-                if (cNumbers) cNumbers.textContent = c.lucky_numbers || '-';
-                if (cColors) cColors.textContent = c.lucky_colors || '-';
-
-                if (cTraits && Array.isArray(c.traits)) {
-                    cTraits.innerHTML = c.traits.map(t =>
-                        `<span class="cal-trait-pill">${window.KaiHtml.escape(t)}</span>`
-                    ).join('');
-                }
+            } else if (ev.event_type === 'memorial') {
+                if (modalDetailsTitle) modalDetailsTitle.textContent = '🕯️ Gedenktag & Details';
+                if (zodiacSection) zodiacSection.classList.add('hidden');
+                if (weddingSection) weddingSection.classList.add('hidden');
+                if (memorialSection) memorialSection.classList.remove('hidden');
             } else {
-                if (cWrap) cWrap.classList.add('hidden');
-                if (cMissing) cMissing.classList.remove('hidden');
+                // Geburtstag: Sternzeichen & Horoskop
+                if (modalDetailsTitle) modalDetailsTitle.textContent = '🌟 Sternzeichen, Horoskop & Details';
+                if (weddingSection) weddingSection.classList.add('hidden');
+                if (memorialSection) memorialSection.classList.add('hidden');
+                if (zodiacSection) zodiacSection.classList.remove('hidden');
+
+                // Westliches Sternzeichen
+                const w = details.western_zodiac;
+                if (w) {
+                    const wSymbol = document.getElementById('det-west-symbol');
+                    const wName = document.getElementById('det-west-name');
+                    const wRange = document.getElementById('det-west-range');
+                    const wElement = document.getElementById('det-west-element');
+                    const wTraits = document.getElementById('det-west-traits');
+                    const wDesc = document.getElementById('det-west-desc');
+
+                    if (wSymbol) wSymbol.textContent = w.symbol || '✨';
+                    if (wName) wName.textContent = w.name || '';
+                    if (wRange) wRange.textContent = w.date_range || '';
+                    if (wElement) wElement.textContent = w.element || '';
+                    if (wDesc) wDesc.textContent = w.description || '';
+
+                    if (wTraits && Array.isArray(w.traits)) {
+                        wTraits.innerHTML = w.traits.map(t =>
+                            `<span class="cal-trait-pill">${window.KaiHtml.escape(t)}</span>`
+                        ).join('');
+                    }
+                }
+
+                // Chinesisches Tierkreiszeichen
+                const c = details.chinese_zodiac;
+                const cWrap = document.getElementById('det-chinese-wrap');
+                const cMissing = document.getElementById('det-chinese-missing');
+
+                if (c) {
+                    if (cWrap) cWrap.classList.remove('hidden');
+                    if (cMissing) cMissing.classList.add('hidden');
+
+                    const cSymbol = document.getElementById('det-chinese-symbol');
+                    const cName = document.getElementById('det-chinese-name');
+                    const cYear = document.getElementById('det-chinese-year');
+                    const cElement = document.getElementById('det-chinese-element');
+                    const cPolarity = document.getElementById('det-chinese-polarity');
+                    const cTraits = document.getElementById('det-chinese-traits');
+                    const cDesc = document.getElementById('det-chinese-desc');
+                    const cNumbers = document.getElementById('det-chinese-numbers');
+                    const cColors = document.getElementById('det-chinese-colors');
+
+                    if (cSymbol) cSymbol.textContent = c.symbol || '🏮';
+                    if (cName) cName.textContent = c.full_name || '';
+                    if (cYear) cYear.textContent = `Mondjahr ${c.lunar_year}`;
+                    if (cElement) cElement.textContent = c.element || '';
+                    if (cPolarity) cPolarity.textContent = c.polarity || '';
+                    if (cDesc) cDesc.textContent = c.description || '';
+                    if (cNumbers) cNumbers.textContent = c.lucky_numbers || '-';
+                    if (cColors) cColors.textContent = c.lucky_colors || '-';
+
+                    if (cTraits && Array.isArray(c.traits)) {
+                        cTraits.innerHTML = c.traits.map(t =>
+                            `<span class="cal-trait-pill">${window.KaiHtml.escape(t)}</span>`
+                        ).join('');
+                    }
+                } else {
+                    if (cWrap) cWrap.classList.add('hidden');
+                    if (cMissing) cMissing.classList.remove('hidden');
+                }
             }
 
             // Benachrichtigungsempfänger
