@@ -98,6 +98,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!modalDetails) return;
         currentDetailEventId = eventId;
         modalDetails.classList.remove('hidden');
+        if (modalDetailsTitle) modalDetailsTitle.textContent = 'Ereignis-Details';
+
+        const zodiacSectionInit = document.getElementById('det-zodiac-section');
+        const weddingSectionInit = document.getElementById('det-wedding-section');
+        const memorialSectionInit = document.getElementById('det-memorial-section');
+        if (zodiacSectionInit) zodiacSectionInit.classList.add('hidden');
+        if (weddingSectionInit) weddingSectionInit.classList.add('hidden');
+        if (memorialSectionInit) memorialSectionInit.classList.add('hidden');
 
         if (modalDetailsLoading) modalDetailsLoading.classList.remove('hidden');
         if (modalDetailsBody) modalDetailsBody.classList.add('hidden');

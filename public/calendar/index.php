@@ -130,7 +130,7 @@ $csrfToken = Auth::csrfToken();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <title>Geburtstage &amp; Jahrestage - Kai</title>
-    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>_<?= filemtime(__DIR__ . '/../css/style.css') ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
@@ -470,7 +470,7 @@ $csrfToken = Auth::csrfToken();
 <div class="modal-overlay hidden" id="modal-event-details" role="dialog" aria-modal="true" aria-labelledby="modal-details-title">
     <div class="modal-card modal-card--lg">
         <div class="modal-header">
-            <h3 id="modal-details-title">🌟 Horoskop &amp; Details</h3>
+            <h3 id="modal-details-title">Ereignis-Details</h3>
             <button type="button" class="modal-close" id="modal-details-close" aria-label="Schließen">&times;</button>
         </div>
         <div class="modal-body" id="modal-details-content">
@@ -490,19 +490,19 @@ $csrfToken = Auth::csrfToken();
                 </div>
 
                 <!-- Sternzeichen & Horoskop (bei Geburtstag) -->
-                <div id="det-zodiac-section" class="cal-zodiac-grid">
+                <div id="det-zodiac-section" class="cal-zodiac-grid hidden">
                     <!-- Westliches Sternzeichen -->
                     <div class="cal-zodiac-card">
                         <div>
                             <div class="cal-zodiac-card-header">
-                                <div class="cal-zodiac-symbol-big" id="det-west-symbol">♈</div>
+                                <div class="cal-zodiac-symbol-big" id="det-west-symbol">✨</div>
                                 <div>
-                                    <h4 class="cal-zodiac-card-title" id="det-west-name">Widder</h4>
-                                    <div class="cal-zodiac-card-sub" id="det-west-range">21.03. – 20.04.</div>
+                                    <h4 class="cal-zodiac-card-title" id="det-west-name"></h4>
+                                    <div class="cal-zodiac-card-sub" id="det-west-range"></div>
                                 </div>
                             </div>
                             <div style="font-size: 0.85rem; margin-bottom: 6px;">
-                                Element: <strong id="det-west-element">Feuer</strong>
+                                Element: <strong id="det-west-element"></strong>
                             </div>
                             <div class="cal-traits-list" id="det-west-traits"></div>
                             <p class="cal-zodiac-desc" id="det-west-desc"></p>
@@ -608,7 +608,6 @@ $csrfToken = Auth::csrfToken();
 </div>
 
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
-<script src="../js/http.js" defer></script>
-<script src="../js/calendar.js" defer></script>
+<script src="../js/calendar.js?v=<?= APP_VERSION ?>_<?= filemtime(__DIR__ . '/../js/calendar.js') ?>" defer></script>
 </body>
 </html>
