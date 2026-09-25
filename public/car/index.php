@@ -337,14 +337,7 @@ if ($tab === 'charges') {
                     <?php endif; ?>
                 </div>
 
-                <div class="kpi-card">
-                    <div class="kpi-label">Batterie Temp.</div>
-                    <div class="kpi-value kpi-value-sm">
-                        <?= number_format($state['battery_temp_min'], 1, ',', '.') ?>
-                        – <?= number_format($state['battery_temp_max'], 1, ',', '.') ?>
-                        <span class="kpi-unit">°C</span>
-                    </div>
-                </div>
+
 
                 <div class="kpi-card">
                     <div class="kpi-label">Außentemperatur</div>

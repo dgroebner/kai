@@ -53,8 +53,6 @@ CREATE TABLE IF NOT EXISTS `vehicle_state` (
     `soc_percent` INT NOT NULL,
     `target_soc` INT NOT NULL,
     `charge_power_kw` DECIMAL(5, 2) NOT NULL,
-    `battery_temp_max` DECIMAL(4, 1) NOT NULL,
-    `battery_temp_min` DECIMAL(4, 1) NOT NULL,
     `charging_state` VARCHAR(50) NOT NULL,
     `plug_connected` TINYINT(1) NOT NULL,
     `is_locked` TINYINT(1) NOT NULL,
@@ -953,4 +951,5 @@ INSERT IGNORE INTO `gamification_rewards` (`title`, `description`, `coin_cost`, 
 ('30 Min. extra Bildschirmzeit', 'Einlösbar nach Absprache für Tablet, Konsole oder PC', 100, '📱', 'privilege', 1),
 ('Ausflugsziel aussuchen', 'Gemeinsamer Familienausflug an einen Ort deiner Wahl', 300, '🎢', 'event', 14),
 ('5 € Taschengeld-Zuschuss', 'Direkte Auszahlung auf dein Taschengeld', 250, '💶', 'allowance', 14);
+
 

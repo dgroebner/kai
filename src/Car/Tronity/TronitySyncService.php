@@ -295,6 +295,18 @@ class TronitySyncService
         // Neuer Verlaufs-Eintrag nur, wenn sich die Messwerte wirklich geändert haben (oder force anliegt)
         $isNewData = $hasMetricsChanged || $force;
 
+        // Outdoor temp from weather module
+        $outdoorTemp = null;
+        try {
+            $weatherService = new \Kai\Tools\Weather\WeatherService();
+            $weatherForecast = $weatherService->getForecastFromDb();
+            if ($weatherForecast && isset($weatherForecast['current']['temperature_2m'])) {
+                $outdoorTemp = (float)$weatherForecast['current']['temperature_2m'];
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warn("TronitySyncService: Konnte Außentemperatur nicht aus WeatherService laden.", ['error' => $e->getMessage()]);
+        }
+
         // 7. Payload für TelemetryRepository aufbauen
         $payload = [
             'vin' => $vin,
@@ -303,8 +315,6 @@ class TronitySyncService
                 'soc' => $soc,
                 'target_soc' => 80,
                 'charge_power_kw' => $chargePower,
-                'max_temp_c' => null,
-                'min_temp_c' => null,
                 'estimated_finish_at' => $estimatedFinishAt,
             ],
             'status' => [
@@ -314,7 +324,7 @@ class TronitySyncService
                 'parking_brake' => true,
                 'mileage_km' => $odometer,
                 'range_km' => $range,
-                'outdoor_temp_c' => null,
+                'outdoor_temp_c' => $outdoorTemp,
                 'latitude' => $latitude,
                 'longitude' => $longitude,
             ],

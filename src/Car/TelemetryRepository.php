@@ -35,8 +35,6 @@ class TelemetryRepository
             $socPercent = isset($data['battery']['soc']) ? (int)$data['battery']['soc'] : null;
             $targetSoc = isset($data['battery']['target_soc']) ? (int)$data['battery']['target_soc'] : null;
             $chargePowerKw = isset($data['battery']['charge_power_kw']) ? (float)$data['battery']['charge_power_kw'] : null;
-            $batteryTempMax = isset($data['battery']['max_temp_c']) ? (float)$data['battery']['max_temp_c'] : null;
-            $batteryTempMin = isset($data['battery']['min_temp_c']) ? (float)$data['battery']['min_temp_c'] : null;
             $estimatedFinishAt = $data['battery']['estimated_finish_at'] ?? null;
 
             $chargingState = $data['status']['charging_state'] ?? null;
@@ -78,8 +76,6 @@ class TelemetryRepository
             $finalSoc = $socPercent ?? ($currentState ? (int)$currentState['soc_percent'] : 0);
             $finalTargetSoc = $targetSoc ?? ($currentState ? (int)$currentState['target_soc'] : 80);
             $finalChargeKw = $chargePowerKw ?? ($currentState ? (float)$currentState['charge_power_kw'] : 0.0);
-            $finalTempMax = $batteryTempMax ?? ($currentState ? (float)$currentState['battery_temp_max'] : 0.0);
-            $finalTempMin = $batteryTempMin ?? ($currentState ? (float)$currentState['battery_temp_min'] : 0.0);
             $finalChargingState = $chargingState ?? ($currentState ? $currentState['charging_state'] : 'unknown');
             $finalPlug = $plugConnected ?? ($currentState ? (int)$currentState['plug_connected'] : 0);
             $finalLocked = $isLocked ?? ($currentState ? (int)$currentState['is_locked'] : 1);
@@ -101,8 +97,6 @@ class TelemetryRepository
 						`soc_percent`, 
 						`target_soc`, 
 						`charge_power_kw`, 
-						`battery_temp_max`, 
-						`battery_temp_min`, 
 						`charging_state`, 
 						`plug_connected`, 
 						`is_locked`, 
@@ -116,8 +110,6 @@ class TelemetryRepository
 						:soc_percent, 
 						:target_soc, 
 						:charge_power_kw, 
-						:battery_temp_max, 
-						:battery_temp_min, 
 						:charging_state, 
 						:plug_connected, 
 						:is_locked, 
@@ -130,8 +122,6 @@ class TelemetryRepository
 						`soc_percent`         = VALUES(`soc_percent`),
 						`target_soc`          = VALUES(`target_soc`),
 						`charge_power_kw`     = VALUES(`charge_power_kw`),
-						`battery_temp_max`    = VALUES(`battery_temp_max`),
-						`battery_temp_min`    = VALUES(`battery_temp_min`),
 						`charging_state`      = VALUES(`charging_state`),
 						`plug_connected`      = VALUES(`plug_connected`),
 						`is_locked`           = VALUES(`is_locked`),
@@ -148,8 +138,6 @@ class TelemetryRepository
                 ':soc_percent' => $finalSoc,
                 ':target_soc' => $finalTargetSoc,
                 ':charge_power_kw' => $finalChargeKw,
-                ':battery_temp_max' => $finalTempMax,
-                ':battery_temp_min' => $finalTempMin,
                 ':charging_state' => $finalChargingState,
                 ':plug_connected' => $finalPlug,
                 ':is_locked' => $finalLocked,
