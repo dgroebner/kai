@@ -291,6 +291,22 @@ class ShoppingListRepository
     }
 
     /**
+     * Liefert alle Produkt-IDs von aktuell offenen (nicht abgehakten) Artikeln zur Duplikatsvermeidung bei Vorschlägen.
+     *
+     * @return int[]
+     */
+    public function getActiveProductIds(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT DISTINCT product_id 
+            FROM shopping_list_items 
+            WHERE is_checked = 0 AND product_id IS NOT NULL
+        ");
+
+        return array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+    }
+
+    /**
      * Holt alle abgehakten Artikel, optional gefiltert nach Markt.
      *
      * @param string|null $market

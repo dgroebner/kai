@@ -37,6 +37,7 @@ class SuggestionService
     {
         $predictableProducts = $this->productRepo->getPredictableProducts();
         $activeItemNames = $this->listRepo->getActiveItemNames();
+        $activeProductIds = $this->listRepo->getActiveProductIds();
 
         $holidayContext = $this->holidayService->getHolidayContext();
         $isInHoliday = $holidayContext['is_holiday'];
@@ -48,6 +49,12 @@ class SuggestionService
         $suggestions = [];
 
         foreach ($predictableProducts as $product) {
+            $productId = (int)$product['id'];
+            // Bereits offene Artikel nach ID überspringen
+            if (in_array($productId, $activeProductIds, true)) {
+                continue;
+            }
+
             $displayName = !empty($product['custom_label']) ? trim($product['custom_label']) : $product['name'];
             $normName = mb_strtolower(trim($product['name']), 'UTF-8');
             $normLabel = !empty($product['custom_label']) ? mb_strtolower(trim($product['custom_label']), 'UTF-8') : null;
@@ -89,7 +96,8 @@ class SuggestionService
                 $holidayBadge = '🏖️ Ferien-Mehrbedarf (+' . (int)round(($holidayFactor - 1) * 100) . '%)';
             }
 
-            $daysSinceLast = (int)$today->diff($lastDate)->format('%r%a');
+            // Zeit seit letztem Kauf berechnen: lastDate liegt in der Vergangenheit, daher lastDate->diff(today)
+            $daysSinceLast = max(0, (int)$lastDate->diff($today)->format('%r%a'));
             $daysUntilDue = (int)round($effectiveInterval - $daysSinceLast);
 
             // Für Schulstart-Vorbereitung (letzter Einkauf in den Ferien):

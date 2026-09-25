@@ -48,7 +48,7 @@ class LearningService
     {
         $this->logger->info("LearningService: Starte Analyse historischer eBons...");
 
-        // Alle Bon-Positionen chronologisch laden
+        // 1. Alle Kassenbon-Positionen chronologisch laden
         $stmt = $this->pdo->query("
             SELECT 
                 i.name,
@@ -58,7 +58,7 @@ class LearningService
             FROM kb_items i
             JOIN kb_receipts r ON i.receipt_id = r.id
             WHERE i.name IS NOT NULL AND TRIM(i.name) != ''
-            ORDER BY i.name ASC, r.purchase_date ASC
+            ORDER BY r.purchase_date ASC, i.id ASC
         ");
 
         $rows       = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -70,75 +70,161 @@ class LearningService
                 'total_items_analyzed' => 0,
                 'unique_products'      => 0,
                 'products_updated'     => 0,
+                'auto_mapped'          => 0,
             ];
         }
 
-        // Gruppierung nach normalisiertem eBon-Rohdatennamen
-        $products = [];
+        // 2. Alle bestehenden Master-Artikel laden
+        $mastersStmt = $this->pdo->query("
+            SELECT id, name, custom_label, avg_interval_days, last_purchased_at, preferred_market, default_category
+            FROM product_master
+        ");
+        $masterProducts = [];
+        $masterByName = [];
+        foreach ($mastersStmt->fetchAll(PDO::FETCH_ASSOC) as $mp) {
+            $mId = (int)$mp['id'];
+            $masterProducts[$mId] = $mp;
+            $masterByName[mb_strtolower(trim($mp['name']), 'UTF-8')] = $mId;
+            if (!empty($mp['custom_label'])) {
+                $masterByName[mb_strtolower(trim($mp['custom_label']), 'UTF-8')] = $mId;
+            }
+        }
+
+        // 3. Alle bestehenden Mappings laden
+        $mappingsStmt = $this->pdo->query("SELECT ebon_name, product_master_id FROM ebon_product_mappings");
+        $mappings = [];
+        foreach ($mappingsStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+            $norm = mb_strtolower(trim($m['ebon_name']), 'UTF-8');
+            $mappings[$norm] = $m['product_master_id'] !== null ? (int)$m['product_master_id'] : null;
+        }
+
+        $insertMappingStmt = $this->pdo->prepare("
+            INSERT INTO ebon_product_mappings (ebon_name, product_master_id)
+            VALUES (:ebon_name, :product_master_id)
+            ON DUPLICATE KEY UPDATE product_master_id = VALUES(product_master_id)
+        ");
+
+        $autoMappedCount = 0;
+        $uniqueRawNames = [];
+        $masterData = [];
+
+        // 4. Positionen nach Master-Artikel ID aggregieren
         foreach ($rows as $row) {
             $rawName = trim($row['name']);
-            $normKey = mb_strtolower($rawName, 'UTF-8');
+            $normRaw = mb_strtolower($rawName, 'UTF-8');
+            $uniqueRawNames[$normRaw] = true;
 
-            if (!isset($products[$normKey])) {
-                $products[$normKey] = [
-                    'canonical_name' => $rawName,
-                    'stores'         => ['Rewe' => 0, 'Globus' => 0, 'Other' => 0],
-                    'categories'     => [],
-                    'dates'          => [],
+            $targetMasterId = null;
+
+            // Schritt A: Vorhandenes Mapping prüfen
+            if (array_key_exists($normRaw, $mappings)) {
+                $targetMasterId = $mappings[$normRaw];
+                // Wenn targetMasterId === null -> vom Nutzer explizit ignoriert (Pfand, Rabatt etc.)
+                if ($targetMasterId === null) {
+                    continue;
+                }
+            } else {
+                // Schritt B: Typische Nicht-Produkte (Rabatte, Pfand) erkennen und ignorieren
+                if ($this->isNonProduct($rawName)) {
+                    $insertMappingStmt->execute([':ebon_name' => $rawName, ':product_master_id' => null]);
+                    $mappings[$normRaw] = null;
+                    continue;
+                }
+
+                // Schritt C: Exakter Treffer auf bestehenden Master-Artikel
+                if (isset($masterByName[$normRaw])) {
+                    $targetMasterId = $masterByName[$normRaw];
+                    $insertMappingStmt->execute([':ebon_name' => $rawName, ':product_master_id' => $targetMasterId]);
+                    $mappings[$normRaw] = $targetMasterId;
+                    $autoMappedCount++;
+                } else {
+                    // Schritt D: Supermarkt-Präfixe bereinigen (z.B. "JA! BANANEN", "REWE BIO BUTTER", "GLOBUS MILCH")
+                    $cleanPrefix = preg_replace('/^(ja!\s*|rewe\s*bio\s*|rewe\s*|globus\s*|bio\s*|k-classic\s*|gut&günstig\s*)/iu', '', $normRaw);
+                    $cleanPrefix = trim($cleanPrefix ?? '');
+                    if ($cleanPrefix !== '' && $cleanPrefix !== $normRaw && isset($masterByName[$cleanPrefix])) {
+                        $targetMasterId = $masterByName[$cleanPrefix];
+                        $insertMappingStmt->execute([':ebon_name' => $rawName, ':product_master_id' => $targetMasterId]);
+                        $mappings[$normRaw] = $targetMasterId;
+                        $autoMappedCount++;
+                    }
+                }
+            }
+
+            // Wenn noch kein Master-Artikel existiert: verbleibt in der Inbox
+            if ($targetMasterId === null || !isset($masterProducts[$targetMasterId])) {
+                continue;
+            }
+
+            // Daten auf Master-Artikel-Ebene sammeln
+            if (!isset($masterData[$targetMasterId])) {
+                $masterData[$targetMasterId] = [
+                    'stores'     => ['Rewe' => 0, 'Globus' => 0, 'Other' => 0],
+                    'categories' => [],
+                    'dates'      => [],
                 ];
             }
 
-            // Händler zuordnen (Zwei-Märkte-Strategie: Rewe vs. Globus)
+            // Händler zählen
             $storeLower = mb_strtolower($row['store'] ?? '', 'UTF-8');
             if (str_contains($storeLower, 'globus')) {
-                $products[$normKey]['stores']['Globus']++;
+                $masterData[$targetMasterId]['stores']['Globus']++;
             } elseif (str_contains($storeLower, 'rewe')) {
-                $products[$normKey]['stores']['Rewe']++;
+                $masterData[$targetMasterId]['stores']['Rewe']++;
             } else {
-                $products[$normKey]['stores']['Other']++;
+                $masterData[$targetMasterId]['stores']['Other']++;
             }
 
             // Kategorie zählen
             $cat = trim($row['category'] ?? '');
             if ($cat !== '') {
-                $products[$normKey]['categories'][$cat] = ($products[$normKey]['categories'][$cat] ?? 0) + 1;
+                $masterData[$targetMasterId]['categories'][$cat] = ($masterData[$targetMasterId]['categories'][$cat] ?? 0) + 1;
             }
 
             // Kaufdatum sammeln
             $date = $row['purchase_date'] ?? null;
-            if ($date && !in_array($date, $products[$normKey]['dates'], true)) {
-                $products[$normKey]['dates'][] = $date;
+            if ($date && !in_array($date, $masterData[$targetMasterId]['dates'], true)) {
+                $masterData[$targetMasterId]['dates'][] = $date;
             }
         }
 
+        // 5. Stammdaten für jeden gemappten Master-Artikel fortschreiben
         $updatedCount = 0;
+        $updateStmt = $this->pdo->prepare("
+            UPDATE product_master SET
+                preferred_market = COALESCE(:preferred_market, preferred_market),
+                default_category = COALESCE(:default_category, default_category),
+                avg_interval_days = COALESCE(:avg_interval_days, avg_interval_days),
+                last_purchased_at = :last_purchased_at,
+                updated_at = NOW()
+            WHERE id = :id
+        ");
 
-        foreach ($products as $normKey => $data) {
-            $rawName = $data['canonical_name'];
+        foreach ($masterData as $masterId => $data) {
+            $master = $masterProducts[$masterId];
 
-            // Bevorzugter Markt: Globus wenn Globus-Häufigkeit höher, Rewe wenn Rewe-Häufigkeit höher, sonst Übergreifend
+            // Bevorzugter Markt
             if ($data['stores']['Globus'] > $data['stores']['Rewe']) {
                 $preferredMarket = 'Globus';
             } elseif ($data['stores']['Rewe'] > $data['stores']['Globus']) {
                 $preferredMarket = 'Rewe';
             } else {
-                $preferredMarket = 'Übergreifend';
+                $preferredMarket = $master['preferred_market'] ?? 'Übergreifend';
             }
 
             // Häufigste Kategorie ermitteln
-            $dominantCategory = null;
+            $dominantCategory = $master['default_category'] ?? null;
             if (!empty($data['categories'])) {
                 arsort($data['categories']);
                 $dominantCategory = array_key_first($data['categories']);
             }
 
             // Kaufdaten sortieren
-            $dates         = $data['dates'];
+            $dates = $data['dates'];
             sort($dates);
-            $lastPurchased = end($dates);
+            $lastPurchased = !empty($dates) ? end($dates) : $master['last_purchased_at'];
 
             // Durchschnittliches Kaufintervall in Tagen berechnen
-            $avgInterval = null;
+            $avgInterval = $master['avg_interval_days'] !== null ? (float)$master['avg_interval_days'] : null;
             if (count($dates) >= 2) {
                 $diffs = [];
                 for ($i = 1; $i < count($dates); $i++) {
@@ -152,38 +238,28 @@ class LearningService
                 }
             }
 
-            $updateData = [
-                'preferred_market'  => $preferredMarket,
-                'default_category'  => $dominantCategory,
-                'default_unit'      => 'Stück',
-                'avg_interval_days' => $avgInterval,
-                'last_purchased_at' => $lastPurchased,
-            ];
-
-            // --- Mapping-Schicht prüfen ---
-            $mapping = $this->mappingRepo->findByEbonName($rawName);
-
-            if ($mapping !== null) {
-                // Vorhandenes Mapping → zugehörigen Master-Artikel aktualisieren
-                $this->productRepo->saveOrUpdate(
-                    array_merge($updateData, ['name' => $mapping['master_name']])
-                );
-                $updatedCount++;
-            }
-            // ELSE: Phase 1.5 - Unbekannte Artikel werden NICHT mehr blind als neuer
-            // Master-Artikel angelegt. Sie verbleiben als ungemappte kb_items in der Inbox.
+            $updateStmt->execute([
+                ':preferred_market'  => $preferredMarket,
+                ':default_category'  => $dominantCategory,
+                ':avg_interval_days' => $avgInterval,
+                ':last_purchased_at' => $lastPurchased,
+                ':id'                => $masterId,
+            ]);
+            $updatedCount++;
         }
 
         $this->logger->info("LearningService: eBon-Analyse abgeschlossen.", [
             'total_items'     => $totalItems,
-            'unique_products' => count($products),
+            'unique_products' => count($uniqueRawNames),
             'updated'         => $updatedCount,
+            'auto_mapped'     => $autoMappedCount,
         ]);
 
         return [
             'total_items_analyzed' => $totalItems,
-            'unique_products'      => count($products),
+            'unique_products'      => count($uniqueRawNames),
             'products_updated'     => $updatedCount,
+            'auto_mapped'          => $autoMappedCount,
         ];
     }
 

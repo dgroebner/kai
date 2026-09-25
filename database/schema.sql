@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS `shopping_session_items` (
 CREATE TABLE IF NOT EXISTS `ebon_product_mappings` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `ebon_name` VARCHAR(255) NOT NULL COMMENT 'Rohname aus dem Kassenbon (kb_items.name)',
-    `product_master_id` INT NOT NULL COMMENT 'Zugewiesener Master-Artikel',
+    `product_master_id` INT NULL DEFAULT NULL COMMENT 'Zugewiesener Master-Artikel (NULL = ignoriert)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_ebon_name` (`ebon_name`),

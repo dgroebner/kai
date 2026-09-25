@@ -76,6 +76,15 @@ try {
 
     $logger->info("Cronjob (mail.php): MailDispatcher im Hintergrund erfolgreich beendet.");
 
+    // 4b. Einkaufslisten-Lernen aus eBons aktualisieren
+    try {
+        $learningService = new \Kai\Tools\Einkaufsliste\LearningService();
+        $learningStats = $learningService->learnFromReceipts();
+        $logger->info("Cronjob (mail.php): Einkaufslisten-Lernen aktualisiert.", ['stats' => $learningStats]);
+    } catch (Throwable $le) {
+        $logger->warn("Cronjob (mail.php): Fehler beim Einkaufslisten-Lernen.", ['error' => $le->getMessage()]);
+    }
+
     // 5. Schule / Vertretungsplan synchronisieren (heute und nächster Schultag)
     try {
         $schoolService = new \Kai\Tools\School\SchoolService();

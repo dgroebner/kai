@@ -2,7 +2,9 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Einkaufsliste\CategoryIconHelper;
+use Kai\Tools\Einkaufsliste\EbonMappingRepository;
 use Kai\Tools\Einkaufsliste\HolidayService;
+use Kai\Tools\Einkaufsliste\LearningService;
 use Kai\Tools\Einkaufsliste\MarketCategoryRepository;
 use Kai\Tools\Einkaufsliste\ProductMasterRepository;
 use Kai\Tools\Einkaufsliste\ReceiptSessionService;
@@ -46,6 +48,8 @@ if (isset($_GET['all'])) {
 try {
     $listRepo = new ShoppingListRepository();
     $productRepo = new ProductMasterRepository();
+    $mappingRepo = new EbonMappingRepository();
+    $learningService = new LearningService($productRepo, $mappingRepo);
     $categoryRepo = new MarketCategoryRepository();
     $holidayService = new HolidayService();
     $sessionRepo = new ShoppingSessionRepository();
@@ -73,7 +77,20 @@ try {
     sort($uniqueCats);
 
     // Vorschläge vorab berechnen
+    $predictableProducts = $productRepo->getPredictableProducts();
+    if (empty($predictableProducts)) {
+        // Falls noch keine berechenbaren Artikel existieren: eBons automatisch analysieren
+        try {
+            $learningService->learnFromReceipts();
+            $predictableProducts = $productRepo->getPredictableProducts();
+            $allProducts = $productRepo->getAll();
+        } catch (\Throwable $le) {
+            // Unkritisch
+        }
+    }
     $suggestions = $suggestionService->generateSuggestions(3);
+    $predictableCount = count($predictableProducts);
+    $inboxCount = count($learningService->getInboxItems());
     $initialSyncHash = $listRepo->getSyncState()['hash'];
 
 } catch (Throwable $e) {
@@ -150,6 +167,9 @@ try {
             <button type="button" class="btn <?= $activeTab === 'inbox' ? '' : 'btn-outline' ?> js-tab-btn"
                     data-tab="inbox" id="tab-btn-inbox">
                 📥 Unbekannte eBons
+                <?php if ($inboxCount > 0): ?>
+                    <span class="badge badge-warning shopping-badge-counter"><?= $inboxCount ?></span>
+                <?php endif; ?>
             </button>
             <button type="button" class="btn <?= $activeTab === 'aisles' ? '' : 'btn-outline' ?> js-tab-btn"
                     data-tab="aisles">
@@ -451,13 +471,28 @@ try {
                     <div id="suggestions-list-container" style="margin-top: 1.5rem;">
                         <?php if (empty($suggestions)): ?>
                             <div class="text-center shopping-empty-state">
-                                <p>Keine fälligen Artikel gefunden. Entweder stehen alle Artikel bereits auf der Liste
-                                    oder
-                                    es liegen noch nicht genügend eBons vor.</p>
+                                <p>Keine fälligen Artikel für den nächsten Wocheneinkauf gefunden.</p>
+                                <?php if ($predictableCount > 0): ?>
+                                    <p class="text-muted" style="font-size: 0.9rem;">
+                                        Aktuell sind alle <?= $predictableCount ?> Artikel mit bekanntem Verbrauchsintervall noch nicht fällig oder stehen bereits auf der Liste.
+                                    </p>
+                                <?php endif; ?>
+                                <?php if ($inboxCount > 0 && Auth::hasPermission('shopping_master')): ?>
+                                    <div class="card" style="max-width: 520px; margin: 1rem auto; padding: 1rem; text-align: left;">
+                                        <p style="margin-bottom: 0.5rem;">
+                                            📥 <strong><?= $inboxCount ?> Positionen</strong> aus deinen eBons sind noch keinem Artikel zugeordnet.
+                                        </p>
+                                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                            Damit Kai Verbrauchszyklen und Vorschläge berechnen kann, ordne diese Kassenbon-Positionen deinen Wunschartikeln zu.
+                                        </p>
+                                        <button type="button" class="btn btn-sm btn-outline js-tab-btn" data-tab="inbox">
+                                            📥 Unbekannte eBons zuordnen (<?= $inboxCount ?>) &rarr;
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
                                 <?php if (Auth::hasPermission('suggestions_write')): ?>
-                                    <button type="button" class="btn btn-outline" id="btn-trigger-sync">🔄 Jetzt
-                                        historische
-                                        eBons analysieren
+                                    <button type="button" class="btn btn-outline" id="btn-trigger-sync" style="margin-top: 0.5rem;">
+                                        🔄 Historische eBons neu analysieren
                                     </button>
                                 <?php endif; ?>
                             </div>
@@ -510,8 +545,8 @@ try {
                                                          style="width: <?= min(100, $sug['urgency_percent']) ?>%;"></div>
                                                 </div>
                                                 <span class="text-muted" style="font-size: 0.8rem;">
-                                                <?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)' ?>
-                                            </span>
+                                                    <?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : ($sug['days_until_due'] === 0 ? '🎯 Heute fällig' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)') ?>
+                                                </span>
                                             </td>
                                             <?php if (Auth::hasPermission('suggestions_write')): ?>
                                                 <td data-label="Aktion" class="text-right">

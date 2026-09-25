@@ -633,6 +633,7 @@ try {
             }
 
             $mappingId = $mappingRepo->save($ebonName, $productId);
+            $learningService->learnFromReceipts();
             $mappings = $mappingRepo->getByProduct($productId);
 
             echo json_encode([
@@ -686,6 +687,7 @@ try {
                 }
                 $productId = $productRepo->saveOrUpdate(['name' => $newName]);
                 $mappingRepo->save($ebonName, $productId);
+                $learningService->learnFromReceipts();
                 echo json_encode([
                     'success' => true,
                     'message' => 'Als neuen Artikel angelegt',
@@ -697,6 +699,7 @@ try {
                     Auth::sendJsonError(400, 'Ziel-Artikel fehlt');
                 }
                 $mappingRepo->save($ebonName, $targetId);
+                $learningService->learnFromReceipts();
             } elseif ($actionType === 'assign') {
                 $targetName = trim((string)($input['target_name'] ?? ''));
                 if ($targetName === '') {
@@ -708,11 +711,13 @@ try {
                 if ($existing) {
                     // MAP
                     $mappingRepo->save($ebonName, $existing['id']);
+                    $learningService->learnFromReceipts();
                     echo json_encode(['success' => true, 'message' => 'Zuordnung gespeichert']);
                 } else {
                     // NEW
                     $productId = $productRepo->saveOrUpdate(['name' => $targetName]);
                     $mappingRepo->save($ebonName, $productId);
+                    $learningService->learnFromReceipts();
                     echo json_encode([
                         'success' => true,
                         'message' => 'Als neuen Artikel angelegt',

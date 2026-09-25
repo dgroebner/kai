@@ -35,7 +35,7 @@ class EbonMappingRepository
             SELECT m.*, pm.name AS master_name,
                    COALESCE(NULLIF(pm.custom_label, ''), pm.name) AS master_display_name
             FROM ebon_product_mappings m
-            JOIN product_master pm ON m.product_master_id = pm.id
+            LEFT JOIN product_master pm ON m.product_master_id = pm.id
             WHERE LOWER(TRIM(m.ebon_name)) = LOWER(TRIM(:ebon_name))
             LIMIT 1
         ");

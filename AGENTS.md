@@ -164,6 +164,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
 | `public/shared/mail.php` | `School\*` | Führt im asynchronen Cronjob den stündlichen Abgleich der Vertretungspläne mit aus. |
 | `public/shared/mail.php` | `Gamification\*` | Führt im asynchronen Cronjob den stündlichen Abgleich überfälliger Aufgaben und Generierung anstehender Tagesaufgaben durch. |
+| `public/shared/mail.php` | `Einkaufsliste\*` | Führt im asynchronen Cronjob die Aktualisierung des Einkaufslisten-Lernens aus eBons durch. |
 | `public/shared/car_cron.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY durch. |
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
