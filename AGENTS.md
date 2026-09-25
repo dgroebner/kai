@@ -46,6 +46,7 @@ kai_root/
 │   ├── kassenbon/   ← Öffentliche Einstiegspunkte der Domain "Kassenbon"
 │   ├── pvcharge/    ← Öffentliche Einstiegspunkte der Domain "PVCharge"
 │   ├── school/      ← Öffentliche Einstiegspunkte der Domain "School" (Stunden- & Vertretungsplan)
+│   ├── calendar/    ← Öffentliche Einstiegspunkte der Domain "Calendar" (Geburtstage & Jahrestage)
 │   ├── system/      ← Öffentliche Einstiegspunkte der Domain "System"
 │   └── weather/     ← Öffentliche Einstiegspunkte der Domain "Weather"
 │
@@ -58,6 +59,7 @@ kai_root/
 │   │   └── Security/  ← Auth, Sanitizer, TokenEncryptionService
 │   ├── Assistant/   ← Orchestrierung für Sprachassistenten (Google Home / Home Assistant)
 │   ├── Bank/        ← Business-Logik der Domain "Bank" (inkl. Parser/)
+│   ├── Calendar/    ← Business-Logik der Domain "Calendar" (Geburtstage & Jahrestage)
 │   ├── Car/         ← Business-Logik der Domain "Car"
 │   ├── Einkaufsliste/ ← Business-Logik der Domain "Einkaufsliste"
 │   ├── Kassenbon/   ← Business-Logik der Domain "Kassenbon"
@@ -165,6 +167,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/shared/mail.php` | `School\*` | Führt im asynchronen Cronjob den stündlichen Abgleich der Vertretungspläne mit aus. |
 | `public/shared/mail.php` | `Gamification\*` | Führt im asynchronen Cronjob den stündlichen Abgleich überfälliger Aufgaben und Generierung anstehender Tagesaufgaben durch. |
 | `public/shared/mail.php` | `Einkaufsliste\*` | Führt im asynchronen Cronjob die Aktualisierung des Einkaufslisten-Lernens aus eBons durch. |
+| `public/shared/mail.php` | `Calendar\*` | Führt im asynchronen Cronjob den Abgleich und Versand fälliger Kalender- und Geburtstags-Erinnerungen durch. |
 | `public/shared/car_cron.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY durch. |
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
@@ -177,6 +180,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 |---|---|---|---|
 | Assistant | `Kai\Tools\Assistant\` | `src/Assistant/` | `public/assistant/` |
 | Bank | `Kai\Tools\Bank\` | `src/Bank/` (inkl. `Parser/`) | `public/bank/` |
+| Calendar | `Kai\Tools\Calendar\` | `src/Calendar/` | `public/calendar/` |
 | Car | `Kai\Tools\Car\` | `src/Car/` | `public/car/` |
 | Einkaufsliste | `Kai\Tools\Einkaufsliste\` | `src/Einkaufsliste/` | `public/einkaufsliste/` |
 | Gamification | `Kai\Tools\Gamification\` | `src/Gamification/` | `public/gamification/` |

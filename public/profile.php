@@ -33,6 +33,16 @@ $eventGroups = [
             ],
         ],
     ],
+    'Geburtstage & Jahrestage' => [
+        'permission' => 'calendar_read',
+        'events' => [
+            'calendar_reminder' => [
+                'icon' => '🎂',
+                'label' => 'Geburtstage & Jahrestage',
+                'desc' => 'Erinnerungen an anstehende Geburtstage und Jubiläen'
+            ],
+        ],
+    ],
     'Finanzen' => [
         'permission' => 'finance_read',
         'events' => [

@@ -5842,3 +5842,378 @@ body {
 
 
 
+
+
+/* ==========================================================================
+   DOMAIN: CALENDAR (Geburtstage & Jahrestage)
+   ========================================================================== */
+
+.cal-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing);
+}
+
+.cal-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    align-items: center;
+}
+
+.cal-search-input {
+    min-width: 200px;
+    max-width: 320px;
+}
+
+.cal-upcoming-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing);
+    margin-bottom: var(--spacing-lg);
+}
+
+.cal-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--spacing);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.cal-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.cal-card--today {
+    border-color: var(--warning);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    background: linear-gradient(135deg, var(--bg-card) 85%, rgba(245, 158, 11, 0.08));
+}
+
+.cal-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.cal-date-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-weight: 700;
+}
+
+.cal-date-badge-day {
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.cal-date-badge-month {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.cal-card-info {
+    flex: 1;
+}
+
+.cal-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    word-break: break-word;
+}
+
+.cal-card-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.cal-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.cal-badge-today {
+    background-color: var(--warning);
+    color: #000;
+    font-weight: 700;
+}
+
+.cal-badge-soon {
+    background-color: rgba(37, 99, 235, 0.15);
+    color: var(--accent);
+}
+
+.cal-badge-later {
+    background-color: var(--bg-hover);
+    color: var(--text-muted);
+}
+
+.cal-recipient-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.cal-recipient-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.cal-notes-box {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--bg-hover);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+    word-break: break-word;
+}
+
+.cal-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--border-color);
+}
+
+.cal-month-card {
+    margin-bottom: var(--spacing);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.cal-month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    user-select: none;
+}
+
+.cal-month-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.cal-month-count {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: var(--text-muted);
+}
+
+.cal-config-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.cal-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.cal-users-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.cal-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.cal-advance-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 600px) {
+    .cal-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .cal-search-input {
+        max-width: 100%;
+        width: 100%;
+    }
+    .cal-users-checkboxes {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* Zodiac & Horoskop Modal */
+.cal-zodiac-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.cal-zodiac-badge:hover {
+    background: var(--bg-card);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.cal-zodiac-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+    margin-bottom: var(--spacing);
+}
+
+.cal-zodiac-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.cal-zodiac-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.cal-zodiac-symbol-big {
+    font-size: 2.2rem;
+    line-height: 1;
+    min-width: 48px;
+    text-align: center;
+}
+
+.cal-zodiac-card-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.cal-zodiac-card-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.cal-traits-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.cal-trait-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.cal-zodiac-desc {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+.cal-lucky-box {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .cal-zodiac-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

@@ -23,6 +23,7 @@ class UserProfileRepository
         'battery_fully_charged' => true,
         'car_telemetry_loaded' => true,
         'car_charge_captured' => true,
+        'calendar_reminder' => true,
     ];
 
     public const EVENT_PERMISSIONS = [
@@ -33,6 +34,7 @@ class UserProfileRepository
         'school_plan_updated' => 'school_read',
         'school_notes_updated' => 'school_read',
         'school_grades_updated' => 'school_read',
+        'calendar_reminder' => 'calendar_read',
         'shopping_completed' => 'shopping_read',
         'pv_forecast_loaded' => 'pv_read',
         'battery_fully_charged' => 'pv_read',

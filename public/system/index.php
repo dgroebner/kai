@@ -745,6 +745,8 @@ function getEventLabel(string $eventType): string
                                     'history_read', 'history_write',
                                     // Schule & Vertretungsplan
                                     'school_read', 'school_write',
+                                    // Kalender (Geburtstage & Jahrestage)
+                                    'calendar_read', 'calendar_write',
                                     // Familien-Quests (Gamification)
                                     'gamification_read', 'gamification_write', 'gamification_admin',
                             ];

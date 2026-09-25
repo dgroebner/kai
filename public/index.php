@@ -51,6 +51,13 @@ Auth::requirePage();
                 </a>
             <?php endif; ?>
 
+            <?php if (Auth::hasPermission('calendar_read')): ?>
+                <a href="calendar/index.php" class="card tool-card">
+                    <span class="tool-card-icon">🎂</span>
+                    <span class="tool-card-title">Geburtstage</span>
+                </a>
+            <?php endif; ?>
+
             <?php if (Auth::hasPermission('gamification_read')): ?>
                 <a href="gamification/index.php" class="card tool-card">
                     <span class="tool-card-icon">🏆</span>

@@ -116,6 +116,17 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Gamification-Abgleich.", ['error' => $ge->getMessage()]);
     }
 
+    // 7. Kalender / Geburtstage & Jahrestage Erinnerungen prüfen und versenden
+    try {
+        $calendarService = new \Kai\Tools\Calendar\CalendarService($db, $logger);
+        $sentReminders = $calendarService->processDueReminders();
+        if ($sentReminders > 0) {
+            $logger->info("Cronjob (mail.php): Kalender-Erinnerungen versendet.", ['count' => $sentReminders]);
+        }
+    } catch (Throwable $ce) {
+        $logger->warn("Cronjob (mail.php): Fehler beim Kalender-Erinnerungsabgleich.", ['error' => $ce->getMessage()]);
+    }
+
 
 } catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [

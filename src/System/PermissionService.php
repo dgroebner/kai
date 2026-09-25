@@ -93,6 +93,7 @@ class PermissionService
                 'recipe_read', 'recipe_write',
                 'history_read', 'history_write',
                 'school_read', 'school_write',
+                'calendar_read', 'calendar_write',
                 'pv_read', 'pv_write',
                 'ebon_read', 'ebon_write',
                 'finance_read', 'finance_write',
