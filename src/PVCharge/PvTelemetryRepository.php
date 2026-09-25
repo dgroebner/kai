@@ -164,21 +164,39 @@ class PvTelemetryRepository
     }
 
     /**
-     * Lädt die aggregierten Tageswerte (Ertrag, Netzbezug, Netzeinspeisung, Hausverbrauch).
+     * Lädt die aggregierten Historienwerte (Ertrag, Netzbezug, Netzeinspeisung, Hausverbrauch).
+     * @param string $interval 'day', 'week', 'month' oder 'year'
      */
-    public function getDailyAggregates(int $limit, int $offset): array
+    public function getHistoryAggregates(string $interval, int $limit, int $offset): array
     {
+        $groupExpr = match ($interval) {
+            'week' => 'YEARWEEK(day_date, 1)',
+            'month' => "DATE_FORMAT(day_date, '%Y-%m')",
+            'year' => 'YEAR(day_date)',
+            default => 'day_date'
+        };
+
         $stmt = $this->pdo->prepare("
             SELECT 
-                DATE(last_update) AS `date`,
-                MAX(yield_daily_kwh) AS yield_kwh,
-                SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) / 12000 AS grid_import_kwh,
-                SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) / 12000 AS grid_export_kwh,
-                SUM(house_load_w) / 12000 AS house_load_kwh
-            FROM pv_telemetry
-            WHERE DATE(last_update) < CURDATE()
-            GROUP BY DATE(last_update)
-            ORDER BY `date` DESC
+                MIN(day_date) AS period_start,
+                MAX(day_date) AS period_end,
+                SUM(yield_kwh) AS yield_kwh,
+                SUM(grid_import_kwh) AS grid_import_kwh,
+                SUM(grid_export_kwh) AS grid_export_kwh,
+                SUM(house_load_kwh) AS house_load_kwh
+            FROM (
+                SELECT 
+                    DATE(last_update) AS day_date,
+                    MAX(yield_daily_kwh) AS yield_kwh,
+                    SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) / 12000 AS grid_import_kwh,
+                    SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) / 12000 AS grid_export_kwh,
+                    SUM(house_load_w) / 12000 AS house_load_kwh
+                FROM pv_telemetry
+                WHERE DATE(last_update) < CURDATE()
+                GROUP BY DATE(last_update)
+            ) AS daily
+            GROUP BY {$groupExpr}
+            ORDER BY period_start DESC
             LIMIT :limit OFFSET :offset
         ");
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
@@ -189,15 +207,23 @@ class PvTelemetryRepository
     }
 
     /**
-     * Zählt die Anzahl der verfügbaren Tage für die Paginierung der Tageswerte.
+     * Zählt die Anzahl der verfügbaren Zeiträume für die Paginierung.
      */
-    public function countDailyAggregates(): int
+    public function countHistoryAggregates(string $interval): int
     {
-        $stmt = $this->pdo->query("
-            SELECT COUNT(DISTINCT DATE(last_update))
+        $groupExpr = match ($interval) {
+            'week' => 'YEARWEEK(DATE(last_update), 1)',
+            'month' => "DATE_FORMAT(DATE(last_update), '%Y-%m')",
+            'year' => 'YEAR(DATE(last_update))',
+            default => 'DATE(last_update)'
+        };
+
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(DISTINCT {$groupExpr})
             FROM pv_telemetry
             WHERE DATE(last_update) < CURDATE()
         ");
+        $stmt->execute();
 
         return (int)$stmt->fetchColumn();
     }

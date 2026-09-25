@@ -182,17 +182,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 // --- Daten für den Tab "Historie" laden ---
 $historyPage = max(1, (int)($_GET['hpage'] ?? 1));
 $historyPerPage = 10;
+$historyInterval = $_GET['interval'] ?? 'day';
+if (!in_array($historyInterval, ['day', 'week', 'month', 'year'])) {
+    $historyInterval = 'day';
+}
+
 $totalHistoryDays = 0;
 $historyDays = [];
 $historyTotalPages = 1;
 
 if ($tab === 'history') {
-    $totalHistoryDays = $telemetryRepository->countDailyAggregates();
+    $totalHistoryDays = $telemetryRepository->countHistoryAggregates($historyInterval);
     $historyTotalPages = max(1, (int)ceil($totalHistoryDays / $historyPerPage));
     $historyPage = min($historyPage, $historyTotalPages);
     $historyOffset = ($historyPage - 1) * $historyPerPage;
 
-    $historyDays = $telemetryRepository->getDailyAggregates($historyPerPage, $historyOffset);
+    $historyDays = $telemetryRepository->getHistoryAggregates($historyInterval, $historyPerPage, $historyOffset);
 }
 
 ?>
@@ -234,15 +239,30 @@ if ($tab === 'history') {
 
     <main>
         <?php if ($tab === 'history'): ?>
-            <div class="section-title">Tageswerte der vergangenen Tage</div>
-            <p class="text-muted" style="margin-bottom: 1.5rem;">Hier sehen Sie den PV-Ertrag, Verbrauch sowie geschätzte Kosten und Erlöse pro Tag.</p>
+            <div class="section-title">Aggregierte Werte der Vergangenheit</div>
             
+            <!-- Interval-Switcher -->
+            <div class="period-switcher" style="margin-bottom: 1.5rem; justify-content: flex-start;">
+                <a href="index.php?tab=history&interval=day" class="btn <?= $historyInterval === 'day' ? '' : 'btn-outline' ?>">Täglich</a>
+                <a href="index.php?tab=history&interval=week" class="btn <?= $historyInterval === 'week' ? '' : 'btn-outline' ?>">Wöchentlich</a>
+                <a href="index.php?tab=history&interval=month" class="btn <?= $historyInterval === 'month' ? '' : 'btn-outline' ?>">Monatlich</a>
+                <a href="index.php?tab=history&interval=year" class="btn <?= $historyInterval === 'year' ? '' : 'btn-outline' ?>">Jährlich</a>
+            </div>
+
             <div style="display: grid; gap: 1rem;">
                 <?php if (empty($historyDays)): ?>
-                    <div class="no-data">Keine historischen Tageswerte gefunden.</div>
-                <?php else: ?>
-                    <?php foreach ($historyDays as $day): 
-                        $dateObj = DateTime::createFromFormat('Y-m-d', $day['date']);
+                    <div class="no-data">Keine historischen Daten gefunden.</div>
+                <?php else: 
+                    $months = ['', 'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+                    foreach ($historyDays as $day): 
+                        $ts = strtotime($day['period_start']);
+                        $dateLabel = match ($historyInterval) {
+                            'week' => 'KW ' . date('W, o', $ts),
+                            'month' => $months[(int)date('n', $ts)] . ' ' . date('Y', $ts),
+                            'year' => date('Y', $ts),
+                            default => date('d.m.Y', $ts),
+                        };
+                        
                         $yieldKwh = (float)$day['yield_kwh'];
                         $importKwh = (float)$day['grid_import_kwh'];
                         $exportKwh = (float)$day['grid_export_kwh'];
@@ -255,7 +275,7 @@ if ($tab === 'history') {
                         <div class="card" style="padding: 1rem 1.5rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
                                 <h3 style="margin: 0; font-size: 1.1rem;">
-                                    📅 <?= $dateObj->format('d.m.Y') ?>
+                                    📅 <?= htmlspecialchars($dateLabel, ENT_QUOTES, 'UTF-8') ?>
                                 </h3>
                                 <div style="font-weight: bold; <?= $netto >= 0 ? 'color: var(--pv-green);' : 'color: var(--color-red);' ?>">
                                     Bilanz: <?= $netto >= 0 ? '+' : '' ?><?= number_format($netto, 2, ',', '.') ?> €
@@ -302,7 +322,7 @@ if ($tab === 'history') {
             <!-- Paginierung Historie -->
             <div class="pagination" style="margin-top: 2rem;">
                 <?php if ($historyPage > 1): ?>
-                    <a href="?tab=history&hpage=<?= $historyPage - 1 ?>" class="btn btn-outline">&larr; Zurück</a>
+                    <a href="?tab=history&interval=<?= htmlspecialchars($historyInterval, ENT_QUOTES, 'UTF-8') ?>&hpage=<?= $historyPage - 1 ?>" class="btn btn-outline">&larr; Zurück</a>
                 <?php else: ?>
                     <span class="btn btn-outline disabled">&larr; Zurück</span>
                 <?php endif; ?>
@@ -310,7 +330,7 @@ if ($tab === 'history') {
                 <span class="page-info">Seite <?= $historyPage ?> von <?= $historyTotalPages ?></span>
 
                 <?php if ($historyPage < $historyTotalPages): ?>
-                    <a href="?tab=history&hpage=<?= $historyPage + 1 ?>" class="btn btn-outline">Weiter &rarr;</a>
+                    <a href="?tab=history&interval=<?= htmlspecialchars($historyInterval, ENT_QUOTES, 'UTF-8') ?>&hpage=<?= $historyPage + 1 ?>" class="btn btn-outline">Weiter &rarr;</a>
                 <?php else: ?>
                     <span class="btn btn-outline disabled">Weiter &rarr;</span>
                 <?php endif; ?>
