@@ -6135,39 +6135,48 @@ body {
 
 .cal-zodiac-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing);
-    margin-top: var(--spacing);
-    margin-bottom: var(--spacing);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
 .cal-zodiac-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--spacing);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .cal-zodiac-card-header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-sm);
+    gap: 0.85rem;
+    margin-bottom: 0.75rem;
 }
 
 .cal-zodiac-symbol-big {
     font-size: 2.2rem;
     line-height: 1;
     min-width: 48px;
-    text-align: center;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+    flex-shrink: 0;
 }
 
 .cal-zodiac-card-title {
     font-size: 1.15rem;
     font-weight: 700;
+    color: var(--text-main);
     margin: 0;
 }
 
@@ -6179,41 +6188,45 @@ body {
 .cal-traits-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
     margin-top: 8px;
     margin-bottom: 8px;
 }
 
 .cal-trait-pill {
     display: inline-block;
-    padding: 2px 7px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    padding: 3px 8px;
+    background: var(--bg-surface-hover);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--text-main);
 }
 
 .cal-zodiac-desc {
-    font-size: 0.85rem;
-    line-height: 1.4;
-    color: var(--text-secondary);
-    margin-top: 6px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin-top: 8px;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
 .cal-lucky-box {
-    margin-top: 8px;
-    padding: 6px 10px;
-    background: var(--bg-hover);
-    border-radius: var(--radius-sm);
-    font-size: 0.8rem;
-    color: var(--text-muted);
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: var(--text-main);
 }
 
 @media (max-width: 768px) {
     .cal-zodiac-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
 }
 
