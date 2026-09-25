@@ -235,4 +235,31 @@ class BankTransactionRepository
 
         return (int)$stmt->fetchColumn();
     }
-}
+
+    /**
+     * Prüft, ob mindestens eine Girokonto-Buchung an oder nach dem angegebenen Datum existiert.
+     *
+     * @param string $date Datum im Format YYYY-MM-DD
+     * @param int|null $accountId Optional auf bestimmtes Konto einschränken (Standard: Standard-Girokonto)
+     * @return bool
+     */
+    public function hasTransactionOnOrAfter(string $date, ?int $accountId = null): bool
+    {
+        $targetAccountId = $accountId ?? $this->getDefaultCheckingAccountId();
+
+        $sql = "SELECT 1 FROM bank_giro_transactions WHERE booking_date >= :date";
+        $params = [':date' => $date];
+
+        if ($targetAccountId !== null) {
+            $sql .= " AND account_id = :account_id";
+            $params[':account_id'] = $targetAccountId;
+        }
+
+        $sql .= " LIMIT 1";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return (bool)$stmt->fetchColumn();
+    }
+}

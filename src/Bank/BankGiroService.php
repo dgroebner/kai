@@ -258,7 +258,9 @@ class BankGiroService
 
     /**
      * Prüft nach einem erfolgreichen Sync, ob für den abgelaufenen Vormonat
-     * bereits ein KI-Finanzreport existiert. Falls nicht, wird dieser automatisch erzeugt.
+     * bereits ein KI-Finanzreport existiert. Falls nicht und mindestens ein
+     * Girokonto-Umsatz des Folgemonats (aktueller Monat) vorliegt, wird dieser
+     * automatisch erzeugt.
      *
      * @return string|null Der analysierte Vormonat (z. B. '2026-08') oder null, falls kein Report erzeugt wurde.
      */
@@ -266,11 +268,19 @@ class BankGiroService
     {
         try {
             $prevMonth = (new \DateTimeImmutable('first day of last month'))->format('Y-m');
+            $firstDayOfCurrentMonth = (new \DateTimeImmutable('first day of this month'))->format('Y-m-d');
             $reportRepo = new FinancialReportRepository();
 
             // Prüfen, ob für den Vormonat bereits ein Report existiert
             if ($reportRepo->getReport('month', $prevMonth) === null) {
-                $this->logger->info("BankGiroService: Erster Monatsabruf erkannt. Generiere automatischen Finanzreport für $prevMonth...");
+                // Vorbedingung: Es muss mindestens eine Buchung mit Datum im Folgemonat (aktueller Monat) vorliegen.
+                // Erst dann ist gewährleistet, dass bankseitig alle Buchungen des Vormonats final verbucht sind.
+                if (!$this->repository->hasTransactionOnOrAfter($firstDayOfCurrentMonth)) {
+                    $this->logger->info("BankGiroService: Noch kein Girokonto-Umsatz für $firstDayOfCurrentMonth vorhanden. Finanzreport für $prevMonth wird zurückgestellt.");
+                    return null;
+                }
+
+                $this->logger->info("BankGiroService: Erster Monatsabruf mit Folgemonats-Umsatz erkannt. Generiere automatischen Finanzreport für $prevMonth...");
 
                 $reportService = new FinancialReportService($reportRepo);
                 $reportService->generateReport('month', $prevMonth);
@@ -279,7 +289,7 @@ class BankGiroService
                 if ((int)date('n') === 1) {
                     $prevYear = (string)((int)date('Y') - 1);
                     if ($reportRepo->getReport('year', $prevYear) === null) {
-                        $this->logger->info("BankGiroService: Januar-Sync erkannt. Generiere automatischen Jahresreport für $prevYear...");
+                        $this->logger->info("BankGiroService: Januar-Sync mit Buchungen im neuen Jahr erkannt. Generiere automatischen Jahresreport für $prevYear...");
                         $reportService->generateReport('year', $prevYear);
                     }
                 }
