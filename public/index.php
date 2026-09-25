@@ -53,8 +53,8 @@ Auth::requirePage();
 
             <?php if (Auth::hasPermission('calendar_read')): ?>
                 <a href="calendar/index.php" class="card tool-card">
-                    <span class="tool-card-icon">🎂</span>
-                    <span class="tool-card-title">Geburtstage</span>
+                    <span class="tool-card-icon">🎉</span>
+                    <span class="tool-card-title">Geburtstage &amp; Jahrestage</span>
                 </a>
             <?php endif; ?>
 

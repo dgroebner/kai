@@ -37,7 +37,7 @@ $eventGroups = [
         'permission' => 'calendar_read',
         'events' => [
             'calendar_reminder' => [
-                'icon' => '🎂',
+                'icon' => '🎉',
                 'label' => 'Geburtstage & Jahrestage',
                 'desc' => 'Erinnerungen an anstehende Geburtstage und Jubiläen'
             ],

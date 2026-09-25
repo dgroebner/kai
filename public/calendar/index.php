@@ -70,7 +70,7 @@ $csrfToken = Auth::csrfToken();
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
-        <h1>🎂 Geburtstage &amp; Jahrestage</h1>
+        <h1>🎉 Geburtstage &amp; Jahrestage</h1>
         <div class="page-header-actions">
             <a href="../index.php" class="btn btn-outline">&larr; Übersicht</a>
             <?php if ($canWrite): ?>
@@ -336,7 +336,7 @@ $csrfToken = Auth::csrfToken();
 <div class="modal-overlay hidden" id="modal-event" role="dialog" aria-modal="true" aria-labelledby="modal-event-title">
     <div class="modal-card modal-card--lg">
         <div class="modal-header">
-            <h3 id="modal-event-title">🎂 Ereignis speichern</h3>
+            <h3 id="modal-event-title">🎉 Ereignis speichern</h3>
             <button type="button" class="modal-close" id="modal-event-close" aria-label="Schließen">&times;</button>
         </div>
         <form id="form-event">
