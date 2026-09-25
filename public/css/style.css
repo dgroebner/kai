@@ -6604,6 +6604,9 @@ button.btn-text:hover {
 
 /* Tabellenzellen-Inhalte */
 .cal-table-date {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--accent);
@@ -6614,6 +6617,30 @@ button.btn-text:hover {
     font-size: 0.75rem;
     color: var(--text-muted);
     margin-top: 2px;
+}
+
+.cal-weekday-pill {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+    line-height: 1.2;
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.cal-weekday-pill--workday {
+    background: var(--bg-surface-hover);
+    color: var(--text-main);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cal-weekday-pill--weekend {
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .cal-table-title-row {
@@ -6655,16 +6682,5 @@ button.btn-text:hover {
     color: var(--text-main);
 }
 
-.cal-table-recipients {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.cal-table-advance {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 3px;
-}
 
 

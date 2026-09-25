@@ -130,6 +130,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 detSubtitle.textContent = `${typeText} am ${details.formatted_day_month || ''}${yearStr}${agePart}`;
             }
 
+            const detWeekdayInfo = document.getElementById('det-weekday-info');
+            if (detWeekdayInfo) {
+                let parts = [];
+                if (details.next_weekday_name && details.next_date) {
+                    const d = details.next_date.split('-');
+                    const formattedDate = (d.length === 3) ? `${d[2]}.${d[1]}.${d[0]}` : details.next_date;
+                    parts.push(`📅 Nächster Termin: <strong>${window.KaiHtml.escape(details.next_weekday_name)}</strong>, ${formattedDate}`);
+                }
+                if (details.birth_weekday_name && ev.event_year) {
+                    const prefix = (ev.event_type === 'birthday') ? 'Geboren an einem' : 'War ein';
+                    parts.push(`${prefix} <strong>${window.KaiHtml.escape(details.birth_weekday_name)}</strong>`);
+                }
+                detWeekdayInfo.innerHTML = parts.join(' &bull; ');
+            }
+
             if (detBadgeWrap) {
                 const isToday = details.days_remaining === 0;
                 const badgeClass = isToday ? 'cal-badge-pill cal-badge-today' : 'cal-badge-pill cal-badge-soon';

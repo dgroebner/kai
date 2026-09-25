@@ -35,6 +35,27 @@ class CalendarService
         12 => 'Dezember',
     ];
 
+    public const WEEKDAYS_DE = [
+        0 => 'Sonntag',
+        1 => 'Montag',
+        2 => 'Dienstag',
+        3 => 'Mittwoch',
+        4 => 'Donnerstag',
+        5 => 'Freitag',
+        6 => 'Samstag',
+    ];
+
+    public const WEEKDAYS_SHORT_DE = [
+        0 => 'So',
+        1 => 'Mo',
+        2 => 'Di',
+        3 => 'Mi',
+        4 => 'Do',
+        5 => 'Fr',
+        6 => 'Sa',
+    ];
+
+
     public function __construct(
         ?Database $db = null,
         ?Logger $logger = null,
@@ -133,6 +154,21 @@ class CalendarService
         $westernZodiac = $this->getWesternZodiac($day, $month);
         $chineseZodiac = $this->getChineseZodiac($year, $month, $day);
 
+        // Wochentage berechnen (nächster Termin & ggf. Geburtswochentag)
+        $nextWeekdayNum = (int)$nextDate->format('w');
+        $nextWeekdayName = self::WEEKDAYS_DE[$nextWeekdayNum] ?? '';
+        $nextWeekdayShort = self::WEEKDAYS_SHORT_DE[$nextWeekdayNum] ?? '';
+        $isWeekend = ($nextWeekdayNum === 0 || $nextWeekdayNum === 6);
+
+        $birthWeekdayName = null;
+        if ($year !== null && checkdate($month, $day, $year)) {
+            $birthDate = DateTimeImmutable::createFromFormat('Y-m-d', sprintf('%04d-%02d-%02d', $year, $month, $day));
+            if ($birthDate !== false) {
+                $birthWeekdayNum = (int)$birthDate->format('w');
+                $birthWeekdayName = self::WEEKDAYS_DE[$birthWeekdayNum] ?? null;
+            }
+        }
+
         $event['next_date'] = $nextDate->format('Y-m-d');
         $event['target_year'] = $targetYear;
         $event['days_remaining'] = $daysRemaining;
@@ -144,6 +180,11 @@ class CalendarService
         $event['western_zodiac'] = $westernZodiac;
         $event['chinese_zodiac'] = $chineseZodiac;
         $event['formatted_day_month'] = sprintf('%02d.%02d.', $day, $month);
+        $event['next_weekday_num'] = $nextWeekdayNum;
+        $event['next_weekday_name'] = $nextWeekdayName;
+        $event['next_weekday_short'] = $nextWeekdayShort;
+        $event['is_weekend'] = $isWeekend;
+        $event['birth_weekday_name'] = $birthWeekdayName;
 
         return $event;
     }

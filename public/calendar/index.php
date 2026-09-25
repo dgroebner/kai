@@ -226,11 +226,10 @@ $csrfToken = Auth::csrfToken();
                         <thead>
                             <tr>
                                 <th style="width: 140px;">Fälligkeit</th>
-                                <th style="width: 110px;">Datum</th>
+                                <th style="width: 140px;">Datum &amp; Wochentag</th>
                                 <th>Name / Anlass</th>
-                                <th style="width: 150px;">Alter / Jubiläum</th>
-                                <th style="width: 190px;">Sternzeichen</th>
-                                <th>Benachrichtigung</th>
+                                <th style="width: 160px;">Alter / Jubiläum</th>
+                                <th style="width: 200px;">Sternzeichen</th>
                                 <th style="width: 135px; text-align: right;">Aktionen</th>
                             </tr>
                         </thead>
@@ -249,10 +248,17 @@ $csrfToken = Auth::csrfToken();
                                         <div class="cal-urgency-subtext"><?= htmlspecialchars($urgency['subtext'], ENT_QUOTES, 'UTF-8') ?></div>
                                     </td>
 
-                                    <!-- 2. Datum -->
+                                    <!-- 2. Datum & Wochentag -->
                                     <td>
-                                        <div class="cal-table-date"><?= sprintf('%02d.%02d.', (int)$ev['event_day'], (int)$ev['event_month']) ?></div>
-                                        <div class="cal-table-subdate"><?= date('D, d.m.Y', strtotime($ev['next_date'])) ?></div>
+                                        <div class="cal-table-date">
+                                            <span class="cal-weekday-pill cal-weekday-pill--<?= !empty($ev['is_weekend']) ? 'weekend' : 'workday' ?>">
+                                                <?= htmlspecialchars($ev['next_weekday_short'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
+                                            <strong><?= sprintf('%02d.%02d.', (int)$ev['event_day'], (int)$ev['event_month']) ?></strong>
+                                        </div>
+                                        <div class="cal-table-subdate">
+                                            <?= htmlspecialchars($ev['next_weekday_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>, <?= date('d.m.Y', strtotime($ev['next_date'])) ?>
+                                        </div>
                                     </td>
 
                                     <!-- 3. Name & Anlass -->
@@ -274,14 +280,16 @@ $csrfToken = Auth::csrfToken();
                                         <?php if (!empty($ev['age_text'])): ?>
                                             <strong class="cal-table-age"><?= htmlspecialchars($ev['age_text'], ENT_QUOTES, 'UTF-8') ?></strong>
                                             <?php if (!empty($ev['event_year'])): ?>
-                                                <div class="cal-table-subdate">(*<?= (int)$ev['event_year'] ?>)</div>
+                                                <div class="cal-table-subdate">
+                                                    *<?= (int)$ev['event_year'] ?><?php if (!empty($ev['birth_weekday_name'])): ?> (<?= htmlspecialchars($ev['birth_weekday_name'], ENT_QUOTES, 'UTF-8') ?>)<?php endif; ?>
+                                                </div>
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <span class="u-muted">–</span>
                                         <?php endif; ?>
                                     </td>
 
-                                    <!-- 5. Sternzeichen (klickbar für Horoskop) -->
+                                    <!-- 5. Sternzeichen (klickbar für Horoskop & Details) -->
                                     <td>
                                         <button type="button" class="cal-zodiac-badge js-view-details" data-id="<?= (int)$ev['id'] ?>" title="Horoskop &amp; Details anzeigen">
                                             <span><?= $ev['western_zodiac']['symbol'] ?> <?= htmlspecialchars($ev['western_zodiac']['name'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -292,23 +300,7 @@ $csrfToken = Auth::csrfToken();
                                         </button>
                                     </td>
 
-                                    <!-- 6. Benachrichtigung an -->
-                                    <td>
-                                        <?php if (!empty($ev['recipients'])): ?>
-                                            <div class="cal-table-recipients">
-                                                <?php foreach ($ev['recipients'] as $rec): ?>
-                                                    <span class="cal-recipient-tag">👤 <?= htmlspecialchars($rec['name'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                <?php endforeach; ?>
-                                            </div>
-                                            <div class="cal-table-advance">
-                                                ⏰ <?= implode(', ', array_map(fn($d) => $d === 0 ? 'am Tag' : "{$d}d vor", $ev['advance_days_list'] ?? [0, 1, 3])) ?>
-                                            </div>
-                                        <?php else: ?>
-                                            <span class="u-muted" style="font-size: 0.85rem;">–</span>
-                                        <?php endif; ?>
-                                    </td>
-
-                                    <!-- 7. Aktionen -->
+                                    <!-- 6. Aktionen -->
                                     <td style="text-align: right; white-space: nowrap;">
                                         <button type="button" class="btn btn-sm btn-outline js-test-push" data-id="<?= (int)$ev['id'] ?>" title="Test-Push an mich senden">
                                             🔔
@@ -478,6 +470,7 @@ $csrfToken = Auth::csrfToken();
                         <div>
                             <h4 id="det-title" style="margin: 0 0 4px 0; font-size: 1.25rem; color: var(--text-main);"></h4>
                             <div class="text-muted" id="det-subtitle" style="font-size: 0.9rem;"></div>
+                            <div class="text-muted" id="det-weekday-info" style="font-size: 0.85rem; margin-top: 4px;"></div>
                         </div>
                         <div id="det-badge-wrap"></div>
                     </div>
