@@ -7303,8 +7303,44 @@ button.btn-text:hover {
 .nutriscore-d { background: #ee8100; color: #ffffff; }
 .nutriscore-e { background: #e63e11; color: #ffffff; }
 
+/* Modal-Dialog Wrapper (OFF-Popup und weitere Dialoge) */
+.modal-dialog {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 580px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideIn 0.2s ease-out;
+}
 
+.modal-dialog--lg {
+    max-width: 700px;
+}
 
+/* Zustandsanzeigen im OFF-Modal */
+.off-loading,
+.off-pending {
+    padding: 0.75rem 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Anklickbare Artikelzeilen */
+.js-off-item-row {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.js-off-item-row:hover {
+    background-color: var(--bg-surface-hover);
+}
 
 
 

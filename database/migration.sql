@@ -105,3 +105,33 @@ CREATE TABLE IF NOT EXISTS `kb_off_products` (
   INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ---------------------------------------------------------------------------
+-- OFF-Queue: 90-Tage-Cooldown für not_found-Artikel (kein Schema-Change nötig)
+-- ---------------------------------------------------------------------------
+-- Artikel, die vom Raspi nicht in Open Food Facts gefunden wurden (status = 'not_found'),
+-- werden automatisch nach 90 Tagen erneut in die Queue eingereiht (status = 'pending',
+-- attempts = 0, last_queried_at = NULL).
+--
+-- Dieser Mechanismus wird vollständig durch den stündlichen Cron-Job in
+-- public/shared/mail.php (Schritt 8) über
+--   OpenFoodFactsQueueRepository::enqueueAllPendingItems()
+-- gesteuert. Das entsprechende SQL lautet:
+--
+--   UPDATE kb_off_products
+--   SET status = 'pending', attempts = 0, last_queried_at = NULL
+--   WHERE status = 'not_found'
+--     AND last_queried_at < NOW() - INTERVAL 90 DAY;
+--
+-- Gleichzeitig reiht derselbe Aufruf alle kb_items-Artikel, die noch gar nicht
+-- in kb_off_products vorhanden sind, als neue pending-Jobs ein:
+--
+--   INSERT IGNORE INTO kb_off_products (product_key, search_term, status)
+--   SELECT LOWER(TRIM(ki.name)), ki.name, 'pending'
+--   FROM kb_items AS ki
+--   LEFT JOIN kb_off_products AS off ON off.product_key = LOWER(TRIM(ki.name))
+--   WHERE off.product_key IS NULL AND TRIM(ki.name) != '';
+--
+-- Es ist kein Datenbankschema-Änderung erforderlich; alle benötigten Spalten
+-- (status, attempts, last_queried_at) sind bereits in kb_off_products vorhanden.
+-- ---------------------------------------------------------------------------

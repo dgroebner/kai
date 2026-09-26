@@ -127,6 +127,16 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Kalender-Erinnerungsabgleich.", ['error' => $ce->getMessage()]);
     }
 
+    // 8. Open Food Facts Queue: Neue und abgelaufene Artikel einreihen
+    try {
+        $offRepo = new \Kai\Tools\Kassenbon\OpenFoodFactsQueueRepository();
+        $newlyQueued = $offRepo->enqueueAllPendingItems();
+        if ($newlyQueued > 0) {
+            $logger->info("OFF-Queue: $newlyQueued neue Artikel eingereiht.");
+        }
+    } catch (\Throwable $e) {
+        $logger->error('OFF-Queue Enqueue fehlgeschlagen.', ['error' => $e->getMessage()]);
+    }
 
 } catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [

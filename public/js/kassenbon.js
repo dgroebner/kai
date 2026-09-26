@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.ITEMS = JSON.parse(appEl.dataset.items || '[]');
         initKassenbonAnalysis();
     }
+    initOffPopup();
 });
 
 let categoryChart = null;
@@ -179,3 +180,144 @@ function enableCategoryEdit(badgeElement, itemId) {
         if (e.key === 'Escape') parentTd.innerHTML = originalHtml;
     });
 }
+
+// ---------------------------------------------------------------------------
+// OFF-Produkt-Popup
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialisiert Event Delegation für das OFF-Artikel-Popup auf der Detail-Seite.
+ * Öffnet ein Modal mit Produktdaten aus Open Food Facts wenn auf eine Artikelzeile geklickt wird.
+ */
+function initOffPopup() {
+    const modal     = document.getElementById('offItemModal');
+    const modalBody = document.getElementById('offModalBody');
+    const modalTitle = document.getElementById('offModalTitle');
+
+    if (!modal) {
+        return;
+    }
+
+    /** Modal öffnen und Inhalt setzen */
+    function openModal(title, bodyHtml) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML    = bodyHtml;
+        modal.classList.remove('hidden');
+    }
+
+    /** Modal schließen */
+    function closeModal() {
+        modal.classList.add('hidden');
+        modalBody.innerHTML = '<div class="off-loading">⏳ Lade Produktdaten...</div>';
+    }
+
+    // Schließen per Close-Button (Event Delegation, CSP-konform)
+    modal.addEventListener('click', (e) => {
+        if (e.target.closest('.js-modal-close') || e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Schließen per Escape-Taste
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+
+    // Event Delegation auf alle Artikelzeilen — verhindert Auslösung durch Kategorie-Badge
+    document.addEventListener('click', (e) => {
+        const row = e.target.closest('.js-off-item-row');
+        if (!row) {
+            return;
+        }
+        // Klick auf Kategorie-Badge soll Inline-Edit öffnen, nicht das Popup
+        if (e.target.closest('.clickable-badge') || e.target.closest('.category-edit-container')) {
+            return;
+        }
+
+        const itemName   = row.dataset.itemName   || '';
+        const productKey = row.dataset.productKey || itemName.toLowerCase().trim();
+
+        openModal(
+            itemName,
+            '<div class="off-loading">⏳ Lade Produktdaten...</div>'
+        );
+
+        // API-Abfrage über KaiHttp (CSRF automatisch)
+        KaiHttp.postJson('api.php', {
+            action:      'lookup_open_food_facts',
+            query:       itemName,
+            product_key: productKey
+        }).then((response) => {
+            if (!response.success) {
+                modalBody.innerHTML = buildOffError('⚠️ Fehler beim Laden der Produktdaten.');
+                return;
+            }
+            const d = response.data;
+
+            if (d.status === 'pending' || d.queued) {
+                modalBody.innerHTML = buildOffPending();
+                return;
+            }
+
+            if (!d.found) {
+                modalBody.innerHTML = buildOffEmpty();
+                return;
+            }
+
+            modalBody.innerHTML = buildOffCard(d);
+        }).catch(() => {
+            modalBody.innerHTML = buildOffError('⚠️ Netzwerkfehler beim Laden der Produktdaten.');
+        });
+    });
+
+    // --- HTML-Builder-Funktionen ---
+
+    /** Produkt-Card (gefundenes Produkt) */
+    function buildOffCard(d) {
+        const imgHtml = d.image_url
+            ? `<img src="${KaiHtml.escape(d.image_url)}" alt="Produktbild" class="off-product-thumb" referrerpolicy="no-referrer">`
+            : '';
+
+        const nutriHtml = d.nutriscore_grade
+            ? `<span class="nutriscore-badge nutriscore-${KaiHtml.escape(d.nutriscore_grade.toLowerCase())}">Nutri-Score ${KaiHtml.escape(d.nutriscore_grade.toUpperCase())}</span>`
+            : '';
+
+        const eanHtml = d.code
+            ? `<span class="ean-code">${KaiHtml.escape(d.code)}</span>`
+            : '';
+
+        const detailParts = [];
+        if (d.brands)   detailParts.push(KaiHtml.escape(d.brands));
+        if (d.quantity)  detailParts.push(KaiHtml.escape(d.quantity));
+
+        return `
+            <div class="off-result-card">
+                ${imgHtml}
+                <div class="off-info">
+                    <div class="off-name">${KaiHtml.escape(d.product_name || '')}</div>
+                    <div class="off-details text-muted">${detailParts.join(' · ')}</div>
+                    <div style="margin-top:0.4rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                        ${nutriHtml}
+                        ${eanHtml}
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    /** Ausstehend / In Warteschlange */
+    function buildOffPending() {
+        return '<div class="off-pending">🔄 Produktdaten werden abgerufen — bitte in Kürze erneut versuchen.</div>';
+    }
+
+    /** Kein Treffer */
+    function buildOffEmpty() {
+        return '<div class="off-empty text-muted">Kein Treffer in Open Food Facts gefunden.</div>';
+    }
+
+    /** Fehlermeldung */
+    function buildOffError(msg) {
+        return `<div class="off-empty text-muted">${KaiHtml.escape(msg)}</div>`;
+    }
+}

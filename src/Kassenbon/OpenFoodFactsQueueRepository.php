@@ -223,4 +223,50 @@ class OpenFoodFactsQueueRepository
 
         return $result;
     }
+
+    /**
+     * Reiht alle kb_items-Artikel in die OFF-Queue ein, die:
+     *   a) noch keinen Eintrag in kb_off_products haben, ODER
+     *   b) den Status 'not_found' haben UND last_queried_at älter als 90 Tage ist.
+     *
+     * Schritt 1: INSERT IGNORE für komplett neue Artikel.
+     * Schritt 2: UPDATE für abgelaufene not_found-Einträge (90-Tage-Cooldown).
+     *
+     * @return int Anzahl der neu in die Queue eingereihten Artikel (nur Schritt 1).
+     */
+    public function enqueueAllPendingItems(): int
+    {
+        // Schritt 1: Alle kb_items eintragen, die noch gar nicht in der Queue sind.
+        // INSERT IGNORE sorgt dafür, dass bestehende Einträge (egal welchen Status)
+        // unberührt bleiben; nur echte Neulinge werden eingefügt.
+        $insertStmt = $this->pdo->prepare("
+            INSERT IGNORE INTO kb_off_products (product_key, search_term, status)
+            SELECT
+                LOWER(TRIM(ki.name)) AS product_key,
+                ki.name              AS search_term,
+                'pending'            AS status
+            FROM kb_items AS ki
+            LEFT JOIN kb_off_products AS off
+                ON off.product_key = LOWER(TRIM(ki.name))
+            WHERE off.product_key IS NULL
+              AND TRIM(ki.name) != ''
+        ");
+        $insertStmt->execute();
+        $newlyInserted = (int) $insertStmt->rowCount();
+
+        // Schritt 2: Abgelaufene not_found-Einträge zurücksetzen (90-Tage-Cooldown).
+        // Kein Schema-Change nötig – der Cron-Job in mail.php übernimmt das Auffrischen.
+        $refreshStmt = $this->pdo->prepare("
+            UPDATE kb_off_products
+            SET status          = 'pending',
+                attempts        = 0,
+                last_queried_at = NULL
+            WHERE status          = 'not_found'
+              AND last_queried_at < NOW() - INTERVAL 90 DAY
+        ");
+        $refreshStmt->execute();
+
+        return $newlyInserted;
+    }
 }
+

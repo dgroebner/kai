@@ -75,9 +75,16 @@ try {
         <a href="index.php" class="btn btn-outline">&larr; Zurück zu der Übersicht</a>
     </header>
 
+<?php
+// product_key für jedes Item ergänzen (Kleinbuchstaben-Trim des Namens)
+$itemsWithKey = array_map(static function (array $item): array {
+    $item['product_key'] = mb_strtolower(trim($item['name'] ?? ''), 'UTF-8');
+    return $item;
+}, $items);
+?>
     <main id="kassenbonDetailApp"
           data-categories='<?= htmlspecialchars(json_encode($allCategories), ENT_QUOTES, 'UTF-8') ?>'
-          data-items='<?= htmlspecialchars(json_encode($items), ENT_QUOTES, 'UTF-8') ?>'
+          data-items='<?= htmlspecialchars(json_encode($itemsWithKey), ENT_QUOTES, 'UTF-8') ?>'
           data-total="<?= (float)$receipt['total'] ?>">
 
         <!-- Kopfbereich: Donut & Legende -->
@@ -114,8 +121,11 @@ try {
                     </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($items as $item): ?>
-                        <tr data-item-id="<?= (int)$item['id'] ?>"
+                    <?php foreach ($itemsWithKey as $item): ?>
+                        <tr class="js-off-item-row"
+                            data-item-id="<?= (int)$item['id'] ?>"
+                            data-item-name="<?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            data-product-key="<?= htmlspecialchars($item['product_key'], ENT_QUOTES, 'UTF-8') ?>"
                             data-category-name="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
                             <td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
                             <td data-label="Artikel"
@@ -141,7 +151,21 @@ try {
     </main>
 </div>
 
+<!-- OFF-Produkt-Popup -->
+<div id="offItemModal" class="modal-overlay hidden">
+  <div class="modal-dialog modal-dialog--lg">
+    <div class="modal-header">
+      <h3 id="offModalTitle">Produktinfo</h3>
+      <button type="button" class="js-modal-close btn btn-sm btn-outline">✕</button>
+    </div>
+    <div class="modal-body" id="offModalBody">
+      <div class="off-loading">⏳ Lade Produktdaten...</div>
+    </div>
+  </div>
+</div>
+
 <script src="../js/chart.min.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/kassenbon.js?v=<?= APP_VERSION ?>" defer></script>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
