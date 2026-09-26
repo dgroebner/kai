@@ -42,6 +42,54 @@ class UserProfileRepository
         'car_charge_captured' => 'car_read',
     ];
 
+    public const DEFAULT_BRIEFING_PREFERENCES = [
+        'weather' => ['enabled' => true, 'order' => 10],
+        'school' => ['enabled' => true, 'order' => 20],
+        'pv_car' => ['enabled' => true, 'order' => 30],
+        'shopping' => ['enabled' => true, 'order' => 40],
+        'calendar' => ['enabled' => true, 'order' => 50],
+        'finance' => ['enabled' => true, 'order' => 60],
+    ];
+
+    public const BRIEFING_WIDGET_CONFIG = [
+        'weather' => [
+            'label' => 'Wetter & Bekleidung',
+            'icon' => '🌤️',
+            'desc' => '6-Stunden-Wetterprognose, Kleidungsempfehlung & Regenschirm',
+            'permission' => 'weather_read',
+        ],
+        'school' => [
+            'label' => 'Schule & Aufgaben',
+            'icon' => '🎒',
+            'desc' => 'Schulschluss, Vertretungen/Ausfälle & Hausaufgaben/Tests',
+            'permission' => 'school_read',
+        ],
+        'pv_car' => [
+            'label' => 'Energie & Fahrzeug',
+            'icon' => '⚡',
+            'desc' => 'PV-Ertragsprognose, Batteriestand & Lade-Empfehlung für ID.Buzz',
+            'permission' => 'pv_read',
+        ],
+        'shopping' => [
+            'label' => 'Einkaufsliste',
+            'icon' => '🛒',
+            'desc' => 'Offene Sofortbedarfe & Wocheneinkauf (Rewe / Globus)',
+            'permission' => 'shopping_read',
+        ],
+        'calendar' => [
+            'label' => 'Jubiläen & Geburtstage',
+            'icon' => '🎉',
+            'desc' => 'Anstehende Geburtstage & Jahrestage der nächsten 3 Tage',
+            'permission' => 'calendar_read',
+        ],
+        'finance' => [
+            'label' => 'Finanzen',
+            'icon' => '🏦',
+            'desc' => 'Girokonto-Saldo & erwartete Fixkosten der nächsten 3 Tage',
+            'permission' => 'finance_read',
+        ],
+    ];
+
     public function __construct(?Database $db = null)
     {
         $this->db = $db ?? Database::getInstance();
@@ -61,14 +109,16 @@ class UserProfileRepository
 
         if (!$stmt->fetch()) {
             $defaultPreferences = json_encode(self::DEFAULT_PREFERENCES, JSON_THROW_ON_ERROR);
+            $defaultBriefing = json_encode(self::DEFAULT_BRIEFING_PREFERENCES, JSON_THROW_ON_ERROR);
 
             $insertStmt = $dbCon->prepare("
-                INSERT INTO user_profiles (user_email, notification_preferences, created_at, updated_at) 
-                VALUES (:email, :preferences, NOW(), NOW())
+                INSERT INTO user_profiles (user_email, notification_preferences, briefing_preferences, created_at, updated_at) 
+                VALUES (:email, :preferences, :briefing, NOW(), NOW())
             ");
             $insertStmt->execute([
                 'email' => $email,
-                'preferences' => $defaultPreferences
+                'preferences' => $defaultPreferences,
+                'briefing' => $defaultBriefing,
             ]);
         }
     }
@@ -106,6 +156,73 @@ class UserProfileRepository
         $stmt = $dbCon->prepare("
             UPDATE user_profiles 
             SET notification_preferences = :preferences, updated_at = NOW() 
+            WHERE user_email = :email
+        ");
+        $stmt->execute([
+            'preferences' => $encoded,
+            'email' => $email,
+        ]);
+    }
+
+    /**
+     * Lädt die Briefing-Einstellungen (aktivierte Widgets & Sortierreihenfolge) eines Benutzers.
+     *
+     * @return array<string, array{enabled: bool, order: int}>
+     */
+    public function getBriefingPreferences(string $email): array
+    {
+        $dbCon = $this->db->getConnection();
+        $stmt = $dbCon->prepare("SELECT briefing_preferences FROM user_profiles WHERE user_email = :email");
+        $stmt->execute(['email' => $email]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $prefs = self::DEFAULT_BRIEFING_PREFERENCES;
+
+        if ($row && !empty($row['briefing_preferences'])) {
+            $decoded = json_decode($row['briefing_preferences'], true);
+            if (is_array($decoded)) {
+                foreach (self::DEFAULT_BRIEFING_PREFERENCES as $widgetKey => $defaultConfig) {
+                    if (isset($decoded[$widgetKey]) && is_array($decoded[$widgetKey])) {
+                        $prefs[$widgetKey] = [
+                            'enabled' => isset($decoded[$widgetKey]['enabled']) ? (bool)$decoded[$widgetKey]['enabled'] : $defaultConfig['enabled'],
+                            'order' => isset($decoded[$widgetKey]['order']) && is_numeric($decoded[$widgetKey]['order']) ? (int)$decoded[$widgetKey]['order'] : $defaultConfig['order'],
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Nach Reihenfolge sortieren
+        uasort($prefs, static function ($a, $b) {
+            return ($a['order'] ?? 0) <=> ($b['order'] ?? 0);
+        });
+
+        return $prefs;
+    }
+
+    /**
+     * Speichert die Briefing-Einstellungen eines Benutzers.
+     * @throws JsonException
+     */
+    public function updateBriefingPreferences(string $email, array $preferences): void
+    {
+        $dbCon = $this->db->getConnection();
+        $current = $this->getBriefingPreferences($email);
+
+        foreach ($preferences as $widgetKey => $config) {
+            if (isset(self::DEFAULT_BRIEFING_PREFERENCES[$widgetKey])) {
+                $current[$widgetKey]['enabled'] = isset($config['enabled']) ? (bool)$config['enabled'] : false;
+                if (isset($config['order']) && is_numeric($config['order'])) {
+                    $current[$widgetKey]['order'] = (int)$config['order'];
+                }
+            }
+        }
+
+        $encoded = json_encode($current, JSON_THROW_ON_ERROR);
+
+        $stmt = $dbCon->prepare("
+            UPDATE user_profiles 
+            SET briefing_preferences = :preferences, updated_at = NOW() 
             WHERE user_email = :email
         ");
         $stmt->execute([

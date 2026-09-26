@@ -170,8 +170,9 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/shared/mail.php` | `Calendar\*` | Führt im asynchronen Cronjob den Abgleich und Versand fälliger Kalender- und Geburtstags-Erinnerungen durch. |
 | `public/shared/car_cron.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY durch. |
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
+| `System\BriefingService` | `Weather\*`, `School\*`, `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Calendar\*`, `Bank\*` | Orchestrator: Aggregiert Statuskacheln für das Daily Briefing Popup beim App-Start. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
-Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen);
+Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen, System\BriefingService → Fachdomänen);
 Rückwärts- oder Zirkelbezüge sind unzulässig.
 
 ### Aktuelle Domains

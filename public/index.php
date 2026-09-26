@@ -22,6 +22,7 @@ Auth::requirePage();
         <h1>Willkommen, <?= htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></h1>
         <div class="page-header-actions">
             <span class="last-update">Authentifiziert als: <?= htmlspecialchars($_SESSION['user_email'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+            <button type="button" id="open-briefing-btn" class="btn btn-outline briefing-header-btn" title="Daily Briefing anzeigen">☀️ Briefing</button>
             <a href="profile.php" class="btn btn-outline">👤 Profil</a>
             <a href="login.php?logout=1" class="btn btn-outline">Sicher abmelden</a>
         </div>
@@ -109,5 +110,6 @@ Auth::requirePage();
 </div>
 <script src="js/http.js?v=<?= APP_VERSION ?>"></script>
 <script src="js/system.js?v=<?= APP_VERSION ?>"></script>
+<script src="js/briefing.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

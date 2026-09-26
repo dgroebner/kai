@@ -147,3 +147,7 @@ UPDATE IGNORE `kb_off_products`
 SET `product_key` = SUBSTRING_INDEX(`product_key`, ':::', -1)
 WHERE `product_key` LIKE '%:::%';
 
+-- Daily Briefing: Präferenzen für Widgets in user_profiles
+ALTER TABLE `user_profiles`
+    ADD COLUMN IF NOT EXISTS `briefing_preferences` JSON DEFAULT NULL AFTER `notification_preferences`;
+

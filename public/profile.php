@@ -120,34 +120,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(403);
         $errorMessage = "Ungültiger CSRF-Token.";
     } else {
-        $rawPreferences = $_POST['notifications'] ?? [];
-        $currentPrefs = $userProfileRepo->getPreferences($currentUserEmail);
-        $updatedPrefs = $currentPrefs;
+        $savedAny = false;
 
-        foreach ($eventGroups as $group) {
-            if (!Auth::hasPermission($group['permission'])) {
-                continue;
+        // 1. Benachrichtigungen speichern
+        if (isset($_POST['save_notifications']) || isset($_POST['notifications'])) {
+            $rawPreferences = $_POST['notifications'] ?? [];
+            $currentPrefs = $userProfileRepo->getPreferences($currentUserEmail);
+            $updatedPrefs = $currentPrefs;
+
+            foreach ($eventGroups as $group) {
+                if (!Auth::hasPermission($group['permission'])) {
+                    continue;
+                }
+                foreach ($group['events'] as $eventType => $meta) {
+                    $updatedPrefs[$eventType] = isset($rawPreferences[$eventType]) && (string)$rawPreferences[$eventType] === '1';
+                }
             }
-            foreach ($group['events'] as $eventType => $meta) {
-                $updatedPrefs[$eventType] = isset($rawPreferences[$eventType]) && (string)$rawPreferences[$eventType] === '1';
+
+            try {
+                $userProfileRepo->updatePreferences($currentUserEmail, $updatedPrefs);
+                $savedAny = true;
+                $successMessage = "Benachrichtigungseinstellungen erfolgreich gespeichert.";
+            } catch (Throwable $e) {
+                new Logger()->error('profile.php: Fehler beim Speichern der Benachrichtigungsprofile.', ['error' => $e->getMessage()]);
+                $errorMessage = "Fehler beim Speichern der Benachrichtigungen.";
             }
         }
 
-        try {
-            $userProfileRepo->updatePreferences($currentUserEmail, $updatedPrefs);
-            $successMessage = "Benachrichtigungseinstellungen erfolgreich gespeichert.";
-        } catch (Throwable $e) {
-            new Logger()->error('profile.php: Fehler beim Speichern der Benachrichtigungsprofile.', ['error' => $e->getMessage()]);
-            $errorMessage = "Fehler beim Speichern der Benachrichtigungen.";
+        // 2. Start-Briefing speichern
+        if (isset($_POST['save_briefing']) || isset($_POST['briefing'])) {
+            $rawBriefing = $_POST['briefing'] ?? [];
+            $currentBriefing = $userProfileRepo->getBriefingPreferences($currentUserEmail);
+            $updatedBriefing = $currentBriefing;
+
+            foreach (UserProfileRepository::BRIEFING_WIDGET_CONFIG as $widgetKey => $meta) {
+                if (!empty($meta['permission']) && !Auth::hasPermission($meta['permission'])) {
+                    continue;
+                }
+                $enabled = isset($rawBriefing[$widgetKey]['enabled']) && (string)$rawBriefing[$widgetKey]['enabled'] === '1';
+                $order = isset($rawBriefing[$widgetKey]['order']) && is_numeric($rawBriefing[$widgetKey]['order'])
+                    ? (int)$rawBriefing[$widgetKey]['order']
+                    : ($currentBriefing[$widgetKey]['order'] ?? 50);
+
+                $updatedBriefing[$widgetKey] = [
+                    'enabled' => $enabled,
+                    'order' => $order,
+                ];
+            }
+
+            try {
+                $userProfileRepo->updateBriefingPreferences($currentUserEmail, $updatedBriefing);
+                $savedAny = true;
+                $successMessage = $successMessage ? "Einstellungen erfolgreich gespeichert." : "Daily-Briefing-Einstellungen erfolgreich gespeichert.";
+            } catch (Throwable $e) {
+                new Logger()->error('profile.php: Fehler beim Speichern der Briefing-Einstellungen.', ['error' => $e->getMessage()]);
+                $errorMessage = "Fehler beim Speichern des Briefings.";
+            }
         }
     }
 }
 
 $userPreferences = $userProfileRepo->getPreferences($currentUserEmail);
+$userBriefing = $userProfileRepo->getBriefingPreferences($currentUserEmail);
 $csrfToken = Auth::csrfToken();
 
 $visibleGroups = array_filter($eventGroups, function ($group) {
     return Auth::hasPermission($group['permission']);
+});
+
+$visibleBriefingWidgets = array_filter(UserProfileRepository::BRIEFING_WIDGET_CONFIG, function ($meta) {
+    return empty($meta['permission']) || Auth::hasPermission($meta['permission']);
 });
 ?>
 <!DOCTYPE html>
@@ -229,7 +271,71 @@ $visibleGroups = array_filter($eventGroups, function ($group) {
                     <?php endforeach; ?>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-save">💾 Benachrichtigungen speichern</button>
+                        <button type="submit" name="save_notifications" value="1" class="btn btn-save">💾 Benachrichtigungen speichern</button>
+                    </div>
+                </form>
+            <?php endif; ?>
+        </section>
+
+        <section class="card profile-section-card">
+            <h2>☀️ Start-Briefing (Daily Briefing)</h2>
+            <p class="text-muted">
+                Legen Sie fest, welche Informationskacheln beim Öffnen des Dashboards im Briefing-Popup angezeigt werden
+                und in welcher Reihenfolge diese erscheinen sollen.
+            </p>
+
+            <?php if (empty($visibleBriefingWidgets)): ?>
+                <p class="text-muted">Für Ihr Benutzerkonto sind derzeit keine Widgets freigeschaltet.</p>
+            <?php else: ?>
+                <form action="profile.php" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+
+                    <div class="table-responsive">
+                        <table class="data-table stack-table">
+                            <thead>
+                            <tr>
+                                <th>Widget</th>
+                                <th style="width: 110px; text-align: center;">Reihenfolge</th>
+                                <th class="profile-checkbox-cell">Aktiviert</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($visibleBriefingWidgets as $widgetKey => $meta): ?>
+                                <?php
+                                $widgetPref = $userBriefing[$widgetKey] ?? ['enabled' => true, 'order' => 50];
+                                $isEnabled = !empty($widgetPref['enabled']);
+                                $orderVal = (int)($widgetPref['order'] ?? 50);
+                                ?>
+                                <tr>
+                                    <td data-label="Widget">
+                                        <span class="profile-event-icon"><?= $meta['icon'] ?></span>
+                                        <strong><?= htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <br><small class="text-muted"><?= htmlspecialchars($meta['desc'], ENT_QUOTES, 'UTF-8') ?></small>
+                                    </td>
+                                    <td data-label="Reihenfolge" style="text-align: center;">
+                                        <input type="number"
+                                               name="briefing[<?= htmlspecialchars($widgetKey, ENT_QUOTES, 'UTF-8') ?>][order]"
+                                               value="<?= $orderVal ?>"
+                                               min="1"
+                                               max="99"
+                                               style="width: 75px; text-align: center; padding: 0.3rem;"
+                                               class="input-control">
+                                    </td>
+                                    <td data-label="Aktiviert" class="profile-checkbox-cell">
+                                        <input type="checkbox"
+                                               name="briefing[<?= htmlspecialchars($widgetKey, ENT_QUOTES, 'UTF-8') ?>][enabled]"
+                                               value="1"
+                                               <?= $isEnabled ? 'checked' : '' ?>
+                                               class="profile-checkbox">
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" name="save_briefing" value="1" class="btn btn-save">💾 Briefing-Einstellungen speichern</button>
                     </div>
                 </form>
             <?php endif; ?>

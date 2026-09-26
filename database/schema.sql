@@ -328,6 +328,7 @@ CREATE TABLE IF NOT EXISTS `user_profiles` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `user_email` VARCHAR(255) NOT NULL UNIQUE,
     `notification_preferences` JSON DEFAULT NULL,
+    `briefing_preferences` JSON DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_user_email` (`user_email`)
