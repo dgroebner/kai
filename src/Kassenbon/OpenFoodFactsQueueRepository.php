@@ -19,13 +19,33 @@ class OpenFoodFactsQueueRepository
     }
 
     /**
+     * Prüft, ob ein Artikelname generisch ist und nicht bei OFF gesucht werden sollte.
+     */
+    private function isIgnoredProduct(string $name): bool
+    {
+        $name = mb_strtolower(trim($name), 'UTF-8');
+        $ignoredPatterns = [
+            'rabatt', 'abverkauf', 'pfand', 'leergut', 'coupon', 'gutschein',
+            'aktionsrabatt', 'sofortrabatt', 'leergutbon', 'pfandrückgabe',
+            'pfandflasche', 'pfandglas', 'mehrwegpfand', 'einwegpfand', 'rückgeld', 'auszahlung'
+        ];
+        
+        foreach ($ignoredPatterns as $pattern) {
+            if (str_contains($name, $pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Reiht ein Produkt in die Queue ein (Status: pending), falls noch nicht vorhanden.
      */
     public function enqueueProduct(string $productKey, string $searchTerm): void
     {
         $cleanKey = mb_strtolower(trim($productKey), 'UTF-8');
         $cleanSearch = trim($searchTerm);
-        if ($cleanKey === '' || $cleanSearch === '') {
+        if ($cleanKey === '' || $cleanSearch === '' || $this->isIgnoredProduct($cleanSearch)) {
             return;
         }
 
@@ -62,7 +82,7 @@ class OpenFoodFactsQueueRepository
         foreach ($items as $item) {
             $key = mb_strtolower(trim($item['key'] ?? ''), 'UTF-8');
             $search = trim($item['search'] ?? '');
-            if ($key !== '' && $search !== '') {
+            if ($key !== '' && $search !== '' && !$this->isIgnoredProduct($search)) {
                 $stmt->execute([':key' => $key, ':search' => $search]);
                 $count++;
             }
@@ -255,6 +275,7 @@ class OpenFoodFactsQueueRepository
                 ON off.product_key = LOWER(TRIM(ki.name))
             WHERE off.product_key IS NULL
               AND TRIM(ki.name) != ''
+              AND LOWER(TRIM(ki.name)) NOT REGEXP 'rabatt|abverkauf|pfand|leergut|coupon|gutschein|auszahlung|rückgeld'
         ");
         $insertStmt->execute();
         $newlyInserted = (int) $insertStmt->rowCount();
