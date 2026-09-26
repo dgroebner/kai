@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const id = parseInt(delBtn.getAttribute('data-id'), 10);
             if (!id) return;
 
-            if (!confirm('Möchten Sie dieses Ereignis wirklich löschen?')) {
+            if (!confirm('Möchtest du dieses Ereignis wirklich löschen?')) {
                 return;
             }
 
@@ -621,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (finalCategory === '__custom__') {
                 finalCategory = categoryCustomInput ? categoryCustomInput.value.trim() : '';
                 if (!finalCategory) {
-                    alert('Bitte geben Sie einen Namen für die eigene Kategorie ein.');
+                    alert('Bitte gib einen Namen für die eigene Kategorie ein.');
                     if (categoryCustomInput) categoryCustomInput.focus();
                     if (saveBtn) saveBtn.disabled = false;
                     return;

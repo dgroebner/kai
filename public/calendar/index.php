@@ -218,7 +218,7 @@ $csrfToken = Auth::csrfToken();
                 <div class="no-data u-mt-md text-center text-muted" style="padding: 2.5rem 1rem;">
                     <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📅</div>
                     <?php if ($filterScope === 'mine'): ?>
-                        <p style="margin: 0; font-size: 1.05rem;">Für Ihr Konto sind aktuell keine Benachrichtigungen für Ereignisse hinterlegt.</p>
+                        <p style="margin: 0; font-size: 1.05rem;">Für dich sind aktuell keine Benachrichtigungen für Ereignisse hinterlegt.</p>
                         <div style="margin-top: 1rem; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
                             <a href="<?= buildCalUrl(1, 'all', $filterType, $filterCategory, $filterSearch) ?>" class="btn btn-primary btn-sm">🌐 Alle anzeigen</a>
                         </div>
@@ -446,7 +446,7 @@ $csrfToken = Auth::csrfToken();
                         </div>
                     </div>
                     <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 8px;">
-                        Legen Sie fest, wer bei diesem Ereignis benachrichtigt wird (z. B. nur Mama, nur Papa oder die Kinder):
+                        Lege fest, wer bei diesem Ereignis benachrichtigt wird (z. B. nur Mama, nur Papa oder die Kinder):
                     </p>
 
                     <div class="cal-users-checkboxes" id="recipients-checkbox-container">
