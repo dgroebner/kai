@@ -2,13 +2,14 @@
 // Service Worker für die kai PWA
 // Strategie: Network-First für HTML-Seiten, Cache-First für statische Assets
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAME = `kai-${CACHE_VERSION}`;
 
 // Statische Assets, die beim Install gecacht werden
 const PRECACHE_ASSETS = [
     '/css/style.css',
     '/js/http.js',
+    '/js/offline.js',
     '/js/pwa-register.js',
     '/android-chrome-192x192.png',
     '/android-chrome-512x512.png',
@@ -79,13 +80,44 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // HTML-Seiten (PHP): Network-First mit Offline-Fallback
+    // HTML-Seiten (PHP): Network-First mit Timeout, automatischem Retry und Offline-Fallback
     event.respondWith(
-        fetch(request)
-            .then((response) => response)
+        fetchWithRetry(request)
             .catch(() => caches.match('/offline.html'))
     );
 });
+
+// Konfiguration für Timeouts und Wiederholungsversuche bei Seitenaufrufen
+const PAGE_FETCH_TIMEOUT_MS = 8000; // 8 Sekunden Timeout pro Versuch
+const PAGE_MAX_RETRIES = 2;         // Bis zu 2 automatische Wiederholungsversuche
+const PAGE_RETRY_DELAY_MS = 400;    // 400ms Basis-Pause vor dem nächsten Versuch
+
+/**
+ * Führt einen Netzwerk-Fetch mit Timeout und automatischem Retry durch.
+ * Verhindert, dass kurzzeitige Verbindungsabbrüche (Standby-Aufwachen des Handys,
+ * Funkzellen- oder WLAN-Wechsel) sofort die Offline-Seite triggern.
+ */
+async function fetchWithRetry(request, maxRetries = PAGE_MAX_RETRIES, delayMs = PAGE_RETRY_DELAY_MS, timeoutMs = PAGE_FETCH_TIMEOUT_MS) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            // Bei Wiederholungen Request klonen, um Stream-Konflikte zu vermeiden
+            const reqToFetch = attempt < maxRetries ? request.clone() : request;
+            const response = await fetch(reqToFetch, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (attempt === maxRetries) {
+                throw error;
+            }
+            // Kurze Pause vor dem nächsten Versuch mit leicht steigendem Backoff (400ms, 800ms)
+            await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
+        }
+    }
+}
 
 // --- Push: Web-Push-Benachrichtigung empfangen ---
 self.addEventListener('push', (event) => {
