@@ -374,6 +374,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btnTriggerOff.disabled = false;
         }
 
+        // Auto-fetch Open Food Facts data
+        triggerOffLookup();
+
         // Historie-Tabelle befüllen (neueste zuerst)
         if (modalTableBody) {
             const sortedPurchases = [...product.purchases].reverse();
@@ -485,77 +488,79 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 5. Open Food Facts Abfrage
     // ==========================================
-    if (btnTriggerOff) {
-        btnTriggerOff.addEventListener('click', async () => {
-            if (!currentModalProduct || !offResultWrap) return;
+    async function triggerOffLookup() {
+        if (!currentModalProduct || !offResultWrap) return;
 
-            btnTriggerOff.textContent = '⏳ Lade...';
-            btnTriggerOff.disabled = true;
+        btnTriggerOff.textContent = '⏳ Lade...';
+        btnTriggerOff.disabled = true;
 
-            try {
-                const res = await KaiHttp.postJson('api.php', {
-                    action: 'lookup_open_food_facts',
-                    query: currentModalProduct.name,
-                    product_key: currentModalProduct.key
-                });
+        try {
+            const res = await KaiHttp.postJson('api.php', {
+                action: 'lookup_open_food_facts',
+                query: currentModalProduct.name,
+                product_key: currentModalProduct.key
+            });
 
-                if (res.success && res.data) {
-                    const d = res.data;
-                    if (d.found) {
-                        let nutriHtml = '';
-                        if (d.nutriscore_grade) {
-                            nutriHtml = `<span class="nutriscore-badge nutriscore-${d.nutriscore_grade.toLowerCase()}">Nutri-Score ${d.nutriscore_grade}</span>`;
-                        }
+            if (res.success && res.data) {
+                const d = res.data;
+                if (d.found) {
+                    let nutriHtml = '';
+                    if (d.nutriscore_grade) {
+                        nutriHtml = `<span class="nutriscore-badge nutriscore-${d.nutriscore_grade.toLowerCase()}">Nutri-Score ${d.nutriscore_grade}</span>`;
+                    }
 
-                        offResultWrap.innerHTML = `
-                            <div class="off-result-card">
-                                ${d.image_url ? `<img src="${KaiHtml.escape(d.image_url)}" alt="Produktbild" class="off-product-thumb">` : ''}
-                                <div class="off-info">
-                                    <div class="off-name cell-strong">${KaiHtml.escape(d.product_name || currentModalProduct.name)}</div>
-                                    <div class="off-details text-muted">
-                                        ${d.brands ? 'Marke: <strong>' + KaiHtml.escape(d.brands) + '</strong> • ' : ''}
-                                        ${d.quantity ? 'Füllmenge: <strong>' + KaiHtml.escape(d.quantity) + '</strong> • ' : ''}
-                                        EAN: <code class="ean-code">${KaiHtml.escape(d.code)}</code>
-                                    </div>
-                                    <div class="off-badges" style="margin-top: 4px;">
-                                        ${nutriHtml}
-                                    </div>
+                    offResultWrap.innerHTML = `
+                        <div class="off-result-card">
+                            ${d.image_url ? `<img src="${KaiHtml.escape(d.image_url)}" alt="Produktbild" class="off-product-thumb" referrerpolicy="no-referrer">` : ''}
+                            <div class="off-info">
+                                <div class="off-name cell-strong">${KaiHtml.escape(d.product_name || currentModalProduct.name)}</div>
+                                <div class="off-details text-muted">
+                                    ${d.brands ? 'Marke: <strong>' + KaiHtml.escape(d.brands) + '</strong> • ' : ''}
+                                    ${d.quantity ? 'Füllmenge: <strong>' + KaiHtml.escape(d.quantity) + '</strong> • ' : ''}
+                                    EAN: <code class="ean-code">${KaiHtml.escape(d.code)}</code>
+                                </div>
+                                <div class="off-badges" style="margin-top: 4px;">
+                                    ${nutriHtml}
                                 </div>
                             </div>
-                        `;
-                        offResultWrap.classList.remove('hidden');
-                        btnTriggerOff.textContent = '✅ Daten vorhanden';
-                    } else if (d.queued || d.status === 'pending') {
-                        offResultWrap.innerHTML = `
-                            <div class="off-empty text-muted">
-                                ⏳ <strong>In Warteschlange eingereiht</strong><br>
-                                Die Daten werden beim nächsten Zyklus des lokalen Raspberry-Pi-Workers über deine Heim-IP abgerufen und gespeichert.
-                            </div>
-                        `;
-                        offResultWrap.classList.remove('hidden');
-                        btnTriggerOff.textContent = '⏳ In Warteschlange';
-                    } else {
-                        offResultWrap.innerHTML = `
-                            <div class="off-empty text-muted">
-                                Kein Treffer in Open Food Facts für „${KaiHtml.escape(currentModalProduct.name)}“ gefunden.
-                            </div>
-                        `;
-                        offResultWrap.classList.remove('hidden');
-                        btnTriggerOff.textContent = 'Wiederholen';
-                        btnTriggerOff.disabled = false;
-                    }
+                        </div>
+                    `;
+                    offResultWrap.classList.remove('hidden');
+                    btnTriggerOff.textContent = '✅ Daten vorhanden';
+                } else if (d.queued || d.status === 'pending') {
+                    offResultWrap.innerHTML = `
+                        <div class="off-empty text-muted">
+                            ⏳ <strong>In Warteschlange eingereiht</strong><br>
+                            Die Daten werden beim nächsten Zyklus des lokalen Raspberry-Pi-Workers über deine Heim-IP abgerufen und gespeichert.
+                        </div>
+                    `;
+                    offResultWrap.classList.remove('hidden');
+                    btnTriggerOff.textContent = '⏳ In Warteschlange';
+                } else {
+                    offResultWrap.innerHTML = `
+                        <div class="off-empty text-muted">
+                            Kein Treffer in Open Food Facts für „${KaiHtml.escape(currentModalProduct.name)}“ gefunden.
+                        </div>
+                    `;
+                    offResultWrap.classList.remove('hidden');
+                    btnTriggerOff.textContent = 'Wiederholen';
+                    btnTriggerOff.disabled = false;
                 }
-            } catch (err) {
-                offResultWrap.innerHTML = `
-                    <div class="off-empty text-muted">
-                        Fehler bei der Kommunikation. Bitte später erneut versuchen.
-                    </div>
-                `;
-                offResultWrap.classList.remove('hidden');
-                btnTriggerOff.textContent = 'Wiederholen';
-                btnTriggerOff.disabled = false;
             }
-        });
+        } catch (err) {
+            offResultWrap.innerHTML = `
+                <div class="off-empty text-muted">
+                    Fehler bei der Kommunikation. Bitte später erneut versuchen.
+                </div>
+            `;
+            offResultWrap.classList.remove('hidden');
+            btnTriggerOff.textContent = 'Wiederholen';
+            btnTriggerOff.disabled = false;
+        }
+    }
+
+    if (btnTriggerOff) {
+        btnTriggerOff.addEventListener('click', triggerOffLookup);
     }
 
     // Modal schliessen bei Close-Buttons oder Klick ins Overlay

@@ -44,7 +44,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # Content-Security-Policy: nur eigene Ressourcen, keine Inline-Event-Handler.
     # 'unsafe-inline' bei style-src wird ausschließlich für dynamisch berechnete
     # Werte (Balkenbreiten, Kategoriefarben) benötigt.
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.openfoodfacts.org https://images.openfoodfacts.net; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 	# Zwingt den Browser bei CSS und JS zur Re-Validierung
     <FilesMatch "\.(css|js)$">
