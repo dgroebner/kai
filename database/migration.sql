@@ -76,7 +76,7 @@ UPDATE bank_cc_transactions SET merchant_name = 'Lidl' WHERE LOWER(merchant_name
 UPDATE bank_cc_transactions SET merchant_name = 'Aldi' WHERE LOWER(merchant_name) LIKE '%aldi%';
 UPDATE bank_cc_transactions SET merchant_name = 'Penny' WHERE LOWER(merchant_name) LIKE '%penny%';
 UPDATE bank_cc_transactions SET merchant_name = 'Kaufland' WHERE LOWER(merchant_name) LIKE '%kaufland%';
-UPDATE bank_cc_transactions SET merchant_name = 'Flaschenpost' WHERE LOWER(merchant_name) LIKE '%flaschenpost%';
+UPDATE bank_cc_transactions SET merchant_name = 'Flaschenpost' WHERE LOWER(merchant_name) LIKE '%flaschenpost%' OR LOWER(merchant_name) LIKE '%flaschenp%';
 UPDATE bank_cc_transactions SET merchant_name = 'Fressnapf' WHERE LOWER(merchant_name) LIKE '%fressnapf%';
 UPDATE bank_cc_transactions SET merchant_name = 'dm' WHERE LOWER(merchant_name) LIKE '%dm-drogerie%' OR LOWER(merchant_name) = 'dm';
 UPDATE bank_cc_transactions SET merchant_name = 'Rossmann' WHERE LOWER(merchant_name) LIKE '%rossmann%';

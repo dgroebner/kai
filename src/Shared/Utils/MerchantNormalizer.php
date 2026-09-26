@@ -50,7 +50,7 @@ final class MerchantNormalizer
         '/\bzooplus\b/i'                   => 'Zooplus',
 
         // Lieferdienste & Online
-        '/\bflaschenpost\b/i'              => 'Flaschenpost',
+        '/\b(flaschenpost|flaschenp)\b/i'  => 'Flaschenpost',
         '/\bpicnic\b/i'                    => 'Picnic',
         '/\bknuspr\b/i'                    => 'Knuspr',
         '/\b(amazon|amzn)\b/i'             => 'Amazon',
@@ -117,15 +117,18 @@ final class MerchantNormalizer
             return 'Unbekannt';
         }
 
+        // PayPal-Präfixe vorab entfernen (z.B. "PAYPAL *FLASCHENP., 0251297990" -> "FLASCHENP., 0251297990")
+        $normalizedInput = (string)preg_replace('/^(paypal\s*\*|pp\s*\*)\s*/i', '', $rawName);
+
         // 1. Bekannte Ketten direkt abgleichen
         foreach (self::CHAIN_PATTERNS as $pattern => $canonicalName) {
-            if (preg_match($pattern, $rawName) === 1) {
+            if (preg_match($pattern, $normalizedInput) === 1 || preg_match($pattern, $rawName) === 1) {
                 return $canonicalName;
             }
         }
 
         // 2. Allgemeine Bereinigung für sonstige/unbekannte Händler
-        $cleaned = $rawName;
+        $cleaned = $normalizedInput;
 
         // Komma-getrennte Ortszusätze abschneiden (z.B. "Sachsen-Therme GmbH, Leipzig" -> "Sachsen-Therme GmbH")
         if (str_contains($cleaned, ',')) {

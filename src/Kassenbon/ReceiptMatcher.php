@@ -8,14 +8,17 @@ use PDO;
 
 class ReceiptMatcher
 {
+    /** Wie viele Tage vor dem Kauf eine Buchung (z.B. Online-Vorautorisierung oder Bestellung) liegen darf. */
+    private const int BOOKING_LOOKBACK_DAYS = 7;
+
     /** Wie viele Tage nach dem Kauf eine Buchung noch als Zahlung gilt. */
-    private const int BOOKING_DELAY_DAYS = 5;
+    private const int BOOKING_DELAY_DAYS = 7;
 
     /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
-    private const int CASH_LOOKBACK_DAYS = 5;
+    private const int CASH_LOOKBACK_DAYS = 7;
 
-    /** Wie viele Tage vor dem Kauf eine Bargeldabhebung berücksichtigt wird. */
-    private const int CREDITCARD_LOOKBACK_DAYS = 3;
+    /** Wie viele Tage vor dem Kauf eine Kreditkartenbuchung bei der manuellen Kandidatensuche berücksichtigt wird. */
+    private const int CREDITCARD_LOOKBACK_DAYS = 10;
 
     /** Maximaler Betrag, um den eine Bargeldabhebung über der Bonsumme liegen darf. */
     private const float CASH_TOLERANCE = 200.00;
@@ -118,7 +121,7 @@ class ReceiptMatcher
             $expectedGiroAmount = -abs($totalAmount);
             $expectedCcAmount = abs($totalAmount);
 
-            $dateStart = $purchaseDate;
+            $dateStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::BOOKING_LOOKBACK_DAYS . ' days'));
             $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
 
             $merchantParam = '%' . $this->escapeLike($storeName) . '%';
@@ -180,10 +183,23 @@ class ReceiptMatcher
      */
     private function buildStoreToken(string $storeName): string
     {
+        $normalized = mb_strtolower(trim($storeName));
+        if (str_contains($normalized, 'flaschenpost') || str_contains($normalized, 'flaschenp')) {
+            return 'flaschenp';
+        }
+
         $tokens = preg_split('/[^\p{L}\p{N}]+/u', $storeName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
-        return array_find($tokens, static fn(string $token): bool => mb_strlen($token) >= 4)
+        $token = array_find($tokens, static fn(string $token): bool => mb_strlen($token) >= 4)
             ?? (mb_strlen($storeName) > 3 ? mb_substr($storeName, 0, 4) : '');
+
+        // Falls das gefundene Token sehr lang ist (z.B. > 8 Zeichen),
+        // kürzen wir das Short-Token auf 8 Zeichen, um Kürzungen bei Zahlungsdienstleistern (wie PayPal) abzudecken
+        if (mb_strlen($token) > 8) {
+            return mb_substr($token, 0, 8);
+        }
+
+        return $token;
     }
 
     /**
@@ -274,9 +290,42 @@ class ReceiptMatcher
         ");
 
         $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: Wenn mit Händler-Filter keine Treffer erzielt wurden,
+        // suchen wir nach betragsnahen Buchungen im Zeitfenster ohne Händlerfilter
+        if (empty($rows) && !empty($storeConditions)) {
+            $stmtFallback = $this->pdo->prepare("
+                SELECT t.id,
+                       t.booking_date,
+                       t.amount,
+                       t.type,
+                       " . self::GIRO_COUNTERPARTY_EXPRESSION . " AS counterparty,
+                       t.remittance_info
+                FROM bank_giro_transactions t
+                JOIN bank_accounts a ON a.id = t.account_id
+                WHERE a.account_type = 'checking'
+                  AND a.is_active = 1
+                  AND t.amount < 0
+                  AND t.id NOT IN (
+                      SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
+                  )
+                  AND t.booking_date BETWEEN :date_start AND :date_end
+                  AND t.amount BETWEEN :min_amount AND :max_amount
+                ORDER BY ABS(ABS(t.amount) - :receipt_total) ASC, t.booking_date ASC
+            ");
+            $stmtFallback->execute([
+                ':date_start' => $cashStart,
+                ':date_end' => $dateEnd,
+                ':min_amount' => $minAmount,
+                ':max_amount' => $maxAmount,
+                ':receipt_total' => $receiptTotal
+            ]);
+            $rows = $stmtFallback->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $candidates = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach ($rows as $row) {
             $counterparty = trim((string)($row['counterparty'] ?? ''));
             $remittance = trim((string)($row['remittance_info'] ?? ''));
             $type = trim((string)($row['type'] ?? ''));
@@ -326,13 +375,26 @@ class ReceiptMatcher
      */
     private function getStoreTokens(string $storeName): array
     {
-        $rawTokens = preg_split('/\s+/u', trim($storeName), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $normalized = mb_strtolower(trim($storeName));
         $cleanedTokens = [];
+
+        // Bekannte Aliase und PayPal-Kürzungen (z. B. Flaschenpost -> flaschenp)
+        if (str_contains($normalized, 'flaschenpost') || str_contains($normalized, 'flaschenp')) {
+            $cleanedTokens[] = 'flaschenpost';
+            $cleanedTokens[] = 'flaschenp';
+        }
+
+        $rawTokens = preg_split('/\s+/u', trim($storeName), -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         foreach ($rawTokens as $rawToken) {
             $token = trim($rawToken, " \t\n\r\0\x0B.,;:!?()[]{}\"'`/-");
             if ($token !== '') {
                 $cleanedTokens[] = $token;
+                // Bei langen Wörtern auch Präfixe aufnehmen (für gekürzte Buchungstexte z.B. bei PayPal)
+                if (mb_strlen($token) > 8) {
+                    $cleanedTokens[] = mb_substr($token, 0, 8);
+                    $cleanedTokens[] = mb_substr($token, 0, 9);
+                }
             }
         }
 
@@ -402,9 +464,33 @@ class ReceiptMatcher
             ORDER BY t.booking_date ASC
         ");
         $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: Wenn mit Händler-Filter keine Treffer erzielt wurden,
+        // suchen wir nach passenden Beträgen im Zeitfenster ohne Händlerfilter
+        if (empty($rows) && !empty($storeConditions)) {
+            $stmtFallback = $this->pdo->prepare("
+                SELECT t.id, t.booking_date, t.amount, t.merchant_name, t.card_number_suffix
+                FROM bank_cc_transactions t
+                WHERE t.booking_date BETWEEN :date_start AND :date_end
+                  AND ABS(t.amount) BETWEEN :amount_min AND :amount_max
+                  AND t.id NOT IN (
+                      SELECT bank_cc_transaction_id FROM kb_receipts WHERE bank_cc_transaction_id IS NOT NULL
+                  )
+                ORDER BY ABS(ABS(t.amount) - :expected_amount) ASC, t.booking_date ASC
+            ");
+            $stmtFallback->execute([
+                ':date_start' => $dateStart,
+                ':date_end' => $dateEnd,
+                ':amount_min' => max(0.0, $expectedAmount - self::CC_TOLERANCE),
+                ':amount_max' => $expectedAmount + self::CC_TOLERANCE,
+                ':expected_amount' => $expectedAmount,
+            ]);
+            $rows = $stmtFallback->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $candidates = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach ($rows as $row) {
             $merchant = trim((string)$row['merchant_name']);
             $suffix = trim((string)($row['card_number_suffix'] ?? ''));
             $txAmount = abs((float)$row['amount']);
