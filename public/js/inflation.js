@@ -1,11 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const dataContainer = window.INFLATION_DATA;
-    if (!dataContainer || !Array.isArray(dataContainer.products)) {
+    const container = document.getElementById('inflation-container');
+    if (!container) {
         return;
     }
 
-    const allProducts = dataContainer.products;
-    const monthlyTrend = dataContainer.monthlyTrend || { labels: [], values: [] };
+    let allProducts = [];
+    let monthlyTrend = { labels: [], values: [] };
+
+    try {
+        allProducts = JSON.parse(container.getAttribute('data-products') || '[]');
+        monthlyTrend = JSON.parse(container.getAttribute('data-monthly-trend') || '{"labels":[],"values":[]}');
+    } catch (e) {
+        console.error('Fehler beim Parsen der Inflations-Daten aus den Data-Attributen', e);
+        return;
+    }
 
     let filteredProducts = [...allProducts];
     let currentFilter = 'all';

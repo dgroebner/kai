@@ -110,7 +110,9 @@ try {
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
-<div class="container" id="inflation-container">
+<div class="container" id="inflation-container"
+     data-products="<?= htmlspecialchars(json_encode($analysis['products'] ?? []), ENT_QUOTES, 'UTF-8') ?>"
+     data-monthly-trend="<?= htmlspecialchars(json_encode($analysis['monthly_trend'] ?? ['labels' => [], 'values' => []]), ENT_QUOTES, 'UTF-8') ?>">
     <header class="page-header">
         <h1>🏷️ Preisentwicklung & Inflation</h1>
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
@@ -509,14 +511,6 @@ try {
         </div>
     </div>
 </div>
-
-<!-- Daten für JavaScript bereitstellen -->
-<script>
-    window.INFLATION_DATA = {
-        products: <?= json_encode($analysis['products'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
-        monthlyTrend: <?= json_encode($analysis['monthly_trend'] ?? ['labels' => [], 'values' => []], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
-    };
-</script>
 
 <script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/chart.min.js?v=<?= APP_VERSION ?>" defer></script>
