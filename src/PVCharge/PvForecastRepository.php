@@ -39,6 +39,22 @@ class PvForecastRepository
     }
 
     /**
+     * Lädt die prognostizierten Wattstunden für ein bestimmtes Datum (Y-m-d).
+     */
+    public function getForecastForDate(string $date): ?int
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT watt_hours_day
+            FROM pv_forecast_daily
+            WHERE forecast_date = :date
+        ");
+        $stmt->execute([':date' => $date]);
+        $val = $stmt->fetchColumn();
+
+        return ($val === false || $val === null) ? null : (int)$val;
+    }
+
+    /**
      * Lädt die Stundenprognose für den heutigen Tag.
      */
     public function getTodayHourlyForecasts(): array
@@ -52,6 +68,23 @@ class PvForecastRepository
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Ermittelt die verbleibende prognostizierte Solarerzeugung für heute ab der aktuellen Uhrzeit (in Wh).
+     */
+    public function getRemainingTodayWatts(): int
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT SUM(watts)
+            FROM pv_forecast_hourly
+            WHERE DATE(forecast_time) = CURDATE()
+              AND forecast_time >= NOW()
+        ");
+        $stmt->execute();
+        $val = $stmt->fetchColumn();
+
+        return ($val === false || $val === null) ? 0 : (int)$val;
     }
 
     /**

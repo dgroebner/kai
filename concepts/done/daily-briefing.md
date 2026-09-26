@@ -64,8 +64,9 @@ präsentieren[cite: 3, 5].
     * *Lade-Empfehlung:* Visuell hervorgehobenes Aktionssymbol, wenn die PV-Ertragsprognose des Tages den definierten
       Schwellenwert übersteigt und das Fahrzeug nicht voll geladen ist[cite: 3, 5].
     * *Sicherheitsstatus:* Rotes Warnsymbol, falls das Fahrzeug als unverschlossen gemeldet ist[cite: 5].
-    * *Standardzustand:* Ertragsprognose in Kilowattstunden, aktueller SoC in Prozent und Restreichweite[cite: 5].
-* **Ziel:** Energie-Dashboard (`pvcharge/index.php`) bzw. Fahrzeugansicht (`car/index.php`)[cite: 5].
+    * *Standardzustand:* Ertragsprognose in Kilowattstunden, aktueller SoC in Prozent und Restreichweite.
+    * *Abendmodus:* Sobald für den aktuellen Tag kein prognostizierter Solarertrag mehr ansteht (nach Sonnenuntergang), schaltet das Widget automatisch auf die Ertragsprognose und Lade-Empfehlung für **morgen** um.
+* **Ziel:** Energie-Dashboard (`pvcharge/index.php`) bzw. Fahrzeugansicht (`car/index.php`).
 
 ### 2.4. Einkaufsliste (Dringlichkeits-Fokus)
 

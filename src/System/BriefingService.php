@@ -445,16 +445,23 @@ class BriefingService
     private function buildPvCarWidget(): ?array
     {
         $vehicleState = $this->vehicleDashboardRepo->getLatestState();
-        $dailyForecasts = $this->pvForecastRepo->getDailyForecasts(3);
+        $systemBias = $this->pvForecastRepo->getSystemBiasPercent();
+        $biasFactor = ($systemBias !== null) ? (1 + $systemBias / 100) : 1.0;
 
         $todayStr = date('Y-m-d');
-        $pvYieldTodayKwh = 0.0;
-        foreach ($dailyForecasts as $df) {
-            if (($df['forecast_date'] ?? '') === $todayStr) {
-                $pvYieldTodayKwh = round(((float)($df['watt_hours_day'] ?? 0)) / 1000, 1);
-                break;
-            }
-        }
+        $tomorrowStr = date('Y-m-d', strtotime('+1 day'));
+
+        $todayWh = $this->pvForecastRepo->getForecastForDate($todayStr);
+        $tomorrowWh = $this->pvForecastRepo->getForecastForDate($tomorrowStr);
+
+        $pvYieldTodayKwh = $todayWh !== null ? round((($todayWh * $biasFactor) / 1000), 1) : 0.0;
+        $pvYieldTomorrowKwh = $tomorrowWh !== null ? round((($tomorrowWh * $biasFactor) / 1000), 1) : 0.0;
+
+        // Prüfen, ob für heute noch Sonnenertrag ansteht (nach Sonnenuntergang / abends = 0)
+        $remainingWattsToday = $this->pvForecastRepo->getRemainingTodayWatts();
+        $isEveningMode = ($remainingWattsToday <= 0);
+
+        $relevantPvKwh = $isEveningMode ? $pvYieldTomorrowKwh : $pvYieldTodayKwh;
 
         $soc = isset($vehicleState['soc_percent']) ? (int)$vehicleState['soc_percent'] : 0;
         $rangeKm = isset($vehicleState['range_km']) ? (int)$vehicleState['range_km'] : 0;
@@ -463,24 +470,44 @@ class BriefingService
 
         $isUnlockedAlert = ($isLocked === 0);
         // Lade-Empfehlung: Hoher PV-Ertrag (>= 12 kWh) und Auto nicht voll (< 80% SoC)
-        $chargeRecommendation = ($pvYieldTodayKwh >= 12.0 && $soc < 80);
+        $chargeRecommendation = ($relevantPvKwh >= 12.0 && $soc < 80);
 
         $pills = [];
         if ($isUnlockedAlert) {
             $pills[] = ['icon' => '🚨', 'label' => 'Unverschlossen!', 'type' => 'danger'];
         }
         if ($chargeRecommendation) {
-            $pills[] = ['icon' => '⚡', 'label' => 'Lade-Empfehlung (PV)', 'type' => 'success'];
+            $pills[] = [
+                'icon' => '⚡',
+                'label' => $isEveningMode ? 'Morgen PV-Laden' : 'Lade-Empfehlung (PV)',
+                'type' => 'success',
+            ];
         }
-        $pills[] = ['icon' => '☀️', 'label' => "PV: {$pvYieldTodayKwh} kWh", 'type' => 'neutral'];
+
+        $pvPillLabel = $isEveningMode ? "Morgen: {$pvYieldTomorrowKwh} kWh" : "PV: {$pvYieldTodayKwh} kWh";
+        $pills[] = ['icon' => '☀️', 'label' => $pvPillLabel, 'type' => 'neutral'];
         $pills[] = ['icon' => '🚐', 'label' => "SoC: {$soc}% ({$rangeKm} km)", 'type' => 'neutral'];
 
         $headline = "ID.Buzz: {$soc} % • {$rangeKm} km";
-        $subtitle = "PV-Ertragsprognose heute: {$pvYieldTodayKwh} kWh";
+
         if ($isUnlockedAlert) {
-            $subtitle = "⚠️ Achtung: Fahrzeug ist unverschlossen! • PV-Prognose: {$pvYieldTodayKwh} kWh";
+            $forecastNote = $isEveningMode ? "PV-Prognose morgen: {$pvYieldTomorrowKwh} kWh" : "PV-Prognose heute: {$pvYieldTodayKwh} kWh";
+            $subtitle = "⚠️ Achtung: Fahrzeug ist unverschlossen! • {$forecastNote}";
         } elseif ($chargeRecommendation) {
-            $subtitle = "☀️ Starker PV-Ertrag erwartet: Fahrzeug anstecken & Sonnenstrom laden!";
+            $subtitle = $isEveningMode
+                ? "☀️ Starker PV-Ertrag morgen ({$pvYieldTomorrowKwh} kWh): ID.Buzz tagsüber laden!"
+                : "☀️ Starker PV-Ertrag erwartet: Fahrzeug anstecken & Sonnenstrom laden!";
+        } else {
+            $subtitle = $isEveningMode
+                ? "PV-Ertragsprognose morgen: {$pvYieldTomorrowKwh} kWh"
+                : "PV-Ertragsprognose heute: {$pvYieldTodayKwh} kWh";
+        }
+
+        $badge = null;
+        if ($isUnlockedAlert) {
+            $badge = ['text' => 'Unverschlossen', 'type' => 'danger'];
+        } elseif ($chargeRecommendation) {
+            $badge = ['text' => $isEveningMode ? 'Lade-Tipp morgen' : 'Lade-Tipp', 'type' => 'success'];
         }
 
         return [
@@ -492,7 +519,7 @@ class BriefingService
             'subtitle' => $subtitle,
             'pills' => $pills,
             'highlight' => $isUnlockedAlert || $chargeRecommendation,
-            'badge' => $isUnlockedAlert ? ['text' => 'Unverschlossen', 'type' => 'danger'] : ($chargeRecommendation ? ['text' => 'Lade-Tipp', 'type' => 'success'] : null),
+            'badge' => $badge,
         ];
     }
 
