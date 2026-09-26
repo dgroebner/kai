@@ -253,6 +253,89 @@ class BankContractRepository
     }
 
     /**
+     * Prüft, ob ein Vertrag in einem bestimmten Kalendermonat und -jahr fällig ist.
+     * Berücksichtigt Gültigkeitszeitraum (start_datum / end_datum) sowie Rhythmen
+     * (monatlich, vierteljährlich, halbjährlich, jährlich, einmalig).
+     */
+    public static function isContractDueInMonth(array $contract, int $year, int $month, ?PDO $pdo = null): bool
+    {
+        $frequency = $contract['frequenz'] ?? 'monatlich';
+        $startDate = !empty($contract['start_datum']) ? $contract['start_datum'] : null;
+        $endDate = !empty($contract['end_datum']) ? $contract['end_datum'] : null;
+
+        $firstDayOfMonth = sprintf('%04d-%02d-01', $year, $month);
+        $daysInMonth = (int)date('t', strtotime($firstDayOfMonth));
+        $lastDayOfMonth = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
+
+        // 1. Gültigkeitszeitraum prüfen
+        if ($startDate !== null && $startDate > $lastDayOfMonth) {
+            return false;
+        }
+        if ($endDate !== null && $endDate < $firstDayOfMonth) {
+            return false;
+        }
+
+        // 2. Monatliche Verträge sind in jedem Monat fällig
+        if ($frequency === 'monatlich') {
+            return true;
+        }
+
+        // 3. Wenn ein Startdatum vorliegt, Rhythmus exakt anhand des Startdatums prüfen
+        if ($startDate !== null) {
+            $startDt = new \DateTimeImmutable($startDate);
+            $startYear = (int)$startDt->format('Y');
+            $startMonth = (int)$startDt->format('n');
+
+            if ($frequency === 'vierteljaehrlich') {
+                $monthDiff = ($year - $startYear) * 12 + ($month - $startMonth);
+                return ($monthDiff >= 0 && $monthDiff % 3 === 0);
+            }
+            if ($frequency === 'halbjaehrlich') {
+                $monthDiff = ($year - $startYear) * 12 + ($month - $startMonth);
+                return ($monthDiff >= 0 && $monthDiff % 6 === 0);
+            }
+            if ($frequency === 'jaehrlich') {
+                return ($month === $startMonth && $year >= $startYear);
+            }
+            if ($frequency === 'einmalig') {
+                return ($year === $startYear && $month === $startMonth);
+            }
+        }
+
+        // 4. Wenn kein Startdatum vorliegt, Rhythmus aus der letzten Buchung ableiten
+        if ($pdo !== null && !empty($contract['id'])) {
+            $stmt = $pdo->prepare("
+                SELECT MAX(booking_date) AS last_date
+                FROM bank_giro_transactions
+                WHERE contract_id = :cid
+            ");
+            $stmt->execute([':cid' => (int)$contract['id']]);
+            $lastDate = $stmt->fetchColumn();
+
+            if ($lastDate) {
+                $lastDt = new \DateTimeImmutable($lastDate);
+                $lastYear = (int)$lastDt->format('Y');
+                $lastMonth = (int)$lastDt->format('n');
+
+                if ($frequency === 'vierteljaehrlich') {
+                    $monthDiff = ($year - $lastYear) * 12 + ($month - $lastMonth);
+                    return ($monthDiff >= 0 && $monthDiff % 3 === 0);
+                }
+                if ($frequency === 'halbjaehrlich') {
+                    $monthDiff = ($year - $lastYear) * 12 + ($month - $lastMonth);
+                    return ($monthDiff >= 0 && $monthDiff % 6 === 0);
+                }
+                if ($frequency === 'jaehrlich') {
+                    return ($month === $lastMonth && $year >= $lastYear);
+                }
+            }
+        }
+
+        // Unbekannter Rhythmus ohne Startdatum/Buchungshistorie kann nicht willkürlich diesem Monat zugeordnet werden
+        return false;
+    }
+
+    /**
      * Ermittelt die in den nächsten X Tagen (inkl. heute) erwarteten Vertragsbuchungen
      * und gleicht diese mit bereits vorhandenen Girokonto-Buchungen ab.
      */
@@ -306,11 +389,15 @@ class BankContractRepository
         foreach ($contracts as $c) {
             $contractId = (int)$c['id'];
             $dueDay = (int)$c['faelligkeitstag'];
-            $frequency = $c['frequenz'] ?? 'monatlich';
 
             foreach ($monthsToCheck as $mInfo) {
                 $year = $mInfo['year'];
                 $month = $mInfo['month'];
+
+                // Prüfen, ob der Vertrag in diesem Monat fällig ist (Rhythmus & Gültigkeit)
+                if (!self::isContractDueInMonth($c, $year, $month, $this->pdo)) {
+                    continue;
+                }
 
                 // Fälligkeitsdatum berechnen (inkl. Monatsende- & Schaltjahr-Korrektur)
                 $expectedDate = self::calculateExpectedDate($year, $month, $dueDay);
@@ -318,34 +405,6 @@ class BankContractRepository
                 // Liegt im Betrachtungsfenster?
                 if ($expectedDate < $todayStr || $expectedDate > $endWindowStr) {
                     continue;
-                }
-
-                // Prüfen, ob Vertrag zum erwarteten Datum aktiv ist
-                if (!empty($c['start_datum']) && $c['start_datum'] > $expectedDate) {
-                    continue;
-                }
-                if (!empty($c['end_datum']) && $c['end_datum'] < $expectedDate) {
-                    continue;
-                }
-
-                // Rhythmus-Prüfung
-                if ($frequency === 'vierteljaehrlich' && !empty($c['start_datum'])) {
-                    $startDt = new \DateTimeImmutable($c['start_datum']);
-                    $monthDiff = ($year - (int)$startDt->format('Y')) * 12 + ($month - (int)$startDt->format('n'));
-                    if ($monthDiff % 3 !== 0) {
-                        continue;
-                    }
-                } elseif ($frequency === 'halbjaehrlich' && !empty($c['start_datum'])) {
-                    $startDt = new \DateTimeImmutable($c['start_datum']);
-                    $monthDiff = ($year - (int)$startDt->format('Y')) * 12 + ($month - (int)$startDt->format('n'));
-                    if ($monthDiff % 6 !== 0) {
-                        continue;
-                    }
-                } elseif ($frequency === 'jaehrlich' && !empty($c['start_datum'])) {
-                    $startDt = new \DateTimeImmutable($c['start_datum']);
-                    if ($month !== (int)$startDt->format('n')) {
-                        continue;
-                    }
                 }
 
                 // Prüfen, ob bereits verbucht: Buchung im gleichen Kalendermonat suchen

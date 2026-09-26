@@ -247,6 +247,15 @@ $canEdit = Auth::hasPermission('finance_write');
                         Bereits verbuchte Umsätze werden mit allen noch ausstehenden, fest eingeplanten Vertragsbuchungen zusammengeführt (noch ausstehend:
                         <span class="text-green">+<?= number_format((float)($cashflow['pending_income'] ?? 0), 2, ',', '.') ?> €</span> Einnahmen,
                         <span class="text-red">-<?= number_format((float)($cashflow['pending_expenses'] ?? 0), 2, ',', '.') ?> €</span> Fixkosten).
+                        <?php if (!empty($cashflow['pending_contracts'])): ?>
+                            <div style="margin-top: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
+                                <strong>Ausstehende Verträge:</strong>
+                                <?= implode(', ', array_map(function ($c) {
+                                    $dueStr = !empty($c['expected_date']) ? ' (erwartet: ' . date('d.m.', strtotime($c['expected_date'])) . ')' : '';
+                                    return htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') . ' (' . number_format((float)$c['amount'], 2, ',', '.') . ' €' . $dueStr . ')';
+                                }, $cashflow['pending_contracts'])) ?>
+                            </div>
+                        <?php endif; ?>
                     <?php else: ?>
                         Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Leasingraten und laufende Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
                     <?php endif; ?>

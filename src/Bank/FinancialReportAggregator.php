@@ -157,12 +157,6 @@ class FinancialReportAggregator
             $totalIncome = $actualIncome + $pendingIncome;
             $totalExpenses = $actualExpenses + $pendingExpenses;
             $fixedExpensesTotal = $fixedBooked + $pendingExpenses;
-
-            // Plausibilität gegen Soll-Summe aktiver Verträge absichern
-            $contractNominal = $this->calculateNominalFixedExpenses($periodType);
-            if ($fixedExpensesTotal < $contractNominal && $contractNominal > 0) {
-                $fixedExpensesTotal = $contractNominal;
-            }
         } else {
             // Abgeschlossener Zeitraum
             $totalIncome = $actualIncome;
@@ -221,6 +215,7 @@ class FinancialReportAggregator
     {
         $targetYear = (int)substr($startDate, 0, 4);
         $targetMonth = (int)substr($startDate, 5, 2);
+        $todayStr = date('Y-m-d');
 
         $stmt = $this->pdo->query("
             SELECT id, name, betrag, frequenz, variabel, start_datum, end_datum, direction, faelligkeitstag
@@ -245,39 +240,15 @@ class FinancialReportAggregator
         foreach ($contracts as $contract) {
             $contractId = (int)$contract['id'];
             $amount = (float)$contract['betrag'];
-            $frequency = $contract['frequenz'];
             $direction = $contract['direction'] ?? 'expense';
-            $dueDay = !empty($contract['faelligkeitstag']) ? (int)$contract['faelligkeitstag'] : 1;
+            $dueDay = !empty($contract['faelligkeitstag']) ? (int)$contract['faelligkeitstag'] : null;
 
-            // Gültigkeitszeitraum prüfen
-            if (!empty($contract['start_datum']) && $contract['start_datum'] > $endDate) {
-                continue;
-            }
-            if (!empty($contract['end_datum']) && $contract['end_datum'] < $startDate) {
+            // 1. Prüfen, ob der Vertrag in diesem Kalendermonat überhaupt fällig ist (Rhythmus & Gültigkeit)
+            if (!BankContractRepository::isContractDueInMonth($contract, $targetYear, $targetMonth, $this->pdo)) {
                 continue;
             }
 
-            // Rhythmus-Prüfung
-            if ($frequency === 'vierteljaehrlich' && !empty($contract['start_datum'])) {
-                $startDt = new \DateTimeImmutable($contract['start_datum']);
-                $monthDiff = ($targetYear - (int)$startDt->format('Y')) * 12 + ($targetMonth - (int)$startDt->format('n'));
-                if ($monthDiff % 3 !== 0) {
-                    continue;
-                }
-            } elseif ($frequency === 'halbjaehrlich' && !empty($contract['start_datum'])) {
-                $startDt = new \DateTimeImmutable($contract['start_datum']);
-                $monthDiff = ($targetYear - (int)$startDt->format('Y')) * 12 + ($targetMonth - (int)$startDt->format('n'));
-                if ($monthDiff % 6 !== 0) {
-                    continue;
-                }
-            } elseif ($frequency === 'jaehrlich' && !empty($contract['start_datum'])) {
-                $startDt = new \DateTimeImmutable($contract['start_datum']);
-                if ($targetMonth !== (int)$startDt->format('n')) {
-                    continue;
-                }
-            }
-
-            // Prüfen, ob für diesen Vertrag in diesem Monat bereits eine Buchung vorhanden ist
+            // 2. Prüfen, ob für diesen Vertrag in diesem Monat bereits eine Buchung vorhanden ist
             $stmtTx->execute([
                 ':contract_id' => $contractId,
                 ':start' => $startDate,
@@ -290,8 +261,18 @@ class FinancialReportAggregator
                 continue;
             }
 
-            // Noch ausstehend!
-            $expectedDate = BankContractRepository::calculateExpectedDate($targetYear, $targetMonth, $dueDay);
+            // 3. Fälligkeitsdatum berechnen
+            $expectedDate = null;
+            if ($dueDay !== null) {
+                $expectedDate = BankContractRepository::calculateExpectedDate($targetYear, $targetMonth, $dueDay);
+            }
+
+            // 4. Nur noch anstehende Buchungen berücksichtigen (heute oder in der Zukunft fällig, bzw. ohne fixes Datum)
+            // Liegt das Datum in der Vergangenheit, gilt sie als überfällig/fehlend und wird nicht als Prognose addiert
+            $isPending = ($expectedDate === null || $expectedDate >= $todayStr);
+            if (!$isPending) {
+                continue;
+            }
 
             if ($direction === 'income') {
                 $pendingIncome += $amount;
@@ -306,7 +287,7 @@ class FinancialReportAggregator
                 'amount' => $amount,
                 'due_day' => $dueDay,
                 'expected_date' => $expectedDate,
-                'frequency' => $frequency,
+                'frequency' => $contract['frequenz'],
             ];
         }
 
@@ -469,19 +450,26 @@ class FinancialReportAggregator
             $isVariable = (bool)$contract['variabel'];
             $dueDay = !empty($contract['faelligkeitstag']) ? (int)$contract['faelligkeitstag'] : null;
 
-            // Prüfen, ob Vertrag im Zeitraum bereits lief
-            if (!empty($contract['start_datum']) && $contract['start_datum'] > $targetEnd) {
-                continue;
-            }
-            if (!empty($contract['end_datum']) && $contract['end_datum'] < $targetStart) {
-                continue;
+            $targetYear = (int)substr($targetStart, 0, 4);
+            $targetMonth = (int)substr($targetStart, 5, 2);
+
+            // Rhythmus & Gültigkeit prüfen
+            if ($periodType === 'month') {
+                if (!BankContractRepository::isContractDueInMonth($contract, $targetYear, $targetMonth, $this->pdo)) {
+                    continue;
+                }
+            } else {
+                if (!empty($contract['start_datum']) && $contract['start_datum'] > $targetEnd) {
+                    continue;
+                }
+                if (!empty($contract['end_datum']) && $contract['end_datum'] < $targetStart) {
+                    continue;
+                }
             }
 
             // Erwartetes Datum berechnen (inkl. automatischer Monatsende- & Schaltjahr-Korrektur)
             $expectedDate = null;
             if ($periodType === 'month' && $dueDay !== null) {
-                $targetYear = (int)substr($targetStart, 0, 4);
-                $targetMonth = (int)substr($targetStart, 5, 2);
                 $expectedDate = BankContractRepository::calculateExpectedDate($targetYear, $targetMonth, $dueDay);
             }
 
@@ -499,8 +487,8 @@ class FinancialReportAggregator
             $actualSum = round($actualSum, 2);
 
             if (empty($transactions)) {
-                // Bei monatlichen Verträgen im Monatsbericht ist das Fehlen/Ausstehen einer Zahlung relevant
-                if ($periodType === 'month' && $frequency === 'monatlich') {
+                // Bei fälligen Verträgen im Monatsbericht ist das Fehlen/Ausstehen einer Zahlung relevant
+                if ($periodType === 'month') {
                     $isCurrentMonth = (substr($targetStart, 0, 7) === date('Y-m'));
                     $isPending = $isCurrentMonth && ($expectedDate === null || $expectedDate >= date('Y-m-d'));
 
