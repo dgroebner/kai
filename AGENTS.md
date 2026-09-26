@@ -371,6 +371,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | forecast.solar | Solarertragsprognose | GPS-Koordinaten (falls konfiguriert) |
 | Push-Dienst des Browsers (FCM/APNs) | Web-Push-Benachrichtigungen (via VAPID/RFC 8292) | Endpoint-URL der Subscription; kein Nachrichteninhalt – dieser wird Ende-zu-Ende verschlüsselt übermittelt |
 | TRONITY Platform API | Abruf von Fahrzeug-Telemetriedaten (Ladezustand, Reichweite, GPS-Position) | OAuth Client Credentials zur Autorisierung; Empfang von Fahrzeugdaten der verknüpften VIN |
+| Open Food Facts API | Abruf von Lebensmittel-Stammdaten (EAN/GTIN, Marke, Füllmenge, Nutri-Score) | Artikelname als Suchbegriff; keine personenbezogenen Daten |
 
 > **Neue Drittanbieter** müssen in dieser Tabelle dokumentiert werden, bevor sie
 > in den Code integriert werden.

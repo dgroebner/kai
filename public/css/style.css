@@ -6809,6 +6809,500 @@ button.btn-text:hover {
     color: var(--text-main);
 }
 
+/* ==========================================================================
+   INFLATION & PREISENTWICKLUNG MODUL (E-BON)
+   ========================================================================== */
+
+/* Filterleiste */
+.inflation-filter-card {
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.inflation-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.filter-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.filter-form-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+/* KPI Dashboard Kacheln */
+.inflation-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.inflation-kpi-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 120px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.inflation-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.inflation-kpi-card.kpi-danger {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, var(--bg-surface) 100%);
+}
+
+.inflation-kpi-card.kpi-danger .kpi-value {
+    color: #ef4444;
+}
+
+.inflation-kpi-card.kpi-success {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-surface) 100%);
+}
+
+.inflation-kpi-card.kpi-success .kpi-value {
+    color: #10b981;
+}
+
+.inflation-kpi-card.kpi-warning {
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.inflation-kpi-card .kpi-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.inflation-kpi-card .kpi-value {
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0.35rem 0;
+    color: var(--text-main);
+}
+
+.inflation-kpi-card .kpi-subtext {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.kpi-trend-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0.4rem 0;
+}
+
+.trend-pill {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--bg-surface-hover);
+}
+
+.trend-pill.trend-up {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.trend-pill.trend-down {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.trend-pill.trend-stable {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Highlight Grid */
+.inflation-highlights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.highlight-card {
+    padding: 1.25rem;
+}
+
+.highlight-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.highlight-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.highlight-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.highlight-item:hover {
+    background: var(--bg-surface-hover);
+    border-color: var(--accent);
+    transform: translateX(3px);
+}
+
+.highlight-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 65%;
+}
+
+.highlight-item-info .item-name {
+    font-size: 0.9rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.highlight-item-info .item-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.highlight-item-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.price-change {
+    font-size: 0.9rem;
+}
+
+.price-change.change-up {
+    color: #ef4444;
+}
+
+.price-change.change-down {
+    color: #10b981;
+}
+
+.price-change.change-stable {
+    color: var(--text-muted);
+}
+
+.price-range {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Preissprung Badge */
+.jump-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.jump-pill-up {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.jump-pill-down {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+/* Trend Chart Card */
+.inflation-chart-card {
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.inflation-chart-card .chart-header {
+    margin-bottom: 1rem;
+}
+
+.inflation-chart-card .chart-header h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.05rem;
+}
+
+/* Artikeltabelle & Filter-Pills */
+.table-filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.filter-pill {
+    background: var(--bg-surface-hover);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 9999px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filter-pill:hover {
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.filter-pill.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.clickable-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.product-cell-name {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.product-cell-store {
+    font-size: 0.78rem;
+    margin-top: 2px;
+}
+
+/* Modal Details */
+.modal-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 0.85rem;
+}
+
+.modal-kpi-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-kpi-item .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.modal-kpi-item .value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 2px 0;
+    color: var(--text-main);
+}
+
+.modal-kpi-item .sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.modal-history-table {
+    font-size: 0.88rem;
+}
+
+/* Grundpreis-Styling */
+.base-price-sub {
+    font-size: 0.76rem;
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.base-price-hint {
+    color: var(--accent);
+    font-weight: 500;
+}
+
+/* Sonderangebot & Deal Badges */
+.deal-indicator-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.deal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 9999px;
+    padding: 2px 8px;
+}
+
+.filter-checkbox-group {
+    justify-content: flex-end;
+    padding-bottom: 4px;
+}
+
+.filter-checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* Open Food Facts Box im Modal */
+.modal-off-box {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+}
+
+.off-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.off-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.off-result-wrap {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--bg-surface-hover);
+}
+
+.off-result-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.off-product-thumb {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 2px;
+}
+
+.off-info {
+    flex: 1;
+}
+
+.off-name {
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.off-details {
+    font-size: 0.8rem;
+    margin-top: 3px;
+}
+
+.ean-code {
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: var(--bg-surface-hover);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent);
+}
+
+.off-empty {
+    font-size: 0.85rem;
+    padding: 0.35rem 0;
+}
+
+/* Nutri-Score Badges */
+.nutriscore-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+.nutriscore-a { background: #038141; color: #ffffff; }
+.nutriscore-b { background: #85bb2f; color: #ffffff; }
+.nutriscore-c { background: #fecb02; color: #000000; }
+.nutriscore-d { background: #ee8100; color: #ffffff; }
+.nutriscore-e { background: #e63e11; color: #ffffff; }
+
+
+
 
 
 

@@ -59,10 +59,11 @@ try {
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
 
-    <!-- Tab-Switcher (eBons / Auswertung) -->
+    <!-- Tab-Switcher (eBons / Auswertung / Inflation) -->
     <div class="period-switcher sub-nav-tabs">
         <a href="index.php" class="btn">🧾 eBons</a>
         <a href="auswertung.php" class="btn btn-outline">📈 Auswertung</a>
+        <a href="inflation.php" class="btn btn-outline">🏷️ Inflation</a>
     </div>
 
     <section class="card">

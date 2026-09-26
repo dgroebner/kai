@@ -290,6 +290,28 @@ CREATE TABLE IF NOT EXISTS `kb_items` (
   CONSTRAINT `kb_items_ibfk_1` FOREIGN KEY (`receipt_id`) REFERENCES `kb_receipts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+CREATE TABLE IF NOT EXISTS `kb_off_products` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_key` varchar(255) NOT NULL,
+  `search_term` varchar(255) NOT NULL,
+  `status` enum('pending','completed','not_found','failed') NOT NULL DEFAULT 'pending',
+  `code` varchar(64) DEFAULT NULL,
+  `product_name` varchar(255) DEFAULT NULL,
+  `brands` varchar(255) DEFAULT NULL,
+  `quantity` varchar(100) DEFAULT NULL,
+  `nutriscore_grade` varchar(10) DEFAULT NULL,
+  `image_url` text DEFAULT NULL,
+  `categories` text DEFAULT NULL,
+  `attempts` int(11) NOT NULL DEFAULT 0,
+  `last_queried_at` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_product_key` (`product_key`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `system_settings` (
     `setting_key` VARCHAR(100) PRIMARY KEY,
     `setting_value` TEXT NOT NULL,

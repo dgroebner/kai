@@ -116,4 +116,46 @@ class ReceiptQueryRepository
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Alle Positionen eines Zeitraums inklusive Einkaufsdatum und Händler
+     * für die Inflations- und Preisanalyse.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getItemsForInflation(?string $startDate = null, ?string $endDate = null): array
+    {
+        $sql = "
+            SELECT 
+                i.id,
+                i.receipt_id,
+                i.name,
+                i.quantity,
+                i.unit_price,
+                i.total_price,
+                i.category,
+                r.store,
+                r.purchase_date
+            FROM kb_items i
+            JOIN kb_receipts r ON i.receipt_id = r.id
+            WHERE i.unit_price > 0
+        ";
+
+        $params = [];
+        if ($startDate !== null) {
+            $sql .= " AND r.purchase_date >= :start";
+            $params[':start'] = $startDate;
+        }
+        if ($endDate !== null) {
+            $sql .= " AND r.purchase_date <= :end";
+            $params[':end'] = $endDate;
+        }
+
+        $sql .= " ORDER BY r.purchase_date ASC, r.id ASC, i.id ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
 }
