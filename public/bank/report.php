@@ -102,8 +102,13 @@ $gaugeDeg = round(-90.0 + (($clampedRate - (-10.0)) / 50.0) * 180.0, 1);
 $isCurrentPeriod = ($periodType === 'month' && $periodTarget === date('Y-m'))
     || ($periodType === 'year' && $periodTarget === date('Y'));
 
+$isProjection = !empty($cashflow['is_projection']);
+
 if ($netBalance < 0) {
-    if ($isCurrentPeriod) {
+    if ($isProjection) {
+        $gaugeStatus = 'Prognose: Defizit';
+        $gaugeStatusClass = 'report-status-critical';
+    } elseif ($isCurrentPeriod) {
         $gaugeStatus = 'Zwischenstand';
         $gaugeStatusClass = 'report-status-tight';
     } else {
@@ -111,13 +116,18 @@ if ($netBalance < 0) {
         $gaugeStatusClass = 'report-status-critical';
     }
 } elseif ($savingsRate < 10.0) {
-    $gaugeStatus = $isCurrentPeriod ? 'Zwischenstand' : 'Geringer Puffer';
-    $gaugeStatusClass = 'report-status-tight';
+    if ($isProjection) {
+        $gaugeStatus = 'Prognose: Geringer Puffer';
+        $gaugeStatusClass = 'report-status-tight';
+    } else {
+        $gaugeStatus = $isCurrentPeriod ? 'Zwischenstand' : 'Geringer Puffer';
+        $gaugeStatusClass = 'report-status-tight';
+    }
 } elseif ($savingsRate < 25.0) {
-    $gaugeStatus = 'Solide Sparquote';
+    $gaugeStatus = $isProjection ? 'Prognose: Solide Sparquote' : 'Solide Sparquote';
     $gaugeStatusClass = 'report-status-healthy';
 } else {
-    $gaugeStatus = 'Exzellenter Sparer';
+    $gaugeStatus = $isProjection ? 'Prognose: Exzellenter Sparer' : 'Exzellenter Sparer';
     $gaugeStatusClass = 'report-status-healthy';
 }
 
@@ -131,6 +141,7 @@ if ($totalIncome > 0.01) {
     $pctVariable = 0.0;
     $pctSaved = 0.0;
 }
+$pctVar = $pctVariable;
 $isOverBudget = ($totalExpenses > $totalIncome);
 $budgetDeficit = $isOverBudget ? ($totalExpenses - $totalIncome) : 0.0;
 
@@ -229,9 +240,16 @@ $canEdit = Auth::hasPermission('finance_write');
         <div class="report-ongoing-banner">
             <div class="report-ongoing-icon">ℹ️</div>
             <div class="report-ongoing-body">
-                <strong>Laufender Monat (Zwischenstand – noch nicht abgeschlossen):</strong>
+                <strong>Laufender Monat (<?= $isProjection ? 'Prognose zum Monatsende' : 'Zwischenstand' ?>):</strong>
                 <p>
-                    Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Leasingraten und laufende Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
+                    <?php if ($isProjection): ?>
+                        Dieser Monat ist aktuell noch in Bewegung. Um eine verzerrte Momentaufnahme zu vermeiden, arbeiten die Kennzahlen und Barometer oben mit einer <strong>Prognose zum Monatsende</strong>:
+                        Bereits verbuchte Umsätze werden mit allen noch ausstehenden, fest eingeplanten Vertragsbuchungen zusammengeführt (noch ausstehend:
+                        <span class="text-green">+<?= number_format((float)($cashflow['pending_income'] ?? 0), 2, ',', '.') ?> €</span> Einnahmen,
+                        <span class="text-red">-<?= number_format((float)($cashflow['pending_expenses'] ?? 0), 2, ',', '.') ?> €</span> Fixkosten).
+                    <?php else: ?>
+                        Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Leasingraten und laufende Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
+                    <?php endif; ?>
                 </p>
             </div>
         </div>
@@ -240,40 +258,97 @@ $canEdit = Auth::hasPermission('finance_write');
     <!-- KPI-Dashboard -->
     <section class="kpi-grid report-kpi-grid">
         <div class="kpi-card report-kpi-income">
-            <div class="kpi-label">📈 Gesamteinnahmen</div>
+            <div class="kpi-label">
+                📈 Gesamteinnahmen
+                <?php if ($isProjection): ?>
+                    <span class="report-prognose-pill">Prognose</span>
+                <?php endif; ?>
+            </div>
             <div class="kpi-value-sm text-green">
                 +<?= number_format($totalIncome, 2, ',', '.') ?> €
             </div>
+            <?php if ($isProjection && isset($cashflow['actual_income'])): ?>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Ist-Stand: +<?= number_format((float)$cashflow['actual_income'], 2, ',', '.') ?> €
+                </div>
+            <?php endif; ?>
         </div>
         <div class="kpi-card report-kpi-expenses">
-            <div class="kpi-label">📉 Gesamtausgaben</div>
+            <div class="kpi-label">
+                📉 Gesamtausgaben
+                <?php if ($isProjection): ?>
+                    <span class="report-prognose-pill">Prognose</span>
+                <?php endif; ?>
+            </div>
             <div class="kpi-value-sm text-red">
                 -<?= number_format($totalExpenses, 2, ',', '.') ?> €
             </div>
+            <?php if ($isProjection && isset($cashflow['actual_expenses'])): ?>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Ist-Stand: -<?= number_format((float)$cashflow['actual_expenses'], 2, ',', '.') ?> €
+                </div>
+            <?php endif; ?>
         </div>
         <div class="kpi-card report-kpi-balance">
-            <div class="kpi-label">💰 Netto-Saldo</div>
+            <div class="kpi-label">
+                💰 Netto-Saldo
+                <?php if ($isProjection): ?>
+                    <span class="report-prognose-pill">Prognose</span>
+                <?php endif; ?>
+            </div>
             <div class="kpi-value-sm <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
                 <?= $netBalance >= 0 ? '+' : '' ?><?= number_format($netBalance, 2, ',', '.') ?> €
             </div>
+            <?php if ($isProjection && isset($cashflow['actual_net_balance'])): ?>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Ist-Stand: <?= $cashflow['actual_net_balance'] >= 0 ? '+' : '' ?><?= number_format((float)$cashflow['actual_net_balance'], 2, ',', '.') ?> €
+                </div>
+            <?php endif; ?>
         </div>
         <div class="kpi-card report-kpi-savings">
-            <div class="kpi-label">🎯 Sparquote</div>
+            <div class="kpi-label">
+                🎯 Sparquote
+                <?php if ($isProjection): ?>
+                    <span class="report-prognose-pill">Prognose</span>
+                <?php endif; ?>
+            </div>
             <div class="kpi-value-sm <?= $savingsRate >= 0 ? ($savingsRate >= 20.0 ? 'text-green' : '') : 'text-red' ?>">
                 <?= $savingsRate > 0 ? '+' : '' ?><?= number_format($savingsRate, 1, ',', '.') ?> %
             </div>
+            <?php if ($isProjection && isset($cashflow['actual_savings_rate_percent'])): ?>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Ist-Stand: <?= number_format((float)$cashflow['actual_savings_rate_percent'], 1, ',', '.') ?> %
+                </div>
+            <?php endif; ?>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">📑 Gebundene Fixkosten</div>
+            <div class="kpi-label">
+                📑 Gebundene Fixkosten
+                <?php if ($isProjection): ?>
+                    <span class="report-prognose-pill">Prognose</span>
+                <?php endif; ?>
+            </div>
             <div class="kpi-value-sm">
                 <?= number_format($fixedExpenses, 2, ',', '.') ?> €
             </div>
+            <?php if ($isProjection && isset($cashflow['actual_fixed_booked'])): ?>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Bereits gebucht: <?= number_format((float)$cashflow['actual_fixed_booked'], 2, ',', '.') ?> €
+                </div>
+            <?php endif; ?>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">🛒 Variabler Konsum</div>
+            <div class="kpi-label">
+                🛒 Variabler Konsum
+            </div>
             <div class="kpi-value-sm">
                 <?= number_format($variableExpenses, 2, ',', '.') ?> €
             </div>
+            <?php if ($isProjection): ?>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Bisher angefallen
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 
@@ -282,7 +357,12 @@ $canEdit = Auth::hasPermission('finance_write');
         <!-- 1. Sparquoten-Barometer (Halbkreis-Tacho) -->
         <div class="card report-cockpit-card">
             <div class="report-cockpit-header">
-                <h3>🧭 Sparquoten-Barometer</h3>
+                <h3>
+                    🧭 Sparquoten-Barometer
+                    <?php if ($isProjection): ?>
+                        <span class="report-prognose-pill">Prognose</span>
+                    <?php endif; ?>
+                </h3>
                 <span class="report-status-badge <?= htmlspecialchars($gaugeStatusClass, ENT_QUOTES, 'UTF-8') ?>">
                     <?= htmlspecialchars($gaugeStatus, ENT_QUOTES, 'UTF-8') ?>
                 </span>
@@ -334,9 +414,14 @@ $canEdit = Auth::hasPermission('finance_write');
         <!-- 2. 50 / 30 / 20 Budget-Verteilung -->
         <div class="card report-cockpit-card">
             <div class="report-cockpit-header">
-                <h3>⚖️ 50 / 30 / 20 Budget-Verteilung</h3>
-                <span class="report-status-badge <?= $isOverBudget ? ($isCurrentPeriod ? 'report-status-tight' : 'report-status-critical') : 'report-status-healthy' ?>">
-                    <?= $isOverBudget ? ($isCurrentPeriod ? 'ZWISCHENSTAND' : 'ÜBERSCHREITUNG') : 'IN BALANCE' ?>
+                <h3>
+                    ⚖️ 50 / 30 / 20 Budget-Verteilung
+                    <?php if ($isProjection): ?>
+                        <span class="report-prognose-pill">Prognose</span>
+                    <?php endif; ?>
+                </h3>
+                <span class="report-status-badge <?= $isOverBudget ? ($isProjection ? 'report-status-tight' : ($isCurrentPeriod ? 'report-status-tight' : 'report-status-critical')) : 'report-status-healthy' ?>">
+                    <?= $isOverBudget ? ($isProjection ? 'PROGNOSE: ÜBERSCHREITUNG' : ($isCurrentPeriod ? 'ZWISCHENSTAND' : 'ÜBERSCHREITUNG')) : ($isProjection ? 'PROGNOSE: IN BALANCE' : 'IN BALANCE') ?>
                 </span>
             </div>
             <div class="report-budget-container">
@@ -366,7 +451,9 @@ $canEdit = Auth::hasPermission('finance_write');
 
                 <?php if ($isOverBudget): ?>
                     <div class="report-budget-deficit-box <?= $isCurrentPeriod ? 'report-budget-ongoing-box' : '' ?>">
-                        <?php if ($isCurrentPeriod): ?>
+                        <?php if ($isProjection): ?>
+                            ℹ️ <strong>Prognose zum Monatsende:</strong> Die Gesamtausgaben übersteigen nach Abzug aller anstehenden Buchungen die Einnahmen voraussichtlich um <strong><?= number_format($budgetDeficit, 2, ',', '.') ?> €</strong>.
+                        <?php elseif ($isCurrentPeriod): ?>
                             ℹ️ <strong>Laufender Monat:</strong> Ausgaben liegen aktuell um <?= number_format($budgetDeficit, 2, ',', '.') ?> € über den bisherigen Eingängen. Der finale Ausgleich erfolgt in der Regel mit dem Gehaltseingang zum Monatsende.
                         <?php else: ?>
                             ⚠️ Ausgaben übersteigen Einnahmen um <strong><?= number_format($budgetDeficit, 2, ',', '.') ?> €</strong>
@@ -769,7 +856,7 @@ $canEdit = Auth::hasPermission('finance_write');
                                 </td>
                                 <td data-label="Art">
                                     <span class="report-dev-badge report-dev-<?= htmlspecialchars($dev['type'], ENT_QUOTES, 'UTF-8') ?>">
-                                        <?= $dev['type'] === 'missing_payment' ? 'Fehlend' : 'Betrag' ?>
+                                        <?= $dev['type'] === 'missing_payment' ? 'Fehlend' : ($dev['type'] === 'pending_payment' ? 'Ausstehend' : 'Betrag') ?>
                                     </span>
                                 </td>
                                 <td data-label="Soll" class="text-right">

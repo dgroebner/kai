@@ -143,6 +143,7 @@ SPRACHE & TONFALL:
 WICHTIGE REGEL ZU DEN SUMMEN:
 Die Buchungsdaten nutzen ein Multi-Label-System. Einzelne Buchungen können mehreren Tags zugeordnet sein. 
 - Nutze für Gesamtsalden, Sparquote und Realausgaben AUSSCHLIESSLICH die Zahlen aus `cashflow_totals`. Addiere NIEMALS die Werte aus `tag_breakdown` auf, da Buchungen mehrere Tags haben können und dies zu Doppelzählungen führt.
+- Falls `cashflow_totals.is_projection` true ist: Der Monat läuft noch und die Zahlen stellen eine Prognose zum Monatsende dar (bereits gebuchte Umsätze + noch ausstehende vertragliche Einnahmen und Ausgaben). Sprich in diesem Fall von einer Hochrechnung / Prognose zum Monatsende und berücksichtige, dass noch ausstehende Zahlungen eingeplant sind.
 - Nutze `tag_breakdown` ausschließlich, um Schwerpunkte und Ausreißer zu erklären.
 
 AUFGABEN:
@@ -241,17 +242,27 @@ PROMPT;
         $net = (float)($cashflow['net_balance'] ?? 0.0);
         $savings = (float)($cashflow['savings_rate_percent'] ?? 0.0);
 
-        $summary = sprintf(
-            'In diesem Zeitraum sind unterm Strich %+.2f € übrig geblieben. Deine Sparquote lag bei %.1f%%.',
-            $net,
-            $savings
-        );
+        $isProjection = !empty($cashflow['is_projection']);
+        if ($isProjection) {
+            $summary = sprintf(
+                'Prognose zum Monatsende: Voraussichtlich bleiben unterm Strich %+.2f € übrig bei einer prognostizierten Sparquote von %.1f%%.',
+                $net,
+                $savings
+            );
+        } else {
+            $summary = sprintf(
+                'In diesem Zeitraum sind unterm Strich %+.2f € übrig geblieben. Deine Sparquote lag bei %.1f%%.',
+                $net,
+                $savings
+            );
+        }
 
         $contractFindings = [];
         foreach (($aggregatedData['contract_deviations'] ?? []) as $dev) {
+            $severity = ($dev['type'] ?? '') === 'pending_payment' ? 'info' : 'warning';
             $contractFindings[] = [
                 'contract_name' => $dev['contract_name'],
-                'severity' => 'warning',
+                'severity' => $severity,
                 'description' => $dev['details'],
             ];
         }

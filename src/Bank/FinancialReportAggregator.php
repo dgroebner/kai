@@ -40,7 +40,8 @@ class FinancialReportAggregator
         $cashflowTotals = $this->calculateCashflowTotals(
             $dates['target_start'],
             $dates['target_end'],
-            $periodType
+            $periodType,
+            $periodTarget
         );
 
         $tagBreakdown = $this->calculateTagBreakdown(
@@ -119,8 +120,10 @@ class FinancialReportAggregator
 
     /**
      * Berechnet die disjunkten Gesamtsummen auf Buchungsebene (jede Buchung exakt 1x gewertet).
+     * In einem laufenden Monat wird eine Prognose zum Monatsende berechnet, die alle noch ausstehenden
+     * Vertragsbuchungen (Einnahmen und Fixkosten) hinzurechnet.
      */
-    private function calculateCashflowTotals(string $startDate, string $endDate, string $periodType): array
+    private function calculateCashflowTotals(string $startDate, string $endDate, string $periodType, ?string $periodTarget = null): array
     {
         $stmt = $this->pdo->prepare("
             SELECT
@@ -133,14 +136,40 @@ class FinancialReportAggregator
         $stmt->execute([':start' => $startDate, ':end' => $endDate]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-        $totalIncome = (float)($row['total_income'] ?? 0.0);
-        $totalExpenses = (float)($row['total_expenses'] ?? 0.0);
+        $actualIncome = (float)($row['total_income'] ?? 0.0);
+        $actualExpenses = (float)($row['total_expenses'] ?? 0.0);
         $fixedBooked = (float)($row['fixed_booked'] ?? 0.0);
 
-        // Fixkosten ermitteln: Wenn Buchungen mit Verträgen verknüpft sind, diese nutzen.
-        // Falls noch keine oder wenige Buchungen verknüpft sind, Soll-Summe aktiver Verträge als Basis heranziehen.
-        $contractNominal = $this->calculateNominalFixedExpenses($periodType);
-        $fixedExpensesTotal = $fixedBooked > 0 ? $fixedBooked : $contractNominal;
+        // Prüfen, ob es sich um den aktuell noch laufenden Monat handelt
+        $isCurrentMonth = ($periodType === 'month' && $periodTarget === date('Y-m'));
+
+        $pendingData = ['pending_income' => 0.0, 'pending_expenses' => 0.0, 'contracts' => []];
+        if ($isCurrentMonth) {
+            $pendingData = $this->calculatePendingContracts($startDate, $endDate);
+        }
+
+        $pendingIncome = $pendingData['pending_income'];
+        $pendingExpenses = $pendingData['pending_expenses'];
+        $isProjection = $isCurrentMonth;
+
+        if ($isProjection) {
+            // Prognosewerte zum Monatsende: Reale Buchungen + noch ausstehende Verträge
+            $totalIncome = $actualIncome + $pendingIncome;
+            $totalExpenses = $actualExpenses + $pendingExpenses;
+            $fixedExpensesTotal = $fixedBooked + $pendingExpenses;
+
+            // Plausibilität gegen Soll-Summe aktiver Verträge absichern
+            $contractNominal = $this->calculateNominalFixedExpenses($periodType);
+            if ($fixedExpensesTotal < $contractNominal && $contractNominal > 0) {
+                $fixedExpensesTotal = $contractNominal;
+            }
+        } else {
+            // Abgeschlossener Zeitraum
+            $totalIncome = $actualIncome;
+            $totalExpenses = $actualExpenses;
+            $contractNominal = $this->calculateNominalFixedExpenses($periodType);
+            $fixedExpensesTotal = $fixedBooked > 0 ? $fixedBooked : $contractNominal;
+        }
 
         // Plausibilitäts-Begrenzung: Fixkosten dürfen nicht größer als Gesamtausgaben sein, falls Ausgaben vorliegen
         if ($totalExpenses > 0 && $fixedExpensesTotal > $totalExpenses) {
@@ -157,13 +186,134 @@ class FinancialReportAggregator
             $savingsRate = -100.0;
         }
 
+        $actualNetBalance = $actualIncome - $actualExpenses;
+        $actualSavingsRate = 0.0;
+        if ($actualIncome > 0.01) {
+            $actualSavingsRate = round(($actualNetBalance / $actualIncome) * 100, 1);
+        } elseif ($actualExpenses > 0.01) {
+            $actualSavingsRate = -100.0;
+        }
+
         return [
+            'is_projection' => $isProjection,
             'total_income' => round($totalIncome, 2),
             'total_expenses' => round($totalExpenses, 2),
             'net_balance' => round($netBalance, 2),
             'savings_rate_percent' => $savingsRate,
             'fixed_expenses_total' => round($fixedExpensesTotal, 2),
             'variable_expenses_total' => round($variableExpensesTotal, 2),
+            // Reale Ist-Werte für Detailansicht & Tooltips
+            'actual_income' => round($actualIncome, 2),
+            'actual_expenses' => round($actualExpenses, 2),
+            'actual_net_balance' => round($actualNetBalance, 2),
+            'actual_savings_rate_percent' => $actualSavingsRate,
+            'actual_fixed_booked' => round($fixedBooked, 2),
+            'pending_income' => $pendingIncome,
+            'pending_expenses' => $pendingExpenses,
+            'pending_contracts' => $pendingData['contracts'],
+        ];
+    }
+
+    /**
+     * Ermittelt alle noch ausstehenden aktiven Vertragsbuchungen für einen laufenden Monat.
+     */
+    private function calculatePendingContracts(string $startDate, string $endDate): array
+    {
+        $targetYear = (int)substr($startDate, 0, 4);
+        $targetMonth = (int)substr($startDate, 5, 2);
+
+        $stmt = $this->pdo->query("
+            SELECT id, name, betrag, frequenz, variabel, start_datum, end_datum, direction, faelligkeitstag
+            FROM bank_contracts
+            WHERE status = 'aktiv'
+            ORDER BY faelligkeitstag ASC, name ASC
+        ");
+        $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $stmtTx = $this->pdo->prepare("
+            SELECT id, booking_date, amount
+            FROM bank_giro_transactions
+            WHERE contract_id = :contract_id
+              AND booking_date BETWEEN :start AND :end
+            LIMIT 1
+        ");
+
+        $pendingIncome = 0.0;
+        $pendingExpenses = 0.0;
+        $pendingList = [];
+
+        foreach ($contracts as $contract) {
+            $contractId = (int)$contract['id'];
+            $amount = (float)$contract['betrag'];
+            $frequency = $contract['frequenz'];
+            $direction = $contract['direction'] ?? 'expense';
+            $dueDay = !empty($contract['faelligkeitstag']) ? (int)$contract['faelligkeitstag'] : 1;
+
+            // Gültigkeitszeitraum prüfen
+            if (!empty($contract['start_datum']) && $contract['start_datum'] > $endDate) {
+                continue;
+            }
+            if (!empty($contract['end_datum']) && $contract['end_datum'] < $startDate) {
+                continue;
+            }
+
+            // Rhythmus-Prüfung
+            if ($frequency === 'vierteljaehrlich' && !empty($contract['start_datum'])) {
+                $startDt = new \DateTimeImmutable($contract['start_datum']);
+                $monthDiff = ($targetYear - (int)$startDt->format('Y')) * 12 + ($targetMonth - (int)$startDt->format('n'));
+                if ($monthDiff % 3 !== 0) {
+                    continue;
+                }
+            } elseif ($frequency === 'halbjaehrlich' && !empty($contract['start_datum'])) {
+                $startDt = new \DateTimeImmutable($contract['start_datum']);
+                $monthDiff = ($targetYear - (int)$startDt->format('Y')) * 12 + ($targetMonth - (int)$startDt->format('n'));
+                if ($monthDiff % 6 !== 0) {
+                    continue;
+                }
+            } elseif ($frequency === 'jaehrlich' && !empty($contract['start_datum'])) {
+                $startDt = new \DateTimeImmutable($contract['start_datum']);
+                if ($targetMonth !== (int)$startDt->format('n')) {
+                    continue;
+                }
+            }
+
+            // Prüfen, ob für diesen Vertrag in diesem Monat bereits eine Buchung vorhanden ist
+            $stmtTx->execute([
+                ':contract_id' => $contractId,
+                ':start' => $startDate,
+                ':end' => $endDate,
+            ]);
+            $existingTx = $stmtTx->fetch(PDO::FETCH_ASSOC);
+
+            // Wenn bereits verbucht, ist die Zahlung nicht mehr ausstehend
+            if ($existingTx !== false && !empty($existingTx)) {
+                continue;
+            }
+
+            // Noch ausstehend!
+            $expectedDate = BankContractRepository::calculateExpectedDate($targetYear, $targetMonth, $dueDay);
+
+            if ($direction === 'income') {
+                $pendingIncome += $amount;
+            } else {
+                $pendingExpenses += $amount;
+            }
+
+            $pendingList[] = [
+                'contract_id' => $contractId,
+                'name' => $contract['name'],
+                'direction' => $direction,
+                'amount' => $amount,
+                'due_day' => $dueDay,
+                'expected_date' => $expectedDate,
+                'frequency' => $frequency,
+            ];
+        }
+
+        return [
+            'pending_income' => round($pendingIncome, 2),
+            'pending_expenses' => round($pendingExpenses, 2),
+            'contracts' => $pendingList,
         ];
     }
 
@@ -349,15 +499,26 @@ class FinancialReportAggregator
             $actualSum = round($actualSum, 2);
 
             if (empty($transactions)) {
-                // Bei monatlichen Verträgen im Monatsbericht ist das Fehlen einer Zahlung eine relevante Abweichung
+                // Bei monatlichen Verträgen im Monatsbericht ist das Fehlen/Ausstehen einer Zahlung relevant
                 if ($periodType === 'month' && $frequency === 'monatlich') {
+                    $isCurrentMonth = (substr($targetStart, 0, 7) === date('Y-m'));
+                    $isPending = $isCurrentMonth && ($expectedDate === null || $expectedDate >= date('Y-m-d'));
+
                     $details = 'Keine Buchung im Auswertungszeitraum gefunden.';
                     if ($expectedDate !== null) {
-                        $details = sprintf(
-                            'Keine Buchung gefunden (erwartet zum %d. bzw. %s).',
-                            $dueDay,
-                            date('d.m.Y', strtotime($expectedDate))
-                        );
+                        if ($isPending) {
+                            $details = sprintf(
+                                'Zahlung für diesen Monat steht noch aus (erwartet zum %d. bzw. %s).',
+                                $dueDay,
+                                date('d.m.Y', strtotime($expectedDate))
+                            );
+                        } else {
+                            $details = sprintf(
+                                'Keine Buchung gefunden (erwartet zum %d. bzw. %s).',
+                                $dueDay,
+                                date('d.m.Y', strtotime($expectedDate))
+                            );
+                        }
                     }
 
                     $deviations[] = [
@@ -367,7 +528,8 @@ class FinancialReportAggregator
                         'difference' => -$expected,
                         'due_day' => $dueDay,
                         'expected_date' => $expectedDate,
-                        'type' => 'missing_payment',
+                        'is_pending' => $isPending,
+                        'type' => $isPending ? 'pending_payment' : 'missing_payment',
                         'details' => $details,
                     ];
                 }
