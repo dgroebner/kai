@@ -3930,7 +3930,8 @@ body {
     line-height: 1.5;
 }
 
-.report-ongoing-body strong {
+.report-ongoing-body > strong,
+.report-ongoing-title {
     display: block;
     color: #60a5fa;
     font-size: 0.98rem;
@@ -3940,6 +3941,10 @@ body {
 .report-ongoing-body p {
     margin: 0;
     color: var(--text-muted, #94a3b8);
+}
+
+.report-ongoing-body p strong {
+    color: var(--text-main, #f8fafc);
 }
 
 /* --- FINANZ-COCKPIT (BAROMETER & 50/30/20) --- */

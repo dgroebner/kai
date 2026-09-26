@@ -106,7 +106,7 @@ $isProjection = !empty($cashflow['is_projection']);
 
 if ($netBalance < 0) {
     if ($isProjection) {
-        $gaugeStatus = 'Prognose: Defizit';
+        $gaugeStatus = 'Defizit';
         $gaugeStatusClass = 'report-status-critical';
     } elseif ($isCurrentPeriod) {
         $gaugeStatus = 'Zwischenstand';
@@ -117,17 +117,17 @@ if ($netBalance < 0) {
     }
 } elseif ($savingsRate < 10.0) {
     if ($isProjection) {
-        $gaugeStatus = 'Prognose: Geringer Puffer';
+        $gaugeStatus = 'Geringer Puffer';
         $gaugeStatusClass = 'report-status-tight';
     } else {
         $gaugeStatus = $isCurrentPeriod ? 'Zwischenstand' : 'Geringer Puffer';
         $gaugeStatusClass = 'report-status-tight';
     }
 } elseif ($savingsRate < 25.0) {
-    $gaugeStatus = $isProjection ? 'Prognose: Solide Sparquote' : 'Solide Sparquote';
+    $gaugeStatus = 'Solide Sparquote';
     $gaugeStatusClass = 'report-status-healthy';
 } else {
-    $gaugeStatus = $isProjection ? 'Prognose: Exzellenter Sparer' : 'Exzellenter Sparer';
+    $gaugeStatus = 'Exzellenter Sparer';
     $gaugeStatusClass = 'report-status-healthy';
 }
 
@@ -240,26 +240,25 @@ $canEdit = Auth::hasPermission('finance_write');
         <div class="report-ongoing-banner">
             <div class="report-ongoing-icon">ℹ️</div>
             <div class="report-ongoing-body">
-                <strong>Laufender Monat (<?= $isProjection ? 'Prognose zum Monatsende' : 'Zwischenstand' ?>):</strong>
+                <strong class="report-ongoing-title">Laufender Monat (<?= $isProjection ? 'Prognose zum Monatsende' : 'Zwischenstand' ?>):</strong>
                 <p>
                     <?php if ($isProjection): ?>
-                        Dieser Monat ist aktuell noch in Bewegung. Um eine verzerrte Momentaufnahme zu vermeiden, arbeiten die Kennzahlen und Barometer oben mit einer <strong>Prognose zum Monatsende</strong>:
-                        Bereits verbuchte Umsätze werden mit allen noch ausstehenden, fest eingeplanten Vertragsbuchungen zusammengeführt (noch ausstehend:
+                        Dieser Monat ist aktuell noch in Bewegung. Um eine verzerrte Momentaufnahme zu vermeiden, arbeiten die Kennzahlen und Barometer oben mit einer <strong>Prognose zum Monatsende</strong>: Bereits verbuchte Umsätze werden mit allen noch ausstehenden, fest eingeplanten Vertragsbuchungen zusammengeführt (noch ausstehend:
                         <span class="text-green">+<?= number_format((float)($cashflow['pending_income'] ?? 0), 2, ',', '.') ?> €</span> Einnahmen,
                         <span class="text-red">-<?= number_format((float)($cashflow['pending_expenses'] ?? 0), 2, ',', '.') ?> €</span> Fixkosten).
-                        <?php if (!empty($cashflow['pending_contracts'])): ?>
-                            <div style="margin-top: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
-                                <strong>Ausstehende Verträge:</strong>
-                                <?= implode(', ', array_map(function ($c) {
-                                    $dueStr = !empty($c['expected_date']) ? ' (erwartet: ' . date('d.m.', strtotime($c['expected_date'])) . ')' : '';
-                                    return htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') . ' (' . number_format((float)$c['amount'], 2, ',', '.') . ' €' . $dueStr . ')';
-                                }, $cashflow['pending_contracts'])) ?>
-                            </div>
-                        <?php endif; ?>
                     <?php else: ?>
                         Dieser Monat ist aktuell noch in Bewegung. Fixkosten, Leasingraten und laufende Verträge werden typischerweise direkt am Monatsanfang abgebucht, während das Gehalt und ausgleichende Einnahmen meist erst gegen Monatsende eingehen. Ein temporäres rechnerisches Minus oder eine geringere Sparquote zur Monatsmitte ist daher völlig normal und gleicht sich zum Monatsabschluss meist wieder aus.
                     <?php endif; ?>
                 </p>
+                <?php if ($isProjection && !empty($cashflow['pending_contracts'])): ?>
+                    <div style="margin-top: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
+                        <strong style="display: inline; color: #60a5fa;">Ausstehende Verträge:</strong>
+                        <?= implode(', ', array_map(function ($c) {
+                            $dueStr = !empty($c['expected_date']) ? ' (erwartet: ' . date('d.m.', strtotime($c['expected_date'])) . ')' : '';
+                            return htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') . ' (' . number_format((float)$c['amount'], 2, ',', '.') . ' €' . $dueStr . ')';
+                        }, $cashflow['pending_contracts'])) ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -429,8 +428,8 @@ $canEdit = Auth::hasPermission('finance_write');
                         <span class="report-prognose-pill">Prognose</span>
                     <?php endif; ?>
                 </h3>
-                <span class="report-status-badge <?= $isOverBudget ? ($isProjection ? 'report-status-tight' : ($isCurrentPeriod ? 'report-status-tight' : 'report-status-critical')) : 'report-status-healthy' ?>">
-                    <?= $isOverBudget ? ($isProjection ? 'PROGNOSE: ÜBERSCHREITUNG' : ($isCurrentPeriod ? 'ZWISCHENSTAND' : 'ÜBERSCHREITUNG')) : ($isProjection ? 'PROGNOSE: IN BALANCE' : 'IN BALANCE') ?>
+                <span class="report-status-badge <?= $isOverBudget ? ($isCurrentPeriod ? 'report-status-tight' : 'report-status-critical') : 'report-status-healthy' ?>">
+                    <?= $isOverBudget ? ($isCurrentPeriod && !$isProjection ? 'ZWISCHENSTAND' : 'ÜBERSCHREITUNG') : 'IN BALANCE' ?>
                 </span>
             </div>
             <div class="report-budget-container">
