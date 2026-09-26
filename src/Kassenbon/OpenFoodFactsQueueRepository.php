@@ -19,6 +19,21 @@ class OpenFoodFactsQueueRepository
     }
 
     /**
+     * Zentralisierte Normalisierung für OFF Product Keys (verhindert doppelte Leerzeichen-Probleme und Händlerpräfixe)
+     */
+    public static function normalizeProductKey(string $name): string
+    {
+        // Falls ein Händler-Präfix wie "REWE:::" übergeben wurde, entfernen
+        if (str_contains($name, ':::')) {
+            $parts = explode(':::', $name, 2);
+            $name = $parts[1];
+        }
+        $name = trim($name);
+        $name = (string)preg_replace('/\s+/', ' ', $name);
+        return mb_strtolower($name, 'UTF-8');
+    }
+
+    /**
      * Prüft, ob ein Artikelname generisch ist und nicht bei OFF gesucht werden sollte.
      */
     private function isIgnoredProduct(string $name): bool
@@ -43,7 +58,7 @@ class OpenFoodFactsQueueRepository
      */
     public function enqueueProduct(string $productKey, string $searchTerm): void
     {
-        $cleanKey = mb_strtolower(trim($productKey), 'UTF-8');
+        $cleanKey = self::normalizeProductKey($productKey);
         $cleanSearch = trim($searchTerm);
         if ($cleanKey === '' || $cleanSearch === '' || $this->isIgnoredProduct($cleanSearch)) {
             return;
@@ -80,7 +95,7 @@ class OpenFoodFactsQueueRepository
 
         $count = 0;
         foreach ($items as $item) {
-            $key = mb_strtolower(trim($item['key'] ?? ''), 'UTF-8');
+            $key = self::normalizeProductKey($item['key'] ?? '');
             $search = trim($item['search'] ?? '');
             if ($key !== '' && $search !== '' && !$this->isIgnoredProduct($search)) {
                 $stmt->execute([':key' => $key, ':search' => $search]);
@@ -142,7 +157,7 @@ class OpenFoodFactsQueueRepository
      */
     public function saveResult(array $data): void
     {
-        $key = mb_strtolower(trim($data['product_key'] ?? ''), 'UTF-8');
+        $key = self::normalizeProductKey($data['product_key'] ?? '');
         if ($key === '') {
             return;
         }
@@ -211,11 +226,32 @@ class OpenFoodFactsQueueRepository
      */
     public function getProduct(string $productKey): ?array
     {
-        $key = mb_strtolower(trim($productKey), 'UTF-8');
+        $key = self::normalizeProductKey($productKey);
         $stmt = $this->pdo->prepare("SELECT * FROM kb_off_products WHERE product_key = :key LIMIT 1");
         $stmt->execute([':key' => $key]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return $row;
+        }
 
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        // Fallback: Falls der Eintrag früher mit Händler-Präfix (z. B. 'rewe:::...') gespeichert wurde
+        $stmt = $this->pdo->prepare("SELECT * FROM kb_off_products WHERE product_key LIKE :likeKey LIMIT 1");
+        $stmt->execute([':likeKey' => '%:::' . $key]);
+        $fallback = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($fallback) {
+            // Key auf kanonischen Namen migrieren, falls der kanonische Key noch nicht belegt ist
+            try {
+                $upStmt = $this->pdo->prepare("UPDATE IGNORE kb_off_products SET product_key = :newKey WHERE id = :id");
+                $upStmt->execute([':newKey' => $key, ':id' => (int)$fallback['id']]);
+                $fallback['product_key'] = $key;
+            } catch (\Throwable) {
+                // Bei Unique-Konflikt ignorieren
+            }
+            return $fallback;
+        }
+
+        return null;
     }
 
     /**
@@ -230,7 +266,7 @@ class OpenFoodFactsQueueRepository
             return [];
         }
 
-        $cleanKeys = array_map(fn($k) => mb_strtolower(trim($k), 'UTF-8'), $keys);
+        $cleanKeys = array_map(fn($k) => self::normalizeProductKey($k), $keys);
         $cleanKeys = array_values(array_unique(array_filter($cleanKeys)));
 
         if (empty($cleanKeys)) {
@@ -261,24 +297,27 @@ class OpenFoodFactsQueueRepository
      */
     public function enqueueAllPendingItems(): int
     {
-        // Schritt 1: Alle kb_items eintragen, die noch gar nicht in der Queue sind.
-        // INSERT IGNORE sorgt dafür, dass bestehende Einträge (egal welchen Status)
-        // unberührt bleiben; nur echte Neulinge werden eingefügt.
-        $insertStmt = $this->pdo->prepare("
-            INSERT IGNORE INTO kb_off_products (product_key, search_term, status)
-            SELECT
-                LOWER(TRIM(ki.name)) AS product_key,
-                ki.name              AS search_term,
-                'pending'            AS status
-            FROM kb_items AS ki
-            LEFT JOIN kb_off_products AS off
-                ON off.product_key = LOWER(TRIM(ki.name))
-            WHERE off.product_key IS NULL
-              AND TRIM(ki.name) != ''
-              AND LOWER(TRIM(ki.name)) NOT REGEXP 'rabatt|abverkauf|pfand|leergut|coupon|gutschein|auszahlung|rückgeld'
-        ");
-        $insertStmt->execute();
-        $newlyInserted = (int) $insertStmt->rowCount();
+        // Schritt 1: Alle kb_items holen und in PHP normalisieren, um saubere Keys zu garantieren
+        $stmt = $this->pdo->prepare("SELECT DISTINCT name FROM kb_items WHERE TRIM(name) != ''");
+        $stmt->execute();
+        $allNames = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        $newlyInserted = 0;
+        if (!empty($allNames)) {
+            $insertStmt = $this->pdo->prepare("
+                INSERT IGNORE INTO kb_off_products (product_key, search_term, status)
+                VALUES (:key, :search, 'pending')
+            ");
+
+            foreach ($allNames as $name) {
+                $search = trim((string)$name);
+                $key = self::normalizeProductKey($search);
+                if ($key !== '' && !$this->isIgnoredProduct($search)) {
+                    $insertStmt->execute([':key' => $key, ':search' => $search]);
+                    $newlyInserted += $insertStmt->rowCount();
+                }
+            }
+        }
 
         // Schritt 2: Abgelaufene not_found-Einträge zurücksetzen (90-Tage-Cooldown).
         // Kein Schema-Change nötig – der Cron-Job in mail.php übernimmt das Auffrischen.

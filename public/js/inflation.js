@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await KaiHttp.postJson('api.php', {
                 action: 'lookup_open_food_facts',
                 query: currentModalProduct.name,
-                product_key: currentModalProduct.key
+                product_key: currentModalProduct.name
             });
 
             if (res.success && res.data) {

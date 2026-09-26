@@ -141,3 +141,9 @@ CREATE TABLE IF NOT EXISTS `kb_off_products` (
 ALTER TABLE `kb_off_products`
     ADD COLUMN IF NOT EXISTS `confidence` DECIMAL(3,2) NULL DEFAULT NULL
     COMMENT 'Aehnlichkeits-Score zwischen Suchbegriff und Produktnamen (0.00-1.00)';
+
+-- OFF-Produkte: Bestehende Einträge mit Händlerpräfix (z. B. 'rewe:::...') auf kanonischen Product-Key bereinigen
+UPDATE IGNORE `kb_off_products`
+SET `product_key` = SUBSTRING_INDEX(`product_key`, ':::', -1)
+WHERE `product_key` LIKE '%:::%';
+

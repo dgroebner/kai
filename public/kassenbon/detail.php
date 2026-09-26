@@ -76,9 +76,9 @@ try {
     </header>
 
 <?php
-// product_key für jedes Item ergänzen (Kleinbuchstaben-Trim des Namens)
+// product_key für jedes Item ergänzen (Kleinbuchstaben, getrimmt, reduzierte Leerzeichen)
 $itemsWithKey = array_map(static function (array $item): array {
-    $item['product_key'] = mb_strtolower(trim($item['name'] ?? ''), 'UTF-8');
+    $item['product_key'] = \Kai\Tools\Kassenbon\OpenFoodFactsQueueRepository::normalizeProductKey($item['name'] ?? '');
     return $item;
 }, $items);
 ?>
