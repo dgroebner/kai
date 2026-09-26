@@ -5,6 +5,7 @@ namespace Kai\Tools\Kassenbon;
 use Exception;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 
 class ReceiptAnalyzer
 {
@@ -35,14 +36,20 @@ class ReceiptAnalyzer
         $prompt = "Du bist ein präziser Datenextraktions-Assistent. Analysiere diesen Kassenbon. " .
             "Gib AUSSCHLIESSLICH valides JSON zurück. Formatiere es NICHT als Markdown (kein ```json). " .
             $categoryContext . " " .
+            "WICHTIGE REGEL FÜR 'store': Gib als Händler ausschließlich den kurzen, bekannten Markennamen bzw. Kettennamen an " .
+            "(z.B. 'REWE', 'Globus', 'Obi', 'Edeka', 'Netto', 'Lidl', 'Aldi', 'Penny', 'Kaufland', 'Flaschenpost', 'Fressnapf', 'dm', 'Rossmann'). " .
+            "Entferne Inhabernamen (wie Lucas Musculus oHG, e.K.), Rechtsformen (GmbH, AG, KG etc.), Filialangaben und Ortsnamen vollständig. " .
             "Das JSON muss exakt dieses Format haben: " .
-            "{ \"store\": \"Name des Händlers\", \"date\": \"YYYY-MM-DD\", \"total\": 0.00, " .
+            "{ \"store\": \"Kettenname des Händlers\", \"date\": \"YYYY-MM-DD\", \"total\": 0.00, " .
             "\"items\": [ { \"name\": \"Artikelname\", \"quantity\": 1.0, \"unit_price\": 0.00, \"total_price\": 0.00, \"category\": \"Kategorie-Name\" } ] }";
 
         try {
             $result = $this->aiClient->generate($prompt, $mimeType, $base64Data, true);
 
             if ($result) {
+                if (isset($result['store'])) {
+                    $result['store'] = MerchantNormalizer::normalize($result['store']);
+                }
                 $this->logger->info("ReceiptAnalyzer: JSON-Daten erfolgreich extrahiert.");
                 return $result;
             }

@@ -4,6 +4,7 @@ namespace Kai\Tools\Bank;
 
 use DateTimeImmutable;
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 use PDO;
 
 class FinancialReportAggregator
@@ -572,51 +573,23 @@ class FinancialReportAggregator
         $stmtReceipts->execute([':start' => $targetStart, ':end' => $targetEnd]);
         $receiptMerchants = $stmtReceipts->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+        // Kreditkarten-Umsätze: Transaktionen ausschließen, die bereits mit einem Kassenbon verknüpft sind
         $stmtCC = $this->pdo->prepare("
-            SELECT merchant_name AS merchant, SUM(ABS(amount)) AS total, COUNT(*) AS count
-            FROM bank_cc_transactions
-            WHERE booking_date BETWEEN :start AND :end
-              AND amount < 0
-              AND merchant_name IS NOT NULL AND merchant_name != ''
-            GROUP BY merchant_name
+            SELECT t.merchant_name AS merchant, SUM(ABS(t.amount)) AS total, COUNT(*) AS count
+            FROM bank_cc_transactions t
+            WHERE t.booking_date BETWEEN :start AND :end
+              AND t.amount < 0
+              AND t.merchant_name IS NOT NULL AND t.merchant_name != ''
+              AND NOT EXISTS (
+                  SELECT 1 FROM kb_receipts rec WHERE rec.bank_cc_transaction_id = t.id
+              )
+            GROUP BY t.merchant_name
         ");
         $stmtCC->execute([':start' => $targetStart, ':end' => $targetEnd]);
         $ccMerchants = $stmtCC->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $merchantMap = [];
-        foreach ($receiptMerchants as $m) {
-            $name = trim((string)$m['merchant']);
-            if ($name === '') {
-                continue;
-            }
-            $merchantMap[$name] = [
-                'merchant' => $name,
-                'total' => (float)$m['total'],
-                'count' => (int)$m['count'],
-            ];
-        }
-        foreach ($ccMerchants as $m) {
-            $name = trim((string)$m['merchant']);
-            if ($name === '') {
-                continue;
-            }
-            if (!isset($merchantMap[$name])) {
-                $merchantMap[$name] = [
-                    'merchant' => $name,
-                    'total' => 0.0,
-                    'count' => 0,
-                ];
-            }
-            $merchantMap[$name]['total'] += (float)$m['total'];
-            $merchantMap[$name]['count'] += (int)$m['count'];
-        }
-
-        uasort($merchantMap, static fn(array $a, array $b): int => $b['total'] <=> $a['total']);
-        $topMerchants = array_slice(array_values($merchantMap), 0, 5);
-        foreach ($topMerchants as &$tm) {
-            $tm['total'] = round($tm['total'], 2);
-        }
-        unset($tm);
+        $allMerchants = array_merge($receiptMerchants, $ccMerchants);
+        $topMerchants = MerchantNormalizer::consolidateTopMerchants($allMerchants, 5);
 
         // 2. Micro Transactions (< 10 € Ausgaben im Giro- und Kreditkartenbereich)
         $stmtMicroGiro = $this->pdo->prepare("
@@ -699,7 +672,7 @@ class FinancialReportAggregator
             $categories = array_map('trim', explode(',', $b['categories']));
             $basketSplits[] = [
                 'receipt_id' => (int)$b['receipt_id'],
-                'store' => $b['store'],
+                'store' => MerchantNormalizer::normalize($b['store']),
                 'purchase_date' => $b['purchase_date'],
                 'total' => (float)$b['total'],
                 'categories' => $categories,

@@ -5,6 +5,7 @@ namespace Kai\Tools\Einkaufsliste;
 use Exception;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 use PDO;
 
 /**
@@ -402,6 +403,7 @@ class ReceiptSessionService
             $effectiveDisplayName = $matchedDisplayName ?: ($mappedMasterName ?: $rawName);
             $hasLearnedName = ($mappedMasterName !== null && mb_strtolower($mappedMasterName, 'UTF-8') !== $normRaw);
 
+            $normalizedStore = MerchantNormalizer::normalize($item['store'] ?? '');
             $entry = [
                 'id' => (int)$item['id'],
                 'receipt_id' => (int)$item['receipt_id'],
@@ -409,7 +411,7 @@ class ReceiptSessionService
                 'display_name' => $effectiveDisplayName,
                 'master_name' => $mappedMasterName,
                 'has_learned_name' => $hasLearnedName,
-                'store' => $item['store'],
+                'store' => $normalizedStore,
                 'category' => $item['category'],
                 'quantity' => (float)$item['quantity'],
                 'unit_price' => (float)$item['unit_price'],
@@ -430,7 +432,7 @@ class ReceiptSessionService
                     'name' => $rawName,
                     'display_name' => $effectiveDisplayName,
                     'price' => $cost,
-                    'store' => $item['store'],
+                    'store' => $normalizedStore,
                 ];
                 $formattedSessionItems[$matchedSessionItemId]['matched_cost'] += $cost;
             } else {

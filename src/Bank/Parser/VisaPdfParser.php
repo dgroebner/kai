@@ -72,7 +72,7 @@ WICHTIGE REGELN:
 2. Extrahiere ALLE einzelnen Käufe/Umsätze in das Array "transactions":
    - booking_date: Kaufdatum (Format YYYY-MM-DD)
    - valuta_date: Buchungsdatum / Wertstellung (Format YYYY-MM-DD)
-   - merchant_name: Name des Händlers inkl. Ort (z.B. "REWE Lucas Musculu, Leipzig")
+   - merchant_name: Name der Kette bzw. des Händlers ohne Rechtsformen oder Ort (z.B. "REWE", "Globus", "Shell", "Sachsen-Therme")
    - amount: Betrag in Euro als Zahl. WICHTIG: Ausgaben MÜSSEN NEGATIV sein (z.B. -26.80). Gutschriften/Rückerstattungen MÜSSEN POSITIV sein (z.B. 14.97).
    - card_number_suffix: Die letzten Ziffern der verwendeten Karte (z.B. "9024" oder "9016")
    - card_holder: Name des Karteninhabers, falls dem Kartenblock zugeordnet (z.B. "ANJA GROBNER")

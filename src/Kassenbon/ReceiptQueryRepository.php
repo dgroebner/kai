@@ -3,6 +3,7 @@
 namespace Kai\Tools\Kassenbon;
 
 use Kai\Tools\Shared\Db\Database;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 use PDO;
 
 /**
@@ -53,7 +54,13 @@ class ReceiptQueryRepository
         $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as &$row) {
+            $row['store'] = MerchantNormalizer::normalize($row['store'] ?? '');
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /**
@@ -74,7 +81,12 @@ class ReceiptQueryRepository
         ");
         $stmt->execute([':id' => $receiptId]);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $receipt = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($receipt !== null) {
+            $receipt['store'] = MerchantNormalizer::normalize($receipt['store'] ?? '');
+        }
+
+        return $receipt;
     }
 
     /**

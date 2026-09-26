@@ -50,3 +50,34 @@ JOIN (
     GROUP BY contract_id
 ) b ON c.id = b.contract_id
 SET c.faelligkeitstag = b.last_day;
+
+-- Händler-Normalisierung für bestehende E-Bons (kb_receipts)
+UPDATE kb_receipts SET store = 'REWE' WHERE LOWER(store) LIKE '%rewe%';
+UPDATE kb_receipts SET store = 'Globus' WHERE LOWER(store) LIKE '%globus%';
+UPDATE kb_receipts SET store = 'Obi' WHERE LOWER(store) LIKE '%obi%';
+UPDATE kb_receipts SET store = 'Edeka' WHERE LOWER(store) LIKE '%edeka%' OR LOWER(store) LIKE '%e-center%' OR LOWER(store) LIKE '%e center%';
+UPDATE kb_receipts SET store = 'Netto' WHERE LOWER(store) LIKE '%netto%';
+UPDATE kb_receipts SET store = 'Lidl' WHERE LOWER(store) LIKE '%lidl%';
+UPDATE kb_receipts SET store = 'Aldi' WHERE LOWER(store) LIKE '%aldi%';
+UPDATE kb_receipts SET store = 'Penny' WHERE LOWER(store) LIKE '%penny%';
+UPDATE kb_receipts SET store = 'Kaufland' WHERE LOWER(store) LIKE '%kaufland%';
+UPDATE kb_receipts SET store = 'Flaschenpost' WHERE LOWER(store) LIKE '%flaschenpost%';
+UPDATE kb_receipts SET store = 'Fressnapf' WHERE LOWER(store) LIKE '%fressnapf%';
+UPDATE kb_receipts SET store = 'dm' WHERE LOWER(store) LIKE '%dm-drogerie%' OR LOWER(store) = 'dm';
+UPDATE kb_receipts SET store = 'Rossmann' WHERE LOWER(store) LIKE '%rossmann%';
+
+-- Händler-Normalisierung für Kreditkartenbuchungen (bank_cc_transactions)
+UPDATE bank_cc_transactions SET merchant_name = 'REWE' WHERE LOWER(merchant_name) LIKE '%rewe%';
+UPDATE bank_cc_transactions SET merchant_name = 'Globus' WHERE LOWER(merchant_name) LIKE '%globus%';
+UPDATE bank_cc_transactions SET merchant_name = 'Obi' WHERE LOWER(merchant_name) LIKE '%obi%';
+UPDATE bank_cc_transactions SET merchant_name = 'Edeka' WHERE LOWER(merchant_name) LIKE '%edeka%' OR LOWER(merchant_name) LIKE '%e-center%' OR LOWER(merchant_name) LIKE '%e center%';
+UPDATE bank_cc_transactions SET merchant_name = 'Netto' WHERE LOWER(merchant_name) LIKE '%netto%';
+UPDATE bank_cc_transactions SET merchant_name = 'Lidl' WHERE LOWER(merchant_name) LIKE '%lidl%';
+UPDATE bank_cc_transactions SET merchant_name = 'Aldi' WHERE LOWER(merchant_name) LIKE '%aldi%';
+UPDATE bank_cc_transactions SET merchant_name = 'Penny' WHERE LOWER(merchant_name) LIKE '%penny%';
+UPDATE bank_cc_transactions SET merchant_name = 'Kaufland' WHERE LOWER(merchant_name) LIKE '%kaufland%';
+UPDATE bank_cc_transactions SET merchant_name = 'Flaschenpost' WHERE LOWER(merchant_name) LIKE '%flaschenpost%';
+UPDATE bank_cc_transactions SET merchant_name = 'Fressnapf' WHERE LOWER(merchant_name) LIKE '%fressnapf%';
+UPDATE bank_cc_transactions SET merchant_name = 'dm' WHERE LOWER(merchant_name) LIKE '%dm-drogerie%' OR LOWER(merchant_name) = 'dm';
+UPDATE bank_cc_transactions SET merchant_name = 'Rossmann' WHERE LOWER(merchant_name) LIKE '%rossmann%';
+

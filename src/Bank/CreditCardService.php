@@ -7,6 +7,7 @@ use Kai\Tools\Bank\Parser\VisaPdfParser;
 use Kai\Tools\Kassenbon\ReceiptMatcher;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\ActivityLogger;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 use PDO;
 use RuntimeException;
 use Throwable;
@@ -82,7 +83,7 @@ class CreditCardService
                     ':booking_date' => $tx['booking_date'],
                     ':valuta_date' => $tx['valuta_date'] ?? null,
                     ':card_number_suffix' => $tx['card_number_suffix'] ?? null,
-                    ':merchant_name' => $tx['merchant_name'],
+                    ':merchant_name' => MerchantNormalizer::normalize($tx['merchant_name'] ?? ''),
                     ':amount' => $tx['amount'],
                     ':category_id' => $categoryId,
                 ]);

@@ -5,6 +5,7 @@ use Kai\Tools\Bank\FinancialReportAggregator;
 use Kai\Tools\Bank\FinancialReportRepository;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 
 // 1. Auth-Check (AGENTS.md)
 Auth::requirePage('finance_read');
@@ -82,6 +83,15 @@ $cashflow = $aggregated['cashflow_totals'] ?? [];
 $tags = $aggregated['tag_breakdown'] ?? [];
 $deviations = $aggregated['contract_deviations'] ?? [];
 $receiptInsights = $aggregated['receipt_insights'] ?? [];
+if (!empty($receiptInsights['top_merchants'])) {
+    $receiptInsights['top_merchants'] = MerchantNormalizer::consolidateTopMerchants($receiptInsights['top_merchants']);
+}
+if (!empty($receiptInsights['basket_splits'])) {
+    foreach ($receiptInsights['basket_splits'] as &$bs) {
+        $bs['store'] = MerchantNormalizer::normalize($bs['store'] ?? '');
+    }
+    unset($bs);
+}
 
 $totalIncome = (float)($cashflow['total_income'] ?? 0);
 $totalExpenses = (float)($cashflow['total_expenses'] ?? 0);

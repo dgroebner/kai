@@ -5,6 +5,7 @@ namespace Kai\Tools\Kassenbon;
 use Exception;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Utils\MerchantNormalizer;
 use PDO;
 
 class ReceiptRepository
@@ -53,7 +54,8 @@ class ReceiptRepository
     public function saveReceipt(array $data, ?string $fileHash = null): int
     {
         try {
-            $this->logger->info("ReceiptRepository: Starte Transaktion für Kassenbon von '{$data['store']}'...");
+            $normalizedStore = MerchantNormalizer::normalize($data['store'] ?? 'Unbekannt');
+            $this->logger->info("ReceiptRepository: Starte Transaktion für Kassenbon von '$normalizedStore'...");
             $this->db->beginTransaction();
 
             // 1. Metadaten in kb_receipts speichern
@@ -64,7 +66,7 @@ class ReceiptRepository
 
             $stmtReceipt->execute([
                 ':hash' => $fileHash,
-                ':store' => $data['store'] ?? 'Unbekannt',
+                ':store' => $normalizedStore,
                 ':date' => $data['date'] ?? date('Y-m-d'),
                 ':total' => $data['total'] ?? 0.00
             ]);
