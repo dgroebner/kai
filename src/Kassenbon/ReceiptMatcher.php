@@ -38,6 +38,9 @@ class ReceiptMatcher
     private PDO $pdo;
     private Logger $logger;
 
+    /** @var array<int, array{pattern_type: string, pattern_value: string}>|null */
+    private ?array $activeContractRules = null;
+
     public function __construct(?PDO $pdo = null)
     {
         $this->pdo = $pdo ?? Database::getInstance()->getConnection();
@@ -81,6 +84,7 @@ class ReceiptMatcher
                   " . self::GIRO_PARTNER_EXPRESSION . " LIKE :merchant
                   OR (:has_short = 1 AND " . self::GIRO_PARTNER_EXPRESSION . " LIKE :merchant_short)
               )
+              AND t.contract_id IS NULL
               AND t.id NOT IN (
                   SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
               )
@@ -88,9 +92,9 @@ class ReceiptMatcher
             LIMIT 1
         ");
 
-        // Query B: Kreditkarten-Transaktion suchen
+        // Query B: Kreditkarten-Transaktion suchen (Vertragsbuchungen werden in der Schleife ausgeschlossen)
         $stmtFindCc = $this->pdo->prepare("
-            SELECT t.id
+            SELECT t.id, t.merchant_name
             FROM bank_cc_transactions t
             WHERE (t.amount = :amount OR t.amount = :amount_neg)
               AND t.booking_date BETWEEN :date_start AND :date_end
@@ -102,7 +106,7 @@ class ReceiptMatcher
                   SELECT bank_cc_transaction_id FROM kb_receipts WHERE bank_cc_transaction_id IS NOT NULL
               )
             ORDER BY t.booking_date ASC
-            LIMIT 1
+            LIMIT 5
         ");
 
         $stmtUpdateGiro = $this->pdo->prepare("UPDATE kb_receipts SET bank_giro_transaction_id = :tx_id WHERE id = :receipt_id");
@@ -129,7 +133,7 @@ class ReceiptMatcher
             $hasShort = $shortToken !== '' ? 1 : 0;
             $merchantShort = $hasShort ? '%' . $this->escapeLike($shortToken) . '%' : '';
 
-            // 1. Erst auf dem Girokonto suchen
+            // 1. Erst auf dem Girokonto suchen (nur Buchungen ohne Vertragszuordnung)
             $stmtFindGiro->execute([
                 ':amount' => $expectedGiroAmount,
                 ':date_start' => $dateStart,
@@ -147,7 +151,7 @@ class ReceiptMatcher
                 continue;
             }
 
-            // 2. Falls nicht auf Giro, auf Kreditkarte suchen
+            // 2. Falls nicht auf Giro, auf Kreditkarte suchen (Vertragsbuchungen ignorieren)
             $stmtFindCc->execute([
                 ':amount' => $expectedCcAmount,
                 ':amount_neg' => -$expectedCcAmount,
@@ -157,7 +161,15 @@ class ReceiptMatcher
                 ':has_short' => $hasShort,
                 ':merchant_short' => $merchantShort
             ]);
-            $ccTxId = $stmtFindCc->fetchColumn();
+            $ccRows = $stmtFindCc->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $ccTxId = null;
+            foreach ($ccRows as $ccRow) {
+                if ($this->matchesActiveContractRule((string)($ccRow['merchant_name'] ?? ''))) {
+                    continue;
+                }
+                $ccTxId = (int)$ccRow['id'];
+                break;
+            }
 
             if ($ccTxId) {
                 $stmtUpdateCc->execute([':tx_id' => $ccTxId, ':receipt_id' => $receiptId]);
@@ -280,6 +292,7 @@ class ReceiptMatcher
             WHERE a.account_type = 'checking'
               AND a.is_active = 1
               AND t.amount < 0
+              AND t.contract_id IS NULL
               AND t.id NOT IN (
                   SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
               )
@@ -307,6 +320,7 @@ class ReceiptMatcher
                 WHERE a.account_type = 'checking'
                   AND a.is_active = 1
                   AND t.amount < 0
+                  AND t.contract_id IS NULL
                   AND t.id NOT IN (
                       SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
                   )
@@ -492,6 +506,12 @@ class ReceiptMatcher
         $candidates = [];
         foreach ($rows as $row) {
             $merchant = trim((string)$row['merchant_name']);
+
+            // Buchungen ignorieren, die auf eine aktive Vertragsregel zutreffen
+            if ($this->matchesActiveContractRule($merchant)) {
+                continue;
+            }
+
             $suffix = trim((string)($row['card_number_suffix'] ?? ''));
             $txAmount = abs((float)$row['amount']);
             $diff = round($txAmount - $expectedAmount, 2);
@@ -534,6 +554,15 @@ class ReceiptMatcher
         }
 
         if ($accountType === 'giro') {
+            // Buchung darf keinem Vertrag zugeordnet sein
+            $stmtCheck = $this->pdo->prepare("SELECT contract_id FROM bank_giro_transactions WHERE id = :id LIMIT 1");
+            $stmtCheck->execute([':id' => $txId]);
+            $contractId = $stmtCheck->fetchColumn();
+            if (!empty($contractId)) {
+                $this->logger->warn("ReceiptMatcher: Giro-Transaktion #$txId ist bereits Vertrag #$contractId zugeordnet.");
+                return false;
+            }
+
             $stmt = $this->pdo->prepare("UPDATE kb_receipts SET bank_giro_transaction_id = :tx_id, bank_cc_transaction_id = NULL WHERE id = :receipt_id");
             $stmt->execute([':tx_id' => $txId, ':receipt_id' => $receiptId]);
 
@@ -580,5 +609,83 @@ class ReceiptMatcher
         // Verknüpfung in bank_transaction_tags herstellen (Ignore falls bereits verknüpft)
         $stmtLink = $this->pdo->prepare("INSERT IGNORE INTO bank_transaction_tags (transaction_id, tag_id) VALUES (:tx_id, :tag_id)");
         $stmtLink->execute([':tx_id' => $txId, ':tag_id' => $tagId]);
+    }
+
+    /**
+     * Lädt alle aktiven Vertragsregeln für den Ausschluss von Vertragsbuchungen bei Kreditkarten.
+     *
+     * @return array<int, array{pattern_type: string, pattern_value: string}>
+     */
+    private function getActiveContractRules(): array
+    {
+        if ($this->activeContractRules !== null) {
+            return $this->activeContractRules;
+        }
+
+        try {
+            $stmt = $this->pdo->query("
+                SELECT r.pattern_type, r.pattern_value
+                FROM bank_contract_rules r
+                JOIN bank_contracts c ON r.contract_id = c.id
+                WHERE c.status = 'aktiv'
+            ");
+            $this->activeContractRules = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        } catch (\Throwable) {
+            $this->activeContractRules = [];
+        }
+
+        return $this->activeContractRules;
+    }
+
+    /**
+     * Prüft, ob ein Händlername einer Kreditkartenbuchung auf eine aktive Vertragsregel zutrifft.
+     */
+    private function matchesActiveContractRule(string $merchantName): bool
+    {
+        $merchant = trim($merchantName);
+        if ($merchant === '') {
+            return false;
+        }
+
+        $rules = $this->getActiveContractRules();
+        foreach ($rules as $rule) {
+            $type = (string)($rule['pattern_type'] ?? 'substring');
+            $pattern = (string)($rule['pattern_value'] ?? '');
+
+            if ($pattern === '') {
+                continue;
+            }
+
+            $matched = match ($type) {
+                'exact_match' => strcasecmp(trim($pattern), $merchant) === 0,
+                'substring'   => mb_stripos($merchant, $pattern) !== false,
+                'regex'       => $this->evalRegex($pattern, $merchant),
+                default       => false,
+            };
+
+            if ($matched) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Führt ein Regex-Matching für Vertragsregeln sicher aus.
+     */
+    private function evalRegex(string $pattern, string $subject): bool
+    {
+        $pattern = trim($pattern);
+        $delimiterPattern = preg_match('%^([/#~]).+\1[a-z]*$%i', $pattern)
+            ? $pattern
+            : '/' . str_replace('/', '\/', $pattern) . '/i';
+
+        try {
+            $result = @preg_match($delimiterPattern, $subject);
+            return $result === 1;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
