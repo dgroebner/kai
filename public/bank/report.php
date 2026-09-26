@@ -423,7 +423,7 @@ $canEdit = Auth::hasPermission('finance_write');
         <div class="card report-cockpit-card">
             <div class="report-cockpit-header">
                 <h3>
-                    ⚖️ 50 / 30 / 20 Budget-Verteilung
+                    ⚖️ 50 / 30 / 20 Budget
                     <?php if ($isProjection): ?>
                         <span class="report-prognose-pill">Prognose</span>
                     <?php endif; ?>

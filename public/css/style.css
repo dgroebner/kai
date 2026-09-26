@@ -3708,6 +3708,8 @@ body {
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
     letter-spacing: 0.05em;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .report-status-healthy {
@@ -3742,6 +3744,8 @@ body {
     vertical-align: middle;
     margin-left: 0.35rem;
     line-height: 1.2;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .report-summary-text {
@@ -3966,6 +3970,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
     margin-bottom: 0.75rem;
 }
 
