@@ -14,7 +14,12 @@ $calendarService = new CalendarService();
 $eventRepo = $calendarService->getEventRepository();
 
 // Filter- und Paginierungs-Parameter auslesen
-$filterScope = $_GET['scope'] ?? 'all';
+// Standardmäßig ('mine'): nur Termine, für die der angemeldete Benutzer Benachrichtigungen konfiguriert hat.
+$filterScope = $_GET['scope'] ?? 'mine';
+if ($filterScope !== 'all') {
+    $filterScope = 'mine';
+}
+
 $filterType = $_GET['type'] ?? '';
 $filterCategory = $_GET['category'] ?? '';
 $filterSearch = trim((string)($_GET['q'] ?? ''));
@@ -64,8 +69,8 @@ $advanceLabels = [
 
 function buildCalUrl(int $targetPage, string $scope, string $type, string $cat, string $q): string {
     $p = ['page' => $targetPage];
-    if ($scope !== 'all') {
-        $p['scope'] = $scope;
+    if ($scope === 'all') {
+        $p['scope'] = 'all';
     }
     if ($type !== '') {
         $p['type'] = $type;
@@ -149,13 +154,15 @@ $csrfToken = Auth::csrfToken();
         <!-- Filter & Suchleiste -->
         <section class="card cal-filter-bar">
             <div class="cal-filter-group">
-                <a href="<?= buildCalUrl(1, 'all', $filterType, $filterCategory, $filterSearch) ?>"
-                   class="btn btn-sm <?= $filterScope !== 'mine' ? 'btn-primary' : 'btn-outline' ?>">
-                    Alle Kontakte
-                </a>
                 <a href="<?= buildCalUrl(1, 'mine', $filterType, $filterCategory, $filterSearch) ?>"
-                   class="btn btn-sm <?= $filterScope === 'mine' ? 'btn-primary' : 'btn-outline' ?>">
-                    👤 Nur für mich
+                   class="btn btn-sm <?= $filterScope === 'mine' ? 'btn-primary' : 'btn-outline' ?>"
+                   title="Nur Ereignisse anzeigen, für die eine Benachrichtigung für mich konfiguriert ist">
+                    🔔 Meine Termine
+                </a>
+                <a href="<?= buildCalUrl(1, 'all', $filterType, $filterCategory, $filterSearch) ?>"
+                   class="btn btn-sm <?= $filterScope === 'all' ? 'btn-primary' : 'btn-outline' ?>"
+                   title="Alle Kontakte und Ereignisse anzeigen">
+                    🌐 Alle anzeigen
                 </a>
             </div>
 
@@ -194,7 +201,9 @@ $csrfToken = Auth::csrfToken();
             <div class="cal-table-header-wrap">
                 <div>
                     <h2 style="margin: 0; font-size: 1.25rem;">Anstehende Ereignisse</h2>
-                    <span class="u-muted" style="font-size: 0.85rem;"><?= $totalEvents ?> Ereignis(se) gesamt &bull; Nächste Termine zuerst</span>
+                    <span class="u-muted" style="font-size: 0.85rem;">
+                        <?= $totalEvents ?> Ereignis(se) &bull; <?= $filterScope === 'mine' ? 'Nur für mich (mit Benachrichtigung)' : 'Alle Kontakte' ?> &bull; Nächste Termine zuerst
+                    </span>
                 </div>
                 <!-- Dringlichkeits-Legende -->
                 <div class="cal-urgency-legend">
@@ -208,11 +217,18 @@ $csrfToken = Auth::csrfToken();
             <?php if (empty($events)): ?>
                 <div class="no-data u-mt-md text-center text-muted" style="padding: 2.5rem 1rem;">
                     <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📅</div>
-                    <p style="margin: 0; font-size: 1.05rem;">Keine passenden Geburtstage oder Jahrestage gefunden.</p>
-                    <?php if ($filterType || $filterCategory || $filterSearch || $filterScope === 'mine'): ?>
-                        <div style="margin-top: 1rem;">
-                            <a href="index.php" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+                    <?php if ($filterScope === 'mine'): ?>
+                        <p style="margin: 0; font-size: 1.05rem;">Für Ihr Konto sind aktuell keine Benachrichtigungen für Ereignisse hinterlegt.</p>
+                        <div style="margin-top: 1rem; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                            <a href="<?= buildCalUrl(1, 'all', $filterType, $filterCategory, $filterSearch) ?>" class="btn btn-primary btn-sm">🌐 Alle anzeigen</a>
                         </div>
+                    <?php else: ?>
+                        <p style="margin: 0; font-size: 1.05rem;">Keine passenden Geburtstage oder Jahrestage gefunden.</p>
+                        <?php if ($filterType || $filterCategory || $filterSearch): ?>
+                            <div style="margin-top: 1rem;">
+                                <a href="index.php?scope=all" class="btn btn-outline btn-sm">Filter zurücksetzen</a>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             <?php else: ?>

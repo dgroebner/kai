@@ -54,9 +54,8 @@ class CalendarEventRepository
         }
 
         if (!empty($forUserEmail)) {
-            $where[] = "(cen.user_email = :for_user OR e.created_by = :for_user2)";
-            $params['for_user'] = $forUserEmail;
-            $params['for_user2'] = $forUserEmail;
+            $where[] = "EXISTS (SELECT 1 FROM calendar_event_notifications cen_filter WHERE cen_filter.event_id = e.id AND cen_filter.user_email = :for_user)";
+            $params['for_user'] = strtolower(trim($forUserEmail));
         }
 
         if (!empty($where)) {
