@@ -116,7 +116,8 @@ class OpenFoodFactsQueueRepository
      *     quantity?: string|null,
      *     nutriscore_grade?: string|null,
      *     image_url?: string|null,
-     *     categories?: string|null
+     *     categories?: string|null,
+     *     confidence?: float|null
      * } $data
      */
     public function saveResult(array $data): void
@@ -132,10 +133,10 @@ class OpenFoodFactsQueueRepository
         $stmt = $this->pdo->prepare("
             INSERT INTO kb_off_products (
                 product_key, search_term, status, code, product_name, brands,
-                quantity, nutriscore_grade, image_url, categories, last_queried_at
+                quantity, nutriscore_grade, image_url, categories, confidence, last_queried_at
             ) VALUES (
                 :key, :search, :status, :code, :pname, :brands,
-                :qty, :nutri, :img, :cats, NOW()
+                :qty, :nutri, :img, :cats, :confidence, NOW()
             ) ON DUPLICATE KEY UPDATE
                 status = :status_up,
                 code = :code_up,
@@ -145,6 +146,7 @@ class OpenFoodFactsQueueRepository
                 nutriscore_grade = :nutri_up,
                 image_url = :img_up,
                 categories = :cats_up,
+                confidence = :confidence_up,
                 last_queried_at = NOW()
         ");
 
@@ -156,6 +158,7 @@ class OpenFoodFactsQueueRepository
         $img = !empty($data['image_url']) ? (string)$data['image_url'] : null;
         $cats = !empty($data['categories']) ? (string)$data['categories'] : null;
         $search = (string)($data['search_term'] ?? $key);
+        $confidence = isset($data['confidence']) ? round((float)$data['confidence'], 2) : null;
 
         $params = [
             ':key' => $key,
@@ -168,6 +171,7 @@ class OpenFoodFactsQueueRepository
             ':nutri' => $nutri,
             ':img' => $img,
             ':cats' => $cats,
+            ':confidence' => $confidence,
             ':status_up' => $status,
             ':code_up' => $code,
             ':pname_up' => $pname,
@@ -176,6 +180,7 @@ class OpenFoodFactsQueueRepository
             ':nutri_up' => $nutri,
             ':img_up' => $img,
             ':cats_up' => $cats,
+            ':confidence_up' => $confidence,
         ];
 
         $stmt->execute($params);

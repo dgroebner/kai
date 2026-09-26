@@ -51,6 +51,7 @@ try {
                     'nutriscore_grade' => $cached['nutriscore_grade'],
                     'image_url' => $cached['image_url'],
                     'categories' => $cached['categories'],
+                    'confidence' => isset($cached['confidence']) ? (float)$cached['confidence'] : null,
                     'source' => 'cache'
                 ]
             ]);

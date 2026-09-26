@@ -7342,5 +7342,25 @@ button.btn-text:hover {
     background-color: var(--bg-surface-hover);
 }
 
+/* Confidence-Badges für OFF-Suchergebnis-Treffer */
+.off-confidence-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.off-confidence-low {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.off-confidence-medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
 
 

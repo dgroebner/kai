@@ -284,6 +284,15 @@ function initOffPopup() {
             ? `<span class="nutriscore-badge nutriscore-${KaiHtml.escape(d.nutriscore_grade.toLowerCase())}">Nutri-Score ${KaiHtml.escape(d.nutriscore_grade.toUpperCase())}</span>`
             : '';
 
+        // Confidence-Badge: zeigt Treffsicherheit des OFF-Matches an
+        let confidenceBadge = '';
+        const conf = (d.confidence !== undefined && d.confidence !== null) ? parseFloat(d.confidence) : 1.0;
+        if (conf < 0.30) {
+            confidenceBadge = `<span class="off-confidence-badge off-confidence-low" title="Aehnlichkeit: ${Math.round(conf * 100)}%">&#128308; Sehr unsicherer Treffer (${Math.round(conf * 100)}%)</span>`;
+        } else if (conf < 0.60) {
+            confidenceBadge = `<span class="off-confidence-badge off-confidence-medium" title="Aehnlichkeit: ${Math.round(conf * 100)}%">&#9888;&#65039; Unsicherer Treffer (${Math.round(conf * 100)}%)</span>`;
+        }
+
         const eanHtml = d.code
             ? `<span class="ean-code">${KaiHtml.escape(d.code)}</span>`
             : '';
@@ -301,6 +310,7 @@ function initOffPopup() {
                     <div style="margin-top:0.4rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
                         ${nutriHtml}
                         ${eanHtml}
+                        ${confidenceBadge}
                     </div>
                 </div>
             </div>`;

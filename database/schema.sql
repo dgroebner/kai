@@ -302,6 +302,7 @@ CREATE TABLE IF NOT EXISTS `kb_off_products` (
   `quantity` varchar(100) DEFAULT NULL,
   `nutriscore_grade` varchar(10) DEFAULT NULL,
   `image_url` text DEFAULT NULL,
+  `confidence` DECIMAL(3,2) NULL DEFAULT NULL COMMENT 'Aehnlichkeits-Score (0.00-1.00)',
   `categories` text DEFAULT NULL,
   `attempts` int(11) NOT NULL DEFAULT 0,
   `last_queried_at` datetime DEFAULT NULL,

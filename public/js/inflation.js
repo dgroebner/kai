@@ -509,6 +509,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         nutriHtml = `<span class="nutriscore-badge nutriscore-${d.nutriscore_grade.toLowerCase()}">Nutri-Score ${d.nutriscore_grade}</span>`;
                     }
 
+                    // Confidence-Badge: zeigt Treffsicherheit des OFF-Matches an
+                    let confidenceBadge = '';
+                    const conf = (d.confidence !== undefined && d.confidence !== null) ? parseFloat(d.confidence) : 1.0;
+                    if (conf < 0.30) {
+                        confidenceBadge = `<span class="off-confidence-badge off-confidence-low" title="Aehnlichkeit: ${Math.round(conf * 100)}%">&#128308; Sehr unsicherer Treffer (${Math.round(conf * 100)}%)</span>`;
+                    } else if (conf < 0.60) {
+                        confidenceBadge = `<span class="off-confidence-badge off-confidence-medium" title="Aehnlichkeit: ${Math.round(conf * 100)}%">&#9888;&#65039; Unsicherer Treffer (${Math.round(conf * 100)}%)</span>`;
+                    }
+
                     offResultWrap.innerHTML = `
                         <div class="off-result-card">
                             ${d.image_url ? `<img src="${KaiHtml.escape(d.image_url)}" alt="Produktbild" class="off-product-thumb" referrerpolicy="no-referrer">` : ''}
@@ -521,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                                 <div class="off-badges" style="margin-top: 4px;">
                                     ${nutriHtml}
+                                    ${confidenceBadge}
                                 </div>
                             </div>
                         </div>

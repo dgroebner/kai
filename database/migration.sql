@@ -135,3 +135,9 @@ CREATE TABLE IF NOT EXISTS `kb_off_products` (
 -- Es ist kein Datenbankschema-Änderung erforderlich; alle benötigten Spalten
 -- (status, attempts, last_queried_at) sind bereits in kb_off_products vorhanden.
 -- ---------------------------------------------------------------------------
+
+-- OFF-Produkte: Confidence-Score für Treffsicherheit der Suche (0.00-1.00)
+-- Werte: >= 0.60 = zuverlässig, 0.30-0.59 = unsicher, < 0.30 = unzuverlässig
+ALTER TABLE `kb_off_products`
+    ADD COLUMN IF NOT EXISTS `confidence` DECIMAL(3,2) NULL DEFAULT NULL
+    COMMENT 'Aehnlichkeits-Score zwischen Suchbegriff und Produktnamen (0.00-1.00)';
