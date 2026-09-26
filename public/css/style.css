@@ -6856,11 +6856,11 @@ button.btn-text:hover {
     background: var(--bg-surface);
     border: 1px solid var(--bg-surface-hover);
     border-radius: var(--border-radius);
-    padding: 1.25rem;
+    padding: 1rem 1.15rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 120px;
+    min-height: 105px;
     transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
@@ -6892,21 +6892,23 @@ button.btn-text:hover {
 }
 
 .inflation-kpi-card .kpi-label {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
     font-weight: 500;
 }
 
-.inflation-kpi-card .kpi-value {
-    font-size: 1.85rem;
+.inflation-kpi-card .kpi-value,
+.inflation-kpi-card .kpi-value-sm {
+    font-size: 1.35rem;
     font-weight: 700;
-    line-height: 1.2;
-    margin: 0.35rem 0;
+    line-height: 1.25;
+    margin: 0.25rem 0;
     color: var(--text-main);
+    white-space: nowrap;
 }
 
 .inflation-kpi-card .kpi-subtext {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     color: var(--text-muted);
     line-height: 1.3;
 }

@@ -225,18 +225,18 @@ try {
                 <div class="kpi-label">
                     Warenkorb-Inflation <?= $excludeDeals ? '(ohne Angebote)' : '' ?>
                 </div>
-                <div class="kpi-value">
+                <div class="kpi-value kpi-value-sm">
                     <?= ($analysis['weighted_inflation_pct'] > 0 ? '+' : '') . number_format($analysis['weighted_inflation_pct'], 1, ',', '.') ?> %
                 </div>
                 <div class="kpi-subtext">
-                    Ausgaben-gewichtet (Ø ungewichtete Teuerung: <?= ($analysis['avg_inflation_pct'] > 0 ? '+' : '') . number_format($analysis['avg_inflation_pct'], 1, ',', '.') ?> %)
+                    Ausgaben-gewichtet (Ø ungewichtet: <?= ($analysis['avg_inflation_pct'] > 0 ? '+' : '') . number_format($analysis['avg_inflation_pct'], 1, ',', '.') ?> %)
                 </div>
             </div>
 
             <!-- Analysierte Artikel -->
             <div class="inflation-kpi-card">
                 <div class="kpi-label">Beobachtete Artikel</div>
-                <div class="kpi-value"><?= (int)$analysis['total_products'] ?></div>
+                <div class="kpi-value kpi-value-sm"><?= (int)$analysis['total_products'] ?></div>
                 <div class="kpi-subtext">
                     Gesamtausgaben: <?= number_format($analysis['total_spent_all'], 2, ',', '.') ?> €
                 </div>
@@ -262,7 +262,7 @@ try {
             <!-- Preissprünge & Sonderangebote -->
             <div class="inflation-kpi-card <?= $analysis['jumps_count'] > 0 ? 'kpi-warning' : '' ?>">
                 <div class="kpi-label">Preissprünge & Aktionen</div>
-                <div class="kpi-value" style="display: flex; gap: 0.75rem; font-size: 1.5rem;">
+                <div class="kpi-value kpi-value-sm" style="display: flex; gap: 0.75rem;">
                     <span title="Auffällige Preissprünge ≥ 15%">⚡ <?= (int)$analysis['jumps_count'] ?></span>
                     <span title="Erkannte Sonderangebote (≥ 15% unter Normalpreis)">🎉 <?= (int)$analysis['total_deals_count'] ?></span>
                 </div>
