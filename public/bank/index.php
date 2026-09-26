@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Bank\BankAccountRepository;
+use Kai\Tools\Bank\BankContractRepository;
 use Kai\Tools\Bank\BankTagRepository;
 use Kai\Tools\Bank\GiroOverviewRepository;
 use Kai\Tools\Shared\Log\Logger;
@@ -19,6 +20,7 @@ const TRANSACTIONS_PER_PAGE = 25;
 $accountRepository = new BankAccountRepository();
 $giroRepository = new GiroOverviewRepository();
 $tagRepository = new BankTagRepository();
+$contractRepository = new BankContractRepository();
 
 // Girokonto dynamisch auflösen — alle Abfragen dieser Seite beziehen sich darauf
 $checkingAccount = $accountRepository->getAccountByType('checking');
@@ -28,6 +30,9 @@ if ($checkingAccount === null) {
     exit("Kein Girokonto konfiguriert.");
 }
 $accountId = (int)$checkingAccount['id'];
+
+// Erwartete Vertragsbuchungen in den nächsten 3 Tagen abrufen
+$upcomingExpectedBookings = $contractRepository->getUpcomingExpectedTransactions(3, $accountId);
 
 // ----------------------------------------------------
 // 1.5 Direkter Transaktions-Sprung per ?tx=ID & Seitenberechnung
@@ -529,6 +534,75 @@ try {
 
     <!-- Transaktions-Tabelle -->
     <main>
+        <!-- Erwartete Vertragsbuchungen in den nächsten 3 Tagen -->
+        <section class="card" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: <?= empty($upcomingExpectedBookings) ? '0' : '0.75rem' ?>;">
+                <h3 style="font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    ⏳ In den nächsten 3 Tagen erwartete Buchungen
+                    <?php if (!empty($upcomingExpectedBookings)): ?>
+                        <span class="badge" style="font-size: 0.75rem;"><?= count($upcomingExpectedBookings) ?></span>
+                    <?php endif; ?>
+                </h3>
+            </div>
+            <?php if (empty($upcomingExpectedBookings)): ?>
+                <p class="text-muted" style="margin: 0.5rem 0 0 0; font-size: 0.85rem;">Keine anstehenden Vertragsbuchungen in den nächsten 3 Tagen.</p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="stack-table">
+                        <thead>
+                        <tr>
+                            <th style="width: 140px;">Erwartet am</th>
+                            <th>Vertrag</th>
+                            <th>Rhythmus</th>
+                            <th class="text-right" style="width: 120px;">Betrag</th>
+                            <th style="width: 160px;">Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($upcomingExpectedBookings as $ub):
+                            $isIncome = ($ub['direction'] ?? 'expense') === 'income';
+                            ?>
+                            <tr>
+                                <td data-label="Erwartet am">
+                                    <strong><?= htmlspecialchars($ub['relative_label'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                        <?= date('d.m.Y', strtotime($ub['expected_date'])) ?>
+                                    </div>
+                                </td>
+                                <td data-label="Vertrag">
+                                    <strong><?= htmlspecialchars($ub['contract_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php if (!empty($ub['auftraggeber'])): ?>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                            <?= htmlspecialchars($ub['auftraggeber'], ENT_QUOTES, 'UTF-8') ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td data-label="Rhythmus" style="font-size: 0.85rem;">
+                                    <?= ucfirst(htmlspecialchars($ub['frequenz'], ENT_QUOTES, 'UTF-8')) ?>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">(Fällig: <?= (int)$ub['faelligkeitstag'] ?>.)</span>
+                                </td>
+                                <td data-label="Betrag" class="text-right amount-bold <?= $isIncome ? 'text-success' : 'text-danger' ?>">
+                                    <?= $isIncome ? '+' : '-' ?><?= number_format((float)$ub['betrag'], 2, ',', '.') ?> €
+                                </td>
+                                <td data-label="Status">
+                                    <?php if ($ub['is_booked']): ?>
+                                        <span class="badge" style="background-color: rgba(16, 185, 129, 0.15); color: var(--color-green, #10b981); border: 1px solid var(--color-green, #10b981); font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+                                            ✓ Verbucht (<?= date('d.m.', strtotime($ub['booked_date'])) ?>)
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge" style="background-color: rgba(234, 179, 8, 0.15); color: var(--color-yellow, #eab308); border: 1px solid var(--color-yellow, #eab308); font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+                                            ⏳ Ausstehend
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
         <section class="card">
             <?php if (empty($transactions)): ?>
                 <p class="text-center text-muted" style="padding: 2rem 0;">Keine Umsätze für diesen Zeitraum

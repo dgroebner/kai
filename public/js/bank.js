@@ -1842,6 +1842,7 @@ async function openContractModal(contract) {
     const cMandat = isEdit ? (contract.mandatsnummer || '') : '';
     const cVariabel = isEdit ? (contract.variabel === 1) : false;
     const cDirection = isEdit ? (contract.direction || 'expense') : 'expense';
+    const cFaelligkeitstag = isEdit && contract.faelligkeitstag ? contract.faelligkeitstag : '';
 
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
@@ -1927,6 +1928,11 @@ async function openContractModal(contract) {
                             <option value="einmalig" ${cFrequenz === 'einmalig' ? 'selected' : ''}>Einmalig</option>
                         </select>
                     </div>
+                </div>
+
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Fälligkeitstag im Monat (1–31, optional):</label>
+                    <input type="number" min="1" max="31" id="modal-contract-faelligkeitstag" class="tag-search-input" value="${escapeHtml(cFaelligkeitstag)}" placeholder="z. B. 1 für Monatsanfang, 15 etc.">
                 </div>
 
                 <div>
@@ -2052,6 +2058,7 @@ async function openContractModal(contract) {
                 status: status,
                 betrag: betrag,
                 frequenz: frequenz,
+                faelligkeitstag: parseInt(overlay.querySelector('#modal-contract-faelligkeitstag').value, 10) || null,
                 auftraggeber: auftraggeber,
                 mandatsnummer: mandatsnummer,
                 variabel: variabel,

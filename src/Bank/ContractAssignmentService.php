@@ -114,15 +114,19 @@ class ContractAssignmentService
         // Richtung und Typ basierend auf dem Betrag (positiv = Einnahme, negativ = Ausgabe) bestimmen
         $direction = $amount >= 0 ? 'income' : 'expense';
 
+        // Fälligkeitstag direkt aus dem Buchungsdatum übernehmen (Tag im Monat 1-31)
+        $dueDay = !empty($transaction['booking_date']) ? (int)date('j', strtotime($transaction['booking_date'])) : null;
+
         return $this->contractRepository->saveContract([
             'name' => mb_substr($name, 0, self::MAX_CONTRACT_NAME_LENGTH),
             'direction' => $direction,
             'type' => 'vertrag', // Oder bei Bedarf via UI steuerbar machen
             'status' => 'aktiv',
-            'auftraggeber' => $extractedPayger ?? ($extractedPayee !== '' ? $extractedPayee : null),
+            'auftraggeber' => $extractedPayee !== '' ? $extractedPayee : null,
             'mandatsnummer' => $transaction['dc_mandate_id'] ?? null,
             'betrag' => abs($amount),
             'frequenz' => 'monatlich',
+            'faelligkeitstag' => $dueDay,
         ]);
     }
 

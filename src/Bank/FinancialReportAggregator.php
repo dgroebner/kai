@@ -296,7 +296,7 @@ class FinancialReportAggregator
     private function calculateContractDeviations(string $targetStart, string $targetEnd, string $periodType): array
     {
         $stmt = $this->pdo->query("
-            SELECT id, name, betrag, frequenz, variabel, start_datum, end_datum, direction
+            SELECT id, name, betrag, frequenz, variabel, start_datum, end_datum, direction, faelligkeitstag
             FROM bank_contracts
             WHERE status = 'aktiv'
             ORDER BY name ASC
@@ -317,6 +317,7 @@ class FinancialReportAggregator
             $expected = (float)$contract['betrag'];
             $frequency = $contract['frequenz'];
             $isVariable = (bool)$contract['variabel'];
+            $dueDay = !empty($contract['faelligkeitstag']) ? (int)$contract['faelligkeitstag'] : null;
 
             // Prüfen, ob Vertrag im Zeitraum bereits lief
             if (!empty($contract['start_datum']) && $contract['start_datum'] > $targetEnd) {
@@ -324,6 +325,14 @@ class FinancialReportAggregator
             }
             if (!empty($contract['end_datum']) && $contract['end_datum'] < $targetStart) {
                 continue;
+            }
+
+            // Erwartetes Datum berechnen (inkl. automatischer Monatsende- & Schaltjahr-Korrektur)
+            $expectedDate = null;
+            if ($periodType === 'month' && $dueDay !== null) {
+                $targetYear = (int)substr($targetStart, 0, 4);
+                $targetMonth = (int)substr($targetStart, 5, 2);
+                $expectedDate = BankContractRepository::calculateExpectedDate($targetYear, $targetMonth, $dueDay);
             }
 
             $stmtTx->execute([
@@ -342,31 +351,49 @@ class FinancialReportAggregator
             if (empty($transactions)) {
                 // Bei monatlichen Verträgen im Monatsbericht ist das Fehlen einer Zahlung eine relevante Abweichung
                 if ($periodType === 'month' && $frequency === 'monatlich') {
+                    $details = 'Keine Buchung im Auswertungszeitraum gefunden.';
+                    if ($expectedDate !== null) {
+                        $details = sprintf(
+                            'Keine Buchung gefunden (erwartet zum %d. bzw. %s).',
+                            $dueDay,
+                            date('d.m.Y', strtotime($expectedDate))
+                        );
+                    }
+
                     $deviations[] = [
                         'contract_name' => $contract['name'],
                         'expected_amount' => $expected,
                         'actual_amount' => 0.0,
                         'difference' => -$expected,
+                        'due_day' => $dueDay,
+                        'expected_date' => $expectedDate,
                         'type' => 'missing_payment',
-                        'details' => 'Keine Buchung im Auswertungszeitraum gefunden.',
+                        'details' => $details,
                     ];
                 }
             } else {
                 // Zahlung vorhanden: Betragsabweichung prüfen (sofern nicht als variabel deklariert)
                 if (!$isVariable && abs($actualSum - $expected) > 0.05) {
                     $diff = round($actualSum - $expected, 2);
+                    $details = sprintf(
+                        'Abweichung vom Soll-Betrag (Soll: %.2f €, Ist: %.2f €, Diff: %+.2f €)',
+                        $expected,
+                        $actualSum,
+                        $diff
+                    );
+                    if ($expectedDate !== null) {
+                        $details .= sprintf(' (Fälligkeit: %d. d. M.)', $dueDay);
+                    }
+
                     $deviations[] = [
                         'contract_name' => $contract['name'],
                         'expected_amount' => $expected,
                         'actual_amount' => $actualSum,
                         'difference' => $diff,
+                        'due_day' => $dueDay,
+                        'expected_date' => $expectedDate,
                         'type' => 'amount_mismatch',
-                        'details' => sprintf(
-                            'Abweichung von Soll-Betrag (Soll: %.2f €, Ist: %.2f €, Diff: %+.2f €)',
-                            $expected,
-                            $actualSum,
-                            $diff
-                        ),
+                        'details' => $details,
                     ];
                 }
             }

@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS bank_contracts (
     -- Finanzielle Details & Rhythmus
     betrag DECIMAL(10, 2) NOT NULL,
     frequenz ENUM('monatlich', 'vierteljaehrlich', 'halbjaehrlich', 'jaehrlich', 'einmalig') NOT NULL DEFAULT 'monatlich',
+    faelligkeitstag TINYINT UNSIGNED NULL,
     variabel TINYINT(1) NOT NULL DEFAULT 0,
 
     -- Zeitfenster & Prognose

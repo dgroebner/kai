@@ -758,6 +758,14 @@ $canEdit = Auth::hasPermission('finance_write');
                             <tr>
                                 <td data-label="Vertrag">
                                     <strong><?= htmlspecialchars($dev['contract_name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php if (!empty($dev['due_day'])): ?>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                            Fälligkeit: <?= (int)$dev['due_day'] ?>. des Monats
+                                            <?php if (!empty($dev['expected_date'])): ?>
+                                                (<?= date('d.m.Y', strtotime($dev['expected_date'])) ?>)
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td data-label="Art">
                                     <span class="report-dev-badge report-dev-<?= htmlspecialchars($dev['type'], ENT_QUOTES, 'UTF-8') ?>">

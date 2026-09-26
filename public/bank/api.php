@@ -499,6 +499,13 @@ try {
             Auth::sendJsonError(400, 'Name des Vertrags darf nicht leer sein.');
         }
 
+        $faelligkeitstag = filter_var($data['faelligkeitstag'] ?? null, FILTER_VALIDATE_INT);
+        if ($faelligkeitstag !== false && $faelligkeitstag >= 1 && $faelligkeitstag <= 31) {
+            $data['faelligkeitstag'] = $faelligkeitstag;
+        } else {
+            $data['faelligkeitstag'] = null;
+        }
+
         $id = new BankContractRepository()->saveContract($data, $contractId);
 
         echo json_encode([

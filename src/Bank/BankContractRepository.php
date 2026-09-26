@@ -106,6 +106,7 @@ class BankContractRepository
                     iban = :iban,
                     betrag = :betrag,
                     frequenz = :frequenz,
+                    faelligkeitstag = :faelligkeitstag,
                     variabel = :variabel,
                     start_datum = :start_datum,
                     end_datum = :end_datum,
@@ -120,9 +121,9 @@ class BankContractRepository
             // Insert
             $stmt = $this->pdo->prepare("
                 INSERT INTO bank_contracts 
-                (name, direction, type, status, auftraggeber, mandatsnummer, iban, betrag, frequenz, variabel, start_datum, end_datum, category_id)
+                (name, direction, type, status, auftraggeber, mandatsnummer, iban, betrag, frequenz, faelligkeitstag, variabel, start_datum, end_datum, category_id)
                 VALUES 
-                (:name, :direction, :type, :status, :auftraggeber, :mandatsnummer, :iban, :betrag, :frequenz, :variabel, :start_datum, :end_datum, :category_id)
+                (:name, :direction, :type, :status, :auftraggeber, :mandatsnummer, :iban, :betrag, :frequenz, :faelligkeitstag, :variabel, :start_datum, :end_datum, :category_id)
             ");
             $stmt->execute($this->mapContractParams($data));
             return (int)$this->pdo->lastInsertId();
@@ -131,6 +132,15 @@ class BankContractRepository
 
     private function mapContractParams(array $data): array
     {
+        $faelligkeitstag = null;
+        $dueDayRaw = $data['faelligkeitstag'] ?? ($data['due_day'] ?? null);
+        if ($dueDayRaw !== null && $dueDayRaw !== '') {
+            $dueDayInt = (int)$dueDayRaw;
+            if ($dueDayInt >= 1 && $dueDayInt <= 31) {
+                $faelligkeitstag = $dueDayInt;
+            }
+        }
+
         $params = [
             ':name' => $data['name'] ?? '',
             ':direction' => $data['direction'] ?? 'expense',
@@ -141,6 +151,7 @@ class BankContractRepository
             ':iban' => $data['iban'] ?? null,
             ':betrag' => (float)($data['betrag'] ?? 0.0),
             ':frequenz' => $data['frequenz'] ?? 'monatlich',
+            ':faelligkeitstag' => $faelligkeitstag,
             ':variabel' => isset($data['variabel']) ? (int)$data['variabel'] : 0,
             ':start_datum' => !empty($data['start_datum']) ? $data['start_datum'] : null,
             ':end_datum' => !empty($data['end_datum']) ? $data['end_datum'] : null,
@@ -225,5 +236,199 @@ class BankContractRepository
         ");
         $stmt->execute([':id' => $contractId, ':limit' => $limit]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Berechnet das erwartete Datum für einen Fälligkeitstag in einem bestimmten Monat/Jahr.
+     * Liegt der Fälligkeitstag außerhalb der maximalen Monatstage (z. B. 31. im Februar),
+     * wird das Datum automatisch auf den letzten gültigen Tag des Monats umgeleitet (unter Berücksichtigung von Schaltjahren).
+     */
+    public static function calculateExpectedDate(int $year, int $month, int $dueDay): string
+    {
+        $dueDay = max(1, min(31, $dueDay));
+        $firstDayOfMonth = sprintf('%04d-%02d-01', $year, $month);
+        $daysInMonth = (int)date('t', strtotime($firstDayOfMonth));
+        $actualDay = min($dueDay, $daysInMonth);
+        return sprintf('%04d-%02d-%02d', $year, $month, $actualDay);
+    }
+
+    /**
+     * Ermittelt die in den nächsten X Tagen (inkl. heute) erwarteten Vertragsbuchungen
+     * und gleicht diese mit bereits vorhandenen Girokonto-Buchungen ab.
+     */
+    public function getUpcomingExpectedTransactions(int $daysAhead = 3, ?int $accountId = null): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT c.*, cat.name AS category_name 
+            FROM bank_contracts c
+            LEFT JOIN bank_categories cat ON c.category_id = cat.id
+            WHERE c.status = 'aktiv' AND c.faelligkeitstag IS NOT NULL
+            ORDER BY c.faelligkeitstag ASC, c.name ASC
+        ");
+        $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        if (empty($contracts)) {
+            return [];
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $todayStr = $today->format('Y-m-d');
+        $endWindow = $today->modify("+{$daysAhead} days");
+        $endWindowStr = $endWindow->format('Y-m-d');
+
+        // Alle betroffenen Monate im Zeitfenster ermitteln (normalerweise 1 oder 2 Monate)
+        $monthsToCheck = [];
+        $cur = $today;
+        while ($cur <= $endWindow) {
+            $key = $cur->format('Y-m');
+            $monthsToCheck[$key] = [
+                'year' => (int)$cur->format('Y'),
+                'month' => (int)$cur->format('n'),
+            ];
+            $cur = $cur->modify('+1 day');
+        }
+
+        // Query zur Prüfung, ob die Buchung in diesem Monat bereits stattgefunden hat
+        $sqlTx = "
+            SELECT id, booking_date, amount
+            FROM bank_giro_transactions
+            WHERE contract_id = :contract_id
+              AND booking_date BETWEEN :min_date AND :max_date
+        ";
+        if ($accountId !== null && $accountId > 0) {
+            $sqlTx .= " AND account_id = :account_id";
+        }
+        $sqlTx .= " ORDER BY booking_date DESC LIMIT 1";
+        $stmtTx = $this->pdo->prepare($sqlTx);
+
+        $upcoming = [];
+
+        foreach ($contracts as $c) {
+            $contractId = (int)$c['id'];
+            $dueDay = (int)$c['faelligkeitstag'];
+            $frequency = $c['frequenz'] ?? 'monatlich';
+
+            foreach ($monthsToCheck as $mInfo) {
+                $year = $mInfo['year'];
+                $month = $mInfo['month'];
+
+                // Fälligkeitsdatum berechnen (inkl. Monatsende- & Schaltjahr-Korrektur)
+                $expectedDate = self::calculateExpectedDate($year, $month, $dueDay);
+
+                // Liegt im Betrachtungsfenster?
+                if ($expectedDate < $todayStr || $expectedDate > $endWindowStr) {
+                    continue;
+                }
+
+                // Prüfen, ob Vertrag zum erwarteten Datum aktiv ist
+                if (!empty($c['start_datum']) && $c['start_datum'] > $expectedDate) {
+                    continue;
+                }
+                if (!empty($c['end_datum']) && $c['end_datum'] < $expectedDate) {
+                    continue;
+                }
+
+                // Rhythmus-Prüfung
+                if ($frequency === 'vierteljaehrlich' && !empty($c['start_datum'])) {
+                    $startDt = new \DateTimeImmutable($c['start_datum']);
+                    $monthDiff = ($year - (int)$startDt->format('Y')) * 12 + ($month - (int)$startDt->format('n'));
+                    if ($monthDiff % 3 !== 0) {
+                        continue;
+                    }
+                } elseif ($frequency === 'halbjaehrlich' && !empty($c['start_datum'])) {
+                    $startDt = new \DateTimeImmutable($c['start_datum']);
+                    $monthDiff = ($year - (int)$startDt->format('Y')) * 12 + ($month - (int)$startDt->format('n'));
+                    if ($monthDiff % 6 !== 0) {
+                        continue;
+                    }
+                } elseif ($frequency === 'jaehrlich' && !empty($c['start_datum'])) {
+                    $startDt = new \DateTimeImmutable($c['start_datum']);
+                    if ($month !== (int)$startDt->format('n')) {
+                        continue;
+                    }
+                }
+
+                // Prüfen, ob bereits verbucht: Buchung im gleichen Kalendermonat suchen
+                $daysInM = (int)date('t', strtotime(sprintf('%04d-%02d-01', $year, $month)));
+                $minDate = sprintf('%04d-%02d-01', $year, $month);
+                $maxDate = sprintf('%04d-%02d-%02d', $year, $month, $daysInM);
+
+                $paramsTx = [
+                    ':contract_id' => $contractId,
+                    ':min_date' => $minDate,
+                    ':max_date' => $maxDate,
+                ];
+                if ($accountId !== null && $accountId > 0) {
+                    $paramsTx[':account_id'] = $accountId;
+                }
+                $stmtTx->execute($paramsTx);
+                $bookedTx = $stmtTx->fetch(PDO::FETCH_ASSOC);
+
+                $isBooked = ($bookedTx !== false && !empty($bookedTx));
+
+                // Relative Datumsanzeige (Heute, Morgen, Übermorgen, etc.)
+                $expectedDt = new \DateTimeImmutable($expectedDate);
+                $diffDays = (int)$today->diff($expectedDt)->format('%r%a');
+                if ($diffDays === 0) {
+                    $relativeLabel = 'Heute';
+                } elseif ($diffDays === 1) {
+                    $relativeLabel = 'Morgen';
+                } elseif ($diffDays === 2) {
+                    $relativeLabel = 'Übermorgen';
+                } else {
+                    $relativeLabel = "In $diffDays Tagen";
+                }
+
+                $upcoming[] = [
+                    'contract_id' => $contractId,
+                    'contract_name' => $c['name'],
+                    'type' => $c['type'],
+                    'direction' => $c['direction'] ?? 'expense',
+                    'betrag' => (float)$c['betrag'],
+                    'frequenz' => $c['frequenz'],
+                    'faelligkeitstag' => $dueDay,
+                    'expected_date' => $expectedDate,
+                    'relative_label' => $relativeLabel,
+                    'diff_days' => $diffDays,
+                    'category_name' => $c['category_name'] ?? null,
+                    'auftraggeber' => $c['auftraggeber'] ?? null,
+                    'is_booked' => $isBooked,
+                    'booked_date' => $isBooked ? $bookedTx['booking_date'] : null,
+                    'booked_amount' => $isBooked ? (float)$bookedTx['amount'] : null,
+                ];
+            }
+        }
+
+        // Sortieren nach Datum aufsteigend, dann nach Name
+        usort($upcoming, function ($a, $b) {
+            $cmp = strcmp($a['expected_date'], $b['expected_date']);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return strcmp($a['contract_name'], $b['contract_name']);
+        });
+
+        return $upcoming;
+    }
+
+    /**
+     * Initialisiert den Fälligkeitstag bei bestehenden Verträgen ohne Fälligkeitstag
+     * anhand des Buchungstages der letzten zugeordneten Girokonto-Transaktion.
+     */
+    public function migrateMissingDueDays(): int
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE bank_contracts c
+            JOIN (
+                SELECT contract_id, DAY(MAX(booking_date)) AS last_day
+                FROM bank_giro_transactions
+                WHERE contract_id IS NOT NULL
+                GROUP BY contract_id
+            ) b ON c.id = b.contract_id
+            SET c.faelligkeitstag = b.last_day
+            WHERE c.faelligkeitstag IS NULL
+        ");
+        $stmt->execute();
+        return $stmt->rowCount();
     }
 }

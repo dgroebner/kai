@@ -166,6 +166,9 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
                                 </td>
                                 <td data-label="Rhythmus" style="font-size: 0.85rem;">
                                     <?= ucfirst(htmlspecialchars($c['frequenz'], ENT_QUOTES, 'UTF-8')) ?>
+                                    <?php if (!empty($c['faelligkeitstag'])): ?>
+                                        <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">(Fällig: <?= (int)$c['faelligkeitstag'] ?>.)</span>
+                                    <?php endif; ?>
                                     <?php if ($c['variabel']): ?>
                                         <span style="font-size: 0.75rem; color: var(--color-yellow, #eab308); display: block;">(variabel)</span>
                                     <?php endif; ?>

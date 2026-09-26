@@ -37,3 +37,16 @@ CREATE TABLE IF NOT EXISTS `calendar_notification_logs` (
     INDEX `idx_cal_log_user` (`user_email`),
     FOREIGN KEY (`event_id`) REFERENCES `calendar_events`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ 
+-- Finanzverträge: Fälligkeitstag (Tag im Monat 1-31)
+ALTER TABLE bank_contracts ADD COLUMN faelligkeitstag TINYINT UNSIGNED NULL AFTER frequenz;
+
+-- Bestehende Verträge mit dem Fälligkeitstag der letzten zugeordneten Buchung initialisieren
+UPDATE bank_contracts c
+JOIN (
+    SELECT contract_id, DAY(MAX(booking_date)) AS last_day
+    FROM bank_giro_transactions
+    WHERE contract_id IS NOT NULL
+    GROUP BY contract_id
+) b ON c.id = b.contract_id
+SET c.faelligkeitstag = b.last_day;
