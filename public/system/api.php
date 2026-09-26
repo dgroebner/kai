@@ -56,8 +56,10 @@ try {
             Auth::sendJsonError(400, 'Ungültige Präferenzdaten');
         }
 
+        $popupEnabled = isset($input['popup_enabled']) ? (bool)$input['popup_enabled'] : null;
+
         $briefingService = new BriefingService();
-        $briefingService->savePreferencesForUser($currentUserEmail, $preferences);
+        $briefingService->savePreferencesForUser($currentUserEmail, $preferences, $popupEnabled);
 
         echo json_encode(['success' => true]);
         exit;

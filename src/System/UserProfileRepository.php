@@ -201,10 +201,30 @@ class UserProfileRepository
     }
 
     /**
-     * Speichert die Briefing-Einstellungen eines Benutzers.
+     * Prüft, ob das automatische Start-Popup des Daily Briefings für den Benutzer aktiviert ist.
+     */
+    public function isBriefingPopupEnabled(string $email): bool
+    {
+        $dbCon = $this->db->getConnection();
+        $stmt = $dbCon->prepare("SELECT briefing_preferences FROM user_profiles WHERE user_email = :email");
+        $stmt->execute(['email' => $email]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && !empty($row['briefing_preferences'])) {
+            $decoded = json_decode($row['briefing_preferences'], true);
+            if (is_array($decoded) && array_key_exists('_popup_enabled', $decoded)) {
+                return (bool)$decoded['_popup_enabled'];
+            }
+        }
+
+        return true; // Standard: aktiv
+    }
+
+    /**
+     * Speichert die Briefing-Einstellungen eines Benutzers inklusive Popup-Status.
      * @throws JsonException
      */
-    public function updateBriefingPreferences(string $email, array $preferences): void
+    public function updateBriefingPreferences(string $email, array $preferences, ?bool $popupEnabled = null): void
     {
         $dbCon = $this->db->getConnection();
         $current = $this->getBriefingPreferences($email);
@@ -216,6 +236,13 @@ class UserProfileRepository
                     $current[$widgetKey]['order'] = (int)$config['order'];
                 }
             }
+        }
+
+        // Popup-Status speichern
+        if ($popupEnabled !== null) {
+            $current['_popup_enabled'] = $popupEnabled;
+        } elseif (isset($preferences['_popup_enabled'])) {
+            $current['_popup_enabled'] = (bool)$preferences['_popup_enabled'];
         }
 
         $encoded = json_encode($current, JSON_THROW_ON_ERROR);

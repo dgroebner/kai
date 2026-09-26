@@ -168,8 +168,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
 
+            $popupEnabled = isset($_POST['briefing_popup_enabled']) && (string)$_POST['briefing_popup_enabled'] === '1';
+
             try {
-                $userProfileRepo->updateBriefingPreferences($currentUserEmail, $updatedBriefing);
+                $userProfileRepo->updateBriefingPreferences($currentUserEmail, $updatedBriefing, $popupEnabled);
                 $savedAny = true;
                 $successMessage = $successMessage ? "Einstellungen erfolgreich gespeichert." : "Daily-Briefing-Einstellungen erfolgreich gespeichert.";
             } catch (Throwable $e) {
@@ -182,6 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $userPreferences = $userProfileRepo->getPreferences($currentUserEmail);
 $userBriefing = $userProfileRepo->getBriefingPreferences($currentUserEmail);
+$isBriefingPopupEnabled = $userProfileRepo->isBriefingPopupEnabled($currentUserEmail);
 $csrfToken = Auth::csrfToken();
 
 $visibleGroups = array_filter($eventGroups, function ($group) {
@@ -191,6 +194,18 @@ $visibleGroups = array_filter($eventGroups, function ($group) {
 $visibleBriefingWidgets = array_filter(UserProfileRepository::BRIEFING_WIDGET_CONFIG, function ($meta) {
     return empty($meta['permission']) || Auth::hasPermission($meta['permission']);
 });
+
+$orderedBriefingWidgets = [];
+foreach ($userBriefing as $widgetKey => $pref) {
+    if (isset($visibleBriefingWidgets[$widgetKey])) {
+        $orderedBriefingWidgets[$widgetKey] = $visibleBriefingWidgets[$widgetKey];
+    }
+}
+foreach ($visibleBriefingWidgets as $widgetKey => $meta) {
+    if (!isset($orderedBriefingWidgets[$widgetKey])) {
+        $orderedBriefingWidgets[$widgetKey] = $meta;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -290,36 +305,50 @@ $visibleBriefingWidgets = array_filter(UserProfileRepository::BRIEFING_WIDGET_CO
                 <form action="profile.php" method="POST">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 
+                    <div style="margin-bottom: 1.25rem; padding: 0.9rem 1.1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <div>
+                            <strong style="font-size: 1rem; color: var(--text-main, #f8fafc);">Automatisches Popup beim Start öffnen</strong>
+                            <br><small class="text-muted">Öffnet das Briefing automatisch einmal pro Sitzung beim Aufruf des Dashboards. Wenn deaktiviert, kann es jederzeit manuell über das Sonnen-Symbol im Dashboard geöffnet werden.</small>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500;">
+                            <input type="checkbox" name="briefing_popup_enabled" value="1" <?= $isBriefingPopupEnabled ? 'checked' : '' ?> class="profile-checkbox">
+                            <span>Aktiviert</span>
+                        </label>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="data-table stack-table">
                             <thead>
                             <tr>
                                 <th>Widget</th>
-                                <th style="width: 110px; text-align: center;">Reihenfolge</th>
+                                <th style="width: 140px; text-align: center;">Reihenfolge</th>
                                 <th class="profile-checkbox-cell">Aktiviert</th>
                             </tr>
                             </thead>
-                            <tbody>
-                            <?php foreach ($visibleBriefingWidgets as $widgetKey => $meta): ?>
-                                <?php
+                            <tbody class="js-briefing-sortable-tbody">
+                            <?php
+                            $posIndex = 1;
+                            foreach ($orderedBriefingWidgets as $widgetKey => $meta):
                                 $widgetPref = $userBriefing[$widgetKey] ?? ['enabled' => true, 'order' => 50];
                                 $isEnabled = !empty($widgetPref['enabled']);
-                                $orderVal = (int)($widgetPref['order'] ?? 50);
-                                ?>
-                                <tr>
+                                $orderVal = (int)($widgetPref['order'] ?? ($posIndex * 10));
+                            ?>
+                                <tr class="js-briefing-sortable-row">
                                     <td data-label="Widget">
                                         <span class="profile-event-icon"><?= $meta['icon'] ?></span>
                                         <strong><?= htmlspecialchars($meta['label'], ENT_QUOTES, 'UTF-8') ?></strong>
                                         <br><small class="text-muted"><?= htmlspecialchars($meta['desc'], ENT_QUOTES, 'UTF-8') ?></small>
                                     </td>
-                                    <td data-label="Reihenfolge" style="text-align: center;">
-                                        <input type="number"
+                                    <td data-label="Reihenfolge" style="text-align: center; white-space: nowrap;">
+                                        <input type="hidden"
                                                name="briefing[<?= htmlspecialchars($widgetKey, ENT_QUOTES, 'UTF-8') ?>][order]"
                                                value="<?= $orderVal ?>"
-                                               min="1"
-                                               max="99"
-                                               style="width: 75px; text-align: center; padding: 0.3rem;"
-                                               class="input-control">
+                                               class="js-briefing-order-input">
+                                        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                                            <span class="badge js-briefing-pos-badge" style="min-width: 2.2rem; font-weight: bold; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); color: var(--text-muted, #94a3b8); border-radius: 4px; padding: 0.2rem 0.4rem; font-size: 0.85rem;">#<?= $posIndex ?></span>
+                                            <button type="button" class="btn-icon js-move-briefing-up" title="Nach oben verschieben" aria-label="Nach oben verschieben">⬆️</button>
+                                            <button type="button" class="btn-icon js-move-briefing-down" title="Nach unten verschieben" aria-label="Nach unten verschieben">⬇️</button>
+                                        </div>
                                     </td>
                                     <td data-label="Aktiviert" class="profile-checkbox-cell">
                                         <input type="checkbox"
@@ -329,7 +358,10 @@ $visibleBriefingWidgets = array_filter(UserProfileRepository::BRIEFING_WIDGET_CO
                                                class="profile-checkbox">
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php
+                                $posIndex++;
+                            endforeach;
+                            ?>
                             </tbody>
                         </table>
                     </div>
@@ -345,5 +377,6 @@ $visibleBriefingWidgets = array_filter(UserProfileRepository::BRIEFING_WIDGET_CO
 <?php include __DIR__ . '/shared/footer_scripts.php'; ?>
 <script src="js/http.js" defer></script>
 <script src="js/push.js" defer></script>
+<script src="js/profile.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>

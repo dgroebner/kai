@@ -182,6 +182,10 @@
 
             const json = await response.json();
             if (json && json.success && json.data) {
+                // Wenn nicht manuell erzwungen und der Benutzer das Popup im Profil deaktiviert hat
+                if (!forceShow && json.data.popup_enabled === false) {
+                    return;
+                }
                 renderBriefingModal(json.data);
             }
         } catch (e) {
