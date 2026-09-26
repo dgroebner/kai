@@ -60,6 +60,14 @@ document.addEventListener('DOMContentLoaded', function () {
     function openModal(isEdit = false) {
         if (!modal) return;
         modalTitle.textContent = isEdit ? '✏️ Ereignis bearbeiten' : '🎂 Neues Ereignis anlegen';
+        const modalTestPushBtn = document.getElementById('modal-event-test-push');
+        if (modalTestPushBtn) {
+            if (isEdit) {
+                modalTestPushBtn.classList.remove('hidden');
+            } else {
+                modalTestPushBtn.classList.add('hidden');
+            }
+        }
         modal.classList.remove('hidden');
         if (titleInput) {
             titleInput.focus();
@@ -92,6 +100,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (categoryCustomInput) {
             categoryCustomInput.value = '';
             categoryCustomInput.classList.add('hidden');
+        }
+        const modalTestPushBtn = document.getElementById('modal-event-test-push');
+        if (modalTestPushBtn) {
+            modalTestPushBtn.classList.add('hidden');
         }
 
         const today = new Date();
@@ -524,7 +536,39 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Test-Push aus der Karte oder Tabelle senden
+        // Test-Push aus dem Bearbeiten-Modal senden
+        if (e.target.closest('#modal-event-test-push')) {
+            e.preventDefault();
+            const id = eventIdInput && eventIdInput.value ? parseInt(eventIdInput.value, 10) : null;
+            if (!id) return;
+
+            const pushBtn = document.getElementById('modal-event-test-push');
+            if (pushBtn) pushBtn.disabled = true;
+            const originalText = pushBtn ? pushBtn.innerHTML : '🔔 Test-Push';
+            if (pushBtn) pushBtn.innerHTML = '⏳ Sende...';
+
+            try {
+                const res = await window.KaiHttp.postJson('api.php', {
+                    action: 'send_test_push',
+                    id: id
+                });
+                if (res.success) {
+                    alert('🔔 ' + (res.message || 'Test-Benachrichtigung versendet!'));
+                } else {
+                    alert('Hinweis: ' + (res.message || 'Push konnte nicht gesendet werden. Bitte prüfen, ob Web-Push im Profil aktiviert ist.'));
+                }
+            } catch (err) {
+                alert('Netzwerk- oder Serverfehler beim Senden des Test-Push.');
+            } finally {
+                if (pushBtn) {
+                    pushBtn.disabled = false;
+                    pushBtn.innerHTML = originalText;
+                }
+            }
+            return;
+        }
+
+        // Test-Push aus der Karte oder Tabelle senden (Fallback)
         const testPushBtn = e.target.closest('.js-test-push');
         if (testPushBtn) {
             e.preventDefault();

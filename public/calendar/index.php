@@ -241,7 +241,7 @@ $csrfToken = Auth::csrfToken();
                                 <th>Name / Anlass</th>
                                 <th style="width: 160px;">Alter / Jubiläum</th>
                                 <th style="width: 200px;">Sternzeichen / Jubiläum</th>
-                                <th style="width: 135px; text-align: right;">Aktionen</th>
+                                <th style="width: 95px; text-align: right;">Aktionen</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -331,9 +331,6 @@ $csrfToken = Auth::csrfToken();
 
                                     <!-- 6. Aktionen -->
                                     <td style="text-align: right; white-space: nowrap;">
-                                        <button type="button" class="btn btn-sm btn-outline js-test-push" data-id="<?= (int)$ev['id'] ?>" title="Test-Push an mich senden">
-                                            🔔
-                                        </button>
                                         <?php if ($canWrite): ?>
                                             <button type="button" class="btn btn-sm btn-outline js-edit-event" data-id="<?= (int)$ev['id'] ?>" title="Bearbeiten">
                                                 ✏️
@@ -477,9 +474,16 @@ $csrfToken = Auth::csrfToken();
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" id="modal-event-cancel">Abbrechen</button>
-                <button type="submit" class="btn btn-save" id="btn-save-event">💾 Ereignis speichern</button>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <button type="button" class="btn btn-outline hidden" id="modal-event-test-push" title="Test-Push für dieses Ereignis an mich senden">
+                        🔔 Test-Push an mich senden
+                    </button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-outline" id="modal-event-cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-save" id="btn-save-event">💾 Ereignis speichern</button>
+                </div>
             </div>
         </form>
     </div>
