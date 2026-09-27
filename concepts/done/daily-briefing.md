@@ -132,33 +132,34 @@ präsentieren[cite: 3, 5].
 
 ## 4. Frontend- & Interaktionskonzept
 
-### 4.1. Lifecycle & Session-Steuerung
+### 4.1. Lifecycle, Cooldown & Session-Steuerung
 
-* Beim Laden von `public/index.php` führt die modulübergreifende JavaScript-Logik folgende Prüfungen durch[cite: 5]:
-    * Abfrage des Session-Flags im `sessionStorage`.
-    * Ist kein Flag gesetzt, wird der Briefing-Endpunkt asynchron über `KaiHttp` aufgerufen[cite: 5].
-    * Liefert das Backend handlungsrelevante Widgets zurück, wird das Modal gerendert und angezeigt.
-    * Beim Schließen des Modals wird das Flag im `sessionStorage` gesetzt.
+* Beim Laden von `public/index.php` führt die modulübergreifende JavaScript-Logik folgende Prüfungen durch:
+    * Abfrage des letzten Anzeige-Zeitstempels (`kai_briefing_last_seen`) und des konfigurierten Cooldowns im `localStorage`.
+    * Ist der Cooldown abgelaufen (Standard: 3 Stunden) oder liegt noch kein Zeitstempel vor, wird der Briefing-Endpunkt asynchron aufgerufen.
+    * Liefert das Backend handlungsrelevante Widgets zurück und ist das automatische Popup im Profil aktiviert, wird das Modal gerendert und angezeigt.
+    * Sobald das Modal angezeigt oder geschlossen wird, wird der aktuelle Zeitstempel im `localStorage` hinterlegt.
 * Ein Button im Kopfbereich des Dashboards erlaubt das erneute Abrufen und Einblenden des Modals zu jedem Zeitpunkt der
-  Sitzung[cite: 5].
+  Sitzung (überschreibt den Cooldown).
 
 ### 4.2. UI-Komponente & Styling
 
 * **Modal-Container:** Angelehnt an die bestehenden Overlays des Toolsets (`public/css/style.css`), vollständig im Dark
-  Mode gehalten[cite: 2, 5].
+  Mode gehalten.
 * **Kachel-Raster:** Zweispaltiges CSS-Grid auf Desktop- und Tablet-Geräten, automatischer Umbruch in eine
   Einspalten-Ansicht auf Mobilgeräten.
 * **Interaktion & Event-Delegation:**
-    * Keine Inline-JavaScript-Attribute (vollständige Konformität zur Content Security Policy)[cite: 2, 5].
-    * Event-Listener werden zentral an den Modal-Container gebunden und verarbeiten Klicks auf Widgets oder
-      Schließen-Elemente[cite: 2].
+  * Keine Inline-JavaScript-Attribute (vollständige Konformität zur Content Security Policy).
+  * Event-Listener werden zentral an den Modal-Container gebunden und verarbeiten Klicks auf Widgets oder
+    Schließen-Elemente.
 
 ### 4.3. Konfiguration im Benutzerprofil
 
-* Ergänzung eines Abschnitts für das Start-Briefing im Profilbereich (`public/system/index.php`)[cite: 3, 5]:
-    * Schalter zur individuellen Aktivierung und Deaktivierung der Widgets[cite: 3].
-    * Bedienelemente zur Definition der Anzeigereihenfolge.
-    * Speicherung synchron über Formular-POST oder asynchron über die System-API[cite: 3].
+* Ergänzung eines Abschnitts für das Start-Briefing im Profilbereich (`public/profile.php`):
+  * Schalter zur Deaktivierung / Aktivierung des automatischen Popups.
+  * Auswahl des Wiederholungs-Intervalls (Cooldown: 1, 2, 3, 4, 6, 8 oder 24 Stunden).
+  * Bedienelemente zur Definition der Anzeigereihenfolge (Pfeil-Buttons ⬆️ / ⬇️).
+  * Speicherung synchron über Formular-POST oder asynchron über die System-API.
 
 ---
 

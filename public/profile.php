@@ -169,9 +169,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $popupEnabled = isset($_POST['briefing_popup_enabled']) && (string)$_POST['briefing_popup_enabled'] === '1';
+            $cooldownHours = isset($_POST['briefing_cooldown_hours']) && is_numeric($_POST['briefing_cooldown_hours'])
+                ? (int)$_POST['briefing_cooldown_hours']
+                : UserProfileRepository::DEFAULT_BRIEFING_COOLDOWN_HOURS;
 
             try {
-                $userProfileRepo->updateBriefingPreferences($currentUserEmail, $updatedBriefing, $popupEnabled);
+                $userProfileRepo->updateBriefingPreferences($currentUserEmail, $updatedBriefing, $popupEnabled, $cooldownHours);
                 $savedAny = true;
                 $successMessage = $successMessage ? "Einstellungen erfolgreich gespeichert." : "Daily-Briefing-Einstellungen erfolgreich gespeichert.";
             } catch (Throwable $e) {
@@ -185,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $userPreferences = $userProfileRepo->getPreferences($currentUserEmail);
 $userBriefing = $userProfileRepo->getBriefingPreferences($currentUserEmail);
 $isBriefingPopupEnabled = $userProfileRepo->isBriefingPopupEnabled($currentUserEmail);
+$briefingCooldownHours = $userProfileRepo->getBriefingCooldownHours($currentUserEmail);
 $csrfToken = Auth::csrfToken();
 
 $visibleGroups = array_filter($eventGroups, function ($group) {
@@ -305,15 +309,34 @@ foreach ($visibleBriefingWidgets as $widgetKey => $meta) {
                 <form action="profile.php" method="POST">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 
-                    <div style="margin-bottom: 1.25rem; padding: 0.9rem 1.1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-                        <div>
-                            <strong style="font-size: 1rem; color: var(--text-main, #f8fafc);">Automatisches Popup beim Start öffnen</strong>
-                            <br><small class="text-muted">Öffnet das Briefing automatisch einmal pro Sitzung beim Aufruf des Dashboards. Wenn deaktiviert, kann es jederzeit manuell über das Sonnen-Symbol im Dashboard geöffnet werden.</small>
+                    <div style="margin-bottom: 1.25rem; padding: 0.9rem 1.1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                            <div>
+                                <strong style="font-size: 1rem; color: var(--text-main, #f8fafc);">Automatisches Popup in der Übersicht öffnen</strong>
+                                <br><small class="text-muted">Öffnet das Briefing automatisch beim Aufruf des Dashboards nach Ablauf des eingestellten Cooldowns. Wenn deaktiviert, kann es jederzeit manuell über das Sonnen-Symbol geöffnet werden.</small>
+                            </div>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500;">
+                                <input type="checkbox" name="briefing_popup_enabled" value="1" <?= $isBriefingPopupEnabled ? 'checked' : '' ?> class="profile-checkbox">
+                                <span>Aktiviert</span>
+                            </label>
                         </div>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500;">
-                            <input type="checkbox" name="briefing_popup_enabled" value="1" <?= $isBriefingPopupEnabled ? 'checked' : '' ?> class="profile-checkbox">
-                            <span>Aktiviert</span>
-                        </label>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 0.75rem;">
+                            <div>
+                                <span style="font-size: 0.95rem; font-weight: 500; color: var(--text-main, #f8fafc);">Wiederholungs-Intervall (Cooldown)</span>
+                                <br><small class="text-muted">Mindestzeit zwischen automatischen Popups, um über den Tag hinweg mit aktuellen Infos versorgt zu werden.</small>
+                            </div>
+                            <div>
+                                <select name="briefing_cooldown_hours" class="input-control" style="min-width: 170px; padding: 0.35rem 0.6rem;">
+                                    <option value="1" <?= $briefingCooldownHours === 1 ? 'selected' : '' ?>>Alle 1 Stunde</option>
+                                    <option value="2" <?= $briefingCooldownHours === 2 ? 'selected' : '' ?>>Alle 2 Stunden</option>
+                                    <option value="3" <?= $briefingCooldownHours === 3 ? 'selected' : '' ?>>Alle 3 Stunden (Standard)</option>
+                                    <option value="4" <?= $briefingCooldownHours === 4 ? 'selected' : '' ?>>Alle 4 Stunden</option>
+                                    <option value="6" <?= $briefingCooldownHours === 6 ? 'selected' : '' ?>>Alle 6 Stunden</option>
+                                    <option value="8" <?= $briefingCooldownHours === 8 ? 'selected' : '' ?>>Alle 8 Stunden</option>
+                                    <option value="24" <?= $briefingCooldownHours === 24 ? 'selected' : '' ?>>1x am Tag (24 Stunden)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-responsive">

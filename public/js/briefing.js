@@ -4,9 +4,22 @@
 (function () {
     'use strict';
 
-    const STORAGE_KEY = 'kai_briefing_seen';
+    const STORAGE_LAST_SEEN_KEY = 'kai_briefing_last_seen';
+    const STORAGE_COOLDOWN_KEY = 'kai_briefing_cooldown_hours';
     let overlayElement = null;
     let isFetching = false;
+
+    /**
+     * Speichert den aktuellen Zeitstempel der Anzeige im localStorage.
+     */
+    function markBriefingSeen() {
+        try {
+            localStorage.setItem(STORAGE_LAST_SEEN_KEY, Date.now().toString());
+            sessionStorage.removeItem('kai_briefing_seen');
+        } catch (_) {
+            // Storage quota oder disabled
+        }
+    }
 
     /**
      * Erstellt oder aktualisiert das Modal im DOM und zeigt es an.
@@ -127,15 +140,16 @@
             </div>
         `;
 
-        // Einblenden
+        // Einblenden und als gesehen markieren
         requestAnimationFrame(function () {
             overlayElement.classList.add('is-active');
             document.body.style.overflow = 'hidden';
+            markBriefingSeen();
         });
     }
 
     /**
-     * Schließt das Modal und setzt das Session-Flag.
+     * Schließt das Modal und aktualisiert den Zeitstempel.
      */
     function closeBriefingModal() {
         if (!overlayElement) {
@@ -143,11 +157,7 @@
         }
         overlayElement.classList.remove('is-active');
         document.body.style.overflow = '';
-        try {
-            sessionStorage.setItem(STORAGE_KEY, '1');
-        } catch (_) {
-            // Storage quota oder disabled
-        }
+        markBriefingSeen();
     }
 
     /**
@@ -160,8 +170,11 @@
 
         if (!forceShow) {
             try {
-                if (sessionStorage.getItem(STORAGE_KEY) === '1') {
-                    return; // In dieser Session bereits gesehen
+                const lastSeen = parseInt(localStorage.getItem(STORAGE_LAST_SEEN_KEY) || '0', 10);
+                const cachedCooldownHours = parseFloat(localStorage.getItem(STORAGE_COOLDOWN_KEY) || '3');
+                const cooldownMs = cachedCooldownHours * 60 * 60 * 1000;
+                if (lastSeen > 0 && (Date.now() - lastSeen < cooldownMs)) {
+                    return; // Cooldown noch aktiv
                 }
             } catch (_) {
             }
@@ -169,7 +182,6 @@
 
         isFetching = true;
         try {
-            // Verwende KaiHttp.fetchJson für konsistentes Handling
             const response = await fetch('/system/api.php?action=briefing', {
                 headers: {
                     'Accept': 'application/json'
@@ -186,6 +198,26 @@
                 if (!forceShow && json.data.popup_enabled === false) {
                     return;
                 }
+
+                // Cooldown-Wert vom Server im Client sichern
+                const serverCooldownHours = typeof json.data.cooldown_hours === 'number' ? json.data.cooldown_hours : 3;
+                try {
+                    localStorage.setItem(STORAGE_COOLDOWN_KEY, String(serverCooldownHours));
+                } catch (_) {
+                }
+
+                // Zweite Prüfung mit dem aktuellen Cooldown vom Server
+                if (!forceShow) {
+                    try {
+                        const lastSeen = parseInt(localStorage.getItem(STORAGE_LAST_SEEN_KEY) || '0', 10);
+                        const cooldownMs = serverCooldownHours * 60 * 60 * 1000;
+                        if (lastSeen > 0 && (Date.now() - lastSeen < cooldownMs)) {
+                            return;
+                        }
+                    } catch (_) {
+                    }
+                }
+
                 renderBriefingModal(json.data);
             }
         } catch (e) {

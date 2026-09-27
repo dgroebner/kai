@@ -200,6 +200,8 @@ class UserProfileRepository
         return $prefs;
     }
 
+    public const DEFAULT_BRIEFING_COOLDOWN_HOURS = 3;
+
     /**
      * Prüft, ob das automatische Start-Popup des Daily Briefings für den Benutzer aktiviert ist.
      */
@@ -221,12 +223,49 @@ class UserProfileRepository
     }
 
     /**
-     * Speichert die Briefing-Einstellungen eines Benutzers inklusive Popup-Status.
-     * @throws JsonException
+     * Liefert den Cooldown (in Stunden) zwischen zwei automatischen Popup-Einblendungen.
      */
-    public function updateBriefingPreferences(string $email, array $preferences, ?bool $popupEnabled = null): void
+    public function getBriefingCooldownHours(string $email): int
     {
         $dbCon = $this->db->getConnection();
+        $stmt = $dbCon->prepare("SELECT briefing_preferences FROM user_profiles WHERE user_email = :email");
+        $stmt->execute(['email' => $email]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && !empty($row['briefing_preferences'])) {
+            $decoded = json_decode($row['briefing_preferences'], true);
+            if (is_array($decoded) && isset($decoded['_cooldown_hours']) && is_numeric($decoded['_cooldown_hours'])) {
+                $hours = (int)$decoded['_cooldown_hours'];
+                if ($hours >= 1 && $hours <= 72) {
+                    return $hours;
+                }
+            }
+        }
+
+        return self::DEFAULT_BRIEFING_COOLDOWN_HOURS;
+    }
+
+    /**
+     * Speichert die Briefing-Einstellungen eines Benutzers inklusive Popup-Status und Cooldown.
+     * @throws JsonException
+     */
+    public function updateBriefingPreferences(
+        string $email,
+        array $preferences,
+        ?bool $popupEnabled = null,
+        ?int $cooldownHours = null
+    ): void {
+        $dbCon = $this->db->getConnection();
+
+        // Bestehende Einstellungen laden, um Meta-Attribute nicht zu verlieren
+        $stmt = $dbCon->prepare("SELECT briefing_preferences FROM user_profiles WHERE user_email = :email");
+        $stmt->execute(['email' => $email]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $rawExisting = ($row && !empty($row['briefing_preferences'])) ? json_decode($row['briefing_preferences'], true) : [];
+        if (!is_array($rawExisting)) {
+            $rawExisting = [];
+        }
+
         $current = $this->getBriefingPreferences($email);
 
         foreach ($preferences as $widgetKey => $config) {
@@ -243,16 +282,27 @@ class UserProfileRepository
             $current['_popup_enabled'] = $popupEnabled;
         } elseif (isset($preferences['_popup_enabled'])) {
             $current['_popup_enabled'] = (bool)$preferences['_popup_enabled'];
+        } elseif (array_key_exists('_popup_enabled', $rawExisting)) {
+            $current['_popup_enabled'] = (bool)$rawExisting['_popup_enabled'];
+        }
+
+        // Cooldown-Stunden speichern
+        if ($cooldownHours !== null) {
+            $current['_cooldown_hours'] = max(1, min(72, $cooldownHours));
+        } elseif (isset($preferences['_cooldown_hours']) && is_numeric($preferences['_cooldown_hours'])) {
+            $current['_cooldown_hours'] = max(1, min(72, (int)$preferences['_cooldown_hours']));
+        } elseif (isset($rawExisting['_cooldown_hours']) && is_numeric($rawExisting['_cooldown_hours'])) {
+            $current['_cooldown_hours'] = max(1, min(72, (int)$rawExisting['_cooldown_hours']));
         }
 
         $encoded = json_encode($current, JSON_THROW_ON_ERROR);
 
-        $stmt = $dbCon->prepare("
+        $updateStmt = $dbCon->prepare("
             UPDATE user_profiles 
             SET briefing_preferences = :preferences, updated_at = NOW() 
             WHERE user_email = :email
         ");
-        $stmt->execute([
+        $updateStmt->execute([
             'preferences' => $encoded,
             'email' => $email,
         ]);

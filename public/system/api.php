@@ -57,9 +57,10 @@ try {
         }
 
         $popupEnabled = isset($input['popup_enabled']) ? (bool)$input['popup_enabled'] : null;
+        $cooldownHours = isset($input['cooldown_hours']) && is_numeric($input['cooldown_hours']) ? (int)$input['cooldown_hours'] : null;
 
         $briefingService = new BriefingService();
-        $briefingService->savePreferencesForUser($currentUserEmail, $preferences, $popupEnabled);
+        $briefingService->savePreferencesForUser($currentUserEmail, $preferences, $popupEnabled, $cooldownHours);
 
         echo json_encode(['success' => true]);
         exit;

@@ -127,11 +127,13 @@ class BriefingService
         usort($widgets, static fn($a, $b) => ($a['order'] ?? 0) <=> ($b['order'] ?? 0));
 
         $popupEnabled = $this->userProfileRepo->isBriefingPopupEnabled($userEmail);
+        $cooldownHours = $this->userProfileRepo->getBriefingCooldownHours($userEmail);
 
         return [
             'user_email' => $userEmail,
             'generated_at' => date('c'),
             'popup_enabled' => $popupEnabled,
+            'cooldown_hours' => $cooldownHours,
             'widgets' => array_values($widgets),
         ];
     }
@@ -139,9 +141,13 @@ class BriefingService
     /**
      * Speichert aktualisierte Briefing-Einstellungen für einen Benutzer.
      */
-    public function savePreferencesForUser(string $userEmail, array $preferences, ?bool $popupEnabled = null): void
-    {
-        $this->userProfileRepo->updateBriefingPreferences($userEmail, $preferences, $popupEnabled);
+    public function savePreferencesForUser(
+        string $userEmail,
+        array $preferences,
+        ?bool $popupEnabled = null,
+        ?int $cooldownHours = null
+    ): void {
+        $this->userProfileRepo->updateBriefingPreferences($userEmail, $preferences, $popupEnabled, $cooldownHours);
     }
 
     // =========================================================================
