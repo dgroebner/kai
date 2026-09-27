@@ -326,7 +326,7 @@ foreach ($visibleBriefingWidgets as $widgetKey => $meta) {
                                 <br><small class="text-muted">Mindestzeit zwischen automatischen Popups, um über den Tag hinweg mit aktuellen Infos versorgt zu werden.</small>
                             </div>
                             <div>
-                                <select name="briefing_cooldown_hours" class="input-control" style="min-width: 170px; padding: 0.35rem 0.6rem;">
+                                <select name="briefing_cooldown_hours" class="form-control form-control-sm" style="width: auto; min-width: 180px;">
                                     <option value="1" <?= $briefingCooldownHours === 1 ? 'selected' : '' ?>>Alle 1 Stunde</option>
                                     <option value="2" <?= $briefingCooldownHours === 2 ? 'selected' : '' ?>>Alle 2 Stunden</option>
                                     <option value="3" <?= $briefingCooldownHours === 3 ? 'selected' : '' ?>>Alle 3 Stunden (Standard)</option>
