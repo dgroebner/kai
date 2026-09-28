@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedMarket = marketBtn.dataset.market;
             const url = new URL(window.location);
             url.searchParams.set('market', selectedMarket);
+            url.searchParams.delete('all');
             url.searchParams.set('tab', 'list');
             window.location.href = url.toString();
             return;
@@ -1940,7 +1941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateLiveFilterButtons() {
         document.querySelectorAll('.js-live-market-filter').forEach(btn => {
             const m = btn.dataset.market;
-            if (m === currentLiveMarket) {
+            if (m === currentLiveMarket && !liveShowAll) {
                 btn.classList.add('btn-active-filter');
                 btn.classList.remove('btn-outline');
             } else {
@@ -2219,6 +2220,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = liveFilterBtn.dataset.market;
             if (m === 'Rewe' || m === 'Globus') {
                 currentLiveMarket = m;
+                liveShowAll = false;
+                const metaMarket = document.querySelector('meta[name="active-market"]');
+                if (metaMarket) metaMarket.setAttribute('content', m);
                 renderLiveContent();
                 if (window.shoppingSync) window.shoppingSync.pollNow();
             }
@@ -2312,6 +2316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!liveOverlay) return;
         document.body.style.overflow = 'hidden';
         liveOverlay.classList.remove('hidden');
+        liveShowAll = false;
         renderLiveContent();
     }
 

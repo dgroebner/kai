@@ -260,12 +260,12 @@ try {
             <div class="card shopping-market-filter-card">
                 <div class="shopping-market-chips">
                     <button type="button"
-                            class="btn btn-sm <?= ($activeMarket === 'Rewe') ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-rewe"
+                            class="btn btn-sm <?= ($activeMarket === 'Rewe' && !$showAll) ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-rewe"
                             data-market="Rewe">
                         🔴 Rewe (<span id="count-rewe"><?= (int)$marketCounts['Rewe']['open'] ?></span>)
                     </button>
                     <button type="button"
-                            class="btn btn-sm <?= ($activeMarket === 'Globus') ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-globus"
+                            class="btn btn-sm <?= ($activeMarket === 'Globus' && !$showAll) ? 'btn-active-filter' : 'btn-outline' ?> js-market-filter chip-globus"
                             data-market="Globus">
                         🟠 Globus (<span id="count-globus"><?= (int)$marketCounts['Globus']['open'] ?></span>)
                     </button>
