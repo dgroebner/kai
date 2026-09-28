@@ -70,43 +70,59 @@ class GeminiClient
             ];
         }
 
-        $ch = curl_init($this->apiUrl);
-        if ($ch === false) {
-            throw new Exception("cURL konnte nicht initialisiert werden.");
-        }
-
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 90);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'x-goog-api-key: ' . $this->apiKey
-        ]);
-
         $jsonPayload = json_encode($payload);
         if ($jsonPayload === false) {
             throw new Exception("Payload konnte nicht in JSON encodiert werden: " . json_last_error_msg());
         }
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
 
-        // Hinweis: Für reine lokale Windows-Tests ohne SSL-Zertifikate diese Zeile einkommentieren:
-        if (($_ENV['GEMINI_DISABLE_SSL'] ?? 'false') === 'true') {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        }
+        $maxAttempts = 3;
+        $response = null;
+        $httpCode = 0;
 
-        $this->logger->info("GeminiClient: Sende Request an Google API...");
-        $response = curl_exec($ch);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $ch = curl_init($this->apiUrl);
+            if ($ch === false) {
+                throw new Exception("cURL konnte nicht initialisiert werden.");
+            }
 
-        // Fehlerbehandlung: System-Ebene (cURL)
-        if (curl_errno($ch)) {
-            $errorMsg = curl_error($ch);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 90);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'x-goog-api-key: ' . $this->apiKey
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
+
+            // Hinweis: Für reine lokale Windows-Tests ohne SSL-Zertifikate diese Zeile einkommentieren:
+            if (($_ENV['GEMINI_DISABLE_SSL'] ?? 'false') === 'true') {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            }
+
+            $this->logger->info("GeminiClient: Sende Request an Google API (Versuch $attempt/$maxAttempts)...");
+            $response = curl_exec($ch);
+
+            // Fehlerbehandlung: System-Ebene (cURL)
+            if (curl_errno($ch)) {
+                $errorMsg = curl_error($ch);
+                curl_close($ch);
+                throw new Exception("Netzwerk/cURL-Fehler bei API-Anfrage: " . $errorMsg);
+            }
+
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            throw new Exception("Netzwerk/cURL-Fehler bei API-Anfrage: " . $errorMsg);
-        }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            // Bei temporärer Überlastung (503) oder Rate Limit (429) kurz warten und wiederholen
+            if (($httpCode === 503 || $httpCode === 429) && $attempt < $maxAttempts) {
+                $waitSec = $attempt * 2;
+                $this->logger->warn("GeminiClient: Vorübergehende Überlastung (HTTP $httpCode). Wiederhole Versuch in {$waitSec}s...");
+                sleep($waitSec);
+                continue;
+            }
+
+            break;
+        }
 
         // Fehlerbehandlung: API-Ebene (Google)
         if ($httpCode !== 200) {

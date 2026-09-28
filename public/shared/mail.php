@@ -1,9 +1,6 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
 
-use Kai\Tools\Bank\AiTagClassifier;
-use Kai\Tools\Bank\BankAccountRepository;
-use Kai\Tools\Bank\BankTransactionRepository;
 use Kai\Tools\Bank\CreditCardService;
 use Kai\Tools\Bank\Parser\VisaPdfParser;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
@@ -45,47 +42,11 @@ if (function_exists('fastcgi_finish_request')) {
 $logger = new Logger(14);
 
 try {
-    $logger->info("Cronjob (mail.php): Starte zentralen MailDispatcher (Asynchron)...");
+    $logger->info("Cronjob (mail.php): Starte Hintergrund-Jobs...");
 
     $db = Database::getInstance();
-    $geminiClient = new GeminiClient();
-    $imapClient = new ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
 
-    // 1. Credit Card Services
-    $visaParser = new VisaPdfParser($geminiClient);
-    $creditCardService = new CreditCardService($db, $visaParser);
-
-    // 2. Giro Bank Services (NEU)
-    $bankRepo = new BankTransactionRepository();
-    $bankAccountRepo = new BankAccountRepository();
-    $aiClassifier = new AiTagClassifier($geminiClient);
-
-    // 3. Kassenbon-Services
-    $receiptAnalyzer = new ReceiptAnalyzer();
-    $receiptRepository = new ReceiptRepository();
-
-    // 4. Dispatcher mit korrekten Argumenten ausführen
-    $dispatcher = new MailDispatcher(
-        $imapClient,
-        $creditCardService,
-        $receiptAnalyzer,
-        $receiptRepository
-    );
-
-    $dispatcher->dispatch();
-
-    $logger->info("Cronjob (mail.php): MailDispatcher im Hintergrund erfolgreich beendet.");
-
-    // 4b. Einkaufslisten-Lernen aus eBons aktualisieren
-    try {
-        $learningService = new \Kai\Tools\Einkaufsliste\LearningService();
-        $learningStats = $learningService->learnFromReceipts();
-        $logger->info("Cronjob (mail.php): Einkaufslisten-Lernen aktualisiert.", ['stats' => $learningStats]);
-    } catch (Throwable $le) {
-        $logger->warn("Cronjob (mail.php): Fehler beim Einkaufslisten-Lernen.", ['error' => $le->getMessage()]);
-    }
-
-    // 5. Schule / Vertretungsplan synchronisieren (heute und nächster Schultag)
+    // 1. Schule / Vertretungsplan synchronisieren (heute und nächster Schultag)
     try {
         $schoolService = new \Kai\Tools\School\SchoolService();
         $schoolResults = $schoolService->syncTodayAndNext();
@@ -99,7 +60,7 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Schuldaten-Abgleich.", ['error' => $se->getMessage()]);
     }
 
-    // 6. Gamification / Familien-Quests Fristen und Tagesaufgaben abgleichen
+    // 2. Gamification / Familien-Quests Fristen und Tagesaufgaben abgleichen
     try {
         $escalationService = new \Kai\Tools\Gamification\GamificationEscalationService(
             db: $db,
@@ -116,7 +77,7 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Gamification-Abgleich.", ['error' => $ge->getMessage()]);
     }
 
-    // 7. Kalender / Geburtstage & Jahrestage Erinnerungen prüfen und versenden
+    // 3. Kalender / Geburtstage & Jahrestage Erinnerungen prüfen und versenden
     try {
         $calendarService = new \Kai\Tools\Calendar\CalendarService($db, $logger);
         $sentReminders = $calendarService->processDueReminders();
@@ -127,16 +88,54 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Kalender-Erinnerungsabgleich.", ['error' => $ce->getMessage()]);
     }
 
-    // 8. Open Food Facts Queue: Neue und abgelaufene Artikel einreihen
+    // 4. Open Food Facts Queue: Neue und abgelaufene Artikel einreihen
     try {
         $offRepo = new \Kai\Tools\Kassenbon\OpenFoodFactsQueueRepository();
         $newlyQueued = $offRepo->enqueueAllPendingItems();
         if ($newlyQueued > 0) {
             $logger->info("OFF-Queue: $newlyQueued neue Artikel eingereiht.");
         }
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $logger->error('OFF-Queue Enqueue fehlgeschlagen.', ['error' => $e->getMessage()]);
     }
+
+    // 5. Mail-Verarbeitung (Kreditkartenabrechnungen & E-Bons via Gemini)
+    try {
+        $logger->info("Cronjob (mail.php): Starte MailDispatcher...");
+
+        $geminiClient = new GeminiClient();
+        $imapClient = new ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
+
+        $visaParser = new VisaPdfParser($geminiClient);
+        $creditCardService = new CreditCardService($db, $visaParser);
+
+        $receiptAnalyzer = new ReceiptAnalyzer();
+        $receiptRepository = new ReceiptRepository();
+
+        $dispatcher = new MailDispatcher(
+            $imapClient,
+            $creditCardService,
+            $receiptAnalyzer,
+            $receiptRepository
+        );
+
+        $dispatcher->dispatch();
+        $logger->info("Cronjob (mail.php): MailDispatcher erfolgreich beendet.");
+
+        // 5b. Einkaufslisten-Lernen aus neuen eBons aktualisieren
+        try {
+            $learningService = new \Kai\Tools\Einkaufsliste\LearningService();
+            $learningStats = $learningService->learnFromReceipts();
+            $logger->info("Cronjob (mail.php): Einkaufslisten-Lernen aktualisiert.", ['stats' => $learningStats]);
+        } catch (Throwable $le) {
+            $logger->warn("Cronjob (mail.php): Fehler beim Einkaufslisten-Lernen.", ['error' => $le->getMessage()]);
+        }
+
+    } catch (Throwable $me) {
+        $logger->error("Cronjob (mail.php): Fehler im MailDispatcher.", ['error' => $me->getMessage()]);
+    }
+
+    $logger->info("Cronjob (mail.php): Alle Hintergrund-Jobs abgeschlossen.");
 
 } catch (Throwable $e) {
     $logger->error("Cronjob (mail.php): Kritischer Fehler im Hintergrund-Task!", [

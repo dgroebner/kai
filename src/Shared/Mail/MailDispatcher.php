@@ -61,6 +61,9 @@ class MailDispatcher
                 continue;
             }
 
+            $failedCount = 0;
+            $processedCount = 0;
+
             foreach ($attachments as $attachment) {
                 $fileName = $attachment->getName();
                 $mimeType = strtolower($attachment->getMimeType());
@@ -82,13 +85,20 @@ class MailDispatcher
                         $statementId = $this->creditCardService->importStatementPdf($tmpFilePath, $fileName);
                         $this->creditCardService->applyHistoricalCategories($statementId);
                         $this->logger->info("MailDispatcher: Kreditkartenabrechnung erfolgreich importiert und Historie angewendet.");
+                        $processedCount++;
                     } catch (Exception $e) {
+                        $failedCount++;
                         $this->logger->error("MailDispatcher: Fehler bei Kreditkarten-Import: " . $e->getMessage());
                     } finally {
                         if (file_exists($tmpFilePath)) {
                             @unlink($tmpFilePath);
                         }
                     }
+                    continue;
+                }
+
+                // Kleine Icons, Signaturbilder oder Trackingpixel (< 8 KB) überspringen
+                if (str_contains($mimeType, 'image') && strlen($content) < 8192) {
                     continue;
                 }
 
@@ -102,6 +112,7 @@ class MailDispatcher
 
                         if ($this->receiptRepository->receiptExists($fileHash)) {
                             $this->logger->info("MailDispatcher: Bon-Hash $fileHash existiert bereits.");
+                            $processedCount++;
                             continue;
                         }
 
@@ -128,17 +139,27 @@ class MailDispatcher
                                 $matcher->syncUnlinkedReceipts();
 
                                 $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
+                                $processedCount++;
+                            } else {
+                                $failedCount++;
+                                $this->logger->warn("MailDispatcher: E-Bon-Analyse lieferte keine Daten ($fileName). Mail bleibt im Posteingang.");
                             }
                         } catch (Throwable $e) {
+                            $failedCount++;
                             $this->logger->error("MailDispatcher: Fehler bei Bon-Verarbeitung ($fileName): " . $e->getMessage());
                         }
                     }
                 }
             }
 
-            // Mail ins Archiv verschieben
-            $this->imapClient->moveMail($message, 'Archive');
-            $this->logger->info("MailDispatcher: Mail verarbeitet/bereinigt und ins Archiv verschoben.");
+            // Mail nur ins Archiv verschieben, wenn keine Belege fehlgeschlagen sind
+            if ($failedCount === 0) {
+                $this->imapClient->moveMail($message, 'Archive');
+                $this->logger->info("MailDispatcher: Mail verarbeitet/bereinigt und ins Archiv verschoben.");
+            } else {
+                $this->imapClient->markAsUnseen($message);
+                $this->logger->warn("MailDispatcher: $failedCount Anhang/Anhänge konnten nicht verarbeitet werden. Mail verbleibt ungelesen im Posteingang für den nächsten Versuch.");
+            }
         }
 
         $this->imapClient->disconnect();

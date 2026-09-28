@@ -112,6 +112,16 @@ class ImapClient
         }
     }
 
+    public function markAsUnseen($message): void
+    {
+        try {
+            $message->unsetFlag('Seen');
+            $this->logger->info("ImapClient: Mail als ungelesen (unseen) markiert.");
+        } catch (\Throwable $e) {
+            $this->logger->warn("ImapClient: Konnte Seen-Flag nicht entfernen: " . $e->getMessage());
+        }
+    }
+
     public function disconnect(): void
     {
         try {
