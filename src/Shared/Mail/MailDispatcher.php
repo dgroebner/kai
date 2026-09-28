@@ -105,28 +105,32 @@ class MailDispatcher
                             continue;
                         }
 
-                        $receiptData = $this->receiptAnalyzer->analyze($mimeType, $base64Data, $knownCategories);
+                        try {
+                            $receiptData = $this->receiptAnalyzer->analyze($mimeType, $base64Data, $knownCategories);
 
-                        if ($receiptData && isset($receiptData['items'])) {
-                            $productNames = array_column($receiptData['items'], 'name');
-                            $historicalCategories = $this->receiptRepository->getKnownCategoriesForProducts($productNames);
+                            if ($receiptData && isset($receiptData['items'])) {
+                                $productNames = array_column($receiptData['items'], 'name');
+                                $historicalCategories = $this->receiptRepository->getKnownCategoriesForProducts($productNames);
 
-                            foreach ($receiptData['items'] as &$item) {
-                                if (isset($historicalCategories[$item['name']])) {
-                                    $item['category'] = $historicalCategories[$item['name']];
+                                foreach ($receiptData['items'] as &$item) {
+                                    if (isset($historicalCategories[$item['name']])) {
+                                        $item['category'] = $historicalCategories[$item['name']];
+                                    }
                                 }
+                                unset($item);
+
+                                $receiptId = $this->receiptRepository->saveReceipt($receiptData, $fileHash);
+
+                                $activityLogger = new ActivityLogger(Database::getInstance());
+                                $activityLogger->logReceipt($receiptId, $receiptData['store']);
+
+                                $matcher = new ReceiptMatcher();
+                                $matcher->syncUnlinkedReceipts();
+
+                                $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
                             }
-                            unset($item);
-
-                            $receiptId = $this->receiptRepository->saveReceipt($receiptData, $fileHash);
-
-                            $activityLogger = new ActivityLogger(Database::getInstance());
-                            $activityLogger->logReceipt($receiptId, $receiptData['store']);
-
-                            $matcher = new ReceiptMatcher();
-                            $matcher->syncUnlinkedReceipts();
-
-                            $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
+                        } catch (Throwable $e) {
+                            $this->logger->error("MailDispatcher: Fehler bei Bon-Verarbeitung ($fileName): " . $e->getMessage());
                         }
                     }
                 }
@@ -150,6 +154,12 @@ class MailDispatcher
 
         // Wenn keine Keywords definiert sind, greft standardmäßig kein Match
         if (empty($keywords)) {
+            return false;
+        }
+
+        // Geschützte/verschlüsselte PDFs (z. B. manche E-Bons mit PDF-Rechteeinschränkungen)
+        // werden von Smalot\PdfParser nicht unterstützt und sind keine unverschlüsselten Bankabrechnungen.
+        if (str_contains($content, '/Encrypt')) {
             return false;
         }
 
@@ -177,7 +187,7 @@ class MailDispatcher
             // Alle Keywords wurden gefunden
 
         } catch (Throwable $e) {
-            $this->logger->error("Fehler beim Parsen der PDF-Vorschau: " . $e->getMessage());
+            $this->logger->debug("MailDispatcher: PDF-Vorschau für Bank-Prüfung übersprungen (" . $e->getMessage() . ")");
             return false;
         } finally {
             if (file_exists($tmpPdf)) {
