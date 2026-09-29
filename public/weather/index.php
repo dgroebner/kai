@@ -123,11 +123,15 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
         <?php else: ?>
             <?php
             $m = (int)date('n');
+            $d = (int)date('j');
             if ($m >= 3 && $m <= 5) $season = 'spring.jpeg';
             elseif ($m >= 6 && $m <= 8) $season = 'summer.jpeg';
             elseif ($m >= 9 && $m <= 11) $season = 'autmn.jpeg';
             else $season = 'winter.jpeg';
             $bgUrl = "../assets/weather/" . $season;
+
+            // Halloween-Saison: Woche vor Halloween und Halloween selbst (24. bis 31. Oktober)
+            $isHalloween = ($m === 10 && $d >= 24 && $d <= 31);
 
             $weatherCode = $forecast['current']['weather_code'] ?? 0;
             $cloudCover = $forecast['current']['cloud_cover'] ?? 0;
@@ -182,6 +186,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 if (isset($_GET['dbg_night']))      $isNight      = (bool)(int)$_GET['dbg_night'];
                 if (isset($_GET['dbg_golden']))     $isGoldenHour = (bool)(int)$_GET['dbg_golden'];
                 if (isset($_GET['dbg_cloud']))      $cloudCover   = max(0, min(100, (int)$_GET['dbg_cloud']));
+                $isHalloween = isset($_GET['dbg_halloween']) && (int)$_GET['dbg_halloween'] === 1;
 
                 // Debug Regen (Aus, Leicht, Mäßig, Stark inkl. Abwärtskompatibilität)
                 if (isset($_GET['dbg_rain'])) {
@@ -267,6 +272,10 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 $greeting = "Moin! Regenschirm aufspannen, von oben kommt ordentlich was runter.";
             } elseif ($isFog) {
                 $greeting = "Moin! Ziemlich neblig heute, fahr vorsichtig.";
+            } elseif ($isHalloween && $isNight) {
+                $greeting = "Buh! 🎃 Schaurig-schöne Nacht – die Geister gehen um in Leipzig-Holzhausen!";
+            } elseif ($isHalloween) {
+                $greeting = "Happy Halloween! 🎃 Die Kürbisse stehen bereit, genieß den Herbsttag.";
             } elseif ($isNight) {
                 $greeting = "Gute Nacht! Zeit zum Chillen, es ist dunkel.";
             } elseif ($currentTemp > 25) {
@@ -317,6 +326,20 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     <rect width="100%" height="100%" fill="white"/>
                                     <circle cx="calc(92% + <?= $maskOffsetPx ?>px)" cy="7%" r="40" fill="black"/>
                                 </mask>
+                                <?php endif; ?>
+                                <?php if ($isHalloween && $isNight): ?>
+                                <linearGradient id="ghostGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.92"/>
+                                    <stop offset="65%" stop-color="#e0f2fe" stop-opacity="0.75"/>
+                                    <stop offset="100%" stop-color="#bae6fd" stop-opacity="0.2"/>
+                                </linearGradient>
+                                <filter id="ghostGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="3.5" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
                                 <?php endif; ?>
                             </defs>
 
@@ -452,6 +475,46 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php if ($isFog): ?>
                                 <!-- Nebel (grauer milchiger Schleier) -->
                                 <rect width="100%" height="100%" fill="#cbd5e1" opacity="0.35"/>
+                            <?php endif; ?>
+
+                            <?php if ($isHalloween && $isNight): ?>
+                                <!-- Halloween: Fliegende Geister in der Nacht -->
+                                <g id="diorama-halloween-ghosts">
+                                    <!-- Geist 1 (Links) -->
+                                    <g class="diorama-ghost diorama-ghost-1">
+                                        <path d="M 0,-30 C -22,-30 -28,-12 -28,10 C -28,24 -21,26 -16,18 C -11,10 -6,24 0,17 C 6,10 11,24 16,18 C 21,26 28,24 28,10 C 28,-12 22,-30 0,-30 Z"
+                                              fill="url(#ghostGrad)" filter="url(#ghostGlow)" />
+                                        <path d="M -22,0 C -32,-4 -36,-12 -30,-15 C -25,-17 -22,-8 -18,-5" fill="url(#ghostGrad)" opacity="0.9"/>
+                                        <path d="M 22,0 C 32,-4 36,-12 30,-15 C 25,-17 22,-8 18,-5" fill="url(#ghostGrad)" opacity="0.9"/>
+                                        <ellipse cx="-8" cy="-8" rx="3.5" ry="5" fill="#0f172a" />
+                                        <ellipse cx="8" cy="-8" rx="3.5" ry="5" fill="#0f172a" />
+                                        <ellipse cx="0" cy="3" rx="3.5" ry="5" fill="#0f172a" />
+                                        <circle cx="-9" cy="-10" r="1.2" fill="#ffffff" />
+                                        <circle cx="7" cy="-10" r="1.2" fill="#ffffff" />
+                                    </g>
+
+                                    <!-- Geist 2 (Rechts) -->
+                                    <g class="diorama-ghost diorama-ghost-2">
+                                        <path d="M 0,-26 C -18,-26 -24,-10 -24,8 C -24,20 -18,22 -14,16 C -10,10 -5,21 0,15 C 5,21 10,10 14,16 C 18,22 24,20 24,8 C 24,-10 18,-26 0,-26 Z"
+                                              fill="url(#ghostGrad)" filter="url(#ghostGlow)" />
+                                        <path d="M -19,-2 C -28,-8 -30,-16 -24,-18 C -19,-19 -18,-11 -15,-6" fill="url(#ghostGrad)" opacity="0.85"/>
+                                        <path d="M 19,-2 C 28,-8 30,-16 24,-18 C 19,-19 18,-11 15,-6" fill="url(#ghostGrad)" opacity="0.85"/>
+                                        <ellipse cx="-7" cy="-7" rx="3" ry="4.5" fill="#0f172a" />
+                                        <ellipse cx="7" cy="-7" rx="3" ry="4.5" fill="#0f172a" />
+                                        <circle cx="0" cy="3" r="3.2" fill="#0f172a" />
+                                        <circle cx="-8" cy="-9" r="1" fill="#ffffff" />
+                                        <circle cx="6" cy="-9" r="1" fill="#ffffff" />
+                                    </g>
+
+                                    <!-- Geist 3 (Mitte / tiefer Schwebeflug) -->
+                                    <g class="diorama-ghost diorama-ghost-3">
+                                        <path d="M 0,-22 C -16,-22 -20,-8 -20,6 C -20,17 -15,19 -11,14 C -8,9 -4,18 0,13 C 4,18 8,9 11,14 C 15,19 20,17 20,6 C 20,-8 16,-22 0,-22 Z"
+                                              fill="url(#ghostGrad)" filter="url(#ghostGlow)" />
+                                        <ellipse cx="-6" cy="-6" rx="2.5" ry="3.8" fill="#0f172a" />
+                                        <ellipse cx="6" cy="-6" rx="2.5" ry="3.8" fill="#0f172a" />
+                                        <ellipse cx="0" cy="2" rx="2.5" ry="3.5" fill="#0f172a" />
+                                    </g>
+                                </g>
                             <?php endif; ?>
 
                             <?php if ($isRaining): ?>
@@ -685,6 +748,109 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     <?php endfor; ?>
                                 </g>
                             <?php endif; ?>
+
+                            <?php if ($isHalloween): ?>
+                                <!-- Halloween: Kürbisse im Garten (Tagsüber dekorativ, Nachts mit flackerndem Kerzenschein) -->
+                                <g id="diorama-halloween-pumpkins">
+                                    <!-- Kürbis 1 (Links, groß) -->
+                                    <g class="diorama-pumpkin" transform="translate(270, 820)">
+                                        <path d="M -2,-22 Q 4,-32 12,-30 Q 9,-25 2,-20 Z" fill="<?= $isNight ? '#1e293b' : '#3f6212' ?>" />
+                                        <ellipse cx="-18" cy="0" rx="16" ry="22" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="18" cy="0" rx="16" ry="22" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="-9" cy="1" rx="15" ry="23" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="9" cy="1" rx="15" ry="23" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="0" cy="2" rx="16" ry="24" fill="<?= $isNight ? '#c2410c' : '#f97316' ?>" />
+                                        <?php if ($isNight): ?>
+                                            <g class="diorama-pumpkin-flame diorama-pumpkin-flame-1" fill="#fef08a">
+                                                <polygon points="-12,-6 -6,-1 -13,-1" />
+                                                <polygon points="12,-6 13,-1 6,-1" />
+                                                <polygon points="0,-4 -3,0 3,0" />
+                                                <polygon points="-14,6 -9,4 -6,7 0,4 6,7 9,4 14,6 10,13 6,10 0,14 -6,10 -10,13" />
+                                            </g>
+                                        <?php else: ?>
+                                            <g fill="#271c14" opacity="0.85">
+                                                <polygon points="-12,-6 -6,-1 -13,-1" />
+                                                <polygon points="12,-6 13,-1 6,-1" />
+                                                <polygon points="0,-4 -3,0 3,0" />
+                                                <polygon points="-14,6 -9,4 -6,7 0,4 6,7 9,4 14,6 10,13 6,10 0,14 -6,10 -10,13" />
+                                            </g>
+                                        <?php endif; ?>
+                                    </g>
+
+                                    <!-- Kürbis 2 (Links, kleiner Begleiter) -->
+                                    <g class="diorama-pumpkin" transform="translate(325, 835) scale(0.68)">
+                                        <path d="M 0,-20 Q -5,-28 -2,-30 Q 3,-27 3,-18 Z" fill="<?= $isNight ? '#1e293b' : '#4d7c0f' ?>" />
+                                        <ellipse cx="-16" cy="0" rx="15" ry="19" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="16" cy="0" rx="15" ry="19" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="-8" cy="1" rx="14" ry="20" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="8" cy="1" rx="14" ry="20" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="0" cy="2" rx="15" ry="21" fill="<?= $isNight ? '#c2410c' : '#f97316' ?>" />
+                                        <?php if ($isNight): ?>
+                                            <g class="diorama-pumpkin-flame diorama-pumpkin-flame-2" fill="#fde047">
+                                                <circle cx="-8" cy="-3" r="3.5" />
+                                                <circle cx="8" cy="-3" r="3.5" />
+                                                <path d="M -11,6 Q 0,16 11,6 Q 7,12 4,11 L 4,8 L 1,8 L 1,12 Q -1,12 -3,8 L -6,8 L -6,11 Q -8,11 -11,6 Z" />
+                                            </g>
+                                        <?php else: ?>
+                                            <g fill="#271c14" opacity="0.85">
+                                                <circle cx="-8" cy="-3" r="3.5" />
+                                                <circle cx="8" cy="-3" r="3.5" />
+                                                <path d="M -11,6 Q 0,16 11,6 Q 7,12 4,11 L 4,8 L 1,8 L 1,12 Q -1,12 -3,8 L -6,8 L -6,11 Q -8,11 -11,6 Z" />
+                                            </g>
+                                        <?php endif; ?>
+                                    </g>
+
+                                    <!-- Kürbis 3 (Rechts, größer / spitzbübisch) -->
+                                    <g class="diorama-pumpkin" transform="translate(1240, 825) scale(0.92)">
+                                        <path d="M 0,-24 Q 6,-33 13,-30 Q 9,-25 3,-21 Z" fill="<?= $isNight ? '#1e293b' : '#3f6212' ?>" />
+                                        <ellipse cx="-17" cy="0" rx="15" ry="24" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="17" cy="0" rx="15" ry="24" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="-8" cy="1" rx="14" ry="25" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="8" cy="1" rx="14" ry="25" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="0" cy="2" rx="15" ry="26" fill="<?= $isNight ? '#c2410c' : '#f97316' ?>" />
+                                        <?php if ($isNight): ?>
+                                            <g class="diorama-pumpkin-flame diorama-pumpkin-flame-3" fill="#fef08a">
+                                                <polygon points="-12,-7 -4,-2 -11,0" />
+                                                <polygon points="12,-7 11,0 4,-2" />
+                                                <polygon points="0,-4 -2.5,-1 2.5,-1" />
+                                                <polygon points="-13,5 -7,4 -3,7 3,4 7,7 13,5 9,12 4,9 0,13 -5,9 -9,12" />
+                                            </g>
+                                        <?php else: ?>
+                                            <g fill="#271c14" opacity="0.85">
+                                                <polygon points="-12,-7 -4,-2 -11,0" />
+                                                <polygon points="12,-7 11,0 4,-2" />
+                                                <polygon points="0,-4 -2.5,-1 2.5,-1" />
+                                                <polygon points="-13,5 -7,4 -3,7 3,4 7,7 13,5 9,12 4,9 0,13 -5,9 -9,12" />
+                                            </g>
+                                        <?php endif; ?>
+                                    </g>
+
+                                    <!-- Kürbis 4 (Rechts, kleiner kugeliger Kürbis) -->
+                                    <g class="diorama-pumpkin" transform="translate(1305, 835) scale(0.72)">
+                                        <path d="M -1,-19 Q -6,-26 0,-29 Q 4,-25 2,-17 Z" fill="<?= $isNight ? '#1e293b' : '#4d7c0f' ?>" />
+                                        <ellipse cx="-18" cy="0" rx="16" ry="18" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="18" cy="0" rx="16" ry="18" fill="<?= $isNight ? '#7c2d12' : '#c2410c' ?>" />
+                                        <ellipse cx="-9" cy="1" rx="15" ry="19" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="9" cy="1" rx="15" ry="19" fill="<?= $isNight ? '#9a3412' : '#ea580c' ?>" />
+                                        <ellipse cx="0" cy="2" rx="16" ry="20" fill="<?= $isNight ? '#c2410c' : '#f97316' ?>" />
+                                        <?php if ($isNight): ?>
+                                            <g class="diorama-pumpkin-flame diorama-pumpkin-flame-4" fill="#fde047">
+                                                <polygon points="-10,-4 -4,0 -10,1" />
+                                                <polygon points="10,-4 10,1 4,0" />
+                                                <polygon points="0,-2 -2,1 2,1" />
+                                                <path d="M -9,5 Q 0,13 9,5 Q 5,10 0,10 Q -5,10 -9,5 Z" />
+                                            </g>
+                                        <?php else: ?>
+                                            <g fill="#271c14" opacity="0.85">
+                                                <polygon points="-10,-4 -4,0 -10,1" />
+                                                <polygon points="10,-4 10,1 4,0" />
+                                                <polygon points="0,-2 -2,1 2,1" />
+                                                <path d="M -9,5 Q 0,13 9,5 Q 5,10 0,10 Q -5,10 -9,5 Z" />
+                                            </g>
+                                        <?php endif; ?>
+                                    </g>
+                                </g>
+                            <?php endif; ?>
                         </svg>
                     </div>
                 </div>
@@ -722,6 +888,11 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <label class="diorama-debug-row">
                                     <span>Goldene Stunde</span>
                                     <input type="checkbox" name="dbg_golden" value="1" <?= $isGoldenHour ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>🎃 Halloween-Special</span>
+                                    <input type="checkbox" name="dbg_halloween" value="1" <?= $isHalloween ? 'checked' : '' ?>>
                                 </label>
 
                                 <label class="diorama-debug-row">
