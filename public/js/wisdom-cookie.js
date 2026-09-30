@@ -161,8 +161,51 @@
         }
     }
 
+    /**
+     * Setzt den Keks in den ungeöffneten Ausgangszustand zurück (Admin-Debug).
+     */
+    function resetCookieState() {
+        try {
+            localStorage.removeItem(getTodayKey());
+        } catch (_) {}
+
+        const trigger = document.querySelector('.js-wisdom-trigger');
+        if (trigger) {
+            trigger.classList.remove('is-opened', 'is-cracking');
+            trigger.setAttribute('aria-expanded', 'false');
+
+            const desc = trigger.querySelector('.js-cookie-desc');
+            if (desc) {
+                desc.textContent = 'Knacke den Keks, um Konfuzius\' Weisheit für heute zu enthüllen.';
+            }
+
+            const btn = trigger.querySelector('.js-cookie-btn');
+            if (btn) {
+                btn.innerHTML = '🥠 Keks öffnen';
+                btn.classList.remove('btn-opened');
+            }
+
+            const hint = document.querySelector('.js-wisdom-hint');
+            if (hint) {
+                hint.textContent = '🥠 Glückskeks';
+            }
+        }
+
+        closeWisdomModal();
+    }
+
     // Event Delegation
     document.addEventListener('click', function (e) {
+        // Admin-Reset-Button (Keks wieder verschließen)
+        const resetBtn = e.target.closest('.js-wisdom-reset');
+        if (resetBtn) {
+            e.preventDefault();
+            resetBtn.classList.add('is-resetting');
+            setTimeout(() => resetBtn.classList.remove('is-resetting'), 420);
+            resetCookieState();
+            return;
+        }
+
         // Klick auf Schließen-Button oder Backdrop
         if (e.target.closest('.js-wisdom-close')) {
             e.preventDefault();

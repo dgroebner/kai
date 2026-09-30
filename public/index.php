@@ -63,7 +63,12 @@ if (!empty($dailyWisdom)) {
             <section class="card daily-wisdom-card" aria-label="Weisheit des Tages">
                 <div class="daily-wisdom-header">
                     <span class="daily-wisdom-badge">✨ Weisheit des Tages</span>
-                    <span class="daily-wisdom-hint js-wisdom-hint">🥠 Glückskeks</span>
+                    <div class="daily-wisdom-actions">
+                        <?php if (Auth::hasPermission('system_write')): ?>
+                            <button type="button" class="wisdom-debug-btn js-wisdom-reset" title="Admin: Glückskeks wieder verschließen (Knacken erneut testen)" aria-label="Glückskeks zurücksetzen">🔄</button>
+                        <?php endif; ?>
+                        <span class="daily-wisdom-hint js-wisdom-hint">🥠 Glückskeks</span>
+                    </div>
                 </div>
                 <div class="fortune-cookie-container js-wisdom-trigger" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="Glückskeks öffnen für die Weisheit des Tages">
                     <div class="fortune-cookie-visual">

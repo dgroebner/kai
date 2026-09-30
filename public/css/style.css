@@ -7844,9 +7844,45 @@ button.btn-text:hover {
     border-radius: 20px;
 }
 
+.daily-wisdom-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
 .daily-wisdom-hint {
     font-size: 0.8rem;
     color: var(--text-muted, #94a3b8);
+}
+
+.wisdom-debug-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.88rem;
+    opacity: 0.35;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    transition: opacity 0.2s, transform 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted, #94a3b8);
+}
+
+.wisdom-debug-btn:hover {
+    opacity: 0.9;
+    color: #f59e0b;
+    transform: scale(1.15);
+}
+
+.wisdom-debug-btn.is-resetting {
+    animation: spinOnce 0.4s ease-in-out;
+}
+
+@keyframes spinOnce {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Interaktiver Glückskeks-Klickbereich */
