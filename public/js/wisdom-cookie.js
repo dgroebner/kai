@@ -137,6 +137,86 @@
         }, 260);
     }
 
+    let audioCtx = null;
+
+    /**
+     * Erzeugt ein realistisches, trockenes Keks-Knackgeräusch über die native Web Audio API
+     * (völlig autark ohne externe Sounddateien oder Ladezeiten).
+     */
+    function playCookieSnapSound() {
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+
+            if (!audioCtx) {
+                audioCtx = new AudioContextClass();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+
+            // 1. Trockener Knack-Burst (gefiltertes Rauschen für das Zerbrechen des Teigs)
+            const bufferSize = Math.floor(audioCtx.sampleRate * 0.08);
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.016));
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const bandpass = audioCtx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.setValueAtTime(2400, now);
+            bandpass.Q.setValueAtTime(1.4, now);
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.4, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+            noise.connect(bandpass);
+            bandpass.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noise.start(now);
+
+            // 2. Erster Knack-Snap (mechanischer Klick der ersten Bruchlinie)
+            const snap1 = audioCtx.createOscillator();
+            const snap1Gain = audioCtx.createGain();
+            snap1.type = 'triangle';
+            snap1.frequency.setValueAtTime(420, now);
+            snap1.frequency.exponentialRampToValueAtTime(80, now + 0.035);
+
+            snap1Gain.gain.setValueAtTime(0.3, now);
+            snap1Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+            snap1.connect(snap1Gain);
+            snap1Gain.connect(audioCtx.destination);
+            snap1.start(now);
+            snap1.stop(now + 0.04);
+
+            // 3. Zweiter Mikrosnap (16ms später für die zweite Teighälfte)
+            const snap2 = audioCtx.createOscillator();
+            const snap2Gain = audioCtx.createGain();
+            snap2.type = 'triangle';
+            snap2.frequency.setValueAtTime(320, now + 0.016);
+            snap2.frequency.exponentialRampToValueAtTime(60, now + 0.05);
+
+            snap2Gain.gain.setValueAtTime(0.22, now + 0.016);
+            snap2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+            snap2.connect(snap2Gain);
+            snap2Gain.connect(audioCtx.destination);
+            snap2.start(now + 0.016);
+            snap2.stop(now + 0.055);
+
+        } catch (_) {
+            // Stille bei Geräten/Browsern ohne Audioberechtigung
+        }
+    }
+
     /**
      * Behandelt das Knacken des Kekses.
      */
@@ -146,7 +226,8 @@
         const wasOpened = trigger.classList.contains('is-opened');
 
         if (!wasOpened) {
-            // Erstmaliges Knacken: Knack-Animation abspielen
+            // Knackgeräusch abspielen & Knack-Animation starten
+            playCookieSnapSound();
             trigger.classList.add('is-cracking');
             
             setTimeout(() => {
