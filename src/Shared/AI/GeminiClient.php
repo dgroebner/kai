@@ -28,7 +28,9 @@ class GeminiClient
         ?string $base64Data = null,
         bool    $jsonMode = false,
         ?array  $responseSchema = null,
-        ?string $systemInstruction = null
+        ?string $systemInstruction = null,
+        ?float  $temperature = null,
+        int     $timeout = 90
     ): ?array
     {
         $parts = [['text' => $prompt]];
@@ -50,7 +52,7 @@ class GeminiClient
         $payload = [
             'contents' => [['parts' => $parts]],
             'generationConfig' => [
-                'temperature' => 0.1
+                'temperature' => $temperature ?? 0.1
             ]
         ];
 
@@ -75,7 +77,7 @@ class GeminiClient
             throw new Exception("Payload konnte nicht in JSON encodiert werden: " . json_last_error_msg());
         }
 
-        $maxAttempts = 3;
+        $maxAttempts = ($timeout <= 10) ? 1 : 3;
         $response = null;
         $httpCode = 0;
 
@@ -87,8 +89,8 @@ class GeminiClient
 
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 90);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(10, $timeout));
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
                 'x-goog-api-key: ' . $this->apiKey

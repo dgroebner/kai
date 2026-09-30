@@ -7807,5 +7807,75 @@ button.btn-text:hover {
     padding: 0.4rem 0.8rem;
 }
 
+/* ==========================================================================
+   DAILY WISDOM (Weisheit des Tages)
+   ========================================================================== */
+.daily-wisdom-card {
+    margin-bottom: 1.75rem;
+    padding: 1.25rem 1.6rem;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.8) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.22);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+.daily-wisdom-card:hover {
+    border-color: rgba(59, 130, 246, 0.45);
+    box-shadow: 0 6px 20px var(--glow-color);
+    transform: translateY(-1px);
+}
+
+.daily-wisdom-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+
+.daily-wisdom-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.65rem;
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 20px;
+}
+
+.daily-wisdom-quote {
+    margin: 0;
+    padding: 0;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.daily-wisdom-author {
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 0.3rem;
+}
+
+.daily-wisdom-text {
+    font-style: italic;
+    color: #e2e8f0;
+}
+
+@media (max-width: 600px) {
+    .daily-wisdom-card {
+        padding: 1rem 1.15rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .daily-wisdom-quote {
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+}
+
+
 
 

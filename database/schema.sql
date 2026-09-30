@@ -1017,5 +1017,13 @@ CREATE TABLE IF NOT EXISTS `calendar_notification_logs` (
     FOREIGN KEY (`event_id`) REFERENCES `calendar_events`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ==========================================================================
+-- DOMAIN: SYSTEM (Tägliche Weisheit / Daily Wisdom)
+-- ==========================================================================
 
-
+CREATE TABLE IF NOT EXISTS `daily_wisdoms` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `wisdom_date` DATE NOT NULL UNIQUE,
+    `content` TEXT NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

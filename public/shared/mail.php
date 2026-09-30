@@ -46,6 +46,17 @@ try {
 
     $db = Database::getInstance();
 
+    // 0. Tägliche Weisheit prüfen & bei Bedarf generieren
+    try {
+        $wisdomService = new \Kai\Tools\System\DailyWisdomService(logger: $logger);
+        $generatedWisdom = $wisdomService->ensureTodayWisdom();
+        if ($generatedWisdom !== null) {
+            $logger->info("Cronjob (mail.php): Neue tägliche Weisheit generiert.", ['wisdom' => $generatedWisdom]);
+        }
+    } catch (Throwable $we) {
+        $logger->warn("Cronjob (mail.php): Fehler bei der Generierung der täglichen Weisheit.", ['error' => $we->getMessage()]);
+    }
+
     // 1. Schule / Vertretungsplan synchronisieren (heute und nächster Schultag)
     try {
         $schoolService = new \Kai\Tools\School\SchoolService();

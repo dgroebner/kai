@@ -27,6 +27,7 @@ Diese Endpunkte besitzen keine Benutzersession und werden über den `CRON_TOKEN`
 | `shared/mail.php` | GET | Zentraler Cron-Trigger: liest das IMAP-Postfach, verteilt Kassenbons, Kreditkartenabrechnungen und Bankdaten über den `MailDispatcher` und führt den stündlichen Stundenplan-Abgleich (Schule) aus. Läuft nach dem Senden der Antwort asynchron weiter. |
 | `school/cron.php` | GET / POST | Standalone Cron-Trigger zum Synchronisieren des heutigen und kommenden Stunden- und Vertretungsplans von stundenplan24.de. |
 | `pvcharge/cron_forecast.php` | GET | Holt die Tages- und Stundenprognose von forecast.solar und schreibt sie in die Datenbank. |
+| `shared/wisdom_cron.php` | GET | Generiert die tägliche Weisheit via Gemini KI für den aktuellen Tag und speichert sie in der Datenbank. |
 | `pvcharge/ingest.php` | POST | Nimmt Live- und Telemetriedaten der PV-Anlage entgegen (`{"type":"live\|telemetry","data":{…}}`). Spaltennamen werden gegen eine Allowlist geprüft. |
 | `car/telemetry/index.php` | POST | Nimmt die Telemetrie des VW ID.Buzz entgegen. Akzeptiert den Token **nur** per Header, nicht als Query-Parameter. |
 

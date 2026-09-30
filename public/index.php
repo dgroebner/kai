@@ -2,9 +2,19 @@
 require_once __DIR__ . '/../bootstrap.php';
 
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\System\DailyWisdomService;
 
 // Auth-Check — immer zuerst
 Auth::requirePage();
+
+// Weisheit des Tages abrufen (inkl. Lazy Evaluation & Fallback-Schutz)
+$dailyWisdom = null;
+try {
+    $wisdomService = new DailyWisdomService();
+    $dailyWisdom = $wisdomService->getWisdomForToday();
+} catch (Throwable) {
+    $dailyWisdom = DailyWisdomService::FALLBACK_WISDOMS[0];
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -29,6 +39,22 @@ Auth::requirePage();
     </header>
 
     <main>
+        <?php if (!empty($dailyWisdom)): ?>
+            <section class="card daily-wisdom-card" aria-label="Weisheit des Tages">
+                <div class="daily-wisdom-header">
+                    <span class="daily-wisdom-badge">✨ Weisheit des Tages</span>
+                </div>
+                <blockquote class="daily-wisdom-quote">
+                    <?php if (str_starts_with($dailyWisdom, 'Konfuzius sagt:')): ?>
+                        <strong class="daily-wisdom-author">Konfuzius sagt:</strong>
+                        <span class="daily-wisdom-text">„<?= htmlspecialchars(trim(substr($dailyWisdom, strlen('Konfuzius sagt:'))), ENT_QUOTES, 'UTF-8') ?>“</span>
+                    <?php else: ?>
+                        <span class="daily-wisdom-text">„<?= htmlspecialchars($dailyWisdom, ENT_QUOTES, 'UTF-8') ?>“</span>
+                    <?php endif; ?>
+                </blockquote>
+            </section>
+        <?php endif; ?>
+
         <div class="tool-grid">
 
             <?php if (Auth::hasPermission('weather_read')): ?>
