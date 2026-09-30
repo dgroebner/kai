@@ -12,16 +12,16 @@ class DailyWisdomService
      * Statischer Notfall-Puffer hochkarätiger Weisheiten, falls KI oder DB nicht erreichbar sind.
      */
     public const FALLBACK_WISDOMS = [
-        'Konfuzius sagt: Wer den Tag mit einem Lächeln beginnt, hat der Hektik des Alltags schon den ersten Schritt voraus.',
-        'Konfuzius sagt: Auch die längste Reise beginnt mit dem ersten Schritt – und manchmal mit einer frischen Tasse Kaffee.',
-        'Konfuzius sagt: Wer die Geduld bewahrt, wenn die Technik streikt, hat die wahre Gelassenheit des digitalen Zeitalters gemeistert.',
+        'Konfuzius sagt: Wer den Tag mit einem Lächeln beginnt, zaubert auch anderen Menschen ein wenig Sonne ins Herz.',
+        'Konfuzius sagt: Auch der längste Weg beginnt mit dem ersten Schritt – und manchmal mit einer gemütlichen Tasse Tee oder Kaffee.',
+        'Konfuzius sagt: Wer über das kleine Chaos im Alltag schmunzeln kann, hat die schönste Form der Gelassenheit gefunden.',
         'Konfuzius sagt: Es ist besser, ein kleines Licht anzuzünden, als über die Dunkelheit zu klagen.',
-        'Konfuzius sagt: Wer fragt, ist ein Narr für fünf Minuten. Wer nicht fragt, bleibt es ein Leben lang.',
-        'Konfuzius sagt: Das Geheimnis des Erfolgs liegt darin, den Anfang zu wagen und dranzubleiben.',
-        'Konfuzius sagt: Nicht der Wind bestimmt den Kurs, sondern die Segel, die wir setzen.',
-        'Konfuzius sagt: Ein voller Terminkalender ist noch lange kein Beweis für einen erfüllten Tag.',
-        'Konfuzius sagt: Wer am Morgen innehält und durchatmet, schenkt sich selbst den Schlüssel zur Gelassenheit.',
-        'Konfuzius sagt: Wer Freude sät, erntet Zufriedenheit noch vor dem Abendrot.',
+        'Konfuzius sagt: Geduld ist die Kunst, die kleinen Wunder des Alltags nicht durch Eile zu verpassen.',
+        'Konfuzius sagt: Ein freundliches Wort am Morgen wärmt das Herz oft den ganzen Tag.',
+        'Konfuzius sagt: Ein glückliches Zuhause entsteht nicht durch Perfektion, sondern durch Liebe, Lachen und Verzeihung.',
+        'Konfuzius sagt: Wer den Moment genießt, sammelt Erinnerungen, die kein Terminkalender messen kann.',
+        'Konfuzius sagt: Wenn du ein Kind zum Lachen bringst, machst du die ganze Welt für einen Augenblick heller.',
+        'Konfuzius sagt: Die schönsten Dinge im Leben lassen sich weder kaufen noch planen – sie werden einfach geteilt.',
     ];
 
     private DailyWisdomRepository $repository;
@@ -104,14 +104,19 @@ class DailyWisdomService
             $recentWisdoms = $this->repository->getRecentWisdomTexts(60);
 
             $systemInstruction = <<<SYS
-Du bist ein geistreicher, philosophischer Denker im Stile von Konfuzius mit feinsinnigem, hintergründigem Humor und Sinn für das moderne Leben, Familie, Alltag, Technologie und Weisheit.
-Deine Aufgabe ist es, für den heutigen Tag eine prägnante, originelle Weisheit des Tages zu verfassen.
+Du bist ein warmherziger, geistreicher Philosoph im Geiste von Konfuzius mit feinem Humor für das echte Leben, Familie und Alltag.
+Deine Aufgabe ist es, für den heutigen Tag eine prägnante, herzliche und alltagsnahe "Weisheit des Tages" zu verfassen.
+
+ZIELGRUPPE & TONFALL:
+- Absolut kinder- und familienfreundlich, warmherzig und einladend (auch für Mütter, Väter, Kinder und Großeltern).
+- Leicht verständlich und nah am echten Leben – keinerlei Nerd-Humor, keine Technik- oder Computer-Analogien, keine Fachbegriffe.
+- Themen: Familie, Zusammenhalt, kleine Freuden des Alltags, Gelassenheit im Trubel, Freundlichkeit, Humor über liebenswerte Alltagsschwächen, Achtsamkeit und Natur.
+- Leichtes Augenzwinkern: Klug und zum Schmunzeln anregend, niemals belehrend, herablassend oder kitschig.
 
 STRIKTE REGELN:
 1. Format: Deine Antwort MUSS zwingend und ausnahmslos mit "Konfuzius sagt:" beginnen, gefolgt von der Weisheit (1 bis maximal 2 Sätze).
-2. Tonfall: Geistreich, mit einem leichten Augenzwinkern, lebensklug, motivierend oder zum Schmunzeln anregend – weder kitschig noch belehrend oder abgedroschen.
-3. Strikte Vermeidung von Wiederholungen: Du darfst KEINESFALLS Themen, Metaphern, Redewendungen oder Pointen verwenden, die den unten im Prompt aufgeführten vergangenen Sprüchen ähneln. Sei innovativ und erfinde jeden Tag eine frische Perspektive.
-4. Ausgabeformat: Gib AUSSCHLIESSLICH den fertigen Text ohne zusätzliche Anführungszeichen, ohne Markdown-Fences, ohne Einleitungen und ohne Erklärungen aus.
+2. Strikte Vermeidung von Wiederholungen: Du darfst KEINESFALLS Themen, Metaphern, Redewendungen oder Pointen verwenden, die den unten im Prompt aufgeführten vergangenen Sprüchen ähneln. Sei innovativ und erfinde jeden Tag eine frische Perspektive.
+3. Ausgabeformat: Gib AUSSCHLIESSLICH den fertigen Text ohne zusätzliche Anführungszeichen, ohne Markdown-Fences, ohne Einleitungen und ohne Erklärungen aus.
 SYS;
 
             $pastListText = '';
@@ -127,7 +132,7 @@ SYS;
 
             $userPrompt = <<<PROMPT
 {$pastListText}
-Formuliere nun eine völlig neue, unverbrauchte Weisheit des Tages für das Datum {$targetDate}.
+Formuliere nun eine völlig neue, lebensnahe Alltagsweisheit für den heutigen Tag ({$targetDate}), die jedem Familienmitglied ein Lächeln schenkt.
 Denke daran: Die Antwort MUSS mit "Konfuzius sagt:" beginnen.
 PROMPT;
 
