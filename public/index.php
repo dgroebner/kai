@@ -68,26 +68,68 @@ if (!empty($dailyWisdom)) {
                 <div class="fortune-cookie-container js-wisdom-trigger" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="Glückskeks öffnen für die Weisheit des Tages">
                     <div class="fortune-cookie-visual">
                         <div class="fortune-cookie-icon-wrap">
-                            <svg viewBox="0 0 100 85" class="fortune-cookie-svg" aria-hidden="true">
+                            <svg viewBox="0 0 130 90" class="fortune-cookie-svg" aria-hidden="true">
                                 <defs>
-                                    <linearGradient id="cookieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <linearGradient id="cookieGradLeft" x1="0%" y1="0%" x2="100%" y2="100%">
                                         <stop offset="0%" stop-color="#fcd34d" />
-                                        <stop offset="50%" stop-color="#f59e0b" />
+                                        <stop offset="45%" stop-color="#f59e0b" />
+                                        <stop offset="100%" stop-color="#b45309" />
+                                    </linearGradient>
+                                    <linearGradient id="cookieGradRight" x1="100%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#fcd34d" />
+                                        <stop offset="45%" stop-color="#f59e0b" />
                                         <stop offset="100%" stop-color="#b45309" />
                                     </linearGradient>
                                     <linearGradient id="cookieCreaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                                         <stop offset="0%" stop-color="#92400e" />
                                         <stop offset="100%" stop-color="#451a03" />
                                     </linearGradient>
+                                    <filter id="paperShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3" />
+                                    </filter>
                                 </defs>
-                                <!-- Keks-Körper -->
-                                <path class="cookie-body" d="M 50,16 C 30,16 12,28 8,46 C 4,62 18,78 36,78 C 45,78 49,66 50,56 C 51,66 55,78 64,78 C 82,78 96,62 92,46 C 88,28 70,16 50,16 Z" fill="url(#cookieGrad)" stroke="#b45309" stroke-width="2" />
-                                <!-- Keks-Falte / Tiefe -->
-                                <path class="cookie-crease" d="M 50,30 Q 50,52 38,70 Q 50,58 50,30 Z" fill="url(#cookieCreaseGrad)" opacity="0.65" />
-                                <!-- Glanzlicht -->
-                                <path class="cookie-highlight" d="M 22,32 C 16,42 16,56 22,64" stroke="#fef3c7" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.8" />
-                                <!-- Zettelstreifen aus dem Keks -->
-                                <rect class="cookie-slip" x="42" y="34" width="16" height="15" rx="2" fill="#fffdfa" stroke="#d5c7a3" stroke-width="1.2" />
+
+                                <!-- Krümel beim Zerbrechen -->
+                                <g class="cookie-crumbs">
+                                    <circle class="cookie-crumb c1" cx="62" cy="73" r="2.2" fill="#d97706" />
+                                    <circle class="cookie-crumb c2" cx="54" cy="77" r="1.6" fill="#b45309" />
+                                    <circle class="cookie-crumb c3" cx="74" cy="75" r="1.8" fill="#f59e0b" />
+                                    <circle class="cookie-crumb c4" cx="66" cy="79" r="1.3" fill="#fcd34d" />
+                                </g>
+
+                                <!-- Papierstreifen in der Mitte -->
+                                <g class="cookie-paper-strip">
+                                    <rect x="33" y="36" width="64" height="24" rx="3" fill="#fffdf7" stroke="#d6c69f" stroke-width="1.2" filter="url(#paperShadow)" />
+                                    <!-- Rotes chinesisches Mini-Siegel links -->
+                                    <rect x="38" y="41" width="7" height="14" rx="1.5" fill="#dc2626" />
+                                    <!-- Textlinien-Andeutung -->
+                                    <line x1="49" y1="44" x2="89" y2="44" stroke="#78350f" stroke-width="1.8" stroke-linecap="round" opacity="0.75" />
+                                    <line x1="49" y1="50" x2="83" y2="50" stroke="#78350f" stroke-width="1.8" stroke-linecap="round" opacity="0.65" />
+                                    <!-- Glückszahlen-Punkte -->
+                                    <circle cx="53" cy="55" r="1" fill="#b45309" />
+                                    <circle cx="59" cy="55" r="1" fill="#b45309" />
+                                    <circle cx="65" cy="55" r="1" fill="#b45309" />
+                                    <circle cx="71" cy="55" r="1" fill="#b45309" />
+                                    <circle cx="77" cy="55" r="1" fill="#b45309" />
+                                </g>
+
+                                <!-- Linke Kekshälfte -->
+                                <g class="cookie-half cookie-half-left">
+                                    <path d="M 65,16 C 45,16 27,28 23,46 C 19,62 33,78 51,78 C 58,78 62,68 64,57 L 62,45 L 65,33 Z" fill="url(#cookieGradLeft)" stroke="#a15309" stroke-width="1.8" />
+                                    <!-- Falte / Schatten links -->
+                                    <path d="M 65,30 Q 64,48 53,68 Q 63,55 64,30 Z" fill="url(#cookieCreaseGrad)" opacity="0.55" />
+                                    <!-- Glanzlicht links -->
+                                    <path d="M 37,32 C 31,42 31,56 37,64" stroke="#fef3c7" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.75" />
+                                </g>
+
+                                <!-- Rechte Kekshälfte -->
+                                <g class="cookie-half cookie-half-right">
+                                    <path d="M 65,16 C 85,16 103,28 107,46 C 111,62 97,78 79,78 C 72,78 68,68 66,57 L 68,45 L 65,33 Z" fill="url(#cookieGradRight)" stroke="#a15309" stroke-width="1.8" />
+                                    <!-- Falte / Schatten rechts -->
+                                    <path d="M 65,30 Q 66,48 77,68 Q 67,55 66,30 Z" fill="url(#cookieCreaseGrad)" opacity="0.55" />
+                                    <!-- Glanzlicht rechts -->
+                                    <path d="M 93,32 C 99,42 99,56 93,64" stroke="#fef3c7" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.75" />
+                                </g>
                             </svg>
                         </div>
                     </div>

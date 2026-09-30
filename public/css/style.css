@@ -7884,8 +7884,8 @@ button.btn-text:hover {
 
 .fortune-cookie-icon-wrap {
     position: relative;
-    width: 82px;
-    height: 68px;
+    width: 104px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7896,10 +7896,64 @@ button.btn-text:hover {
     height: 100%;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: visible;
 }
 
-.fortune-cookie-container:hover .fortune-cookie-svg {
-    transform: scale(1.1) rotate(-4deg);
+.fortune-cookie-container:not(.is-opened):hover .fortune-cookie-svg {
+    transform: scale(1.08) rotate(-3deg);
+}
+
+/* Die beiden Kekshälften */
+.cookie-half {
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cookie-half-left {
+    transform-origin: 25px 46px;
+    transform: translate(0, 0) rotate(0deg);
+}
+
+.cookie-half-right {
+    transform-origin: 105px 46px;
+    transform: translate(0, 0) rotate(0deg);
+}
+
+/* Papierstreifen in der Mitte */
+.cookie-paper-strip {
+    transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: 65px 48px;
+    opacity: 0;
+    transform: scale(0.2) translateY(12px);
+    pointer-events: none;
+}
+
+/* Krümel */
+.cookie-crumbs {
+    transition: opacity 0.35s ease;
+    opacity: 0;
+}
+
+/* ZUSTAND: GEKNACKT / ZERBROCHEN */
+.fortune-cookie-container.is-opened .cookie-half-left {
+    transform: translateX(-16px) translateY(4px) rotate(-16deg);
+}
+
+.fortune-cookie-container.is-opened .cookie-half-right {
+    transform: translateX(16px) translateY(4px) rotate(16deg);
+}
+
+.fortune-cookie-container.is-opened .cookie-paper-strip {
+    opacity: 1;
+    transform: scale(1) translateY(-2px) rotate(-2deg);
+}
+
+.fortune-cookie-container.is-opened:hover .cookie-paper-strip {
+    transform: scale(1.08) translateY(-4px) rotate(-1deg);
+    filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.35));
+}
+
+.fortune-cookie-container.is-opened .cookie-crumbs {
+    opacity: 1;
 }
 
 /* Animation beim Knacken */
@@ -7913,23 +7967,7 @@ button.btn-text:hover {
     40% { transform: scale(1.15) rotate(8deg); }
     60% { transform: scale(1.2) rotate(-5deg); }
     80% { transform: scale(1.25) rotate(4deg); }
-    100% { transform: scale(1.1) rotate(0deg); }
-}
-
-/* Papierstreifen im Keks bei geöffnetem Zustand */
-.cookie-slip {
-    transition: all 0.4s ease;
-    transform-origin: center bottom;
-}
-
-.fortune-cookie-container.is-opened .cookie-slip {
-    transform: translateY(-7px) rotate(-3deg);
-    opacity: 1;
-}
-
-.fortune-cookie-container:not(.is-opened) .cookie-slip {
-    opacity: 0.35;
-    transform: translateY(2px);
+    100% { transform: scale(1.05) rotate(0deg); }
 }
 
 .fortune-cookie-info {
