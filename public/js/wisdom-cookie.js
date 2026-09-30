@@ -81,7 +81,7 @@
 
         const desc = trigger.querySelector('.js-cookie-desc');
         if (desc) {
-            desc.textContent = 'Dein Keks für heute ist geknackt – klicke, um deine Schriftrolle erneut zu lesen.';
+            desc.textContent = 'Der Keks für heute ist geknackt – klicke, um die Schriftrolle erneut zu lesen.';
         }
 
         const btn = trigger.querySelector('.js-cookie-btn');

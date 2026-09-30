@@ -92,8 +92,8 @@ if (!empty($dailyWisdom)) {
                         </div>
                     </div>
                     <div class="fortune-cookie-info">
-                        <div class="fortune-cookie-title">Dein persönlicher Glückskeks</div>
-                        <div class="fortune-cookie-desc js-cookie-desc">Knacke den Keks, um Konfuzius' Weisheit des Tages zu enthüllen.</div>
+                        <div class="fortune-cookie-title">Glückskeks des Tages</div>
+                        <div class="fortune-cookie-desc js-cookie-desc">Knacke den Keks, um Konfuzius' Weisheit für heute zu enthüllen.</div>
                         <button type="button" class="btn-cookie-open js-cookie-btn">🥠 Keks öffnen</button>
                     </div>
                 </div>
