@@ -138,10 +138,81 @@
     }
 
     let audioCtx = null;
+    let cookieCrunchBuffer = null;
 
     /**
-     * Erzeugt ein realistisches, trockenes Keks-Knackgeräusch über die native Web Audio API
-     * (völlig autark ohne externe Sounddateien oder Ladezeiten).
+     * Erzeugt einen AudioBuffer für ein authentisches, trockenes Cracker-/Glückskeks-Knacken.
+     * Nutzt kaskadierende Mikrosnaps im Bereich 2.000 - 6.000 Hz und schneidet
+     * tiefe Frequenzen (die wie ein "Schlag auf den Tisch" klingen würden) komplett ab.
+     */
+    function createCookieCrunchBuffer(ctx) {
+        const sampleRate = ctx.sampleRate;
+        const duration = 0.16; // 160ms trockener Bruch
+        const numSamples = Math.floor(sampleRate * duration);
+        const buffer = ctx.createBuffer(1, numSamples, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Kaskadierende Mikrosnaps für das Zersplittern eines trockenen Keksgebäcks
+        const snaps = [
+            { t: 0.000, dur: 0.014, freqStart: 4800, freqEnd: 2600, amp: 0.85 },
+            { t: 0.008, dur: 0.009, freqStart: 5900, freqEnd: 3400, amp: 0.55 },
+            { t: 0.020, dur: 0.011, freqStart: 4100, freqEnd: 2200, amp: 0.65 },
+            { t: 0.036, dur: 0.016, freqStart: 4500, freqEnd: 2000, amp: 0.95 }, // Zweite Kekshälfte bricht durch
+            { t: 0.052, dur: 0.010, freqStart: 5400, freqEnd: 3000, amp: 0.45 },
+            { t: 0.068, dur: 0.009, freqStart: 4600, freqEnd: 2800, amp: 0.35 },
+            { t: 0.088, dur: 0.008, freqStart: 5100, freqEnd: 3200, amp: 0.25 },
+            { t: 0.108, dur: 0.006, freqStart: 4400, freqEnd: 3000, amp: 0.15 }
+        ];
+
+        for (const snap of snaps) {
+            const startSample = Math.floor(snap.t * sampleRate);
+            const snapLen = Math.floor(snap.dur * sampleRate);
+            for (let i = 0; i < snapLen; i++) {
+                const idx = startSample + i;
+                if (idx >= numSamples) break;
+                const p = i / snapLen;
+                const freq = snap.freqStart + (snap.freqEnd - snap.freqStart) * p;
+                const env = Math.pow(1 - p, 2.8); // Steiler, knackiger Decay
+                const osc = Math.sin(2 * Math.PI * freq * (i / sampleRate));
+                const crackNoise = (Math.random() * 2 - 1) * 0.8;
+                data[idx] += (osc * 0.35 + crackNoise * 0.65) * snap.amp * env;
+            }
+        }
+
+        // Heller, feiner Brösel-Teppich (White Noise, steil hochpassgefiltert)
+        let lastNoise = 0;
+        for (let i = 0; i < numSamples; i++) {
+            const t = i / sampleRate;
+            let env = 0;
+            if (t < 0.035) {
+                env = t / 0.035;
+            } else if (t < 0.14) {
+                env = Math.pow(1 - (t - 0.035) / 0.105, 2.2);
+            }
+            const n = Math.random() * 2 - 1;
+            // Hochpass: Schneidet alle tiefen Frequenzen unter 1500 Hz ab
+            const hp = n - lastNoise * 0.82;
+            lastNoise = n;
+            data[i] += hp * env * 0.22;
+        }
+
+        // Normalisieren & Headroom sicherstellen (kein Clipping)
+        let max = 0;
+        for (let i = 0; i < numSamples; i++) {
+            const abs = Math.abs(data[i]);
+            if (abs > max) max = abs;
+        }
+        if (max > 0) {
+            for (let i = 0; i < numSamples; i++) {
+                data[i] = (data[i] / max) * 0.75;
+            }
+        }
+
+        return buffer;
+    }
+
+    /**
+     * Spielt das realistische Keks-Knacken ab.
      */
     function playCookieSnapSound() {
         try {
@@ -155,63 +226,26 @@
                 audioCtx.resume();
             }
 
-            const now = audioCtx.currentTime;
-
-            // 1. Trockener Knack-Burst (gefiltertes Rauschen für das Zerbrechen des Teigs)
-            const bufferSize = Math.floor(audioCtx.sampleRate * 0.08);
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.016));
+            if (!cookieCrunchBuffer) {
+                cookieCrunchBuffer = createCookieCrunchBuffer(audioCtx);
             }
 
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer;
+            const source = audioCtx.createBufferSource();
+            source.buffer = cookieCrunchBuffer;
 
-            const bandpass = audioCtx.createBiquadFilter();
-            bandpass.type = 'bandpass';
-            bandpass.frequency.setValueAtTime(2400, now);
-            bandpass.Q.setValueAtTime(1.4, now);
+            // Zusätzlicher leichter Hochpass-Filter als Sicherheitsnetz gegen Bass-Mumpf
+            const highpass = audioCtx.createBiquadFilter();
+            highpass.type = 'highpass';
+            highpass.frequency.setValueAtTime(1400, audioCtx.currentTime);
 
-            const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.4, now);
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
 
-            noise.connect(bandpass);
-            bandpass.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-            noise.start(now);
+            source.connect(highpass);
+            highpass.connect(gain);
+            gain.connect(audioCtx.destination);
 
-            // 2. Erster Knack-Snap (mechanischer Klick der ersten Bruchlinie)
-            const snap1 = audioCtx.createOscillator();
-            const snap1Gain = audioCtx.createGain();
-            snap1.type = 'triangle';
-            snap1.frequency.setValueAtTime(420, now);
-            snap1.frequency.exponentialRampToValueAtTime(80, now + 0.035);
-
-            snap1Gain.gain.setValueAtTime(0.3, now);
-            snap1Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-
-            snap1.connect(snap1Gain);
-            snap1Gain.connect(audioCtx.destination);
-            snap1.start(now);
-            snap1.stop(now + 0.04);
-
-            // 3. Zweiter Mikrosnap (16ms später für die zweite Teighälfte)
-            const snap2 = audioCtx.createOscillator();
-            const snap2Gain = audioCtx.createGain();
-            snap2.type = 'triangle';
-            snap2.frequency.setValueAtTime(320, now + 0.016);
-            snap2.frequency.exponentialRampToValueAtTime(60, now + 0.05);
-
-            snap2Gain.gain.setValueAtTime(0.22, now + 0.016);
-            snap2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-
-            snap2.connect(snap2Gain);
-            snap2Gain.connect(audioCtx.destination);
-            snap2.start(now + 0.016);
-            snap2.stop(now + 0.055);
-
+            source.start(0);
         } catch (_) {
             // Stille bei Geräten/Browsern ohne Audioberechtigung
         }
