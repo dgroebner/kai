@@ -7808,7 +7808,7 @@ button.btn-text:hover {
 }
 
 /* ==========================================================================
-   DAILY WISDOM (Weisheit des Tages)
+   DAILY WISDOM (Weisheit des Tages — Glückskeks & Papierrollen-Modal)
    ========================================================================== */
 .daily-wisdom-card {
     margin-bottom: 1.75rem;
@@ -7817,20 +7817,19 @@ button.btn-text:hover {
     border: 1px solid rgba(59, 130, 246, 0.22);
     border-radius: var(--border-radius);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease-in-out;
+    transition: all 0.25s ease-in-out;
 }
 
 .daily-wisdom-card:hover {
-    border-color: rgba(59, 130, 246, 0.45);
-    box-shadow: 0 6px 20px var(--glow-color);
-    transform: translateY(-1px);
+    border-color: rgba(245, 158, 11, 0.4);
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.15);
 }
 
 .daily-wisdom-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.65rem;
+    margin-bottom: 0.85rem;
 }
 
 .daily-wisdom-badge {
@@ -7839,42 +7838,489 @@ button.btn-text:hover {
     letter-spacing: 0.04em;
     text-transform: uppercase;
     padding: 0.2rem 0.65rem;
-    background-color: rgba(59, 130, 246, 0.15);
-    color: var(--accent);
-    border: 1px solid rgba(59, 130, 246, 0.25);
+    background-color: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
     border-radius: 20px;
 }
 
-.daily-wisdom-quote {
-    margin: 0;
-    padding: 0;
+.daily-wisdom-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+/* Interaktiver Glückskeks-Klickbereich */
+.fortune-cookie-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.25s ease;
+    user-select: none;
+}
+
+.fortune-cookie-container:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(245, 158, 11, 0.35);
+    transform: translateY(-2px);
+}
+
+.fortune-cookie-container:focus-visible {
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.45);
+}
+
+/* Keks-Grafik & Animationen */
+.fortune-cookie-visual {
+    flex-shrink: 0;
+}
+
+.fortune-cookie-icon-wrap {
+    position: relative;
+    width: 72px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fortune-cookie-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fortune-cookie-container:hover .fortune-cookie-svg {
+    transform: scale(1.1) rotate(-4deg);
+}
+
+/* Animation beim Knacken */
+.fortune-cookie-container.is-cracking .fortune-cookie-svg {
+    animation: cookieShakeCrack 0.38s ease-in-out forwards;
+}
+
+@keyframes cookieShakeCrack {
+    0% { transform: scale(1) rotate(0deg); }
+    20% { transform: scale(1.15) rotate(-8deg); }
+    40% { transform: scale(1.15) rotate(8deg); }
+    60% { transform: scale(1.2) rotate(-5deg); }
+    80% { transform: scale(1.25) rotate(4deg); }
+    100% { transform: scale(1.1) rotate(0deg); }
+}
+
+/* Papierstreifen im Keks bei geöffnetem Zustand */
+.cookie-slip {
+    transition: all 0.4s ease;
+    transform-origin: center bottom;
+}
+
+.fortune-cookie-container.is-opened .cookie-slip {
+    transform: translateY(-7px) rotate(-3deg);
+    opacity: 1;
+}
+
+.fortune-cookie-container:not(.is-opened) .cookie-slip {
+    opacity: 0.35;
+    transform: translateY(2px);
+}
+
+.fortune-cookie-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.fortune-cookie-title {
     font-size: 1.05rem;
-    line-height: 1.6;
-    color: var(--text-main);
-}
-
-.daily-wisdom-author {
-    color: var(--accent);
     font-weight: 600;
-    margin-right: 0.3rem;
+    color: var(--text-main, #f8fafc);
+    margin-bottom: 0.25rem;
 }
 
-.daily-wisdom-text {
+.fortune-cookie-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1.45;
+    margin-bottom: 0.75rem;
+}
+
+.btn-cookie-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.45rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fortune-cookie-container:hover .btn-cookie-open {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: #f59e0b;
+    color: #fff;
+}
+
+.btn-cookie-open.btn-opened {
+    border-color: rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+}
+
+.fortune-cookie-container:hover .btn-cookie-open.btn-opened {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+/* ==========================================================================
+   PAPIERROLLEN-POPUP / SCHRIFTROLLE (Modal)
+   ========================================================================== */
+body.wisdom-modal-open {
+    overflow: hidden;
+}
+
+.wisdom-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 29, 0.82);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    padding: 1.25rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.wisdom-modal-overlay.is-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.wisdom-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.wisdom-modal-dialog {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 580px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: scale(0.92) translateY(20px);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wisdom-modal-overlay.is-active .wisdom-modal-dialog {
+    transform: scale(1) translateY(0);
+}
+
+.wisdom-modal-close-btn {
+    position: absolute;
+    top: -14px;
+    right: -10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #f8fafc;
+    font-size: 1.4rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+.wisdom-modal-close-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    transform: scale(1.1);
+}
+
+/* Die physische Schriftrolle */
+.wisdom-scroll-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.6));
+    animation: scrollUnroll 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
+    transform-origin: center top;
+}
+
+@keyframes scrollUnroll {
+    0% {
+        opacity: 0;
+        transform: scaleY(0.4) translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleY(1) translateY(0);
+    }
+}
+
+/* Hölzerne Rollstäbe */
+.wisdom-scroll-rod {
+    width: calc(100% + 28px);
+    height: 18px;
+    background: linear-gradient(to right, #1f130b 0%, #432818 15%, #7f4f24 50%, #432818 85%, #1f130b 100%);
+    border-radius: 9px;
+    position: relative;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 3;
+}
+
+.wisdom-scroll-rod.top {
+    margin-bottom: -4px;
+}
+
+.wisdom-scroll-rod.bottom {
+    margin-top: -4px;
+}
+
+.scroll-rod-knob {
+    width: 16px;
+    height: 24px;
+    background: radial-gradient(circle at 35% 35%, #fde047 0%, #ca8a04 50%, #713f12 100%);
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+}
+
+.scroll-rod-knob.left {
+    margin-left: -6px;
+}
+
+.scroll-rod-knob.right {
+    margin-right: -6px;
+}
+
+/* Pergament-Körper */
+.wisdom-scroll-body {
+    width: 100%;
+    background: radial-gradient(ellipse at 50% 40%, #fffdfa 0%, #fbf5e7 65%, #ebdcb9 100%);
+    border-left: 5px solid #c9b48c;
+    border-right: 5px solid #c9b48c;
+    box-shadow: inset 0 0 30px rgba(120, 75, 25, 0.16);
+    padding: 2.2rem 2.4rem 1.8rem;
+    position: relative;
+    color: #2b1d16;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* Zarte innere Zierlinie */
+.wisdom-scroll-body::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    border: 1px dashed rgba(160, 115, 60, 0.35);
+    pointer-events: none;
+    border-radius: 4px;
+}
+
+/* Traditionelles rotes chinesisches Siegel */
+.wisdom-scroll-seal {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 44px;
+    height: 44px;
+    background: #b91c1c;
+    color: #fff;
+    border: 2px solid #991b1b;
+    border-radius: 6px;
+    font-size: 1.55rem;
+    font-family: "PingFang SC", "Microsoft YaHei", "SimHei", serif;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.4), inset 0 0 6px rgba(0, 0, 0, 0.2);
+    transform: rotate(4deg);
+    opacity: 0.9;
+    user-select: none;
+}
+
+.wisdom-scroll-header {
+    margin-bottom: 0.8rem;
+}
+
+.wisdom-scroll-tag {
+    display: inline-block;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #b45309;
+    margin-bottom: 0.25rem;
+}
+
+.wisdom-scroll-author {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #7f1d1d;
+    margin: 0;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.wisdom-scroll-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin: 0.85rem auto;
+    max-width: 240px;
+    color: #b45309;
+}
+
+.wisdom-scroll-divider .divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(180, 83, 9, 0.45), transparent);
+}
+
+.wisdom-scroll-divider .divider-symbol {
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.wisdom-scroll-quote {
+    margin: 1.1rem 0;
+    padding: 0;
+    font-family: 'Georgia', 'Cambria', serif;
+    font-size: 1.25rem;
+    line-height: 1.7;
     font-style: italic;
-    color: #e2e8f0;
+    color: #261810;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+.wisdom-scroll-footer {
+    margin-top: 1.1rem;
+}
+
+.wisdom-lucky-numbers {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    background: rgba(180, 83, 9, 0.08);
+    border: 1px solid rgba(180, 83, 9, 0.2);
+    border-radius: 9999px;
+    padding: 0.35rem 1.1rem;
+    font-size: 0.85rem;
+}
+
+.wisdom-lucky-numbers .lucky-label {
+    font-weight: 600;
+    color: #92400e;
+}
+
+.wisdom-lucky-numbers .lucky-values {
+    font-weight: 700;
+    color: #78350f;
+    letter-spacing: 0.06em;
+}
+
+.wisdom-modal-actions {
+    margin-top: 1.4rem;
+}
+
+.btn-cookie-close {
+    padding: 0.6rem 1.4rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+}
+
+.btn-cookie-close:hover {
+    background: #334155;
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+/* Responsives Verhalten */
 @media (max-width: 600px) {
     .daily-wisdom-card {
         padding: 1rem 1.15rem;
         margin-bottom: 1.25rem;
     }
 
-    .daily-wisdom-quote {
-        font-size: 0.95rem;
-        line-height: 1.5;
+    .fortune-cookie-container {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.9rem;
+        padding: 1rem;
+    }
+
+    .wisdom-scroll-body {
+        padding: 1.75rem 1.25rem 1.4rem;
+    }
+
+    .wisdom-scroll-seal {
+        top: 12px;
+        right: 12px;
+        width: 34px;
+        height: 34px;
+        font-size: 1.2rem;
+    }
+
+    .wisdom-scroll-author {
+        font-size: 1.25rem;
+    }
+
+    .wisdom-scroll-quote {
+        font-size: 1.05rem;
+        line-height: 1.55;
+    }
+
+    .wisdom-scroll-rod {
+        width: calc(100% + 16px);
     }
 }
+
 
 
 

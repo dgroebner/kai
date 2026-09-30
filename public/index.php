@@ -9,11 +9,31 @@ Auth::requirePage();
 
 // Weisheit des Tages abrufen (inkl. Lazy Evaluation & Fallback-Schutz)
 $dailyWisdom = null;
+$cleanWisdomText = '';
+$luckyNumbers = [];
 try {
     $wisdomService = new DailyWisdomService();
     $dailyWisdom = $wisdomService->getWisdomForToday();
 } catch (Throwable) {
     $dailyWisdom = DailyWisdomService::FALLBACK_WISDOMS[0];
+}
+
+if (!empty($dailyWisdom)) {
+    $cleanWisdomText = $dailyWisdom;
+    if (str_starts_with($dailyWisdom, 'Konfuzius sagt:')) {
+        $cleanWisdomText = trim(substr($dailyWisdom, strlen('Konfuzius sagt:')));
+    }
+
+    // Deterministische Glückszahlen für den aktuellen Kalendertag generieren
+    $todaySeed = (int) sprintf('%u', crc32(date('Y-m-d')));
+    mt_srand($todaySeed);
+    while (count($luckyNumbers) < 6) {
+        $num = mt_rand(1, 49);
+        if (!in_array($num, $luckyNumbers, true)) {
+            $luckyNumbers[] = $num;
+        }
+    }
+    sort($luckyNumbers);
 }
 ?>
 <!DOCTYPE html>
@@ -43,15 +63,40 @@ try {
             <section class="card daily-wisdom-card" aria-label="Weisheit des Tages">
                 <div class="daily-wisdom-header">
                     <span class="daily-wisdom-badge">✨ Weisheit des Tages</span>
+                    <span class="daily-wisdom-hint js-wisdom-hint">🥠 Glückskeks</span>
                 </div>
-                <blockquote class="daily-wisdom-quote">
-                    <?php if (str_starts_with($dailyWisdom, 'Konfuzius sagt:')): ?>
-                        <strong class="daily-wisdom-author">Konfuzius sagt:</strong>
-                        <span class="daily-wisdom-text">„<?= htmlspecialchars(trim(substr($dailyWisdom, strlen('Konfuzius sagt:'))), ENT_QUOTES, 'UTF-8') ?>“</span>
-                    <?php else: ?>
-                        <span class="daily-wisdom-text">„<?= htmlspecialchars($dailyWisdom, ENT_QUOTES, 'UTF-8') ?>“</span>
-                    <?php endif; ?>
-                </blockquote>
+                <div class="fortune-cookie-container js-wisdom-trigger" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="Glückskeks öffnen für die Weisheit des Tages">
+                    <div class="fortune-cookie-visual">
+                        <div class="fortune-cookie-icon-wrap">
+                            <svg viewBox="0 0 100 85" class="fortune-cookie-svg" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="cookieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#fcd34d" />
+                                        <stop offset="50%" stop-color="#f59e0b" />
+                                        <stop offset="100%" stop-color="#b45309" />
+                                    </linearGradient>
+                                    <linearGradient id="cookieCreaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#92400e" />
+                                        <stop offset="100%" stop-color="#451a03" />
+                                    </linearGradient>
+                                </defs>
+                                <!-- Keks-Körper -->
+                                <path class="cookie-body" d="M 50,16 C 30,16 12,28 8,46 C 4,62 18,78 36,78 C 45,78 49,66 50,56 C 51,66 55,78 64,78 C 82,78 96,62 92,46 C 88,28 70,16 50,16 Z" fill="url(#cookieGrad)" stroke="#b45309" stroke-width="2" />
+                                <!-- Keks-Falte / Tiefe -->
+                                <path class="cookie-crease" d="M 50,30 Q 50,52 38,70 Q 50,58 50,30 Z" fill="url(#cookieCreaseGrad)" opacity="0.65" />
+                                <!-- Glanzlicht -->
+                                <path class="cookie-highlight" d="M 22,32 C 16,42 16,56 22,64" stroke="#fef3c7" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.8" />
+                                <!-- Zettelstreifen aus dem Keks -->
+                                <rect class="cookie-slip" x="42" y="34" width="16" height="15" rx="2" fill="#fffdfa" stroke="#d5c7a3" stroke-width="1.2" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="fortune-cookie-info">
+                        <div class="fortune-cookie-title">Dein persönlicher Glückskeks</div>
+                        <div class="fortune-cookie-desc js-cookie-desc">Knacke den Keks, um Konfuzius' Weisheit des Tages zu enthüllen.</div>
+                        <button type="button" class="btn-cookie-open js-cookie-btn">🥠 Keks öffnen</button>
+                    </div>
+                </div>
             </section>
         <?php endif; ?>
 
@@ -134,8 +179,69 @@ try {
         <div>kai v<?= APP_VERSION ?></div>
     </footer>
 </div>
+<?php if (!empty($dailyWisdom)): ?>
+<!-- Papierrollen-Popup für die Weisheit des Tages -->
+<div id="wisdom-modal" class="wisdom-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="wisdom-modal-author" hidden>
+    <div class="wisdom-modal-backdrop js-wisdom-close"></div>
+    <div class="wisdom-modal-dialog">
+        <button type="button" class="wisdom-modal-close-btn js-wisdom-close" aria-label="Schriftrolle schließen">&times;</button>
+        
+        <div class="wisdom-scroll-container">
+            <!-- Oberer Holzstab mit Zierknäufen -->
+            <div class="wisdom-scroll-rod top">
+                <span class="scroll-rod-knob left"></span>
+                <span class="scroll-rod-knob right"></span>
+            </div>
+
+            <!-- Pergamentpapier -->
+            <div class="wisdom-scroll-body">
+                <div class="wisdom-scroll-seal" title="Weisheit (智)">智</div>
+                
+                <header class="wisdom-scroll-header">
+                    <span class="wisdom-scroll-tag">✨ Aus dem Glückskeks</span>
+                    <h2 id="wisdom-modal-author" class="wisdom-scroll-author">Konfuzius spricht</h2>
+                </header>
+
+                <div class="wisdom-scroll-divider">
+                    <span class="divider-line"></span>
+                    <span class="divider-symbol">❖</span>
+                    <span class="divider-line"></span>
+                </div>
+
+                <blockquote class="wisdom-scroll-quote">
+                    „<?= htmlspecialchars($cleanWisdomText, ENT_QUOTES, 'UTF-8') ?>“
+                </blockquote>
+
+                <div class="wisdom-scroll-divider">
+                    <span class="divider-line"></span>
+                    <span class="divider-symbol">❖</span>
+                    <span class="divider-line"></span>
+                </div>
+
+                <div class="wisdom-scroll-footer">
+                    <div class="wisdom-lucky-numbers">
+                        <span class="lucky-label">🍀 Glückszahlen des Tages:</span>
+                        <span class="lucky-values"><?= implode(' · ', $luckyNumbers) ?></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Unterer Holzstab mit Zierknäufen -->
+            <div class="wisdom-scroll-rod bottom">
+                <span class="scroll-rod-knob left"></span>
+                <span class="scroll-rod-knob right"></span>
+            </div>
+        </div>
+
+        <div class="wisdom-modal-actions">
+            <button type="button" class="btn btn-cookie-close js-wisdom-close">Schriftrolle einrollen</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 <script src="js/http.js?v=<?= APP_VERSION ?>"></script>
 <script src="js/system.js?v=<?= APP_VERSION ?>"></script>
 <script src="js/briefing.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="js/wisdom-cookie.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>
