@@ -22,10 +22,21 @@ class VehicleDashboardRepository
     }
 
     /**
-     * Aktuellster Fahrzeugstatus für die Live-Kacheln.
+     * Aktuellster Fahrzeugstatus für die Live-Kacheln (optional nach VIN gefiltert).
      */
-    public function getLatestState(): ?array
+    public function getLatestState(?string $vin = null): ?array
     {
+        if ($vin !== null && $vin !== '') {
+            $stmt = $this->pdo->prepare("
+                SELECT *
+                FROM vehicle_state
+                WHERE vin = :vin
+                LIMIT 1
+            ");
+            $stmt->execute([':vin' => $vin]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
         $stmt = $this->pdo->query("
             SELECT *
             FROM vehicle_state

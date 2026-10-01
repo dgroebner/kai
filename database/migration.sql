@@ -158,3 +158,8 @@ CREATE TABLE IF NOT EXISTS `daily_wisdoms` (
     `content` TEXT NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fahrzeug-Telemetrie: Spalte charging_state auf VARCHAR(50) erweitern
+ALTER TABLE `vehicle_state`
+    MODIFY COLUMN `charging_state` VARCHAR(50) NOT NULL DEFAULT 'unknown';
+

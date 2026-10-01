@@ -201,11 +201,19 @@ class TronitySyncService
             $longitude = (float)$record['location']['longitude'];
         }
 
-        // 4. Bisherigen Fahrzeugstatus für Differenzprüfung abrufen
-        $dashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
-        $currentState = $dashboardRepo->getLatestState();
+        // 4. VIN ermitteln falls noch unbekannt
+        if (empty($vin) && !empty($record['vin'])) {
+            $vin = (string)$record['vin'];
+        }
+        if (empty($vin)) {
+            $vin = 'WV2ZZZEBXVH003011'; // Fallback auf bekannten ID.Buzz
+        }
 
-        // 5. Erfassungszeitpunkt aus TRONITY-Record ermitteln
+        // 5. Bisherigen Fahrzeugstatus für Differenzprüfung abrufen
+        $dashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
+        $currentState = $dashboardRepo->getLatestState($vin);
+
+        // 6. Erfassungszeitpunkt aus TRONITY-Record ermitteln
         $rawTimestamp = $this->extractTimestampFromRecord($record);
         $this->logger->info("TRONITY: Snapshot Details empfangen.", [
             'raw_timestamp' => $rawTimestamp,
@@ -232,43 +240,56 @@ class TronitySyncService
             }
         }
 
-        // VIN ermitteln falls noch unbekannt
-        if (empty($vin) && !empty($record['vin'])) {
-            $vin = (string)$record['vin'];
-        }
-        if (empty($vin)) {
-            $vin = 'WV2ZZZEBXVH003011'; // Fallback auf bekannten ID.Buzz
-        }
-
-        // 6. Prüfen, ob sich relevante Fahrzeugdaten tatsächlich geändert haben
+        // 7. Prüfen, ob sich relevante Fahrzeugdaten tatsächlich geändert haben
         $hasMetricsChanged = false;
+        $changedReasons = [];
         if (!$currentState) {
             $hasMetricsChanged = true;
+            $changedReasons[] = 'Kein bisheriger Zustand in der Datenbank vorhanden';
         } else {
             if ($soc !== null && (int)$currentState['soc_percent'] !== (int)$soc) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "SoC: {$currentState['soc_percent']}% -> {$soc}%";
             }
             if ($odometer !== null && (int)$currentState['mileage_km'] !== (int)$odometer) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Kilometerstand: {$currentState['mileage_km']} -> {$odometer}";
             }
             if ($range > 0 && abs((int)$currentState['range_km'] - (int)$range) >= 2) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Reichweite: {$currentState['range_km']} km -> {$range} km";
             }
-            if ($chargingState !== null && $currentState['charging_state'] !== $chargingState) {
+            // Beide Zustände prüfen: wenn beide nicht am Laden sind und keine Ladeleistung anliegt, keine Änderung
+            $isBothNotCharging = (
+                !str_contains((string)($currentState['charging_state'] ?? ''), 'CHARGING_HV_BATTERY') &&
+                !str_contains((string)$chargingState, 'CHARGING_HV_BATTERY') &&
+                ($chargePower === null || $chargePower <= 0.05) &&
+                (float)($currentState['charge_power_kw'] ?? 0.0) <= 0.05
+            );
+            if ($chargingState !== null && ($currentState['charging_state'] ?? '') !== $chargingState && !$isBothNotCharging) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Ladezustand: {$currentState['charging_state']} -> {$chargingState}";
             }
             if ($chargePower !== null && abs((float)$currentState['charge_power_kw'] - (float)$chargePower) > 0.2) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Ladeleistung: {$currentState['charge_power_kw']} kW -> {$chargePower} kW";
             }
             if ($plugged !== null && (int)$currentState['plug_connected'] !== (int)$plugged) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Stecker: " . ($currentState['plug_connected'] ? 'angesteckt' : 'abgesteckt') . " -> " . ($plugged ? 'angesteckt' : 'abgesteckt');
             }
             if ($latitude !== null && $currentState['latitude'] !== null && abs((float)$currentState['latitude'] - (float)$latitude) > 0.005) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Breitengrad: {$currentState['latitude']} -> {$latitude}";
             }
             if ($longitude !== null && $currentState['longitude'] !== null && abs((float)$currentState['longitude'] - (float)$longitude) > 0.005) {
                 $hasMetricsChanged = true;
+                $changedReasons[] = "Längengrad: {$currentState['longitude']} -> {$longitude}";
             }
+        }
+
+        if ($hasMetricsChanged) {
+            $this->logger->info("TRONITY: Relevante Fahrzeugänderungen erkannt: " . implode(', ', $changedReasons));
         }
 
         // Zeitstempel-Differenz prüfen

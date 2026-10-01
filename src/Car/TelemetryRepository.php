@@ -28,6 +28,7 @@ class TelemetryRepository
     public function saveState(array $data, bool $force = false): bool
     {
         try {
+            $this->ensureChargingStateColumn();
             $vin = $data['vin'];
             $capturedAtObj = new DateTime($data['captured_at']);
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
@@ -126,7 +127,7 @@ class TelemetryRepository
 						`plug_connected`      = VALUES(`plug_connected`),
 						`is_locked`           = VALUES(`is_locked`),
 						`mileage_km`          = VALUES(`mileage_km`),
-						`range_km`            = CASE WHEN VALUES(`range_km`) > 0 THEN VALUES(`range_km`) WHEN VALUES(`car_captured_at`) != `car_captured_at` THEN 0 ELSE `range_km` END,
+						`range_km`            = CASE WHEN VALUES(`range_km`) > 0 THEN VALUES(`range_km`) ELSE `range_km` END,
 						`outdoor_temp_c`      = VALUES(`outdoor_temp_c`){$locUpdSql},
 						`estimated_finish_at` = VALUES(`estimated_finish_at`),
 						`updated_at`          = CURRENT_TIMESTAMP
@@ -171,7 +172,7 @@ class TelemetryRepository
             $carCapturedAt = $capturedAtObj->format('Y-m-d H:i:s');
 
             $stmtCurrent = $this->dbCon->prepare("
-                SELECT mileage_km, outdoor_temp_c 
+                SELECT mileage_km, outdoor_temp_c, range_km 
                 FROM vehicle_state 
                 WHERE vin = :vin
             ");
@@ -196,9 +197,70 @@ class TelemetryRepository
             $latitude = isset($data['status']['latitude']) && is_numeric($data['status']['latitude']) ? (float)$data['status']['latitude'] : null;
             $longitude = isset($data['status']['longitude']) && is_numeric($data['status']['longitude']) ? (float)$data['status']['longitude'] : null;
 
+            $hasLoc = $this->hasLocationColumns('vehicle_telemetry_log');
+
+            // Prüfen, ob sich im Vergleich zum letzten Log-Eintrag dieses Fahrzeugs relevante Messwerte geändert haben
+            $locSelect = $hasLoc ? ", `latitude`, `longitude`" : "";
+            $stmtLastLog = $this->dbCon->prepare("
+                SELECT `id`, `car_captured_at`, `soc_percent`, `charge_power_kw`, `range_km`, `mileage_km`, `outdoor_temp_c`{$locSelect}
+                FROM `vehicle_telemetry_log`
+                WHERE `vin` = :vin
+                ORDER BY `car_captured_at` DESC, `id` DESC
+                LIMIT 1
+            ");
+            $stmtLastLog->execute([':vin' => $vin]);
+            $lastLog = $stmtLastLog->fetch(PDO::FETCH_ASSOC);
+
+            $hasTelemetryChanged = false;
+            if (!$lastLog) {
+                $hasTelemetryChanged = true;
+            } else {
+                // 1. SoC-Änderung
+                if ((int)$lastLog['soc_percent'] !== $socPercent) {
+                    $hasTelemetryChanged = true;
+                }
+                // 2. Ladeaktivität: Ladeleistung über 0.05 kW oder signifikante Leistungsänderung
+                elseif ($chargePowerKw > 0.05 || (float)$lastLog['charge_power_kw'] > 0.05) {
+                    if (abs((float)$lastLog['charge_power_kw'] - $chargePowerKw) > 0.2) {
+                        $hasTelemetryChanged = true;
+                    } else {
+                        // Bei kontinuierlichem Laden alle 15 Minuten einen Log-Punkt erfassen für Ladekurve
+                        $lastTs = strtotime((string)$lastLog['car_captured_at']);
+                        $currentTs = strtotime($carCapturedAt);
+                        if ($currentTs - $lastTs >= 900) {
+                            $hasTelemetryChanged = true;
+                        }
+                    }
+                }
+                // 3. Kilometerstand geändert (Fahrzeug bewegt)
+                elseif ($mileageKm > 0 && (int)$lastLog['mileage_km'] !== $mileageKm) {
+                    $hasTelemetryChanged = true;
+                }
+                // 4. Reichweite signifikant geändert (>= 2 km)
+                elseif ($rangeKm > 0 && (int)$lastLog['range_km'] > 0 && abs((int)$lastLog['range_km'] - $rangeKm) >= 2) {
+                    $hasTelemetryChanged = true;
+                }
+                // 5. Standortänderung
+                elseif ($hasLoc && $latitude !== null && $longitude !== null && isset($lastLog['latitude'], $lastLog['longitude']) && $lastLog['latitude'] !== null && $lastLog['longitude'] !== null) {
+                    if (abs((float)$lastLog['latitude'] - $latitude) > 0.005 || abs((float)$lastLog['longitude'] - $longitude) > 0.005) {
+                        $hasTelemetryChanged = true;
+                    }
+                }
+            }
+
+            if (!$hasTelemetryChanged) {
+                $this->logger->info("TelemetryRepository: saveLog übersprungen, Telemetriewerte unverändert gegenüber letztem Log-Eintrag ({$carCapturedAt}).", [
+                    'vin' => $vin,
+                    'soc' => $socPercent,
+                    'range_km' => $rangeKm,
+                    'mileage_km' => $mileageKm,
+                    'captured_at' => $carCapturedAt,
+                ]);
+                return true;
+            }
+
             $rawPayload = json_encode($data);
 
-            $hasLoc = $this->hasLocationColumns('vehicle_telemetry_log');
             $locColSql = $hasLoc ? ", `latitude`, `longitude`" : "";
             $locValSql = $hasLoc ? ", :latitude, :longitude" : "";
             $locUpdSql = $hasLoc ? ", `latitude` = VALUES(`latitude`), `longitude` = VALUES(`longitude`)" : "";
@@ -259,6 +321,26 @@ class TelemetryRepository
         } catch (Exception $e) {
             $this->logger->error("TelemetryRepository: Fehler bei saveLog.", ['error' => $e->getMessage()]);
             throw $e;
+        }
+    }
+
+    private function ensureChargingStateColumn(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        try {
+            $stmt = $this->dbCon->query("SHOW COLUMNS FROM `vehicle_state` LIKE 'charging_state'");
+            $col = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($col && isset($col['Type']) && strtolower($col['Type']) !== 'varchar(50)') {
+                $this->dbCon->exec("ALTER TABLE `vehicle_state` MODIFY COLUMN `charging_state` VARCHAR(50) NOT NULL DEFAULT 'unknown'");
+                $this->logger->info("TelemetryRepository: Spalte charging_state auf VARCHAR(50) erweitert.");
+            }
+            $checked = true;
+        } catch (\Throwable $e) {
+            $this->logger->warn("TelemetryRepository: Konnte Spaltengröße von charging_state nicht anpassen.", ['error' => $e->getMessage()]);
+            $checked = true;
         }
     }
 
