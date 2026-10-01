@@ -93,7 +93,30 @@ if (!in_array($type, ['woche', 'monat', 'jahr'])) {
     $type = 'monat';
 }
 
-$dateParam = $_GET['date'] ?? date('Y-m-d');
+$dateParam = $_GET['date'] ?? null;
+
+// Falls im Tab "charges" kein konkretes Datum übergeben wurde und der aktuelle Monat noch keine Ladevorgänge hat:
+// Auf den Monat des letzten Ladevorgangs springen, falls vorhanden.
+$chargeRepo = ($tab === 'charges') ? new \Kai\Tools\Car\VehicleChargeRepository() : null;
+$latestChargeTime = null;
+if ($tab === 'charges' && $chargeRepo) {
+    $latestChargeTime = $chargeRepo->getLatestChargeTime();
+    if ($dateParam === null && $latestChargeTime !== null) {
+        $nowLocal = new DateTime('now', new DateTimeZone('Europe/Berlin'));
+        $checkStartUtc = (new DateTime($nowLocal->format('Y-m-01 00:00:00'), new DateTimeZone('Europe/Berlin')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        $checkEndUtc = (new DateTime($nowLocal->format('Y-m-t 23:59:59'), new DateTimeZone('Europe/Berlin')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        if ($chargeRepo->countCharges($checkStartUtc, $checkEndUtc) === 0) {
+            $lastChargeDt = new DateTime($latestChargeTime, new DateTimeZone('UTC'));
+            $lastChargeDt->setTimezone(new DateTimeZone('Europe/Berlin'));
+            $dateParam = $lastChargeDt->format('Y-m-d');
+        }
+    }
+}
+
+if ($dateParam === null) {
+    $dateParam = date('Y-m-d');
+}
+
 $dateTime = DateTime::createFromFormat('Y-m-d', $dateParam, new DateTimeZone('Europe/Berlin'));
 if (!$dateTime) {
     $dateTime = new DateTime('now', new DateTimeZone('Europe/Berlin'));
@@ -182,13 +205,16 @@ $chargeStats = [];
 $charges = [];
 
 if ($tab === 'charges') {
-    $chargeRepo = new \Kai\Tools\Car\VehicleChargeRepository();
+    $chargeRepo = $chargeRepo ?? new \Kai\Tools\Car\VehicleChargeRepository();
     $chargeStats = $chargeRepo->getChargeStats($startDateUtc, $endDateUtc);
     
     $totalChargeEntries = $chargeRepo->countCharges($startDateUtc, $endDateUtc);
     $totalChargePages = max(1, ceil($totalChargeEntries / $perPage));
     
     $charges = $chargeRepo->getCharges($startDateUtc, $endDateUtc, $perPage, $offset);
+    if ($latestChargeTime === null) {
+        $latestChargeTime = $chargeRepo->getLatestChargeTime();
+    }
 }
 
 ?>
@@ -224,9 +250,9 @@ if ($tab === 'charges') {
     </header>
 
     <main class="u-mt-lg">
-        <div class="period-switcher" style="justify-content: flex-start; margin-bottom: 1.5rem;">
-            <a href="index.php?tab=dashboard" class="btn <?= $tab === 'dashboard' ? '' : 'btn-outline' ?>">📊 Dashboard</a>
-            <a href="index.php?tab=charges" class="btn <?= $tab === 'charges' ? '' : 'btn-outline' ?>">🔌 Ladevorgänge</a>
+        <div class="period-switcher sub-nav-tabs" style="justify-content: flex-start; margin-bottom: 1.5rem;">
+            <a href="index.php?tab=dashboard&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $tab === 'dashboard' ? '' : 'btn-outline' ?>">📊 Dashboard</a>
+            <a href="index.php?tab=charges&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $tab === 'charges' ? '' : 'btn-outline' ?>">🔌 Ladevorgänge</a>
         </div>
 
         <?php if ($tab === 'dashboard'): ?>
@@ -359,17 +385,17 @@ if ($tab === 'charges') {
 
             <!-- Umschalter: Woche / Monat / Jahr -->
             <div class="period-switcher">
-                <a href="?type=woche&date=<?= htmlspecialchars($refDate) ?>"
+                <a href="?tab=dashboard&type=woche&date=<?= htmlspecialchars($refDate) ?>"
                    class="btn <?= $type === 'woche' ? '' : 'btn-outline' ?>">Woche</a>
-                <a href="?type=monat&date=<?= htmlspecialchars($refDate) ?>"
+                <a href="?tab=dashboard&type=monat&date=<?= htmlspecialchars($refDate) ?>"
                    class="btn <?= $type === 'monat' ? '' : 'btn-outline' ?>">Monat</a>
-                <a href="?type=jahr&date=<?= htmlspecialchars($refDate) ?>"
+                <a href="?tab=dashboard&type=jahr&date=<?= htmlspecialchars($refDate) ?>"
                    class="btn <?= $type === 'jahr' ? '' : 'btn-outline' ?>">Jahr</a>
             </div>
 
             <!-- Zeitraum Navigation (Vorherige / Nächste) -->
             <div class="period-navigation">
-                <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($prevDate) ?>"
+                <a href="?tab=dashboard&type=<?= $type ?>&date=<?= htmlspecialchars($prevDate) ?>"
                    class="btn btn-outline">◀ <?= htmlspecialchars($navLabelPrev) ?></a>
                 <div class="current-period-label">
                     <?= htmlspecialchars($periodLabel) ?>
@@ -377,7 +403,7 @@ if ($tab === 'charges') {
                     Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDateLocal)) ?> bis <?= date('d.m.Y', strtotime($endDateLocal)) ?>
                 </span>
                 </div>
-                <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>"
+                <a href="?tab=dashboard&type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>"
                    class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
             </div>
 
@@ -648,7 +674,7 @@ if ($tab === 'charges') {
                     <?php if ($totalPages > 1): ?>
                         <div class="pagination">
                             <?php if ($page > 1): ?>
-                                <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page - 1 ?>"
+                                <a href="?tab=dashboard&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page - 1 ?>"
                                    class="btn btn-outline btn-sm">◀ Zurück</a>
                             <?php endif; ?>
 
@@ -657,7 +683,7 @@ if ($tab === 'charges') {
                     </span>
 
                             <?php if ($page < $totalPages): ?>
-                                <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page + 1 ?>"
+                                <a href="?tab=dashboard&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page + 1 ?>"
                                    class="btn btn-outline btn-sm">Weiter ▶</a>
                             <?php endif; ?>
                         </div>
@@ -670,6 +696,30 @@ if ($tab === 'charges') {
 
         <?php endif; ?>
         <?php elseif ($tab === 'charges'): ?>
+            <!-- Zeitraum-Auswertung -->
+            <div class="period-switcher">
+                <a href="?tab=charges&type=woche&date=<?= htmlspecialchars($refDate) ?>"
+                   class="btn <?= $type === 'woche' ? '' : 'btn-outline' ?>">Woche</a>
+                <a href="?tab=charges&type=monat&date=<?= htmlspecialchars($refDate) ?>"
+                   class="btn <?= $type === 'monat' ? '' : 'btn-outline' ?>">Monat</a>
+                <a href="?tab=charges&type=jahr&date=<?= htmlspecialchars($refDate) ?>"
+                   class="btn <?= $type === 'jahr' ? '' : 'btn-outline' ?>">Jahr</a>
+            </div>
+
+            <!-- Zeitraum Navigation (Vorherige / Nächste) -->
+            <div class="period-navigation">
+                <a href="?tab=charges&type=<?= $type ?>&date=<?= htmlspecialchars($prevDate) ?>"
+                   class="btn btn-outline">◀ <?= htmlspecialchars($navLabelPrev) ?></a>
+                <div class="current-period-label">
+                    <?= htmlspecialchars($periodLabel) ?>
+                    <span class="period-range-sub">
+                        Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDateLocal)) ?> bis <?= date('d.m.Y', strtotime($endDateLocal)) ?>
+                    </span>
+                </div>
+                <a href="?tab=charges&type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>"
+                   class="btn btn-outline"><?= htmlspecialchars($navLabelNext) ?> ▶</a>
+            </div>
+
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-label">Geladen Gesamt</div>
@@ -701,7 +751,18 @@ if ($tab === 'charges') {
                 <h2>Ladevorgänge</h2>
                 
                 <?php if (empty($charges)): ?>
-                    <div class="no-data u-mt-md">Keine Ladevorgänge im gewählten Zeitraum.</div>
+                    <div class="no-data u-mt-md">
+                        <p>Keine Ladevorgänge im gewählten Zeitraum (<?= htmlspecialchars($periodLabel) ?>).</p>
+                        <?php if ($latestChargeTime !== null): 
+                            $lastDt = (new DateTime($latestChargeTime, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Berlin'));
+                        ?>
+                            <p class="u-mt-sm">
+                                <a href="?tab=charges&type=monat&date=<?= $lastDt->format('Y-m-d') ?>" class="btn btn-outline btn-sm">
+                                    📅 Zum letzten Ladevorgang springen (<?= $lastDt->format('d.m.Y') ?>)
+                                </a>
+                            </p>
+                        <?php endif; ?>
+                    </div>
                 <?php else: ?>
                     <div class="list-group u-mt-md">
                         <?php foreach ($charges as $charge): 
@@ -777,13 +838,13 @@ if ($tab === 'charges') {
                     <?php if ($totalChargePages > 1): ?>
                         <div class="pagination u-mt-lg">
                             <?php if ($page > 1): ?>
-                                <a href="?tab=charges&type=<?= $type ?>&date=<?= $dateParam ?>&page=<?= $page - 1 ?>" class="btn btn-outline">&larr; Zurück</a>
+                                <a href="?tab=charges&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page - 1 ?>" class="btn btn-outline btn-sm">◀ Zurück</a>
                             <?php endif; ?>
 
-                            <span class="page-info">Seite <?= $page ?> von <?= $totalChargePages ?></span>
+                            <span class="pagination-gap">Seite <?= $page ?> von <?= $totalChargePages ?></span>
 
                             <?php if ($page < $totalChargePages): ?>
-                                <a href="?tab=charges&type=<?= $type ?>&date=<?= $dateParam ?>&page=<?= $page + 1 ?>" class="btn btn-outline">Weiter &rarr;</a>
+                                <a href="?tab=charges&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>&page=<?= $page + 1 ?>" class="btn btn-outline btn-sm">Weiter ▶</a>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>

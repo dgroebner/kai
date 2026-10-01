@@ -118,4 +118,11 @@ class VehicleChargeRepository
         $res = $stmt->fetchColumn();
         return $res !== false ? (string)$res : null;
     }
+
+    public function getLatestChargeTime(): ?string
+    {
+        $stmt = $this->db->query("SELECT start_time FROM vehicle_charges ORDER BY start_time DESC LIMIT 1");
+        $res = $stmt->fetchColumn();
+        return $res !== false ? (string)$res : null;
+    }
 }
