@@ -14,16 +14,19 @@ class SuggestionService
     private ProductMasterRepository $productRepo;
     private ShoppingListRepository $listRepo;
     private HolidayService $holidayService;
+    private MarketCategoryRepository $categoryRepo;
     private Logger $logger;
 
     public function __construct(
         ?ProductMasterRepository $productRepo = null,
         ?ShoppingListRepository $listRepo = null,
-        ?HolidayService $holidayService = null
+        ?HolidayService $holidayService = null,
+        ?MarketCategoryRepository $categoryRepo = null
     ) {
         $this->productRepo = $productRepo ?? new ProductMasterRepository();
         $this->listRepo = $listRepo ?? new ShoppingListRepository();
         $this->holidayService = $holidayService ?? new HolidayService();
+        $this->categoryRepo = $categoryRepo ?? new MarketCategoryRepository();
         $this->logger = new Logger();
     }
 
@@ -110,13 +113,16 @@ class SuggestionService
             if ($daysUntilDue <= $forecastWindowDays) {
                 $urgencyPercent = round(($daysSinceLast / max(1.0, $effectiveInterval)) * 100);
 
+                $rawCat = $product['default_category'] ?? null;
+                $canonicalCat = $this->categoryRepo->canonicalizeCategory($rawCat) ?? 'Sonstiges';
+
                 $suggestions[] = [
                     'product_id' => (int)$product['id'],
                     'name' => $displayName,
                     'original_name' => $product['name'],
                     'custom_label' => $product['custom_label'] ?? null,
                     'preferred_market' => $product['preferred_market'] ?? 'Rewe',
-                    'default_category' => $product['default_category'] ?? 'Sonstiges',
+                    'default_category' => $canonicalCat,
                     'default_unit' => $product['default_unit'] ?? 'Stück',
                     'suggested_quantity' => 1.00,
                     'avg_interval_days' => $baseInterval,
@@ -149,6 +155,13 @@ class SuggestionService
         }
 
         $displayName = !empty($product['custom_label']) ? trim($product['custom_label']) : $product['name'];
+        $rawCat = $product['default_category'] ?? null;
+        $category = $this->categoryRepo->canonicalizeCategory($rawCat) ?? 'Sonstiges';
+
+        // Falls im Artikelstamm noch eine unkanonische Kategorie stand, direkt im Master heilen
+        if ($rawCat !== null && $rawCat !== '' && $rawCat !== $category) {
+            $this->productRepo->updateMaster($productId, ['default_category' => $category]);
+        }
 
         return $this->listRepo->addItem([
             'product_id' => $product['id'],
@@ -156,7 +169,7 @@ class SuggestionService
             'quantity' => $quantity ?? 1.00,
             'unit' => $product['default_unit'] ?? 'Stück',
             'market' => $market ?? $product['preferred_market'] ?? 'Rewe',
-            'category' => $product['default_category'] ?? 'Sonstiges',
+            'category' => $category,
             'is_spontaneous' => 0,
             'source' => 'suggestion',
         ]);

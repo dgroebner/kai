@@ -19,15 +19,18 @@ class LearningService
     private Logger $logger;
     private ProductMasterRepository $productRepo;
     private EbonMappingRepository $mappingRepo;
+    private MarketCategoryRepository $categoryRepo;
 
     public function __construct(
         ?ProductMasterRepository $productRepo = null,
-        ?EbonMappingRepository   $mappingRepo = null
+        ?EbonMappingRepository   $mappingRepo = null,
+        ?MarketCategoryRepository $categoryRepo = null
     ) {
-        $this->pdo         = Database::getInstance()->getConnection();
-        $this->logger      = new Logger();
-        $this->productRepo = $productRepo ?? new ProductMasterRepository();
-        $this->mappingRepo = $mappingRepo ?? new EbonMappingRepository();
+        $this->pdo          = Database::getInstance()->getConnection();
+        $this->logger       = new Logger();
+        $this->productRepo  = $productRepo ?? new ProductMasterRepository();
+        $this->mappingRepo  = $mappingRepo ?? new EbonMappingRepository();
+        $this->categoryRepo = $categoryRepo ?? new MarketCategoryRepository();
     }
 
     /**
@@ -47,6 +50,9 @@ class LearningService
     public function learnFromReceipts(): array
     {
         $this->logger->info("LearningService: Starte Analyse historischer eBons...");
+
+        // Zunächst eventuelle Altdaten oder verfälschte Kategorien automatisch reparieren
+        $this->categoryRepo->repairInvalidCategories();
 
         // 1. Alle Kassenbon-Positionen chronologisch laden
         $stmt = $this->pdo->query("
@@ -211,11 +217,25 @@ class LearningService
                 $preferredMarket = $master['preferred_market'] ?? 'Übergreifend';
             }
 
-            // Häufigste Kategorie ermitteln
-            $dominantCategory = $master['default_category'] ?? null;
-            if (!empty($data['categories'])) {
+            // Kategorie bestimmen:
+            // WICHTIG: Wenn der Artikel bereits eine gültige Kategorie hat, NIEMALS überschreiben!
+            // Nur wenn keine Kategorie hinterlegt ist (oder 'Sonstiges'), darf aus eBons gelernt werden -
+            // und auch DANN NUR, wenn sie auf eine offizielle Markt-Kategorie normalisiert werden kann!
+            $existingCat = trim((string)($master['default_category'] ?? ''));
+            $dominantCategory = ($existingCat !== '' && $existingCat !== 'Sonstiges') ? $existingCat : null;
+
+            if ($dominantCategory === null && !empty($data['categories'])) {
                 arsort($data['categories']);
-                $dominantCategory = array_key_first($data['categories']);
+                foreach (array_keys($data['categories']) as $rawCat) {
+                    $canonical = $this->categoryRepo->canonicalizeCategory($rawCat);
+                    if ($canonical !== null && $canonical !== 'Sonstiges') {
+                        $dominantCategory = $canonical;
+                        break;
+                    }
+                }
+            }
+            if ($dominantCategory === null) {
+                $dominantCategory = $existingCat !== '' ? $existingCat : 'Sonstiges';
             }
 
             // Kaufdaten sortieren

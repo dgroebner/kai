@@ -45,8 +45,8 @@ $mappingRepo = new EbonMappingRepository();
 $sessionRepo = new ShoppingSessionRepository();
 $receiptSessionService = new ReceiptSessionService();
 $holidayService = new HolidayService();
-$learningService = new LearningService($productRepo, $mappingRepo);
-$suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
+$learningService = new LearningService($productRepo, $mappingRepo, $categoryRepo);
+$suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService, $categoryRepo);
 
 // Prüfen auf Lese-Aktionen vs. Schreibaktionen
 $readActions = [
@@ -158,7 +158,7 @@ try {
 
             if ($master) {
                 $productId = (int)$master['id'];
-                if ($category === '' && !empty($master['default_category'])) {
+                if (($category === '' || $category === 'Sonstiges') && !empty($master['default_category']) && $master['default_category'] !== 'Sonstiges') {
                     $category = $master['default_category'];
                 }
                 // Vorrangiges Label nutzen, falls vorhanden
@@ -166,17 +166,16 @@ try {
                     $effectiveName = $master['custom_label'];
                 }
             } else {
+                $canonicalCategory = $categoryRepo->canonicalizeCategory($category) ?? 'Sonstiges';
                 $productId = $productRepo->saveOrUpdate([
                     'name' => $name,
                     'preferred_market' => $market,
-                    'default_category' => $category !== '' ? $category : 'Sonstiges',
+                    'default_category' => $canonicalCategory,
                     'default_unit' => $unit,
                 ]);
             }
 
-            if ($category === '') {
-                $category = 'Sonstiges';
-            }
+            $category = $categoryRepo->canonicalizeCategory($category) ?? 'Sonstiges';
 
             $itemId = $listRepo->addItem([
                 'product_id' => $productId,
@@ -215,7 +214,7 @@ try {
             if (!in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
                 $market = 'Rewe';
             }
-            $category = trim((string)($input['category'] ?? 'Sonstiges'));
+            $category = $categoryRepo->canonicalizeCategory(trim((string)($input['category'] ?? 'Sonstiges'))) ?? 'Sonstiges';
             $note = trim((string)($input['note'] ?? ''));
 
             $updateData = [
@@ -417,17 +416,24 @@ try {
                 }
 
                 $market = ($it['market'] ?? 'Rewe') === 'Globus' ? 'Globus' : 'Rewe';
-                $category = trim((string)($it['category'] ?? 'Sonstiges'));
+                $category = $categoryRepo->canonicalizeCategory(trim((string)($it['category'] ?? 'Sonstiges'))) ?? 'Sonstiges';
                 $unit = trim((string)($it['unit'] ?? 'Stück'));
                 $quantity = max(0.01, (float)($it['quantity'] ?? 1.00));
 
                 $master = $productRepo->findByName($name);
-                $productId = $master ? (int)$master['id'] : $productRepo->saveOrUpdate([
-                    'name' => $name,
-                    'preferred_market' => $market,
-                    'default_category' => $category,
-                    'default_unit' => $unit,
-                ]);
+                if ($master) {
+                    $productId = (int)$master['id'];
+                    if (!empty($master['default_category']) && $master['default_category'] !== 'Sonstiges') {
+                        $category = $master['default_category'];
+                    }
+                } else {
+                    $productId = $productRepo->saveOrUpdate([
+                        'name' => $name,
+                        'preferred_market' => $market,
+                        'default_category' => $category,
+                        'default_unit' => $unit,
+                    ]);
+                }
 
                 $listRepo->addItem([
                     'product_id' => $productId,

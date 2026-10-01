@@ -49,12 +49,15 @@ try {
     $listRepo = new ShoppingListRepository();
     $productRepo = new ProductMasterRepository();
     $mappingRepo = new EbonMappingRepository();
-    $learningService = new LearningService($productRepo, $mappingRepo);
     $categoryRepo = new MarketCategoryRepository();
+    $learningService = new LearningService($productRepo, $mappingRepo, $categoryRepo);
     $holidayService = new HolidayService();
     $sessionRepo = new ShoppingSessionRepository();
     $receiptSessionService = new ReceiptSessionService();
-    $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService);
+    $suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService, $categoryRepo);
+
+    // Ggf. verfälschte oder unkanonische Kategorien automatisch bereinigen
+    $categoryRepo->repairInvalidCategories();
 
     // Daten für die Ansichten laden
     $activeSession = $sessionRepo->getActiveSession();

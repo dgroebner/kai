@@ -163,3 +163,20 @@ CREATE TABLE IF NOT EXISTS `daily_wisdoms` (
 ALTER TABLE `vehicle_state`
     MODIFY COLUMN `charging_state` VARCHAR(50) NOT NULL DEFAULT 'unknown';
 
+-- Einkaufsliste: Bereinigung verfälschter eBon-Kategorien auf kanonische Markt-Kategorien
+UPDATE product_master SET default_category = 'Molkereiprodukte & Eier' WHERE default_category IN ('Milch & Käse', 'Milch und Käse', 'Milch', 'Käse', 'Molkerei', 'Joghurt', 'Butter', 'Eier');
+UPDATE product_master SET default_category = 'Brot & Backwaren' WHERE default_category IN ('Brot & Gebäck', 'Brot und Gebäck', 'Backwaren', 'Brot', 'Gebäck', 'Brötchen', 'Bäckerei');
+UPDATE product_master SET default_category = 'Frischetheke (Fleisch & Wurst, Käse)' WHERE default_category IN ('Fleisch & Wurst', 'Fleisch und Wurst', 'Fleisch', 'Wurst', 'Fisch', 'Geflügel');
+UPDATE product_master SET default_category = 'Müsli, Brotaufstriche & Kaffee/Tee' WHERE default_category IN ('Cerealien', 'Müsli', 'Kaffee & Tee', 'Kaffee/Tee', 'Kaffee', 'Tee', 'Aufstrich', 'Marmelade', 'Honig');
+UPDATE product_master SET default_category = 'Süßwaren & Knabberartikel' WHERE default_category IN ('Süßwaren', 'Süßwaren & Snacks', 'Snacks', 'Knabberartikel', 'Knabberzeug', 'Chips', 'Schokolade');
+UPDATE product_master SET default_category = 'Drogerie' WHERE default_category IN ('Pflege & Gesundheit', 'Pflege und Gesundheit', 'Pflege', 'Körperpflege', 'Kosmetik', 'Hygiene');
+UPDATE product_master SET default_category = 'Haushalt' WHERE default_category IN ('Tierbedarf', 'Tiernahrung', 'Haushaltswaren', 'Reinigung', 'Waschmittel');
+
+UPDATE shopping_list_items SET category = 'Molkereiprodukte & Eier' WHERE category IN ('Milch & Käse', 'Milch und Käse', 'Milch', 'Käse', 'Molkerei', 'Joghurt', 'Butter', 'Eier');
+UPDATE shopping_list_items SET category = 'Brot & Backwaren' WHERE category IN ('Brot & Gebäck', 'Brot und Gebäck', 'Backwaren', 'Brot', 'Gebäck', 'Brötchen', 'Bäckerei');
+UPDATE shopping_list_items SET category = 'Frischetheke (Fleisch & Wurst, Käse)' WHERE category IN ('Fleisch & Wurst', 'Fleisch und Wurst', 'Fleisch', 'Wurst', 'Fisch', 'Geflügel');
+UPDATE shopping_list_items SET category = 'Müsli, Brotaufstriche & Kaffee/Tee' WHERE category IN ('Cerealien', 'Müsli', 'Kaffee & Tee', 'Kaffee/Tee', 'Kaffee', 'Tee', 'Aufstrich', 'Marmelade', 'Honig');
+UPDATE shopping_list_items SET category = 'Süßwaren & Knabberartikel' WHERE category IN ('Süßwaren', 'Süßwaren & Snacks', 'Snacks', 'Knabberartikel', 'Knabberzeug', 'Chips', 'Schokolade');
+UPDATE shopping_list_items SET category = 'Drogerie' WHERE category IN ('Pflege & Gesundheit', 'Pflege und Gesundheit', 'Pflege', 'Körperpflege', 'Kosmetik', 'Hygiene');
+UPDATE shopping_list_items SET category = 'Haushalt' WHERE category IN ('Tierbedarf', 'Tiernahrung', 'Haushaltswaren', 'Reinigung', 'Waschmittel');
+

@@ -29,8 +29,7 @@ class ReceiptAnalyzer
 
         // Dynamischer Kontext für die Kategorien
         $categoryContext = empty($existingCategories)
-            ? "Erstelle passende, generische Kategorien (z.B. Milch & Käse, Obst & Gemüse, Fleisch & Wurst, Fisch, Cerealien, Süßwaren, Brot & Gebäck, Getränke, Haushalt,
-			Pflege & Gesundheit, Tierbedarf)."
+            ? "Erstelle passende, standardisierte Kategorien (z.B. Molkereiprodukte & Eier, Obst & Gemüse, Frischetheke (Fleisch & Wurst, Käse), Brot & Backwaren, Müsli, Brotaufstriche & Kaffee/Tee, Nudeln & Reis, Konserven, Gewürze, Öle & Fertiggerichte, Süßwaren & Knabberartikel, Drogerie, Haushalt, Getränke, Spirituosen, Tiefkühlkost, Sonstiges)."
             : "WICHTIG: Ordne die Artikel zwingend einer dieser bekannten Kategorien zu, falls passend: [" . implode(', ', $existingCategories) . "]. Erfinde nur eine neue Kategorie, wenn wirklich absolut keine der vorhandenen passt.";
 
         $prompt = "Du bist ein präziser Datenextraktions-Assistent. Analysiere diesen Kassenbon. " .
