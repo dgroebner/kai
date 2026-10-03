@@ -103,10 +103,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const grade = gradeDiv.getAttribute('data-grade') || '';
             const date = gradeDiv.getAttribute('data-date') || '';
             const details = gradeDiv.getAttribute('data-details') || '';
+            const daysAgo = gradeDiv.getAttribute('data-days-ago');
 
             closeGradeModal();
 
             const escape = (str) => (window.KaiHtml ? window.KaiHtml.escape(str) : String(str ?? ''));
+
+            let recencyBadgeHtml = '';
+            if (daysAgo !== null && daysAgo !== '') {
+                const days = parseInt(daysAgo, 10);
+                if (days === 0) {
+                    recencyBadgeHtml = '<span class="school-grade-pill school-grade-age-0" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; height: auto; min-width: auto; margin-left: 0.5rem; display: inline-flex;">✨ Heute eingetragen</span>';
+                } else if (days === 1) {
+                    recencyBadgeHtml = '<span class="school-grade-pill school-grade-age-1" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; height: auto; min-width: auto; margin-left: 0.5rem; display: inline-flex;">Gestern eingetragen</span>';
+                } else if (days <= 7) {
+                    recencyBadgeHtml = `<span class="school-grade-pill school-grade-age-${days}" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; height: auto; min-width: auto; margin-left: 0.5rem; display: inline-flex;">vor ${days} Tagen eingetragen</span>`;
+                }
+            }
 
             const overlay = document.createElement('div');
             overlay.className = 'rule-modal-overlay js-grade-modal-overlay';
@@ -134,7 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Datum</div>
-                                <div style="font-size: 0.95rem; margin-top: 0.2rem;">${escape(date)}</div>
+                                <div style="font-size: 0.95rem; margin-top: 0.2rem; display: flex; align-items: center; flex-wrap: wrap;">
+                                    <span>${escape(date)}</span>
+                                    ${recencyBadgeHtml}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -151,6 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeGradeModal();
+        } else if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('js-grade-details')) {
+            e.preventDefault();
+            e.target.click();
         }
     });
 

@@ -820,10 +820,18 @@ $nextLabel = ($nextSchoolDay === $today)
                 
                 <?php if (count($groupedGrades) > 0): ?>
                 <div class="card school-card">
-                    <div class="card-header">
-                        <h3>&#128202; Notenübersicht</h3>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                        <h3 style="margin: 0;">&#128202; Notenübersicht</h3>
+                        <div class="school-grade-legend" title="Farbintensität schwächt sich über 7 Tage kontinuierlich ab">
+                            <span class="school-grade-legend-item"><span class="school-grade-legend-sample school-grade-age-0"></span> Neu (&le; 1 Tag)</span>
+                            <span class="school-grade-legend-item"><span class="school-grade-legend-sample school-grade-age-4"></span> bis 7 Tage</span>
+                            <span class="school-grade-legend-item"><span class="school-grade-legend-sample school-grade-older"></span> &gt; 7 Tage</span>
+                        </div>
                     </div>
                     <div class="card-body">
+                        <?php 
+                        $todayGradeDt = new DateTimeImmutable('today');
+                        ?>
                         <?php foreach ($groupedGrades as $sId => $studentData): ?>
                             <?php if ($selectedStudentId === 'all'): ?>
                                 <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 2px solid <?= htmlspecialchars($studentData['color'], ENT_QUOTES, 'UTF-8') ?>; display: inline-block;">
@@ -838,18 +846,44 @@ $nextLabel = ($nextSchoolDay === $today)
                                         <td style="padding: 0.5rem 0; width: 40%; vertical-align: top;">
                                             <strong><?= htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') ?></strong>
                                         </td>
-                                        <td style="padding: 0.5rem 0; vertical-align: top; display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                                            <?php foreach ($grades as $g): ?>
-                                                                                                  <div class="js-grade-details"
-                                                       data-subject="<?= htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') ?>"
-                                                       data-grade="<?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>"
-                                                       data-date="<?= date('d.m.Y', strtotime($g['given_at'])) ?>"
-                                                       data-details="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?>"
-                                                       title="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?> (<?= date('d.m.', strtotime($g['given_at'])) ?>)" 
-                                                       style="cursor: pointer; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.5rem; font-weight: bold; <?= empty($g['read_status']) ? 'color: var(--primary-color); border-color: var(--primary-color);' : '' ?>">
-                                                      <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
-                                                  </div>
-                                            <?php endforeach; ?>
+                                        <td style="padding: 0.5rem 0; vertical-align: top;">
+                                            <div class="school-grades-container">
+                                                <?php foreach ($grades as $g): ?>
+                                                    <?php
+                                                    $givenGradeDt = new DateTimeImmutable($g['given_at']);
+                                                    $gradeDiff = $todayGradeDt->diff($givenGradeDt);
+                                                    $daysAgo = $gradeDiff->invert ? (int)$gradeDiff->days : 0;
+                                                    $isRecent = ($daysAgo <= 7);
+                                                    $ageClass = $isRecent ? 'school-grade-age-' . $daysAgo : 'school-grade-older';
+
+                                                    if ($daysAgo === 0) {
+                                                        $ageText = 'Heute eingetragen';
+                                                    } elseif ($daysAgo === 1) {
+                                                        $ageText = 'Gestern eingetragen';
+                                                    } elseif ($daysAgo <= 7) {
+                                                        $ageText = "vor $daysAgo Tagen eingetragen";
+                                                    } else {
+                                                        $ageText = null;
+                                                    }
+
+                                                    $tooltipText = htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8')
+                                                        . ' (' . date('d.m.Y', strtotime($g['given_at']))
+                                                        . ($ageText !== null ? ' · ' . $ageText : '') . ')';
+                                                    ?>
+                                                    <div class="school-grade-pill <?= $ageClass ?> js-grade-details"
+                                                         data-subject="<?= htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') ?>"
+                                                         data-grade="<?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>"
+                                                         data-date="<?= date('d.m.Y', strtotime($g['given_at'])) ?>"
+                                                         data-days-ago="<?= $daysAgo ?>"
+                                                         data-details="<?= htmlspecialchars($g['collection_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                         title="<?= $tooltipText ?>"
+                                                         role="button"
+                                                         tabindex="0"
+                                                         aria-label="Note <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?> in <?= htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') ?><?= $ageText !== null ? ' (' . $ageText . ')' : '' ?>">
+                                                        <?= htmlspecialchars($g['grade_value'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

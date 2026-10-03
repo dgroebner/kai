@@ -4900,6 +4900,190 @@ body {
 }
 
 /* ==========================================================================
+   School: Notenübersicht - Graduelle Visualisierung neuer Noten (0-7 Tage)
+   ========================================================================== */
+.school-grades-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.school-grade-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.1rem;
+    height: 1.9rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--border-radius, 6px);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    background: var(--bg-surface, #1e293b);
+    border: 1px solid var(--border-color, #334155);
+    color: var(--text-main, #f8fafc);
+    box-sizing: border-box;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.school-grade-pill:hover {
+    transform: translateY(-1px) scale(1.04);
+}
+
+.school-grade-pill:focus-visible {
+    outline: 2px solid var(--accent, #3b82f6);
+    outline-offset: 2px;
+}
+
+/* Ältere Noten (> 7 Tage): Einheitlich & neutral */
+.school-grade-pill.school-grade-older {
+    background: var(--bg-surface, #1e293b);
+    border: 1px solid var(--border-color, #334155);
+    color: var(--text-main, #f8fafc);
+    box-shadow: none;
+}
+
+/* Tag 0 (Heute): Maximale Hervorhebung, leuchtender Akzent & Glow */
+.school-grade-pill.school-grade-age-0 {
+    background: rgba(59, 130, 246, 0.32);
+    border: 2px solid #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.65), 0 2px 4px rgba(0, 0, 0, 0.25);
+    font-weight: 800;
+}
+
+/* Tag 1 (Gestern): Sehr stark */
+.school-grade-pill.school-grade-age-1 {
+    background: rgba(59, 130, 246, 0.27);
+    border: 2px solid rgba(59, 130, 246, 0.90);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.50);
+    font-weight: 800;
+}
+
+/* Tag 2: Stark */
+.school-grade-pill.school-grade-age-2 {
+    background: rgba(59, 130, 246, 0.22);
+    border: 1.5px solid rgba(59, 130, 246, 0.78);
+    color: #f8fafc;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.38);
+}
+
+/* Tag 3: Mittel-Stark */
+.school-grade-pill.school-grade-age-3 {
+    background: rgba(59, 130, 246, 0.18);
+    border: 1.5px solid rgba(59, 130, 246, 0.65);
+    color: #f1f5f9;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.28);
+}
+
+/* Tag 4: Mittel */
+.school-grade-pill.school-grade-age-4 {
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.52);
+    color: #e2e8f0;
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.20);
+}
+
+/* Tag 5: Sanft */
+.school-grade-pill.school-grade-age-5 {
+    background: rgba(59, 130, 246, 0.10);
+    border: 1px solid rgba(59, 130, 246, 0.40);
+    color: #e2e8f0;
+    box-shadow: 0 0 4px rgba(59, 130, 246, 0.12);
+}
+
+/* Tag 6: Dezent */
+.school-grade-pill.school-grade-age-6 {
+    background: rgba(59, 130, 246, 0.07);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    color: #cbd5e1;
+    box-shadow: none;
+}
+
+/* Tag 7: Minimal wahrnehmbarer Rest-Akzent kurz vor dem Übergang */
+.school-grade-pill.school-grade-age-7 {
+    background: rgba(59, 130, 246, 0.04);
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    color: #cbd5e1;
+    box-shadow: none;
+}
+
+/* Indikator-Punkt für Noten von heute/gestern (Tage 0-1) */
+.school-grade-pill.school-grade-age-0::after,
+.school-grade-pill.school-grade-age-1::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #3b82f6;
+    box-shadow: 0 0 6px #60a5fa;
+}
+
+.school-grade-pill.school-grade-age-0::after {
+    background: #60a5fa;
+    box-shadow: 0 0 8px #93c5fd;
+    animation: schoolGradePulse 2s infinite ease-in-out;
+}
+
+@keyframes schoolGradePulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.35);
+        opacity: 0.7;
+    }
+}
+
+/* Legende in der Notenübersicht */
+.school-grade-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.school-grade-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.school-grade-legend-sample {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    box-sizing: border-box;
+}
+
+.school-grade-legend-sample.school-grade-age-0 {
+    background: rgba(59, 130, 246, 0.35);
+    border: 1.5px solid #3b82f6;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+}
+
+.school-grade-legend-sample.school-grade-age-4 {
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.52);
+}
+
+.school-grade-legend-sample.school-grade-older {
+    background: var(--bg-surface, #1e293b);
+    border: 1px solid var(--border-color, #334155);
+}
+
+/* ==========================================================================
    Profil & Benachrichtigungseinstellungen
    ========================================================================== */
 .profile-push-row {
