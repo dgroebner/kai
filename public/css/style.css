@@ -4022,6 +4022,17 @@ body {
     border: 1px solid rgba(234, 179, 8, 0.35);
 }
 
+.report-dev-income {
+    background: var(--color-green-dim);
+    color: var(--color-green);
+}
+
+.report-dev-expense {
+    background: var(--bg-surface-hover);
+    color: var(--text-muted);
+}
+
+
 .receipt-insights-subgrid {
     display: grid;
     grid-template-columns: 1fr 1fr;

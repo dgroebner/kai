@@ -86,7 +86,7 @@ class FinancialReportService
             );
 
             if (is_array($parsed)) {
-                $aiAnalysis = $this->normalizeAiAnalysis($parsed);
+                $aiAnalysis = $this->normalizeAiAnalysis($parsed, $aggregatedData);
             } else {
                 $this->logger->warn('FinancialReportService: Gemini lieferte kein valides JSON-Array zurück.');
             }
@@ -146,11 +146,31 @@ Die Buchungsdaten nutzen ein Multi-Label-System. Einzelne Buchungen können mehr
 - Falls `cashflow_totals.is_projection` true ist: Der Monat läuft noch und die Zahlen stellen eine Prognose zum Monatsende dar (bereits gebuchte Umsätze + noch ausstehende vertragliche Einnahmen und Ausgaben). Sprich in diesem Fall von einer Hochrechnung / Prognose zum Monatsende und berücksichtige, dass noch ausstehende Zahlungen eingeplant sind.
 - Nutze `tag_breakdown` ausschließlich, um Schwerpunkte und Ausreißer zu erklären.
 
+WICHTIGE LOGISCHE REGELN ZU CASHFLOW, SALDO & SPARQUOTE (`cashflow_totals`):
+- Prüfe das Vorzeichen von `net_balance` (Netto-Saldo) und `savings_rate_percent` (Sparquote) mathematisch genau:
+  * Positiver Saldo (`net_balance >= 0` bzw. `total_income >= total_expenses`):
+    -> Der Nutzer hat ein PLUS / einen Überschuss erzielt und WENIGER ausgegeben als eingenommen!
+    -> Formuliere NIEMALS „du hast mehr ausgegeben als eingenommen“! Das ist ein grober logischer Widerspruch.
+    -> Auch bei einer kleinen positiven Sparquote (z. B. 2,8 %) oder einem geringen Überschuss gilt: Es wurde fast alles Eingenommene verbraucht, aber es bleibt dennoch ein kleiner Überschuss / Puffer übrig (z. B. „Diesen Monat hast du etwas weniger ausgegeben als eingenommen, sodass ein kleiner Puffer von X € übrig bleibt.“ oder „Du hast fast das gesamte Einkommen benötigt...“).
+  * Negativer Saldo (`net_balance < 0` bzw. `total_expenses > total_income`):
+    -> Der Nutzer ist im MINUS / Defizit und hat MEHR ausgegeben als eingenommen (negative Sparquote).
+- Nenne NIEMALS widersprüchliche Aussagen im selben Text (z. B. niemals behaupten, man hätte mehr ausgegeben als eingenommen, wenn im selben Absatz steht, dass Einnahmen > Ausgaben sind oder ein Puffer übrig bleibt).
+
+WICHTIGE REGELN ZU VERTRÄGEN & REGELMÄSSIGEN BUCHUNGEN (`contract_deviations`):
+- Verträge und regelmäßige Buchungen besitzen eine Richtung (`direction`):
+  * "income": Es handelt sich um eine regelmäßige EINNAHME bzw. einen GELDEINGANG (z. B. Unterhalt, Kindergeld, Gehalt, Mieteinnahmen).
+    -> Bezeichne eine Einnahme NIEMALS als „Abbuchung“, „Kosten“ oder „Ausgabe“!
+    -> Ein positiver Betragsunterschied (`difference > 0`, Ist > Soll) bedeutet: Der Nutzer hat MEHR Geld erhalten als erwartet (erfreuliche Mehreinnahme oder Nachzahlung). Formuliere dies positiv (z. B. Sonderzahlung/Erhöhung eingegangen) und KEINESFALLS als Ausgabenwarnung oder Budgetbelastung.
+    -> Ein negativer Unterschied (`difference < 0`) oder eine fehlende Zahlung bedeutet: Eine erwartete Einnahme ist geringer ausgefallen oder noch nicht eingegangen.
+  * "expense": Es handelt sich um eine AUSGABE / ABBUCHUNG (z. B. Miete, Strom, Internet, Abonnements, Ratenkredit, Leasing).
+    -> Ein positiver Betragsunterschied (`difference > 0`) bedeutet eine Mehrausgabe/höhere Abbuchung (Prüfhinweis/Kostentreiber).
+- Achte bei Handlungsempfehlungen (`action_items`) peinlich genau darauf, Einnahmen nicht als Abbuchungen oder Sparpotenziale misszuverstehen!
+
 AUFGABEN:
 1. Verfasse ein kurzes, ermutigendes und klares Fazit (maximal 3 einfache Sätze).
 2. Erkläre einfach das Verhältnis von festen Kosten (Leasingraten, Verträge) zu veränderbaren Ausgaben (Einkaufen, Freizeit).
 3. Zeige auffällige Ausgabenkategorien verständlich auf und erkläre anhand der `overlap_tags`, warum die Ausgaben entstanden sind (z. B. „Mehr für Freizeit ausgegeben, vor allem wegen Urlaubsaktivitäten“).
-4. Melde Unregelmäßigkeiten bei Verträgen direkt (z. B. wenn eine Abbuchung höher war als sonst oder eine Zahlung gefehlt hat).
+4. Melde Unregelmäßigkeiten bei Verträgen und regelmäßigen Buchungen direkt (z. B. wenn eine Abbuchung höher war als sonst, ein erwarteter Zahlungseingang abwich oder eine Zahlung gefehlt hat). Achte strikt auf den Unterschied zwischen Einnahmen (Geldeingänge) und Ausgaben (Abbuchungen).
 5. Erkläre Auffälligkeiten bei Kassenbons und Einkäufen (wo wurde eingekauft, wurden bestimmte Produkte teurer, gab es viele kleine Spontankäufe).
 6. Gib einen einfachen Ausblick auf den nächsten Zeitraum und 1 bis 3 konkrete, alltagstaugliche Tipps.
 
@@ -174,7 +194,7 @@ $payloadJson
 
 Erstelle die Auswertung in einfacher, verständlicher Sprache und antworte im folgenden JSON-Format:
 {
-  "summary": "Kurzes, verständliches Fazit (maximal 3 Sätze) darüber, wie der Monat oder das Jahr finanziell gelaufen ist.",
+  "summary": "Kurzes, verständliches Fazit (maximal 3 Sätze) darüber, wie der Zeitraum finanziell gelaufen ist. WICHTIG: Prüfe strikt `net_balance_status` (bei 'surplus' wurde WENIGER ausgegeben als eingenommen / kleiner Puffer; bei 'deficit' wurde MEHR ausgegeben als eingenommen). Keinesfalls vertauschen!",
   "fixed_vs_variable": {
     "analysis": "Einfache Erklärung, wie viel Geld für feste Verträge und wie viel für alltäglichen Konsum draufging und wie die Sparquote einzuschätzen ist.",
     "status": "healthy"
@@ -190,8 +210,9 @@ Erstelle die Auswertung in einfacher, verständlicher Sprache und antworte im fo
   "contract_findings": [
     {
       "contract_name": "Name des Vertrags",
-      "severity": "warning",
-      "description": "Einfache Erklärung der Abweichung (z. B. 'Die Abbuchung war um 5 € höher als vereinbart.')"
+      "direction": "income oder expense",
+      "severity": "info, warning oder success",
+      "description": "Einfache Erklärung der Abweichung (z. B. 'Die Abbuchung für Strom war um 5 € höher als vereinbart.' bei Ausgaben oder 'Beim Unterhalt sind 250 € mehr eingegangen als der vereinbarte Betrag.' bei Einnahmen)"
     }
   ],
   "receipt_insights_analysis": {
@@ -211,10 +232,43 @@ PROMPT;
     /**
      * Normalisiert und sichert die Struktur der KI-Antwort ab.
      */
-    private function normalizeAiAnalysis(array $data): array
+    private function normalizeAiAnalysis(array $data, ?array $aggregatedData = null): array
     {
+        $summary = (string)($data['summary'] ?? 'Keine Zusammenfassung verfügbar.');
+
+        if ($aggregatedData !== null) {
+            $cashflow = $aggregatedData['cashflow_totals'] ?? [];
+            $netBalance = (float)($cashflow['net_balance'] ?? 0.0);
+
+            if ($netBalance >= 0) {
+                // Plausibilitätskorrektur: Bei positivem Saldo darf nicht behauptet werden, es sei mehr ausgegeben als eingenommen worden
+                $summary = preg_replace(
+                    '/(?:knapp\s+|etwas\s+)?mehr ausgegeben als (?:du\s+)?(?:je\s+)?eingenommen(?: hast)?/iu',
+                    'etwas weniger ausgegeben als eingenommen',
+                    $summary
+                );
+                $summary = preg_replace(
+                    '/mehr ausgegeben als eingenommen/iu',
+                    'weniger ausgegeben als eingenommen',
+                    $summary
+                );
+            } else {
+                // Plausibilitätskorrektur: Bei negativem Saldo darf nicht behauptet werden, es sei weniger ausgegeben als eingenommen worden
+                $summary = preg_replace(
+                    '/(?:knapp\s+|etwas\s+)?weniger ausgegeben als (?:du\s+)?(?:je\s+)?eingenommen(?: hast)?/iu',
+                    'etwas mehr ausgegeben als eingenommen',
+                    $summary
+                );
+                $summary = preg_replace(
+                    '/weniger ausgegeben als eingenommen/iu',
+                    'mehr ausgegeben als eingenommen',
+                    $summary
+                );
+            }
+        }
+
         return [
-            'summary' => (string)($data['summary'] ?? 'Keine Zusammenfassung verfügbar.'),
+            'summary' => $summary,
             'fixed_vs_variable' => [
                 'analysis' => (string)($data['fixed_vs_variable']['analysis'] ?? ''),
                 'status' => in_array($data['fixed_vs_variable']['status'] ?? '', ['healthy', 'tight', 'critical'], true)
@@ -244,24 +298,52 @@ PROMPT;
 
         $isProjection = !empty($cashflow['is_projection']);
         if ($isProjection) {
-            $summary = sprintf(
-                'Prognose zum Monatsende: Voraussichtlich bleiben unterm Strich %+.2f € übrig bei einer prognostizierten Sparquote von %.1f%%.',
-                $net,
-                $savings
-            );
+            if ($net >= 0) {
+                $summary = sprintf(
+                    'Prognose zum Monatsende: Voraussichtlich bleiben unterm Strich %+.2f € übrig bei einer prognostizierten Sparquote von %.1f%%.',
+                    $net,
+                    $savings
+                );
+            } else {
+                $summary = sprintf(
+                    'Prognose zum Monatsende: Voraussichtlich übersteigen die Ausgaben die Einnahmen um %.2f € bei einer prognostizierten Sparquote von %.1f%%.',
+                    abs($net),
+                    $savings
+                );
+            }
         } else {
-            $summary = sprintf(
-                'In diesem Zeitraum sind unterm Strich %+.2f € übrig geblieben. Deine Sparquote lag bei %.1f%%.',
-                $net,
-                $savings
-            );
+            if ($net >= 0) {
+                $summary = sprintf(
+                    'In diesem Zeitraum sind unterm Strich %+.2f € übrig geblieben. Deine Sparquote lag bei %.1f%%.',
+                    $net,
+                    $savings
+                );
+            } else {
+                $summary = sprintf(
+                    'In diesem Zeitraum wurden unterm Strich %.2f € mehr ausgegeben als eingenommen (Sparquote: %.1f%%).',
+                    abs($net),
+                    $savings
+                );
+            }
         }
 
         $contractFindings = [];
         foreach (($aggregatedData['contract_deviations'] ?? []) as $dev) {
-            $severity = ($dev['type'] ?? '') === 'pending_payment' ? 'info' : 'warning';
+            $isIncome = ($dev['direction'] ?? 'expense') === 'income';
+            $diff = (float)($dev['difference'] ?? 0.0);
+            $type = $dev['type'] ?? '';
+
+            if ($type === 'pending_payment') {
+                $severity = 'info';
+            } elseif ($isIncome && $diff > 0) {
+                $severity = 'success';
+            } else {
+                $severity = 'warning';
+            }
+
             $contractFindings[] = [
                 'contract_name' => $dev['contract_name'],
+                'direction' => $dev['direction'] ?? 'expense',
                 'severity' => $severity,
                 'description' => $dev['details'],
             ];
@@ -288,7 +370,7 @@ PROMPT;
             ],
             'forecast' => 'Wenn die festen Kosten so bleiben, kannst du dich im nächsten Monat an deinen gewohnten Ausgaben orientieren.',
             'action_items' => [
-                'Regelmäßige Verträge und Abbuchungen im Blick behalten.',
+                'Regelmäßige Einnahmen und feste Verträge im Blick behalten.',
                 'Auf ungeplante Spontankäufe und Kleinbeträge achten.',
             ],
         ];

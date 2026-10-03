@@ -687,10 +687,10 @@ class CalendarService
                 'description' => 'Das Pferd liebt Bewegung, Freiheit und Unabhängigkeit. Mit seiner offenen Art und ansteckenden Fröhlichkeit gewinnt es schnell alle Herzen.'
             ],
             7 => [
-                'animal' => 'Ziege', 'symbol' => '🐐',
+                'animal' => 'Schaf', 'symbol' => '🐑',
                 'lucky_numbers' => '2, 7', 'lucky_colors' => 'Braun, Rot, Lila',
                 'traits' => ['Sanftmütig', 'Kreativ', 'Friedfertig', 'Harmoniebedürftig', 'Hilfsbereit'],
-                'description' => 'Die Ziege (oder das Schaf) ist künstlerisch veranlagt, einfühlsam und voller Herzensgüte. Sie schätzt Geborgenheit und bringt Wärme in jede Familie.'
+                'description' => 'Das Schaf (oder die Ziege) ist künstlerisch veranlagt, einfühlsam und voller Herzensgüte. Es schätzt Geborgenheit und bringt Wärme in jede Familie.'
             ],
             8 => [
                 'animal' => 'Affe', 'symbol' => '🐒',

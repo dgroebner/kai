@@ -265,7 +265,8 @@ $canEdit = Auth::hasPermission('finance_write');
                         <strong style="display: inline; color: #60a5fa;">Ausstehende Verträge:</strong>
                         <?= implode(', ', array_map(function ($c) {
                             $dueStr = !empty($c['expected_date']) ? ' (erwartet: ' . date('d.m.', strtotime($c['expected_date'])) . ')' : '';
-                            return htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') . ' (' . number_format((float)$c['amount'], 2, ',', '.') . ' €' . $dueStr . ')';
+                            $sign = ($c['direction'] ?? 'expense') === 'income' ? '+' : '-';
+                            return htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') . ' (' . $sign . number_format((float)$c['amount'], 2, ',', '.') . ' €' . $dueStr . ')';
                         }, $cashflow['pending_contracts'])) ?>
                     </div>
                 <?php endif; ?>
@@ -693,8 +694,35 @@ $canEdit = Auth::hasPermission('finance_write');
                 </span>
             </div>
 
+            <?php
+                $summaryText = $aiAnalysis['summary'] ?? '';
+                $netBalanceVal = (float)($cashflow['net_balance'] ?? 0);
+                if ($netBalanceVal >= 0) {
+                    $summaryText = preg_replace(
+                        '/(?:knapp\s+|etwas\s+)?mehr ausgegeben als (?:du\s+)?(?:je\s+)?eingenommen(?: hast)?/iu',
+                        'etwas weniger ausgegeben als eingenommen',
+                        $summaryText
+                    );
+                    $summaryText = preg_replace(
+                        '/mehr ausgegeben als eingenommen/iu',
+                        'weniger ausgegeben als eingenommen',
+                        $summaryText
+                    );
+                } else {
+                    $summaryText = preg_replace(
+                        '/(?:knapp\s+|etwas\s+)?weniger ausgegeben als (?:du\s+)?(?:je\s+)?eingenommen(?: hast)?/iu',
+                        'etwas mehr ausgegeben als eingenommen',
+                        $summaryText
+                    );
+                    $summaryText = preg_replace(
+                        '/weniger ausgegeben als eingenommen/iu',
+                        'mehr ausgegeben als eingenommen',
+                        $summaryText
+                    );
+                }
+            ?>
             <p class="report-summary-text">
-                <?= nl2br(htmlspecialchars($aiAnalysis['summary'] ?? '', ENT_QUOTES, 'UTF-8')) ?>
+                <?= nl2br(htmlspecialchars($summaryText, ENT_QUOTES, 'UTF-8')) ?>
             </p>
 
             <div class="report-analysis-grid">
@@ -820,13 +848,13 @@ $canEdit = Auth::hasPermission('finance_write');
             <?php endif; ?>
         </section>
 
-        <!-- 2. Feste Verträge & Abos -->
+        <!-- 2. Feste Verträge, Einnahmen & Abos -->
         <section class="card">
             <div class="card-header">
-                <h2>📑 Feste Verträge & Abos</h2>
+                <h2>📑 Verträge & regelmäßige Zahlungen</h2>
             </div>
             <p class="subtitle">
-                Prüfung deiner regelmäßigen Abbuchungen und Verträge auf Veränderungen oder fehlende Buchungen.
+                Prüfung deiner regelmäßigen Einnahmen, Abbuchungen und Verträge auf Veränderungen oder ausstehende Buchungen.
             </p>
 
             <?php if (!empty($aiAnalysis['contract_findings'])): ?>
@@ -844,14 +872,15 @@ $canEdit = Auth::hasPermission('finance_write');
             <?php endif; ?>
 
             <?php if (empty($deviations)): ?>
-                <p class="text-green">✅ Alle festen Verträge und Abos wurden in diesem Zeitraum wie erwartet abgebucht.</p>
+                <p class="text-green">✅ Alle festen Verträge, regelmäßigen Einnahmen und Abos wurden in diesem Zeitraum wie erwartet verbucht.</p>
             <?php else: ?>
                 <div class="table-responsive">
                     <table class="receipts-table stack-table">
                         <thead>
                         <tr>
                             <th>Vertrag</th>
-                            <th>Art</th>
+                            <th>Richtung</th>
+                            <th>Status</th>
                             <th class="text-right">Soll</th>
                             <th class="text-right">Ist</th>
                             <th class="text-right">Differenz</th>
@@ -859,7 +888,20 @@ $canEdit = Auth::hasPermission('finance_write');
                         </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($deviations as $dev): ?>
+                        <?php foreach ($deviations as $dev):
+                            $isIncome = ($dev['direction'] ?? 'expense') === 'income';
+                            $diff = (float)($dev['difference'] ?? 0);
+                            if ($diff > 0) {
+                                $diffClass = $isIncome ? 'text-green' : 'text-red';
+                                $diffPrefix = '+';
+                            } elseif ($diff < 0) {
+                                $diffClass = $isIncome ? 'text-orange' : 'text-green';
+                                $diffPrefix = '';
+                            } else {
+                                $diffClass = '';
+                                $diffPrefix = '';
+                            }
+                        ?>
                             <tr>
                                 <td data-label="Vertrag">
                                     <strong><?= htmlspecialchars($dev['contract_name'], ENT_QUOTES, 'UTF-8') ?></strong>
@@ -872,20 +914,24 @@ $canEdit = Auth::hasPermission('finance_write');
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td data-label="Art">
+                                <td data-label="Richtung">
+                                    <span class="report-dev-badge report-dev-<?= $isIncome ? 'income' : 'expense' ?>">
+                                        <?= $isIncome ? 'Einnahme' : 'Ausgabe' ?>
+                                    </span>
+                                </td>
+                                <td data-label="Status">
                                     <span class="report-dev-badge report-dev-<?= htmlspecialchars($dev['type'], ENT_QUOTES, 'UTF-8') ?>">
                                         <?= $dev['type'] === 'missing_payment' ? 'Fehlend' : ($dev['type'] === 'pending_payment' ? 'Ausstehend' : 'Betrag') ?>
                                     </span>
                                 </td>
                                 <td data-label="Soll" class="text-right">
-                                    <?= number_format($dev['expected_amount'], 2, ',', '.') ?> €
+                                    <?= ($isIncome ? '+' : '') . number_format($dev['expected_amount'], 2, ',', '.') ?> €
                                 </td>
                                 <td data-label="Ist" class="text-right">
-                                    <?= number_format($dev['actual_amount'], 2, ',', '.') ?> €
+                                    <?= ($isIncome ? '+' : '') . number_format($dev['actual_amount'], 2, ',', '.') ?> €
                                 </td>
-                                <td data-label="Differenz"
-                                    class="text-right <?= $dev['difference'] > 0 ? 'text-red' : ($dev['difference'] < 0 ? 'text-orange' : '') ?>">
-                                    <?= $dev['difference'] > 0 ? '+' : '' ?><?= number_format($dev['difference'], 2, ',', '.') ?> €
+                                <td data-label="Differenz" class="text-right <?= $diffClass ?>">
+                                    <?= $diffPrefix . number_format($diff, 2, ',', '.') ?> €
                                 </td>
                                 <td data-label="Hinweis">
                                     <?= htmlspecialchars($dev['details'], ENT_QUOTES, 'UTF-8') ?>

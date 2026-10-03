@@ -194,6 +194,10 @@ class FinancialReportAggregator
             'total_income' => round($totalIncome, 2),
             'total_expenses' => round($totalExpenses, 2),
             'net_balance' => round($netBalance, 2),
+            'net_balance_status' => $netBalance >= 0 ? 'surplus' : 'deficit',
+            'net_balance_status_de' => $netBalance >= 0
+                ? sprintf('Überschuss (+%.2f €): Einnahmen übersteigen Ausgaben (weniger ausgegeben als eingenommen)', $netBalance)
+                : sprintf('Defizit (-%.2f €): Ausgaben übersteigen Einnahmen (mehr ausgegeben als eingenommen)', abs($netBalance)),
             'savings_rate_percent' => $savingsRate,
             'fixed_expenses_total' => round($fixedExpensesTotal, 2),
             'variable_expenses_total' => round($variableExpensesTotal, 2),
@@ -451,6 +455,9 @@ class FinancialReportAggregator
             $isVariable = (bool)$contract['variabel'];
             $dueDay = !empty($contract['faelligkeitstag']) ? (int)$contract['faelligkeitstag'] : null;
 
+            $direction = $contract['direction'] ?? 'expense';
+            $isIncome = ($direction === 'income');
+
             $targetYear = (int)substr($targetStart, 0, 4);
             $targetMonth = (int)substr($targetStart, 5, 2);
 
@@ -493,25 +500,47 @@ class FinancialReportAggregator
                     $isCurrentMonth = (substr($targetStart, 0, 7) === date('Y-m'));
                     $isPending = $isCurrentMonth && ($expectedDate === null || $expectedDate >= date('Y-m-d'));
 
-                    $details = 'Keine Buchung im Auswertungszeitraum gefunden.';
-                    if ($expectedDate !== null) {
-                        if ($isPending) {
-                            $details = sprintf(
-                                'Zahlung für diesen Monat steht noch aus (erwartet zum %d. bzw. %s).',
-                                $dueDay,
-                                date('d.m.Y', strtotime($expectedDate))
-                            );
-                        } else {
-                            $details = sprintf(
-                                'Keine Buchung gefunden (erwartet zum %d. bzw. %s).',
-                                $dueDay,
-                                date('d.m.Y', strtotime($expectedDate))
-                            );
+                    if ($isIncome) {
+                        $details = 'Kein Zahlungseingang im Auswertungszeitraum gefunden.';
+                        if ($expectedDate !== null) {
+                            if ($isPending) {
+                                $details = sprintf(
+                                    'Zahlungseingang für diesen Monat steht noch aus (erwartet zum %d. bzw. %s).',
+                                    $dueDay,
+                                    date('d.m.Y', strtotime($expectedDate))
+                                );
+                            } else {
+                                $details = sprintf(
+                                    'Kein Zahlungseingang gefunden (erwartet zum %d. bzw. %s).',
+                                    $dueDay,
+                                    date('d.m.Y', strtotime($expectedDate))
+                                );
+                            }
+                        }
+                    } else {
+                        $details = 'Keine Buchung im Auswertungszeitraum gefunden.';
+                        if ($expectedDate !== null) {
+                            if ($isPending) {
+                                $details = sprintf(
+                                    'Zahlung für diesen Monat steht noch aus (erwartet zum %d. bzw. %s).',
+                                    $dueDay,
+                                    date('d.m.Y', strtotime($expectedDate))
+                                );
+                            } else {
+                                $details = sprintf(
+                                    'Keine Buchung gefunden (erwartet zum %d. bzw. %s).',
+                                    $dueDay,
+                                    date('d.m.Y', strtotime($expectedDate))
+                                );
+                            }
                         }
                     }
 
                     $deviations[] = [
                         'contract_name' => $contract['name'],
+                        'direction' => $direction,
+                        'direction_label' => $isIncome ? 'Einnahme' : 'Ausgabe',
+                        'contract_type' => $contract['type'] ?? 'vertrag',
                         'expected_amount' => $expected,
                         'actual_amount' => 0.0,
                         'difference' => -$expected,
@@ -526,18 +555,48 @@ class FinancialReportAggregator
                 // Zahlung vorhanden: Betragsabweichung prüfen (sofern nicht als variabel deklariert)
                 if (!$isVariable && abs($actualSum - $expected) > 0.05) {
                     $diff = round($actualSum - $expected, 2);
-                    $details = sprintf(
-                        'Abweichung vom Soll-Betrag (Soll: %.2f €, Ist: %.2f €, Diff: %+.2f €)',
-                        $expected,
-                        $actualSum,
-                        $diff
-                    );
+                    if ($isIncome) {
+                        if ($diff > 0) {
+                            $details = sprintf(
+                                'Höherer Zahlungseingang als erwartet (Soll: %.2f €, Erhalten: %.2f €, Diff: +%.2f €)',
+                                $expected,
+                                $actualSum,
+                                $diff
+                            );
+                        } else {
+                            $details = sprintf(
+                                'Geringerer Zahlungseingang als erwartet (Soll: %.2f €, Erhalten: %.2f €, Diff: %.2f €)',
+                                $expected,
+                                $actualSum,
+                                $diff
+                            );
+                        }
+                    } else {
+                        if ($diff > 0) {
+                            $details = sprintf(
+                                'Höhere Abbuchung als erwartet (Soll: %.2f €, Ist: %.2f €, Diff: +%.2f €)',
+                                $expected,
+                                $actualSum,
+                                $diff
+                            );
+                        } else {
+                            $details = sprintf(
+                                'Geringere Abbuchung als erwartet (Soll: %.2f €, Ist: %.2f €, Diff: %.2f €)',
+                                $expected,
+                                $actualSum,
+                                $diff
+                            );
+                        }
+                    }
                     if ($expectedDate !== null) {
                         $details .= sprintf(' (Fälligkeit: %d. d. M.)', $dueDay);
                     }
 
                     $deviations[] = [
                         'contract_name' => $contract['name'],
+                        'direction' => $direction,
+                        'direction_label' => $isIncome ? 'Einnahme' : 'Ausgabe',
+                        'contract_type' => $contract['type'] ?? 'vertrag',
                         'expected_amount' => $expected,
                         'actual_amount' => $actualSum,
                         'difference' => $diff,
