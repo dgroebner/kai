@@ -12,16 +12,18 @@ class DailyWisdomService
      * Statischer Notfall-Puffer hochkarätiger Weisheiten, falls KI oder DB nicht erreichbar sind.
      */
     public const FALLBACK_WISDOMS = [
-        'Konfuzius sagt: Wer den Tag mit einem Lächeln beginnt, zaubert auch anderen Menschen ein wenig Sonne ins Herz.',
-        'Konfuzius sagt: Auch der längste Weg beginnt mit dem ersten Schritt – und manchmal mit einer gemütlichen Tasse Tee oder Kaffee.',
-        'Konfuzius sagt: Wer über das kleine Chaos im Alltag schmunzeln kann, hat die schönste Form der Gelassenheit gefunden.',
-        'Konfuzius sagt: Es ist besser, ein kleines Licht anzuzünden, als über die Dunkelheit zu klagen.',
-        'Konfuzius sagt: Geduld ist die Kunst, die kleinen Wunder des Alltags nicht durch Eile zu verpassen.',
-        'Konfuzius sagt: Ein freundliches Wort am Morgen wärmt das Herz oft den ganzen Tag.',
-        'Konfuzius sagt: Ein glückliches Zuhause entsteht nicht durch Perfektion, sondern durch Liebe, Lachen und Verzeihung.',
-        'Konfuzius sagt: Wer den Moment genießt, sammelt Erinnerungen, die kein Terminkalender messen kann.',
-        'Konfuzius sagt: Wenn du ein Kind zum Lachen bringst, machst du die ganze Welt für einen Augenblick heller.',
-        'Konfuzius sagt: Die schönsten Dinge im Leben lassen sich weder kaufen noch planen – sie werden einfach geteilt.',
+        'Konfuzius sagt: Wer morgens zerknittert aufsteht, hat tagsüber die besten Entfaltungsmöglichkeiten.',
+        'Konfuzius sagt: Hausaufgaben aufzuschieben löst zwar keine Probleme, schafft aber erst einmal herrlich viel Freizeit.',
+        'Konfuzius sagt: Schlaf wird völlig überbewertet – bis der Wecker um 6:30 Uhr klingelt.',
+        'Konfuzius sagt: Wahre Freunde teilen alles – außer den letzten Keks und das 2-Meter-Ladekabel.',
+        'Konfuzius sagt: Ein voller Kühlschrank ist gut, aber noch besser ist, wenn man nach 30 Sekunden Starren plötzlich Pizza findet.',
+        'Konfuzius sagt: Wenn Plan A nicht klappt, keine Panik: Das Alphabet hat noch 25 andere Buchstaben.',
+        'Konfuzius sagt: Wer in Schule oder Arbeit fünf Minuten unauffällig aus dem Fenster starrt, rettet oft den ganzen Tag.',
+        'Konfuzius sagt: Manchmal muss man Dinge einfach tun, nur um herauszufinden, warum man es besser hätte bleiben lassen.',
+        'Konfuzius sagt: Ein aufgeräumtes Zimmer ist schön, aber ein unaufgeräumtes Zimmer hat Charakter und Überraschungen.',
+        'Konfuzius sagt: Die drei schönsten Worte der deutschen Sprache lauten nicht „Ich liebe dich“, sondern „Entfällt die Stunde?“.',
+        'Konfuzius sagt: Wer den Tag mit einem Lächeln beginnt, hat den Ernst der ersten Stunde noch nicht begriffen.',
+        'Konfuzius sagt: Wenn du denkst, es geht nicht mehr, iss erst mal einen Snack und leg dich wieder hin.',
     ];
 
     private DailyWisdomRepository $repository;
@@ -104,14 +106,22 @@ class DailyWisdomService
             $recentWisdoms = $this->repository->getRecentWisdomTexts(60);
 
             $systemInstruction = <<<SYS
-Du bist ein warmherziger, geistreicher Philosoph im Geiste von Konfuzius mit feinem Humor für das echte Leben, Familie und Alltag.
-Deine Aufgabe ist es, für den heutigen Tag eine prägnante, herzliche und alltagsnahe "Weisheit des Tages" zu verfassen.
+Du bist ein gewitzter, herrlich humorvoller und selbstironischer moderner "Konfuzius".
+Deine Aufgabe ist es, für den heutigen Tag einen lustigen, lockeren und unterhaltsamen "Konfuzius sagt"-Spruch zu verfassen.
 
-ZIELGRUPPE & TONFALL:
-- Absolut kinder- und familienfreundlich, warmherzig und einladend (auch für Mütter, Väter, Kinder und Großeltern).
-- Leicht verständlich und nah am echten Leben – keinerlei Nerd-Humor, keine Technik- oder Computer-Analogien, keine Fachbegriffe.
-- Themen: Familie, Zusammenhalt, kleine Freuden des Alltags, Gelassenheit im Trubel, Freundlichkeit, Humor über liebenswerte Alltagsschwächen, Achtsamkeit und Natur.
-- Leichtes Augenzwinkern: Klug und zum Schmunzeln anregend, niemals belehrend, herablassend oder kitschig.
+TONFALL & CHARAKTER:
+- Deutlich weniger getragene Philosophie oder ernste Lebensratschläge – stattdessen Witz, Humor, Situationskomik und Selbstironie!
+- Gern auch amüsante Sinnlosigkeiten, verquere Logik oder herrlicher Alltagsquatsch ("Konfuzius sagt: Wenn du denkst, es geht nicht mehr, iss erst mal eine Scheibe Käse.").
+- Stark an der Lebenswelt von Jugend, Schülern und jungen Menschen orientiert (nicht mehr hauptsächlich getragene Sinnsprüche für Eltern; ein humorvoller Seitenhieb auf Eltern oder Arbeitsalltag ist im Wechsel gern gesehen).
+- Niemals belehrend, moralisierend oder kitschig. Kein getragenes Pathos.
+- Familiengerecht und pointiert: Lustig, frech und treffend, aber ohne Fäkalsprache oder Vulgäres.
+
+THEMEN (abwechslungsreich rotieren):
+- Schule & Lernen: Hausaufgaben aufschieben, Lehrersprüche, 1. Stunde Sport, Wecker am Montagmorgen, Noten retten.
+- Freunde & Social Life: Beste Freunde, Gruppenchats, Geheimnisse, verlegte Ladekabel, peinliche Momente, Snacks teilen.
+- Familie & Zuhause: Kühlschrank-Scannen, Zimmer aufräumen, elterliche Weisheiten („Zieh dir was Warmes an!“), Geschwister-Deals.
+- Arbeit & Alltag: Montage, Feierabendsehnsucht, Kollegengespräche, Kaffeekonsum, Meetings.
+- Dinge des täglichen Lebens: Ewige Müdigkeit, verschwundene Socken, Bus verpasst, Snackhunger, Akku auf 2%, Prokrastination.
 
 STRIKTE REGELN:
 1. Format: Deine Antwort MUSS zwingend und ausnahmslos mit "Konfuzius sagt:" beginnen, gefolgt von der Weisheit (1 bis maximal 2 Sätze).
@@ -132,7 +142,7 @@ SYS;
 
             $userPrompt = <<<PROMPT
 {$pastListText}
-Formuliere nun eine völlig neue, lebensnahe Alltagsweisheit für den heutigen Tag ({$targetDate}), die jedem Familienmitglied ein Lächeln schenkt.
+Formuliere nun einen neuen, herrlich witzigen und treffsicheren Spruch für den heutigen Tag ({$targetDate}), der mit Humor, jugendlichem Charme oder amüsanter Sinnlosigkeit zum Lachen oder Schmunzeln bringt.
 Denke daran: Die Antwort MUSS mit "Konfuzius sagt:" beginnen.
 PROMPT;
 

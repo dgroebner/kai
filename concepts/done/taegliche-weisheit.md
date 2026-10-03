@@ -38,7 +38,7 @@ Auf der zentralen Übersichtsseite von Kai (`public/index.php`) wird oberhalb de
 * **Kontextaufbereitung:**
   * Auslesen der letzten N Sprüche aus der Datenbank.
   * Strikte Vorgabe an das Modell, thematische Überschneidungen und ähnliche Pointen zu vermeiden.
-  * **Zielgruppe & Tonalität:** Warmherzig, kinder- und frauenfreundlich, lebensnah und für nicht technik-affine Menschen verständlich. Fokus auf Familie, Zusammenhalt, Achtsamkeit, kleine Alltagsfreuden und Humor über alltägliche Kleinigkeiten (keine Nerd- oder Tech-Metaphern).
+  * **Zielgruppe & Tonalität:** Humorvoll, locker, jugend- und alltagsnah statt getragen-philosophisch. Witz und Situationskomik rund um Schule, Freunde, Familie, Arbeit und alltägliche Dinge, gerne auch mit amüsanter Sinnlosigkeit und Quatsch.
   * Formatvorgabe: Beginnend mit „Konfuzius sagt:“.
 * **Persistierung:** Speichern der Antwort direkt in der Datenbank.
 
