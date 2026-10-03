@@ -50,24 +50,28 @@ final class Auth
                             return $matches[0];
                         }
                         
-                        // Bestimmte Filter- und Suchfelder ignorieren, da sie keine Schreibaktion auf der DB auslösen
-                        if ($tag === 'input' && (stripos($attrs, 'type="search"') !== false || stripos($attrs, 'id="search"') !== false || stripos($attrs, 'filter') !== false)) {
+                        // Bestimmte Filter- und Suchfelder ignorieren (Inputs & Selects), da sie keine Schreibaktion auf der DB auslösen
+                        if (($tag === 'input' || $tag === 'select') && (stripos($attrs, 'type="search"') !== false || stripos($attrs, 'id="search"') !== false || stripos($attrs, 'filter') !== false || stripos($attrs, 'name="q"') !== false)) {
                             return $matches[0];
                         }
 
-                        // Bei Buttons aufpassen: Navigations- und Modal-Close-Buttons sollen klickbar bleiben
+                        // Bei Buttons aufpassen: Navigations-, Detail-, Filter- und Modal-Close-Buttons sollen klickbar bleiben
                         if ($tag === 'button') {
                             $isSafeButton = stripos($attrs, 'modal-close') !== false ||
+                                            stripos($attrs, 'close') !== false ||
                                             stripos($attrs, 'js-tab-btn') !== false ||
                                             stripos($attrs, 'js-open-details') !== false ||
+                                            stripos($attrs, 'js-view-details') !== false ||
+                                            stripos($attrs, 'cal-zodiac-badge') !== false ||
                                             stripos($attrs, 'js-market-filter') !== false ||
                                             stripos($attrs, 'school-config-toggle') !== false ||
                                             stripos($attrs, 'filter') !== false ||
                                             stripos($attrs, 'reset') !== false ||
-                                            stripos($attrs, 'data-tab') !== false;
+                                            stripos($attrs, 'data-tab') !== false ||
+                                            stripos($attrs, 'details') !== false;
                             
-                            // Wenn es kein Submit-Button ist und Klassen wie modal-close enthält, nicht disablen
-                            if ($isSafeButton && stripos($attrs, 'type="submit"') === false) {
+                            // Wenn es kein Submit-Button ist oder es ein Filter-Button ist, nicht disablen
+                            if ($isSafeButton && (stripos($attrs, 'type="submit"') === false || stripos($attrs, 'filter') !== false)) {
                                 return $matches[0];
                             }
                         }

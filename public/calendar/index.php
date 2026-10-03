@@ -189,7 +189,7 @@ $csrfToken = Auth::csrfToken();
                 <input type="text" name="q" class="form-control form-control-sm cal-search-input"
                        placeholder="Suchen nach Name..." value="<?= htmlspecialchars($filterSearch, ENT_QUOTES, 'UTF-8') ?>" id="filter-search">
 
-                <button type="submit" class="btn btn-sm btn-outline">Filtern</button>
+                <button type="submit" class="btn btn-sm btn-outline btn-filter">Filtern</button>
                 <?php if ($filterType || $filterCategory || $filterSearch): ?>
                     <a href="index.php?scope=<?= htmlspecialchars($filterScope, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-sm btn-text">Zurücksetzen</a>
                 <?php endif; ?>
@@ -625,7 +625,7 @@ $csrfToken = Auth::csrfToken();
             <?php if ($canWrite): ?>
                 <button type="button" class="btn btn-primary" id="det-btn-edit">✏️ Bearbeiten</button>
             <?php endif; ?>
-            <button type="button" class="btn btn-outline" id="modal-details-close-btn">Schließen</button>
+            <button type="button" class="btn btn-outline modal-close" id="modal-details-close-btn">Schließen</button>
         </div>
     </div>
 </div>
