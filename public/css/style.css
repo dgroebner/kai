@@ -3705,6 +3705,247 @@ body {
 }
 
 /* ==========================================================================
+   WETTER: ASTRONOMIE & HIMMELSDIORAMA
+   ========================================================================== */
+.astronomy-diorama-card {
+    background: #050814;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    margin: 0 auto 1.5rem auto;
+    position: relative;
+    box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.5);
+}
+
+.astronomy-diorama-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 580px;
+    background: linear-gradient(180deg, #02040a 0%, #060e22 45%, #0f1c3f 85%, #182245 100%);
+    overflow: hidden;
+}
+
+.astronomy-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Sternen-Flimmern */
+.star-twinkle-1 { animation: starTwinkle 3s ease-in-out infinite alternate; }
+.star-twinkle-2 { animation: starTwinkle 4.5s ease-in-out 1s infinite alternate; }
+.star-twinkle-3 { animation: starTwinkle 6s ease-in-out 2s infinite alternate; }
+
+@keyframes starTwinkle {
+    0% { opacity: 0.25; transform: scale(0.85); }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Polarlichter Waber-Effekt */
+.aurora-curtain {
+    transform-origin: center bottom;
+    animation: auroraWave 8s ease-in-out infinite alternate;
+}
+.aurora-curtain-2 {
+    transform-origin: center bottom;
+    animation: auroraWave 12s ease-in-out 3s infinite alternate-reverse;
+}
+
+@keyframes auroraWave {
+    0% { transform: translateY(0px) scaleY(1); opacity: 0.55; }
+    50% { transform: translateY(-16px) scaleY(1.2); opacity: 0.85; filter: hue-rotate(15deg); }
+    100% { transform: translateY(-6px) scaleY(1.08); opacity: 0.65; }
+}
+
+/* Sternschnuppen-Animation */
+.meteor-trail {
+    animation: meteorShower 6s linear infinite;
+    opacity: 0;
+}
+.meteor-trail-2 {
+    animation: meteorShower 8s linear 3s infinite;
+    opacity: 0;
+}
+
+@keyframes meteorShower {
+    0% { transform: translate(0, 0) scale(0); opacity: 0; }
+    5% { opacity: 1; transform: scale(1); }
+    15% { transform: translate(-280px, 200px) scale(0.8); opacity: 1; }
+    22% { transform: translate(-420px, 300px) scale(0.3); opacity: 0; }
+    100% { transform: translate(-420px, 300px) scale(0); opacity: 0; }
+}
+
+/* Status-Bar unter dem Diorama */
+.astronomy-status-bar {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.astronomy-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.astronomy-rating-badge {
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.astronomy-rating-great { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+.astronomy-rating-good { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+.astronomy-rating-moderate { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+.astronomy-rating-poor { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+/* Aurora Alert Box */
+.aurora-alert-box {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(139, 92, 246, 0.2) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Planeten-Grid */
+.astronomy-planets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.astronomy-planet-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    position: relative;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.astronomy-planet-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+}
+
+.astronomy-planet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.astronomy-planet-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.planet-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.astronomy-planet-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.5rem;
+    border-radius: 6px;
+}
+
+/* Events Timeline Grid */
+.astronomy-events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.astronomy-event-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.2s;
+}
+
+.astronomy-event-card:hover {
+    border-color: var(--accent);
+}
+
+.astronomy-event-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.6rem;
+}
+
+.astronomy-event-date {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.astronomy-countdown-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+/* Kp Skala Balken */
+.kp-scale-container {
+    display: flex;
+    gap: 4px;
+    margin-top: 0.5rem;
+    height: 14px;
+}
+
+.kp-scale-bar {
+    flex: 1;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: background 0.3s;
+}
+
+.kp-scale-bar.active-green { background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.6); }
+.kp-scale-bar.active-yellow { background: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, 0.6); }
+.kp-scale-bar.active-red { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.8); }
+
+/* ==========================================================================
    26. Einkaufsliste Phase 1.5 (Inbox, Merge & AI)
    ========================================================================== */
 .bulk-action-bar {

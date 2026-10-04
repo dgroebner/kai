@@ -1027,3 +1027,40 @@ CREATE TABLE IF NOT EXISTS `daily_wisdoms` (
     `content` TEXT NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================================================
+-- DOMAIN: WEATHER (Astronomie & Himmelsereignisse)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `weather_astronomy_state` (
+    `id` INT NOT NULL DEFAULT 1,
+    `kp_current` DECIMAL(3,1) NULL DEFAULT 0.0,
+    `kp_max_next_24h` DECIMAL(3,1) NULL DEFAULT 0.0,
+    `kp_forecast_json` JSON NULL,
+    `aurora_chance` VARCHAR(32) NOT NULL DEFAULT 'none',
+    `visible_planets_json` JSON NULL,
+    `active_meteor_showers_json` JSON NULL,
+    `moon_phase_name` VARCHAR(64) NULL,
+    `moon_illumination` DECIMAL(4,3) NULL,
+    `summary_text` TEXT NULL,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weather_astronomy_events` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `event_key` VARCHAR(100) NOT NULL UNIQUE,
+    `event_type` VARCHAR(50) NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT NULL,
+    `event_date` DATE NOT NULL,
+    `peak_time` DATETIME NULL,
+    `end_date` DATE NULL,
+    `magnitude` DECIMAL(4,2) NULL,
+    `visibility_rating` VARCHAR(32) NOT NULL DEFAULT 'good',
+    `details_json` JSON NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_astro_date` (`event_date`),
+    INDEX `idx_astro_type` (`event_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

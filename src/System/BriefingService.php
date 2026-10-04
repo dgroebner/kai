@@ -259,6 +259,31 @@ class BriefingService
             'type' => 'neutral',
         ];
 
+        $highlight = $hasRain;
+        $badge = $hasRain ? ['text' => 'Regen', 'type' => 'warning'] : null;
+
+        try {
+            $astroService = new \Kai\Tools\Weather\AstronomyService();
+            $astroCond = $astroService->getNightViewingConditions();
+            if ($astroCond['aurora_alert']) {
+                $pills[] = [
+                    'icon' => '🌌',
+                    'label' => 'Polarlicht-Alarm!',
+                    'type' => 'warning',
+                ];
+                $highlight = true;
+                $badge = ['text' => 'Polarlicht', 'type' => 'warning'];
+            } elseif (!empty($astroCond['highlights']) && $astroCond['score'] >= 60) {
+                $pills[] = [
+                    'icon' => '✨',
+                    'label' => 'Klare Sternennacht',
+                    'type' => 'neutral',
+                ];
+            }
+        } catch (Throwable $e) {
+            // Unkritisch
+        }
+
         return [
             'key' => 'weather',
             'title' => 'Wetter & Bekleidung',
@@ -267,8 +292,8 @@ class BriefingService
             'headline' => "{$curFormatted} (6h: {$minFormatted}° bis {$maxFormatted}°C)",
             'subtitle' => $hasRain ? "Regenschirm empfohlen ({$maxPrecipProb}% Regenwahrscheinlichkeit)" : "In den nächsten 6h kein Regen erwartet",
             'pills' => $pills,
-            'highlight' => $hasRain,
-            'badge' => $hasRain ? ['text' => 'Regen', 'type' => 'warning'] : null,
+            'highlight' => $highlight,
+            'badge' => $badge,
         ];
     }
 

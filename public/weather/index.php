@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Weather\AstronomyService;
 use Kai\Tools\Weather\WeatherEvaluator;
 use Kai\Tools\Weather\WeatherService;
 
@@ -34,9 +35,18 @@ foreach ($histRows as $r) {
 }
 
     $sensorData = $weatherService->getLatestSensorData();
+
+    // --- Astronomie & Himmelsdaten ---
+    $astronomyService = new AstronomyService(null, null, $weatherService);
+    $astroState = $astronomyService->getState();
+    $astroConditions = $astronomyService->getNightViewingConditions();
+    $astroEvents = $astronomyService->getUpcomingEvents(12);
 } catch (Exception $e) {
     $forecast = null;
     $sensorData = null;
+    $astroState = null;
+    $astroConditions = null;
+    $astroEvents = [];
 }
 
 $evaluator = new WeatherEvaluator();
@@ -113,10 +123,11 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
     </header>
 
     <main>
-                <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+                <div class="period-switcher" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
             <button class="btn" id="btn-tab-diorama" data-tab="diorama">Diorama</button>
             <button class="btn btn-outline" id="btn-tab-dashboard" data-tab="dashboard">Dashboard</button>
             <button class="btn btn-outline" id="btn-tab-history" data-tab="history">Historie</button>
+            <button class="btn btn-outline" id="btn-tab-astronomy" data-tab="astronomy">✨ Astronomie</button>
         </div>
         <?php if (!$forecast): ?>
             <p>Fehler beim Laden der Wetterdaten.</p>
@@ -1065,7 +1076,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             'winter' => '🧣',
                             'pool' => '🏊',
                             'watering' => '🌱',
-                            'laundry' => '👕'
+                            'laundry' => '👕',
+                            'stargazing' => '🔭'
                     ];
                     foreach ($eval as $key => $info):
                         $activeClass = $info['status'] ? 'active-yes' : 'active-no';
@@ -1310,6 +1322,500 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     <?php endif; ?>
                 </div>
             </div> <!-- End tab-history -->
+
+            <div id="tab-astronomy" class="hidden">
+                <!-- 1. Intro & Quick Overview -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <h3 style="margin-bottom: 0.25rem;">Himmelsereignisse &amp; Sternenhimmel</h3>
+                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">
+                            Live-Beobachtungsbedingungen, sichtbare Planeten, Meteorschauer &amp; Aurora-Monitor für Leipzig
+                        </p>
+                    </div>
+                    <?php if ($astroConditions): ?>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">Bedingungen heute Nacht:</span>
+                            <span class="astronomy-rating-badge astronomy-rating-<?= htmlspecialchars($astroConditions['rating'] ?? 'good') ?>">
+                                <?= htmlspecialchars($astroConditions['rating_label'] ?? 'Gut') ?> (<?= (int)($astroConditions['score'] ?? 0) ?>%)
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <?php if (!empty($astroConditions['aurora_alert'])): ?>
+                    <div class="aurora-alert-box">
+                        <span style="font-size: 2.2rem; line-height: 1;">🌌</span>
+                        <div>
+                            <strong style="color: #4ade80; font-size: 1.1rem; display: block; margin-bottom: 0.2rem;">
+                                Polarlicht-Alarm für Leipzig!
+                            </strong>
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">
+                                <?= htmlspecialchars($astroConditions['aurora_text']) ?>
+                                Bei klarem Himmel lohnt sich heute Nacht der Blick an den Nordhorizont (auch fotografisch mit Smartphone/Kamera).
+                            </p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- 2. Himmelsdiorama Card (SVG) -->
+                <div class="astronomy-diorama-card">
+                    <div class="astronomy-diorama-container">
+                        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" class="astronomy-svg" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <!-- Himmel Gradient: Tiefschwarz zu Nachtblau -->
+                                <linearGradient id="astroSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#020308"/>
+                                    <stop offset="40%" stop-color="#060c20"/>
+                                    <stop offset="75%" stop-color="#0f1738"/>
+                                    <stop offset="100%" stop-color="#182346"/>
+                                </linearGradient>
+
+                                <!-- Kosmischer Nebel / Milchstraße Glow -->
+                                <radialGradient id="milkyWayGlow" cx="50%" cy="40%" r="50%">
+                                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12"/>
+                                    <stop offset="45%" stop-color="#818cf8" stop-opacity="0.06"/>
+                                    <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                                </radialGradient>
+
+                                <!-- Mond Halo -->
+                                <filter id="moonGlowFilter" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feGaussianBlur stdDeviation="14" result="blur"/>
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                                </filter>
+
+                                <!-- Planet Glow -->
+                                <filter id="planetGlowFilter" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="6" result="blur"/>
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                                </filter>
+
+                                <!-- Polarlichter Farbverlauf -->
+                                <linearGradient id="auroraGradGreen" x1="0" y1="1" x2="0" y2="0">
+                                    <stop offset="0%" stop-color="#00ffa3" stop-opacity="0.0"/>
+                                    <stop offset="40%" stop-color="#00ffa3" stop-opacity="0.45"/>
+                                    <stop offset="85%" stop-color="#8b5cf6" stop-opacity="0.3"/>
+                                    <stop offset="100%" stop-color="#ec4899" stop-opacity="0.0"/>
+                                </linearGradient>
+                                <linearGradient id="auroraGradPurple" x1="0" y1="1" x2="0" y2="0">
+                                    <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.0"/>
+                                    <stop offset="50%" stop-color="#a855f7" stop-opacity="0.4"/>
+                                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
+                                </linearGradient>
+
+                                <!-- Sternschnuppen Schweif -->
+                                <linearGradient id="meteorTailGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                                    <stop offset="50%" stop-color="#67e8f9" stop-opacity="0.7"/>
+                                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+                                </linearGradient>
+                            </defs>
+
+                            <!-- A. Nachthimmel Basis -->
+                            <rect width="1600" height="900" fill="url(#astroSkyGrad)"/>
+
+                            <!-- B. Milchstraßen-Band / Kosmischer Hauch -->
+                            <ellipse cx="780" cy="380" rx="720" ry="260" fill="url(#milkyWayGlow)" transform="rotate(-15 780 380)"/>
+
+                            <!-- C. Sternenfeld (Flimmernde Sterne & Sternbilder) -->
+                            <g fill="#ffffff">
+                                <!-- Fixsterne -->
+                                <circle cx="120" cy="80" r="1.2" opacity="0.6"/>
+                                <circle cx="240" cy="140" r="1.5" opacity="0.8"/>
+                                <circle cx="310" cy="70" r="0.9" opacity="0.5"/>
+                                <circle cx="480" cy="190" r="1.3" opacity="0.7"/>
+                                <circle cx="620" cy="95" r="1.1" opacity="0.6"/>
+                                <circle cx="750" cy="160" r="1.4" opacity="0.8"/>
+                                <circle cx="890" cy="80" r="0.8" opacity="0.5"/>
+                                <circle cx="1020" cy="130" r="1.3" opacity="0.7"/>
+                                <circle cx="1150" cy="70" r="1.5" opacity="0.9"/>
+                                <circle cx="1380" cy="110" r="1.0" opacity="0.5"/>
+                                <circle cx="1490" cy="180" r="1.4" opacity="0.8"/>
+                                <circle cx="80" cy="280" r="0.9" opacity="0.5"/>
+                                <circle cx="210" cy="320" r="1.2" opacity="0.6"/>
+                                <circle cx="430" cy="360" r="1.5" opacity="0.75"/>
+                                <circle cx="680" cy="310" r="1.0" opacity="0.6"/>
+                                <circle cx="940" cy="270" r="1.4" opacity="0.8"/>
+                                <circle cx="1120" cy="340" r="0.9" opacity="0.5"/>
+                                <circle cx="1340" cy="290" r="1.3" opacity="0.7"/>
+                                <circle cx="1520" cy="350" r="1.1" opacity="0.6"/>
+                                <circle cx="150" cy="460" r="1.0" opacity="0.5"/>
+                                <circle cx="380" cy="490" r="1.3" opacity="0.7"/>
+                                <circle cx="820" cy="440" r="1.4" opacity="0.8"/>
+                                <circle cx="1060" cy="470" r="0.9" opacity="0.5"/>
+                                <circle cx="1270" cy="430" r="1.2" opacity="0.6"/>
+                                <circle cx="1440" cy="480" r="1.5" opacity="0.8"/>
+
+                                <!-- Flimmernde Sterne Gruppe 1 -->
+                                <g class="star-twinkle-1">
+                                    <circle cx="190" cy="110" r="1.6" opacity="0.9"/>
+                                    <circle cx="560" cy="140" r="2.0" opacity="1.0"/>
+                                    <circle cx="860" cy="190" r="1.8" opacity="0.9"/>
+                                    <circle cx="1210" cy="160" r="2.2" opacity="1.0"/>
+                                    <circle cx="1420" cy="230" r="1.7" opacity="0.85"/>
+                                </g>
+
+                                <!-- Flimmernde Sterne Gruppe 2 -->
+                                <g class="star-twinkle-2">
+                                    <circle cx="340" cy="220" r="1.9" opacity="0.95"/>
+                                    <circle cx="710" cy="110" r="2.1" opacity="1.0"/>
+                                    <circle cx="1080" cy="210" r="1.7" opacity="0.85"/>
+                                    <circle cx="1310" cy="95" r="2.0" opacity="0.9"/>
+                                    <circle cx="1550" cy="140" r="1.8" opacity="0.8"/>
+                                </g>
+
+                                <!-- Flimmernde Sterne Gruppe 3 (Großer Wagen / Ursa Major) -->
+                                <g class="star-twinkle-3">
+                                    <!-- Deichsel & Kasten -->
+                                    <circle cx="280" cy="180" r="2.2" opacity="0.95"/> <!-- Alkaid -->
+                                    <circle cx="330" cy="195" r="2.0" opacity="0.9"/> <!-- Mizar -->
+                                    <circle cx="380" cy="205" r="2.0" opacity="0.9"/> <!-- Alioth -->
+                                    <circle cx="435" cy="200" r="2.1" opacity="0.95"/> <!-- Megrez -->
+                                    <circle cx="430" cy="245" r="2.0" opacity="0.9"/> <!-- Phecda -->
+                                    <circle cx="500" cy="240" r="2.3" opacity="1.0"/> <!-- Merak -->
+                                    <circle cx="505" cy="190" r="2.4" opacity="1.0"/> <!-- Dubhe -->
+                                    <!-- Feine Verbindungslinien des Großen Wagens -->
+                                    <polyline points="280,180 330,195 380,205 435,200 430,245 500,240 505,190 435,200"
+                                              fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8" stroke-dasharray="2,3"/>
+                                </g>
+                            </g>
+
+                            <!-- D. Polarlichter (Aurora Borealis Vorhang) -->
+                            <?php
+                            $kpVal = (float)($astroState['kp_current'] ?? 2.0);
+                            $auroraChance = $astroState['aurora_chance'] ?? 'none';
+                            $showAurora = ($kpVal >= 4.5 || $auroraChance !== 'none');
+                            $auroraOpacity = $kpVal >= 7.0 ? 0.95 : ($kpVal >= 5.5 ? 0.65 : 0.35);
+                            ?>
+                            <?php if ($showAurora): ?>
+                                <g opacity="<?= $auroraOpacity ?>">
+                                    <!-- Wabernde Vorhänge -->
+                                    <path class="aurora-curtain" d="M 0,680 Q 250,440 500,520 T 1000,460 T 1600,530 L 1600,720 L 0,720 Z" fill="url(#auroraGradGreen)"/>
+                                    <path class="aurora-curtain-2" d="M 0,690 Q 300,480 650,430 T 1200,490 T 1600,440 L 1600,720 L 0,720 Z" fill="url(#auroraGradPurple)"/>
+                                </g>
+                            <?php endif; ?>
+
+                            <!-- E. Sternschnuppen (Meteorschauer) -->
+                            <?php if (!empty($astroState['active_meteor_showers'])): ?>
+                                <g>
+                                    <line class="meteor-trail" x1="1150" y1="120" x2="870" y2="320" stroke="url(#meteorTailGrad)" stroke-width="2.5" stroke-linecap="round"/>
+                                    <line class="meteor-trail-2" x1="750" y1="80" x2="480" y2="280" stroke="url(#meteorTailGrad)" stroke-width="2.0" stroke-linecap="round"/>
+                                </g>
+                            <?php endif; ?>
+
+                            <!-- F. Mond mit exakter Phase -->
+                            <?php
+                            $moonIllum = (float)($astroState['moon_illumination'] ?? 0.5);
+                            $moonPhaseName = (string)($astroState['moon_phase_name'] ?? 'Mond');
+                            // Mond Koordinaten
+                            $moonX = 1320;
+                            $moonY = 210;
+                            $moonR = 48;
+                            ?>
+                            <g transform="translate(<?= $moonX ?>, <?= $moonY ?>)">
+                                <!-- Mond Halo / Leuchten -->
+                                <circle cx="0" cy="0" r="<?= $moonR + 8 ?>" fill="#f8fafc" opacity="0.12" filter="url(#moonGlowFilter)"/>
+                                <circle cx="0" cy="0" r="<?= $moonR ?>" fill="#f1f5f9"/>
+
+                                <!-- Mond-Schattierung (Phasenmaske) -->
+                                <?php if ($moonIllum < 0.95): ?>
+                                    <!-- Schattenteil -->
+                                    <path d="M 0,-<?= $moonR ?> A <?= $moonR ?>,<?= $moonR ?> 0 0,0 0,<?= $moonR ?> A <?= abs($moonIllum - 0.5) * 2 * $moonR ?>,<?= $moonR ?> 0 0,<?= $moonIllum < 0.5 ? '1' : '0' ?> 0,-<?= $moonR ?> Z"
+                                          fill="#080e22" opacity="0.94"/>
+                                <?php endif; ?>
+
+                                <!-- Mondkrater-Andeutung -->
+                                <circle cx="-14" cy="-10" r="9" fill="#cbd5e1" opacity="0.35"/>
+                                <circle cx="12" cy="15" r="11" fill="#cbd5e1" opacity="0.3"/>
+                                <circle cx="16" cy="-16" r="7" fill="#cbd5e1" opacity="0.25"/>
+
+                                <!-- Mond Beschriftung -->
+                                <text x="0" y="<?= $moonR + 24 ?>" text-anchor="middle" fill="#94a3b8" font-size="13" font-weight="600" letter-spacing="0.04em">
+                                    <?= htmlspecialchars($moonPhaseName) ?> (<?= (int)round($moonIllum * 100) ?>%)
+                                </text>
+                            </g>
+
+                            <!-- G. Sichtbare Planeten entlang der Ekliptik -->
+                            <?php
+                            $planets = $astroState['visible_planets'] ?? [];
+                            // Feste, harmonische Positionen auf dem Himmelsbogen für die Planeten
+                            $planetPositions = [
+                                'Venus'   => ['x' => 1140, 'y' => 520, 'r' => 8,  'color' => '#FFF3B0', 'labelY' => 28],
+                                'Jupiter' => ['x' => 740,  'y' => 280, 'r' => 11, 'color' => '#E8C59A', 'labelY' => 30],
+                                'Saturn'  => ['x' => 960,  'y' => 410, 'r' => 8,  'color' => '#F4D495', 'labelY' => 28],
+                                'Mars'    => ['x' => 450,  'y' => 360, 'r' => 7,  'color' => '#E05A47', 'labelY' => 26],
+                            ];
+
+                            foreach ($planets as $p):
+                                $pName = $p['name'] ?? '';
+                                $pos = $planetPositions[$pName] ?? null;
+                                if (!$pos || empty($p['is_visible'])) continue;
+                                $pColor = $p['color'] ?? $pos['color'];
+                                ?>
+                                <g transform="translate(<?= $pos['x'] ?>, <?= $pos['y'] ?>)" filter="url(#planetGlowFilter)">
+                                    <!-- Schein/Halo -->
+                                    <circle cx="0" cy="0" r="<?= $pos['r'] * 2.2 ?>" fill="<?= $pColor ?>" opacity="0.2"/>
+
+                                    <?php if ($pName === 'Saturn'): ?>
+                                        <!-- Saturn-Ringe -->
+                                        <ellipse rx="<?= $pos['r'] * 2.3 ?>" ry="<?= $pos['r'] * 0.75 ?>" fill="none" stroke="<?= $pColor ?>" stroke-width="2.5" opacity="0.85" transform="rotate(-20)"/>
+                                    <?php endif; ?>
+
+                                    <!-- Planetenscheibe -->
+                                    <circle cx="0" cy="0" r="<?= $pos['r'] ?>" fill="<?= $pColor ?>"/>
+
+                                    <?php if ($pName === 'Venus'): ?>
+                                        <!-- Brillanz-Strahlen für Venus -->
+                                        <line x1="-16" y1="0" x2="16" y2="0" stroke="<?= $pColor ?>" stroke-width="1.2" opacity="0.75"/>
+                                        <line x1="0" y1="-16" x2="0" y2="16" stroke="<?= $pColor ?>" stroke-width="1.2" opacity="0.75"/>
+                                    <?php elseif ($pName === 'Jupiter'): ?>
+                                        <!-- Jupiter-Streifen & Monde -->
+                                        <line x1="-9" y1="-2" x2="9" y2="-2" stroke="#b45309" stroke-width="1.2" opacity="0.6"/>
+                                        <line x1="-9" y1="2" x2="9" y2="2" stroke="#b45309" stroke-width="1.2" opacity="0.6"/>
+                                        <!-- 2 sichtbare Monde als Mini-Punkte -->
+                                        <circle cx="-19" cy="-3" r="1.4" fill="#ffffff" opacity="0.8"/>
+                                        <circle cx="21" cy="4" r="1.4" fill="#ffffff" opacity="0.8"/>
+                                    <?php endif; ?>
+
+                                    <!-- Beschriftung & Horizonthöhe -->
+                                    <text x="0" y="<?= $pos['labelY'] ?>" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700">
+                                        <?= htmlspecialchars($p['name_de'] ?? $pName) ?>
+                                    </text>
+                                    <text x="0" y="<?= $pos['labelY'] + 14 ?>" text-anchor="middle" fill="#94a3b8" font-size="10">
+                                        <?= (int)($p['altitude_deg'] ?? 30) ?>° · <?= htmlspecialchars($p['direction'] ?? 'S') ?>
+                                    </text>
+                                </g>
+                            <?php endforeach; ?>
+
+                            <!-- H. Wolken-Schleier (entsprechend der Nacht-Bewölkung) -->
+                            <?php
+                            $nightCloudPct = (int)($astroConditions['avg_cloud_cover'] ?? 30);
+                            $cloudOpacity = min(0.85, max(0.05, $nightCloudPct / 100 * 0.9));
+                            ?>
+                            <?php if ($nightCloudPct > 15): ?>
+                                <g opacity="<?= $cloudOpacity ?>" fill="#091024">
+                                    <path d="M 0,420 Q 300,360 620,430 T 1200,380 T 1600,440 L 1600,720 L 0,720 Z" opacity="0.5"/>
+                                    <path d="M 0,510 Q 400,460 850,520 T 1600,480 L 1600,720 L 0,720 Z" opacity="0.65"/>
+                                </g>
+                            <?php endif; ?>
+
+                            <!-- I. Horizont-Silhouette Leipzig (Völkerschlachtdenkmal, Sternwarte, Baumlinie) -->
+                            <g fill="#02050e">
+                                <!-- Sanfte Hügel & Waldlinie -->
+                                <path d="M 0,730 Q 200,715 450,735 T 900,718 T 1350,730 T 1600,722 L 1600,900 L 0,900 Z"/>
+
+                                <!-- Völkerschlachtdenkmal Silhouette bei x=820 -->
+                                <g transform="translate(800, 645)">
+                                    <!-- Sockel & monumentale Stufen -->
+                                    <rect x="-35" y="65" width="70" height="20"/>
+                                    <rect x="-26" y="45" width="52" height="20"/>
+                                    <rect x="-18" y="20" width="36" height="25"/>
+                                    <!-- Kuppelkrone -->
+                                    <path d="M -15,20 Q 0,-6 15,20 Z"/>
+                                </g>
+
+                                <!-- Sternwarten-Kuppel bei x=380 -->
+                                <g transform="translate(380, 705)">
+                                    <rect x="-14" y="10" width="28" height="18"/>
+                                    <path d="M -14,10 A 14,14 0 0,1 14,10 Z"/>
+                                    <line x1="-3" y1="-2" x2="6" y2="-9" stroke="#02050e" stroke-width="2.5"/>
+                                </g>
+
+                                <!-- Nadel- & Laubbäume am Horizont -->
+                                <polygon points="120,735 128,685 136,735"/>
+                                <polygon points="132,735 142,670 152,735"/>
+                                <polygon points="148,735 156,695 164,735"/>
+                                <polygon points="260,735 268,690 276,735"/>
+                                <polygon points="610,735 620,675 630,735"/>
+                                <polygon points="1120,735 1130,680 1140,735"/>
+                                <polygon points="1136,735 1145,695 1154,735"/>
+                                <polygon points="1460,735 1470,685 1480,735"/>
+
+                                <!-- Himmelsrichtungs-Markierungen am Horizont -->
+                                <g font-size="14" font-weight="700" fill="rgba(255,255,255,0.4)" text-anchor="middle">
+                                    <text x="100" y="875">O (Ost)</text>
+                                    <text x="450" y="875">SO (Südost)</text>
+                                    <text x="800" y="875">S (Süd)</text>
+                                    <text x="1150" y="875">SW (Südwest)</text>
+                                    <text x="1500" y="875">W (West)</text>
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <!-- Status-Bar unter dem Diorama -->
+                    <div class="astronomy-status-bar">
+                        <div class="astronomy-status-pill">
+                            <span>Bedingungen:</span>
+                            <span class="astronomy-rating-badge astronomy-rating-<?= htmlspecialchars($astroConditions['rating'] ?? 'good') ?>">
+                                <?= htmlspecialchars($astroConditions['rating_label'] ?? 'Gut') ?> (Bewölkung: <?= (int)($astroConditions['avg_cloud_cover'] ?? 0) ?>%)
+                            </span>
+                        </div>
+                        <div class="astronomy-status-pill">
+                            <span>Mond:</span>
+                            <strong><?= htmlspecialchars($astroConditions['moon_text'] ?? 'Mond') ?></strong>
+                        </div>
+                        <div class="astronomy-status-pill">
+                            <span>Sonnenaktivität:</span>
+                            <strong>Kp <?= number_format((float)($astroState['kp_current'] ?? 2.0), 1) ?> (Max 24h: <?= number_format((float)($astroState['kp_max_next_24h'] ?? 2.0), 1) ?>)</strong>
+                        </div>
+                        <div class="astronomy-status-pill" style="margin-left: auto;">
+                            <span>Beste Beobachtungszeit:</span>
+                            <strong><?= htmlspecialchars($astroConditions['best_time_window'] ?? '22:30 – 03:30 Uhr') ?></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Space Weather & Aurora Monitor -->
+                <div class="chart-section" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <h4 style="margin: 0;">Geomagnetischer Status &amp; Aurora-Monitor (NOAA SWPC)</h4>
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">
+                            Status für Leipzig: <?= $kpVal >= 7.0 ? '🚨 Polarlicht möglich' : ($kpVal >= 5.0 ? '⚡ Erhöhte Aktivität' : '🟢 Ruhig') ?>
+                        </span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        Polarlichter sind auf Leipziger Breite (~51,3° N) ab einem <strong>Kp-Index von 7</strong> mit bloßem Auge sichtbar. Darunter (ab Kp 5–6) sind sie gelegentlich fotografisch per Langzeitbelichtung erfassbar.
+                    </p>
+
+                    <!-- Kp-Index Skala Balken (0 bis 9) -->
+                    <div class="kp-scale-container">
+                        <?php for ($k = 1; $k <= 9; $k++): ?>
+                            <?php
+                            $activeClass = '';
+                            if ($k <= round($kpVal)) {
+                                if ($k <= 4) $activeClass = 'active-green';
+                                elseif ($k <= 6) $activeClass = 'active-yellow';
+                                else $activeClass = 'active-red';
+                            }
+                            ?>
+                            <div class="kp-scale-bar <?= $activeClass ?>" title="Kp <?= $k ?>"></div>
+                        <?php endfor; ?>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                        <span>Kp 1 (Ruhig)</span>
+                        <span>Kp 4 (Aktiv)</span>
+                        <span>Kp 7 (G3 Starker Sturm · Leipzig sichtbar)</span>
+                        <span>Kp 9 (Extrem)</span>
+                    </div>
+                </div>
+
+                <!-- 4. Sichtbare Planeten heute Nacht -->
+                <h4 style="margin-bottom: 1rem;">Sichtbare Planeten heute Nacht in Leipzig</h4>
+                <div class="astronomy-planets-grid">
+                    <?php foreach (($astroState['visible_planets'] ?? []) as $planet): ?>
+                        <div class="astronomy-planet-card">
+                            <div class="astronomy-planet-header">
+                                <div class="astronomy-planet-title">
+                                    <span class="planet-dot" style="color: <?= htmlspecialchars($planet['color'] ?? '#ffffff') ?>; background: <?= htmlspecialchars($planet['color'] ?? '#ffffff') ?>;"></span>
+                                    <span><?= htmlspecialchars($planet['name_de'] ?? $planet['name']) ?></span>
+                                </div>
+                                <span class="badge <?= !empty($planet['is_visible']) ? 'badge-success' : 'badge-neutral' ?>" style="font-size: 0.75rem;">
+                                    <?= !empty($planet['is_visible']) ? 'Sichtbar' : 'Unter Horizont' ?>
+                                </span>
+                            </div>
+
+                            <p style="font-size: 0.85rem; color: var(--text-primary); margin: 0; min-height: 2.4em;">
+                                <?= htmlspecialchars($planet['description'] ?? '') ?>
+                            </p>
+
+                            <div class="astronomy-planet-meta">
+                                <div>Horizonthöhe: <strong><?= (int)($planet['altitude_deg'] ?? 0) ?>°</strong></div>
+                                <div>Richtung: <strong><?= htmlspecialchars($planet['direction'] ?? 'S') ?></strong></div>
+                                <div>Helligkeit: <strong><?= htmlspecialchars((string)($planet['magnitude'] ?? '0.0')) ?> mag</strong></div>
+                                <div>Beste Zeit: <strong><?= htmlspecialchars($planet['best_time'] ?? 'Nacht') ?></strong></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- 5. Event-Forecast: Anstehende Himmelsereignisse -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h4 style="margin: 0;">Anstehende Himmelsereignisse &amp; Meteorschauer</h4>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Chronologische Vorschau</span>
+                </div>
+
+                <?php if (empty($astroEvents)): ?>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Aktuell keine anstehenden Ereignisse erfasst.</p>
+                <?php else: ?>
+                    <div class="astronomy-events-grid">
+                        <?php foreach ($astroEvents as $event): ?>
+                            <?php
+                            $evtDate = strtotime((string)($event['event_date'] ?? ''));
+                            $daysUntil = (int)ceil(($evtDate - strtotime('today')) / 86400);
+
+                            if ($daysUntil === 0) {
+                                $badgeText = 'Heute!';
+                                $badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
+                            } elseif ($daysUntil === 1) {
+                                $badgeText = 'Morgen';
+                                $badgeStyle = 'background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);';
+                            } elseif ($daysUntil <= 14) {
+                                $badgeText = "In {$daysUntil} Tagen";
+                                $badgeStyle = 'background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);';
+                            } else {
+                                $badgeText = "In {$daysUntil} Tagen";
+                                $badgeStyle = '';
+                            }
+
+                            $typeIcons = [
+                                'eclipse' => '🌘',
+                                'meteor_shower' => '🌠',
+                                'opposition' => '🪐',
+                                'season' => '☀️',
+                                'aurora' => '🌌',
+                                'comet' => '☄️',
+                            ];
+                            $typeIcon = $typeIcons[$event['event_type'] ?? ''] ?? '✨';
+                            ?>
+                            <div class="astronomy-event-card">
+                                <div>
+                                    <div class="astronomy-event-top">
+                                        <span class="astronomy-event-date">
+                                            <?= $typeIcon ?> <?= date('d.m.Y', $evtDate) ?>
+                                        </span>
+                                        <span class="astronomy-countdown-badge" style="<?= $badgeStyle ?>">
+                                            <?= $badgeText ?>
+                                        </span>
+                                    </div>
+                                    <h5 style="margin: 0 0 0.4rem 0; font-size: 1rem; color: var(--text-primary);">
+                                        <?= htmlspecialchars($event['title']) ?>
+                                    </h5>
+                                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                                        <?= htmlspecialchars($event['description'] ?? '') ?>
+                                    </p>
+                                </div>
+
+                                <?php if (!empty($event['details']) && is_array($event['details'])): ?>
+                                    <div style="margin-top: 0.85rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                        <?php if (isset($event['details']['zhr'])): ?>
+                                            <span>Meteore: <strong>bis <?= (int)$event['details']['zhr'] ?> / h</strong></span>
+                                        <?php endif; ?>
+                                        <?php if (isset($event['details']['radiant'])): ?>
+                                            <span>Radiant: <strong><?= htmlspecialchars($event['details']['radiant']) ?></strong></span>
+                                        <?php endif; ?>
+                                        <?php if (isset($event['details']['coverage_pct'])): ?>
+                                            <span>Bedeckung: <strong><?= (int)$event['details']['coverage_pct'] ?>%</strong></span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- 6. Stargazing-Spots rund um Leipzig -->
+                <div class="card" style="padding: 1.25rem; margin-top: 1rem;">
+                    <h5 style="margin-top: 0; margin-bottom: 0.5rem;">🔭 Beobachtungs-Tipps für den Raum Leipzig</h5>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        Um schwächere Sternschnuppen oder die Milchstraße zu sehen, empfiehlt es sich, die Lichtglocke der Leipziger Innenstadt zu meiden:
+                    </p>
+                    <ul style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; padding-left: 1.25rem; line-height: 1.6;">
+                        <li><strong>Süden &amp; Seenland:</strong> Bistumshöhe am Cospudener See oder das Südufer des Markkleeberger Sees bieten einen dunklen Blick nach Süden (ideal für Milchstraße &amp; Planeten).</li>
+                        <li><strong>Norden (ideal für Polarlichter):</strong> Schladitzer Bucht oder Werbeliner See – freier, unverbaute Sicht an den dunklen Nordhorizont.</li>
+                        <li><strong>Nahbereich Stadt:</strong> Fockeberg (Südvorstadt) für einen erhöhten Rundumblick bei hellen Planeten- und Mondbeobachtungen.</li>
+                    </ul>
+                </div>
+            </div> <!-- End tab-astronomy -->
 
         <?php endif; ?>
     </main>

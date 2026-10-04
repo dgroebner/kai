@@ -130,6 +130,31 @@ class WeatherEvaluator
             $laundryText = 'Perfekt! Nächste 24h komplett trocken.';
         }
 
+        // 7. Sternenhimmel / Astronomie
+        $stargazing = false;
+        $stargazingText = 'Nachthimmel meist bewölkt.';
+        $nightClouds = [];
+        for ($i = 0; $i < count($hourlyTime); $i++) {
+            $t = strtotime((string)$hourlyTime[$i]);
+            $hour = (int)date('G', $t);
+            // Nachtstunden: 21:00 bis 05:00 in den nächsten 24h
+            if ($t >= $now && $t <= $now + (24 * 3600) && ($hour >= 21 || $hour <= 5)) {
+                if (isset($forecast['hourly']['cloud_cover'][$i])) {
+                    $nightClouds[] = (float)$forecast['hourly']['cloud_cover'][$i];
+                }
+            }
+        }
+        $avgNightCloud = !empty($nightClouds) ? (array_sum($nightClouds) / count($nightClouds)) : 100.0;
+        if ($avgNightCloud < 25) {
+            $stargazing = true;
+            $stargazingText = 'Perfekte Nacht! Sternenklar für Planeten & Sterne.';
+        } elseif ($avgNightCloud < 50) {
+            $stargazing = true;
+            $stargazingText = 'Gute Sicht: Nur wenige Wolken am Nachthimmel.';
+        } elseif ($avgNightCloud < 75) {
+            $stargazingText = 'Mäßige Sicht: Gelegentliche Wolkenlücken.';
+        }
+
         return [
             'umbrella' => ['status' => $umbrella, 'text' => $umbrellaText],
             'jacket' => ['status' => $jacket, 'text' => $jacketText],
@@ -137,6 +162,7 @@ class WeatherEvaluator
             'pool' => ['status' => $pool, 'text' => $poolText],
             'watering' => ['status' => $watering, 'text' => $wateringText],
             'laundry' => ['status' => $laundry, 'text' => $laundryText],
+            'stargazing' => ['status' => $stargazing, 'text' => $stargazingText],
         ];
     }
 }

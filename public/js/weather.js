@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabDashboard = document.getElementById('tab-dashboard');
     const btnHistory = document.getElementById('btn-tab-history');
     const tabHistory = document.getElementById('tab-history');
+    const btnAstronomy = document.getElementById('btn-tab-astronomy');
+    const tabAstronomy = document.getElementById('tab-astronomy');
 
     if (!btnDiorama || !btnDashboard || !tabDiorama || !tabDashboard) return;
 
@@ -12,10 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
         btnDiorama.className = 'btn btn-outline';
         btnDashboard.className = 'btn btn-outline';
         if (btnHistory) btnHistory.className = 'btn btn-outline';
+        if (btnAstronomy) btnAstronomy.className = 'btn btn-outline';
 
         tabDiorama.classList.add('hidden');
         tabDashboard.classList.add('hidden');
         if (tabHistory) tabHistory.classList.add('hidden');
+        if (tabAstronomy) tabAstronomy.classList.add('hidden');
 
         const url = new URL(window.location);
 
@@ -28,6 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tabHistory) tabHistory.classList.remove('hidden');
             url.searchParams.set('tab', 'history');
             initWeatherHistoryChart();
+        } else if (tab === 'astronomy') {
+            if (btnAstronomy) btnAstronomy.className = 'btn';
+            if (tabAstronomy) tabAstronomy.classList.remove('hidden');
+            url.searchParams.set('tab', 'astronomy');
         } else {
             btnDiorama.className = 'btn';
             tabDiorama.classList.remove('hidden');
@@ -42,12 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnHistory) {
         btnHistory.addEventListener('click', (e) => { e.preventDefault(); switchWeatherTab('history'); });
     }
+    if (btnAstronomy) {
+        btnAstronomy.addEventListener('click', (e) => { e.preventDefault(); switchWeatherTab('astronomy'); });
+    }
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') === 'dashboard') {
         switchWeatherTab('dashboard');
     } else if (params.get('tab') === 'history') {
         switchWeatherTab('history');
+    } else if (params.get('tab') === 'astronomy') {
+        switchWeatherTab('astronomy');
     }
 
     // Wind- und Böensteuerung initialisieren
