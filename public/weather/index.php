@@ -1417,65 +1417,98 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <ellipse cx="780" cy="380" rx="720" ry="260" fill="url(#milkyWayGlow)" transform="rotate(-15 780 380)"/>
 
                             <!-- C. Sternenfeld (Flimmernde Sterne & Sternbilder) -->
+                            <!-- C. Sternenfeld (Flimmernde Sterne & Markante Sternbilder) -->
                             <g fill="#ffffff">
-                                <!-- Fixsterne -->
-                                <circle cx="120" cy="80" r="1.2" opacity="0.6"/>
-                                <circle cx="240" cy="140" r="1.5" opacity="0.8"/>
-                                <circle cx="310" cy="70" r="0.9" opacity="0.5"/>
-                                <circle cx="480" cy="190" r="1.3" opacity="0.7"/>
-                                <circle cx="620" cy="95" r="1.1" opacity="0.6"/>
-                                <circle cx="750" cy="160" r="1.4" opacity="0.8"/>
-                                <circle cx="890" cy="80" r="0.8" opacity="0.5"/>
-                                <circle cx="1020" cy="130" r="1.3" opacity="0.7"/>
-                                <circle cx="1150" cy="70" r="1.5" opacity="0.9"/>
-                                <circle cx="1380" cy="110" r="1.0" opacity="0.5"/>
-                                <circle cx="1490" cy="180" r="1.4" opacity="0.8"/>
-                                <circle cx="80" cy="280" r="0.9" opacity="0.5"/>
-                                <circle cx="210" cy="320" r="1.2" opacity="0.6"/>
-                                <circle cx="430" cy="360" r="1.5" opacity="0.75"/>
-                                <circle cx="680" cy="310" r="1.0" opacity="0.6"/>
-                                <circle cx="940" cy="270" r="1.4" opacity="0.8"/>
-                                <circle cx="1120" cy="340" r="0.9" opacity="0.5"/>
-                                <circle cx="1340" cy="290" r="1.3" opacity="0.7"/>
-                                <circle cx="1520" cy="350" r="1.1" opacity="0.6"/>
-                                <circle cx="150" cy="460" r="1.0" opacity="0.5"/>
-                                <circle cx="380" cy="490" r="1.3" opacity="0.7"/>
-                                <circle cx="820" cy="440" r="1.4" opacity="0.8"/>
-                                <circle cx="1060" cy="470" r="0.9" opacity="0.5"/>
-                                <circle cx="1270" cy="430" r="1.2" opacity="0.6"/>
-                                <circle cx="1440" cy="480" r="1.5" opacity="0.8"/>
+                                <!-- Hintergrund-Fixsterne (verschiedene Helligkeiten) -->
+                                <circle cx="120" cy="80" r="1.1" opacity="0.45"/>
+                                <circle cx="210" cy="90" r="1.3" opacity="0.6"/>
+                                <circle cx="310" cy="65" r="0.9" opacity="0.4"/>
+                                <circle cx="480" cy="190" r="1.2" opacity="0.6"/>
+                                <circle cx="620" cy="95" r="1.0" opacity="0.5"/>
+                                <circle cx="750" cy="160" r="1.3" opacity="0.65"/>
+                                <circle cx="890" cy="80" r="0.8" opacity="0.4"/>
+                                <circle cx="1020" cy="130" r="1.2" opacity="0.6"/>
+                                <circle cx="1150" cy="70" r="1.4" opacity="0.7"/>
+                                <circle cx="1260" cy="110" r="1.0" opacity="0.5"/>
+                                <circle cx="1520" cy="80" r="1.2" opacity="0.55"/>
+                                <circle cx="80" cy="280" r="0.9" opacity="0.4"/>
+                                <circle cx="180" cy="340" r="1.2" opacity="0.5"/>
+                                <circle cx="680" cy="310" r="1.0" opacity="0.5"/>
+                                <circle cx="940" cy="270" r="1.3" opacity="0.65"/>
+                                <circle cx="1120" cy="340" r="0.9" opacity="0.45"/>
+                                <circle cx="1340" cy="290" r="1.2" opacity="0.6"/>
+                                <circle cx="1520" cy="350" r="1.1" opacity="0.5"/>
+                                <circle cx="150" cy="460" r="1.0" opacity="0.45"/>
+                                <circle cx="730" cy="460" r="1.2" opacity="0.55"/>
+                                <circle cx="880" cy="430" r="1.4" opacity="0.65"/>
+                                <circle cx="1060" cy="470" r="0.9" opacity="0.45"/>
+                                <circle cx="1270" cy="430" r="1.1" opacity="0.5"/>
+                                <circle cx="1440" cy="480" r="1.3" opacity="0.6"/>
 
-                                <!-- Flimmernde Sterne Gruppe 1 -->
+                                <!-- Flimmernde Sterne Gruppe 1 (sanftes Opazitäts-Flimmern) -->
                                 <g class="star-twinkle-1">
-                                    <circle cx="190" cy="110" r="1.6" opacity="0.9"/>
-                                    <circle cx="560" cy="140" r="2.0" opacity="1.0"/>
-                                    <circle cx="860" cy="190" r="1.8" opacity="0.9"/>
-                                    <circle cx="1210" cy="160" r="2.2" opacity="1.0"/>
-                                    <circle cx="1420" cy="230" r="1.7" opacity="0.85"/>
+                                    <circle cx="140" cy="180" r="1.5" opacity="0.75"/>
+                                    <circle cx="650" cy="180" r="1.8" opacity="0.85"/>
+                                    <circle cx="840" cy="130" r="1.7" opacity="0.8"/>
+                                    <circle cx="1200" cy="180" r="1.9" opacity="0.85"/>
+                                    <circle cx="1410" cy="240" r="1.5" opacity="0.7"/>
                                 </g>
 
                                 <!-- Flimmernde Sterne Gruppe 2 -->
                                 <g class="star-twinkle-2">
-                                    <circle cx="340" cy="220" r="1.9" opacity="0.95"/>
-                                    <circle cx="710" cy="110" r="2.1" opacity="1.0"/>
-                                    <circle cx="1080" cy="210" r="1.7" opacity="0.85"/>
-                                    <circle cx="1310" cy="95" r="2.0" opacity="0.9"/>
-                                    <circle cx="1550" cy="140" r="1.8" opacity="0.8"/>
+                                    <circle cx="270" cy="310" r="1.6" opacity="0.8"/>
+                                    <circle cx="710" cy="110" r="1.9" opacity="0.85"/>
+                                    <circle cx="1080" cy="210" r="1.6" opacity="0.75"/>
+                                    <circle cx="1310" cy="95" r="1.8" opacity="0.8"/>
+                                    <circle cx="1550" cy="140" r="1.6" opacity="0.75"/>
                                 </g>
 
-                                <!-- Flimmernde Sterne Gruppe 3 (Großer Wagen / Ursa Major) -->
+                                <!-- Sternbild 1: Großer Wagen (Ursa Major) im Norden/Nordwesten -->
                                 <g class="star-twinkle-3">
-                                    <!-- Deichsel & Kasten -->
-                                    <circle cx="280" cy="180" r="2.2" opacity="0.95"/> <!-- Alkaid -->
-                                    <circle cx="330" cy="195" r="2.0" opacity="0.9"/> <!-- Mizar -->
-                                    <circle cx="380" cy="205" r="2.0" opacity="0.9"/> <!-- Alioth -->
-                                    <circle cx="435" cy="200" r="2.1" opacity="0.95"/> <!-- Megrez -->
-                                    <circle cx="430" cy="245" r="2.0" opacity="0.9"/> <!-- Phecda -->
-                                    <circle cx="500" cy="240" r="2.3" opacity="1.0"/> <!-- Merak -->
-                                    <circle cx="505" cy="190" r="2.4" opacity="1.0"/> <!-- Dubhe -->
-                                    <!-- Feine Verbindungslinien des Großen Wagens -->
-                                    <polyline points="280,180 330,195 380,205 435,200 430,245 500,240 505,190 435,200"
-                                              fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8" stroke-dasharray="2,3"/>
+                                    <circle cx="220" cy="145" r="2.0" opacity="0.9" title="Alkaid"/>
+                                    <circle cx="260" cy="158" r="1.9" opacity="0.85" title="Mizar"/>
+                                    <circle cx="305" cy="165" r="1.9" opacity="0.85" title="Alioth"/>
+                                    <circle cx="350" cy="162" r="1.8" opacity="0.8" title="Megrez"/>
+                                    <circle cx="345" cy="205" r="1.9" opacity="0.85" title="Phecda"/>
+                                    <circle cx="410" cy="200" r="2.1" opacity="0.95" title="Merak"/>
+                                    <circle cx="415" cy="155" r="2.2" opacity="1.0" title="Dubhe"/>
+                                    <text x="330" y="235" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-weight="600" letter-spacing="0.05em">Großer Wagen</text>
+                                </g>
+
+                                <!-- Sternbild 2: Kassiopeia (Das Himmels-W) hoch im Norden -->
+                                <g class="star-twinkle-1">
+                                    <circle cx="1360" cy="145" r="1.9" opacity="0.85" title="Caph"/>
+                                    <circle cx="1395" cy="115" r="2.1" opacity="0.95" title="Schedar"/>
+                                    <circle cx="1430" cy="140" r="2.2" opacity="1.0" title="Navi (Gamma Cas)"/>
+                                    <circle cx="1465" cy="110" r="1.9" opacity="0.85" title="Ruchbah"/>
+                                    <circle cx="1495" cy="130" r="1.8" opacity="0.8" title="Segin"/>
+                                    <text x="1430" y="168" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-weight="600" letter-spacing="0.05em">Kassiopeia (W)</text>
+                                </g>
+
+                                <!-- Sternbild 3: Orion (Der Himmelsjäger) im Südosten -->
+                                <g class="star-twinkle-2">
+                                    <!-- Beteigeuze (Schulter links, markant rötlich-orange) -->
+                                    <circle cx="475" cy="330" r="2.5" fill="#fed7aa" opacity="1.0" title="Beteigeuze"/>
+                                    <circle cx="475" cy="330" r="5.0" fill="#f97316" opacity="0.25"/>
+                                    <!-- Bellatrix (Schulter rechts, weißblau) -->
+                                    <circle cx="550" cy="345" r="2.0" fill="#e0f2fe" opacity="0.9" title="Bellatrix"/>
+
+                                    <!-- Die 3 Gürtelsterne (Alnitak, Alnilam, Mintaka) -->
+                                    <circle cx="495" cy="400" r="1.8" fill="#ffffff" opacity="0.95" title="Alnitak"/>
+                                    <circle cx="512" cy="396" r="1.9" fill="#ffffff" opacity="0.95" title="Alnilam"/>
+                                    <circle cx="530" cy="392" r="1.8" fill="#ffffff" opacity="0.95" title="Mintaka"/>
+
+                                    <!-- Orionnebel (M42) unter dem Gürtel -->
+                                    <ellipse cx="512" cy="418" rx="6" ry="4" fill="#c084fc" opacity="0.3"/>
+                                    <circle cx="512" cy="418" r="1.2" fill="#ffffff" opacity="0.8"/>
+
+                                    <!-- Saiph (Fuß links) -->
+                                    <circle cx="485" cy="460" r="1.9" fill="#f1f5f9" opacity="0.85" title="Saiph"/>
+                                    <!-- Rigel (Fuß rechts, extrem hell, strahlend blau-weiß) -->
+                                    <circle cx="560" cy="450" r="2.6" fill="#93c5fd" opacity="1.0" title="Rigel"/>
+                                    <circle cx="560" cy="450" r="5.5" fill="#38bdf8" opacity="0.25"/>
+
+                                    <text x="515" y="488" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-weight="600" letter-spacing="0.05em">Orion</text>
                                 </g>
                             </g>
 
@@ -1494,13 +1527,31 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
                             <?php endif; ?>
 
-                            <!-- E. Sternschnuppen (Meteorschauer) -->
-                            <?php if (!empty($astroState['active_meteor_showers'])): ?>
-                                <g>
-                                    <line class="meteor-trail" x1="1150" y1="120" x2="870" y2="320" stroke="url(#meteorTailGrad)" stroke-width="2.5" stroke-linecap="round"/>
-                                    <line class="meteor-trail-2" x1="750" y1="80" x2="480" y2="280" stroke="url(#meteorTailGrad)" stroke-width="2.0" stroke-linecap="round"/>
+                            <!-- E. Sternschnuppen (Elegante SMIL-Animation analog Wetter-Diorama) -->
+                            <?php
+                            $hasActiveMeteors = !empty($astroState['active_meteor_showers']);
+                            $starCount = $hasActiveMeteors ? 3 : 2;
+                            $meteorConfigs = [
+                                1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 2,  'repeat' => 14],
+                                2 => ['startX' => 1250, 'startY' => 120, 'dx' => -280, 'dy' => 190, 'delay' => 7,  'repeat' => 22],
+                                3 => ['startX' => 640,  'startY' => 70,  'dx' => -200, 'dy' => 140, 'delay' => 12, 'repeat' => 18],
+                            ];
+                            for ($s = 1; $s <= $starCount; $s++):
+                                $cfg = $meteorConfigs[$s];
+                                $tailX = -($cfg['dx'] * 0.18);
+                                $tailY = -($cfg['dy'] * 0.18);
+                            ?>
+                                <g opacity="0">
+                                    <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+                                    <circle cx="0" cy="0" r="1.8" fill="#ffffff"/>
+                                    <animateTransform attributeName="transform" type="translate"
+                                                      from="<?= $cfg['startX'] ?> <?= $cfg['startY'] ?>"
+                                                      to="<?= $cfg['startX'] + $cfg['dx'] ?> <?= $cfg['startY'] + $cfg['dy'] ?>"
+                                                      dur="0.55s" begin="<?= $cfg['delay'] ?>s; astroShoot<?= $s ?>.end+<?= $cfg['repeat'] ?>s"
+                                                      id="astroShoot<?= $s ?>"/>
+                                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.75; 1" dur="0.55s" begin="astroShoot<?= $s ?>.begin"/>
                                 </g>
-                            <?php endif; ?>
+                            <?php endfor; ?>
 
                             <!-- F. Mond mit exakter Phase -->
                             <?php
@@ -1540,9 +1591,9 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             // Feste, harmonische Positionen auf dem Himmelsbogen für die Planeten
                             $planetPositions = [
                                 'Venus'   => ['x' => 1140, 'y' => 520, 'r' => 8,  'color' => '#FFF3B0', 'labelY' => 28],
-                                'Jupiter' => ['x' => 740,  'y' => 280, 'r' => 11, 'color' => '#E8C59A', 'labelY' => 30],
-                                'Saturn'  => ['x' => 960,  'y' => 410, 'r' => 8,  'color' => '#F4D495', 'labelY' => 28],
-                                'Mars'    => ['x' => 450,  'y' => 360, 'r' => 7,  'color' => '#E05A47', 'labelY' => 26],
+                                'Jupiter' => ['x' => 820,  'y' => 280, 'r' => 11, 'color' => '#E8C59A', 'labelY' => 30],
+                                'Saturn'  => ['x' => 1010, 'y' => 390, 'r' => 8,  'color' => '#F4D495', 'labelY' => 28],
+                                'Mars'    => ['x' => 310,  'y' => 380, 'r' => 7,  'color' => '#E05A47', 'labelY' => 26],
                             ];
 
                             foreach ($planets as $p):
