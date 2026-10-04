@@ -3733,6 +3733,9 @@ body {
 }
 
 /* Sternen-Flimmern (ruhiges, natürliches Schimmern ohne Größenskalierung) */
+.star-twinkle-1, .star-twinkle-2, .star-twinkle-3 {
+    transform: none !important;
+}
 .star-twinkle-1 { animation: starTwinkle1 6s ease-in-out infinite alternate; }
 .star-twinkle-2 { animation: starTwinkle2 8s ease-in-out 2s infinite alternate; }
 .star-twinkle-3 { animation: starTwinkle3 10s ease-in-out 4s infinite alternate; }

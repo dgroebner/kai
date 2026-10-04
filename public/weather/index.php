@@ -1464,7 +1464,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
 
                                 <!-- Sternbild 1: Großer Wagen (Ursa Major) im Norden/Nordwesten -->
-                                <g class="star-twinkle-3">
+                                <g id="constellation-ursa-major">
                                     <circle cx="220" cy="145" r="2.0" opacity="0.9" title="Alkaid"/>
                                     <circle cx="260" cy="158" r="1.9" opacity="0.85" title="Mizar"/>
                                     <circle cx="305" cy="165" r="1.9" opacity="0.85" title="Alioth"/>
@@ -1476,7 +1476,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
 
                                 <!-- Sternbild 2: Kassiopeia (Das Himmels-W) hoch im Norden -->
-                                <g class="star-twinkle-1">
+                                <g id="constellation-cassiopeia">
                                     <circle cx="1360" cy="145" r="1.9" opacity="0.85" title="Caph"/>
                                     <circle cx="1395" cy="115" r="2.1" opacity="0.95" title="Schedar"/>
                                     <circle cx="1430" cy="140" r="2.2" opacity="1.0" title="Navi (Gamma Cas)"/>
@@ -1486,7 +1486,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
 
                                 <!-- Sternbild 3: Orion (Der Himmelsjäger) im Südosten -->
-                                <g class="star-twinkle-2">
+                                <g id="constellation-orion">
                                     <!-- Beteigeuze (Schulter links, markant rötlich-orange) -->
                                     <circle cx="475" cy="330" r="2.5" fill="#fed7aa" opacity="1.0" title="Beteigeuze"/>
                                     <circle cx="475" cy="330" r="5.0" fill="#f97316" opacity="0.25"/>
