@@ -1527,31 +1527,43 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
                             <?php endif; ?>
 
-                            <!-- E. Sternschnuppen (Elegante SMIL-Animation analog Wetter-Diorama) -->
+                            <!-- E. Sternschnuppen (Option B: SMIL-Animation nur während der Peak-Tage eines Meteorschauers) -->
                             <?php
-                            $hasActiveMeteors = !empty($astroState['active_meteor_showers']);
-                            $starCount = $hasActiveMeteors ? 3 : 2;
-                            $meteorConfigs = [
-                                1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 2,  'repeat' => 14],
-                                2 => ['startX' => 1250, 'startY' => 120, 'dx' => -280, 'dy' => 190, 'delay' => 7,  'repeat' => 22],
-                                3 => ['startX' => 640,  'startY' => 70,  'dx' => -200, 'dy' => 140, 'delay' => 12, 'repeat' => 18],
-                            ];
-                            for ($s = 1; $s <= $starCount; $s++):
-                                $cfg = $meteorConfigs[$s];
-                                $tailX = -($cfg['dx'] * 0.18);
-                                $tailY = -($cfg['dy'] * 0.18);
+                            $hasActivePeakMeteors = false;
+                            if (!empty($astroState['active_meteor_showers']) && is_array($astroState['active_meteor_showers'])) {
+                                foreach ($astroState['active_meteor_showers'] as $ashower) {
+                                    if (!empty($ashower['is_peak'])) {
+                                        $hasActivePeakMeteors = true;
+                                        break;
+                                    }
+                                }
+                            }
                             ?>
-                                <g opacity="0">
-                                    <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
-                                    <circle cx="0" cy="0" r="1.8" fill="#ffffff"/>
-                                    <animateTransform attributeName="transform" type="translate"
-                                                      from="<?= $cfg['startX'] ?> <?= $cfg['startY'] ?>"
-                                                      to="<?= $cfg['startX'] + $cfg['dx'] ?> <?= $cfg['startY'] + $cfg['dy'] ?>"
-                                                      dur="0.55s" begin="<?= $cfg['delay'] ?>s; astroShoot<?= $s ?>.end+<?= $cfg['repeat'] ?>s"
-                                                      id="astroShoot<?= $s ?>"/>
-                                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.75; 1" dur="0.55s" begin="astroShoot<?= $s ?>.begin"/>
-                                </g>
-                            <?php endfor; ?>
+                            <?php if ($hasActivePeakMeteors): ?>
+                                <?php
+                                $starCount = 3;
+                                $meteorConfigs = [
+                                    1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 2,  'repeat' => 14],
+                                    2 => ['startX' => 1250, 'startY' => 120, 'dx' => -280, 'dy' => 190, 'delay' => 7,  'repeat' => 22],
+                                    3 => ['startX' => 640,  'startY' => 70,  'dx' => -200, 'dy' => 140, 'delay' => 12, 'repeat' => 18],
+                                ];
+                                for ($s = 1; $s <= $starCount; $s++):
+                                    $cfg = $meteorConfigs[$s];
+                                    $tailX = -($cfg['dx'] * 0.18);
+                                    $tailY = -($cfg['dy'] * 0.18);
+                                ?>
+                                    <g opacity="0">
+                                        <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+                                        <circle cx="0" cy="0" r="1.8" fill="#ffffff"/>
+                                        <animateTransform attributeName="transform" type="translate"
+                                                          from="<?= $cfg['startX'] ?> <?= $cfg['startY'] ?>"
+                                                          to="<?= $cfg['startX'] + $cfg['dx'] ?> <?= $cfg['startY'] + $cfg['dy'] ?>"
+                                                          dur="0.55s" begin="<?= $cfg['delay'] ?>s; astroShoot<?= $s ?>.end+<?= $cfg['repeat'] ?>s"
+                                                          id="astroShoot<?= $s ?>"/>
+                                        <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.75; 1" dur="0.55s" begin="astroShoot<?= $s ?>.begin"/>
+                                    </g>
+                                <?php endfor; ?>
+                            <?php endif; ?>
 
                             <!-- F. Mond mit exakter Phase -->
                             <?php
@@ -1709,6 +1721,25 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <span>Sonnenaktivität:</span>
                             <strong>Kp <?= number_format((float)($astroState['kp_current'] ?? 2.0), 1) ?> (Max 24h: <?= number_format((float)($astroState['kp_max_next_24h'] ?? 2.0), 1) ?>)</strong>
                         </div>
+                        <?php if (!empty($astroState['active_meteor_showers'])): ?>
+                            <?php foreach ($astroState['active_meteor_showers'] as $ashower): ?>
+                                <?php
+                                $sName = $ashower['name'] ?? 'Meteore';
+                                $sPeriod = $ashower['activity_period'] ?? '';
+                                $sPeak = $ashower['peak_day_formatted'] ?? ($ashower['peak_date'] ?? '');
+                                $sIsPeak = !empty($ashower['is_peak']);
+                                ?>
+                                <div class="astronomy-status-pill" style="<?= $sIsPeak ? 'border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1);' : '' ?>">
+                                    <span>🌠 <?= htmlspecialchars($sName) ?>:</span>
+                                    <strong>
+                                        <?= $sIsPeak ? '🔥 Maximum aktiv!' : 'Aktiv' ?>
+                                        <?php if (!empty($sPeriod)): ?>
+                                            <span style="font-weight: normal; color: var(--text-muted); font-size: 0.8rem;">(<?= htmlspecialchars($sPeriod) ?><?= !empty($sPeak) ? " · Peak: " . htmlspecialchars($sPeak) : '' ?>)</span>
+                                        <?php endif; ?>
+                                    </strong>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                         <div class="astronomy-status-pill" style="margin-left: auto;">
                             <span>Beste Beobachtungszeit:</span>
                             <strong><?= htmlspecialchars($astroConditions['best_time_window'] ?? '22:30 – 03:30 Uhr') ?></strong>
@@ -1793,13 +1824,57 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php
                             $evtDate = strtotime((string)($event['event_date'] ?? ''));
                             $daysUntil = (int)ceil(($evtDate - strtotime('today')) / 86400);
+                            $isMeteorShower = (($event['event_type'] ?? '') === 'meteor_shower');
+                            $details = (isset($event['details']) && is_array($event['details'])) ? $event['details'] : [];
+
+                            // Bekannte Meteorschauer-Metadaten als verlässlicher Fallback
+                            $knownPeriods = [
+                                'quadrantids'   => ['period' => '01.01. – 10.01.', 'peak' => '03.01.'],
+                                'lyrids'        => ['period' => '16.04. – 25.04.', 'peak' => '22.04.'],
+                                'eta_aquariids' => ['period' => '19.04. – 28.05.', 'peak' => '06.05.'],
+                                'perseids'      => ['period' => '17.07. – 24.08.', 'peak' => '12.08.'],
+                                'orionids'      => ['period' => '02.10. – 07.11.', 'peak' => '21.10.'],
+                                'leonids'       => ['period' => '06.11. – 30.11.', 'peak' => '17.11.'],
+                                'geminids'      => ['period' => '04.12. – 17.12.', 'peak' => '14.12.'],
+                                'ursids'        => ['period' => '17.12. – 26.12.', 'peak' => '22.12.'],
+                            ];
+                            $eventKeyPrefix = explode('-', (string)($event['event_key'] ?? ''))[0];
+                            $fallbackInfo = $knownPeriods[$eventKeyPrefix] ?? null;
+
+                            $activityPeriod = $details['activity_period'] ?? ($fallbackInfo['period'] ?? null);
+                            $peakDateStr = $details['peak_date'] ?? ($fallbackInfo['peak'] ?? date('d.m.', $evtDate));
+                            $isActive = !empty($details['is_active']);
+
+                            // Fallback-Prüfung auf Aktivität falls nicht im JSON
+                            if (!$isActive && $isMeteorShower && !empty($activityPeriod)) {
+                                $parts = explode('–', str_replace(' ', '', $activityPeriod));
+                                if (count($parts) === 2) {
+                                    $pStart = explode('.', trim($parts[0], '.'));
+                                    $pEnd = explode('.', trim($parts[1], '.'));
+                                    if (count($pStart) === 2 && count($pEnd) === 2) {
+                                        $sD = (int)$pStart[0]; $sM = (int)$pStart[1];
+                                        $eD = (int)$pEnd[0]; $eM = (int)$pEnd[1];
+                                        $curM = (int)date('n'); $curD = (int)date('j');
+                                        if ($sM <= $eM) {
+                                            $isActive = ($curM > $sM || ($curM === $sM && $curD >= $sD)) &&
+                                                        ($curM < $eM || ($curM === $eM && $curD <= $eD));
+                                        } else {
+                                            $isActive = ($curM > $sM || ($curM === $sM && $curD >= $sD)) ||
+                                                        ($curM < $eM || ($curM === $eM && $curD <= $eD));
+                                        }
+                                    }
+                                }
+                            }
 
                             if ($daysUntil === 0) {
-                                $badgeText = 'Heute!';
+                                $badgeText = $isMeteorShower ? '🔥 Maximum heute!' : 'Heute!';
                                 $badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
                             } elseif ($daysUntil === 1) {
-                                $badgeText = 'Morgen';
+                                $badgeText = $isMeteorShower ? 'Morgen (Maximum)' : 'Morgen';
                                 $badgeStyle = 'background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);';
+                            } elseif ($isActive) {
+                                $badgeText = "Aktiv · Peak in {$daysUntil} T.";
+                                $badgeStyle = 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);';
                             } elseif ($daysUntil <= 14) {
                                 $badgeText = "In {$daysUntil} Tagen";
                                 $badgeStyle = 'background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);';
@@ -1836,16 +1911,20 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     </p>
                                 </div>
 
-                                <?php if (!empty($event['details']) && is_array($event['details'])): ?>
+                                <?php if (!empty($details) || !empty($activityPeriod)): ?>
                                     <div style="margin-top: 0.85rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                        <?php if (isset($event['details']['zhr'])): ?>
-                                            <span>Meteore: <strong>bis <?= (int)$event['details']['zhr'] ?> / h</strong></span>
+                                        <?php if ($isMeteorShower && !empty($activityPeriod)): ?>
+                                            <span>Zeitraum: <strong style="color: var(--text-primary);"><?= htmlspecialchars($activityPeriod) ?></strong></span>
+                                            <span>Maximum: <strong style="color: #38bdf8;"><?= htmlspecialchars($peakDateStr) ?></strong></span>
                                         <?php endif; ?>
-                                        <?php if (isset($event['details']['radiant'])): ?>
-                                            <span>Radiant: <strong><?= htmlspecialchars($event['details']['radiant']) ?></strong></span>
+                                        <?php if (isset($details['zhr'])): ?>
+                                            <span>Meteore: <strong>bis <?= (int)$details['zhr'] ?> / h</strong></span>
                                         <?php endif; ?>
-                                        <?php if (isset($event['details']['coverage_pct'])): ?>
-                                            <span>Bedeckung: <strong><?= (int)$event['details']['coverage_pct'] ?>%</strong></span>
+                                        <?php if (isset($details['radiant'])): ?>
+                                            <span>Radiant: <strong><?= htmlspecialchars($details['radiant']) ?></strong></span>
+                                        <?php endif; ?>
+                                        <?php if (isset($details['coverage_pct'])): ?>
+                                            <span>Bedeckung: <strong><?= (int)$details['coverage_pct'] ?>%</strong></span>
                                         <?php endif; ?>
                                     </div>
                                 <?php endif; ?>

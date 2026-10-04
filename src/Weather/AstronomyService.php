@@ -189,7 +189,17 @@ class AstronomyService
             foreach ($state['active_meteor_showers'] as $shower) {
                 $name = $shower['name'] ?? 'Meteorschauer';
                 $rate = $shower['zhr'] ?? 'mehrere';
-                $highlights[] = "Aktiver Sternschnuppenstrom: {$name} (bis zu {$rate} Meteore/h)";
+                $isPeak = !empty($shower['is_peak']);
+                $period = !empty($shower['activity_period']) ? " (Aktiv: {$shower['activity_period']}" : '';
+                $peakFormatted = $shower['peak_day_formatted'] ?? ($shower['peak_date'] ?? '');
+                $peakStr = !empty($peakFormatted) ? " · Peak: {$peakFormatted}" : '';
+                $suffix = !empty($period) ? "{$period}{$peakStr})" : '';
+
+                if ($isPeak) {
+                    $highlights[] = "🔥 Höhepunkt des Meteorschauers {$name} (bis zu {$rate} Sternschnuppen/h)!";
+                } else {
+                    $highlights[] = "Aktiver Sternschnuppenstrom: {$name}{$suffix}";
+                }
             }
         }
 
@@ -309,7 +319,12 @@ class AstronomyService
                 'peak_time' => "{$year}-10-21 02:00:00",
                 'magnitude' => null,
                 'visibility_rating' => 'good',
-                'details' => ['zhr' => 20, 'radiant' => 'Orion'],
+                'details' => [
+                    'zhr' => 20,
+                    'radiant' => 'Orion',
+                    'activity_period' => '02.10. – 07.11.',
+                    'peak_date' => '21.10.',
+                ],
             ],
             [
                 'event_key' => "leonids-{$year}",
@@ -320,7 +335,12 @@ class AstronomyService
                 'peak_time' => "{$year}-11-17 03:00:00",
                 'magnitude' => null,
                 'visibility_rating' => 'good',
-                'details' => ['zhr' => 15, 'radiant' => 'Löwe'],
+                'details' => [
+                    'zhr' => 15,
+                    'radiant' => 'Löwe',
+                    'activity_period' => '06.11. – 30.11.',
+                    'peak_date' => '17.11.',
+                ],
             ],
             [
                 'event_key' => "geminids-{$year}",
@@ -331,7 +351,12 @@ class AstronomyService
                 'peak_time' => "{$year}-12-14 01:00:00",
                 'magnitude' => null,
                 'visibility_rating' => 'great',
-                'details' => ['zhr' => 120, 'radiant' => 'Zwillinge'],
+                'details' => [
+                    'zhr' => 120,
+                    'radiant' => 'Zwillinge',
+                    'activity_period' => '04.12. – 17.12.',
+                    'peak_date' => '14.12.',
+                ],
             ],
             [
                 'event_key' => "quadrantids-" . ($year + 1),
@@ -342,7 +367,12 @@ class AstronomyService
                 'peak_time' => ($year + 1) . "-01-03 23:00:00",
                 'magnitude' => null,
                 'visibility_rating' => 'good',
-                'details' => ['zhr' => 80, 'radiant' => 'Bärenhüter'],
+                'details' => [
+                    'zhr' => 80,
+                    'radiant' => 'Bärenhüter',
+                    'activity_period' => '01.01. – 10.01.',
+                    'peak_date' => '03.01.',
+                ],
             ],
             [
                 'event_key' => "perseids-{$year}",
@@ -353,7 +383,12 @@ class AstronomyService
                 'peak_time' => "{$year}-08-12 23:00:00",
                 'magnitude' => null,
                 'visibility_rating' => 'great',
-                'details' => ['zhr' => 100, 'radiant' => 'Perseus'],
+                'details' => [
+                    'zhr' => 100,
+                    'radiant' => 'Perseus',
+                    'activity_period' => '17.07. – 24.08.',
+                    'peak_date' => '12.08.',
+                ],
             ],
             [
                 'event_key' => "solar-eclipse-2026",
