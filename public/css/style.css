@@ -6162,6 +6162,33 @@ body {
     max-width: 180px;
 }
 
+/* Tabellenkopf-Filterzeile */
+.tbl-filter-row th {
+    padding: 0.35rem 0.5rem;
+    background: rgba(15, 23, 42, 0.55);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+    font-weight: normal;
+    vertical-align: middle;
+}
+.tbl-filter-row .form-control--sm {
+    width: 100%;
+    min-width: 80px;
+    max-width: 100%;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.8rem;
+    height: 30px;
+    box-sizing: border-box;
+    background: var(--bg-surface, #1e293b);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    color: var(--text-main, #f8fafc);
+}
+.tbl-filter-row .form-control--sm:focus {
+    border-color: var(--accent, #3b82f6);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
 .gamif-segmented {
     display: inline-flex;
     background: var(--bg-main, #0f172a);

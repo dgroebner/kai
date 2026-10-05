@@ -1108,30 +1108,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 17. Schnellfilter für die Vorlagen-Tabelle
+    // 17. Tabellenkopf-Filter für die Vorlagen-Tabelle
+    const filterSearch = document.getElementById('filter-tmpl-search');
     const filterCat = document.getElementById('filter-tmpl-category');
+    const filterType = document.getElementById('filter-tmpl-type');
     const filterAsgn = document.getElementById('filter-tmpl-assigned');
-    const filterRec = document.getElementById('filter-tmpl-recurrence');
+    const filterStatus = document.getElementById('filter-tmpl-status');
     const filterReset = document.getElementById('btn-filter-tmpl-reset');
     const tmplEmpty = document.getElementById('filter-tmpl-empty');
 
     function applyTemplateFilter() {
+        const query = (filterSearch && filterSearch.value) ? filterSearch.value.trim().toLowerCase() : '';
         const cat = filterCat ? filterCat.value : '';
+        const selectedType = filterType ? filterType.value : '';
         const asgn = filterAsgn ? filterAsgn.value : '';
-        const rec = filterRec ? filterRec.value : '';
+        const status = filterStatus ? filterStatus.value : '';
         const activeSegmented = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn.active');
-        const typeFilter = activeSegmented ? activeSegmented.getAttribute('data-type-filter') : 'all';
+        const segFilter = activeSegmented ? activeSegmented.getAttribute('data-type-filter') : 'all';
 
         const rows = document.querySelectorAll('#tbl-templates tbody tr[data-tmpl-category]');
         let visibleCount = 0;
 
         rows.forEach(row => {
-            const matchCat = !cat || row.getAttribute('data-tmpl-category') === cat;
-            const matchAsgn = !asgn || row.getAttribute('data-tmpl-assigned') === asgn;
-            const matchRec = !rec || row.getAttribute('data-tmpl-recurrence') === rec;
-            const matchType = (typeFilter === 'all') || (row.getAttribute('data-tmpl-type') === typeFilter);
+            const rowSearch = row.getAttribute('data-tmpl-search') || '';
+            const rowCat = row.getAttribute('data-tmpl-category') || '';
+            const rowAsgn = row.getAttribute('data-tmpl-assigned') || '';
+            const rowRec = row.getAttribute('data-tmpl-recurrence') || '';
+            const rowType = row.getAttribute('data-tmpl-type') || '';
+            const rowStatus = row.getAttribute('data-tmpl-status') || '';
 
-            const visible = matchCat && matchAsgn && matchRec && matchType;
+            const matchSearch = !query || rowSearch.includes(query);
+            const matchCat = !cat || rowCat === cat;
+            const matchAsgn = !asgn || rowAsgn === asgn;
+            const matchStatus = !status || rowStatus === status;
+            const matchSeg = (segFilter === 'all') || (rowType === segFilter);
+
+            let matchType = true;
+            if (selectedType === 'recurring') {
+                matchType = (rowType === 'recurring');
+            } else if (selectedType === 'onetime') {
+                matchType = (rowType === 'onetime');
+            } else if (selectedType === 'daily') {
+                matchType = (rowRec === 'daily');
+            } else if (selectedType === 'weekly') {
+                matchType = (rowRec === 'weekly');
+            } else if (selectedType === 'paused') {
+                matchType = (rowStatus === 'paused');
+            }
+
+            const visible = matchSearch && matchCat && matchAsgn && matchStatus && matchSeg && matchType;
             row.style.display = visible ? '' : 'none';
             if (visible) visibleCount++;
         });
@@ -1144,19 +1169,55 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('#segmented-tmpl-type .gamif-segmented-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            const segVal = btn.getAttribute('data-type-filter');
+            if (filterType) {
+                if (segVal === 'onetime') {
+                    filterType.value = 'onetime';
+                } else if (segVal === 'recurring') {
+                    if (filterType.value === 'onetime' || filterType.value === '') {
+                        filterType.value = 'recurring';
+                    }
+                } else if (segVal === 'all') {
+                    if (filterType.value === 'recurring' || filterType.value === 'onetime') {
+                        filterType.value = '';
+                    }
+                }
+            }
             applyTemplateFilter();
         });
     });
 
+    if (filterType) {
+        filterType.addEventListener('change', () => {
+            const val = filterType.value;
+            const segmentedBtns = document.querySelectorAll('#segmented-tmpl-type .gamif-segmented-btn');
+            segmentedBtns.forEach(b => b.classList.remove('active'));
+            if (val === 'onetime') {
+                const b = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn[data-type-filter="onetime"]');
+                if (b) b.classList.add('active');
+            } else if (val === 'recurring' || val === 'daily' || val === 'weekly' || val === 'paused') {
+                const b = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn[data-type-filter="recurring"]');
+                if (b) b.classList.add('active');
+            } else {
+                const b = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn[data-type-filter="all"]');
+                if (b) b.classList.add('active');
+            }
+            applyTemplateFilter();
+        });
+    }
+
+    if (filterSearch) filterSearch.addEventListener('input', applyTemplateFilter);
     if (filterCat) filterCat.addEventListener('change', applyTemplateFilter);
     if (filterAsgn) filterAsgn.addEventListener('change', applyTemplateFilter);
-    if (filterRec) filterRec.addEventListener('change', applyTemplateFilter);
+    if (filterStatus) filterStatus.addEventListener('change', applyTemplateFilter);
 
     if (filterReset) {
         filterReset.addEventListener('click', () => {
+            if (filterSearch) filterSearch.value = '';
             if (filterCat) filterCat.value = '';
+            if (filterType) filterType.value = '';
             if (filterAsgn) filterAsgn.value = '';
-            if (filterRec) filterRec.value = '';
+            if (filterStatus) filterStatus.value = '';
             document.querySelectorAll('#segmented-tmpl-type .gamif-segmented-btn').forEach(b => b.classList.remove('active'));
             const allBtn = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn[data-type-filter="all"]');
             if (allBtn) allBtn.classList.add('active');

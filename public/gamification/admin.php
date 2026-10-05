@@ -310,27 +310,6 @@ $metricTypeMap = [
                     <button type="button" class="gamif-segmented-btn" data-type-filter="recurring">🔄 Wiederkehrend (<?= count($recurringTemplates) ?>)</button>
                     <button type="button" class="gamif-segmented-btn" data-type-filter="onetime">⚡ Einmalig (<?= count($oneTimeTemplates) ?>)</button>
                 </div>
-                <select id="filter-tmpl-category" class="form-control form-control--sm" title="Nach Kategorie filtern">
-                    <option value="">Alle Kategorien</option>
-                    <option value="haushalt">Haushalt & Küche</option>
-                    <option value="tiere">Tiere & Fütterung</option>
-                    <option value="zimmer">Zimmer & Ordnung</option>
-                    <option value="garten">Garten</option>
-                </select>
-                <select id="filter-tmpl-assigned" class="form-control form-control--sm" title="Nach Zuweisung filtern">
-                    <option value="">Alle Zuweisungen</option>
-                    <option value="0">Schwarzes Brett</option>
-                    <?php foreach ($childProfiles as $c): ?>
-                        <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['display_name'], ENT_QUOTES, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <select id="filter-tmpl-recurrence" class="form-control form-control--sm" title="Nach Wiederholung filtern" style="display:none;">
-                    <option value="">Alle Typen</option>
-                    <option value="none">Nur manuell</option>
-                    <option value="daily">Täglich</option>
-                    <option value="weekly">Wöchentlich</option>
-                </select>
-                <button type="button" id="btn-filter-tmpl-reset" class="btn btn-outline btn-sm">✕ Zurücksetzen</button>
             </div>
             <div class="gamif-filter-actions">
                 <button type="button" class="btn btn-primary btn-sm js-open-adhoc-task-btn" title="Schnell eine ad-hoc Aufgabe erstellen ohne Vorlage">⚡ Ad-hoc-Aufgabe</button>
@@ -353,6 +332,52 @@ $metricTypeMap = [
                         <th>Status</th>
                         <th>Aktionen</th>
                     </tr>
+                    <tr class="tbl-filter-row">
+                        <th>
+                            <input type="search" id="filter-tmpl-search" class="form-control form-control--sm" placeholder="🔍 Suchen..." title="Nach Titel oder Beschreibung filtern" autocomplete="off">
+                        </th>
+                        <th>
+                            <select id="filter-tmpl-category" class="form-control form-control--sm" title="Nach Kategorie filtern">
+                                <option value="">Alle</option>
+                                <option value="haushalt">Haushalt</option>
+                                <option value="tiere">Tiere</option>
+                                <option value="zimmer">Zimmer</option>
+                                <option value="garten">Garten</option>
+                            </select>
+                        </th>
+                        <th>
+                            <select id="filter-tmpl-type" class="form-control form-control--sm" title="Nach Aufgabentyp filtern">
+                                <option value="">Alle Typen</option>
+                                <option value="recurring">🔄 Wiederkehrend</option>
+                                <option value="onetime">⚡ Einmalig</option>
+                                <option value="daily">🔄 Täglich</option>
+                                <option value="weekly">🔄 Wöchentlich</option>
+                                <option value="paused">⏸️ Pausiert</option>
+                            </select>
+                        </th>
+                        <th></th>
+                        <th>
+                            <select id="filter-tmpl-assigned" class="form-control form-control--sm" title="Nach Zuweisung filtern">
+                                <option value="">Alle</option>
+                                <option value="0">Schwarzes Brett</option>
+                                <?php foreach ($childProfiles as $c): ?>
+                                    <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['display_name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </th>
+                        <th></th>
+                        <th>
+                            <select id="filter-tmpl-status" class="form-control form-control--sm" title="Nach Status filtern">
+                                <option value="">Alle</option>
+                                <option value="active">Aktiv</option>
+                                <option value="paused">⏸️ Pausiert</option>
+                                <option value="inactive">Inaktiv</option>
+                            </select>
+                        </th>
+                        <th style="text-align:center;">
+                            <button type="button" id="btn-filter-tmpl-reset" class="btn btn-outline btn-sm" title="Filter zurücksetzen" style="padding:0.2rem 0.4rem; font-size:0.75rem; width:100%;">✕ Reset</button>
+                        </th>
+                    </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($templates)): ?>
@@ -362,11 +387,15 @@ $metricTypeMap = [
                             $isRecurring = ($tmpl['recurrence'] ?? 'none') !== 'none';
                             $tmplType = $isRecurring ? 'recurring' : 'onetime';
                             $isPaused = $isRecurring && !empty($tmpl['paused_until']) && ($tmpl['paused_until'] >= date('Y-m-d'));
+                            $tmplStatus = $isPaused ? 'paused' : ((int)$tmpl['is_active'] === 1 ? 'active' : 'inactive');
+                            $searchHaystack = mb_strtolower($tmpl['title'] . ' ' . ($tmpl['description'] ?? ''));
                         ?>
                             <tr data-tmpl-category="<?= htmlspecialchars($tmpl['category'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-tmpl-assigned="<?= (int)($tmpl['assigned_profile_id'] ?? 0) ?>"
                                 data-tmpl-recurrence="<?= htmlspecialchars($tmpl['recurrence'], ENT_QUOTES, 'UTF-8') ?>"
-                                data-tmpl-type="<?= $tmplType ?>">
+                                data-tmpl-type="<?= $tmplType ?>"
+                                data-tmpl-status="<?= $tmplStatus ?>"
+                                data-tmpl-search="<?= htmlspecialchars($searchHaystack, ENT_QUOTES, 'UTF-8') ?>">
                                 <td>
                                     <div class="gamif-title-cell">
                                         <strong><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></strong>
