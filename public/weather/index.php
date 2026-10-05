@@ -1419,93 +1419,105 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <!-- C. Sternenfeld (Flimmernde Sterne & Sternbilder) -->
                             <!-- C. Sternenfeld (Flimmernde Sterne & Markante Sternbilder) -->
                             <g fill="#ffffff">
-                                <!-- Hintergrund-Fixsterne (verschiedene Helligkeiten) -->
+                                <!-- Hintergrund-Fixsterne (verschiedene Helligkeiten, ruhig im Hintergrund) -->
                                 <circle cx="120" cy="80" r="1.1" opacity="0.45"/>
-                                <circle cx="210" cy="90" r="1.3" opacity="0.6"/>
                                 <circle cx="310" cy="65" r="0.9" opacity="0.4"/>
-                                <circle cx="480" cy="190" r="1.2" opacity="0.6"/>
                                 <circle cx="620" cy="95" r="1.0" opacity="0.5"/>
-                                <circle cx="750" cy="160" r="1.3" opacity="0.65"/>
                                 <circle cx="890" cy="80" r="0.8" opacity="0.4"/>
-                                <circle cx="1020" cy="130" r="1.2" opacity="0.6"/>
-                                <circle cx="1150" cy="70" r="1.4" opacity="0.7"/>
                                 <circle cx="1260" cy="110" r="1.0" opacity="0.5"/>
-                                <circle cx="1520" cy="80" r="1.2" opacity="0.55"/>
                                 <circle cx="80" cy="280" r="0.9" opacity="0.4"/>
-                                <circle cx="180" cy="340" r="1.2" opacity="0.5"/>
                                 <circle cx="680" cy="310" r="1.0" opacity="0.5"/>
-                                <circle cx="940" cy="270" r="1.3" opacity="0.65"/>
                                 <circle cx="1120" cy="340" r="0.9" opacity="0.45"/>
-                                <circle cx="1340" cy="290" r="1.2" opacity="0.6"/>
-                                <circle cx="1520" cy="350" r="1.1" opacity="0.5"/>
                                 <circle cx="150" cy="460" r="1.0" opacity="0.45"/>
-                                <circle cx="730" cy="460" r="1.2" opacity="0.55"/>
-                                <circle cx="880" cy="430" r="1.4" opacity="0.65"/>
                                 <circle cx="1060" cy="470" r="0.9" opacity="0.45"/>
-                                <circle cx="1270" cy="430" r="1.1" opacity="0.5"/>
-                                <circle cx="1440" cy="480" r="1.3" opacity="0.6"/>
 
-                                <!-- Flimmernde Sterne Gruppe 1 (sanftes Opazitäts-Flimmern) -->
+                                <!-- Flimmernde Sterne Gruppe 1 (Funkeln an Ort und Stelle) -->
                                 <g class="star-twinkle-1">
+                                    <circle cx="210" cy="90" r="1.3" opacity="0.6"/>
                                     <circle cx="140" cy="180" r="1.5" opacity="0.75"/>
                                     <circle cx="650" cy="180" r="1.8" opacity="0.85"/>
                                     <circle cx="840" cy="130" r="1.7" opacity="0.8"/>
-                                    <circle cx="1200" cy="180" r="1.9" opacity="0.85"/>
+                                    <circle cx="1150" cy="70" r="1.4" opacity="0.7"/>
                                     <circle cx="1410" cy="240" r="1.5" opacity="0.7"/>
+                                    <circle cx="730" cy="460" r="1.2" opacity="0.55"/>
                                 </g>
 
                                 <!-- Flimmernde Sterne Gruppe 2 -->
                                 <g class="star-twinkle-2">
                                     <circle cx="270" cy="310" r="1.6" opacity="0.8"/>
+                                    <circle cx="480" cy="190" r="1.2" opacity="0.6"/>
                                     <circle cx="710" cy="110" r="1.9" opacity="0.85"/>
                                     <circle cx="1080" cy="210" r="1.6" opacity="0.75"/>
                                     <circle cx="1310" cy="95" r="1.8" opacity="0.8"/>
                                     <circle cx="1550" cy="140" r="1.6" opacity="0.75"/>
+                                    <circle cx="180" cy="340" r="1.2" opacity="0.5"/>
+                                    <circle cx="1270" cy="430" r="1.1" opacity="0.5"/>
+                                </g>
+
+                                <!-- Flimmernde Sterne Gruppe 3 -->
+                                <g class="star-twinkle-3">
+                                    <circle cx="750" cy="160" r="1.3" opacity="0.65"/>
+                                    <circle cx="1020" cy="130" r="1.2" opacity="0.6"/>
+                                    <circle cx="1200" cy="180" r="1.9" opacity="0.85"/>
+                                    <circle cx="1520" cy="80" r="1.2" opacity="0.55"/>
+                                    <circle cx="940" cy="270" r="1.3" opacity="0.65"/>
+                                    <circle cx="1340" cy="290" r="1.2" opacity="0.6"/>
+                                    <circle cx="880" cy="430" r="1.4" opacity="0.65"/>
+                                    <circle cx="1440" cy="480" r="1.3" opacity="0.6"/>
+                                </g>
+
+                                <!-- Flimmernde Sterne Gruppe 4 -->
+                                <g class="star-twinkle-4">
+                                    <circle cx="1520" cy="350" r="1.1" opacity="0.5"/>
+                                    <circle cx="390" cy="110" r="1.3" opacity="0.7"/>
+                                    <circle cx="860" cy="220" r="1.4" opacity="0.75"/>
+                                    <circle cx="1430" cy="70" r="1.2" opacity="0.65"/>
+                                    <circle cx="580" cy="250" r="1.3" opacity="0.7"/>
                                 </g>
 
                                 <!-- Sternbild 1: Großer Wagen (Ursa Major) im Norden/Nordwesten -->
                                 <g id="constellation-ursa-major">
-                                    <circle cx="220" cy="145" r="2.0" opacity="0.9" title="Alkaid"/>
-                                    <circle cx="260" cy="158" r="1.9" opacity="0.85" title="Mizar"/>
-                                    <circle cx="305" cy="165" r="1.9" opacity="0.85" title="Alioth"/>
-                                    <circle cx="350" cy="162" r="1.8" opacity="0.8" title="Megrez"/>
-                                    <circle cx="345" cy="205" r="1.9" opacity="0.85" title="Phecda"/>
-                                    <circle cx="410" cy="200" r="2.1" opacity="0.95" title="Merak"/>
-                                    <circle cx="415" cy="155" r="2.2" opacity="1.0" title="Dubhe"/>
+                                    <circle cx="220" cy="145" r="2.0" opacity="0.9" title="Alkaid" class="star-twinkle-2"/>
+                                    <circle cx="260" cy="158" r="1.9" opacity="0.85" title="Mizar" class="star-twinkle-4"/>
+                                    <circle cx="305" cy="165" r="1.9" opacity="0.85" title="Alioth" class="star-twinkle-1"/>
+                                    <circle cx="350" cy="162" r="1.8" opacity="0.8" title="Megrez" class="star-twinkle-3"/>
+                                    <circle cx="345" cy="205" r="1.9" opacity="0.85" title="Phecda" class="star-twinkle-2"/>
+                                    <circle cx="410" cy="200" r="2.1" opacity="0.95" title="Merak" class="star-twinkle-4"/>
+                                    <circle cx="415" cy="155" r="2.2" opacity="1.0" title="Dubhe" class="star-twinkle-1"/>
                                     <text x="330" y="235" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-weight="600" letter-spacing="0.05em">Großer Wagen</text>
                                 </g>
 
                                 <!-- Sternbild 2: Kassiopeia (Das Himmels-W) hoch im Norden -->
                                 <g id="constellation-cassiopeia">
-                                    <circle cx="1360" cy="145" r="1.9" opacity="0.85" title="Caph"/>
-                                    <circle cx="1395" cy="115" r="2.1" opacity="0.95" title="Schedar"/>
-                                    <circle cx="1430" cy="140" r="2.2" opacity="1.0" title="Navi (Gamma Cas)"/>
-                                    <circle cx="1465" cy="110" r="1.9" opacity="0.85" title="Ruchbah"/>
-                                    <circle cx="1495" cy="130" r="1.8" opacity="0.8" title="Segin"/>
+                                    <circle cx="1360" cy="145" r="1.9" opacity="0.85" title="Caph" class="star-twinkle-3"/>
+                                    <circle cx="1395" cy="115" r="2.1" opacity="0.95" title="Schedar" class="star-twinkle-1"/>
+                                    <circle cx="1430" cy="140" r="2.2" opacity="1.0" title="Navi (Gamma Cas)" class="star-twinkle-2"/>
+                                    <circle cx="1465" cy="110" r="1.9" opacity="0.85" title="Ruchbah" class="star-twinkle-4"/>
+                                    <circle cx="1495" cy="130" r="1.8" opacity="0.8" title="Segin" class="star-twinkle-3"/>
                                     <text x="1430" y="168" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-weight="600" letter-spacing="0.05em">Kassiopeia (W)</text>
                                 </g>
 
                                 <!-- Sternbild 3: Orion (Der Himmelsjäger) im Südosten -->
                                 <g id="constellation-orion">
                                     <!-- Beteigeuze (Schulter links, markant rötlich-orange) -->
-                                    <circle cx="475" cy="330" r="2.5" fill="#fed7aa" opacity="1.0" title="Beteigeuze"/>
+                                    <circle cx="475" cy="330" r="2.5" fill="#fed7aa" opacity="1.0" title="Beteigeuze" class="star-twinkle-1"/>
                                     <circle cx="475" cy="330" r="5.0" fill="#f97316" opacity="0.25"/>
                                     <!-- Bellatrix (Schulter rechts, weißblau) -->
-                                    <circle cx="550" cy="345" r="2.0" fill="#e0f2fe" opacity="0.9" title="Bellatrix"/>
+                                    <circle cx="550" cy="345" r="2.0" fill="#e0f2fe" opacity="0.9" title="Bellatrix" class="star-twinkle-3"/>
 
                                     <!-- Die 3 Gürtelsterne (Alnitak, Alnilam, Mintaka) -->
-                                    <circle cx="495" cy="400" r="1.8" fill="#ffffff" opacity="0.95" title="Alnitak"/>
-                                    <circle cx="512" cy="396" r="1.9" fill="#ffffff" opacity="0.95" title="Alnilam"/>
-                                    <circle cx="530" cy="392" r="1.8" fill="#ffffff" opacity="0.95" title="Mintaka"/>
+                                    <circle cx="495" cy="400" r="1.8" fill="#ffffff" opacity="0.95" title="Alnitak" class="star-twinkle-2"/>
+                                    <circle cx="512" cy="396" r="1.9" fill="#ffffff" opacity="0.95" title="Alnilam" class="star-twinkle-4"/>
+                                    <circle cx="530" cy="392" r="1.8" fill="#ffffff" opacity="0.95" title="Mintaka" class="star-twinkle-1"/>
 
                                     <!-- Orionnebel (M42) unter dem Gürtel -->
                                     <ellipse cx="512" cy="418" rx="6" ry="4" fill="#c084fc" opacity="0.3"/>
                                     <circle cx="512" cy="418" r="1.2" fill="#ffffff" opacity="0.8"/>
 
                                     <!-- Saiph (Fuß links) -->
-                                    <circle cx="485" cy="460" r="1.9" fill="#f1f5f9" opacity="0.85" title="Saiph"/>
+                                    <circle cx="485" cy="460" r="1.9" fill="#f1f5f9" opacity="0.85" title="Saiph" class="star-twinkle-2"/>
                                     <!-- Rigel (Fuß rechts, extrem hell, strahlend blau-weiß) -->
-                                    <circle cx="560" cy="450" r="2.6" fill="#93c5fd" opacity="1.0" title="Rigel"/>
+                                    <circle cx="560" cy="450" r="2.6" fill="#93c5fd" opacity="1.0" title="Rigel" class="star-twinkle-4"/>
                                     <circle cx="560" cy="450" r="5.5" fill="#38bdf8" opacity="0.25"/>
 
                                     <text x="515" y="488" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="11" font-weight="600" letter-spacing="0.05em">Orion</text>
@@ -1527,34 +1539,107 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </g>
                             <?php endif; ?>
 
-                            <!-- E. Sternschnuppen (Option B: SMIL-Animation nur während der Peak-Tage eines Meteorschauers) -->
+                            <!-- E. Sternschnuppen (Intensität nimmt bis zum Maximum zu und anschließend wieder ab) -->
                             <?php
-                            $hasActivePeakMeteors = false;
-                            if (!empty($astroState['active_meteor_showers']) && is_array($astroState['active_meteor_showers'])) {
-                                foreach ($astroState['active_meteor_showers'] as $ashower) {
-                                    if (!empty($ashower['is_peak'])) {
-                                        $hasActivePeakMeteors = true;
-                                        break;
-                                    }
+                            $maxMeteorIntensity = 0.0;
+                            $activeMeteorShowers = $astroState['active_meteor_showers'] ?? [];
+
+                            // Bekannte Daten für Fallback-Berechnung der Intensitätskurve
+                            $knownShowers = [
+                                'quadrantids'   => ['start' => [1, 1],   'peak' => [1, 3],   'end' => [1, 10]],
+                                'lyrids'        => ['start' => [4, 16],  'peak' => [4, 22],  'end' => [4, 25]],
+                                'eta_aquariids' => ['start' => [4, 19],  'peak' => [5, 6],   'end' => [5, 28]],
+                                'perseids'      => ['start' => [7, 17],  'peak' => [8, 12],  'end' => [8, 24]],
+                                'orionids'      => ['start' => [10, 2],  'peak' => [10, 21], 'end' => [11, 7]],
+                                'leonids'       => ['start' => [11, 6],  'peak' => [11, 17], 'end' => [11, 30]],
+                                'geminids'      => ['start' => [12, 4],  'peak' => [12, 14], 'end' => [12, 17]],
+                                'ursids'        => ['start' => [12, 17], 'peak' => [12, 22], 'end' => [12, 26]],
+                            ];
+
+                            $todayTs = strtotime('today');
+                            $curMonth = (int)date('n');
+                            $curYear = (int)date('Y');
+
+                            foreach ($activeMeteorShowers as &$ashower) {
+                                if (isset($ashower['intensity'])) {
+                                    $maxMeteorIntensity = max($maxMeteorIntensity, (float)$ashower['intensity']);
+                                    continue;
                                 }
+                                $sKey = $ashower['key'] ?? '';
+                                if (!isset($knownShowers[$sKey])) {
+                                    $isPeak = !empty($ashower['is_peak']);
+                                    $ashower['intensity'] = $isPeak ? 1.0 : 0.3;
+                                    $ashower['intensity_pct'] = (int)round($ashower['intensity'] * 100);
+                                    $ashower['trend'] = $isPeak ? 'peak' : 'rising';
+                                    $maxMeteorIntensity = max($maxMeteorIntensity, $ashower['intensity']);
+                                    continue;
+                                }
+
+                                $info = $knownShowers[$sKey];
+                                $pYear = ($info['peak'][0] < $curMonth) ? $curYear + 1 : $curYear;
+                                $peakTs = strtotime(sprintf('%04d-%02d-%02d', $pYear, $info['peak'][0], $info['peak'][1]));
+                                $sYear = ($info['start'][0] <= $info['peak'][0]) ? $pYear : $pYear - 1;
+                                $startTs = strtotime(sprintf('%04d-%02d-%02d', $sYear, $info['start'][0], $info['start'][1]));
+                                $eYear = ($info['end'][0] >= $info['peak'][0]) ? $pYear : $pYear + 1;
+                                $endTs = strtotime(sprintf('%04d-%02d-%02d', $eYear, $info['end'][0], $info['end'][1]));
+
+                                $isPeak = (abs($todayTs - $peakTs) <= 86400);
+                                $ashower['is_peak'] = $isPeak;
+
+                                if ($todayTs <= $peakTs) {
+                                    $riseDays = max(1, ($peakTs - $startTs) / 86400);
+                                    $prog = min(1.0, max(0.0, ($todayTs - $startTs) / ($riseDays * 86400)));
+                                    $intVal = $isPeak ? 1.0 : round(0.15 + 0.85 * $prog, 2);
+                                    $trend = $isPeak ? 'peak' : 'rising';
+                                } else {
+                                    $fallDays = max(1, ($endTs - $peakTs) / 86400);
+                                    $prog = min(1.0, max(0.0, ($todayTs - $peakTs) / ($fallDays * 86400)));
+                                    $intVal = $isPeak ? 1.0 : round(max(0.15, 1.0 - 0.85 * $prog), 2);
+                                    $trend = $isPeak ? 'peak' : 'falling';
+                                }
+
+                                $ashower['intensity'] = $intVal;
+                                $ashower['intensity_pct'] = (int)round($intVal * 100);
+                                $ashower['trend'] = $trend;
+                                $maxMeteorIntensity = max($maxMeteorIntensity, $intVal);
                             }
-                            ?>
-                            <?php if ($hasActivePeakMeteors): ?>
-                                <?php
+                            unset($ashower);
+
+                            // Dynamische Anzahl und Frequenz basierend auf der Intensitätskurve
+                            if ($maxMeteorIntensity >= 0.75) {
                                 $starCount = 3;
                                 $meteorConfigs = [
-                                    1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 2,  'repeat' => 14],
-                                    2 => ['startX' => 1250, 'startY' => 120, 'dx' => -280, 'dy' => 190, 'delay' => 7,  'repeat' => 22],
-                                    3 => ['startX' => 640,  'startY' => 70,  'dx' => -200, 'dy' => 140, 'delay' => 12, 'repeat' => 18],
+                                    1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 2,  'repeat' => 10],
+                                    2 => ['startX' => 1250, 'startY' => 120, 'dx' => -280, 'dy' => 190, 'delay' => 6,  'repeat' => 14],
+                                    3 => ['startX' => 640,  'startY' => 70,  'dx' => -200, 'dy' => 140, 'delay' => 9,  'repeat' => 12],
                                 ];
+                            } elseif ($maxMeteorIntensity >= 0.40) {
+                                $starCount = 2;
+                                $meteorConfigs = [
+                                    1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 3,  'repeat' => 18],
+                                    2 => ['startX' => 1250, 'startY' => 120, 'dx' => -280, 'dy' => 190, 'delay' => 11, 'repeat' => 22],
+                                ];
+                            } elseif ($maxMeteorIntensity > 0) {
+                                $starCount = 1;
+                                $meteorConfigs = [
+                                    1 => ['startX' => 880,  'startY' => 90,  'dx' => -240, 'dy' => 160, 'delay' => 5,  'repeat' => 28],
+                                ];
+                            } else {
+                                $starCount = 0;
+                            }
+                            ?>
+                            <?php if ($starCount > 0): ?>
+                                <?php
+                                $tailOpacity = min(0.9, max(0.5, 0.5 + $maxMeteorIntensity * 0.4));
+                                $tailWidth = $maxMeteorIntensity >= 0.75 ? 2.2 : ($maxMeteorIntensity >= 0.4 ? 1.8 : 1.4);
                                 for ($s = 1; $s <= $starCount; $s++):
                                     $cfg = $meteorConfigs[$s];
                                     $tailX = -($cfg['dx'] * 0.18);
                                     $tailY = -($cfg['dy'] * 0.18);
                                 ?>
                                     <g opacity="0">
-                                        <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
-                                        <circle cx="0" cy="0" r="1.8" fill="#ffffff"/>
+                                        <line x1="0" y1="0" x2="<?= $tailX ?>" y2="<?= $tailY ?>" stroke="#ffffff" stroke-width="<?= $tailWidth ?>" stroke-linecap="round" opacity="<?= $tailOpacity ?>"/>
+                                        <circle cx="0" cy="0" r="<?= $maxMeteorIntensity >= 0.75 ? 2.0 : 1.6 ?>" fill="#ffffff"/>
                                         <animateTransform attributeName="transform" type="translate"
                                                           from="<?= $cfg['startX'] ?> <?= $cfg['startY'] ?>"
                                                           to="<?= $cfg['startX'] + $cfg['dx'] ?> <?= $cfg['startY'] + $cfg['dy'] ?>"
@@ -1721,18 +1806,22 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <span>Sonnenaktivität:</span>
                             <strong>Kp <?= number_format((float)($astroState['kp_current'] ?? 2.0), 1) ?> (Max 24h: <?= number_format((float)($astroState['kp_max_next_24h'] ?? 2.0), 1) ?>)</strong>
                         </div>
-                        <?php if (!empty($astroState['active_meteor_showers'])): ?>
-                            <?php foreach ($astroState['active_meteor_showers'] as $ashower): ?>
+                        <?php if (!empty($activeMeteorShowers)): ?>
+                            <?php foreach ($activeMeteorShowers as $ashower): ?>
                                 <?php
                                 $sName = $ashower['name'] ?? 'Meteore';
                                 $sPeriod = $ashower['activity_period'] ?? '';
                                 $sPeak = $ashower['peak_day_formatted'] ?? ($ashower['peak_date'] ?? '');
                                 $sIsPeak = !empty($ashower['is_peak']);
+                                $sIntPct = (int)($ashower['intensity_pct'] ?? ($sIsPeak ? 100 : 30));
+                                $sTrend = $ashower['trend'] ?? ($sIsPeak ? 'peak' : 'rising');
+                                $sTrendText = $sTrend === 'peak' ? 'Maximum' : ($sTrend === 'rising' ? 'zunehmend' : 'abnehmend');
+                                $sTrendIcon = $sTrend === 'peak' ? '🔥' : ($sTrend === 'rising' ? '↗' : '↘');
                                 ?>
                                 <div class="astronomy-status-pill" style="<?= $sIsPeak ? 'border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1);' : '' ?>">
                                     <span>🌠 <?= htmlspecialchars($sName) ?>:</span>
                                     <strong>
-                                        <?= $sIsPeak ? '🔥 Maximum aktiv!' : 'Aktiv' ?>
+                                        <?= $sIsPeak ? '🔥 Maximum aktiv (100%)' : "Aktiv ({$sIntPct}% {$sTrendIcon} {$sTrendText})" ?>
                                         <?php if (!empty($sPeriod)): ?>
                                             <span style="font-weight: normal; color: var(--text-muted); font-size: 0.8rem;">(<?= htmlspecialchars($sPeriod) ?><?= !empty($sPeak) ? " · Peak: " . htmlspecialchars($sPeak) : '' ?>)</span>
                                         <?php endif; ?>
@@ -1866,6 +1955,25 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 }
                             }
 
+                            $evtIntensityPct = null;
+                            $evtTrendText = null;
+                            if ($isMeteorShower && $isActive) {
+                                if (isset($details['intensity_pct']) && $details['intensity_pct'] > 0) {
+                                    $evtIntensityPct = (int)$details['intensity_pct'];
+                                    $tr = $details['trend'] ?? 'rising';
+                                    $evtTrendText = $tr === 'peak' ? 'Maximum' : ($tr === 'rising' ? 'zunehmend' : 'abnehmend');
+                                } else {
+                                    foreach ($activeMeteorShowers as $ashower) {
+                                        if (($ashower['key'] ?? '') === $eventKeyPrefix) {
+                                            $evtIntensityPct = (int)($ashower['intensity_pct'] ?? 30);
+                                            $tr = $ashower['trend'] ?? 'rising';
+                                            $evtTrendText = $tr === 'peak' ? 'Maximum' : ($tr === 'rising' ? 'zunehmend' : 'abnehmend');
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
                             if ($daysUntil === 0) {
                                 $badgeText = $isMeteorShower ? '🔥 Maximum heute!' : 'Heute!';
                                 $badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
@@ -1916,6 +2024,9 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                         <?php if ($isMeteorShower && !empty($activityPeriod)): ?>
                                             <span>Zeitraum: <strong style="color: var(--text-primary);"><?= htmlspecialchars($activityPeriod) ?></strong></span>
                                             <span>Maximum: <strong style="color: #38bdf8;"><?= htmlspecialchars($peakDateStr) ?></strong></span>
+                                            <?php if ($isActive && $evtIntensityPct !== null): ?>
+                                                <span>Intensität: <strong style="color: <?= $evtIntensityPct >= 75 ? '#f87171' : ($evtIntensityPct >= 40 ? '#fbbf24' : '#34d399') ?>;"><?= $evtIntensityPct ?>% (<?= $evtTrendText ?>)</strong></span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <?php if (isset($details['zhr'])): ?>
                                             <span>Meteore: <strong>bis <?= (int)$details['zhr'] ?> / h</strong></span>

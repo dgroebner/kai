@@ -190,15 +190,25 @@ class AstronomyService
                 $name = $shower['name'] ?? 'Meteorschauer';
                 $rate = $shower['zhr'] ?? 'mehrere';
                 $isPeak = !empty($shower['is_peak']);
-                $period = !empty($shower['activity_period']) ? " (Aktiv: {$shower['activity_period']}" : '';
+                $intensityPct = isset($shower['intensity_pct']) ? (int)$shower['intensity_pct'] : ($isPeak ? 100 : null);
+                $trend = $shower['trend'] ?? ($isPeak ? 'peak' : 'rising');
+                $trendText = $trend === 'peak' ? 'Maximum' : ($trend === 'rising' ? 'steigend' : 'abnehmend');
+                $period = !empty($shower['activity_period']) ? "Aktiv: {$shower['activity_period']}" : '';
                 $peakFormatted = $shower['peak_day_formatted'] ?? ($shower['peak_date'] ?? '');
                 $peakStr = !empty($peakFormatted) ? " · Peak: {$peakFormatted}" : '';
-                $suffix = !empty($period) ? "{$period}{$peakStr})" : '';
+                $metaParts = [];
+                if ($intensityPct !== null) {
+                    $metaParts[] = "Intensität: {$intensityPct}% {$trendText}";
+                }
+                if (!empty($period)) {
+                    $metaParts[] = "{$period}{$peakStr}";
+                }
+                $metaSuffix = !empty($metaParts) ? ' (' . implode(' · ', $metaParts) . ')' : '';
 
                 if ($isPeak) {
-                    $highlights[] = "🔥 Höhepunkt des Meteorschauers {$name} (bis zu {$rate} Sternschnuppen/h)!";
+                    $highlights[] = "🔥 Höhepunkt des Meteorschauers {$name} (bis zu {$rate} Sternschnuppen/h · 100% Intensität)!";
                 } else {
-                    $highlights[] = "Aktiver Sternschnuppenstrom: {$name}{$suffix}";
+                    $highlights[] = "Aktiver Sternschnuppenstrom: {$name}{$metaSuffix}";
                 }
             }
         }

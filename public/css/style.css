@@ -3732,30 +3732,44 @@ body {
     display: block;
 }
 
-/* Sternen-Flimmern (ruhiges, natürliches Schimmern ohne Größenskalierung) */
-.star-twinkle-1, .star-twinkle-2, .star-twinkle-3 {
+/* Sternen-Funkeln (ruhiges, natürliches Glitzern strikt an Ort und Stelle ohne Bewegung/Skalierung) */
+.star-twinkle-1, .star-twinkle-2, .star-twinkle-3, .star-twinkle-4 {
     transform: none !important;
 }
-.star-twinkle-1 { animation: starTwinkle1 6s ease-in-out infinite alternate; }
-.star-twinkle-2 { animation: starTwinkle2 8s ease-in-out 2s infinite alternate; }
-.star-twinkle-3 { animation: starTwinkle3 10s ease-in-out 4s infinite alternate; }
+.star-twinkle-1 { animation: starTwinkle1 2.8s ease-in-out infinite; }
+.star-twinkle-2 { animation: starTwinkle2 3.6s ease-in-out 0.7s infinite; }
+.star-twinkle-3 { animation: starTwinkle3 4.2s ease-in-out 1.4s infinite; }
+.star-twinkle-4 { animation: starTwinkle4 3.1s ease-in-out 2.1s infinite; }
 
 @keyframes starTwinkle1 {
-    0% { opacity: 0.4; }
-    50% { opacity: 0.75; }
-    100% { opacity: 1; }
+    0%, 100% { opacity: 0.35; }
+    25% { opacity: 0.95; }
+    50% { opacity: 0.45; }
+    75% { opacity: 1.0; }
+    85% { opacity: 0.5; }
 }
 
 @keyframes starTwinkle2 {
-    0% { opacity: 0.45; }
-    50% { opacity: 0.9; }
-    100% { opacity: 0.6; }
+    0%, 100% { opacity: 0.9; }
+    30% { opacity: 0.35; }
+    55% { opacity: 0.95; }
+    75% { opacity: 0.4; }
 }
 
 @keyframes starTwinkle3 {
-    0% { opacity: 0.85; }
-    50% { opacity: 0.5; }
-    100% { opacity: 0.95; }
+    0%, 100% { opacity: 0.4; }
+    20% { opacity: 1.0; }
+    45% { opacity: 0.35; }
+    70% { opacity: 0.85; }
+    85% { opacity: 0.55; }
+}
+
+@keyframes starTwinkle4 {
+    0%, 100% { opacity: 0.85; }
+    25% { opacity: 0.4; }
+    45% { opacity: 0.8; }
+    65% { opacity: 0.3; }
+    85% { opacity: 1.0; }
 }
 
 /* Polarlichter Waber-Effekt */
