@@ -216,3 +216,12 @@ CREATE TABLE IF NOT EXISTS `weather_astronomy_events` (
     INDEX `idx_astro_type` (`event_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Gamification: Pause / Aussetzen für wiederkehrende Vorlagen (z. B. Klassenfahrt / Urlaub)
+-- ---------------------------------------------------------------------------
+ALTER TABLE `gamification_task_templates`
+    ADD COLUMN IF NOT EXISTS `paused_from` DATE NULL AFTER `can_escalate`,
+    ADD COLUMN IF NOT EXISTS `paused_until` DATE NULL AFTER `paused_from`,
+    ADD COLUMN IF NOT EXISTS `pause_reason` VARCHAR(150) NULL AFTER `paused_until`;
+
+

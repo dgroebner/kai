@@ -275,6 +275,40 @@ try {
             ]);
             break;
 
+        case 'template_set_pause':
+            Auth::requireApi('gamification_admin');
+            $tmplId = filter_var($input['template_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$tmplId) {
+                Auth::sendJsonError(400, 'Ungültige Vorlagen-ID');
+            }
+            $from = !empty($input['paused_from']) ? trim((string)$input['paused_from']) : null;
+            $until = !empty($input['paused_until']) ? trim((string)$input['paused_until']) : null;
+            $reason = !empty($input['pause_reason']) ? trim((string)$input['pause_reason']) : null;
+
+            $ok = $gamifService->getTemplateRepository()->setTemplatePause($tmplId, $from, $until, $reason);
+            $isPaused = !empty($until);
+            echo json_encode([
+                'success' => $ok,
+                'message' => $isPaused
+                    ? 'Die Ausführung wurde erfolgreich für den Zeitraum ausgesetzt.'
+                    : 'Die Pause wurde aufgehoben. Die Aufgabe wird wieder regulär ausgeführt.'
+            ]);
+            break;
+
+        case 'task_create_adhoc':
+            Auth::requireApi('gamification_admin');
+            $title = trim((string)($input['title'] ?? ''));
+            if ($title === '') {
+                Auth::sendJsonError(400, 'Bitte gib einen Aufgabentitel ein.');
+            }
+            $taskId = $gamifService->getTaskRepository()->createAdHocTask($input);
+            echo json_encode([
+                'success' => true,
+                'task_id' => $taskId,
+                'message' => "Ad-hoc-Aufgabe „{$title}“ wurde erfolgreich angelegt und gestartet!"
+            ]);
+            break;
+
         case 'template_spawn_task':
             Auth::requireApi('gamification_admin');
             $tmplId = filter_var($input['template_id'] ?? null, FILTER_VALIDATE_INT);

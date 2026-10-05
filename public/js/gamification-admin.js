@@ -436,10 +436,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const openTemplateBtn = document.querySelector('.js-open-template-modal');
     const recurrenceSelect = document.getElementById('tmpl-recurrence');
     const recurrenceDaysGroup = document.getElementById('group-recurrence-days');
+    const recurrencePauseGroup = document.getElementById('group-recurrence-pause');
 
-    if (recurrenceSelect && recurrenceDaysGroup) {
+    if (recurrenceSelect) {
         recurrenceSelect.addEventListener('change', () => {
-            recurrenceDaysGroup.style.display = recurrenceSelect.value === 'weekly' ? 'block' : 'none';
+            if (recurrenceDaysGroup) {
+                recurrenceDaysGroup.style.display = recurrenceSelect.value === 'weekly' ? 'block' : 'none';
+            }
+            if (recurrencePauseGroup) {
+                recurrencePauseGroup.style.display = recurrenceSelect.value !== 'none' ? 'block' : 'none';
+            }
         });
     }
 
@@ -452,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cb.checked = false;
             });
             if (recurrenceDaysGroup) recurrenceDaysGroup.style.display = 'none';
+            if (recurrencePauseGroup) recurrencePauseGroup.style.display = 'none';
             const escCb = document.getElementById('tmpl-escalate');
             if (escCb) escCb.checked = true;
             openModal(modalTemplate);
@@ -475,12 +482,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const escCb = document.getElementById('tmpl-escalate');
                 if (escCb) escCb.checked = (tmplData.can_escalate === undefined || tmplData.can_escalate === 1);
 
+                const pauseFromInput = document.getElementById('tmpl-paused-from');
+                const pauseUntilInput = document.getElementById('tmpl-paused-until');
+                const pauseReasonInput = document.getElementById('tmpl-pause-reason');
+                if (pauseFromInput) pauseFromInput.value = tmplData.paused_from || '';
+                if (pauseUntilInput) pauseUntilInput.value = tmplData.paused_until || '';
+                if (pauseReasonInput) pauseReasonInput.value = tmplData.pause_reason || '';
+
                 if (recurrenceDaysGroup) {
                     const selectedDays = (tmplData.recurrence_days || '').split(',').map(s => s.trim());
                     document.querySelectorAll('input[name="recurrence_day_check"]').forEach(cb => {
                         cb.checked = selectedDays.includes(cb.value);
                     });
                     recurrenceDaysGroup.style.display = tmplData.recurrence === 'weekly' ? 'block' : 'none';
+                }
+
+                if (recurrencePauseGroup) {
+                    recurrencePauseGroup.style.display = (tmplData.recurrence && tmplData.recurrence !== 'none') ? 'block' : 'none';
                 }
 
                 document.getElementById('modal-template-heading').textContent = 'Vorlage bearbeiten';
@@ -516,7 +534,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 base_coins: parseInt(formData.get('base_coins'), 10),
                 base_xp: parseInt(formData.get('base_xp'), 10),
                 can_escalate: formData.get('can_escalate') ? 1 : 0,
-                spawn_immediately: formData.get('spawn_immediately') ? 1 : 0
+                spawn_immediately: formData.get('spawn_immediately') ? 1 : 0,
+                paused_from: formData.get('paused_from') || null,
+                paused_until: formData.get('paused_until') || null,
+                pause_reason: formData.get('pause_reason') || null
             };
 
             closeModal(modalTemplate);
@@ -841,13 +862,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 16. Vorlage als Aufgabe aktivieren
+    // 16. Einmalige Vorlage als Aufgabe aktivieren
     const modalSpawn = document.getElementById('modal-spawn-template');
     const formSpawn = document.getElementById('form-spawn-template');
     const spawnTemplSel = document.getElementById('spawn-template-select');
     const spawnTemplSelGrp = document.getElementById('group-spawn-template-select');
 
-    /** Öffnet das Spawn-Modal für eine bekannte Vorlage (Zeilen-Button) */
+    /** Öffnet das Spawn-Modal für eine einmalige Vorlage */
     function openSpawnModal(templateId, title, assignedId) {
         const idInput = document.getElementById('spawn-template-id');
         const descEl = document.getElementById('spawn-template-desc');
@@ -855,18 +876,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.getElementById('spawn-date');
 
         if (idInput) idInput.value = templateId || '';
-        if (descEl) descEl.textContent = title ? `Vorlage „${title}" einmalig als aktive Aufgabe anlegen.` : '';
+        if (descEl) {
+            descEl.textContent = title
+                ? `Vorlage „${title}" einmalig als aktive Aufgabe anlegen.`
+                : 'Wähle eine einmalige Vorlage aus, um sie heute als aktive Aufgabe zu starten.';
+        }
         if (assignSel) assignSel.value = (assignedId && assignedId !== '0') ? assignedId : '';
         if (dateInput) dateInput.value = new Date().toISOString().substring(0, 10);
 
-        // Vorlagen-Auswahl nur im Quick-Modus zeigen
+        // Vorlagen-Auswahl nur im Schnell-Spawn-Modus zeigen
         if (spawnTemplSelGrp) spawnTemplSelGrp.style.display = templateId ? 'none' : 'block';
         if (spawnTemplSel) spawnTemplSel.value = '';
 
         if (modalSpawn) openModal(modalSpawn);
     }
 
-    // Zeilen-Button ▶️ in der Vorlagen-Tabelle
+    // Zeilen-Button ▶️ in der Vorlagen-Tabelle (nur für einmalige Aufgaben)
     document.addEventListener('click', (e) => {
         const spawnBtn = e.target.closest('.js-spawn-template-btn');
         if (spawnBtn) {
@@ -877,20 +902,16 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        // Schnell-Spawn-Button (ohne vorausgewählte Vorlage)
-        if (e.target.closest('.js-open-spawn-quick-btn')) {
-            openSpawnModal('', '', '');
-        }
-
-        // Aufgabe für ein bestimmtes Kind anlegen (aus Übersicht laufender Aufgaben)
-        const spawnForChild = e.target.closest('.js-spawn-for-child-btn');
-        if (spawnForChild) {
-            const profileId = spawnForChild.getAttribute('data-profile-id');
-            const profileName = spawnForChild.getAttribute('data-profile-name') || '';
-            openSpawnModal('', profileName ? `Aufgabe für ${profileName} anlegen` : '', '');
-            // Zuweisung direkt vorbelegen
-            const assignSel = document.getElementById('spawn-assigned');
-            if (assignSel && profileId) assignSel.value = profileId;
+        // Schnell-Spawn-Button für einmalige Vorlagen
+        const quickSpawnBtn = e.target.closest('.js-open-spawn-quick-btn');
+        if (quickSpawnBtn) {
+            const pid = quickSpawnBtn.getAttribute('data-profile-id');
+            const pname = quickSpawnBtn.getAttribute('data-profile-name');
+            openSpawnModal('', pname ? `Einmalige Vorlage für ${pname} aktivieren` : '', pid || '');
+            if (pid) {
+                const assignSel = document.getElementById('spawn-assigned');
+                if (assignSel) assignSel.value = pid;
+            }
         }
     });
 
@@ -915,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 templateId = parseInt(spawnTemplSel.value, 10) || 0;
             }
             if (!templateId) {
-                showFeedback('Hinweis', 'Bitte wähle zuerst eine Vorlage aus.');
+                showFeedback('Hinweis', 'Bitte wähle zuerst eine einmalige Vorlage aus.');
                 return;
             }
 
@@ -936,6 +957,157 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 16b. Schnelle Ad-hoc-Aufgabe erstellen (ohne Vorlage)
+    const modalAdhoc = document.getElementById('modal-adhoc-task');
+    const formAdhoc = document.getElementById('form-adhoc-task');
+
+    document.addEventListener('click', (e) => {
+        const adhocBtn = e.target.closest('.js-open-adhoc-task-btn');
+        if (adhocBtn && modalAdhoc && formAdhoc) {
+            formAdhoc.reset();
+            const pid = adhocBtn.getAttribute('data-profile-id');
+            const assignSel = document.getElementById('adhoc-assigned');
+            if (assignSel) {
+                assignSel.value = (pid && pid !== '0') ? pid : '';
+            }
+            const dateInput = document.getElementById('adhoc-date');
+            if (dateInput) {
+                dateInput.value = new Date().toISOString().substring(0, 10);
+            }
+            const timeInput = document.getElementById('adhoc-duetime');
+            if (timeInput) timeInput.value = '18:00';
+            const coinsInput = document.getElementById('adhoc-coins');
+            if (coinsInput) coinsInput.value = '20';
+            const xpInput = document.getElementById('adhoc-xp');
+            if (xpInput) xpInput.value = '50';
+            const escCb = document.getElementById('adhoc-escalate');
+            if (escCb) escCb.checked = true;
+
+            openModal(modalAdhoc);
+            const titleInput = document.getElementById('adhoc-title');
+            if (titleInput) titleInput.focus();
+        }
+    });
+
+    if (formAdhoc) {
+        formAdhoc.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(formAdhoc);
+            const title = (formData.get('title') || '').trim();
+            if (!title) {
+                showFeedback('Hinweis', 'Bitte gib einen Aufgabentitel ein.');
+                return;
+            }
+
+            const payload = {
+                action: 'task_create_adhoc',
+                title: title,
+                description: formData.get('description') || null,
+                assigned_profile_id: formData.get('assigned_profile_id') || null,
+                category: formData.get('category') || 'haushalt',
+                due_date: formData.get('due_date') || null,
+                due_time: formData.get('due_time') || null,
+                base_coins: parseInt(formData.get('base_coins'), 10) || 20,
+                base_xp: parseInt(formData.get('base_xp'), 10) || 50,
+                can_escalate: formData.get('can_escalate') ? 1 : 0
+            };
+
+            closeModal(modalAdhoc);
+            const res = await KaiHttp.postJson('api.php', payload);
+            if (res.success) {
+                showFeedback('Ad-hoc-Aufgabe erstellt ⚡', res.message || 'Aufgabe erfolgreich angelegt!', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Erstellen der Ad-hoc-Aufgabe.');
+            }
+        });
+    }
+
+    // 16c. Ausführung aussetzen (Klassenfahrt / Urlaub)
+    const modalPause = document.getElementById('modal-pause-template');
+    const formPause = document.getElementById('form-pause-template');
+    const btnUnpause = document.getElementById('btn-unpause-template');
+
+    document.addEventListener('click', (e) => {
+        const pauseBtn = e.target.closest('.js-pause-template-btn');
+        if (pauseBtn && modalPause && formPause) {
+            const tmplId = pauseBtn.getAttribute('data-template-id');
+            const title = pauseBtn.getAttribute('data-title') || 'Vorlage';
+            const pausedFrom = pauseBtn.getAttribute('data-paused-from');
+            const pausedUntil = pauseBtn.getAttribute('data-paused-until');
+            const pauseReason = pauseBtn.getAttribute('data-pause-reason');
+
+            document.getElementById('pause-template-id').value = tmplId;
+            const descEl = document.getElementById('pause-template-desc');
+            if (descEl) {
+                descEl.textContent = `Ausführung für „${title}“ aussetzen (z. B. wegen Klassenfahrt oder Urlaub). In diesem Zeitraum wird die Aufgabe nicht täglich generiert.`;
+            }
+
+            const fromInput = document.getElementById('pause-date-from');
+            const untilInput = document.getElementById('pause-date-until');
+            const reasonInput = document.getElementById('pause-reason');
+
+            if (fromInput) fromInput.value = pausedFrom || new Date().toISOString().substring(0, 10);
+            if (untilInput) untilInput.value = pausedUntil || '';
+            if (reasonInput) reasonInput.value = pauseReason || '';
+
+            if (btnUnpause) {
+                btnUnpause.style.display = pausedUntil ? 'inline-block' : 'none';
+            }
+
+            openModal(modalPause);
+        }
+    });
+
+    if (formPause) {
+        formPause.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tmplId = parseInt(document.getElementById('pause-template-id').value, 10);
+            const fromDate = document.getElementById('pause-date-from').value;
+            const untilDate = document.getElementById('pause-date-until').value;
+            const reason = document.getElementById('pause-reason').value.trim();
+
+            if (!untilDate) {
+                showFeedback('Hinweis', 'Bitte gib ein Datum an, bis zu dem die Aufgabe ausgesetzt werden soll.');
+                return;
+            }
+
+            closeModal(modalPause);
+            const res = await KaiHttp.postJson('api.php', {
+                action: 'template_set_pause',
+                template_id: tmplId,
+                paused_from: fromDate || null,
+                paused_until: untilDate,
+                pause_reason: reason || null
+            });
+
+            if (res.success) {
+                showFeedback('Ausführung ausgesetzt ⏸️', res.message || 'Pause erfolgreich gespeichert!', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Speichern der Pause.');
+            }
+        });
+    }
+
+    if (btnUnpause) {
+        btnUnpause.addEventListener('click', async () => {
+            const tmplId = parseInt(document.getElementById('pause-template-id').value, 10);
+            closeModal(modalPause);
+            const res = await KaiHttp.postJson('api.php', {
+                action: 'template_set_pause',
+                template_id: tmplId,
+                paused_from: null,
+                paused_until: null,
+                pause_reason: null
+            });
+
+            if (res.success) {
+                showFeedback('Pause aufgehoben ▶️', res.message || 'Die Aufgabe wird wieder regulär ausgeführt!', true);
+            } else {
+                showFeedback('Fehler', res.message || 'Fehler beim Aufheben der Pause.');
+            }
+        });
+    }
+
     // 17. Schnellfilter für die Vorlagen-Tabelle
     const filterCat = document.getElementById('filter-tmpl-category');
     const filterAsgn = document.getElementById('filter-tmpl-assigned');
@@ -947,6 +1119,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const cat = filterCat ? filterCat.value : '';
         const asgn = filterAsgn ? filterAsgn.value : '';
         const rec = filterRec ? filterRec.value : '';
+        const activeSegmented = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn.active');
+        const typeFilter = activeSegmented ? activeSegmented.getAttribute('data-type-filter') : 'all';
+
         const rows = document.querySelectorAll('#tbl-templates tbody tr[data-tmpl-category]');
         let visibleCount = 0;
 
@@ -954,13 +1129,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchCat = !cat || row.getAttribute('data-tmpl-category') === cat;
             const matchAsgn = !asgn || row.getAttribute('data-tmpl-assigned') === asgn;
             const matchRec = !rec || row.getAttribute('data-tmpl-recurrence') === rec;
-            const visible = matchCat && matchAsgn && matchRec;
+            const matchType = (typeFilter === 'all') || (row.getAttribute('data-tmpl-type') === typeFilter);
+
+            const visible = matchCat && matchAsgn && matchRec && matchType;
             row.style.display = visible ? '' : 'none';
             if (visible) visibleCount++;
         });
 
         if (tmplEmpty) tmplEmpty.style.display = (rows.length > 0 && visibleCount === 0) ? 'block' : 'none';
     }
+
+    // Segmented Toggle buttons
+    document.querySelectorAll('#segmented-tmpl-type .gamif-segmented-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#segmented-tmpl-type .gamif-segmented-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyTemplateFilter();
+        });
+    });
 
     if (filterCat) filterCat.addEventListener('change', applyTemplateFilter);
     if (filterAsgn) filterAsgn.addEventListener('change', applyTemplateFilter);
@@ -971,6 +1157,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterCat) filterCat.value = '';
             if (filterAsgn) filterAsgn.value = '';
             if (filterRec) filterRec.value = '';
+            document.querySelectorAll('#segmented-tmpl-type .gamif-segmented-btn').forEach(b => b.classList.remove('active'));
+            const allBtn = document.querySelector('#segmented-tmpl-type .gamif-segmented-btn[data-type-filter="all"]');
+            if (allBtn) allBtn.classList.add('active');
             applyTemplateFilter();
         });
     }

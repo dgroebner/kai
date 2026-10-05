@@ -35,6 +35,8 @@ foreach ($allActiveTasksFlat as $t) {
 
 // Stammdaten laden
 $templates = $templateRepo->getAllTemplates();
+$recurringTemplates = array_values(array_filter($templates, fn($t) => ($t['recurrence'] ?? 'none') !== 'none'));
+$oneTimeTemplates = array_values(array_filter($templates, fn($t) => ($t['recurrence'] ?? 'none') === 'none'));
 $rewards = $rewardRepo->getAllRewards();
 $achievements = $achievementService->getAllAchievements();
 $profiles = $profileRepo->getAllProfiles();
@@ -89,7 +91,7 @@ $metricTypeMap = [
             Freigaben & Prüfung <?= $totalPending > 0 ? "({$totalPending})" : '' ?>
         </button>
         <button type="button" class="gamif-tab-btn" data-tab="tab-templates">
-            Aufgaben-Vorlagen (<?= count($templates) ?>)
+            Aufgaben & Vorlagen (<?= count($templates) ?>)
         </button>
         <button type="button" class="gamif-tab-btn" data-tab="tab-rewards">
             Prämien-Katalog (<?= count($rewards) ?>)
@@ -138,15 +140,16 @@ $metricTypeMap = [
                                                 <?php if ($isInProgress): ?><span class="gamif-tag" style="font-size:0.7rem; padding:0.1rem 0.4rem;">▶ läuft</span><?php endif; ?>
                                                 <?php if ($isOverdue): ?><span class="gamif-tag gamif-tag--rescue" style="font-size:0.7rem; padding:0.1rem 0.4rem;">⚠ überfällig</span><?php endif; ?>
                                                 <?php if (!empty($at['due_time'])): ?><span class="text-muted" style="font-size:0.75rem;">bis <?= htmlspecialchars(substr($at['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') ?> Uhr</span><?php endif; ?>
-                                                <button type="button" class="btn btn-outline btn-sm js-spawn-for-child-btn" style="padding:0.1rem 0.5rem; font-size:0.75rem;" data-profile-id="<?= $pid ?>" title="Weitere Aufgabe für <?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?> anlegen">+</button>
+                                                <button type="button" class="btn btn-outline btn-sm js-open-adhoc-task-btn" style="padding:0.1rem 0.5rem; font-size:0.75rem;" data-profile-id="<?= $pid ?>" data-profile-name="<?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?>" title="Schnelle Ad-hoc-Aufgabe für <?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?> anlegen">+</button>
                                                 <button type="button" class="btn btn-outline btn-sm js-delete-task-btn" style="padding:0.1rem 0.5rem; font-size:0.75rem; color:#ef4444;" data-task-id="<?= (int)$at['id'] ?>" data-title="<?= htmlspecialchars($at['title'], ENT_QUOTES, 'UTF-8') ?>" title="Aufgabe löschen">🗑️</button>
                                             </span>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
                             <?php endif; ?>
-                            <div class="gamif-active-child-footer">
-                                <button type="button" class="btn btn-outline btn-sm js-spawn-for-child-btn" data-profile-id="<?= $pid ?>" data-profile-name="<?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?>">▶️ Aufgabe anlegen</button>
+                            <div class="gamif-active-child-footer" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-primary btn-sm js-open-adhoc-task-btn" data-profile-id="<?= $pid ?>" data-profile-name="<?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?>">⚡ Ad-hoc-Aufgabe</button>
+                                <button type="button" class="btn btn-outline btn-sm js-open-spawn-quick-btn" data-profile-id="<?= $pid ?>" data-profile-name="<?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?>" title="Einmalige Vorlage für <?= htmlspecialchars($cp['display_name'], ENT_QUOTES, 'UTF-8') ?> aktivieren">▶️ Vorlage aktivieren</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -302,6 +305,11 @@ $metricTypeMap = [
     <section id="tab-templates" class="gamif-tab-content hidden">
         <div class="gamif-filter-bar">
             <div class="gamif-filter-group">
+                <div class="gamif-segmented" id="segmented-tmpl-type">
+                    <button type="button" class="gamif-segmented-btn active" data-type-filter="all">Alle (<?= count($templates) ?>)</button>
+                    <button type="button" class="gamif-segmented-btn" data-type-filter="recurring">🔄 Wiederkehrend (<?= count($recurringTemplates) ?>)</button>
+                    <button type="button" class="gamif-segmented-btn" data-type-filter="onetime">⚡ Einmalig (<?= count($oneTimeTemplates) ?>)</button>
+                </div>
                 <select id="filter-tmpl-category" class="form-control form-control--sm" title="Nach Kategorie filtern">
                     <option value="">Alle Kategorien</option>
                     <option value="haushalt">Haushalt & Küche</option>
@@ -316,7 +324,7 @@ $metricTypeMap = [
                         <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['display_name'], ENT_QUOTES, 'UTF-8') ?></option>
                     <?php endforeach; ?>
                 </select>
-                <select id="filter-tmpl-recurrence" class="form-control form-control--sm" title="Nach Wiederholung filtern">
+                <select id="filter-tmpl-recurrence" class="form-control form-control--sm" title="Nach Wiederholung filtern" style="display:none;">
                     <option value="">Alle Typen</option>
                     <option value="none">Nur manuell</option>
                     <option value="daily">Täglich</option>
@@ -325,7 +333,8 @@ $metricTypeMap = [
                 <button type="button" id="btn-filter-tmpl-reset" class="btn btn-outline btn-sm">✕ Zurücksetzen</button>
             </div>
             <div class="gamif-filter-actions">
-                <button type="button" class="btn btn-outline btn-sm js-open-spawn-quick-btn" title="Vorlage sofort als Aufgabe aktivieren">▶️ Aufgabe starten</button>
+                <button type="button" class="btn btn-primary btn-sm js-open-adhoc-task-btn" title="Schnell eine ad-hoc Aufgabe erstellen ohne Vorlage">⚡ Ad-hoc-Aufgabe</button>
+                <button type="button" class="btn btn-outline btn-sm js-open-spawn-quick-btn" title="Einmalige Vorlage als Aufgabe starten">▶️ Einmalige Aufgabe aktivieren</button>
                 <button type="button" class="btn btn-primary btn-sm js-open-template-modal">+ Neue Vorlage</button>
             </div>
         </div>
@@ -337,7 +346,7 @@ $metricTypeMap = [
                     <tr>
                         <th>Titel</th>
                         <th>Kategorie</th>
-                        <th>Wiederholung</th>
+                        <th>Typ / Wiederholung</th>
                         <th>Frist</th>
                         <th>Zuweisung</th>
                         <th>Belohnung</th>
@@ -349,34 +358,48 @@ $metricTypeMap = [
                     <?php if (empty($templates)): ?>
                         <tr><td colspan="8" class="text-center text-muted">Noch keine Vorlagen angelegt.</td></tr>
                     <?php else: ?>
-                        <?php foreach ($templates as $tmpl): ?>
+                        <?php foreach ($templates as $tmpl): 
+                            $isRecurring = ($tmpl['recurrence'] ?? 'none') !== 'none';
+                            $tmplType = $isRecurring ? 'recurring' : 'onetime';
+                            $isPaused = $isRecurring && !empty($tmpl['paused_until']) && ($tmpl['paused_until'] >= date('Y-m-d'));
+                        ?>
                             <tr data-tmpl-category="<?= htmlspecialchars($tmpl['category'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-tmpl-assigned="<?= (int)($tmpl['assigned_profile_id'] ?? 0) ?>"
-                                data-tmpl-recurrence="<?= htmlspecialchars($tmpl['recurrence'], ENT_QUOTES, 'UTF-8') ?>">
+                                data-tmpl-recurrence="<?= htmlspecialchars($tmpl['recurrence'], ENT_QUOTES, 'UTF-8') ?>"
+                                data-tmpl-type="<?= $tmplType ?>">
                                 <td>
                                     <div class="gamif-title-cell">
                                         <strong><?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                        <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
-                                            <div class="gamif-tag-row">
+                                        <div class="gamif-tag-row">
+                                            <?php if (isset($tmpl['can_escalate']) && (int)$tmpl['can_escalate'] === 0): ?>
                                                 <span class="gamif-tag gamif-tag--no-rescue" data-gamif-title="📌 Keine Rettung" data-gamif-tooltip="Feste Routine: Bleibt fest beim Kind und wandert bei Fristversäumnis nicht auf das Schwarze Brett. Geschwister können sie nicht als Belohnung übernehmen.">📌 Keine Rettung</span>
-                                            </div>
-                                        <?php endif; ?>
+                                            <?php endif; ?>
+                                            <?php if ($isPaused): ?>
+                                                <span class="gamif-tag gamif-tag--paused" data-gamif-title="⏸️ Ausgesetzt" data-gamif-tooltip="Ausgesetzt<?= !empty($tmpl['paused_from']) ? ' von ' . date('d.m.', strtotime($tmpl['paused_from'])) : '' ?> bis <?= date('d.m.Y', strtotime($tmpl['paused_until'])) ?><?= !empty($tmpl['pause_reason']) ? ' (' . htmlspecialchars($tmpl['pause_reason']) . ')' : '' ?>">
+                                                    ⏸️ Ausgesetzt bis <?= date('d.m.', strtotime($tmpl['paused_until'])) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </td>
                                 <td><?= htmlspecialchars(ucfirst($tmpl['category']), ENT_QUOTES, 'UTF-8') ?></td>
                                 <td>
-                                    <?php 
-                                    $recMap = ['none' => 'Einmalig', 'daily' => 'Täglich', 'weekly' => 'Wöchentlich', 'interval' => 'Intervall'];
-                                    $recText = $recMap[$tmpl['recurrence']] ?? $tmpl['recurrence'];
-                                    if ($tmpl['recurrence'] === 'weekly' && !empty($tmpl['recurrence_days'])) {
-                                        $dayNames = [1 => 'Mo', 2 => 'Di', 3 => 'Mi', 4 => 'Do', 5 => 'Fr', 6 => 'Sa', 7 => 'So'];
-                                        $activeDays = array_map(fn($d) => $dayNames[(int)$d] ?? $d, array_filter(array_map('trim', explode(',', $tmpl['recurrence_days']))));
-                                        if (!empty($activeDays)) {
-                                            $recText .= ' (' . implode(', ', $activeDays) . ')';
+                                    <?php if (!$isRecurring): ?>
+                                        <span class="gamif-tag gamif-tag--onetime" title="Einmalig / auf Abruf aktivierbar">⚡ Einmalig</span>
+                                    <?php else: ?>
+                                        <?php 
+                                        $recMap = ['daily' => 'Täglich', 'weekly' => 'Wöchentlich', 'interval' => 'Intervall'];
+                                        $recText = $recMap[$tmpl['recurrence']] ?? $tmpl['recurrence'];
+                                        if ($tmpl['recurrence'] === 'weekly' && !empty($tmpl['recurrence_days'])) {
+                                            $dayNames = [1 => 'Mo', 2 => 'Di', 3 => 'Mi', 4 => 'Do', 5 => 'Fr', 6 => 'Sa', 7 => 'So'];
+                                            $activeDays = array_map(fn($d) => $dayNames[(int)$d] ?? $d, array_filter(array_map('trim', explode(',', $tmpl['recurrence_days']))));
+                                            if (!empty($activeDays)) {
+                                                $recText .= ' (' . implode(', ', $activeDays) . ')';
+                                            }
                                         }
-                                    }
-                                    echo htmlspecialchars($recText, ENT_QUOTES, 'UTF-8');
-                                    ?>
+                                        ?>
+                                        <span class="gamif-tag gamif-tag--recurring" title="Automatisch wiederkehrende Routine">🔄 <?= htmlspecialchars($recText, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?= !empty($tmpl['due_time']) ? htmlspecialchars(substr($tmpl['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') . ' Uhr' : 'Keine' ?></td>
                                 <td><?= !empty($tmpl['assigned_name']) ? htmlspecialchars($tmpl['assigned_name'], ENT_QUOTES, 'UTF-8') : '<span class="text-muted">Schwarzes Brett</span>' ?></td>
@@ -386,9 +409,21 @@ $metricTypeMap = [
                                         <span class="gamif-reward-row text-info"><strong>⭐ +<?= (int)$tmpl['base_xp'] ?></strong> <span class="text-muted">XP</span></span>
                                     </div>
                                 </td>
-                                <td><?= (int)$tmpl['is_active'] === 1 ? '<span class="text-success">Aktiv</span>' : '<span class="text-muted">Inaktiv</span>' ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-outline btn-sm js-spawn-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" data-assigned-id="<?= (int)($tmpl['assigned_profile_id'] ?? 0) ?>" title="Jetzt für heute als Aufgabe anlegen">▶️</button>
+                                    <?php if ($isPaused): ?>
+                                        <span class="text-warning">⏸️ Pausiert</span>
+                                    <?php elseif ((int)$tmpl['is_active'] === 1): ?>
+                                        <span class="text-success">Aktiv</span>
+                                    <?php else: ?>
+                                        <span class="text-muted">Inaktiv</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!$isRecurring): ?>
+                                        <button type="button" class="btn btn-outline btn-sm js-spawn-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" data-assigned-id="<?= (int)($tmpl['assigned_profile_id'] ?? 0) ?>" title="Jetzt für heute als Aufgabe aktivieren">▶️</button>
+                                    <?php else: ?>
+                                        <button type="button" class="btn btn-outline btn-sm js-pause-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" data-paused-from="<?= htmlspecialchars($tmpl['paused_from'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-paused-until="<?= htmlspecialchars($tmpl['paused_until'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-pause-reason="<?= htmlspecialchars($tmpl['pause_reason'] ?? '', ENT_QUOTES, 'UTF-8') ?>" title="<?= $isPaused ? 'Aussetzen bearbeiten / aufheben' : 'Ausführung aussetzen (Klassenfahrt / Urlaub)' ?>">⏸️</button>
+                                    <?php endif; ?>
                                     <button type="button" class="btn btn-outline btn-sm js-edit-template-btn" data-template='<?= htmlspecialchars(json_encode($tmpl), ENT_QUOTES, 'UTF-8') ?>' title="Bearbeiten">✏️</button>
                                     <button type="button" class="btn btn-outline btn-sm js-delete-template-btn" data-template-id="<?= (int)$tmpl['id'] ?>" data-title="<?= htmlspecialchars($tmpl['title'], ENT_QUOTES, 'UTF-8') ?>" title="Löschen">🗑️</button>
                                 </td>
@@ -686,6 +721,23 @@ $metricTypeMap = [
                             <input type="number" id="tmpl-xp" name="base_xp" class="form-control" value="50" min="1">
                         </div>
                     </div>
+                    <div id="group-recurrence-pause" style="display:none; background:var(--bg-main); padding:0.75rem; border-radius:var(--border-radius); margin-bottom:0.75rem; border:1px solid rgba(255,255,255,0.08);">
+                        <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--text-light);">⏸️ Ausführung aussetzen (z. B. Urlaub / Klassenfahrt)</h4>
+                        <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                            <div class="form-group">
+                                <label for="tmpl-paused-from">Aussetzen ab:</label>
+                                <input type="date" id="tmpl-paused-from" name="paused_from" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="tmpl-paused-until">Aussetzen bis einschl.:</label>
+                                <input type="date" id="tmpl-paused-until" name="paused_until" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="tmpl-pause-reason">Grund (optional):</label>
+                            <input type="text" id="tmpl-pause-reason" name="pause_reason" class="form-control" placeholder="z. B. Klassenfahrt Sylt, Urlaub, Krank">
+                        </div>
+                    </div>
                     <div class="gamif-checkbox-group">
                         <label class="gamif-checkbox-row" for="tmpl-escalate">
                             <input type="checkbox" id="tmpl-escalate" name="can_escalate" value="1" checked>
@@ -705,11 +757,11 @@ $metricTypeMap = [
         </div>
     </div>
 
-    <!-- Modal: Vorlage als Aufgabe starten -->
+    <!-- Modal: Einmalige Vorlage als Aufgabe starten -->
     <div id="modal-spawn-template" class="modal-overlay hidden">
         <div class="modal-card modal-card--sm">
             <div class="modal-header">
-                <h3>Aufgabe aktivieren ▶️</h3>
+                <h3>Einmalige Aufgabe aktivieren ▶️</h3>
                 <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
             </div>
             <div class="modal-body">
@@ -718,17 +770,22 @@ $metricTypeMap = [
                     <p id="spawn-template-desc" style="font-size:0.95rem; margin-bottom:1rem;"></p>
                     <!-- Vorlagen-Auswahl: nur im Schnell-Spawn-Modus sichtbar -->
                     <div class="form-group" id="group-spawn-template-select" style="display:none;">
-                        <label for="spawn-template-select">Vorlage auswählen:</label>
+                        <label for="spawn-template-select">Einmalige Vorlage auswählen:</label>
                         <select id="spawn-template-select" class="form-control">
                             <option value="">— Bitte wählen —</option>
-                            <?php foreach ($templates as $t): ?>
-                                <option value="<?= (int)$t['id'] ?>"
-                                    data-assigned="<?= (int)($t['assigned_profile_id'] ?? 0) ?>">
-                                    <?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>
-                                    (<?= htmlspecialchars(ucfirst($t['category']), ENT_QUOTES, 'UTF-8') ?>)
-                                </option>
-                            <?php endforeach; ?>
+                            <?php if (empty($oneTimeTemplates)): ?>
+                                <option value="" disabled>Keine einmaligen Vorlagen vorhanden</option>
+                            <?php else: ?>
+                                <?php foreach ($oneTimeTemplates as $t): ?>
+                                    <option value="<?= (int)$t['id'] ?>"
+                                        data-assigned="<?= (int)($t['assigned_profile_id'] ?? 0) ?>">
+                                        <?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>
+                                        (<?= htmlspecialchars(ucfirst($t['category']), ENT_QUOTES, 'UTF-8') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
+                        <small class="text-muted" style="display:block; margin-top:0.35rem;">Wiederkehrende Aufgaben werden täglich automatisch aktiviert und erscheinen daher hier nicht.</small>
                     </div>
                     <div class="form-group">
                         <label for="spawn-assigned">Zuweisen an:</label>
@@ -746,6 +803,116 @@ $metricTypeMap = [
                     <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
                         <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
                         <button type="submit" class="btn btn-primary">🚀 Aufgabe jetzt starten</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Schnelle Ad-hoc-Aufgabe erstellen (ohne Vorlage) -->
+    <div id="modal-adhoc-task" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>⚡ Schnelle Ad-hoc-Aufgabe erstellen</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-adhoc-task">
+                    <div class="form-group">
+                        <label for="adhoc-title">Titel der Aufgabe:</label>
+                        <input type="text" id="adhoc-title" name="title" class="form-control" required placeholder="z. B. Keller aufräumen oder Rasen mähen">
+                    </div>
+                    <div class="form-group">
+                        <label for="adhoc-desc">Beschreibung (optional):</label>
+                        <textarea id="adhoc-desc" name="description" class="form-control" rows="2" placeholder="Details oder besondere Hinweise..."></textarea>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="adhoc-assigned">Zuweisen an:</label>
+                            <select id="adhoc-assigned" name="assigned_profile_id" class="form-control">
+                                <option value="">Schwarzes Brett (Offen für alle)</option>
+                                <?php foreach ($childProfiles as $c): ?>
+                                    <option value="<?= (int)$c['id'] ?>"><?= htmlspecialchars($c['display_name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="adhoc-category">Kategorie:</label>
+                            <select id="adhoc-category" name="category" class="form-control">
+                                <option value="haushalt">Haushalt & Küche</option>
+                                <option value="zimmer">Zimmer & Ordnung</option>
+                                <option value="tiere">Tiere & Fütterung</option>
+                                <option value="garten">Garten</option>
+                                <option value="sonstiges">Sonstiges</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="adhoc-date">Fälligkeitsdatum:</label>
+                            <input type="date" id="adhoc-date" name="due_date" class="form-control" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="adhoc-duetime">Frist / Uhrzeit:</label>
+                            <input type="time" id="adhoc-duetime" name="due_time" class="form-control" value="18:00">
+                        </div>
+                    </div>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="adhoc-coins">Belohnungs-Münzen:</label>
+                            <input type="number" id="adhoc-coins" name="base_coins" class="form-control" value="20" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="adhoc-xp">Erfahrungspunkte (XP):</label>
+                            <input type="number" id="adhoc-xp" name="base_xp" class="form-control" value="50" min="1">
+                        </div>
+                    </div>
+                    <div class="gamif-checkbox-group">
+                        <label class="gamif-checkbox-row" for="adhoc-escalate">
+                            <input type="checkbox" id="adhoc-escalate" name="can_escalate" value="1" checked>
+                            <span>Verschieben auf Schwarzes Brett bei Fristversäumnis</span>
+                        </label>
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary">🚀 Aufgabe jetzt starten</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ausführung aussetzen (Klassenfahrt / Urlaub) -->
+    <div id="modal-pause-template" class="modal-overlay hidden">
+        <div class="modal-card modal-card--sm">
+            <div class="modal-header">
+                <h3>Ausführung aussetzen ⏸️</h3>
+                <button type="button" class="btn btn-outline btn-sm modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-pause-template">
+                    <input type="hidden" id="pause-template-id" name="template_id">
+                    <p id="pause-template-desc" style="font-size:0.95rem; margin-bottom:1rem;"></p>
+                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="form-group">
+                            <label for="pause-date-from">Aussetzen ab:</label>
+                            <input type="date" id="pause-date-from" name="paused_from" class="form-control" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="pause-date-until">Aussetzen bis einschl.:</label>
+                            <input type="date" id="pause-date-until" name="paused_until" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pause-reason">Grund (optional):</label>
+                        <input type="text" id="pause-reason" name="pause_reason" class="form-control" placeholder="z. B. Klassenfahrt Sylt, Sommerurlaub, Krank">
+                    </div>
+                    <div class="modal-actions" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+                        <button type="button" class="btn btn-outline btn-sm" id="btn-unpause-template" style="display:none; color:#10b981;">▶️ Pause aufheben</button>
+                        <div style="display:flex; gap:0.5rem; margin-left:auto;">
+                            <button type="button" class="btn btn-outline modal-close">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">⏸️ Pause speichern</button>
+                        </div>
                     </div>
                 </form>
             </div>

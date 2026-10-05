@@ -108,6 +108,12 @@ public function getRewardRepository(): GamificationRewardRepository
             if (!$stmt->fetch()) {
                 $pdo->exec("ALTER TABLE gamification_profiles ADD COLUMN streak_freeze_reason VARCHAR(100) NULL AFTER streak_freeze_until");
             }
+            $stmt = $pdo->query("SHOW COLUMNS FROM gamification_task_templates LIKE 'paused_until'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE gamification_task_templates ADD COLUMN paused_from DATE NULL AFTER can_escalate");
+                $pdo->exec("ALTER TABLE gamification_task_templates ADD COLUMN paused_until DATE NULL AFTER paused_from");
+                $pdo->exec("ALTER TABLE gamification_task_templates ADD COLUMN pause_reason VARCHAR(150) NULL AFTER paused_until");
+            }
             $rewardCheck = $pdo->query("SELECT id FROM gamification_rewards WHERE title LIKE '%Streak-Schild%' LIMIT 1");
             if (!$rewardCheck->fetch()) {
                 $pdo->exec("INSERT INTO gamification_rewards (title, description, coin_cost, icon, type, min_age, cooldown_days, is_active) VALUES ('Streak-Schild', 'Schützt deine Tages-Serie einmalig vor dem Zerbrechen, falls du mal einen Tag versäumst.', 40, '🛡️', 'item', NULL, 0, 1)");

@@ -216,6 +216,86 @@ class GamificationTaskRepository
     }
 
     /**
+     * Erstellt eine schnelle Ad-hoc-Aufgabe ohne Vorlage.
+     *
+     * @param array<string, mixed> $data
+     * @return int ID der neu erzeugten Aufgabe
+     */
+    public function createAdHocTask(array $data): int
+    {
+        $title = trim((string)($data['title'] ?? ''));
+        if ($title === '') {
+            throw new \InvalidArgumentException('Titel darf nicht leer sein.');
+        }
+
+        $description = !empty($data['description']) ? trim((string)$data['description']) : null;
+        $category = !empty($data['category']) ? trim((string)$data['category']) : 'haushalt';
+        $assignedId = !empty($data['assigned_profile_id']) ? (int)$data['assigned_profile_id'] : null;
+        $isBounty = ($assignedId === null) ? 1 : 0;
+        $originId = $assignedId;
+        $dueDate = !empty($data['due_date']) ? trim((string)$data['due_date']) : date('Y-m-d');
+        $dueTime = !empty($data['due_time']) ? trim((string)$data['due_time']) : null;
+        $baseCoins = max(1, (int)($data['base_coins'] ?? 20));
+        $baseXp = max(1, (int)($data['base_xp'] ?? 50));
+        $canEscalate = isset($data['can_escalate']) ? (int)(bool)$data['can_escalate'] : 1;
+        $status = !empty($data['status']) && in_array($data['status'], ['planned', 'in_progress'], true)
+            ? $data['status']
+            : 'planned';
+
+        $hasTaskCol = $this->hasCanEscalateColumn();
+        $colSql = $hasTaskCol ? ", can_escalate" : "";
+        $valSql = $hasTaskCol ? ", :can_escalate" : "";
+
+        $stmt = $this->db->getConnection()->prepare("
+            INSERT INTO gamification_tasks (
+                template_id, title, description, category,
+                assigned_profile_id, origin_profile_id, status, is_bounty,
+                due_date, due_time, base_xp, base_coins{$colSql}
+            ) VALUES (
+                NULL, :title, :description, :category,
+                :assigned_profile_id, :origin_profile_id, :status, :is_bounty,
+                :due_date, :due_time, :base_xp, :base_coins{$valSql}
+            )
+        ");
+
+        $params = [
+            'title' => $title,
+            'description' => $description,
+            'category' => $category,
+            'assigned_profile_id' => $assignedId,
+            'origin_profile_id' => $originId,
+            'status' => $status,
+            'is_bounty' => $isBounty,
+            'due_date' => $dueDate,
+            'due_time' => $dueTime,
+            'base_xp' => $baseXp,
+            'base_coins' => $baseCoins,
+        ];
+        if ($hasTaskCol) {
+            $params['can_escalate'] = $canEscalate;
+        }
+
+        $stmt->execute($params);
+
+        return (int)$this->db->getConnection()->lastInsertId();
+    }
+
+    private function hasCanEscalateColumn(): bool
+    {
+        static $hasCol = null;
+        if ($hasCol !== null) {
+            return $hasCol;
+        }
+        try {
+            $stmt = $this->db->getConnection()->query("SHOW COLUMNS FROM gamification_tasks LIKE 'can_escalate'");
+            $hasCol = (bool)$stmt->fetch();
+        } catch (\Throwable) {
+            $hasCol = false;
+        }
+        return $hasCol;
+    }
+
+    /**
      * Löscht eine Aufgabe vollständig (inkl. Helfer-Einträge und Koch-Rezept).
      * Nur für Admins im Test-/Entwicklungsmodus gedacht.
      */

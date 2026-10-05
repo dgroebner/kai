@@ -75,6 +75,9 @@ class GamificationTemplateRepository
         $assignedProfileId = !empty($data['assigned_profile_id']) ? (int)$data['assigned_profile_id'] : null;
         $canEscalate = isset($data['can_escalate']) ? (int)(bool)$data['can_escalate'] : 1;
         $isActive = isset($data['is_active']) ? (int)(bool)$data['is_active'] : 1;
+        $pausedFrom = !empty($data['paused_from']) ? trim((string)$data['paused_from']) : null;
+        $pausedUntil = !empty($data['paused_until']) ? trim((string)$data['paused_until']) : null;
+        $pauseReason = !empty($data['pause_reason']) ? trim((string)$data['pause_reason']) : null;
 
         $hasCol = $this->hasCanEscalateColumn('gamification_task_templates');
 
@@ -92,6 +95,9 @@ class GamificationTemplateRepository
                     due_time = :due_time,
                     assigned_profile_id = :assigned_profile_id,
                     {$escalateSql}
+                    paused_from = :paused_from,
+                    paused_until = :paused_until,
+                    pause_reason = :pause_reason,
                     is_active = :is_active
                 WHERE id = :id
             ");
@@ -105,6 +111,9 @@ class GamificationTemplateRepository
                 'recurrence_days' => $recurrenceDays,
                 'due_time' => $dueTime,
                 'assigned_profile_id' => $assignedProfileId,
+                'paused_from' => $pausedFrom,
+                'paused_until' => $pausedUntil,
+                'pause_reason' => $pauseReason,
                 'is_active' => $isActive,
                 'id' => $id,
             ];
@@ -120,10 +129,12 @@ class GamificationTemplateRepository
         $stmt = $this->db->getConnection()->prepare("
             INSERT INTO gamification_task_templates (
                 title, description, category, base_xp, base_coins,
-                recurrence, recurrence_days, due_time, assigned_profile_id{$colSql}, is_active
+                recurrence, recurrence_days, due_time, assigned_profile_id,
+                paused_from, paused_until, pause_reason{$colSql}, is_active
             ) VALUES (
                 :title, :description, :category, :base_xp, :base_coins,
-                :recurrence, :recurrence_days, :due_time, :assigned_profile_id{$valSql}, :is_active
+                :recurrence, :recurrence_days, :due_time, :assigned_profile_id,
+                :paused_from, :paused_until, :pause_reason{$valSql}, :is_active
             )
         ");
         $params = [
@@ -136,6 +147,9 @@ class GamificationTemplateRepository
             'recurrence_days' => $recurrenceDays,
             'due_time' => $dueTime,
             'assigned_profile_id' => $assignedProfileId,
+            'paused_from' => $pausedFrom,
+            'paused_until' => $pausedUntil,
+            'pause_reason' => $pauseReason,
             'is_active' => $isActive,
         ];
         if ($hasCol) {
@@ -144,6 +158,26 @@ class GamificationTemplateRepository
         $stmt->execute($params);
 
         return (int)$this->db->getConnection()->lastInsertId();
+    }
+
+    /**
+     * Pausiert eine wiederkehrende Vorlage für einen Zeitraum oder hebt die Pause auf.
+     */
+    public function setTemplatePause(int $templateId, ?string $from, ?string $until, ?string $reason): bool
+    {
+        $stmt = $this->db->getConnection()->prepare("
+            UPDATE gamification_task_templates SET
+                paused_from = :paused_from,
+                paused_until = :paused_until,
+                pause_reason = :pause_reason
+            WHERE id = :id
+        ");
+        return $stmt->execute([
+            'id' => $templateId,
+            'paused_from' => !empty($from) ? trim($from) : null,
+            'paused_until' => !empty($until) ? trim($until) : null,
+            'pause_reason' => !empty($reason) ? trim($reason) : null,
+        ]);
     }
 
     /**
@@ -171,6 +205,16 @@ class GamificationTemplateRepository
         $pdo = $this->db->getConnection();
         $hasTaskCol = $this->hasCanEscalateColumn('gamification_tasks');
 
+        // Kinder mit Urlaubs-/Pausenschutz (streak_freeze_until) ermitteln
+        $frozenProfileIds = [];
+        try {
+            $freezeStmt = $pdo->prepare("SELECT id FROM gamification_profiles WHERE streak_freeze_until IS NOT NULL AND streak_freeze_until >= :tdate");
+            $freezeStmt->execute(['tdate' => $targetDate]);
+            $frozenProfileIds = array_map('intval', $freezeStmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        } catch (\Throwable) {
+            $frozenProfileIds = [];
+        }
+
         foreach ($templates as $tmpl) {
             $shouldGenerate = false;
 
@@ -185,6 +229,20 @@ class GamificationTemplateRepository
 
             if (!$shouldGenerate) {
                 continue;
+            }
+
+            // 1. Vorlagen-Pause prüfen (z. B. Klassenfahrt / Urlaub)
+            if (!empty($tmpl['paused_until'])) {
+                $pauseFrom = !empty($tmpl['paused_from']) ? $tmpl['paused_from'] : '1970-01-01';
+                $pauseUntil = $tmpl['paused_until'];
+                if ($targetDate >= $pauseFrom && $targetDate <= $pauseUntil) {
+                    continue; // Für diesen Tag ausgesetzt
+                }
+            }
+
+            // 2. Kind-Pausenschutz prüfen (Urlaub im Profil)
+            if (!empty($tmpl['assigned_profile_id']) && in_array((int)$tmpl['assigned_profile_id'], $frozenProfileIds, true)) {
+                continue; // Zugewiesenes Kind ist auf Urlaub / Klassenfahrt
             }
 
             // Prüfen, ob bereits eine Aufgabe aus dieser Vorlage für den Tag existiert
