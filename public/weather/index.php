@@ -1658,23 +1658,76 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             $moonX = 1320;
                             $moonY = 210;
                             $moonR = 48;
+
+                            // Abnehmend (Waning) vs. Zunehmend (Waxing) ermitteln
+                            $isWaning = false;
+                            $phaseLower = mb_strtolower($moonPhaseName, 'UTF-8');
+                            if (str_contains($phaseLower, 'abnehm') || str_contains($phaseLower, 'letztes') || str_contains($phaseLower, 'waning')) {
+                                $isWaning = true;
+                            } elseif (str_contains($phaseLower, 'zunehm') || str_contains($phaseLower, 'erstes') || str_contains($phaseLower, 'waxing')) {
+                                $isWaning = false;
+                            } elseif (isset($forecast['daily']['moon_phase'][0])) {
+                                $rawP = (float)$forecast['daily']['moon_phase'][0];
+                                $isWaning = ($rawP > 0.5 && $rawP < 1.0);
+                            } elseif (isset($forecast['current']['moon_phase'])) {
+                                $rawP = (float)$forecast['current']['moon_phase'];
+                                $isWaning = ($rawP > 0.5 && $rawP < 1.0);
+                            }
+
+                            // Exakter SVG-Pfad für den beleuchteten Bereich (Nordhalbkugel)
+                            $rx = abs($moonIllum - 0.5) * 2 * $moonR;
+                            if ($moonIllum < 0.98 && $moonIllum > 0.02) {
+                                if ($rx < 0.5) {
+                                    // Exakter Halbmond (gerade Terminator-Kante)
+                                    $outerSweep = $isWaning ? 0 : 1;
+                                    $moonPath = "M 0,-{$moonR} A {$moonR},{$moonR} 0 0,{$outerSweep} 0,{$moonR} L 0,-{$moonR} Z";
+                                } elseif ($isWaning) {
+                                    // Abnehmend: linke Seite beleuchtet
+                                    $sweepTerminator = ($moonIllum < 0.5) ? 1 : 0;
+                                    $moonPath = "M 0,-{$moonR} A {$moonR},{$moonR} 0 0,0 0,{$moonR} A {$rx},{$moonR} 0 0,{$sweepTerminator} 0,-{$moonR} Z";
+                                } else {
+                                    // Zunehmend: rechte Seite beleuchtet
+                                    $sweepTerminator = ($moonIllum < 0.5) ? 0 : 1;
+                                    $moonPath = "M 0,-{$moonR} A {$moonR},{$moonR} 0 0,1 0,{$moonR} A {$rx},{$moonR} 0 0,{$sweepTerminator} 0,-{$moonR} Z";
+                                }
+                            } else {
+                                $moonPath = '';
+                            }
                             ?>
                             <g transform="translate(<?= $moonX ?>, <?= $moonY ?>)">
-                                <!-- Mond Halo / Leuchten -->
-                                <circle cx="0" cy="0" r="<?= $moonR + 8 ?>" fill="#f8fafc" opacity="0.12" filter="url(#moonGlowFilter)"/>
-                                <circle cx="0" cy="0" r="<?= $moonR ?>" fill="#f1f5f9"/>
+                                <defs>
+                                    <clipPath id="astroMoonIllumClip">
+                                        <?php if ($moonIllum >= 0.98): ?>
+                                            <circle cx="0" cy="0" r="<?= $moonR ?>"/>
+                                        <?php elseif (!empty($moonPath)): ?>
+                                            <path d="<?= $moonPath ?>"/>
+                                        <?php endif; ?>
+                                    </clipPath>
+                                </defs>
 
-                                <!-- Mond-Schattierung (Phasenmaske) -->
-                                <?php if ($moonIllum < 0.95): ?>
-                                    <!-- Schattenteil -->
-                                    <path d="M 0,-<?= $moonR ?> A <?= $moonR ?>,<?= $moonR ?> 0 0,0 0,<?= $moonR ?> A <?= abs($moonIllum - 0.5) * 2 * $moonR ?>,<?= $moonR ?> 0 0,<?= $moonIllum < 0.5 ? '1' : '0' ?> 0,-<?= $moonR ?> Z"
-                                          fill="#080e22" opacity="0.94"/>
+                                <!-- Mond Halo / Leuchten (skaliert mit Helligkeit) -->
+                                <?php if ($moonIllum > 0.05): ?>
+                                    <circle cx="0" cy="0" r="<?= $moonR + 8 ?>" fill="#f8fafc" opacity="<?= number_format(0.04 + 0.10 * $moonIllum, 2) ?>" filter="url(#moonGlowFilter)"/>
                                 <?php endif; ?>
 
-                                <!-- Mondkrater-Andeutung -->
-                                <circle cx="-14" cy="-10" r="9" fill="#cbd5e1" opacity="0.35"/>
-                                <circle cx="12" cy="15" r="11" fill="#cbd5e1" opacity="0.3"/>
-                                <circle cx="16" cy="-16" r="7" fill="#cbd5e1" opacity="0.25"/>
+                                <!-- Dunkler Mondkörper (Erdschein / Silhouette am Nachthimmel) -->
+                                <circle cx="0" cy="0" r="<?= $moonR ?>" fill="#080e22" stroke="rgba(255, 255, 255, 0.14)" stroke-width="1"/>
+
+                                <!-- Beleuchteter Mondbereich & Krater (nur im hellen Bereich sichtbar) -->
+                                <?php if ($moonIllum > 0.02): ?>
+                                    <g clip-path="url(#astroMoonIllumClip)">
+                                        <!-- Helle Mondoberfläche -->
+                                        <circle cx="0" cy="0" r="<?= $moonR ?>" fill="#f1f5f9"/>
+
+                                        <!-- Mondkrater (stilisiert, im hellen Bereich dezent und klar sichtbar) -->
+                                        <circle cx="-14" cy="-10" r="9" fill="#94a3b8" opacity="0.38"/>
+                                        <circle cx="-28" cy="12" r="7" fill="#94a3b8" opacity="0.34"/>
+                                        <circle cx="-22" cy="-24" r="5" fill="#94a3b8" opacity="0.30"/>
+                                        <circle cx="12" cy="15" r="11" fill="#94a3b8" opacity="0.38"/>
+                                        <circle cx="16" cy="-16" r="7" fill="#94a3b8" opacity="0.34"/>
+                                        <circle cx="28" cy="4" r="6" fill="#94a3b8" opacity="0.30"/>
+                                    </g>
+                                <?php endif; ?>
 
                                 <!-- Mond Beschriftung -->
                                 <text x="0" y="<?= $moonR + 24 ?>" text-anchor="middle" fill="#94a3b8" font-size="13" font-weight="600" letter-spacing="0.04em">
