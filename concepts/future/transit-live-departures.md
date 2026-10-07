@@ -10,10 +10,10 @@ Im Familienalltag existieren stark divergierende Mobilitätsmuster:
 * **Berufspendler (Eltern):** Pendelt an festen Wochentagen (z. B. Mo, Mi, Do) auf einer Direktverbindung (z. B. Meusdorf $\leftrightarrow$ Augustusplatz mit Tram 15). Der morgendliche Start ist relativ fest, während der Feierabend nachmittags/abends zeitlich stark variiert.
 * **Schüler (Kinder):** Pendeln an Schultagen (Mo–Fr), jedoch **nicht in den Ferien**. Es existieren Umsteigeverbindungen mit individuellen Komfort-Präferenzen (z. B. bevorzugte Straßenbahnnutzung mit kurzem Fußweg statt Bus; Vermeidung von anfälligen Umstiegen).
 * **Dynamik im Alltag:** 
-  * Unterrichtsausfälle (z. B. Entfall der 1. Stunde) verschieben den morgendlichen Start um 45–90 Minuten.
-  * Spontanes Arbeitsende erfordert eine punktgenaue Live-Auskunft am Schreibtisch oder Smartphone (*„Muss ich zur Haltestelle rennen oder kann ich noch 8 Minuten warten?“*).
+  * Variable Feierabendzeiten beim Berufspendler erfordern eine punktgenaue Live-Auskunft am Schreibtisch oder Smartphone (*„Muss ich zur Haltestelle rennen oder kann ich noch 8 Minuten warten?“*).
+  * Da die Berufsschule der Tochter kein digitales Vertretungssystem (wie Indiware/beste.schule) anbietet, liegen in Kai keine automatischen Ausfalldaten vor. Ihr Schulweg basiert daher auf einem festen Soll-Zeitfenster an Schultagen – mit automatischer Ferienpause in den sächsischen Schulferien sowie manueller Ad-hoc-Verschiebung im UI bei Bedarf.
 
-Standard-Apps (wie LeipzigMOVE oder DB Navigator) decken diese individuelle Familien- und Hauslogik nicht ab. Kai kann dank der bereits vorhandenen Vertretungsplan- und Schulferienlogik (`SchoolService`) sowie des personalisierten Daily Briefings einen maßgeschneiderten Pendler-Assistenten bereitstellen.
+Standard-Apps (wie LeipzigMOVE oder DB Navigator) decken diese individuelle Familien- und Hauslogik nicht ab. Kai kann dank der bereits vorhandenen Ferien- und Feiertagslogik (`SchoolService`), der individuellen Präferenzfilter und des personalisierten Daily Briefings einen maßgeschneiderten Pendler-Assistenten bereitstellen.
 
 ---
 
@@ -32,8 +32,8 @@ Da die alte DB-HAFAS-Schnittstelle dauerhaft abgeschaltet wurde und die LVB kein
 
 Es wurde geprüft, ob die API-Abfragen über einen lokalen Heimserver (Raspberry Pi) laufen sollten. Die Entscheidung fällt eindeutig für den **direkten Aufruf im PHP-Backend (Pull-Prinzip on demand)** aus:
 
-1. **Dynamische Abfahrtszeiten (Schulplan):** Kai kennt durch `SchoolService` den Vertretungsplan (Indiware / beste.schule). Wenn die 1. Stunde ausfällt, verschiebt Kai den Abfragefokus automatisch. Ein starrer Cron-Push auf einem Raspi könnte dies nicht abbilden.
-2. **Spontaner Feierabend:** Beim Verlassen des Büros wird der Abfahrtsmonitor ad-hoc auf dem Smartphone aufgerufen. Das PHP-Backend liefert den Live-Status innerhalb von < 150 ms.
+1. **Spontaner Feierabend & variable Zeiten:** Beim Verlassen des Büros wird der Abfahrtsmonitor ad-hoc auf dem Smartphone aufgerufen. Das PHP-Backend liefert den Live-Status innerhalb von < 150 ms für die exakte Minute des Aufbruchs.
+2. **Schulweg & Ferienlogik (ohne Vertretungsplan):** Da für die Berufsschule kein digitaler Vertretungsplan vorliegt, greift Kai auf das konfigurierte Soll-Zeitfenster (Mo–Fr) zurück und pausiert das Profil über `SchoolService` vollautomatisch während der sächsischen Schulferien und an Feiertagen. Ein starrer Cron-Push auf einem Raspi könnte weder ad-hoc-Aufrufe noch diese Ferienintelligenz sauber abbilden.
 3. **Keine Netzwerkbarrieren:** Kein Einrichten von Reverse-Tunneln, VPNs oder Portweiterleitungen vom Webserver zum Heim-Raspi.
 4. **Kein Rate-Limit-Risiko:** Das Abfragevolumen beschränkt sich auf wenige gezielte Aufrufe pro Tag (< 20 Calls). Ein **60-Sekunden-Transient-Cache** in Kai verhindert Mehrfachabfragen bei schnellen Seiten-Reloads.
 
@@ -47,8 +47,8 @@ Jedes Profil repräsentiert eine regelmäßige Verbindung einer Person:
 * **Personenbezug:** Verknüpfung mit Benutzerkonto (`user_email`) oder Schüler (`school_students.id`).
 * **Start- & Zielhaltestelle:** Name und HAFAS/IBNR-Stations-ID (z. B. `Leipzig, Meusdorf` $\rightarrow$ `Leipzig, Augustusplatz`).
 * **Wochentage:** Bitmaske oder JSON-Array (z. B. `[1, 3, 4]` für Mo, Mi, Do).
-* **Schultags-Kopplung (`only_school_days`):** Ist dieses Flag aktiv, wird das Profil automatisch an Wochenenden, Feiertagen und während der sächsischen Schulferien stummgeschaltet.
-* **Dynamischer Zeitversatz:** Bei Schülern Abgleich mit `school_lessons`: Fällt die erste Stunde aus, verschiebt sich das morgendliche Suchfenster entsprechend.
+* **Schultags- & Ferien-Kopplung (`only_school_days`):** Ist dieses Flag aktiv, wird das Profil automatisch an Wochenenden, Feiertagen und während der sächsischen Schulferien stummgeschaltet (gekoppelt an `SchoolService`).
+* **Manuelle Zeitverschiebung (UI):** Da an der Berufsschule kein automatischer Vertretungsplan vorliegt, bietet das UI für den Morgen eine Schnellauswahl (z. B. *„Heute 1 Std. später“*), um das Abfragefenster bei bekannten Ausfällen ad-hoc anzupassen.
 * **Verkehrsmittel- & Routenpräferenzen:**
   * `transport_modes`: z. B. `["tram"]` (schließt Busse explizit aus).
   * `preferred_lines`: z. B. `["15", "2"]`.
@@ -137,7 +137,8 @@ CREATE TABLE IF NOT EXISTS transit_cache (
 
 2. **Phase 2: Profilverwaltung & Schulferien-Kopplung**
    * CRUD für Pendlerprofile in `TransitProfileRepository`.
-   * Anbindung an `SchoolService` zur Schultags- und Stundenplan-Erkennung.
+   * Anbindung an `SchoolService` zur Schultags- und sächsischen Ferien-Erkennung (automatische Ferienpause).
+   * Schnellauswahl für manuelle Abfahrtsverschiebungen im UI.
 
 3. **Phase 3: Daily Briefing & UI-Integration**
    * Integration des `Transit`-Widgets in `BriefingService`.
