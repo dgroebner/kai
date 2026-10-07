@@ -173,6 +173,60 @@ class BesteSchuleRepository
         ");
     }
 
+    /**
+     * Entfernt Notizen eines Schülers im angegebenen Datumsbereich, die in beste.schule
+     * nicht mehr existieren (z. B. gelöschte oder auf einen anderen Tag verschobene Klassenarbeiten/Aufgaben).
+     *
+     * @param int $studentId
+     * @param string $fromDate YYYY-MM-DD
+     * @param string $toDate YYYY-MM-DD
+     * @param int[] $activeApiNoteIds Liste der aktuell in der API vorhandenen api_note_id Werte
+     * @return int Anzahl gelöschter Notizen
+     */
+    public function deleteObsoleteNotes(int $studentId, string $fromDate, string $toDate, array $activeApiNoteIds): int
+    {
+        $pdo = $this->db->getConnection();
+
+        if (empty($activeApiNoteIds)) {
+            $stmt = $pdo->prepare("
+                DELETE FROM school_beste_notes
+                WHERE student_id = :student_id
+                  AND lesson_date >= :from_date
+                  AND lesson_date <= :to_date
+            ");
+            $stmt->execute([
+                ':student_id' => $studentId,
+                ':from_date' => $fromDate,
+                ':to_date' => $toDate,
+            ]);
+            return $stmt->rowCount();
+        }
+
+        $placeholders = implode(',', array_fill(0, count($activeApiNoteIds), '?'));
+        $sql = "DELETE FROM school_beste_notes
+                WHERE student_id = ?
+                  AND lesson_date >= ?
+                  AND lesson_date <= ?
+                  AND api_note_id NOT IN ($placeholders)";
+
+        $params = array_merge([$studentId, $fromDate, $toDate], array_values($activeApiNoteIds));
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Bereinigt vergangene Notizen älter als X Tage, um die Datenbank schlank zu halten.
+     */
+    public function cleanupOldNotes(int $daysOld = 30): int
+    {
+        $pdo = $this->db->getConnection();
+        $cutoff = date('Y-m-d', strtotime("-{$daysOld} days"));
+        $stmt = $pdo->prepare("DELETE FROM school_beste_notes WHERE lesson_date < :cutoff");
+        $stmt->execute([':cutoff' => $cutoff]);
+        return $stmt->rowCount();
+    }
+
     // -------------------------------------------------------------------------
     // QUERIES (Lesen pro Kind/er)
     // -------------------------------------------------------------------------

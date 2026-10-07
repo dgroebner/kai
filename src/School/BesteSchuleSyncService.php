@@ -127,25 +127,31 @@ class BesteSchuleSyncService
                 }
             }
             
-            // 4. Hausaufgaben (Notes) für die nächsten 14 Tage abrufen
+            // 4. Hausaufgaben (Notes) für die nächsten 30 Tage abrufen
             $this->repo->deleteDuplicateNotes();
             $fromDate = date('Y-m-d');
-            $toDate = date('Y-m-d', strtotime('+14 days'));
+            $toDate = date('Y-m-d', strtotime('+30 days'));
             $lessonsWithNotes = $this->client->getUpcomingLessonsWithNotes($bsId, $fromDate, $toDate);
             if (is_array($lessonsWithNotes)) {
                 if (!isset($stats['notes'])) $stats['notes'] = 0;
+                if (!isset($stats['notes_deleted'])) $stats['notes_deleted'] = 0;
                 $newNotes = [];
+                $activeApiNoteIds = [];
                 foreach ($lessonsWithNotes as $lesson) {
                     if (empty($lesson['notes']) || !is_array($lesson['notes'])) continue;
                     
                     foreach ($lesson['notes'] as $note) {
+                        $apiNoteId = (int)($note['id'] ?? 0);
+                        if ($apiNoteId <= 0) continue;
+
+                        $activeApiNoteIds[] = $apiNoteId;
                         $isNew = $this->repo->upsertNote([
                             'student_id' => $kaiId,
                             'lesson_date' => $lesson['day']['date'] ?? date('Y-m-d'),
                             'subject' => $lesson['subject']['name'] ?? 'Unbekannt',
                             'type_name' => $note['type']['name'] ?? 'Notiz',
                             'description' => $note['description'] ?? '',
-                            'api_note_id' => (int)$note['id']
+                            'api_note_id' => $apiNoteId
                         ]);
                         $stats['notes']++;
                         if ($isNew) {
@@ -155,6 +161,20 @@ class BesteSchuleSyncService
                             ];
                         }
                     }
+                }
+
+                $activeApiNoteIds = array_values(array_unique($activeApiNoteIds));
+
+                // In beste.schule nicht mehr vorhandene oder verschobene Notizen im Zeitfenster auch in Kai entfernen
+                $deletedNotesCount = $this->repo->deleteObsoleteNotes($kaiId, $fromDate, $toDate, $activeApiNoteIds);
+                if ($deletedNotesCount > 0) {
+                    $stats['notes_deleted'] += $deletedNotesCount;
+                    $this->logger->info("BesteSchuleSync: {$deletedNotesCount} nicht mehr vorhandene oder verschobene Notiz(en) für {$student['name']} entfernt.", [
+                        'student_id' => $kaiId,
+                        'from_date' => $fromDate,
+                        'to_date' => $toDate,
+                        'deleted_count' => $deletedNotesCount
+                    ]);
                 }
 
                 if (!empty($newNotes)) {
@@ -176,6 +196,8 @@ class BesteSchuleSyncService
 
         // Bestehende Duplikate (z. B. aus Doppelstunden) aufräumen
         $this->repo->deleteDuplicateNotes();
+        // Veraltete Notizen älter als 30 Tage aus der Vergangenheit bereinigen
+        $this->repo->cleanupOldNotes(30);
 
         $this->logger->info("BesteSchuleSyncService: Sync abgeschlossen", $stats);
         return ['success' => true, 'message' => "Sync erfolgreich", 'stats' => $stats];
