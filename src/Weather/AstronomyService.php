@@ -11,7 +11,7 @@ class AstronomyService
 {
     private ?PDO $pdo;
     private Logger $logger;
-    private WeatherService $weatherService;
+    private ?WeatherService $weatherService;
 
     public function __construct(
         ?PDO $pdo = null,
@@ -19,7 +19,11 @@ class AstronomyService
         ?WeatherService $weatherService = null
     ) {
         $this->logger = $logger ?? new Logger();
-        $this->weatherService = $weatherService ?? new WeatherService();
+        try {
+            $this->weatherService = $weatherService ?? new WeatherService();
+        } catch (Throwable $e) {
+            $this->weatherService = null;
+        }
         try {
             $this->pdo = $pdo ?? Database::getInstance()->getConnection();
         } catch (Throwable $e) {
@@ -41,12 +45,13 @@ class AstronomyService
                 $row = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
 
             if ($row) {
+                $planets = !empty($row['visible_planets_json']) ? json_decode($row['visible_planets_json'], true) : $this->getDefaultPlanets();
                 return [
                     'kp_current' => (float)($row['kp_current'] ?? 0.0),
                     'kp_max_next_24h' => (float)($row['kp_max_next_24h'] ?? 0.0),
                     'kp_forecast' => !empty($row['kp_forecast_json']) ? json_decode($row['kp_forecast_json'], true) : [],
                     'aurora_chance' => (string)($row['aurora_chance'] ?? 'none'),
-                    'visible_planets' => !empty($row['visible_planets_json']) ? json_decode($row['visible_planets_json'], true) : $this->getDefaultPlanets(),
+                    'visible_planets' => $this->enrichPlanetsWithVisibility($planets),
                     'active_meteor_showers' => !empty($row['active_meteor_showers_json']) ? json_decode($row['active_meteor_showers_json'], true) : [],
                     'moon_phase_name' => (string)($row['moon_phase_name'] ?? 'Mondphase'),
                     'moon_illumination' => isset($row['moon_illumination']) ? (float)$row['moon_illumination'] : 0.5,
@@ -64,7 +69,7 @@ class AstronomyService
             'kp_max_next_24h' => 2.5,
             'kp_forecast' => [],
             'aurora_chance' => 'none',
-            'visible_planets' => $this->getDefaultPlanets(),
+            'visible_planets' => $this->enrichPlanetsWithVisibility($this->getDefaultPlanets()),
             'active_meteor_showers' => [],
             'moon_phase_name' => 'Halbmond',
             'moon_illumination' => 0.5,
@@ -129,7 +134,7 @@ class AstronomyService
      */
     public function getNightViewingConditions(): array
     {
-        $forecast = $this->weatherService->getForecastFromDb();
+        $forecast = $this->weatherService ? $this->weatherService->getForecastFromDb() : null;
         $state = $this->getState();
 
         $hourlyTime = $forecast['hourly']['time'] ?? [];
@@ -249,6 +254,196 @@ class AstronomyService
      *
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * Liefert strukturierte Mond-Informationen inklusive Sichtbarkeitszeitraum für die Anzeige.
+     *
+     * @param array<string, mixed>|null $forecast
+     * @param float|null $overridePhase Optionale Testphase (0.0 bis 1.0)
+     * @return array<string, mixed>
+     */
+    public function getMoonInfo(?array $forecast = null, ?float $overridePhase = null): array
+    {
+        if ($forecast === null) {
+            try {
+                $forecast = $this->weatherService->getForecastFromDb();
+            } catch (Throwable $e) {
+                $forecast = null;
+            }
+        }
+
+        $state = $this->getState();
+        $moonPhaseName = (string)($state['moon_phase_name'] ?? 'Mond');
+        $moonIllum = isset($state['moon_illumination']) ? (float)$state['moon_illumination'] : 0.5;
+
+        // Fallback: Phase aus Wetterprognose heranziehen
+        $rawPhase = null;
+        if ($overridePhase !== null) {
+            $rawPhase = $overridePhase;
+            $moonIllum = 0.5 * (1.0 - cos($rawPhase * 2.0 * M_PI));
+            $moonPhaseName = $this->getMoonPhaseNameFromRaw($rawPhase);
+        } elseif (isset($forecast['daily']['moon_phase'][0])) {
+            $rawPhase = (float)$forecast['daily']['moon_phase'][0];
+        } elseif (isset($forecast['current']['moon_phase'])) {
+            $rawPhase = (float)$forecast['current']['moon_phase'];
+        }
+
+        if ($overridePhase === null && $rawPhase !== null && ($moonPhaseName === 'Mond' || $moonPhaseName === 'Mondphase' || empty($moonPhaseName))) {
+            $moonPhaseName = $this->getMoonPhaseNameFromRaw($rawPhase);
+        }
+
+        // Neumond-Prüfung
+        $isNewMoon = ($moonIllum < 0.03 || mb_stripos($moonPhaseName, 'neumond') !== false);
+        if ($rawPhase !== null && ($rawPhase < 0.03 || $rawPhase > 0.97)) {
+            $isNewMoon = true;
+        }
+
+        $isFullMoon = ($moonIllum >= 0.95 || ($rawPhase !== null && $rawPhase >= 0.47 && $rawPhase <= 0.53) || mb_stripos($moonPhaseName, 'vollmond') !== false);
+        $illumPct = (int)round($moonIllum * 100);
+
+        // Dynamische Beschreibung
+        if ($isNewMoon) {
+            $description = 'Neumond steht tagsüber nahe der Sonne und bleibt nachts unsichtbar.';
+        } elseif ($isFullMoon) {
+            $description = "Vollmond leuchtet die gesamte Nacht mit maximaler Helligkeit ({$illumPct}%).";
+        } elseif (mb_stripos($moonPhaseName, 'zunehm') !== false) {
+            $description = "Zunehmender Mond ({$illumPct}% beleuchtet) am Abend- und Nachthimmel zu sehen.";
+        } elseif (mb_stripos($moonPhaseName, 'abnehm') !== false) {
+            $description = "Abnehmender Mond ({$illumPct}% beleuchtet), vor allem ab Mitternacht bis in die Morgenstunden.";
+        } else {
+            $description = "{$moonPhaseName} mit {$illumPct}% Beleuchtung am Nachthimmel.";
+        }
+
+        // Auf- und Untergangszeiten ermitteln
+        $todayRiseStr = $forecast['daily']['moonrise'][0] ?? null;
+        $todaySetStr = $forecast['daily']['moonset'][0] ?? null;
+        $tomorrowRiseStr = $forecast['daily']['moonrise'][1] ?? null;
+        $tomorrowSetStr = $forecast['daily']['moonset'][1] ?? null;
+
+        $riseTime = null;
+        $setTime = null;
+        $visibilityWindow = null;
+
+        if ($todayRiseStr) {
+            $tRise = strtotime(is_array($todayRiseStr) ? (string)$todayRiseStr[0] : (string)$todayRiseStr);
+            $tSet = $todaySetStr ? strtotime(is_array($todaySetStr) ? (string)$todaySetStr[0] : (string)$todaySetStr) : null;
+            $tTomSet = $tomorrowSetStr ? strtotime(is_array($tomorrowSetStr) ? (string)$tomorrowSetStr[0] : (string)$tomorrowSetStr) : null;
+
+            $riseTime = date('H:i', $tRise) . ' Uhr';
+
+            if ($tSet && $tSet > $tRise) {
+                // Geht heute vor Mitternacht unter
+                $setTime = date('H:i', $tSet) . ' Uhr';
+                $visibilityWindow = date('H:i', $tRise) . ' – ' . date('H:i', $tSet) . ' Uhr';
+            } elseif ($tTomSet) {
+                // Geht morgen früh unter
+                $setTime = date('H:i', $tTomSet) . ' Uhr';
+                $visibilityWindow = date('H:i', $tRise) . ' – ' . date('H:i', $tTomSet) . ' Uhr';
+            } elseif ($tSet) {
+                $setTime = date('H:i', $tSet) . ' Uhr';
+                $visibilityWindow = date('H:i', $tRise) . ' – ' . date('H:i', $tSet) . ' Uhr';
+            } else {
+                $visibilityWindow = 'ab ' . date('H:i', $tRise) . ' Uhr';
+            }
+        } elseif ($tomorrowRiseStr) {
+            // Geht erst in der zweiten Nachthälfte auf
+            $tTomRise = strtotime(is_array($tomorrowRiseStr) ? (string)$tomorrowRiseStr[0] : (string)$tomorrowRiseStr);
+            $riseTime = date('H:i', $tTomRise) . ' Uhr';
+            if ($tomorrowSetStr) {
+                $tTomSet = strtotime(is_array($tomorrowSetStr) ? (string)$tomorrowSetStr[0] : (string)$tomorrowSetStr);
+                $setTime = date('H:i', $tTomSet) . ' Uhr';
+                $visibilityWindow = date('H:i', $tTomRise) . ' – ' . date('H:i', $tTomSet) . ' Uhr';
+            } else {
+                $visibilityWindow = 'ab ' . date('H:i', $tTomRise) . ' Uhr';
+            }
+        } elseif ($todaySetStr) {
+            // Geht heute unter (Stand schon am Himmel)
+            $tSet = strtotime(is_array($todaySetStr) ? (string)$todaySetStr[0] : (string)$todaySetStr);
+            $setTime = date('H:i', $tSet) . ' Uhr';
+            $visibilityWindow = 'bis ' . date('H:i', $tSet) . ' Uhr';
+        }
+
+        // Falls keine Messdaten vorliegen: harmonische astronomische Schätzung anhand der Phase
+        if (!$visibilityWindow && !$isNewMoon) {
+            if ($isFullMoon) {
+                $riseTime = '18:45 Uhr';
+                $setTime = '06:30 Uhr';
+                $visibilityWindow = '18:45 – 06:30 Uhr';
+            } elseif ($rawPhase !== null && $rawPhase < 0.5) {
+                $riseTime = '13:15 Uhr';
+                $setTime = '23:45 Uhr';
+                $visibilityWindow = '19:30 – 23:45 Uhr';
+            } else {
+                $riseTime = '00:30 Uhr';
+                $setTime = '13:00 Uhr';
+                $visibilityWindow = '00:30 – 06:15 Uhr';
+            }
+        }
+
+        $bestTime = $isFullMoon ? 'Ganze Nacht' : (mb_stripos($moonPhaseName, 'zunehm') !== false ? 'Abend / Vormitternacht' : (mb_stripos($moonPhaseName, 'abnehm') !== false ? 'Zweite Nachthälfte' : 'Nacht'));
+        $magnitude = $isFullMoon ? -12.7 : ($illumPct > 50 ? -11.5 : -9.5);
+
+        return [
+            'name' => 'Moon',
+            'name_de' => 'Mond',
+            'phase_name' => $moonPhaseName,
+            'illumination' => $moonIllum,
+            'illumination_pct' => $illumPct,
+            'is_new_moon' => $isNewMoon,
+            'is_visible' => !$isNewMoon,
+            'color' => '#f8fafc',
+            'description' => $description,
+            'rise_time' => $riseTime,
+            'set_time' => $setTime,
+            'visibility_window' => $visibilityWindow,
+            'magnitude' => $magnitude,
+            'best_time' => $bestTime,
+        ];
+    }
+
+    private function getMoonPhaseNameFromRaw(float $phase): string
+    {
+        if ($phase < 0.03 || $phase > 0.97) return 'Neumond';
+        if ($phase < 0.22) return 'Zunehmende Sichel';
+        if ($phase <= 0.28) return 'Erstes Viertel';
+        if ($phase < 0.47) return 'Zunehmender Dreiviertelmond';
+        if ($phase <= 0.53) return 'Vollmond';
+        if ($phase < 0.72) return 'Abnehmender Dreiviertelmond';
+        if ($phase <= 0.78) return 'Letztes Viertel';
+        return 'Abnehmende Sichel';
+    }
+
+    /**
+     * Ergänzt Planeten-Einträge um einen formatierten Sichtbarkeitszeitraum.
+     *
+     * @param array<int, array<string, mixed>> $planets
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrichPlanetsWithVisibility(array $planets): array
+    {
+        foreach ($planets as &$p) {
+            if (empty($p['visibility_window'])) {
+                if (!empty($p['visibility_time'])) {
+                    $p['visibility_window'] = (string)$p['visibility_time'];
+                } elseif (!empty($p['visible_from']) && !empty($p['visible_to'])) {
+                    $p['visibility_window'] = $p['visible_from'] . ' – ' . $p['visible_to'] . (str_contains((string)$p['visible_to'], 'Uhr') ? '' : ' Uhr');
+                } elseif (!empty($p['rise_time']) && !empty($p['set_time'])) {
+                    $p['visibility_window'] = $p['rise_time'] . ' – ' . $p['set_time'] . ' Uhr';
+                } elseif (!empty($p['rise_time'])) {
+                    $p['visibility_window'] = 'ab ' . $p['rise_time'] . ' Uhr';
+                } elseif (!empty($p['set_time'])) {
+                    $p['visibility_window'] = 'bis ' . $p['set_time'] . ' Uhr';
+                }
+            }
+        }
+        unset($p);
+        return $planets;
+    }
+
+    /**
+     * Standard-Planeten für die Anzeige, falls noch keine Ingest-Daten vorliegen.
+     *
+     * @return array<int, array<string, mixed>>
+     */
     private function getDefaultPlanets(): array
     {
         return [
@@ -263,6 +458,7 @@ class AstronomyService
                 'magnitude' => -4.1,
                 'rise_time' => '07:30',
                 'set_time' => '20:45',
+                'visibility_window' => '19:45 – 20:45 Uhr',
                 'best_time' => 'Dämmerung',
                 'description' => 'Brillant strahlender Abendstern tief im Westen.',
             ],
@@ -277,6 +473,7 @@ class AstronomyService
                 'magnitude' => -2.6,
                 'rise_time' => '21:15',
                 'set_time' => '08:40',
+                'visibility_window' => '21:15 – 06:00 Uhr',
                 'best_time' => '01:30 Uhr',
                 'description' => 'Sehr hell und die ganze Nacht über hoch am Südhimmel sichtbar.',
             ],
@@ -291,6 +488,7 @@ class AstronomyService
                 'magnitude' => 0.6,
                 'rise_time' => '18:50',
                 'set_time' => '04:10',
+                'visibility_window' => '19:30 – 04:10 Uhr',
                 'best_time' => '23:00 Uhr',
                 'description' => 'Ruhig leuchtender Ringplanet im Sternbild Wassermann.',
             ],
@@ -305,6 +503,7 @@ class AstronomyService
                 'magnitude' => -0.2,
                 'rise_time' => '22:40',
                 'set_time' => '11:15',
+                'visibility_window' => '22:40 – 05:30 Uhr',
                 'best_time' => '04:00 Uhr',
                 'description' => 'Rötlich funkelnd in der zweiten Nachthälfte.',
             ],

@@ -41,12 +41,14 @@ foreach ($histRows as $r) {
     $astroState = $astronomyService->getState();
     $astroConditions = $astronomyService->getNightViewingConditions();
     $astroEvents = $astronomyService->getUpcomingEvents(12);
+    $moonInfo = $astronomyService->getMoonInfo($forecast);
 } catch (Exception $e) {
     $forecast = null;
     $sensorData = null;
     $astroState = null;
     $astroConditions = null;
     $astroEvents = [];
+    $moonInfo = null;
 }
 
 $evaluator = new WeatherEvaluator();
@@ -254,7 +256,12 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 if (isset($_GET['dbg_wind']))       $windSpeed    = max(0, min(120, (int)$_GET['dbg_wind']));
                 if (isset($_GET['dbg_gusts']))      $windGusts    = max(0, min(150, (int)$_GET['dbg_gusts']));
                 if (isset($_GET['dbg_winddir']))    $windDirection = max(0, min(360, (int)$_GET['dbg_winddir']));
-                if (isset($_GET['dbg_moon']))       $moonPhase    = max(0.0, min(1.0, (float)$_GET['dbg_moon']));
+                if (isset($_GET['dbg_moon'])) {
+                    $moonPhase = max(0.0, min(1.0, (float)$_GET['dbg_moon']));
+                    if (!empty($astronomyService)) {
+                        $moonInfo = $astronomyService->getMoonInfo($forecast, $moonPhase);
+                    }
+                }
                 if (isset($_GET['dbg_season']))     {
                     $allowedSeasons = ['spring.jpeg', 'summer.jpeg', 'autmn.jpeg', 'winter.jpeg'];
                     $s = $_GET['dbg_season'];
@@ -1923,9 +1930,40 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     </div>
                 </div>
 
-                <!-- 4. Sichtbare Planeten heute Nacht -->
-                <h4 style="margin-bottom: 1rem;">Sichtbare Planeten heute Nacht in Leipzig</h4>
+                <!-- 4. Mond & sichtbare Planeten heute Nacht -->
+                <h4 style="margin-bottom: 1rem;">Mond &amp; sichtbare Planeten heute Nacht in Leipzig</h4>
                 <div class="astronomy-planets-grid">
+                    <?php if (!empty($moonInfo)): ?>
+                        <div class="astronomy-planet-card">
+                            <div class="astronomy-planet-header">
+                                <div class="astronomy-planet-title">
+                                    <span class="planet-dot" style="color: <?= htmlspecialchars($moonInfo['color'] ?? '#f8fafc') ?>; background: <?= htmlspecialchars($moonInfo['color'] ?? '#f8fafc') ?>; box-shadow: 0 0 10px rgba(248, 250, 252, 0.85);"></span>
+                                    <span><?= htmlspecialchars($moonInfo['name_de'] ?? 'Mond') ?></span>
+                                </div>
+                                <span class="badge <?= !empty($moonInfo['is_visible']) ? 'badge-success' : 'badge-neutral' ?>" style="font-size: 0.75rem;">
+                                    <?= !empty($moonInfo['is_visible']) ? 'Sichtbar' : 'Neumond' ?>
+                                </span>
+                            </div>
+
+                            <p style="font-size: 0.85rem; color: var(--text-primary); margin: 0; min-height: 2.4em;">
+                                <?= htmlspecialchars($moonInfo['description'] ?? '') ?>
+                            </p>
+
+                            <div class="astronomy-planet-meta">
+                                <div>Phase: <strong><?= htmlspecialchars($moonInfo['phase_name'] ?? 'Mond') ?></strong></div>
+                                <div>Beleuchtung: <strong><?= (int)($moonInfo['illumination_pct'] ?? 0) ?>%</strong></div>
+                                <div>Aufgang: <strong><?= htmlspecialchars($moonInfo['rise_time'] ?? '--:--') ?></strong></div>
+                                <div>Untergang: <strong><?= htmlspecialchars($moonInfo['set_time'] ?? '--:--') ?></strong></div>
+                                <?php if (!empty($moonInfo['is_visible']) && !empty($moonInfo['visibility_window'])): ?>
+                                    <div class="astronomy-planet-visibility">
+                                        <span>Sichtbarkeitszeitraum:</span>
+                                        <strong><?= htmlspecialchars($moonInfo['visibility_window']) ?></strong>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <?php foreach (($astroState['visible_planets'] ?? []) as $planet): ?>
                         <div class="astronomy-planet-card">
                             <div class="astronomy-planet-header">
@@ -1947,6 +1985,12 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <div>Richtung: <strong><?= htmlspecialchars($planet['direction'] ?? 'S') ?></strong></div>
                                 <div>Helligkeit: <strong><?= htmlspecialchars((string)($planet['magnitude'] ?? '0.0')) ?> mag</strong></div>
                                 <div>Beste Zeit: <strong><?= htmlspecialchars($planet['best_time'] ?? 'Nacht') ?></strong></div>
+                                <?php if (!empty($planet['is_visible']) && !empty($planet['visibility_window'])): ?>
+                                    <div class="astronomy-planet-visibility">
+                                        <span>Sichtbarkeitszeitraum:</span>
+                                        <strong><?= htmlspecialchars($planet['visibility_window']) ?></strong>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
