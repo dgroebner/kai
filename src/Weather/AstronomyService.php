@@ -88,23 +88,81 @@ class AstronomyService
     {
         if ($this->pdo) {
             try {
+                // Abfrage mit Puffer, um nachfolgende Duplikate wiederkehrender Ereignisse filtern zu können
+                $fetchLimit = max(24, $limit * 2);
                 $stmt = $this->pdo->prepare("
                     SELECT * FROM weather_astronomy_events
                     WHERE event_date >= CURDATE()
                     ORDER BY event_date ASC, peak_time ASC
                     LIMIT :limit
                 ");
-                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->bindValue(':limit', $fetchLimit, PDO::PARAM_INT);
                 $stmt->execute();
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 if (!empty($rows)) {
                     $events = [];
+                    $seenShowers = [];
+                    $seenTitles = [];
+
+                    $showerNames = [
+                        'quadrantid', 'lyrid', 'aquariid', 'perseid',
+                        'orionid', 'leonid', 'geminid', 'ursid'
+                    ];
+
                     foreach ($rows as $r) {
                         $r['details'] = !empty($r['details_json']) ? json_decode($r['details_json'], true) : [];
                         unset($r['details_json']);
+
+                        // Basis-Schlüssel ohne Jahreszahl ermitteln (z. B. "orionids-2026" -> "orionids")
+                        $eventKey = (string)($r['event_key'] ?? '');
+                        $baseKey = preg_replace('/-\d{4}$/', '', $eventKey);
+                        if (empty($baseKey)) {
+                            $baseKey = explode('-', $eventKey)[0] ?? $eventKey;
+                        }
+
+                        $rawTitle = mb_strtolower(trim((string)($r['title'] ?? '')));
+                        $normTitle = trim(preg_replace('/\b20\d{2}\b/', '', $rawTitle));
+                        $isMeteorShower = (($r['event_type'] ?? '') === 'meteor_shower');
+
+                        // Erkennen von Meteorschauer-Gruppen (z. B. Orioniden 2026 vs. 2027)
+                        $showerTag = null;
+                        if ($isMeteorShower) {
+                            $keyOrTitle = mb_strtolower($baseKey . ' ' . $rawTitle);
+                            foreach ($showerNames as $sName) {
+                                if (str_contains($keyOrTitle, $sName)) {
+                                    $showerTag = $sName;
+                                    break;
+                                }
+                            }
+                            if ($showerTag === null) {
+                                $showerTag = $baseKey;
+                            }
+                        }
+
+                        // Ist dieser Schauer bereits als nächste bevorstehende Instanz in der Liste?
+                        if ($showerTag !== null && isset($seenShowers[$showerTag])) {
+                            continue;
+                        }
+
+                        // Identischer normalisierter Titel bereits erfasst?
+                        if (!empty($normTitle) && isset($seenTitles[$normTitle])) {
+                            continue;
+                        }
+
+                        if ($showerTag !== null) {
+                            $seenShowers[$showerTag] = true;
+                        }
+                        if (!empty($normTitle)) {
+                            $seenTitles[$normTitle] = true;
+                        }
+
                         $events[] = $r;
+                        if (count($events) >= $limit) {
+                            break;
+                        }
                     }
+
                     return $events;
                 }
             } catch (Throwable $e) {
@@ -518,6 +576,7 @@ class AstronomyService
     private function getDefaultEvents(): array
     {
         $year = (int)date('Y');
+        $perseidsYear = (date('m-d') > '08-12') ? ($year + 1) : $year;
         return [
             [
                 'event_key' => "orionids-{$year}",
@@ -584,12 +643,12 @@ class AstronomyService
                 ],
             ],
             [
-                'event_key' => "perseids-{$year}",
+                'event_key' => "perseids-{$perseidsYear}",
                 'event_type' => 'meteor_shower',
                 'title' => 'Perseiden (Die Laurentiustränen)',
                 'description' => 'Der beliebteste Sommer-Meteorschauer mit bis zu 100 schnellen Sternschnuppen pro Stunde bei milden Sommernächten.',
-                'event_date' => "{$year}-08-12",
-                'peak_time' => "{$year}-08-12 23:00:00",
+                'event_date' => "{$perseidsYear}-08-12",
+                'peak_time' => "{$perseidsYear}-08-12 23:00:00",
                 'magnitude' => null,
                 'visibility_rating' => 'great',
                 'details' => [
@@ -611,5 +670,9 @@ class AstronomyService
                 'details' => ['coverage_pct' => 87, 'type' => 'Partielle Sonnenfinsternis'],
             ],
         ];
+
+        $events = array_values(array_filter($events, static fn($e) => ($e['event_date'] ?? '') >= date('Y-m-d')));
+        usort($events, static fn($a, $b) => strcmp($a['event_date'], $b['event_date']));
+        return $events;
     }
 }

@@ -2031,8 +2031,11 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             $peakDateStr = $details['peak_date'] ?? ($fallbackInfo['peak'] ?? date('d.m.', $evtDate));
                             $isActive = !empty($details['is_active']);
 
-                            // Fallback-Prüfung auf Aktivität falls nicht im JSON
-                            if (!$isActive && $isMeteorShower && !empty($activityPeriod)) {
+                            // Ein Event kann nur aktiv sein, wenn sein Höhepunkt zeitnah liegt (-20 bis +40 Tage).
+                            // Liegt das Event weiter in der Zukunft (z. B. im Folgejahr), ist es keinesfalls aktuell aktiv.
+                            if ($daysUntil < -20 || $daysUntil > 40) {
+                                $isActive = false;
+                            } elseif (!$isActive && $isMeteorShower && !empty($activityPeriod)) {
                                 $parts = explode('–', str_replace(' ', '', $activityPeriod));
                                 if (count($parts) === 2) {
                                     $pStart = explode('.', trim($parts[0], '.'));
