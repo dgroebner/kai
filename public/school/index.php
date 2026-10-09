@@ -97,8 +97,14 @@ $metadata = $planRepo->getPlanMetadata($selectedDate);
 $globalNotes = $planRepo->getGlobalNotes($selectedDate);
 $availableDates = $planRepo->getAvailableDates();
 
-// Wenn für das gewählte Datum noch kein Plan in der Datenbank existiert, versuchen wir einen Sync
-if ($metadata === null) {
+// Prüfen, ob das gewählte Datum ein sächsischer Ferientag oder Feiertag ist
+$holidayService = $schoolService->getHolidayService();
+$holidayInfo = $holidayService->getHolidayDetails($selectedDate);
+$isHoliday = $holidayInfo !== null;
+$holidayCountdown = $isHoliday ? $holidayService->getCountdown($selectedDate) : null;
+
+// Wenn für das gewählte Datum noch kein Plan in der Datenbank existiert und KEIN Ferientag ist, versuchen wir einen Sync
+if ($metadata === null && !$isHoliday) {
     $syncResult = $schoolService->syncDate($selectedDate);
     if ($syncResult['success']) {
         $metadata = $planRepo->getPlanMetadata($selectedDate);
@@ -332,8 +338,50 @@ $nextLabel = ($nextSchoolDay === $today)
     <main>
     <?php if ($view === 'plan'): ?>
         
-        <!-- Hinweis wenn noch kein Plan vorliegt -->
-        <?php if ($metadata === null): ?>
+        <!-- Hinweis wenn Ferientag oder noch kein Plan vorliegt -->
+        <?php if ($isHoliday && $holidayCountdown !== null): ?>
+            <div class="card school-holiday-notice <?= htmlspecialchars($holidayCountdown['class'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                <div class="school-holiday-smiley-badge">
+                    <span class="school-holiday-smiley" role="img" aria-label="Ferien-Stimmung"><?= $holidayCountdown['smiley'] ?></span>
+                </div>
+                <div class="school-holiday-content">
+                    <div class="school-holiday-tag-row">
+                        <span class="badge school-holiday-badge">
+                            🏖️ <?= htmlspecialchars($holidayInfo['name'], ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                        <span class="text-muted school-holiday-date-info">
+                            <?= htmlspecialchars($schoolService->formatDateLabel($selectedDate), ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                    </div>
+                    <h2 class="school-holiday-headline"><?= htmlspecialchars($holidayCountdown['headline'], ENT_QUOTES, 'UTF-8') ?></h2>
+                    <p class="school-holiday-subtext">
+                        <?= htmlspecialchars($holidayCountdown['subtext'], ENT_QUOTES, 'UTF-8') ?>
+                    </p>
+                    <div class="school-holiday-meta-info">
+                        <?php if (!empty($holidayInfo['is_range'])): ?>
+                            <span class="school-holiday-meta-pill">
+                                📅 <strong><?= date('d.m.', strtotime($holidayInfo['start_date'])) ?> – <?= date('d.m.Y', strtotime($holidayInfo['end_date'])) ?></strong>
+                            </span>
+                        <?php endif; ?>
+                        <span class="school-holiday-meta-pill">
+                            🎒 Schulstart: <strong><?= htmlspecialchars($holidayInfo['next_school_day_label'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        </span>
+                    </div>
+                    <div class="school-holiday-actions">
+                        <?php if ($selectedDate !== $today): ?>
+                            <a href="index.php?view=plan&amp;date=<?= $today ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+                               class="btn btn-outline">
+                                Zu heute (<?= date('d.m.') ?>) wechseln
+                            </a>
+                        <?php endif; ?>
+                        <a href="index.php?view=plan&amp;date=<?= $holidayInfo['next_school_day'] ?>&amp;student=<?= urlencode($selectedStudentId) ?>"
+                           class="btn btn-holiday-next">
+                            Zum nächsten Schultag (<?= htmlspecialchars($holidayInfo['next_school_day_short'], ENT_QUOTES, 'UTF-8') ?>) &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        <?php elseif ($metadata === null): ?>
             <div class="card school-empty-notice">
                 <div class="school-empty-icon">⏳</div>
                 <div class="school-empty-content">
@@ -412,6 +460,12 @@ $nextLabel = ($nextSchoolDay === $today)
                                             Schluss: <strong><?= htmlspecialchars($sched['end_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</strong>
                                         </span>
                                     <?php endif; ?>
+                                </div>
+                            <?php elseif (!empty($sched['is_holiday'])): ?>
+                                <div class="school-hero-times">
+                                    <span class="badge badge-success school-holiday-status-pill">
+                                        🏖️ Schulfrei
+                                    </span>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -633,6 +687,16 @@ $nextLabel = ($nextSchoolDay === $today)
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                        </div>
+                    <?php elseif (!empty($sched['is_holiday'])): ?>
+                        <div class="school-holiday-schedule-placeholder">
+                            <span class="school-holiday-schedule-icon"><?= $holidayCountdown['smiley'] ?? '🏖️' ?></span>
+                            <p class="school-holiday-schedule-title">
+                                <strong>Schulfrei wegen <?= htmlspecialchars($holidayInfo['name'] ?? 'Ferien', ENT_QUOTES, 'UTF-8') ?></strong>
+                            </p>
+                            <p class="text-muted school-holiday-schedule-text">
+                                An diesem Tag findet kein Unterricht für <?= htmlspecialchars($st['name'] ?? 'die Schüler', ENT_QUOTES, 'UTF-8') ?> statt. Füße hochlegen und erholen!
+                            </p>
                         </div>
                     <?php else: ?>
                         <p class="text-muted school-empty-schedule-text">

@@ -224,4 +224,35 @@ ALTER TABLE `gamification_task_templates`
     ADD COLUMN IF NOT EXISTS `paused_until` DATE NULL AFTER `paused_from`,
     ADD COLUMN IF NOT EXISTS `pause_reason` VARCHAR(150) NULL AFTER `paused_until`;
 
+-- ---------------------------------------------------------------------------
+-- Sächsische Schulferien (2025 bis 2028)
+-- ---------------------------------------------------------------------------
+INSERT IGNORE INTO `school_holidays` (`name`, `state_code`, `year`, `start_date`, `end_date`) VALUES
+('Winterferien', 'SN', 2025, '2025-02-17', '2025-03-01'),
+('Osterferien', 'SN', 2025, '2025-04-18', '2025-04-25'),
+('Unterrichtsfreier Tag', 'SN', 2025, '2025-05-30', '2025-05-30'),
+('Sommerferien', 'SN', 2025, '2025-06-28', '2025-08-08'),
+('Herbstferien', 'SN', 2025, '2025-10-06', '2025-10-18'),
+('Weihnachtsferien', 'SN', 2025, '2025-12-22', '2026-01-02'),
+('Winterferien', 'SN', 2026, '2026-02-09', '2026-02-21'),
+('Osterferien', 'SN', 2026, '2026-04-03', '2026-04-10'),
+('Unterrichtsfreier Tag', 'SN', 2026, '2026-05-15', '2026-05-15'),
+('Sommerferien', 'SN', 2026, '2026-07-04', '2026-08-14'),
+('Herbstferien', 'SN', 2026, '2026-10-12', '2026-10-24'),
+('Weihnachtsferien', 'SN', 2026, '2026-12-23', '2027-01-02'),
+('Winterferien', 'SN', 2027, '2027-02-08', '2027-02-19'),
+('Osterferien', 'SN', 2027, '2027-03-26', '2027-04-02'),
+('Unterrichtsfreier Tag', 'SN', 2027, '2027-05-07', '2027-05-07'),
+('Pfingstferien', 'SN', 2027, '2027-05-15', '2027-05-18'),
+('Sommerferien', 'SN', 2027, '2027-07-10', '2027-08-20'),
+('Herbstferien', 'SN', 2027, '2027-10-11', '2027-10-23'),
+('Weihnachtsferien', 'SN', 2027, '2027-12-23', '2028-01-01'),
+('Winterferien', 'SN', 2028, '2028-02-14', '2028-02-26'),
+('Osterferien', 'SN', 2028, '2028-04-14', '2028-04-22'),
+('Unterrichtsfreier Tag', 'SN', 2028, '2028-05-26', '2028-05-26'),
+('Sommerferien', 'SN', 2028, '2028-07-22', '2028-09-01'),
+('Herbstferien', 'SN', 2028, '2028-10-23', '2028-11-03'),
+('Weihnachtsferien', 'SN', 2028, '2028-12-23', '2029-01-02');
+
+
 

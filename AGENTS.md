@@ -218,6 +218,7 @@ Shared-Klassen sind die einzige Stelle für domainübergreifende Infrastruktur.
 | `Kai\Tools\Shared\Security\Sanitizer` | Whitelist-Normalisierung von Werten für HTML-Attribute (aktuell `hexColor()`) |
 | `Kai\Tools\Shared\Security\TokenEncryptionService` | Ver-/Entschlüsselung von API-Tokens (XChaCha20-Poly1305 via libsodium) |
 | `Kai\Tools\Shared\Utils\MerchantNormalizer` | Domainübergreifende Normalisierung von Händlern und Handelsketten auf kanonische Markennamen (z.B. REWE, Globus, Obi) |
+| `Kai\Tools\Shared\Utils\HolidayService` | Domainübergreifende Erkennung sächsischer Schulferien und Feiertage mit Countdowns und Stimmungs-Smileys |
 
 ### 5.1 Verbindliche Nutzung von `Auth`
 

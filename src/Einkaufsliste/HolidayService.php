@@ -3,89 +3,23 @@
 namespace Kai\Tools\Einkaufsliste;
 
 use DateTimeImmutable;
-use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Shared\Utils\HolidayService as SharedHolidayService;
 use PDO;
 
 /**
  * Prüft sächsische Schulferien und passt Verbrauchs- sowie Vorschlagsintervalle an.
+ * Basiert auf dem zentralen Shared HolidayService.
  */
-class HolidayService
+class HolidayService extends SharedHolidayService
 {
-    private PDO $pdo;
-    private Logger $logger;
-
-    public function __construct()
+    public function __construct(?PDO $pdo = null, ?Logger $logger = null)
     {
-        $this->pdo = Database::getInstance()->getConnection();
-        $this->logger = new Logger();
+        parent::__construct($pdo, $logger);
     }
 
     /**
-     * Prüft, ob ein gegebenes Datum in sächsische Schulferien fällt.
-     */
-    public function isHoliday(?string $date = null): bool
-    {
-        return $this->getCurrentHoliday($date) !== null;
-    }
-
-    /**
-     * Liefert die aktuellen Ferien für ein Datum (Standard: heute).
-     *
-     * @param string|null $date Format 'Y-m-d'
-     * @return array{name: string, start_date: string, end_date: string, year: int}|null
-     */
-    public function getCurrentHoliday(?string $date = null): ?array
-    {
-        $checkDate = $date ?? date('Y-m-d');
-
-        $stmt = $this->pdo->prepare("
-            SELECT name, start_date, end_date, year
-            FROM school_holidays
-            WHERE state_code = 'SN'
-              AND :check_date BETWEEN start_date AND end_date
-            ORDER BY start_date ASC
-            LIMIT 1
-        ");
-        $stmt->execute([':check_date' => $checkDate]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return $row ?: null;
-    }
-
-    /**
-     * Ermittelt die nächsten bevorstehenden Ferien in Sachsen.
-     *
-     * @param string|null $date Format 'Y-m-d'
-     * @return array{name: string, start_date: string, end_date: string, days_until: int}|null
-     */
-    public function getNextHoliday(?string $date = null): ?array
-    {
-        $checkDate = $date ?? date('Y-m-d');
-
-        $stmt = $this->pdo->prepare("
-            SELECT name, start_date, end_date, year
-            FROM school_holidays
-            WHERE state_code = 'SN'
-              AND start_date > :check_date
-            ORDER BY start_date ASC
-            LIMIT 1
-        ");
-        $stmt->execute([':check_date' => $checkDate]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$row) {
-            return null;
-        }
-
-        $start = new DateTimeImmutable($row['start_date']);
-        $check = new DateTimeImmutable($checkDate);
-        $row['days_until'] = (int)$check->diff($start)->format('%r%a');
-        return $row;
-    }
-
-    /**
-     * Liefert eine kompakte Kontext-Übersicht für das UI und die Vorschlagsgenerierung.
+     * Liefert eine kompakte Kontext-Übersicht für das UI und die Vorschlagsgenerierung der Einkaufsliste.
      *
      * @return array{
      *     is_holiday: bool,

@@ -4797,6 +4797,216 @@ body {
     flex-wrap: wrap;
 }
 
+.school-holiday-notice {
+    display: flex;
+    gap: 1.75rem;
+    align-items: center;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.school-holiday-smiley-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 84px;
+    height: 84px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+}
+
+.school-holiday-smiley {
+    font-size: 3.25rem;
+    line-height: 1;
+    display: inline-block;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.school-holiday-notice:hover .school-holiday-smiley {
+    transform: scale(1.15) rotate(5deg);
+}
+
+.school-holiday-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.school-holiday-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.school-holiday-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 20px;
+}
+
+.school-holiday-date-info {
+    font-size: 0.85rem;
+}
+
+.school-holiday-headline {
+    margin: 0.2rem 0 0.1rem;
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.school-holiday-subtext {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-text, #f1f5f9);
+    opacity: 0.92;
+    line-height: 1.45;
+}
+
+.school-holiday-meta-info {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.35rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.school-holiday-meta-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    color: var(--color-text-muted, #94a3b8);
+}
+
+.school-holiday-meta-pill strong {
+    color: var(--color-text, #f8fafc);
+}
+
+.school-holiday-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.btn-holiday-next {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff !important;
+    border: none;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-holiday-next:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: #ffffff !important;
+}
+
+/* Mood-Farben & Hintergründe */
+.school-holiday-notice.holiday-mood-party {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.05));
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.school-holiday-notice.holiday-mood-chill {
+    border-left: 4px solid #06b6d4;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(14, 165, 233, 0.05));
+    border-color: rgba(6, 182, 212, 0.35);
+}
+
+.school-holiday-notice.holiday-mood-happy {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(20, 184, 166, 0.05));
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.school-holiday-notice.holiday-mood-content {
+    border-left: 4px solid #3b82f6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.05));
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.school-holiday-notice.holiday-mood-neutral {
+    border-left: 4px solid #eab308;
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(245, 158, 11, 0.04));
+    border-color: rgba(234, 179, 8, 0.3);
+}
+
+.school-holiday-notice.holiday-mood-skeptical {
+    border-left: 4px solid #f97316;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(239, 68, 68, 0.04));
+    border-color: rgba(249, 115, 22, 0.3);
+}
+
+.school-holiday-notice.holiday-mood-worried {
+    border-left: 4px solid #f43f5e;
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(225, 29, 72, 0.04));
+    border-color: rgba(244, 63, 94, 0.3);
+}
+
+.school-holiday-notice.holiday-mood-sad {
+    border-left: 4px solid #a855f7;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(139, 92, 246, 0.04));
+    border-color: rgba(168, 85, 247, 0.3);
+}
+
+.school-holiday-notice.holiday-mood-crying {
+    border-left: 4px solid #64748b;
+    background: linear-gradient(135deg, rgba(100, 116, 139, 0.1), rgba(71, 85, 105, 0.04));
+    border-color: rgba(100, 116, 139, 0.3);
+}
+
+.school-holiday-notice.holiday-mood-celebrate {
+    border-left: 4px solid #ec4899;
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(168, 85, 247, 0.05));
+    border-color: rgba(236, 72, 153, 0.35);
+}
+
+.school-holiday-hero-pill {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    font-weight: 600;
+}
+
+.school-holiday-schedule-placeholder {
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+}
+
+.school-holiday-schedule-icon {
+    font-size: 2.75rem;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+.school-holiday-schedule-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.35rem;
+}
+
+.school-holiday-schedule-text {
+    font-size: 0.9rem;
+    margin: 0;
+}
+
 .school-notice-card {
     background: rgba(245, 158, 11, 0.06);
     border: 1px solid rgba(245, 158, 11, 0.25);
@@ -5538,12 +5748,16 @@ body {
         opacity: 0.8;
     }
 
-    .school-empty-notice {
+    .school-empty-notice,
+    .school-holiday-notice {
         flex-direction: column;
         text-align: center;
     }
 
-    .school-empty-actions {
+    .school-holiday-tag-row,
+    .school-holiday-meta-info,
+    .school-empty-actions,
+    .school-holiday-actions {
         justify-content: center;
     }
 

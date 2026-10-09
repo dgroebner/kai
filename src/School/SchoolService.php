@@ -34,6 +34,7 @@ class SchoolService
     private SchoolStudentRepository $studentRepo;
     private ActivityLogger $activityLogger;
     private Logger $logger;
+    private \Kai\Tools\Shared\Utils\HolidayService $holidayService;
 
     public function __construct(
         ?VPPlanClient $client = null,
@@ -41,7 +42,8 @@ class SchoolService
         ?SchoolPlanRepository $planRepo = null,
         ?SchoolStudentRepository $studentRepo = null,
         ?ActivityLogger $activityLogger = null,
-        ?Logger $logger = null
+        ?Logger $logger = null,
+        ?\Kai\Tools\Shared\Utils\HolidayService $holidayService = null
     ) {
         $this->client = $client ?? new VPPlanClient();
         $this->parser = $parser ?? new VPPlanParser();
@@ -49,6 +51,12 @@ class SchoolService
         $this->studentRepo = $studentRepo ?? new SchoolStudentRepository();
         $this->activityLogger = $activityLogger ?? new ActivityLogger(Database::getInstance());
         $this->logger = $logger ?? new Logger();
+        $this->holidayService = $holidayService ?? new \Kai\Tools\Shared\Utils\HolidayService();
+    }
+
+    public function getHolidayService(): \Kai\Tools\Shared\Utils\HolidayService
+    {
+        return $this->holidayService;
     }
 
     /**
@@ -386,16 +394,54 @@ class SchoolService
 
         if (empty($items)) {
             $dayLabel = $this->formatDateLabel($date);
+            $holidayInfo = $this->holidayService->getHolidayDetails($date);
+            $isHoliday = $holidayInfo !== null;
+            if ($isHoliday) {
+                $countdown = $this->holidayService->getCountdown($date);
+                $holidayName = $holidayInfo['name'] ?? 'Schulferien';
+                return [
+                    'student' => $student,
+                    'has_plan' => false,
+                    'is_holiday' => true,
+                    'holiday_info' => $holidayInfo,
+                    'holiday_countdown' => $countdown,
+                    'date' => $date,
+                    'meta' => $meta,
+                    'class_name' => $className,
+                    'start_time' => null,
+                    'end_time' => null,
+                    'first_lesson' => null,
+                    'last_lesson' => null,
+                    'total_lessons' => 0,
+                    'cancelled_count' => 0,
+                    'substitution_count' => 0,
+                    'summary_sentence' => "Schulfrei! {$student['name']} hat für {$dayLabel} frei wegen {$holidayName}. {$countdown['smiley']}",
+                    'items' => [],
+                    'deviations' => [],
+                    'needed_subjects' => [],
+                    'excluded_subjects' => $excludedList,
+                ];
+            }
+
             return [
                 'student' => $student,
                 'has_plan' => false,
+                'is_holiday' => false,
+                'holiday_info' => null,
+                'holiday_countdown' => null,
                 'date' => $date,
                 'meta' => $meta,
+                'class_name' => $className,
+                'start_time' => null,
+                'end_time' => null,
+                'first_lesson' => null,
+                'last_lesson' => null,
+                'total_lessons' => 0,
+                'cancelled_count' => 0,
+                'substitution_count' => 0,
                 'summary_sentence' => "Für {$student['name']} ({$className}) liegt für {$dayLabel} noch kein Plan vor.",
                 'items' => [],
                 'deviations' => [],
-                'start_time' => null,
-                'end_time' => null,
                 'needed_subjects' => [],
                 'excluded_subjects' => $excludedList,
             ];
@@ -494,6 +540,9 @@ class SchoolService
         return [
             'student' => $student,
             'has_plan' => true,
+            'is_holiday' => false,
+            'holiday_info' => null,
+            'holiday_countdown' => null,
             'date' => $date,
             'meta' => $meta,
             'class_name' => $className,
@@ -538,6 +587,9 @@ class SchoolService
         $sched = $this->getStudentSchedule($studentName, $effectiveDate);
 
         if (!$sched['has_plan']) {
+            if (!empty($sched['is_holiday'])) {
+                return $sched['summary_sentence'];
+            }
             $dayLabel = $this->formatDateLabel($effectiveDate);
             return "Für {$studentName} liegt für {$dayLabel} leider noch kein Stundenplan vor.";
         }

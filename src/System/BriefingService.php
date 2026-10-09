@@ -739,33 +739,7 @@ class BriefingService
      */
     public function isSaxonyHoliday(DateTimeImmutable $date): bool
     {
-        $year = (int)$date->format('Y');
-        $dateStr = $date->format('Y-m-d');
-
-        $holidays = [
-            sprintf('%04d-01-01', $year), // Neujahr
-            sprintf('%04d-05-01', $year), // Tag der Arbeit
-            sprintf('%04d-10-03', $year), // Tag der Deutschen Einheit
-            sprintf('%04d-10-31', $year), // Reformationstag (Sachsen)
-            sprintf('%04d-12-25', $year), // 1. Weihnachtstag
-            sprintf('%04d-12-26', $year), // 2. Weihnachtstag
-        ];
-
-        // Bewegliche Osterfeiertage
-        $easterTimestamp = easter_date($year);
-        $easter = (new DateTimeImmutable())->setTimestamp($easterTimestamp);
-
-        $holidays[] = $easter->modify('-2 days')->format('Y-m-d');  // Karfreitag
-        $holidays[] = $easter->modify('+1 day')->format('Y-m-d');   // Ostermontag
-        $holidays[] = $easter->modify('+39 days')->format('Y-m-d'); // Christi Himmelfahrt
-        $holidays[] = $easter->modify('+50 days')->format('Y-m-d'); // Pfingstmontag
-
-        // Buß- und Bettag: Letzter Mittwoch vor dem 23. November (nur in Sachsen gesetzlicher Feiertag)
-        $nov23 = new DateTimeImmutable(sprintf('%04d-11-23', $year));
-        $bussUndBettag = $nov23->modify('previous wednesday');
-        $holidays[] = $bussUndBettag->format('Y-m-d');
-
-        return in_array($dateStr, $holidays, true);
+        return $this->schoolService->getHolidayService()->getPublicHoliday($date->format('Y-m-d')) !== null;
     }
 
     /**
@@ -773,16 +747,6 @@ class BriefingService
      */
     public function isSchoolHoliday(string $dateStr): bool
     {
-        try {
-            $stmt = $this->db->getConnection()->prepare("
-                SELECT 1 FROM school_holidays 
-                WHERE state_code = 'SN' AND :date BETWEEN start_date AND end_date 
-                LIMIT 1
-            ");
-            $stmt->execute([':date' => $dateStr]);
-            return (bool)$stmt->fetchColumn();
-        } catch (Throwable) {
-            return false;
-        }
+        return $this->schoolService->getHolidayService()->getCurrentHoliday($dateStr) !== null;
     }
 }
