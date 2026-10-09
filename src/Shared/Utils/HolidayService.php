@@ -67,6 +67,142 @@ class HolidayService
     }
 
     /**
+     * Synchronisiert sächsische Schulferien automatisch von der OpenHolidays API (openholidaysapi.org).
+     * Verhindert doppelte Abfragen durch 30-Tage-Throttling.
+     *
+     * @param bool $force Wenn true, wird der 30-Tage-Schutz ignoriert.
+     * @return array{success: bool, skipped: bool, message: string, synced?: int, total_fetched?: int}
+     */
+    public function syncFromApi(bool $force = false): array
+    {
+        if ($this->pdo === null) {
+            return ['success' => false, 'skipped' => true, 'message' => 'Keine Datenbankverbindung verfügbar.'];
+        }
+
+        try {
+            // 30-Tage-Throttling prüfen
+            if (!$force) {
+                $stmt = $this->pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'school_holidays_last_synced'");
+                $stmt->execute();
+                $lastSync = $stmt->fetchColumn();
+                if ($lastSync) {
+                    $lastSyncTime = strtotime($lastSync);
+                    if ($lastSyncTime && (time() - $lastSyncTime) < (30 * 86400)) {
+                        return [
+                            'success' => true,
+                            'skipped' => true,
+                            'message' => 'Schulferien wurden in den letzten 30 Tagen bereits synchronisiert (' . date('d.m.Y H:i', $lastSyncTime) . ').',
+                        ];
+                    }
+                }
+            }
+
+            $currentYear = (int)date('Y');
+            $startYear = $currentYear - 1;
+            $endYear = $currentYear + 2;
+
+            $url = sprintf(
+                'https://openholidaysapi.org/SchoolHolidays?countryIsoCode=DE&subdivisionCode=DE-SN&validFrom=%04d-01-01&validTo=%04d-12-31&languageIsoCode=DE',
+                $startYear,
+                $endYear
+            );
+
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout' => 8,
+                    'user_agent' => 'Kai-Toolset/1.19 (https://kai.agent-smith.de)',
+                ]
+            ]);
+
+            $json = @file_get_contents($url, false, $ctx);
+            if ($json === false || trim($json) === '') {
+                return [
+                    'success' => false,
+                    'skipped' => false,
+                    'message' => 'OpenHolidays API nicht erreichbar oder leere Antwort.',
+                ];
+            }
+
+            $items = json_decode($json, true);
+            if (!is_array($items)) {
+                return [
+                    'success' => false,
+                    'skipped' => false,
+                    'message' => 'Antwort der OpenHolidays API konnte nicht als JSON dekodiert werden.',
+                ];
+            }
+
+            $insertStmt = $this->pdo->prepare("
+                INSERT IGNORE INTO school_holidays (name, state_code, year, start_date, end_date)
+                VALUES (:name, 'SN', :year, :start_date, :end_date)
+            ");
+
+            $syncedCount = 0;
+            foreach ($items as $item) {
+                $startDate = $item['startDate'] ?? null;
+                $endDate = $item['endDate'] ?? null;
+                if (!$startDate || !$endDate) {
+                    continue;
+                }
+
+                $name = 'Schulferien';
+                if (!empty($item['name']) && is_array($item['name'])) {
+                    foreach ($item['name'] as $nameEntry) {
+                        if (($nameEntry['language'] ?? '') === 'DE') {
+                            $name = $nameEntry['text'] ?? $name;
+                            break;
+                        }
+                    }
+                    if ($name === 'Schulferien' && !empty($item['name'][0]['text'])) {
+                        $name = $item['name'][0]['text'];
+                    }
+                }
+
+                $year = (int)substr($startDate, 0, 4);
+
+                $insertStmt->execute([
+                    ':name' => $name,
+                    ':year' => $year,
+                    ':start_date' => $startDate,
+                    ':end_date' => $endDate,
+                ]);
+
+                if ($insertStmt->rowCount() > 0) {
+                    $syncedCount++;
+                }
+            }
+
+            $settingStmt = $this->pdo->prepare("
+                INSERT INTO system_settings (setting_key, setting_value, label) 
+                VALUES ('school_holidays_last_synced', :val, 'Letzter automatischer Abgleich der Schulferien')
+                ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            ");
+            $settingStmt->execute([':val' => date('Y-m-d H:i:s')]);
+
+            $this->logger->info("HolidayService: Schulferien via OpenHolidays API abgeglichen.", [
+                'total_items' => count($items),
+                'newly_inserted' => $syncedCount,
+            ]);
+
+            return [
+                'success' => true,
+                'skipped' => false,
+                'message' => "Schulferien erfolgreich aktualisiert ({$syncedCount} neue Einträge eingefügt).",
+                'synced' => $syncedCount,
+                'total_fetched' => count($items),
+            ];
+
+        } catch (Throwable $e) {
+            $this->logger->error("HolidayService: Fehler beim automatischen Abgleich der Schulferien.", ['error' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'skipped' => false,
+                'message' => 'Fehler beim Abgleich: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Prüft, ob ein gegebenes Datum in sächsische Schulferien oder einen gesetzlichen Feiertag fällt.
      */
     public function isHoliday(?string $date = null): bool

@@ -63,6 +63,12 @@ try {
         $schoolResults = $schoolService->syncTodayAndNext();
         $logger->info("Cronjob (mail.php): Schul-Vertretungspläne abgeglichen.", ['results' => $schoolResults]);
 
+        // Schulferien in größeren Abständen (monatlich gedrosselt) via OpenHolidays API abgleichen
+        $holidaySync = $schoolService->getHolidayService()->syncFromApi();
+        if (!empty($holidaySync['synced']) && $holidaySync['synced'] > 0) {
+            $logger->info("Cronjob (mail.php): Schulferien automatisch via API aktualisiert.", $holidaySync);
+        }
+
         // Auch Beste Schule synchronisieren
         $besteSync = new \Kai\Tools\School\BesteSchuleSyncService();
         $besteResults = $besteSync->syncAll();

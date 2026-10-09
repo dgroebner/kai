@@ -18,6 +18,17 @@ $logger = new Logger();
 try {
     $schoolService = new SchoolService();
 
+    $action = filter_input(INPUT_GET, 'action', FILTER_DEFAULT);
+    if ($action === 'sync_holidays') {
+        $result = $schoolService->getHolidayService()->syncFromApi(true);
+        echo json_encode([
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'details' => $result,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // Optional bestimmtes Datum synchronisieren, sonst heute + nächster Schultag
     $targetDate = filter_input(INPUT_GET, 'date', FILTER_DEFAULT);
     if ($targetDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $targetDate)) {
