@@ -45,8 +45,15 @@ try {
 
     if (!empty($unassignedCharges)) {
         if (count($items) === 1 && count($unassignedCharges) === 1) {
-            $chargesByItemId[(int)$items[0]['id']] = $unassignedCharges[0];
+            $singleItemId = (int)$items[0]['id'];
+            $singleChargeId = (int)$unassignedCharges[0]['id'];
+            $chargesByItemId[$singleItemId] = $unassignedCharges[0];
             $unassignedCharges = [];
+            try {
+                \Kai\Tools\Shared\Db\Database::getInstance()->getConnection()
+                    ->prepare("UPDATE vehicle_charges SET receipt_item_id = :item_id WHERE id = :charge_id AND receipt_item_id IS NULL")
+                    ->execute([':item_id' => $singleItemId, ':charge_id' => $singleChargeId]);
+            } catch (\Throwable) {}
         } else {
             foreach ($unassignedCharges as $uIdx => $uCharge) {
                 foreach ($items as $it) {

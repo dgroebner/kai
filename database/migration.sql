@@ -85,6 +85,17 @@ ALTER TABLE `vehicle_charges`
     ADD INDEX IF NOT EXISTS `idx_receipt_id` (`receipt_id`),
     ADD INDEX IF NOT EXISTS `idx_receipt_item_id` (`receipt_item_id`);
 
+-- Bestehende Einzelbelege nachträglich auf die Position verknüpfen
+UPDATE `vehicle_charges` vc
+JOIN (
+    SELECT receipt_id, MIN(id) AS item_id, COUNT(*) as cnt
+    FROM kb_items
+    GROUP BY receipt_id
+    HAVING cnt = 1
+) ki ON vc.receipt_id = ki.receipt_id
+SET vc.receipt_item_id = ki.item_id
+WHERE vc.receipt_item_id IS NULL AND vc.receipt_id IS NOT NULL;
+
 -- Tabelle für konfigurierbare Ladetarife (Unterwegs & Roaming)
 CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
