@@ -420,6 +420,16 @@ a:hover {
     color: var(--color-red);
 }
 
+.badge-neutral {
+    background-color: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+}
+
+.badge-info {
+    background-color: var(--color-blue-dim);
+    color: var(--color-blue);
+}
+
 /* Added for ignored product rows */
 .row-ignored {
     opacity: 0.5;

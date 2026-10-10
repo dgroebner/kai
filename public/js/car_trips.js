@@ -375,29 +375,41 @@
         const dist = parseFloat(trip.total_distance_km || 0);
         const costPer100 = (dist > 0) ? ((totalCost / dist) * 100).toFixed(2) : '0.00';
 
+        const formatTripTime = (str) => {
+            if (!str) return '–';
+            const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+            if (m) {
+                return `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]} Uhr`;
+            }
+            return str;
+        };
+
+        const depFormatted = formatTripTime(trip.departure_time);
+        const retFormatted = trip.return_time ? formatTripTime(trip.return_time) : null;
+
         let html = `
-            <div class="trip-detail-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; border-bottom:1px solid var(--border-color, #e2e8f0); padding-bottom:1rem;">
+            <div class="trip-detail-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; border-bottom:1px solid var(--bg-surface-hover); padding-bottom:1rem; flex-wrap:wrap; gap:1rem;">
                 <div>
-                    <h2 style="margin:0 0 0.5rem 0;">${KaiHtml.escape(trip.title)}</h2>
+                    <h2 style="margin:0 0 0.5rem 0; font-size:1.4rem; color:var(--text-main);">${KaiHtml.escape(trip.title)}</h2>
                     <div style="color:var(--text-muted); font-size:0.9rem;">
                         📍 <strong>${KaiHtml.escape(trip.start_address)}</strong> &rarr; <strong>${KaiHtml.escape(trip.destination_address)}</strong>
-                        ${trip.is_round_trip ? ' 🔄 (Rundreise)' : ''}
+                        ${trip.is_round_trip ? ' <span class="badge badge-info" style="margin-left:0.35rem;">🔄 Rundreise</span>' : ''}
                     </div>
-                    <div style="color:var(--text-muted); font-size:0.85rem; margin-top:0.25rem;">
-                        🗓️ Abfahrt: ${KaiHtml.escape(trip.departure_time)}
-                        ${trip.return_time ? ` • Rückkehr: ${KaiHtml.escape(trip.return_time)}` : ''}
+                    <div style="color:var(--text-muted); font-size:0.85rem; margin-top:0.35rem;">
+                        🗓️ Abfahrt: <strong style="color:var(--text-main);">${KaiHtml.escape(depFormatted)}</strong>
+                        ${retFormatted ? ` &bull; Rückkehr: <strong style="color:var(--text-main);">${KaiHtml.escape(retFormatted)}</strong>` : ''}
                     </div>
                 </div>
-                <div style="display:flex; gap:0.5rem;">
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     ${trip.abrp_deep_link ? `
-                        <a href="${KaiHtml.escape(trip.abrp_deep_link)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" title="In ABRP App / CarPlay öffnen">
+                        <a href="${KaiHtml.escape(trip.abrp_deep_link)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" title="In ABRP App / CarPlay öffnen">
                             ⚡ In ABRP öffnen
                         </a>
                     ` : ''}
-                    <button type="button" class="btn btn-outline js-btn-recalc-trip" data-trip-id="${trip.id}" title="Route und Vorladekette neu kalkulieren">
+                    <button type="button" class="btn btn-outline btn-sm js-btn-recalc-trip" data-trip-id="${trip.id}" title="Route und Vorladekette neu kalkulieren">
                         🔄 Neu berechnen
                     </button>
-                    <button type="button" class="btn btn-outline js-btn-delete-trip" data-trip-id="${trip.id}" title="Reise löschen" style="color:var(--danger, #ef4444);">
+                    <button type="button" class="btn btn-outline btn-sm js-btn-delete-trip" data-trip-id="${trip.id}" title="Reise löschen" style="color:var(--danger, #ef4444);">
                         🗑️
                     </button>
                 </div>
@@ -405,30 +417,30 @@
 
             <!-- KPI-Kacheln -->
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
-                <div class="card" style="padding:1rem; text-align:center;">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Gesamtdistanz</div>
-                    <div style="font-size:1.4rem; font-weight:bold; color:var(--car-blue, #3b82f6);">${KaiHtml.escape(trip.total_distance_km)} km</div>
+                <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Gesamtdistanz</div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:var(--car-blue, #3b82f6);">${dist > 0 ? (dist.toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' km') : '– km'}</div>
                 </div>
-                <div class="card" style="padding:1rem; text-align:center;">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Verbrauch (geschätzt)</div>
-                    <div style="font-size:1.4rem; font-weight:bold;">${KaiHtml.escape(trip.estimated_consumption_kwh)} kWh</div>
+                <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Verbrauch (geschätzt)</div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:var(--text-main);">${parseFloat(trip.estimated_consumption_kwh || 0) > 0 ? (parseFloat(trip.estimated_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kWh') : '– kWh'}</div>
                 </div>
-                <div class="card" style="padding:1rem; text-align:center;">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Start-Empfehlung</div>
+                <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Start-Empfehlung</div>
                     <div style="font-size:1.4rem; font-weight:bold; color:${trip.planned_departure_soc >= 100 ? '#ef4444' : '#10b981'};">
                         ${KaiHtml.escape(trip.planned_departure_soc)} %
                     </div>
                 </div>
-                <div class="card" style="padding:1rem; text-align:center;">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Schnellladen unterwegs</div>
+                <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Schnellladen unterwegs</div>
                     <div style="font-size:1.4rem; font-weight:bold; color:var(--car-orange, #f59e0b);">
-                        ${KaiHtml.escape(trip.en_route_charge_kwh)} kWh
+                        ${parseFloat(trip.en_route_charge_kwh || 0).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh
                     </div>
                 </div>
-                <div class="card" style="padding:1rem; text-align:center; background:var(--bg-subtle, #f8fafc);">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Gesamtkosten</div>
-                    <div style="font-size:1.4rem; font-weight:bold; color:#10b981;">${totalCost} €</div>
-                    <small style="color:var(--text-muted); font-size:0.75rem;">${costPer100} € / 100 km</small>
+                <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Gesamtkosten</div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:#10b981;">${totalCost.replace('.', ',')} €</div>
+                    <small style="color:var(--text-muted); font-size:0.75rem;">${costPer100.replace('.', ',')} € / 100 km</small>
                 </div>
             </div>
 

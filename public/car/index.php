@@ -34,6 +34,22 @@ function formatToLocalTime(?string $utcTimeString, string $format = 'd.m.Y H:i')
     }
 }
 
+/**
+ * Formatiert Datums-/Zeitangaben von Reisen, die bereits in lokaler Zeit (Europe/Berlin) gespeichert sind.
+ */
+function formatTripDateTime(?string $timeString, string $format = 'd.m.Y H:i'): string
+{
+    if (!$timeString) {
+        return '–';
+    }
+    try {
+        $dt = new DateTime($timeString, new DateTimeZone('Europe/Berlin'));
+        return $dt->format($format);
+    } catch (Exception) {
+        return $timeString;
+    }
+}
+
 function socColor(int $soc): string
 {
     if ($soc >= 60) return '#10b981';
@@ -892,8 +908,8 @@ if ($tab === 'trips') {
                 <?php else: ?>
                     <div class="trips-list">
                         <?php foreach ($trips as $t): 
-                            $depLocal = formatToLocalTime($t['departure_time']);
-                            $retLocal = !empty($t['return_time']) ? formatToLocalTime($t['return_time']) : null;
+                            $depLocal = formatTripDateTime($t['departure_time']);
+                            $retLocal = !empty($t['return_time']) ? formatTripDateTime($t['return_time']) : null;
                             $tCost = round((float)$t['home_charge_cost'] + (float)$t['en_route_charge_cost'] + (float)$t['additional_cost'], 2);
                             $tDist = (float)$t['total_distance_km'];
                             $cPer100 = ($tDist > 0) ? round(($tCost / $tDist) * 100.0, 2) : 0.0;
@@ -906,27 +922,30 @@ if ($tab === 'trips') {
                             };
                         ?>
                             <div class="card u-mb-md" style="padding: 1.25rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.75rem;">
                                     <div>
                                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                            <h3 style="margin: 0; font-size: 1.15rem;"><?= htmlspecialchars($t['title']) ?></h3>
+                                            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--text-main);"><?= htmlspecialchars($t['title']) ?></h3>
                                             <span class="badge <?= $statusBadgeClass ?>"><?= htmlspecialchars(ucfirst($t['status'])) ?></span>
                                             <?php if (!empty($t['is_round_trip'])): ?>
-                                                <span class="badge" title="Hin- und Rückreise von zu Hause">🔄 Rundreise</span>
+                                                <span class="badge badge-info" title="Hin- und Rückreise von zu Hause">🔄 Rundreise</span>
                                             <?php endif; ?>
                                             <?php if (!empty($t['parent_trip_id'])): ?>
-                                                <span class="badge" title="Verschachtelter Ausflug im Urlaub">🏖️ Ausflug zu „<?= htmlspecialchars($t['parent_title'] ?? 'Hauptreise') ?>“</span>
+                                                <span class="badge badge-neutral" title="Verschachtelter Ausflug im Urlaub">🏖️ Ausflug zu „<?= htmlspecialchars($t['parent_title'] ?? 'Hauptreise') ?>“</span>
                                             <?php endif; ?>
                                         </div>
-                                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-                                            📍 <strong><?= htmlspecialchars($t['start_address']) ?></strong> &rarr; <strong><?= htmlspecialchars($t['destination_address']) ?></strong>
+                                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                                            <span>📍</span>
+                                            <strong><?= htmlspecialchars($t['start_address']) ?></strong>
+                                            <span style="opacity: 0.6;">&rarr;</span>
+                                            <strong><?= htmlspecialchars($t['destination_address']) ?></strong>
                                         </div>
-                                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem;">
-                                            🗓️ Abfahrt: <?= $depLocal ?> <?= $retLocal ? " • Rückkehr: {$retLocal}" : '' ?>
+                                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">
+                                            🗓️ Abfahrt: <strong style="color: var(--text-main);"><?= $depLocal ?></strong><?= $retLocal ? " &bull; Rückkehr: <strong style=\"color: var(--text-main);\">{$retLocal}</strong>" : '' ?>
                                         </div>
                                     </div>
 
-                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
                                         <button type="button" class="btn btn-primary btn-sm js-btn-view-trip" data-trip-id="<?= (int)$t['id'] ?>">
                                             🔍 Details &amp; Abrechnung
                                         </button>
@@ -940,7 +959,7 @@ if ($tab === 'trips') {
                                                 🏖️ Ausflug +
                                             </button>
                                         <?php endif; ?>
-                                        <button type="button" class="btn btn-outline btn-sm js-btn-recalc-trip" data-trip-id="<?= (int)$t['id'] ?>" title="Route neu kalkulieren">
+                                        <button type="button" class="btn btn-outline btn-sm js-btn-recalc-trip" data-trip-id="<?= (int)$t['id'] ?>" title="Route und Vorladekette neu kalkulieren">
                                             🔄
                                         </button>
                                         <button type="button" class="btn btn-outline btn-sm js-btn-delete-trip" data-trip-id="<?= (int)$t['id'] ?>" title="Reise löschen" style="color: var(--danger, #ef4444);">
@@ -949,33 +968,37 @@ if ($tab === 'trips') {
                                     </div>
                                 </div>
 
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; background: var(--bg-subtle, #f8fafc); padding: 0.75rem; border-radius: var(--border-radius, 6px); font-size: 0.85rem;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; background: var(--bg-surface); border: 1px solid var(--bg-surface-hover); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.85rem;">
                                     <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Strecke</div>
-                                        <div style="font-weight: bold;"><?= htmlspecialchars($t['total_distance_km']) ?> km</div>
-                                    </div>
-                                    <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Bedarf</div>
-                                        <div style="font-weight: bold;"><?= htmlspecialchars($t['estimated_consumption_kwh']) ?> kWh</div>
-                                    </div>
-                                    <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Start-SoC</div>
-                                        <div style="font-weight: bold; color: <?= (int)$t['planned_departure_soc'] >= 100 ? '#ef4444' : '#10b981' ?>;">
-                                            <?= htmlspecialchars($t['planned_departure_soc']) ?> %
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Strecke</div>
+                                        <div style="font-weight: 700; font-size: 1rem; color: var(--color-blue);">
+                                            <?= $tDist > 0 ? number_format($tDist, 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">km</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– km</span>' ?>
                                         </div>
                                     </div>
                                     <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Unterwegs</div>
-                                        <div style="font-weight: bold; color: var(--car-orange, #f59e0b);">
-                                            <?= htmlspecialchars($t['en_route_charge_kwh']) ?> kWh
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Bedarf</div>
+                                        <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
+                                            <?= (float)$t['estimated_consumption_kwh'] > 0 ? number_format((float)$t['estimated_consumption_kwh'], 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">kWh</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– kWh</span>' ?>
                                         </div>
                                     </div>
                                     <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Kostenbilanz</div>
-                                        <div style="font-weight: bold; color: #10b981;">
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Start-SoC</div>
+                                        <div style="font-weight: 700; font-size: 1rem; color: <?= (int)$t['planned_departure_soc'] >= 100 ? 'var(--color-red)' : 'var(--color-green)' ?>;">
+                                            <?= htmlspecialchars($t['planned_departure_soc']) ?> <span style="font-size:0.75rem; font-weight:normal;">%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Unterwegs</div>
+                                        <div style="font-weight: 700; font-size: 1rem; color: var(--color-orange);">
+                                            <?= number_format((float)$t['en_route_charge_kwh'], 1, ',', '.') ?> <span style="font-size:0.75rem; font-weight:normal;">kWh</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Kostenbilanz</div>
+                                        <div style="font-weight: 700; font-size: 1rem; color: var(--color-green);">
                                             <?= number_format($tCost, 2, ',', '.') ?> €
                                         </div>
-                                        <div style="font-size: 0.7rem; color: var(--text-muted);"><?= number_format($cPer100, 2, ',', '.') ?> € / 100 km</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem;"><?= number_format($cPer100, 2, ',', '.') ?> € / 100 km</div>
                                     </div>
                                 </div>
                             </div>
