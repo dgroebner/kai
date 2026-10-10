@@ -23,6 +23,8 @@ class TripPlanningService
     private GeocodingService $geocodingService;
     private TripExpenseService $expenseService;
     private IcsTripParser $icsParser;
+    private IcsReplyService $icsReplyService;
+    private ?\Kai\Tools\Shared\Log\ActivityLogger $activityLogger;
     private Logger $logger;
 
     public function __construct(
@@ -33,6 +35,8 @@ class TripPlanningService
         ?GeocodingService $geocodingService = null,
         ?TripExpenseService $expenseService = null,
         ?IcsTripParser $icsParser = null,
+        ?IcsReplyService $icsReplyService = null,
+        ?\Kai\Tools\Shared\Log\ActivityLogger $activityLogger = null,
         ?Logger $logger = null
     ) {
         $this->tripRepo = $tripRepo ?? new TripRepository();
@@ -42,6 +46,8 @@ class TripPlanningService
         $this->geocodingService = $geocodingService ?? new GeocodingService($this->settingsService, logger: $this->logger);
         $this->expenseService = $expenseService ?? new TripExpenseService(tripRepo: $this->tripRepo, logger: $this->logger);
         $this->icsParser = $icsParser ?? new IcsTripParser();
+        $this->icsReplyService = $icsReplyService ?? new IcsReplyService(logger: $this->logger);
+        $this->activityLogger = $activityLogger ?? (class_exists(Database::class) ? new \Kai\Tools\Shared\Log\ActivityLogger(Database::getInstance(), $this->logger) : null);
 
         if ($routePlanner !== null) {
             $this->routePlanner = $routePlanner;
@@ -380,9 +386,10 @@ class TripPlanningService
      *
      * @param string $icsContent
      * @param string $senderEmail
+     * @param ?string $recipientEmail
      * @return int Anzahl importierter / aktualisierter Reisen
      */
-    public function processIcsInvite(string $icsContent, string $senderEmail): int
+    public function processIcsInvite(string $icsContent, string $senderEmail, ?string $recipientEmail = null): int
     {
         // 1. Absender-Prüfung gegen erlaubte Systemeinstellungen / Allowlist
         if (!$this->isSenderAllowed($senderEmail)) {
@@ -412,6 +419,7 @@ class TripPlanningService
 
             // Prüfen, ob Termin bereits existiert
             $existing = $this->tripRepo->getTripByCalendarUid($uid);
+            $tripId = null;
 
             if ($existing) {
                 // Bei Stornierung (STATUS: CANCELLED) auf 'storniert' setzen
@@ -430,6 +438,7 @@ class TripPlanningService
                     'destination_address' => $location ?: $existing['destination_address'],
                 ]);
                 $this->recalculateTrip((int)$existing['id']);
+                $tripId = (int)$existing['id'];
                 $processed++;
             } else {
                 if ($status === 'CANCELLED') {
@@ -437,7 +446,7 @@ class TripPlanningService
                 }
 
                 // Neu anlegen
-                $this->planAndSaveTrip([
+                $tripId = $this->planAndSaveTrip([
                     'calendar_uid' => $uid,
                     'title' => $title,
                     'destination_address' => $location,
@@ -445,6 +454,25 @@ class TripPlanningService
                     'return_time' => $endDt,
                 ]);
                 $processed++;
+            }
+
+            // Automatische Bestätigung (iMIP METHOD:REPLY RFC 6047) senden, falls aktiv
+            if ($tripId !== null && $this->settingsService->isTripCalendarAutoAcceptEnabled() && !empty($event['organizer_email'])) {
+                $responder = !empty($recipientEmail) ? $recipientEmail : (string)($_ENV['IMAP_USER_KASSENBON'] ?? '');
+                if ($responder !== '') {
+                    $replyOk = $this->icsReplyService->sendAcceptReply($event, $responder, 'Kai Ladeplaner');
+                    if ($replyOk) {
+                        $this->logger->info("TripPlanningService: Einladung zu '{$title}' an Organisator {$event['organizer_email']} bestätigt.");
+                        if ($this->activityLogger !== null) {
+                            $this->activityLogger->log(
+                                'car_charge_captured',
+                                "Termineinladung zu \"{$title}\" angenommen & bestätigt",
+                                "/car/trips.php?id=" . $tripId,
+                                $tripId
+                            );
+                        }
+                    }
+                }
             }
         }
 

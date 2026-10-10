@@ -66,4 +66,6 @@ INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `label`) V
 ('home_geofence_radius_m', '200', 'Heim-Geofence Radius (Meter)'),
 ('grid_import_price_kwh', '0.2689', 'Netzbezugspreis Strom (€/kWh)'),
 ('grid_export_price_kwh', '0.06', 'Einspeisevergütung Strom (€/kWh)'),
-('trip_calendar_allowed_senders', '', 'Erlaubte Kalender-Absender für Reisen (kommagetrennt)');
+('trip_calendar_allowed_senders', '', 'Erlaubte Kalender-Absender für Reisen (kommagetrennt)'),
+('trip_calendar_auto_accept', '1', 'Termineinladungen für Reisen automatisch bestätigen (1/0)');
+

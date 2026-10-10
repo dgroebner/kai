@@ -13,11 +13,14 @@ class ImapClient
     private array $allowedSenders;
     private Logger $logger;
 
+    private string $username;
+
     /**
      * @throws Exception
      */
     public function __construct(string $username, string $password)
     {
+        $this->username = $username;
         $this->logger = new Logger(14);
         $this->allowedSenders = $this->getAllowedSenders();
 
@@ -129,5 +132,10 @@ class ImapClient
         } catch (Exception $e) {
             $this->logger->error("ImapClient: Fehler beim Trennen.", ['error' => $e->getMessage()]);
         }
+    }
+
+    public function getUsername(): string
+    {
+        return $this->username;
     }
 }

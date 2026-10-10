@@ -49,7 +49,12 @@ class IcsTripParser
                     'location' => '',
                     'start_datetime' => '',
                     'end_datetime' => null,
+                    'raw_dtstart' => '',
+                    'raw_dtend' => null,
                     'status' => 'CONFIRMED',
+                    'sequence' => 0,
+                    'organizer_email' => null,
+                    'organizer_name' => null,
                     'is_all_day' => false,
                 ];
                 continue;
@@ -100,7 +105,22 @@ class IcsTripParser
                     $currentEvent['status'] = strtoupper(trim($val));
                     break;
 
+                case 'SEQUENCE':
+                    $currentEvent['sequence'] = (int)trim($val);
+                    break;
+
+                case 'ORGANIZER':
+                    $cleanEmail = preg_replace('/^mailto:/i', '', trim($val));
+                    $currentEvent['organizer_email'] = $cleanEmail;
+                    foreach ($keyParams as $param) {
+                        if (str_starts_with(strtoupper($param), 'CN=')) {
+                            $currentEvent['organizer_name'] = trim(substr($param, 3), ' "\'');
+                        }
+                    }
+                    break;
+
                 case 'DTSTART':
+                    $currentEvent['raw_dtstart'] = trim($val);
                     $dtInfo = $this->parseIcsDate($val, $keyParams);
                     if ($dtInfo !== null) {
                         $currentEvent['start_datetime'] = $dtInfo['datetime'];
@@ -109,12 +129,14 @@ class IcsTripParser
                     break;
 
                 case 'DTEND':
+                    $currentEvent['raw_dtend'] = trim($val);
                     $dtInfo = $this->parseIcsDate($val, $keyParams);
                     if ($dtInfo !== null) {
                         $currentEvent['end_datetime'] = $dtInfo['datetime'];
                     }
                     break;
             }
+
         }
 
         return $events;

@@ -106,7 +106,8 @@ class MailDispatcher
                     $this->logger->info("MailDispatcher: Kalendereinladung erkannt ($fileName).");
                     try {
                         $fromEmail = $message->getFrom()[0]->mail ?? '';
-                        $count = $this->tripPlanningService->processIcsInvite($content, $fromEmail);
+                        $toEmail = $this->imapClient->getUsername();
+                        $count = $this->tripPlanningService->processIcsInvite($content, $fromEmail, $toEmail);
                         $this->logger->info("MailDispatcher: Kalendereinladung verarbeitet ({$count} Reise(n)).");
                         $processedCount++;
                     } catch (Throwable $e) {

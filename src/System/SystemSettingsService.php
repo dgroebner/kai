@@ -50,4 +50,10 @@ class SystemSettingsService
     {
         return (string)$this->repository->get('trip_calendar_allowed_senders', '');
     }
-}
+
+    public function isTripCalendarAutoAcceptEnabled(): bool
+    {
+        return (bool)$this->repository->get('trip_calendar_auto_accept', 1);
+    }
+}
+
