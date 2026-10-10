@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div>
                                     ⚡ <strong>${KaiHtml.escape(it.name)}</strong> (${itQty} kWh)${isMatch} &bull; <span class="text-success">${itPrice} €</span>
                                 </div>
-                                <button type="button" class="btn btn-outline btn-xs js-btn-link-receipt" data-receipt-id="${c.id}" data-cost="${it.total_price}" data-note="${KaiHtml.escape(c.store + ' - ' + it.name)}">
+                                <button type="button" class="btn btn-outline btn-xs js-btn-link-receipt" data-receipt-id="${c.id}" data-item-id="${it.id}" data-cost="${it.total_price}" data-note="${KaiHtml.escape(c.store + ' - ' + it.name)}">
                                     🔗 ${itPrice} € zuordnen
                                 </button>
                             </div>
@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!btn || !currentChargeId) return;
 
         const receiptId = parseInt(btn.dataset.receiptId, 10);
+        const receiptItemId = btn.dataset.itemId ? parseInt(btn.dataset.itemId, 10) : null;
         const costEur = btn.dataset.cost ? parseFloat(btn.dataset.cost) : null;
         const note = btn.dataset.note || null;
 
@@ -217,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 action: 'link_receipt',
                 charge_id: currentChargeId,
                 receipt_id: receiptId,
+                receipt_item_id: receiptItemId,
                 cost_eur: costEur,
                 note: note
             });

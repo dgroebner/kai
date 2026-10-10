@@ -814,9 +814,11 @@ CREATE TABLE IF NOT EXISTS `vehicle_charges` (
     `loss_pct` DECIMAL(5,1) NULL,
     `cost_eur` DECIMAL(6,2) NULL,
     `receipt_id` INT NULL,
+    `receipt_item_id` INT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_start_time` (`start_time`),
-    INDEX `idx_receipt_id` (`receipt_id`)
+    INDEX `idx_receipt_id` (`receipt_id`),
+    INDEX `idx_receipt_item_id` (`receipt_item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (

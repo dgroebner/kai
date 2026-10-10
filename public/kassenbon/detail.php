@@ -29,6 +29,49 @@ try {
     }
 
     $items = $receiptQueryRepository->getItemsForReceipt($id);
+    $linkedCharges = $receiptQueryRepository->getLinkedChargesForReceipt($id);
+
+    // Zuordnung der Ladevorgänge zu den einzelnen Positionen ($items)
+    $chargesByItemId = [];
+    $unassignedCharges = [];
+
+    foreach ($linkedCharges as $vc) {
+        if (!empty($vc['receipt_item_id'])) {
+            $chargesByItemId[(int)$vc['receipt_item_id']] = $vc;
+        } else {
+            $unassignedCharges[] = $vc;
+        }
+    }
+
+    if (!empty($unassignedCharges)) {
+        if (count($items) === 1 && count($unassignedCharges) === 1) {
+            $chargesByItemId[(int)$items[0]['id']] = $unassignedCharges[0];
+            $unassignedCharges = [];
+        } else {
+            foreach ($unassignedCharges as $uIdx => $uCharge) {
+                foreach ($items as $it) {
+                    $itemId = (int)$it['id'];
+                    if (isset($chargesByItemId[$itemId])) {
+                        continue;
+                    }
+                    $qty = (float)$it['quantity'];
+                    $price = (float)$it['total_price'];
+                    $cNetKwh = (float)$uCharge['charged_net_kwh'];
+                    $cLossKwh = (float)($uCharge['loss_kwh'] ?? 0);
+                    $cCost = (float)$uCharge['cost_eur'];
+
+                    $kwhMatch = ($qty > 0 && (abs($qty - ($cNetKwh + $cLossKwh)) <= 0.6 || ($cNetKwh >= $qty * 0.78 && $cNetKwh <= $qty + 0.5)));
+                    $priceMatch = ($price > 0 && abs($price - $cCost) <= 0.05);
+
+                    if ($kwhMatch || $priceMatch) {
+                        $chargesByItemId[$itemId] = $uCharge;
+                        unset($unassignedCharges[$uIdx]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     // Bereits vergebene Kategorien für das Inline-Dropdown
     $allCategories = new ReceiptRepository()->getKnownCategories();
@@ -55,7 +98,7 @@ try {
             <h1>🧾 <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> <small
                         class="page-header-sub">(<?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?>)</small>
             </h1>
-            <div style="margin-top: 0.5rem;">
+            <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
                 <?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
                     <a href="../bank/index.php?tx=<?= (int)$receipt['bank_giro_transaction_id'] ?>"
                        class="badge badge-success" style="text-decoration: none; font-size: 0.85rem;"
@@ -70,15 +113,27 @@ try {
                 <?php else: ?>
                     <span class="badge badge-warning" style="font-size: 0.85rem;">🟡 Zahlung offen</span>
                 <?php endif; ?>
+
+                <?php foreach ($linkedCharges as $vc): 
+                    $vcDate = (new DateTime($vc['start_time']))->format('Y-m-d');
+                    $vcTime = (new DateTime($vc['start_time']))->format('d.m.Y H:i');
+                ?>
+                    <a href="../car/index.php?tab=charges&date=<?= $vcDate ?>&charge_id=<?= (int)$vc['id'] ?>#charge-<?= (int)$vc['id'] ?>"
+                       class="badge badge-primary" style="text-decoration: none; font-size: 0.85rem;"
+                       title="Zum VW ID.Buzz Ladevorgang wechseln">
+                        🚐 ID.Buzz Ladevorgang #<?= (int)$vc['id'] ?> (<?= $vcTime ?>) &rarr;
+                    </a>
+                <?php endforeach; ?>
             </div>
         </div>
         <a href="index.php" class="btn btn-outline">&larr; Zurück zu der Übersicht</a>
     </header>
 
 <?php
-// product_key für jedes Item ergänzen (Kleinbuchstaben, getrimmt, reduzierte Leerzeichen)
-$itemsWithKey = array_map(static function (array $item): array {
+// product_key und verknüpften Ladevorgang für jedes Item ergänzen
+$itemsWithKey = array_map(static function (array $item) use ($chargesByItemId): array {
     $item['product_key'] = \Kai\Tools\Kassenbon\OpenFoodFactsQueueRepository::normalizeProductKey($item['name'] ?? '');
+    $item['linked_charge'] = $chargesByItemId[(int)$item['id']] ?? null;
     return $item;
 }, $items);
 ?>
@@ -128,8 +183,23 @@ $itemsWithKey = array_map(static function (array $item): array {
                             data-product-key="<?= htmlspecialchars($item['product_key'], ENT_QUOTES, 'UTF-8') ?>"
                             data-category-name="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
                             <td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
-                            <td data-label="Artikel"
-                                class="amount-bold"><?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                            <td data-label="Artikel" class="amount-bold">
+                                <?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                                <?php if (!empty($item['linked_charge'])): 
+                                    $vc = $item['linked_charge'];
+                                    $chargeDateStr = date('d.m.Y H:i', strtotime($vc['start_time']));
+                                    $targetDate = date('Y-m-d', strtotime($vc['start_time']));
+                                ?>
+                                    <div style="margin-top: 0.35rem;">
+                                        <a href="../car/index.php?tab=charges&date=<?= $targetDate ?>&charge_id=<?= (int)$vc['id'] ?>#charge-<?= (int)$vc['id'] ?>"
+                                           class="badge badge-primary"
+                                           style="text-decoration: none; font-size: 0.75rem; font-weight: normal; display: inline-flex; align-items: center; gap: 0.35rem;"
+                                           title="Zum Ladevorgang im ID.Buzz Dashboard wechseln">
+                                            <span>🚐 Ladevorgang #<?= (int)$vc['id'] ?> (<?= $chargeDateStr ?> &bull; <?= number_format((float)$vc['charged_net_kwh'], 1, ',', '.') ?> kWh Netto) &rarr;</span>
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                             <td data-label="Kategorie" class="category-cell">
                                         <span class="clickable-badge" data-item-id="<?= (int)$item['id'] ?>">
                                             <span class="badge-text"><?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></span>

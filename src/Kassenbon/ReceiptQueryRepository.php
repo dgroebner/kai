@@ -96,8 +96,35 @@ class ReceiptQueryRepository
     {
         $stmt = $this->pdo->prepare("SELECT * FROM kb_items WHERE receipt_id = :id ORDER BY id");
         $stmt->execute([':id' => $receiptId]);
-
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Liefert verknüpfte Fahrzeug-Ladevorgänge für einen Kassenbon (z. B. E-Bon / Ladeabrechnung).
+     *
+     * @return array<array<string, mixed>>
+     */
+    public function getLinkedChargesForReceipt(int $receiptId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                id,
+                start_time,
+                end_time,
+                charged_net_kwh,
+                cost_eur,
+                loss_kwh,
+                loss_pct,
+                station_name,
+                station_operator,
+                charge_mode,
+                receipt_item_id
+            FROM vehicle_charges
+            WHERE receipt_id = :receipt_id
+            ORDER BY start_time ASC, id ASC
+        ");
+        $stmt->execute([':receipt_id' => $receiptId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**

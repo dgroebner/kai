@@ -116,7 +116,20 @@ $dateParam = $_GET['date'] ?? null;
 // Auf den Monat des letzten Ladevorgangs springen, falls vorhanden.
 $chargeRepo = ($tab === 'charges') ? new \Kai\Tools\Car\VehicleChargeRepository() : null;
 $latestChargeTime = null;
+$highlightChargeId = filter_var($_GET['charge_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+
 if ($tab === 'charges' && $chargeRepo) {
+    if ($highlightChargeId) {
+        $hlCharge = $chargeRepo->getCharge($highlightChargeId);
+        if ($hlCharge && !empty($hlCharge['start_time'])) {
+            $hlDt = (new DateTime($hlCharge['start_time'], new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('Europe/Berlin'));
+            if ($dateParam === null) {
+                $dateParam = $hlDt->format('Y-m-d');
+                $type = 'monat';
+            }
+        }
+    }
+
     $latestChargeTime = $chargeRepo->getLatestChargeTime();
     if ($dateParam === null && $latestChargeTime !== null) {
         $nowLocal = new DateTime('now', new DateTimeZone('Europe/Berlin'));
@@ -265,6 +278,14 @@ if ($tab === 'trips') {
           content="Live-Übersicht des Fahrzeugstatus, Batterieladestand und Telemetrie-Historie des VW ID.Buzz.">
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
+    <style>
+        .list-item:target,
+        .list-item.highlight-charge {
+            border-color: var(--primary, #3b82f6) !important;
+            background: rgba(59, 130, 246, 0.08) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+    </style>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
@@ -823,7 +844,7 @@ if ($tab === 'trips') {
                             $hasCoords = !empty($charge['lat']) && !empty($charge['lon']);
                             $hasReceipt = !empty($charge['receipt_id']);
                         ?>
-                            <div class="list-item" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1.2rem; margin-bottom: 1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+                            <div id="charge-<?= (int)$charge['id'] ?>" class="list-item <?= ($highlightChargeId === (int)$charge['id']) ? 'highlight-charge' : '' ?>" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1.2rem; margin-bottom: 1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; transition: border-color 0.3s, background-color 0.3s;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                                     <div>
                                         <strong><?= $dateStr ?></strong> <span class="u-muted" style="margin: 0 0.5rem;">|</span> 

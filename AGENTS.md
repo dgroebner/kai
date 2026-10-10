@@ -172,6 +172,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/shared/mail.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Statusabgleich anstehender Reisen durch. |
 | `public/shared/car_cron.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY durch. |
 | `Car\ChargingReceiptService` | `Kassenbon\*` | Ermöglicht die Zuordnung von E-Bons/Ladeabrechnungen zu Fahrzeug-Ladevorgängen. |
+| `Kassenbon\ReceiptQueryRepository` | `vehicle_charges` (Car) | Ermöglicht die Anzeige und Verlinkung zugeordneter Ladevorgänge in der E-Bon-Detailansicht. |
 
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 | `System\BriefingService` | `Weather\*`, `School\*`, `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Calendar\*`, `Bank\*` | Orchestrator: Aggregiert Statuskacheln für das Daily Briefing Popup beim App-Start. Alle Abhängigkeiten werden per Konstruktor injiziert. |

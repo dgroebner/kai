@@ -231,8 +231,8 @@ function initOffPopup() {
         if (!row) {
             return;
         }
-        // Klick auf Kategorie-Badge soll Inline-Edit öffnen, nicht das Popup
-        if (e.target.closest('.clickable-badge') || e.target.closest('.category-edit-container')) {
+        // Klick auf Links oder Kategorie-Badge soll nicht das OFF-Popup öffnen
+        if (e.target.closest('a') || e.target.closest('.clickable-badge') || e.target.closest('.category-edit-container')) {
             return;
         }
 

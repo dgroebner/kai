@@ -150,7 +150,7 @@ class ChargingReceiptService
     /**
      * Verknüpft einen Kassenbon mit einem Ladevorgang und übernimmt dessen Betrag (oder Teilbetrag).
      */
-    public function linkReceiptToCharge(int $chargeId, int $receiptId, ?float $customCost = null, ?string $customNote = null): bool
+    public function linkReceiptToCharge(int $chargeId, int $receiptId, ?float $customCost = null, ?string $customNote = null, ?int $receiptItemId = null): bool
     {
         $stmt = $this->db->prepare("SELECT id, store, total FROM kb_receipts WHERE id = :id");
         $stmt->execute([':id' => $receiptId]);
@@ -163,17 +163,36 @@ class ChargingReceiptService
         $totalEur = ($customCost !== null && $customCost > 0) ? $customCost : (float)$receipt['total'];
         $store = $customNote ?: (string)$receipt['store'];
 
+        // Falls keine konkrete Position übergeben wurde: Wenn der Beleg nur 1 Position hat, diese automatisch nutzen
+        if ($receiptItemId === null) {
+            $itemIdsStmt = $this->db->prepare("SELECT id FROM kb_items WHERE receipt_id = :id");
+            $itemIdsStmt->execute([':id' => $receiptId]);
+            $allItemIds = $itemIdsStmt->fetchAll(PDO::FETCH_COLUMN);
+            if (count($allItemIds) === 1) {
+                $receiptItemId = (int)$allItemIds[0];
+            }
+        }
+
         // Ladeverlust berechnen, falls Zähler-Menge vorhanden ist
         $chargeStmt = $this->db->prepare("SELECT charged_net_kwh FROM vehicle_charges WHERE id = :id");
         $chargeStmt->execute([':id' => $chargeId]);
         $netKwh = (float)$chargeStmt->fetchColumn();
 
         $grossKwh = null;
-        $itStmt = $this->db->prepare("SELECT quantity FROM kb_items WHERE receipt_id = :id AND quantity > :net ORDER BY quantity ASC LIMIT 1");
-        $itStmt->execute([':id' => $receiptId, ':net' => max(0.1, $netKwh - 0.5)]);
-        $foundQty = (float)$itStmt->fetchColumn();
-        if ($foundQty > $netKwh) {
-            $grossKwh = $foundQty;
+        if ($receiptItemId !== null) {
+            $itStmt = $this->db->prepare("SELECT quantity FROM kb_items WHERE id = :item_id");
+            $itStmt->execute([':item_id' => $receiptItemId]);
+            $foundQty = (float)$itStmt->fetchColumn();
+            if ($foundQty > $netKwh) {
+                $grossKwh = $foundQty;
+            }
+        } else {
+            $itStmt = $this->db->prepare("SELECT quantity FROM kb_items WHERE receipt_id = :id AND quantity > :net ORDER BY quantity ASC LIMIT 1");
+            $itStmt->execute([':id' => $receiptId, ':net' => max(0.1, $netKwh - 0.5)]);
+            $foundQty = (float)$itStmt->fetchColumn();
+            if ($foundQty > $netKwh) {
+                $grossKwh = $foundQty;
+            }
         }
 
         $lossSql = "";
@@ -189,6 +208,7 @@ class ChargingReceiptService
         $updateStmt = $this->db->prepare("
             UPDATE vehicle_charges SET
                 receipt_id = :receipt_id,
+                receipt_item_id = :receipt_item_id,
                 cost_eur = :cost_eur,
                 tariff_category = :store
                 {$lossSql}
@@ -197,6 +217,7 @@ class ChargingReceiptService
 
         $params = array_merge([
             ':receipt_id' => $receiptId,
+            ':receipt_item_id' => $receiptItemId,
             ':cost_eur' => $totalEur,
             ':store' => $store,
             ':charge_id' => $chargeId,
@@ -205,7 +226,7 @@ class ChargingReceiptService
         $success = $updateStmt->execute($params);
 
         if ($success) {
-            $this->logger->info("ChargingReceiptService: Ladevorgang #{$chargeId} mit E-Bon #{$receiptId} ({$store}, {$totalEur} €) verknüpft.");
+            $this->logger->info("ChargingReceiptService: Ladevorgang #{$chargeId} mit E-Bon #{$receiptId} (Position #" . ($receiptItemId ?: '–') . ", {$store}, {$totalEur} €) verknüpft.");
         }
 
         return $success;
@@ -218,7 +239,8 @@ class ChargingReceiptService
     {
         $stmt = $this->db->prepare("
             UPDATE vehicle_charges SET
-                receipt_id = NULL
+                receipt_id = NULL,
+                receipt_item_id = NULL
             WHERE id = :charge_id
         ");
 
@@ -326,7 +348,7 @@ class ChargingReceiptService
                 $chargeId = $matchStmt->fetchColumn();
 
                 if ($chargeId) {
-                    $this->linkReceiptToCharge((int)$chargeId, $receiptId, $price, $store);
+                    $this->linkReceiptToCharge((int)$chargeId, $receiptId, $price, $store, (int)$it['id']);
                     $anyMatched = true;
                 }
             }

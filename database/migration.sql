@@ -81,7 +81,9 @@ ALTER TABLE `vehicle_charges`
     ADD COLUMN IF NOT EXISTS `station_name` VARCHAR(255) NULL AFTER `tariff_category`,
     ADD COLUMN IF NOT EXISTS `station_operator` VARCHAR(100) NULL AFTER `station_name`,
     ADD COLUMN IF NOT EXISTS `receipt_id` INT NULL AFTER `cost_eur`,
-    ADD INDEX IF NOT EXISTS `idx_receipt_id` (`receipt_id`);
+    ADD COLUMN IF NOT EXISTS `receipt_item_id` INT NULL AFTER `receipt_id`,
+    ADD INDEX IF NOT EXISTS `idx_receipt_id` (`receipt_id`),
+    ADD INDEX IF NOT EXISTS `idx_receipt_item_id` (`receipt_item_id`);
 
 -- Tabelle für konfigurierbare Ladetarife (Unterwegs & Roaming)
 CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (
