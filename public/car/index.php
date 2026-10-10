@@ -1086,8 +1086,9 @@ if ($tab === 'trips') {
                                 <div>
                                     <label for="field-dep-soc" class="form-label">Geplanter Start-SoC (%)</label>
                                     <select id="field-dep-soc" name="planned_departure_soc" class="form-control" style="width: 100%;">
-                                        <option value="100" selected>100 % (Vollgeladen via PV/Netz)</option>
-                                        <option value="80">80 % (Alltags-Ladestand)</option>
+                                        <option value="80" selected>80 % (Alltags-Ladestand / Akkuschonung)</option>
+                                        <option value="90">90 % (Erweiterter Radius)</option>
+                                        <option value="100">100 % (Vollgeladen für Langstrecke)</option>
                                     </select>
                                 </div>
                             </div>

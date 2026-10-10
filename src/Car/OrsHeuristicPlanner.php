@@ -35,7 +35,7 @@ class OrsHeuristicPlanner implements RoutePlannerInterface
         float $destLat,
         float $destLon,
         int $targetSoc = 10,
-        int $departureSoc = 100
+        int $departureSoc = 80
     ): RoutePlanResult {
         // 1. Distanz und Fahrzeit ermitteln (via ORS oder Haversine-Fallback)
         $routeData = $this->fetchRouteData($startLat, $startLon, $destLat, $destLon);

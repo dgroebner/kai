@@ -36,7 +36,7 @@ class AbrpPlanner implements RoutePlannerInterface
         float $destLat,
         float $destLon,
         int $targetSoc = 10,
-        int $departureSoc = 100
+        int $departureSoc = 80
     ): RoutePlanResult {
         if (empty($this->apiKey)) {
             $this->logger->info("AbrpPlanner: Kein ABRP_API_KEY vorhanden, delegiere an Heuristik-Planner.");
@@ -44,6 +44,7 @@ class AbrpPlanner implements RoutePlannerInterface
         }
 
         try {
+            $effectiveDepartureSoc = ($departureSoc > 0) ? $departureSoc : 80;
             $requestBody = [
                 'origin' => [
                     'lat' => $startLat,
@@ -56,7 +57,7 @@ class AbrpPlanner implements RoutePlannerInterface
                 'vehicle' => [
                     'typecode' => AbrpDeepLinkBuilder::DEFAULT_VEHICLE_MODEL,
                 ],
-                'departure_soc' => round($departureSoc / 100.0, 2),
+                'departure_soc' => round($effectiveDepartureSoc / 100.0, 2),
                 'arrival_soc' => round($targetSoc / 100.0, 2),
             ];
 

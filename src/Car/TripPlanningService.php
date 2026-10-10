@@ -77,7 +77,9 @@ class TripPlanningService
         $parentTripId = !empty($input['parent_trip_id']) ? (int)$input['parent_trip_id'] : null;
 
         $targetArrivalSoc = isset($input['target_arrival_soc']) ? (int)$input['target_arrival_soc'] : 10;
-        $plannedDepartureSoc = isset($input['planned_departure_soc']) ? (int)$input['planned_departure_soc'] : 100;
+        $plannedDepartureSoc = isset($input['planned_departure_soc']) && (int)$input['planned_departure_soc'] > 0
+            ? (int)$input['planned_departure_soc']
+            : null;
 
         $destAddress = trim((string)($input['destination_address'] ?? ''));
         $destLat = (float)($input['destination_lat'] ?? 0.0);
@@ -147,7 +149,7 @@ class TripPlanningService
             $destLat,
             $destLon,
             $targetArrivalSoc,
-            $plannedDepartureSoc
+            $plannedDepartureSoc ?? 0
         );
 
         $totalDistanceKm = $routeResult->totalDistanceKm;
@@ -159,16 +161,25 @@ class TripPlanningService
         if ($isRoundTrip) {
             $totalDistanceKm = round($totalDistanceKm * 2.0, 2);
             $estimatedConsumptionKwh = round($estimatedConsumptionKwh * 2.0, 2);
-
-            $usableBattery = OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * (($plannedDepartureSoc - $targetArrivalSoc) / 100.0);
-            if ($estimatedConsumptionKwh > $usableBattery) {
-                $enRouteChargeKwh = round(($estimatedConsumptionKwh - $usableBattery) + 4.0, 1);
-            } else {
-                $enRouteChargeKwh = 0.0;
-            }
         }
 
-        $effectiveDepartureSoc = ($plannedDepartureSoc > 0) ? $plannedDepartureSoc : $recommendedSoc;
+        // Wenn kein Start-SoC fest vorgegeben wurde:
+        // 80% als akkuschonender Standard. Reicht 80% (minus Ziel-SoC) für den Gesamttrip?
+        // Wenn 80% nicht reichen, auf 100% erhöhen.
+        if ($plannedDepartureSoc === null) {
+            $usableWith80 = OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * ((80 - $targetArrivalSoc) / 100.0);
+            $effectiveDepartureSoc = ($estimatedConsumptionKwh <= $usableWith80) ? 80 : 100;
+        } else {
+            $effectiveDepartureSoc = $plannedDepartureSoc;
+        }
+
+        // Ladebedarf unterwegs anhand des tatsächlichen Start-SoC berechnen
+        $usableBattery = OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * (($effectiveDepartureSoc - $targetArrivalSoc) / 100.0);
+        if ($estimatedConsumptionKwh > $usableBattery) {
+            $enRouteChargeKwh = round(($estimatedConsumptionKwh - $usableBattery) + 4.0, 1);
+        } else {
+            $enRouteChargeKwh = 0.0;
+        }
 
         // 6. Vorlade-Kette & Ladeschritte generieren
         $chargingSteps = $this->generateChargingSchedule(
@@ -226,38 +237,52 @@ class TripPlanningService
     /**
      * Berechnet eine bestehende Reise anhand ihrer aktuellen Attribute komplett neu.
      */
-    public function recalculateTrip(int $tripId): bool
+    public function recalculateTrip(int $tripId, bool $preservePlannedSoc = false): bool
     {
         $trip = $this->tripRepo->getTrip($tripId);
         if (!$trip) {
             return false;
         }
 
+        $currentPlannedSoc = (int)($trip['planned_departure_soc'] ?? 80);
+        $targetArrivalSoc = (int)($trip['target_arrival_soc'] ?? 10);
+
         $routeResult = $this->routePlanner->planRoute(
             (float)$trip['start_lat'],
             (float)$trip['start_lon'],
             (float)$trip['destination_lat'],
             (float)$trip['destination_lon'],
-            (int)$trip['target_arrival_soc'],
-            (int)$trip['planned_departure_soc']
+            $targetArrivalSoc,
+            $currentPlannedSoc
         );
 
         $totalDistanceKm = $routeResult->totalDistanceKm;
         $estimatedConsumptionKwh = $routeResult->estimatedConsumptionKwh;
-        $enRouteChargeKwh = $routeResult->enRouteChargeKwh;
 
         if (!empty($trip['is_round_trip'])) {
             $totalDistanceKm = round($totalDistanceKm * 2.0, 2);
             $estimatedConsumptionKwh = round($estimatedConsumptionKwh * 2.0, 2);
-            $usableBattery = OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * (((int)$trip['planned_departure_soc'] - (int)$trip['target_arrival_soc']) / 100.0);
-            $enRouteChargeKwh = ($estimatedConsumptionKwh > $usableBattery)
-                ? round(($estimatedConsumptionKwh - $usableBattery) + 4.0, 1)
-                : 0.0;
         }
+
+        // Wenn nicht explizit erzwungen: prüfen, ob 80% (Akkuschonung) für die Reise ausreichen
+        $plannedDepartureSoc = $currentPlannedSoc;
+        if (!$preservePlannedSoc) {
+            $usableWith80 = OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * ((80 - $targetArrivalSoc) / 100.0);
+            if ($estimatedConsumptionKwh <= $usableWith80) {
+                $plannedDepartureSoc = 80;
+            } elseif ($plannedDepartureSoc < 100) {
+                $plannedDepartureSoc = 100;
+            }
+        }
+
+        $usableBattery = OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * (($plannedDepartureSoc - $targetArrivalSoc) / 100.0);
+        $enRouteChargeKwh = ($estimatedConsumptionKwh > $usableBattery)
+            ? round(($estimatedConsumptionKwh - $usableBattery) + 4.0, 1)
+            : 0.0;
 
         $chargingSteps = $this->generateChargingSchedule(
             $trip['departure_time'],
-            (int)$trip['planned_departure_soc'],
+            $plannedDepartureSoc,
             $enRouteChargeKwh,
             !empty($trip['parent_trip_id'])
         );
@@ -272,6 +297,7 @@ class TripPlanningService
         }
 
         $this->tripRepo->updateTrip($tripId, [
+            'planned_departure_soc' => $plannedDepartureSoc,
             'total_distance_km' => $totalDistanceKm,
             'estimated_consumption_kwh' => $estimatedConsumptionKwh,
             'en_route_charge_kwh' => $enRouteChargeKwh,
@@ -323,7 +349,7 @@ class TripPlanningService
                     $steps[] = [
                         'step_type' => 'pv_precharge',
                         'scheduled_date' => $checkDate,
-                        'target_soc' => min(90, 70 + (4 - $daysBack) * 10),
+                        'target_soc' => min($targetDepartureSoc, min(90, 70 + (4 - $daysBack) * 10)),
                         'planned_kwh' => 7.7, // ca. 10% der 77 kWh Batterie
                         'status' => 'geplant',
                     ];
@@ -335,16 +361,18 @@ class TripPlanningService
             if ($eveningDate >= date('Y-m-d')) {
                 // Aktuellen Ist-SoC aus vehicle_state lesen
                 $currentSoc = $this->getCurrentVehicleSoc();
-                $socDelta = max(10, $targetDepartureSoc - $currentSoc);
-                $neededKwh = round(OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * ($socDelta / 100.0), 1);
+                if ($targetDepartureSoc > $currentSoc) {
+                    $socDelta = $targetDepartureSoc - $currentSoc;
+                    $neededKwh = round(OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * ($socDelta / 100.0), 1);
 
-                $steps[] = [
-                    'step_type' => 'evening_grid',
-                    'scheduled_date' => $eveningDate,
-                    'target_soc' => $targetDepartureSoc,
-                    'planned_kwh' => $neededKwh,
-                    'status' => 'geplant',
-                ];
+                    $steps[] = [
+                        'step_type' => 'evening_grid',
+                        'scheduled_date' => $eveningDate,
+                        'target_soc' => $targetDepartureSoc,
+                        'planned_kwh' => $neededKwh,
+                        'status' => 'geplant',
+                    ];
+                }
             }
         }
 

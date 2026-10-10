@@ -225,7 +225,7 @@
                         return_time: form.return_time.value || null,
                         is_round_trip: form.is_round_trip ? form.is_round_trip.checked : false,
                         target_arrival_soc: parseInt(form.target_arrival_soc.value, 10) || 10,
-                        planned_departure_soc: parseInt(form.planned_departure_soc.value, 10) || 100,
+                        planned_departure_soc: parseInt(form.planned_departure_soc.value, 10) || 80,
                     }
                 };
 
@@ -306,7 +306,7 @@
         form.departure_time.value = isoDate;
         form.start_address.value = 'Zuhause';
         form.target_arrival_soc.value = 10;
-        form.planned_departure_soc.value = 100;
+        form.planned_departure_soc.value = 80;
 
         modal.classList.remove('hidden');
         modal.style.display = 'flex';

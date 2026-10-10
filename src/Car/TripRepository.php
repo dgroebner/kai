@@ -61,7 +61,7 @@ class TripRepository
             ':return_time' => $data['return_time'] ?? null,
             ':is_round_trip' => !empty($data['is_round_trip']) ? 1 : 0,
             ':target_arrival_soc' => (int)($data['target_arrival_soc'] ?? 10),
-            ':planned_departure_soc' => (int)($data['planned_departure_soc'] ?? 100),
+            ':planned_departure_soc' => (int)($data['planned_departure_soc'] ?? 80),
             ':total_distance_km' => (float)($data['total_distance_km'] ?? 0.0),
             ':estimated_consumption_kwh' => (float)($data['estimated_consumption_kwh'] ?? 0.0),
             ':en_route_charge_kwh' => (float)($data['en_route_charge_kwh'] ?? 0.0),

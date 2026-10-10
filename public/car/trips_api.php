@@ -119,7 +119,7 @@ try {
                 'return_time' => !empty($tripData['return_time']) ? (string)$tripData['return_time'] : null,
                 'is_round_trip' => !empty($tripData['is_round_trip']) ? 1 : 0,
                 'target_arrival_soc' => (int)($tripData['target_arrival_soc'] ?? 10),
-                'planned_departure_soc' => (int)($tripData['planned_departure_soc'] ?? 100),
+                'planned_departure_soc' => (int)($tripData['planned_departure_soc'] ?? 80),
             ];
 
             if (isset($tripData['start_lat'], $tripData['start_lon'])) {
@@ -132,7 +132,7 @@ try {
             }
 
             $tripRepo->updateTrip($tripId, $updateFields);
-            $planningService->recalculateTrip($tripId);
+            $planningService->recalculateTrip($tripId, preservePlannedSoc: true);
 
             echo json_encode(['success' => true, 'data' => ['id' => $tripId]]);
             exit;
