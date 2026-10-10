@@ -126,7 +126,9 @@ class ChargingReceiptService
                 $r['items'] = $itemsByReceipt[$r['id']] ?? [];
                 foreach ($r['items'] as &$it) {
                     $qty = (float)$it['quantity'];
-                    $kwhMatch = ($chargeKwh > 0 && abs($qty - $chargeKwh) <= 0.6);
+                    // Ladeverlust-Toleranz: Säule misst Brutto (mehr), Auto misst Netto (weniger)
+                    $diff = $qty - $chargeKwh;
+                    $kwhMatch = ($chargeKwh > 0 && $qty > 0 && $diff >= -0.5 && $diff <= max(2.5, $qty * 0.18));
                     $it['is_kwh_match'] = $kwhMatch;
                 }
                 unset($it);
@@ -161,20 +163,46 @@ class ChargingReceiptService
         $totalEur = ($customCost !== null && $customCost > 0) ? $customCost : (float)$receipt['total'];
         $store = $customNote ?: (string)$receipt['store'];
 
+        // Ladeverlust berechnen, falls Zähler-Menge vorhanden ist
+        $chargeStmt = $this->db->prepare("SELECT charged_net_kwh FROM vehicle_charges WHERE id = :id");
+        $chargeStmt->execute([':id' => $chargeId]);
+        $netKwh = (float)$chargeStmt->fetchColumn();
+
+        $grossKwh = null;
+        $itStmt = $this->db->prepare("SELECT quantity FROM kb_items WHERE receipt_id = :id AND quantity > :net ORDER BY quantity ASC LIMIT 1");
+        $itStmt->execute([':id' => $receiptId, ':net' => max(0.1, $netKwh - 0.5)]);
+        $foundQty = (float)$itStmt->fetchColumn();
+        if ($foundQty > $netKwh) {
+            $grossKwh = $foundQty;
+        }
+
+        $lossSql = "";
+        $lossParams = [];
+        if ($grossKwh !== null && $netKwh > 0 && $grossKwh >= $netKwh) {
+            $lossKwh = round($grossKwh - $netKwh, 2);
+            $lossPct = round(($lossKwh / $grossKwh) * 100, 1);
+            $lossSql = ", loss_kwh = :loss_kwh, loss_pct = :loss_pct";
+            $lossParams[':loss_kwh'] = $lossKwh;
+            $lossParams[':loss_pct'] = $lossPct;
+        }
+
         $updateStmt = $this->db->prepare("
             UPDATE vehicle_charges SET
                 receipt_id = :receipt_id,
                 cost_eur = :cost_eur,
                 tariff_category = :store
+                {$lossSql}
             WHERE id = :charge_id
         ");
 
-        $success = $updateStmt->execute([
+        $params = array_merge([
             ':receipt_id' => $receiptId,
             ':cost_eur' => $totalEur,
             ':store' => $store,
             ':charge_id' => $chargeId,
-        ]);
+        ], $lossParams);
+
+        $success = $updateStmt->execute($params);
 
         if ($success) {
             $this->logger->info("ChargingReceiptService: Ladevorgang #{$chargeId} mit E-Bon #{$receiptId} ({$store}, {$totalEur} €) verknüpft.");
@@ -286,8 +314,9 @@ class ChargingReceiptService
                 }
 
                 if ($qty > 0) {
-                    $query .= " AND ABS(charged_net_kwh - :qty) <= 0.8";
-                    $queryParams[':qty'] = $qty;
+                    $query .= " AND charged_net_kwh <= :qty_max AND charged_net_kwh >= :qty_min";
+                    $queryParams[':qty_max'] = $qty + 0.5;
+                    $queryParams[':qty_min'] = max(0.5, $qty * 0.78);
                 }
 
                 $query .= " ORDER BY start_time DESC LIMIT 1";
