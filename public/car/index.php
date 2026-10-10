@@ -910,7 +910,7 @@ if ($tab === 'trips') {
                                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                                             <?php if ($hasReceipt): ?>
                                                 <span class="badge badge-success" style="font-size: 0.85rem; padding: 4px 8px;">
-                                                    🧾 <a href="../kassenbon/detail.php?id=<?= (int)$charge['receipt_id'] ?>" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;">
+                                                    🧾 <a href="../kassenbon/detail.php?id=<?= (int)$charge['receipt_id'] ?>" style="color: inherit; text-decoration: underline; font-weight: bold;">
                                                         <?= number_format($charge['cost_eur'] ?? 0, 2, ',', '.') ?> € (<?= htmlspecialchars($charge['receipt_store'] ?? $charge['tariff_category'] ?? 'E-Bon') ?>)
                                                     </a>
                                                 </span>
