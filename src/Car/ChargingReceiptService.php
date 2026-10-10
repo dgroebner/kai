@@ -110,6 +110,30 @@ class ChargingReceiptService
         $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+        if (!empty($results)) {
+            $receiptIds = array_column($results, 'id');
+            $placeholders = implode(',', array_fill(0, count($receiptIds), '?'));
+            $itemStmt = $this->db->prepare("SELECT id, receipt_id, name, quantity, unit_price, total_price FROM kb_items WHERE receipt_id IN ($placeholders) ORDER BY id ASC");
+            $itemStmt->execute($receiptIds);
+            $itemsByReceipt = [];
+            while ($item = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
+                $itemsByReceipt[$item['receipt_id']][] = $item;
+            }
+
+            $chargeKwh = (float)($charge['charged_net_kwh'] ?? 0);
+
+            foreach ($results as &$r) {
+                $r['items'] = $itemsByReceipt[$r['id']] ?? [];
+                foreach ($r['items'] as &$it) {
+                    $qty = (float)$it['quantity'];
+                    $kwhMatch = ($chargeKwh > 0 && abs($qty - $chargeKwh) <= 0.6);
+                    $it['is_kwh_match'] = $kwhMatch;
+                }
+                unset($it);
+            }
+            unset($r);
+        }
+
         // Treffer mit Relevanz und Formatierung versehen
         foreach ($results as &$r) {
             $isExactDate = ($r['purchase_date'] === $chargeDate);
@@ -122,9 +146,9 @@ class ChargingReceiptService
     }
 
     /**
-     * Verknüpft einen Kassenbon mit einem Ladevorgang und übernimmt dessen Betrag.
+     * Verknüpft einen Kassenbon mit einem Ladevorgang und übernimmt dessen Betrag (oder Teilbetrag).
      */
-    public function linkReceiptToCharge(int $chargeId, int $receiptId): bool
+    public function linkReceiptToCharge(int $chargeId, int $receiptId, ?float $customCost = null, ?string $customNote = null): bool
     {
         $stmt = $this->db->prepare("SELECT id, store, total FROM kb_receipts WHERE id = :id");
         $stmt->execute([':id' => $receiptId]);
@@ -134,8 +158,8 @@ class ChargingReceiptService
             return false;
         }
 
-        $totalEur = (float)$receipt['total'];
-        $store = (string)$receipt['store'];
+        $totalEur = ($customCost !== null && $customCost > 0) ? $customCost : (float)$receipt['total'];
+        $store = $customNote ?: (string)$receipt['store'];
 
         $updateStmt = $this->db->prepare("
             UPDATE vehicle_charges SET
@@ -174,7 +198,8 @@ class ChargingReceiptService
     }
 
     /**
-     * Versucht, einen neu importierten Beleg automatisch einem offenen Ladevorgang zuzuordnen.
+     * Versucht, einen neu importierten Beleg automatisch einem offenen Ladevorgang zuzuordnen
+     * (unterstützt Einzelbelege und Monatsabrechnungen mit Einzelladungen).
      */
     public function autoMatchReceipt(int $receiptId): ?int
     {
@@ -205,13 +230,14 @@ class ChargingReceiptService
             }
         }
 
-        // Falls der Händlername nicht direkt passt, Positionen prüfen
-        if (!$isChargingReceipt) {
-            $itemStmt = $this->db->prepare("SELECT name FROM kb_items WHERE receipt_id = :id");
-            $itemStmt->execute([':id' => $receiptId]);
-            $items = $itemStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-            foreach ($items as $name) {
-                $nLower = mb_strtolower((string)$name);
+        // 1. Prüfe kb_items auf Einzelladevorgänge (z.B. bei Monatsabrechnungen wie EnBW)
+        $itemStmt = $this->db->prepare("SELECT id, name, quantity, total_price FROM kb_items WHERE receipt_id = :id");
+        $itemStmt->execute([':id' => $receiptId]);
+        $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        if (!$isChargingReceipt && !empty($items)) {
+            foreach ($items as $it) {
+                $nLower = mb_strtolower((string)$it['name']);
                 if (str_contains($nLower, 'kwh') || str_contains($nLower, 'ladung') || str_contains($nLower, 'ladekarte')) {
                     $isChargingReceipt = true;
                     break;
@@ -223,7 +249,65 @@ class ChargingReceiptService
             return null;
         }
 
-        // Suche nach offenen Ladevorgängen am selben Tag (+/- 1 Tag)
+        // Falls Posten vorhanden sind: Versuche jeden Posten mit Einzelladungen abzugleichen
+        if (!empty($items)) {
+            $anyMatched = false;
+            foreach ($items as $it) {
+                $name = (string)$it['name'];
+                $qty = (float)$it['quantity'];
+                $price = (float)$it['total_price'];
+
+                if ($price <= 0) {
+                    continue;
+                }
+
+                // Datum aus Posten extrahieren falls vorhanden (z. B. 20.09.2026)
+                $extractedDate = null;
+                if (preg_match('/\b(\d{2})\.(\d{2})\.(\d{4})\b/', $name, $dm)) {
+                    $extractedDate = "{$dm[3]}-{$dm[2]}-{$dm[1]}";
+                } elseif (preg_match('/\b(\d{4})-(\d{2})-(\d{2})\b/', $name, $dm)) {
+                    $extractedDate = "{$dm[1]}-{$dm[2]}-{$dm[3]}";
+                }
+
+                $query = "
+                    SELECT id FROM vehicle_charges
+                    WHERE location_type != 'HOME'
+                      AND receipt_id IS NULL
+                ";
+                $queryParams = [];
+
+                if ($extractedDate) {
+                    $query .= " AND ABS(DATEDIFF(start_time, :edate)) <= 1";
+                    $queryParams[':edate'] = $extractedDate;
+                } else {
+                    $query .= " AND start_time >= DATE_SUB(:rdate, INTERVAL 35 DAY) AND start_time <= :rdate2";
+                    $queryParams[':rdate'] = $purchaseDate;
+                    $queryParams[':rdate2'] = $purchaseDate;
+                }
+
+                if ($qty > 0) {
+                    $query .= " AND ABS(charged_net_kwh - :qty) <= 0.8";
+                    $queryParams[':qty'] = $qty;
+                }
+
+                $query .= " ORDER BY start_time DESC LIMIT 1";
+
+                $matchStmt = $this->db->prepare($query);
+                $matchStmt->execute($queryParams);
+                $chargeId = $matchStmt->fetchColumn();
+
+                if ($chargeId) {
+                    $this->linkReceiptToCharge((int)$chargeId, $receiptId, $price, $store);
+                    $anyMatched = true;
+                }
+            }
+
+            if ($anyMatched) {
+                return $receiptId;
+            }
+        }
+
+        // Fallback für Einzelbelege ohne aufgeteilte Items: Suche nach offenen Ladevorgängen am selben Tag (+/- 1 Tag)
         $chargeStmt = $this->db->prepare("
             SELECT id, station_operator, charged_net_kwh, start_time
             FROM vehicle_charges
@@ -244,7 +328,6 @@ class ChargingReceiptService
             return null;
         }
 
-        // Falls genau 1 offener Ladevorgang existiert oder Betreiber übereinstimmt:
         $matchedChargeId = null;
         if (count($charges) === 1) {
             $matchedChargeId = (int)$charges[0]['id'];

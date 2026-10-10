@@ -113,24 +113,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 const formattedDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : c.purchase_date;
                 const isExact = c.is_exact_date;
 
+                const hasMultipleItems = (c.items && c.items.length > 1);
+
                 html += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px;">
-                        <div>
-                            <strong>${KaiHtml.escape(c.store)}</strong>
-                            <div class="u-muted" style="font-size: 0.8rem;">
-                                ${KaiHtml.escape(formattedDate)} &bull; 
-                                <span style="color: var(--color-success, #22c55e); font-weight: bold;">${total} €</span>
-                                ${isExact ? ' <span class="badge badge-success" style="font-size: 0.7rem;">Tag-Match</span>' : ''}
-                                ${c.is_already_linked ? ' <span class="badge badge-warning" style="font-size: 0.7rem;">bereits verknüpft</span>' : ''}
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                            <div>
+                                <strong>${KaiHtml.escape(c.store)}</strong>
+                                <div class="u-muted" style="font-size: 0.8rem;">
+                                    ${KaiHtml.escape(formattedDate)} &bull; 
+                                    <span style="color: var(--color-success, #22c55e); font-weight: bold;">${total} €</span>
+                                    ${isExact ? ' <span class="badge badge-success" style="font-size: 0.7rem;">Tag-Match</span>' : ''}
+                                    ${hasMultipleItems ? ' <span class="badge badge-info" style="font-size: 0.7rem;">Sammelrechnung (' + c.items.length + ' Ladungen)</span>' : ''}
+                                    ${c.is_already_linked ? ' <span class="badge badge-warning" style="font-size: 0.7rem;">bereits verknüpft</span>' : ''}
+                                </div>
+                            </div>
+                            <div>
+                                ${!hasMultipleItems ? `
+                                    <button type="button" class="btn btn-outline btn-xs js-btn-link-receipt" data-receipt-id="${c.id}" data-cost="${c.total}">
+                                        🔗 ${total} € übernehmen
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
-                        <div>
-                            <button type="button" class="btn btn-outline btn-xs js-btn-link-receipt" data-receipt-id="${c.id}" data-total="${total}">
-                                🔗 Übernehmen
-                            </button>
-                        </div>
-                    </div>
                 `;
+
+                if (hasMultipleItems) {
+                    html += `<div style="margin-top: 0.25rem; padding-left: 0.5rem; border-left: 2px solid var(--border-color); display: flex; flex-direction: column; gap: 0.35rem;">`;
+                    c.items.forEach(it => {
+                        const itPrice = parseFloat(it.total_price || 0).toFixed(2).replace('.', ',');
+                        const itQty = parseFloat(it.quantity || 0).toFixed(1).replace('.', ',');
+                        const isMatch = it.is_kwh_match ? ' <span class="badge badge-success" style="font-size: 0.65rem;">kWh-Treffer</span>' : '';
+                        html += `
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; background: rgba(255,255,255,0.02); padding: 4px 6px; border-radius: 4px; gap: 0.5rem;">
+                                <div>
+                                    ⚡ <strong>${KaiHtml.escape(it.name)}</strong> (${itQty} kWh)${isMatch} &bull; <span class="text-success">${itPrice} €</span>
+                                </div>
+                                <button type="button" class="btn btn-outline btn-xs js-btn-link-receipt" data-receipt-id="${c.id}" data-cost="${it.total_price}" data-note="${KaiHtml.escape(c.store + ' - ' + it.name)}">
+                                    🔗 ${itPrice} € zuordnen
+                                </button>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
             });
             html += '</div>';
             receiptListEl.innerHTML = html;
@@ -178,6 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!btn || !currentChargeId) return;
 
         const receiptId = parseInt(btn.dataset.receiptId, 10);
+        const costEur = btn.dataset.cost ? parseFloat(btn.dataset.cost) : null;
+        const note = btn.dataset.note || null;
+
         btn.disabled = true;
         btn.textContent = 'Speichere...';
 
@@ -185,7 +216,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await KaiHttp.postJson('charges_api.php', {
                 action: 'link_receipt',
                 charge_id: currentChargeId,
-                receipt_id: receiptId
+                receipt_id: receiptId,
+                cost_eur: costEur,
+                note: note
             });
 
             if (res.success) {

@@ -36,8 +36,11 @@ class ReceiptAnalyzer
             "Gib AUSSCHLIESSLICH valides JSON zurück. Formatiere es NICHT als Markdown (kein ```json). " .
             $categoryContext . " " .
             "WICHTIGE REGEL FÜR 'store': Gib als Händler ausschließlich den kurzen, bekannten Markennamen bzw. Kettennamen an " .
-            "(z.B. 'REWE', 'Globus', 'Obi', 'Edeka', 'Netto', 'Lidl', 'Aldi', 'Penny', 'Kaufland', 'Flaschenpost', 'Fressnapf', 'dm', 'Rossmann'). " .
+            "(z.B. 'REWE', 'Globus', 'Obi', 'Edeka', 'Netto', 'Lidl', 'Aldi', 'Penny', 'Kaufland', 'Flaschenpost', 'Fressnapf', 'dm', 'Rossmann', 'EnBW', 'Stadtwerke Leipzig', 'Vattenfall', 'Aral'). " .
             "Entferne Inhabernamen (wie Lucas Musculus oHG, e.K.), Rechtsformen (GmbH, AG, KG etc.), Filialangaben und Ortsnamen vollständig. " .
+            "BESONDERHEIT BEI LADEABRECHNUNGEN / MOBILITÄT (z.B. EnBW mobility+, Stadtwerke Leipzig): " .
+            "Erfasse jeden Einzelladevorgang als separaten Posten in 'items' mit Ladedatum, Ort und geladener kWh im Namen (z.B. 'Ladevorgang 20.09.2026 Ehrenfriedersdorf'), " .
+            "'quantity' als geladene kWh (z.B. 17.40) und 'total_price' als Bruttobetrag dieses Ladevorgangs. " .
             "Das JSON muss exakt dieses Format haben: " .
             "{ \"store\": \"Kettenname des Händlers\", \"date\": \"YYYY-MM-DD\", \"total\": 0.00, " .
             "\"items\": [ { \"name\": \"Artikelname\", \"quantity\": 1.0, \"unit_price\": 0.00, \"total_price\": 0.00, \"category\": \"Kategorie-Name\" } ] }";

@@ -94,12 +94,14 @@ try {
         if ($action === 'link_receipt') {
             $chargeId = filter_var($input['charge_id'] ?? null, FILTER_VALIDATE_INT);
             $receiptId = filter_var($input['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+            $customCost = isset($input['cost_eur']) && is_numeric($input['cost_eur']) ? (float)$input['cost_eur'] : null;
+            $customNote = !empty($input['note']) ? trim((string)$input['note']) : null;
 
             if (!$chargeId || !$receiptId) {
                 Auth::sendJsonError(400, 'charge_id und receipt_id erforderlich');
             }
 
-            $ok = $receiptService->linkReceiptToCharge($chargeId, $receiptId);
+            $ok = $receiptService->linkReceiptToCharge($chargeId, $receiptId, $customCost, $customNote);
             if (!$ok) {
                 Auth::sendJsonError(400, 'Verknüpfung fehlgeschlagen');
             }
