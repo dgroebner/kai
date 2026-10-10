@@ -53,6 +53,12 @@ try {
                 Auth::sendJsonError(404, 'Reise nicht gefunden');
             }
 
+            $vehicleDashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
+            $latestState = $vehicleDashboardRepo->getLatestState();
+            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']))
+                ? (int)$latestState['soc_percent']
+                : null;
+
             $steps = $tripRepo->getChargingSteps($id);
             $transactions = $tripRepo->getTripTransactions($id);
             $subtrips = $tripRepo->getSubTrips($id);
@@ -163,6 +169,13 @@ try {
 
         $success = $planningService->recalculateTrip($id);
         $trip = $tripRepo->getTrip($id);
+        if ($trip) {
+            $vehicleDashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
+            $latestState = $vehicleDashboardRepo->getLatestState();
+            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']))
+                ? (int)$latestState['soc_percent']
+                : null;
+        }
         $steps = $tripRepo->getChargingSteps($id);
 
         echo json_encode([

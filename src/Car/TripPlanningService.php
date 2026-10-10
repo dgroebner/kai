@@ -181,12 +181,15 @@ class TripPlanningService
             $enRouteChargeKwh = 0.0;
         }
 
+        $minDepartureSoc = TripRepository::calculateMinDepartureSoc($estimatedConsumptionKwh, $targetArrivalSoc);
+
         // 6. Vorlade-Kette & Ladeschritte generieren
         $chargingSteps = $this->generateChargingSchedule(
             $departureTime,
             $effectiveDepartureSoc,
             $enRouteChargeKwh,
-            $parentTripId !== null
+            $parentTripId !== null,
+            $minDepartureSoc
         );
 
         // Berechnete kalkulatorische Vorabend-Netzstromkosten ermitteln
@@ -280,11 +283,14 @@ class TripPlanningService
             ? round(($estimatedConsumptionKwh - $usableBattery) + 4.0, 1)
             : 0.0;
 
+        $minDepartureSoc = TripRepository::calculateMinDepartureSoc($estimatedConsumptionKwh, $targetArrivalSoc);
+
         $chargingSteps = $this->generateChargingSchedule(
             $trip['departure_time'],
             $plannedDepartureSoc,
             $enRouteChargeKwh,
-            !empty($trip['parent_trip_id'])
+            !empty($trip['parent_trip_id']),
+            $minDepartureSoc
         );
 
         $homeChargeCost = 0.0;
@@ -327,7 +333,8 @@ class TripPlanningService
         string $departureTime,
         int $targetDepartureSoc,
         float $enRouteChargeKwh,
-        bool $isNestedSubtrip
+        bool $isNestedSubtrip,
+        int $minDepartureSoc = 80
     ): array {
         $steps = [];
         $depDate = substr($departureTime, 0, 10);
@@ -357,12 +364,13 @@ class TripPlanningService
             }
 
             // B. Vorabend-Ladung (Netzstrom an der Wallbox auf geplanten Abfahrts-SoC)
+            // Nur einplanen, wenn der aktuelle Akkustand unter dem Mindest-SoC für die Reise liegt!
             $eveningDate = date('Y-m-d', strtotime("{$depDate} -1 day"));
             if ($eveningDate >= date('Y-m-d')) {
                 // Aktuellen Ist-SoC aus vehicle_state lesen
                 $currentSoc = $this->getCurrentVehicleSoc();
-                if ($targetDepartureSoc > $currentSoc) {
-                    $socDelta = $targetDepartureSoc - $currentSoc;
+                if ($currentSoc < $minDepartureSoc && $targetDepartureSoc > $currentSoc) {
+                    $socDelta = max(10, $targetDepartureSoc - $currentSoc);
                     $neededKwh = round(OrsHeuristicPlanner::BATTERY_CAPACITY_KWH * ($socDelta / 100.0), 1);
 
                     $steps[] = [

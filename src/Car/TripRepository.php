@@ -123,6 +123,37 @@ class TripRepository
         return $stmt->execute([':id' => $id]);
     }
 
+    /**
+     * Berechnet den theoretischen Mindest-Start-SoC, um die geplante Fahrt
+     * inklusive des gewünschten Ziel-Restladestands ohne Unterwegs-Ladestopp zu bewältigen.
+     */
+    public static function calculateMinDepartureSoc(float $estimatedConsumptionKwh, int $targetArrivalSoc = 10): int
+    {
+        if ($estimatedConsumptionKwh <= 0.0) {
+            return max(10, $targetArrivalSoc);
+        }
+        $socNeeded = ($estimatedConsumptionKwh / OrsHeuristicPlanner::BATTERY_CAPACITY_KWH) * 100.0;
+        $rawMin = (int)ceil($targetArrivalSoc + $socNeeded);
+
+        return min(100, max($targetArrivalSoc, $rawMin));
+    }
+
+    /**
+     * Ergänzt ein Reise-Array um dynamische Komfort-Werte (Mindest-SoC, Machbarkeit ohne Ladestopp).
+     *
+     * @param array<string, mixed> $trip
+     * @return array<string, mixed>
+     */
+    public static function enrichTripData(array $trip): array
+    {
+        $consumption = (float)($trip['estimated_consumption_kwh'] ?? 0.0);
+        $targetArrivalSoc = (int)($trip['target_arrival_soc'] ?? 10);
+        $trip['min_departure_soc'] = self::calculateMinDepartureSoc($consumption, $targetArrivalSoc);
+        $socNeeded = ($consumption / OrsHeuristicPlanner::BATTERY_CAPACITY_KWH) * 100.0;
+        $trip['can_drive_without_charging'] = ($targetArrivalSoc + $socNeeded) <= 100.0;
+        return $trip;
+    }
+
     public function getTrip(int $id): ?array
     {
         $stmt = $this->pdo->prepare("
@@ -134,7 +165,7 @@ class TripRepository
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? self::enrichTripData($row) : null;
     }
 
     public function getTripByCalendarUid(string $uid): ?array
@@ -143,7 +174,7 @@ class TripRepository
         $stmt->execute([':uid' => $uid]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? self::enrichTripData($row) : null;
     }
 
     public function getTrips(?string $status = null, int $limit = 50, int $offset = 0): array
@@ -171,7 +202,8 @@ class TripRepository
         $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([self::class, 'enrichTripData'], $rows);
     }
 
     public function countTrips(?string $status = null): int
@@ -202,7 +234,8 @@ class TripRepository
         $stmt->bindValue(':days', max(1, $days), PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([self::class, 'enrichTripData'], $rows);
     }
 
     public function getActiveTrips(): array
@@ -215,7 +248,8 @@ class TripRepository
         ");
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([self::class, 'enrichTripData'], $rows);
     }
 
     public function getSubTrips(int $parentTripId): array
@@ -227,7 +261,8 @@ class TripRepository
         ");
         $stmt->execute([':pid' => $parentTripId]);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([self::class, 'enrichTripData'], $rows);
     }
 
     /**

@@ -78,6 +78,7 @@ function chargingLabel(string $state): array
 // 1. Live-Fahrzeugstatus (Unabhängig vom Zeitraum)
 // ----------------------------------------------------
 $state = $vehicleDashboardRepository->getLatestState();
+$currentVehicleSoc = ($state && isset($state['soc_percent'])) ? (int)$state['soc_percent'] : null;
 
 // Aktuellen Effizienz-Index für das KPI-Widget berechnen
 $currentEff = null;
@@ -996,6 +997,18 @@ if ($tab === 'trips') {
                                         <div style="font-weight: 700; font-size: 1rem; color: <?= (int)$t['planned_departure_soc'] >= 100 ? 'var(--color-red)' : 'var(--color-green)' ?>;">
                                             <?= htmlspecialchars($t['planned_departure_soc']) ?> <span style="font-size:0.75rem; font-weight:normal;">%</span>
                                         </div>
+                                        <?php if (!empty($t['can_drive_without_charging']) && (int)($t['min_departure_soc'] ?? 0) < (int)$t['planned_departure_soc']): ?>
+                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;" title="Mindest-Akkustand um die Fahrt ohne Ladestopp zu schaffen">
+                                                Min: <strong style="color: <?= ($currentVehicleSoc !== null && $currentVehicleSoc >= (int)$t['min_departure_soc']) ? 'var(--color-green)' : 'var(--text-main)' ?>;"><?= (int)$t['min_departure_soc'] ?>%</strong>
+                                                <?php if ($currentVehicleSoc !== null): ?>
+                                                    <?php if ($currentVehicleSoc >= (int)$t['min_departure_soc']): ?>
+                                                        <span style="color: var(--color-green); font-size: 0.75rem; font-weight: bold;" title="Aktueller Akkustand (<?= $currentVehicleSoc ?>%) reicht ohne Nachladen!">✓</span>
+                                                    <?php else: ?>
+                                                        <span style="color: var(--color-orange); font-size: 0.75rem;" title="Aktuell <?= $currentVehicleSoc ?>% (noch mind. +<?= ((int)$t['min_departure_soc'] - $currentVehicleSoc) ?>% bis Min-SoC)">⚡</span>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if ($t['actual_arrival_soc'] !== null): ?>
                                             <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
                                                 Ziel-SoC: <strong style="color:var(--text-main);"><?= (int)$t['actual_arrival_soc'] ?>%</strong>

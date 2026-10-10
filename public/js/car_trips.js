@@ -440,6 +440,18 @@
                     <div style="font-size:1.4rem; font-weight:bold; color:${trip.planned_departure_soc >= 100 ? '#ef4444' : '#10b981'};">
                         ${KaiHtml.escape(trip.planned_departure_soc)} %
                     </div>
+                    ${trip.can_drive_without_charging && trip.min_departure_soc < trip.planned_departure_soc ? `
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                            Mindest-SoC: <strong style="color:var(--text-main);">${parseInt(trip.min_departure_soc, 10)}%</strong>
+                        </div>
+                    ` : ''}
+                    ${trip.current_vehicle_soc !== null && trip.current_vehicle_soc !== undefined ? `
+                        <div style="font-size:0.7rem; margin-top:0.35rem; font-weight:500; color:${trip.current_vehicle_soc >= trip.min_departure_soc ? '#10b981' : '#f59e0b'};">
+                            ${trip.current_vehicle_soc >= trip.min_departure_soc 
+                                ? `✅ Ist-Stand (${trip.current_vehicle_soc}%) reicht ohne Nachladen` 
+                                : `⚡ Ist: ${trip.current_vehicle_soc}% (noch mind. +${trip.min_departure_soc - trip.current_vehicle_soc}% bis Start-SoC)`}
+                        </div>
+                    ` : ''}
                     ${trip.actual_arrival_soc !== null && trip.actual_arrival_soc !== undefined ? `
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
                             Ziel-SoC: <strong style="color:var(--text-main);">${parseInt(trip.actual_arrival_soc, 10)}%</strong>

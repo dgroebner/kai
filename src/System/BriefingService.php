@@ -565,13 +565,20 @@ class BriefingService
                     $pills[] = ['icon' => '🗺️', 'label' => 'Reise aktiv', 'type' => 'warning'];
                     $badge = ['text' => 'Reise aktiv', 'type' => 'warning'];
                 } elseif ($isTripTomorrow) {
-                    $tripAlertActive = true;
                     $destName = $primaryTrip['destination_address'] ?: $primaryTrip['title'];
-                    $targetSoc = (int)($primaryTrip['planned_departure_soc'] ?: 100);
+                    $targetSoc = (int)($primaryTrip['planned_departure_soc'] ?: 80);
+                    $minSoc = (int)($primaryTrip['min_departure_soc'] ?? $targetSoc);
                     $headline = "Reise morgen: {$destName} ({$primaryTrip['total_distance_km']} km)";
-                    $subtitle = "🔌 Vorabend-Check: ID.Buzz an der Wallbox auf {$targetSoc}% vollladen (aktuell {$soc}%)!";
-                    $pills[] = ['icon' => '🔌', 'label' => 'Vorabend-Ladung', 'type' => 'danger'];
-                    $badge = ['text' => "Morgen {$targetSoc}% nötig", 'type' => 'danger'];
+                    if ($soc !== null && $soc >= $minSoc) {
+                        $subtitle = "✅ Akku-Check: Aktueller Ladestand ({$soc}%) reicht für die Fahrt ohne Ladestopp (Mindest-SoC: {$minSoc}%).";
+                        $pills[] = ['icon' => '✅', 'label' => 'Akku reicht aus', 'type' => 'success'];
+                        $badge = ['text' => "Akku reicht ({$soc}%)", 'type' => 'success'];
+                    } else {
+                        $tripAlertActive = true;
+                        $subtitle = "🔌 Vorabend-Check: ID.Buzz an der Wallbox laden (aktuell {$soc}%, Mindest-Bedarf {$minSoc}% / empfohlen {$targetSoc}%)!";
+                        $pills[] = ['icon' => '🔌', 'label' => 'Vorabend-Ladung', 'type' => 'danger'];
+                        $badge = ['text' => "Morgen mind. {$minSoc}% nötig", 'type' => 'danger'];
+                    }
                 } elseif ($relevantPvKwh >= 12.0) {
                     $destName = $primaryTrip['destination_address'] ?: $primaryTrip['title'];
                     $formattedDate = date('d.m.', strtotime($primaryTrip['departure_time']));
