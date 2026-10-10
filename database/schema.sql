@@ -805,14 +805,32 @@ CREATE TABLE IF NOT EXISTS `vehicle_charges` (
     `lon` DECIMAL(10, 7) NULL,
     `location_type` ENUM('HOME', 'PUBLIC', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
     `tariff_category` VARCHAR(50) NULL,
+    `station_name` VARCHAR(255) NULL,
+    `station_operator` VARCHAR(100) NULL,
     `home_meter_kwh` DECIMAL(6,2) NULL,
     `home_pv_kwh` DECIMAL(6,2) NULL,
     `home_grid_kwh` DECIMAL(6,2) NULL,
     `loss_kwh` DECIMAL(6,2) NULL,
     `loss_pct` DECIMAL(5,1) NULL,
     `cost_eur` DECIMAL(6,2) NULL,
+    `receipt_id` INT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_start_time` (`start_time`)
+    INDEX `idx_start_time` (`start_time`),
+    INDEX `idx_receipt_id` (`receipt_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `operator_match` VARCHAR(255) NULL,
+    `price_ac_eur_kwh` DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    `price_dc_eur_kwh` DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    `blocking_fee_after_min` INT NULL,
+    `blocking_fee_per_min` DECIMAL(6,4) NULL,
+    `monthly_fee_eur` DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+    `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+    `notes` VARCHAR(255) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Schema for Trip & Charging Planning (Car Domain)

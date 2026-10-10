@@ -786,7 +786,12 @@ if ($tab === 'trips') {
             </div>
 
             <div class="card">
-                <h2>Ladevorgänge</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+                    <h2 style="margin: 0;">Ladevorgänge</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="button" class="btn btn-outline btn-sm js-btn-manage-tariffs">⚡ Ladetarife verwalten</button>
+                    </div>
+                </div>
                 
                 <?php if (empty($charges)): ?>
                     <div class="no-data u-mt-md">
@@ -814,6 +819,9 @@ if ($tab === 'trips') {
                             $durStr = $durHours > 0 ? "{$durHours}h {$durMins}m" : "{$durMins}m";
                             
                             $modeIcon = $charge['charge_mode'] === 'DC' ? '⚡ DC' : '🔌 AC';
+                            $hasStation = !empty($charge['station_name']) || !empty($charge['station_operator']);
+                            $hasCoords = !empty($charge['lat']) && !empty($charge['lon']);
+                            $hasReceipt = !empty($charge['receipt_id']);
                         ?>
                             <div class="list-item" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 1.2rem; margin-bottom: 1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
@@ -821,17 +829,32 @@ if ($tab === 'trips') {
                                         <strong><?= $dateStr ?></strong> <span class="u-muted" style="margin: 0 0.5rem;">|</span> 
                                         <?= $startTm ?> (<?= $charge['soc_start_pct'] ?>%) &rarr; <?= $endTm ?> (<?= $charge['soc_end_pct'] ?>%)
                                     </div>
-                                    <div style="display: flex; gap: 0.5rem;">
+                                    <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
                                         <?php if ($isHome): ?>
                                             <span class="badge badge-success">🏠 Zuhause</span>
                                         <?php else: ?>
                                             <span class="badge badge-secondary">📍 Unterwegs</span>
+                                            <?php if (!empty($charge['station_operator'])): ?>
+                                                <span class="badge badge-primary">⚡ <?= htmlspecialchars($charge['station_operator']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($charge['station_name'])): ?>
+                                                <span class="badge badge-outline" title="<?= htmlspecialchars($charge['station_name']) ?>" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    <?= htmlspecialchars($charge['station_name']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if ($hasCoords): ?>
+                                                <a href="https://www.openstreetmap.org/?mlat=<?= $charge['lat'] ?>&mlon=<?= $charge['lon'] ?>#map=18/<?= $charge['lat'] ?>/<?= $charge['lon'] ?>" target="_blank" rel="noopener" class="btn btn-outline btn-xs" title="Ladestation in OpenStreetMap ansehen" style="font-size: 0.75rem; padding: 2px 6px;">🗺️ OSM</a>
+                                                <a href="https://www.google.com/maps/search/?api=1&query=<?= urlencode(($charge['station_name'] ? $charge['station_name'] . ', ' : '') . $charge['lat'] . ',' . $charge['lon']) ?>" target="_blank" rel="noopener" class="btn btn-outline btn-xs" title="In Google Maps ansehen" style="font-size: 0.75rem; padding: 2px 6px;">📍 Maps</a>
+                                            <?php endif; ?>
+                                            <?php if ($hasCoords && !$hasStation): ?>
+                                                <button type="button" class="btn btn-outline btn-xs js-btn-resolve-station" data-charge-id="<?= $charge['id'] ?>" title="Ladestation über OpenStreetMap ermitteln" style="font-size: 0.75rem; padding: 2px 6px;">🔍 Station suchen</button>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <span class="badge badge-info"><?= $modeIcon ?></span>
                                     </div>
                                 </div>
                                 
-                                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.9rem;">
+                                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.9rem; align-items: flex-end;">
                                     <div>
                                         <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Geladen</div>
                                         <strong><?= number_format($charge['charged_net_kwh'], 1, ',', '.') ?> kWh</strong> 
@@ -858,14 +881,42 @@ if ($tab === 'trips') {
                                     <?php endif; ?>
                                     
                                     <div>
-                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Kosten</div>
-                                        <?php if ($charge['cost_eur'] > 0): ?>
-                                            <strong><?= number_format($charge['cost_eur'], 2, ',', '.') ?> €</strong>
-                                        <?php elseif ($isHome): ?>
-                                            <strong class="text-success" title="Ladung erfolgte komplett kostenfrei (100% PV)">0,00 € ☀️</strong>
-                                        <?php else: ?>
-                                            <span class="u-muted">–</span>
-                                        <?php endif; ?>
+                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Kosten &amp; Beleg</div>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                            <?php if ($hasReceipt): ?>
+                                                <span class="badge badge-success" style="font-size: 0.85rem; padding: 4px 8px;">
+                                                    🧾 <a href="../kassenbon/detail.php?id=<?= (int)$charge['receipt_id'] ?>" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold;">
+                                                        <?= number_format($charge['cost_eur'] ?? 0, 2, ',', '.') ?> € (<?= htmlspecialchars($charge['receipt_store'] ?? $charge['tariff_category'] ?? 'E-Bon') ?>)
+                                                    </a>
+                                                </span>
+                                                <button type="button" class="btn btn-outline btn-xs js-btn-unlink-receipt" data-charge-id="<?= $charge['id'] ?>" title="Beleg-Zuordnung entfernen" style="padding: 2px 6px; font-size: 0.75rem;">✕</button>
+                                            <?php elseif (!empty($charge['cost_eur']) && $charge['cost_eur'] > 0): ?>
+                                                <strong><?= number_format($charge['cost_eur'], 2, ',', '.') ?> €</strong>
+                                                <?php if (!empty($charge['tariff_category'])): ?>
+                                                    <span class="badge badge-info" style="font-size: 0.75rem;"><?= htmlspecialchars($charge['tariff_category']) ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!$isHome): ?>
+                                                    <button type="button" class="btn btn-outline btn-xs js-btn-open-assign-modal" 
+                                                        data-charge-id="<?= $charge['id'] ?>" 
+                                                        data-kwh="<?= $charge['charged_net_kwh'] ?>" 
+                                                        data-mode="<?= $charge['charge_mode'] ?? 'DC' ?>" 
+                                                        data-operator="<?= htmlspecialchars($charge['station_operator'] ?? '') ?>" 
+                                                        title="Kosten anpassen / Beleg zuordnen" style="font-size: 0.75rem; padding: 2px 6px;">✏️</button>
+                                                <?php endif; ?>
+                                            <?php elseif ($isHome): ?>
+                                                <strong class="text-success" title="Ladung erfolgte komplett kostenfrei (100% PV)">0,00 € ☀️</strong>
+                                            <?php else: ?>
+                                                <span class="u-muted">–</span>
+                                                <button type="button" class="btn btn-outline btn-xs js-btn-open-assign-modal" 
+                                                    data-charge-id="<?= $charge['id'] ?>" 
+                                                    data-kwh="<?= $charge['charged_net_kwh'] ?>" 
+                                                    data-mode="<?= $charge['charge_mode'] ?? 'DC' ?>" 
+                                                    data-operator="<?= htmlspecialchars($charge['station_operator'] ?? '') ?>" 
+                                                    title="Kosten / E-Bon zuordnen" style="font-size: 0.75rem; padding: 2px 6px;">
+                                                    🧾 Beleg / Tarif zuordnen
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -888,6 +939,139 @@ if ($tab === 'trips') {
                     <?php endif; ?>
                     
                 <?php endif; ?>
+            </div>
+
+            <!-- MODAL: BELEG ODER TARIF ZUORDNEN -->
+            <div id="assign-cost-modal" class="modal-overlay app-modal" style="display: none;">
+                <div class="modal-card" style="max-width: 580px;">
+                    <div class="modal-header">
+                        <h3>⚡ Ladekosten &amp; Beleg zuordnen</h3>
+                        <button type="button" class="modal-close js-btn-close-modal" aria-label="Schließen">&times;</button>
+                    </div>
+                    <div class="modal-body" style="gap: 1.25rem;">
+                        <div id="assign-charge-info" style="padding: 0.75rem; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.9rem;">
+                            <!-- Dynamischer Header via JS -->
+                        </div>
+
+                        <!-- SEKTION 1: KASSENBON / E-BON -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                🧾 <span>E-Bon / Ladeabrechnung verknüpfen</span>
+                            </h4>
+                            <div style="margin-bottom: 0.75rem;">
+                                <input type="text" id="assign-receipt-search" class="form-control" placeholder="🔍 Belege filtern (z. B. Ionity, EnBW, Datum)..." style="width: 100%;">
+                            </div>
+                            <div id="assign-receipts-list">
+                                <!-- Vorschläge via JS -->
+                            </div>
+                        </div>
+
+                        <!-- SEKTION 2: LADETARIF ANWENDEN -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem 0;">⚡ Ladetarif anwenden</h4>
+                            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
+                                <div>
+                                    <label for="assign-tariff-select" class="form-label" style="font-size: 0.85rem;">Tarif auswählen</label>
+                                    <select id="assign-tariff-select" class="form-control" style="width: 100%;">
+                                        <!-- Tarife via JS -->
+                                    </select>
+                                </div>
+                                <button type="button" id="js-btn-apply-tariff" class="btn btn-primary" style="white-space: nowrap;">
+                                    ⚡ Tarif anwenden
+                                </button>
+                            </div>
+                            <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+                                Voraussichtliche Kosten: <span id="assign-tariff-preview">–</span>
+                            </div>
+                        </div>
+
+                        <!-- SEKTION 3: BETRAG MANUELL EINTRAGEN -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem 0;">✍️ Betrag manuell eintragen</h4>
+                            <div style="display: grid; grid-template-columns: 120px 1fr auto; gap: 0.75rem; align-items: end;">
+                                <div>
+                                    <label for="assign-manual-amount" class="form-label" style="font-size: 0.85rem;">Betrag (€)</label>
+                                    <input type="number" id="assign-manual-amount" class="form-control" step="0.01" min="0" placeholder="0.00" style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="assign-manual-category" class="form-label" style="font-size: 0.85rem;">Kategorie / Notiz</label>
+                                    <input type="text" id="assign-manual-category" class="form-control" placeholder="z. B. Ad-hoc Ladekarte" style="width: 100%;">
+                                </div>
+                                <button type="button" id="js-btn-save-manual-cost" class="btn btn-outline" style="white-space: nowrap;">
+                                    💾 Speichern
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-outline js-btn-close-modal">Schließen</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: LADETARIFE VERWALTEN -->
+            <div id="manage-tariffs-modal" class="modal-overlay app-modal" style="display: none;">
+                <div class="modal-card" style="max-width: 650px;">
+                    <div class="modal-header">
+                        <h3>⚡ Meine bevorzugten Ladetarife</h3>
+                        <button type="button" class="modal-close js-btn-close-modal" aria-label="Schließen">&times;</button>
+                    </div>
+                    <div class="modal-body" style="gap: 1.25rem;">
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">
+                            Hinterlege hier deine Ladekarten und Abos (z. B. EnBW, Ionity, EWE Go). Bei Ladevorgängen unterwegs wird der passende Tarif anhand der Ladestation automatisch zugeordnet.
+                        </div>
+
+                        <!-- LISTE DER TARIFE -->
+                        <div id="tariffs-list-container">
+                            <!-- Dynamische Liste via JS -->
+                        </div>
+
+                        <!-- FORMULAR: TARIF ANLEGEN / BEARBEITEN -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <h4 id="tariff-form-title" style="margin: 0 0 0.75rem 0;">Neuen Tarif anlegen</h4>
+                            <form id="tariff-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <input type="hidden" name="id" value="">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                    <div>
+                                        <label class="form-label" style="font-size: 0.85rem;">Tarifname *</label>
+                                        <input type="text" name="name" class="form-control" required placeholder="z. B. EnBW mobility+ L" style="width: 100%;">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size: 0.85rem;">Betreiber-Filter (Match)</label>
+                                        <input type="text" name="operator_match" class="form-control" placeholder="z. B. EnBW,mobility+ oder *" style="width: 100%;">
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                    <div>
+                                        <label class="form-label" style="font-size: 0.85rem;">AC-Preis (€/kWh) *</label>
+                                        <input type="number" step="0.0001" min="0" name="price_ac_eur_kwh" class="form-control" required placeholder="0.3900" style="width: 100%;">
+                                    </div>
+                                    <div>
+                                        <label class="form-label" style="font-size: 0.85rem;">DC-Preis (€/kWh) *</label>
+                                        <input type="number" step="0.0001" min="0" name="price_dc_eur_kwh" class="form-control" required placeholder="0.3900" style="width: 100%;">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label" style="font-size: 0.85rem;">Notiz / Beschreibung</label>
+                                    <input type="text" name="notes" class="form-control" placeholder="z. B. Vorteilstarif, Monatsgrundgebühr 5,99 €" style="width: 100%;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="field-is-default-tariff" name="is_default" value="1">
+                                    <label for="field-is-default-tariff" style="margin: 0; cursor: pointer; font-size: 0.85rem;">
+                                        Als Standard-Tarif verwenden (Fallback für fremde Stationen)
+                                    </label>
+                                </div>
+                                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <button type="button" id="js-btn-reset-tariff-form" class="btn btn-outline btn-sm">Zurücksetzen</button>
+                                    <button type="submit" class="btn btn-primary btn-sm">💾 Tarif speichern</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-outline js-btn-close-modal">Schließen</button>
+                    </div>
+                </div>
             </div>
 
         <?php elseif ($tab === 'trips'): ?>
@@ -1199,6 +1383,7 @@ if ($tab === 'trips') {
 
 <script src="../js/telemetry.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/car_trips.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="../js/car_charges.js?v=<?= APP_VERSION ?>" defer></script>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>

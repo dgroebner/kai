@@ -76,4 +76,34 @@ ALTER TABLE `car_trips`
     ADD COLUMN IF NOT EXISTS `actual_arrival_soc` INT NULL AFTER `actual_consumption_kwh`,
     ADD COLUMN IF NOT EXISTS `telemetry_matched_at` DATETIME NULL AFTER `actual_arrival_soc`;
 
+-- Erweiterung vehicle_charges für Ladestationen, Betreiber und E-Bon-Zuordnung
+ALTER TABLE `vehicle_charges`
+    ADD COLUMN IF NOT EXISTS `station_name` VARCHAR(255) NULL AFTER `tariff_category`,
+    ADD COLUMN IF NOT EXISTS `station_operator` VARCHAR(100) NULL AFTER `station_name`,
+    ADD COLUMN IF NOT EXISTS `receipt_id` INT NULL AFTER `cost_eur`,
+    ADD INDEX IF NOT EXISTS `idx_receipt_id` (`receipt_id`);
+
+-- Tabelle für konfigurierbare Ladetarife (Unterwegs & Roaming)
+CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `operator_match` VARCHAR(255) NULL,
+    `price_ac_eur_kwh` DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    `price_dc_eur_kwh` DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    `blocking_fee_after_min` INT NULL,
+    `blocking_fee_per_min` DECIMAL(6,4) NULL,
+    `monthly_fee_eur` DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+    `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+    `notes` VARCHAR(255) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `car_charging_tariffs` (`id`, `name`, `operator_match`, `price_ac_eur_kwh`, `price_dc_eur_kwh`, `is_default`, `notes`) VALUES
+(1, 'EnBW mobility+ L', 'EnBW,mobility+', 0.3900, 0.3900, 0, 'EnBW Vorteilstarif (Viellader)'),
+(2, 'Ionity Passport', 'Ionity', 0.4900, 0.3900, 0, 'Ionity HPC High-Power-Charging'),
+(3, 'EWE Go', 'EWE,EWE Go', 0.5200, 0.5200, 0, 'EWE Go Ladesäulen & Partnernetz'),
+(4, 'Aral pulse / ADAC', 'Aral,pulse,ADAC', 0.5700, 0.5700, 0, 'Aral pulse Schnellladestationen'),
+(5, 'Standard Roaming', '*', 0.5900, 0.6900, 1, 'Standard Roaming-Tarif fallback');
+
+
 

@@ -58,8 +58,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API-Endpunkte immer ans Netzwerk (api.php, ingest.php, api_live.php, push_*.php etc.)
-    if (url.pathname.includes('/api') || url.pathname.includes('/ingest') || url.pathname.includes('/cron_') || url.pathname.includes('/push_')) {
+    // API-Endpunkte immer ans Netzwerk (api.php, *_api.php, ingest.php, api_live.php, push_*.php etc.)
+    if (url.pathname.includes('/api') || url.pathname.includes('api.php') || url.pathname.includes('/ingest') || url.pathname.includes('/cron_') || url.pathname.includes('/push_')) {
         return;
     }
 

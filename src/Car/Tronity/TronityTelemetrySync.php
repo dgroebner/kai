@@ -124,6 +124,17 @@ class TronityTelemetrySync
                 if ($locationType === 'HOME' && $chargedNetKwh > 0.1) {
                     $analysis = $this->chargeAnalyzer->analyze($startTimeUtc, $endTimeUtc, $chargedNetKwh);
                     $data = array_merge($data, $analysis);
+                } elseif ($locationType !== 'HOME' && $lat !== null && $lon !== null) {
+                    try {
+                        $locService = new ChargingLocationService(logger: $this->logger);
+                        $stationInfo = $locService->resolveStation((float)$lat, (float)$lon, $data['charge_mode']);
+                        if ($stationInfo) {
+                            $data['station_name'] = $stationInfo['station_name'];
+                            $data['station_operator'] = $stationInfo['station_operator'];
+                        }
+                    } catch (\Throwable $le) {
+                        $this->logger->warn("TronityTelemetrySync: Stationsauflösung übersprungen ({$le->getMessage()})");
+                    }
                 }
 
                 $this->chargeRepo->saveCharge($data);
