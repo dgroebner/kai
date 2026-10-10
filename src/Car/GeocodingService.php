@@ -47,7 +47,13 @@ class GeocodingService
             ];
         }
 
-        // 2. OpenRouteService Geocoding (sofern API-Key vorliegt)
+        // 2. OpenStreetMap Nominatim als primärer Geocoder (höchste Genauigkeit für Adressen & POIs in DACH)
+        $nominatimResult = $this->geocodeViaNominatim($trimmed);
+        if ($nominatimResult !== null) {
+            return $nominatimResult;
+        }
+
+        // 3. Fallback: OpenRouteService Geocoding (sofern API-Key vorliegt)
         if (!empty($this->orsApiKey)) {
             $orsResult = $this->geocodeViaOrs($trimmed);
             if ($orsResult !== null) {
@@ -55,8 +61,7 @@ class GeocodingService
             }
         }
 
-        // 3. Fallback: OpenStreetMap Nominatim
-        return $this->geocodeViaNominatim($trimmed);
+        return null;
     }
 
     private function geocodeViaOrs(string $address): ?array

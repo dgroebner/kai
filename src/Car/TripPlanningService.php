@@ -247,14 +247,35 @@ class TripPlanningService
             return false;
         }
 
+        $destLat = (float)$trip['destination_lat'];
+        $destLon = (float)$trip['destination_lon'];
+        $startLat = (float)$trip['start_lat'];
+        $startLon = (float)$trip['start_lon'];
+
+        // Koordinaten anhand der Adressen frisch auflösen, um fehlerhafte oder unpräzise Alt-Geocodes zu korrigieren
+        if (!empty($trip['destination_address'])) {
+            $destGeo = $this->geocodingService->geocode($trip['destination_address']);
+            if ($destGeo !== null) {
+                $destLat = $destGeo['lat'];
+                $destLon = $destGeo['lon'];
+            }
+        }
+        if (!empty($trip['start_address'])) {
+            $startGeo = $this->geocodingService->geocode($trip['start_address']);
+            if ($startGeo !== null) {
+                $startLat = $startGeo['lat'];
+                $startLon = $startGeo['lon'];
+            }
+        }
+
         $currentPlannedSoc = (int)($trip['planned_departure_soc'] ?? 80);
         $targetArrivalSoc = (int)($trip['target_arrival_soc'] ?? 10);
 
         $routeResult = $this->routePlanner->planRoute(
-            (float)$trip['start_lat'],
-            (float)$trip['start_lon'],
-            (float)$trip['destination_lat'],
-            (float)$trip['destination_lon'],
+            $startLat,
+            $startLon,
+            $destLat,
+            $destLon,
             $targetArrivalSoc,
             $currentPlannedSoc
         );
@@ -303,6 +324,10 @@ class TripPlanningService
         }
 
         $this->tripRepo->updateTrip($tripId, [
+            'start_lat' => $startLat,
+            'start_lon' => $startLon,
+            'destination_lat' => $destLat,
+            'destination_lon' => $destLon,
             'planned_departure_soc' => $plannedDepartureSoc,
             'total_distance_km' => $totalDistanceKm,
             'estimated_consumption_kwh' => $estimatedConsumptionKwh,
