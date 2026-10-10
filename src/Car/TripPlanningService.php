@@ -532,7 +532,7 @@ class TripPlanningService
                             $this->activityLogger->log(
                                 'car_charge_captured',
                                 "Termineinladung zu \"{$title}\" angenommen & bestätigt",
-                                "/car/trips.php?id=" . $tripId,
+                                "/car/index.php?tab=trips&trip_id=" . $tripId,
                                 $tripId
                             );
                         }

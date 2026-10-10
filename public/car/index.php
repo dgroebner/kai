@@ -955,6 +955,15 @@ if ($tab === 'trips') {
                                                 ⚡ ABRP
                                             </a>
                                         <?php endif; ?>
+                                        <?php 
+                                            $gmapsTarget = !empty($t['destination_lat']) && !empty($t['destination_lon'])
+                                                ? ((float)$t['destination_lat'] . ',' . (float)$t['destination_lon'])
+                                                : urlencode($t['destination_address']);
+                                            $gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' . $gmapsTarget;
+                                        ?>
+                                        <a href="<?= htmlspecialchars($gmapsUrl) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="Navigation in Google Maps öffnen">
+                                            🗺️ Maps
+                                        </a>
                                         <?php if (empty($t['parent_trip_id'])): ?>
                                             <button type="button" class="btn btn-outline btn-sm js-btn-new-subtrip" data-parent-id="<?= (int)$t['id'] ?>" data-parent-dest="<?= htmlspecialchars($t['destination_address']) ?>" title="Ausflug während des Aufenthalts anlegen">
                                                 🏖️ Ausflug +

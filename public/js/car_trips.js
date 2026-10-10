@@ -282,6 +282,13 @@
                 return;
             }
         });
+
+        // Prüfen, ob eine spezifische Reise-ID über den URL-Parameter trip_id angefordert wurde (z.B. aus Activity Log oder Benachrichtigung)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlTripId = urlParams.get('trip_id');
+        if (urlTripId) {
+            loadTripDetails(urlTripId);
+        }
     }
 
     // =========================================================================
@@ -406,6 +413,17 @@
                             ⚡ In ABRP öffnen
                         </a>
                     ` : ''}
+                    ${(() => {
+                        const target = (trip.destination_lat && trip.destination_lon)
+                            ? `${parseFloat(trip.destination_lat)},${parseFloat(trip.destination_lon)}`
+                            : encodeURIComponent(trip.destination_address || '');
+                        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${target}`;
+                        return `
+                            <a href="${KaiHtml.escape(gmapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="Navigation in Google Maps öffnen">
+                                🗺️ In Maps öffnen
+                            </a>
+                        `;
+                    })()}
                     <button type="button" class="btn btn-outline btn-sm js-btn-recalc-trip" data-trip-id="${trip.id}" title="Route und Vorladekette neu kalkulieren">
                         🔄 Neu berechnen
                     </button>

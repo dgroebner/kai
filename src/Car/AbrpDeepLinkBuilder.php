@@ -33,10 +33,14 @@ class AbrpDeepLinkBuilder
         ?int $departureSoc = null,
         string $vehicleModel = self::DEFAULT_VEHICLE_MODEL
     ): string {
+        $destinations = [
+            ['lat' => round($startLat, 6), 'lon' => round($startLon, 6)],
+            ['lat' => round($destLat, 6), 'lon' => round($destLon, 6)],
+        ];
+
         $params = [
-            'origin' => sprintf('%.6f,%.6f', $startLat, $startLon),
-            'destination' => sprintf('%.6f,%.6f', $destLat, $destLon),
-            'vehicle_model' => $vehicleModel,
+            'destinations' => json_encode($destinations),
+            'car_model' => $vehicleModel,
             'arrival_soc' => $targetSoc,
         ];
 
