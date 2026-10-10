@@ -203,7 +203,10 @@ class GamificationProfileRepository
         ?int $refId = null
     ): void {
         $pdo = $this->db->getConnection();
-        $pdo->beginTransaction();
+        $isNested = $pdo->inTransaction();
+        if (!$isNested) {
+            $pdo->beginTransaction();
+        }
         try {
             $stmt = $pdo->prepare("
                 UPDATE gamification_profiles 
@@ -229,9 +232,13 @@ class GamificationProfileRepository
                 'ref_id' => $refId,
             ]);
 
-            $pdo->commit();
+            if (!$isNested) {
+                $pdo->commit();
+            }
         } catch (\Throwable $e) {
-            $pdo->rollBack();
+            if (!$isNested) {
+                $pdo->rollBack();
+            }
             throw $e;
         }
     }
@@ -251,11 +258,16 @@ class GamificationProfileRepository
         }
 
         $pdo = $this->db->getConnection();
-        $pdo->beginTransaction();
+        $isNested = $pdo->inTransaction();
+        if (!$isNested) {
+            $pdo->beginTransaction();
+        }
         try {
             $profile = $this->getProfileById($id);
             if (!$profile || $profile['coins'] < $coins) {
-                $pdo->rollBack();
+                if (!$isNested) {
+                    $pdo->rollBack();
+                }
                 return false;
             }
 
@@ -283,10 +295,14 @@ class GamificationProfileRepository
                 'ref_id' => $refId,
             ]);
 
-            $pdo->commit();
+            if (!$isNested) {
+                $pdo->commit();
+            }
             return true;
         } catch (\Throwable $e) {
-            $pdo->rollBack();
+            if (!$isNested) {
+                $pdo->rollBack();
+            }
             throw $e;
         }
     }
