@@ -3,6 +3,7 @@
 namespace Kai\Tools\Car;
 
 use DateTime;
+use Kai\Tools\Car\Tronity\GeofenceService;
 use Kai\Tools\PVCharge\PvForecastRepository;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
@@ -601,6 +602,34 @@ class TripPlanningService
         ");
         $stmtEnd->execute([':now' => $now]);
         $updated += $stmtEnd->rowCount();
+
+        // 2b. Bei Rundreisen: Wenn das Fahrzeug nach begonnener Fahrt aktuell wieder zuhause steht
+        try {
+            $dashRepo = new VehicleDashboardRepository($pdo);
+            $latestState = $dashRepo->getLatestState();
+            $geofence = new GeofenceService();
+            if ($latestState && $geofence->isHome(
+                isset($latestState['latitude']) && is_numeric($latestState['latitude']) ? (float)$latestState['latitude'] : null,
+                isset($latestState['longitude']) && is_numeric($latestState['longitude']) ? (float)$latestState['longitude'] : null
+            )) {
+                // Alle aktiven Rundreisen prüfen, deren Abfahrt mind. 15 Min her ist
+                $stmtHome = $pdo->prepare("
+                    UPDATE car_trips
+                    SET status = 'abgeschlossen'
+                    WHERE status = 'aktiv'
+                      AND is_round_trip = 1
+                      AND departure_time <= DATE_SUB(:now, INTERVAL 15 MINUTE)
+                ");
+                $stmtHome->execute([':now' => $now]);
+                $homeUpdated = $stmtHome->rowCount();
+                if ($homeUpdated > 0) {
+                    $this->logger->info("TripPlanningService: {$homeUpdated} Rundreise(n) als abgeschlossen markiert, da das Fahrzeug wieder zuhause steht.");
+                    $updated += $homeUpdated;
+                }
+            }
+        } catch (\Throwable $he) {
+            $this->logger->warn("TripPlanningService: Geofence-Check für Reiseende übersprungen: " . $he->getMessage());
+        }
 
         // 3. Telemetrie-Abgleich mit realen TRONITY-Daten durchführen
         try {

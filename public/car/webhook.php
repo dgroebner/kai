@@ -68,6 +68,14 @@ try {
     $telemetrySync = new \Kai\Tools\Car\Tronity\TronityTelemetrySync();
     $telemetrySync->syncCharges();
 
+    // Status anstehender & aktiver Reisen synchronisieren
+    try {
+        $planningService = new \Kai\Tools\Car\TripPlanningService();
+        $planningService->syncTripStatuses();
+    } catch (\Throwable $te) {
+        $logger->warn('Car Webhook: Reise-Status-Sync fehlgeschlagen: ' . $te->getMessage());
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'Webhook empfangen und verarbeitet',

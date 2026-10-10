@@ -19,7 +19,8 @@ use Throwable;
 class TripTelemetryTracker
 {
     public const BATTERY_USABLE_KWH = 77.0; // VW ID.Buzz 77 kWh Netto-Batteriekapazität
-    public const DEFAULT_GEOFENCE_RADIUS_M = 500.0; // 500 Meter Umkreis für Ziel/Start-Erkennung
+    public const DEFAULT_GEOFENCE_RADIUS_M = 500.0; // 500 Meter Umkreis für Start- und Rückkehrort
+    public const DEFAULT_DESTINATION_GEOFENCE_RADIUS_M = 1500.0; // 1,5 km Umkreis für Zielort (erhöhte Toleranz für Parkplätze & ländliche Adressen)
 
     private PDO $pdo;
     private Logger $logger;
@@ -89,7 +90,8 @@ class TripTelemetryTracker
         // Telemetrie-Messpunkte für das relevante Zeitfenster abrufen
         // Fenster: ab 30 Minuten vor geplanter Abfahrt bis (Rückkehrzeit + 2 Stunden bzw. jetzt)
         $startWindow = date('Y-m-d H:i:s', strtotime($depTime) - 1800);
-        $endWindow = $retTime ? date('Y-m-d H:i:s', strtotime($retTime) + 7200) : date('Y-m-d H:i:s', time() + 3600);
+        $endWindowTs = max($retTime ? strtotime($retTime) + 7200 : 0, time() + 1800);
+        $endWindow = date('Y-m-d H:i:s', $endWindowTs);
 
         // Telemetrielog speichert Zeitstempel in UTC
         $startUtc = $this->toUtcString($startWindow);
@@ -104,6 +106,41 @@ class TripTelemetryTracker
         ");
         $stmt->execute([':start_utc' => $startUtc, ':end_utc' => $endUtc]);
         $points = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Initialen Messpunkt (vor oder zur Abfahrt) ermitteln, falls Fensteranfang keinen erfasst hat
+        $stmtPrev = $this->pdo->prepare("
+            SELECT car_captured_at, soc_percent, mileage_km, latitude, longitude
+            FROM vehicle_telemetry_log
+            WHERE car_captured_at <= :dep_utc
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+            ORDER BY car_captured_at DESC
+            LIMIT 1
+        ");
+        $stmtPrev->execute([':dep_utc' => $this->toUtcString($depTime)]);
+        $prevPoint = $stmtPrev->fetch(PDO::FETCH_ASSOC);
+        if ($prevPoint) {
+            if (empty($points) || $points[0]['car_captured_at'] !== $prevPoint['car_captured_at']) {
+                array_unshift($points, $prevPoint);
+            }
+        }
+
+        // Aktuellsten Messpunkt anhängen, falls noch nicht enthalten
+        $stmtLatest = $this->pdo->prepare("
+            SELECT car_captured_at, soc_percent, mileage_km, latitude, longitude
+            FROM vehicle_telemetry_log
+            WHERE car_captured_at >= :dep_utc
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+            ORDER BY car_captured_at DESC
+            LIMIT 1
+        ");
+        $stmtLatest->execute([':dep_utc' => $this->toUtcString($depTime)]);
+        $latestPoint = $stmtLatest->fetch(PDO::FETCH_ASSOC);
+        if ($latestPoint) {
+            $lastInList = end($points);
+            if (!$lastInList || $lastInList['car_captured_at'] !== $latestPoint['car_captured_at']) {
+                $points[] = $latestPoint;
+            }
+        }
 
         if (empty($points)) {
             return false;
@@ -122,98 +159,151 @@ class TripTelemetryTracker
             }
         }
 
-        if (!$startPoint || !$hasLeftStart) {
-            return false; // Fahrzeug hat Startort noch nicht verlassen
+        if (!$startPoint && !empty($points)) {
+            $startPoint = $points[0];
         }
 
-        // 2. Zielpunkt bestimmen: Erster Messpunkt innerhalb des Ziel-Geofences
+        $totalActualDistance = null;
+        $totalActualConsumption = null;
+        $finalArrivalSoc = null;
         $destPoint = null;
         $destIndex = null;
-
-        foreach ($points as $idx => $p) {
-            if ($p['car_captured_at'] <= $startPoint['car_captured_at']) {
-                continue;
-            }
-            $distToDest = $this->distanceMeters($destLat, $destLon, (float)$p['latitude'], (float)$p['longitude']);
-            if ($distToDest <= self::DEFAULT_GEOFENCE_RADIUS_M) {
-                $destPoint = $p;
-                $destIndex = $idx;
-                break;
-            }
-        }
-
-        if (!$destPoint) {
-            return false; // Ziel noch nicht erreicht
-        }
-
-        // Ladevorgänge unterwegs zwischen Start und Ziel ermitteln
-        $outboundChargesKwh = $this->sumChargesKwhBetween(
-            $startPoint['car_captured_at'],
-            $destPoint['car_captured_at']
-        );
-
-        // Hinfahrt berechnen
-        $outboundSocDelta = (int)$startPoint['soc_percent'] - (int)$destPoint['soc_percent'];
-        $outboundConsumptionKwh = max(0.0, round(($outboundSocDelta / 100.0) * self::BATTERY_USABLE_KWH + $outboundChargesKwh, 2));
-
-        $outboundDistanceKm = null;
-        if (!empty($destPoint['mileage_km']) && !empty($startPoint['mileage_km']) && (int)$destPoint['mileage_km'] >= (int)$startPoint['mileage_km']) {
-            $outboundDistanceKm = round((int)$destPoint['mileage_km'] - (int)$startPoint['mileage_km'], 1);
-        }
-
-        $totalActualDistance = $outboundDistanceKm;
-        $totalActualConsumption = $outboundConsumptionKwh;
-        $finalArrivalSoc = (int)$destPoint['soc_percent'];
-
-        // 3. Bei Rundreise: Rückkehrpunkt (wieder am Startort) suchen
         $returnPoint = null;
-        if ($isRoundTrip && $destIndex !== null) {
-            $hasLeftDest = false;
-            for ($i = $destIndex; $i < count($points); $i++) {
-                $p = $points[$i];
+
+        if ($hasLeftStart && $startPoint !== null) {
+            // 2. Zielpunkt bestimmen (erhöhter Ziel-Radius für Parkplätze & ländliche Adressen)
+            $minDestDist = PHP_FLOAT_MAX;
+            $bestDestIdx = null;
+
+            foreach ($points as $idx => $p) {
+                if ($p['car_captured_at'] <= $startPoint['car_captured_at']) {
+                    continue;
+                }
                 $distToDest = $this->distanceMeters($destLat, $destLon, (float)$p['latitude'], (float)$p['longitude']);
-                if ($distToDest > self::DEFAULT_GEOFENCE_RADIUS_M) {
-                    $hasLeftDest = true;
+                if ($distToDest <= self::DEFAULT_DESTINATION_GEOFENCE_RADIUS_M) {
+                    $destPoint = $p;
+                    $destIndex = $idx;
+                    break;
+                }
+                if ($distToDest < $minDestDist) {
+                    $minDestDist = $distToDest;
+                    $bestDestIdx = $idx;
+                }
+            }
+
+            // Fallback für Rundreisen: Wendepunkt mit geringster Zieldistanz (mind. 1,5 km von Start entfernt)
+            if (!$destPoint && $isRoundTrip && $bestDestIdx !== null) {
+                $candidate = $points[$bestDestIdx];
+                $distStartCandidate = $this->distanceMeters($startLat, $startLon, (float)$candidate['latitude'], (float)$candidate['longitude']);
+                if ($distStartCandidate >= 1500.0) {
+                    $destPoint = $candidate;
+                    $destIndex = $bestDestIdx;
+                }
+            }
+
+            if ($destPoint) {
+                // Ladevorgänge unterwegs zwischen Start und Ziel ermitteln
+                $outboundChargesKwh = $this->sumChargesKwhBetween(
+                    $startPoint['car_captured_at'],
+                    $destPoint['car_captured_at']
+                );
+
+                // Hinfahrt berechnen
+                $outboundSocDelta = (int)$startPoint['soc_percent'] - (int)$destPoint['soc_percent'];
+                $outboundConsumptionKwh = max(0.0, round(($outboundSocDelta / 100.0) * self::BATTERY_USABLE_KWH + $outboundChargesKwh, 2));
+
+                $outboundDistanceKm = null;
+                if (!empty($destPoint['mileage_km']) && !empty($startPoint['mileage_km']) && (int)$destPoint['mileage_km'] >= (int)$startPoint['mileage_km']) {
+                    $outboundDistanceKm = round((int)$destPoint['mileage_km'] - (int)$startPoint['mileage_km'], 1);
                 }
 
-                if ($hasLeftDest) {
-                    $distToStart = $this->distanceMeters($startLat, $startLon, (float)$p['latitude'], (float)$p['longitude']);
-                    if ($distToStart <= self::DEFAULT_GEOFENCE_RADIUS_M) {
-                        $returnPoint = $p;
-                        break;
+                $totalActualDistance = $outboundDistanceKm;
+                $totalActualConsumption = $outboundConsumptionKwh;
+                $finalArrivalSoc = (int)$destPoint['soc_percent'];
+
+                // 3. Bei Rundreise: Rückkehrpunkt (wieder am Startort) suchen
+                if ($isRoundTrip && $destIndex !== null) {
+                    for ($i = $destIndex + 1; $i < count($points); $i++) {
+                        $p = $points[$i];
+                        $distToStart = $this->distanceMeters($startLat, $startLon, (float)$p['latitude'], (float)$p['longitude']);
+                        if ($distToStart <= self::DEFAULT_GEOFENCE_RADIUS_M) {
+                            $returnPoint = $p;
+                            break;
+                        }
+                    }
+
+                    if ($returnPoint) {
+                        $returnChargesKwh = $this->sumChargesKwhBetween(
+                            $destPoint['car_captured_at'],
+                            $returnPoint['car_captured_at']
+                        );
+
+                        $returnSocDelta = (int)$destPoint['soc_percent'] - (int)$returnPoint['soc_percent'];
+                        $returnConsumptionKwh = max(0.0, round(($returnSocDelta / 100.0) * self::BATTERY_USABLE_KWH + $returnChargesKwh, 2));
+
+                        $totalActualConsumption = round($outboundConsumptionKwh + $returnConsumptionKwh, 2);
+                        $finalArrivalSoc = (int)$returnPoint['soc_percent'];
+
+                        if (!empty($returnPoint['mileage_km']) && !empty($startPoint['mileage_km']) && (int)$returnPoint['mileage_km'] >= (int)$startPoint['mileage_km']) {
+                            $totalActualDistance = round((int)$returnPoint['mileage_km'] - (int)$startPoint['mileage_km'], 1);
+                        }
                     }
                 }
             }
+        } elseif ($isRoundTrip && $startPoint !== null && count($points) >= 2) {
+            // Fallback: Keine GPS-Punkte außerhalb des Start-Geofences aufgezeichnet (z. B. nur vor und nach der Fahrt gepollt),
+            // aber Kilometerstand ist zwischenzeitlich angestiegen und Fahrzeug steht wieder zuhause.
+            $lastPoint = end($points);
+            $distLastToStart = $this->distanceMeters($startLat, $startLon, (float)$lastPoint['latitude'], (float)$lastPoint['longitude']);
+            $odometerDelta = (!empty($lastPoint['mileage_km']) && !empty($startPoint['mileage_km']))
+                ? ((int)$lastPoint['mileage_km'] - (int)$startPoint['mileage_km'])
+                : 0;
 
-            if ($returnPoint) {
-                // Rückfahrt-Verbrauch berechnen
-                $returnChargesKwh = $this->sumChargesKwhBetween(
-                    $destPoint['car_captured_at'],
+            if ($distLastToStart <= self::DEFAULT_GEOFENCE_RADIUS_M && $odometerDelta >= 5) {
+                $returnPoint = $lastPoint;
+                $enRouteChargesKwh = $this->sumChargesKwhBetween(
+                    $startPoint['car_captured_at'],
                     $returnPoint['car_captured_at']
                 );
 
-                $returnSocDelta = (int)$destPoint['soc_percent'] - (int)$returnPoint['soc_percent'];
-                $returnConsumptionKwh = max(0.0, round(($returnSocDelta / 100.0) * self::BATTERY_USABLE_KWH + $returnChargesKwh, 2));
-
-                $totalActualConsumption = round($outboundConsumptionKwh + $returnConsumptionKwh, 2);
+                $totalActualDistance = round((float)$odometerDelta, 1);
+                $socDelta = (int)$startPoint['soc_percent'] - (int)$returnPoint['soc_percent'];
+                $totalActualConsumption = max(0.0, round(($socDelta / 100.0) * self::BATTERY_USABLE_KWH + $enRouteChargesKwh, 2));
                 $finalArrivalSoc = (int)$returnPoint['soc_percent'];
-
-                if (!empty($returnPoint['mileage_km']) && !empty($startPoint['mileage_km']) && (int)$returnPoint['mileage_km'] >= (int)$startPoint['mileage_km']) {
-                    $totalActualDistance = round((int)$returnPoint['mileage_km'] - (int)$startPoint['mileage_km'], 1);
-                }
             }
+        }
+
+        // Status-Ermittlung: Rundreise beendet sobald am Startort zurück, oder Zeit abgelaufen
+        $targetStatus = (string)$trip['status'];
+        $nowTs = time();
+
+        if ($isRoundTrip && $returnPoint !== null) {
+            $targetStatus = 'abgeschlossen';
+        } elseif (!$isRoundTrip && $destPoint !== null && ($retTime === null || strtotime($retTime) <= $nowTs)) {
+            $targetStatus = 'abgeschlossen';
+        } elseif (!empty($retTime) && strtotime($retTime) <= $nowTs && $targetStatus === 'aktiv') {
+            $targetStatus = 'abgeschlossen';
         }
 
         // Falls sich signifikante Änderungen ergeben haben, in car_trips speichern
         $currentDist = $trip['actual_distance_km'] !== null ? (float)$trip['actual_distance_km'] : null;
         $currentKwh = $trip['actual_consumption_kwh'] !== null ? (float)$trip['actual_consumption_kwh'] : null;
+        $currentArrivalSoc = $trip['actual_arrival_soc'] !== null ? (int)$trip['actual_arrival_soc'] : null;
 
-        if ($currentDist !== $totalActualDistance || $currentKwh !== $totalActualConsumption) {
+        $hasStatusChanged = ($targetStatus !== (string)$trip['status']);
+        $hasMetricsChanged = (
+            ($totalActualDistance !== null && $currentDist !== $totalActualDistance) ||
+            ($totalActualConsumption !== null && $currentKwh !== $totalActualConsumption) ||
+            ($finalArrivalSoc !== null && $currentArrivalSoc !== $finalArrivalSoc)
+        );
+
+        if ($hasStatusChanged || $hasMetricsChanged) {
             $upd = $this->pdo->prepare("
                 UPDATE car_trips
-                SET actual_distance_km = :dist,
-                    actual_consumption_kwh = :kwh,
-                    actual_arrival_soc = :soc,
+                SET actual_distance_km = COALESCE(:dist, actual_distance_km),
+                    actual_consumption_kwh = COALESCE(:kwh, actual_consumption_kwh),
+                    actual_arrival_soc = COALESCE(:soc, actual_arrival_soc),
+                    status = :status,
                     telemetry_matched_at = NOW()
                 WHERE id = :id
             ");
@@ -222,10 +312,11 @@ class TripTelemetryTracker
                 ':dist' => $totalActualDistance,
                 ':kwh' => $totalActualConsumption,
                 ':soc' => $finalArrivalSoc,
+                ':status' => $targetStatus,
                 ':id' => $tripId,
             ]);
 
-            $this->logger->info("TripTelemetryTracker: Reise #{$tripId} '{$trip['title']}' aktualisiert: Ist-Distanz {$totalActualDistance} km, Ist-Verbrauch {$totalActualConsumption} kWh, Ankunfts-SoC {$finalArrivalSoc}%.");
+            $this->logger->info("TripTelemetryTracker: Reise #{$tripId} '{$trip['title']}' aktualisiert: Status '{$targetStatus}', Ist-Distanz {$totalActualDistance} km, Ist-Verbrauch {$totalActualConsumption} kWh, Ankunfts-SoC {$finalArrivalSoc}%.");
             return true;
         }
 

@@ -50,6 +50,17 @@ try {
         $logger->warn("Cronjob (car_cron.php): TRONITY ist nicht konfiguriert.");
     }
 
+    // Status anstehender & aktiver Reisen synchronisieren sowie Telemetrie abgleichen
+    try {
+        $tripPlanningService = new \Kai\Tools\Car\TripPlanningService(logger: $logger);
+        $syncedTrips = $tripPlanningService->syncTripStatuses();
+        if ($syncedTrips > 0) {
+            $logger->info("Cronjob (car_cron.php): Status von {$syncedTrips} Reise(n) aktualisiert.");
+        }
+    } catch (\Throwable $te) {
+        $logger->warn("Cronjob (car_cron.php): Fehler beim Synchronisieren der Reisestatus: " . $te->getMessage());
+    }
+
 } catch (\Throwable $e) {
     $logger->error("Cronjob (car_cron.php): Kritischer Fehler im Hintergrund-Task!", [
         'error' => $e->getMessage()

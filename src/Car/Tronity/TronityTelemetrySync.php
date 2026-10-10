@@ -2,6 +2,7 @@
 
 namespace Kai\Tools\Car\Tronity;
 
+use Kai\Tools\Car\ChargingLocationService;
 use Kai\Tools\Car\VehicleChargeRepository;
 use Kai\Tools\Shared\Log\Logger;
 use DateTime;

@@ -254,6 +254,13 @@ $tripsPerPage = 10;
 $totalTripPages = 1;
 
 if ($tab === 'trips') {
+    try {
+        $planningService = new \Kai\Tools\Car\TripPlanningService();
+        $planningService->syncTripStatuses();
+    } catch (\Throwable) {
+        // Status-Sync darf Seitenaufruf nicht verhindern
+    }
+
     $tripRepo = new \Kai\Tools\Car\TripRepository();
     $totalTrips = $tripRepo->countTrips();
     $tripPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;

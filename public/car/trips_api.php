@@ -25,6 +25,12 @@ try {
         $action = $_GET['action'] ?? 'list';
 
         if ($action === 'list') {
+            try {
+                $planningService->syncTripStatuses();
+            } catch (\Throwable) {
+                // Status-Sync darf Abruf nicht blockieren
+            }
+
             $status = !empty($_GET['status']) ? (string)$_GET['status'] : null;
             $limit = isset($_GET['limit']) ? max(1, min(100, (int)$_GET['limit'])) : 50;
             $offset = isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0;
