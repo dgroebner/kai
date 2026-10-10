@@ -72,7 +72,7 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                 </div>
             </div>
             <div class="gamif-hud-stats">
-                <div class="gamif-stat-chip gamif-stat-chip--coins" title="Verfügbare Belohnungsmünzen">
+                <div class="gamif-stat-chip gamif-stat-chip--coins" style="cursor: pointer;" title="Tippe hier, um direkt zum Punkteshop zu springen!">
                     🪙 <span><?= (int)$currentProfile['coins'] ?></span> Münzen
                 </div>
                 <div class="gamif-stat-chip gamif-stat-chip--streak" title="Tage in Folge zuverlässig erledigt">
@@ -114,7 +114,7 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
     <nav class="gamif-tabs">
         <button type="button" class="gamif-tab-btn active" data-tab="tab-missions">🎯 Meine Missionen (<?= count($myTasks) ?>)</button>
         <button type="button" class="gamif-tab-btn" data-tab="tab-board">🔥 Schwarzes Brett (<?= count($bountyTasks) ?>)</button>
-        <button type="button" class="gamif-tab-btn" data-tab="tab-rewards">🎁 Belohnungen</button>
+        <button type="button" class="gamif-tab-btn" data-tab="tab-rewards">🎁 Punkteshop (<?= count($rewards) ?>)</button>
         <button type="button" class="gamif-tab-btn" data-tab="tab-trophies">🏆 Trophäen (<?= count(array_filter($achievements, fn($a) => $a['is_unlocked'])) ?>/<?= count($achievements) ?>)</button>
     </nav>
 
@@ -300,42 +300,50 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
 
         <h3>Belohnungskatalog</h3>
         <p class="text-muted">Tausche deine hart verdienten Münzen gegen tolle Belohnungen und Privilegien ein!</p>
-        <div class="gamif-grid" style="margin-top: 1rem;">
-            <?php 
-            $rewardTypeMap = [
-                'privilege' => 'Privileg / Freiheit',
-                'voucher'   => 'Gutschein',
-                'allowance' => 'Taschengeld-Zuschuss',
-                'event'     => 'Ausflug / Erlebnis',
-                'item'      => 'Gegenstand',
-            ];
-            foreach ($rewards as $reward): 
-                $canAfford = (int)$currentProfile['coins'] >= (int)$reward['coin_cost'];
-            ?>
-                <div class="gamif-reward-card">
-                    <div>
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                            <div class="gamif-reward-icon"><?= htmlspecialchars($reward['icon'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <span class="gamif-tag"><?= htmlspecialchars($rewardTypeMap[$reward['type']] ?? ucfirst($reward['type']), ENT_QUOTES, 'UTF-8') ?></span>
+        <?php if (empty($rewards)): ?>
+            <div class="gamif-empty-box" style="margin-top: 1rem;">
+                <span class="gamif-empty-icon">🎁</span>
+                <h3>Der Punkteshop wird gerade vorbereitet!</h3>
+                <p>Aktuell sind noch keine Belohnungen im Katalog hinterlegt. Fleißig Münzen sammeln – deine Eltern stellen bald tolle Belohnungen zum Einlösen bereit!</p>
+            </div>
+        <?php else: ?>
+            <div class="gamif-grid" style="margin-top: 1rem;">
+                <?php 
+                $rewardTypeMap = [
+                    'privilege' => 'Privileg / Freiheit',
+                    'voucher'   => 'Gutschein',
+                    'allowance' => 'Taschengeld-Zuschuss',
+                    'event'     => 'Ausflug / Erlebnis',
+                    'item'      => 'Gegenstand',
+                ];
+                foreach ($rewards as $reward): 
+                    $canAfford = (int)$currentProfile['coins'] >= (int)$reward['coin_cost'];
+                ?>
+                    <div class="gamif-reward-card">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div class="gamif-reward-icon"><?= htmlspecialchars($reward['icon'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <span class="gamif-tag"><?= htmlspecialchars($rewardTypeMap[$reward['type']] ?? ucfirst($reward['type']), ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
+                            <h4 style="margin: 0.5rem 0 0.25rem 0;"><?= htmlspecialchars($reward['title'], ENT_QUOTES, 'UTF-8') ?></h4>
+                            <?php if (!empty($reward['description'])): ?>
+                                <p class="text-muted" style="font-size: 0.85rem;"><?= htmlspecialchars($reward['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <?php endif; ?>
                         </div>
-                        <h4 style="margin: 0.5rem 0 0.25rem 0;"><?= htmlspecialchars($reward['title'], ENT_QUOTES, 'UTF-8') ?></h4>
-                        <?php if (!empty($reward['description'])): ?>
-                            <p class="text-muted" style="font-size: 0.85rem;"><?= htmlspecialchars($reward['description'], ENT_QUOTES, 'UTF-8') ?></p>
-                        <?php endif; ?>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(255,255,255,0.05);">
+                            <span class="gamif-reward-cost">🪙 <?= (int)$reward['coin_cost'] ?></span>
+                            <button type="button" class="btn btn-sm <?= $canAfford ? 'btn-primary' : 'btn-outline' ?> js-redeem-btn" 
+                                    data-reward-id="<?= (int)$reward['id'] ?>" 
+                                    data-title="<?= htmlspecialchars($reward['title'], ENT_QUOTES, 'UTF-8') ?>"
+                                    data-cost="<?= (int)$reward['coin_cost'] ?>"
+                                    <?= !$canAfford ? 'disabled' : '' ?>>
+                                <?= $canAfford ? 'Einlösen' : 'Zu wenig Münzen' ?>
+                            </button>
+                        </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(255,255,255,0.05);">
-                        <span class="gamif-reward-cost">🪙 <?= (int)$reward['coin_cost'] ?></span>
-                        <button type="button" class="btn btn-sm <?= $canAfford ? 'btn-primary' : 'btn-outline' ?> js-redeem-btn" 
-                                data-reward-id="<?= (int)$reward['id'] ?>" 
-                                data-title="<?= htmlspecialchars($reward['title'], ENT_QUOTES, 'UTF-8') ?>"
-                                data-cost="<?= (int)$reward['coin_cost'] ?>"
-                                <?= !$canAfford ? 'disabled' : '' ?>>
-                            <?= $canAfford ? 'Einlösen' : 'Zu wenig Münzen' ?>
-                        </button>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </section>
 
     <!-- Tab 4: Trophäen & Abzeichen -->

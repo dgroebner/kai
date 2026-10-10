@@ -32,6 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Klick auf den Münz-Chip im HUD springt direkt zum Punkteshop
+    const coinsChip = document.querySelector('.gamif-stat-chip--coins');
+    if (coinsChip) {
+        coinsChip.addEventListener('click', () => {
+            switchTab('tab-rewards');
+        });
+    }
+
     // Gespeicherten Tab beim Laden wiederherstellen
     const savedPlayerTab = window.location.hash.replace('#', '') || sessionStorage.getItem('gamif_active_tab');
     if (savedPlayerTab && document.getElementById(savedPlayerTab)) {
