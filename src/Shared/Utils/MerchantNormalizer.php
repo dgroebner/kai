@@ -79,6 +79,16 @@ final class MerchantNormalizer
         '/\besso\b/i'                      => 'Esso',
         '/\bhem\b/i'                       => 'HEM',
         '/\bavia\b/i'                      => 'AVIA',
+
+        // Ladestationen & Elektromobilität
+        '/\b(stadtwerke\s+leipzig|leipziger\s+stadtwerke|l-charge|l-strom(\.drive)?)\b/i' => 'Stadtwerke Leipzig',
+        '/\b(vattenfall|incharge)\b/i'      => 'Vattenfall',
+        '/\b(enbw|mobility\+)\b/i'         => 'EnBW',
+        '/\b(ionity)\b/i'                  => 'Ionity',
+        '/\b(ewe\s*go|ewe)\b/i'            => 'EWE Go',
+        '/\b(fastned)\b/i'                 => 'Fastned',
+        '/\b(allego)\b/i'                  => 'Allego',
+        '/\b(tesla)\b/i'                   => 'Tesla',
     ];
 
     /**

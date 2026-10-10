@@ -172,4 +172,97 @@ class ChargingReceiptService
 
         return $stmt->execute([':charge_id' => $chargeId]);
     }
+
+    /**
+     * Versucht, einen neu importierten Beleg automatisch einem offenen Ladevorgang zuzuordnen.
+     */
+    public function autoMatchReceipt(int $receiptId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT id, store, purchase_date, total FROM kb_receipts WHERE id = :id");
+        $stmt->execute([':id' => $receiptId]);
+        $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$receipt) {
+            return null;
+        }
+
+        $store = (string)$receipt['store'];
+        $purchaseDate = (string)$receipt['purchase_date'];
+
+        // Bekannte Ladeanbieter
+        $chargingKeywords = [
+            'stadtwerke leipzig', 'leipziger stadtwerke', 'l-charge',
+            'vattenfall', 'incharge', 'enbw', 'mobility+',
+            'aral', 'pulse', 'adac', 'ionity', 'ewe', 'shell', 'tesla', 'fastned', 'allego'
+        ];
+
+        $isChargingReceipt = false;
+        $storeLower = mb_strtolower($store);
+        foreach ($chargingKeywords as $kw) {
+            if (str_contains($storeLower, $kw)) {
+                $isChargingReceipt = true;
+                break;
+            }
+        }
+
+        // Falls der Händlername nicht direkt passt, Positionen prüfen
+        if (!$isChargingReceipt) {
+            $itemStmt = $this->db->prepare("SELECT name FROM kb_items WHERE receipt_id = :id");
+            $itemStmt->execute([':id' => $receiptId]);
+            $items = $itemStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            foreach ($items as $name) {
+                $nLower = mb_strtolower((string)$name);
+                if (str_contains($nLower, 'kwh') || str_contains($nLower, 'ladung') || str_contains($nLower, 'ladekarte')) {
+                    $isChargingReceipt = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$isChargingReceipt) {
+            return null;
+        }
+
+        // Suche nach offenen Ladevorgängen am selben Tag (+/- 1 Tag)
+        $chargeStmt = $this->db->prepare("
+            SELECT id, station_operator, charged_net_kwh, start_time
+            FROM vehicle_charges
+            WHERE location_type != 'HOME'
+              AND receipt_id IS NULL
+              AND ABS(DATEDIFF(start_time, :pdate)) <= 1
+            ORDER BY 
+              CASE WHEN DATE(start_time) = :pdate2 THEN 1 ELSE 2 END ASC,
+              start_time DESC
+        ");
+        $chargeStmt->execute([
+            ':pdate' => $purchaseDate,
+            ':pdate2' => $purchaseDate,
+        ]);
+        $charges = $chargeStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        if (empty($charges)) {
+            return null;
+        }
+
+        // Falls genau 1 offener Ladevorgang existiert oder Betreiber übereinstimmt:
+        $matchedChargeId = null;
+        if (count($charges) === 1) {
+            $matchedChargeId = (int)$charges[0]['id'];
+        } else {
+            foreach ($charges as $c) {
+                if (!empty($c['station_operator']) && str_contains(mb_strtolower($c['station_operator']), $storeLower)) {
+                    $matchedChargeId = (int)$c['id'];
+                    break;
+                }
+            }
+        }
+
+        if ($matchedChargeId !== null) {
+            $this->linkReceiptToCharge($matchedChargeId, $receiptId);
+            $this->logger->info("ChargingReceiptService: Automatischer Match! Ladevorgang #{$matchedChargeId} mit Ladebeleg #{$receiptId} ({$store}, {$receipt['total']} €) verknüpft.");
+            return $matchedChargeId;
+        }
+
+        return null;
+    }
 }

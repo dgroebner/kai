@@ -164,8 +164,16 @@ class MailDispatcher
                                 $activityLogger = new ActivityLogger(Database::getInstance());
                                 $activityLogger->logReceipt($receiptId, $receiptData['store']);
 
-                                $matcher = new ReceiptMatcher();
+                                 $matcher = new ReceiptMatcher();
                                 $matcher->syncUnlinkedReceipts();
+
+                                // Automatischer Abgleich mit offenen Ladevorgängen der Car-Domain
+                                try {
+                                    $chargingReceiptService = new \Kai\Tools\Car\ChargingReceiptService(logger: $this->logger);
+                                    $chargingReceiptService->autoMatchReceipt($receiptId);
+                                } catch (Throwable $cte) {
+                                    $this->logger->warn("MailDispatcher: Ladevorgang-Abgleich übersprungen (" . $cte->getMessage() . ")");
+                                }
 
                                 $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
                                 $processedCount++;
