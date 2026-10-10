@@ -95,6 +95,7 @@ class TripRepository
             'departure_time', 'return_time', 'is_round_trip',
             'target_arrival_soc', 'planned_departure_soc',
             'total_distance_km', 'estimated_consumption_kwh', 'en_route_charge_kwh',
+            'actual_distance_km', 'actual_consumption_kwh', 'actual_arrival_soc', 'telemetry_matched_at',
             'routing_provider', 'abrp_deep_link', 'status',
             'home_charge_cost', 'en_route_charge_cost', 'additional_cost'
         ];

@@ -374,6 +374,14 @@ class TronitySyncService
                 'charge_power_kw' => $chargePower,
                 'captured_at' => $capturedAtUtc,
             ]);
+
+            // Laufende Reisen sofort gegen die neuen Telemetriedaten abgleichen
+            try {
+                $tracker = new \Kai\Tools\Car\TripTelemetryTracker(logger: $this->logger);
+                $tracker->trackTrips();
+            } catch (\Throwable $te) {
+                $this->logger->warn("TronitySyncService: TripTelemetryTracker übersprungen: " . $te->getMessage());
+            }
         } else {
             $this->logger->info("TRONITY: Fahrzeugdaten sind unverändert ({$capturedAtUtc}), Historien-Log übersprungen.");
         }

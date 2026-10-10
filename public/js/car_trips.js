@@ -420,16 +420,31 @@
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Gesamtdistanz</div>
                     <div style="font-size:1.4rem; font-weight:bold; color:var(--car-blue, #3b82f6);">${dist > 0 ? (dist.toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' km') : '– km'}</div>
+                    ${trip.actual_distance_km ? `
+                        <div style="font-size:0.75rem; color:var(--color-green); margin-top:0.25rem;">
+                            Ist: ${parseFloat(trip.actual_distance_km).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} km
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Verbrauch (geschätzt)</div>
                     <div style="font-size:1.4rem; font-weight:bold; color:var(--text-main);">${parseFloat(trip.estimated_consumption_kwh || 0) > 0 ? (parseFloat(trip.estimated_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kWh') : '– kWh'}</div>
+                    ${trip.actual_consumption_kwh ? `
+                        <div style="font-size:0.75rem; color:var(--color-green); margin-top:0.25rem;">
+                            Ist: ${parseFloat(trip.actual_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Start-Empfehlung</div>
                     <div style="font-size:1.4rem; font-weight:bold; color:${trip.planned_departure_soc >= 100 ? '#ef4444' : '#10b981'};">
                         ${KaiHtml.escape(trip.planned_departure_soc)} %
                     </div>
+                    ${trip.actual_arrival_soc !== null && trip.actual_arrival_soc !== undefined ? `
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                            Ziel-SoC: <strong style="color:var(--text-main);">${parseInt(trip.actual_arrival_soc, 10)}%</strong>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Schnellladen unterwegs</div>

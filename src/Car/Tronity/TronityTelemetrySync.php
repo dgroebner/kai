@@ -133,6 +133,14 @@ class TronityTelemetrySync
             if ($synced > 0) {
                 $this->logger->info("TronityTelemetrySync: {$synced} Ladevorgänge synchronisiert.");
             }
+
+            // Reisen mit Lade- und Fahrtdaten abgleichen
+            try {
+                $telemetryTracker = new \Kai\Tools\Car\TripTelemetryTracker(logger: $this->logger);
+                $telemetryTracker->trackTrips();
+            } catch (\Throwable $te) {
+                $this->logger->warn("TronityTelemetrySync: TripTelemetryTracker übersprungen: " . $te->getMessage());
+            }
         } catch (\Throwable $e) {
             $this->logger->info("TronityTelemetrySync: Ladevorgänge-Sync übersprungen ({$e->getMessage()}).");
         }

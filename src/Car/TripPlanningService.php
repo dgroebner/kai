@@ -537,6 +537,14 @@ class TripPlanningService
         $stmtEnd->execute([':now' => $now]);
         $updated += $stmtEnd->rowCount();
 
+        // 3. Telemetrie-Abgleich mit realen TRONITY-Daten durchführen
+        try {
+            $telemetryTracker = new TripTelemetryTracker($pdo, $this->logger);
+            $telemetryTracker->trackTrips();
+        } catch (\Throwable $te) {
+            $this->logger->warn("TripPlanningService: Telemetrie-Tracking übersprungen: " . $te->getMessage());
+        }
+
         return $updated;
     }
 

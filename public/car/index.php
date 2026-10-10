@@ -974,18 +974,33 @@ if ($tab === 'trips') {
                                         <div style="font-weight: 700; font-size: 1rem; color: var(--color-blue);">
                                             <?= $tDist > 0 ? number_format($tDist, 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">km</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– km</span>' ?>
                                         </div>
+                                        <?php if (!empty($t['actual_distance_km'])): ?>
+                                            <div style="font-size: 0.7rem; color: var(--color-green); margin-top: 0.15rem;">
+                                                Ist: <?= number_format((float)$t['actual_distance_km'], 1, ',', '.') ?> km
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Bedarf</div>
                                         <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
                                             <?= (float)$t['estimated_consumption_kwh'] > 0 ? number_format((float)$t['estimated_consumption_kwh'], 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">kWh</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– kWh</span>' ?>
                                         </div>
+                                        <?php if (!empty($t['actual_consumption_kwh'])): ?>
+                                            <div style="font-size: 0.7rem; color: var(--color-green); margin-top: 0.15rem;">
+                                                Ist: <?= number_format((float)$t['actual_consumption_kwh'], 1, ',', '.') ?> kWh
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Start-SoC</div>
                                         <div style="font-weight: 700; font-size: 1rem; color: <?= (int)$t['planned_departure_soc'] >= 100 ? 'var(--color-red)' : 'var(--color-green)' ?>;">
                                             <?= htmlspecialchars($t['planned_departure_soc']) ?> <span style="font-size:0.75rem; font-weight:normal;">%</span>
                                         </div>
+                                        <?php if ($t['actual_arrival_soc'] !== null): ?>
+                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                                Ziel-SoC: <strong style="color:var(--text-main);"><?= (int)$t['actual_arrival_soc'] ?>%</strong>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Unterwegs</div>

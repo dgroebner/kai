@@ -69,3 +69,11 @@ INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `label`) V
 ('trip_calendar_allowed_senders', '', 'Erlaubte Kalender-Absender für Reisen (kommagetrennt)'),
 ('trip_calendar_auto_accept', '1', 'Termineinladungen für Reisen automatisch bestätigen (1/0)');
 
+-- Erweiterung car_trips für reale Ist-Verbrauchsdaten aus Telemetrie
+ALTER TABLE `car_trips`
+    ADD COLUMN IF NOT EXISTS `actual_distance_km` DECIMAL(8, 2) NULL AFTER `en_route_charge_kwh`,
+    ADD COLUMN IF NOT EXISTS `actual_consumption_kwh` DECIMAL(8, 2) NULL AFTER `actual_distance_km`,
+    ADD COLUMN IF NOT EXISTS `actual_arrival_soc` INT NULL AFTER `actual_consumption_kwh`,
+    ADD COLUMN IF NOT EXISTS `telemetry_matched_at` DATETIME NULL AFTER `actual_arrival_soc`;
+
+
