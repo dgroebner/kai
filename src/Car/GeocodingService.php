@@ -47,23 +47,34 @@ class GeocodingService
             ];
         }
 
-        // 2. OpenStreetMap Nominatim als primärer Geocoder (höchste Genauigkeit für Adressen & POIs in DACH)
-        // Probieren wir zuerst die volle Adresse und falls diese fehlschlägt bereinigte Varianten (ohne POI-Vorsatz)
         $candidates = $this->buildAddressCandidates($trimmed);
-        foreach ($candidates as $candidate) {
-            $nominatimResult = $this->geocodeViaNominatim($candidate);
-            if ($nominatimResult !== null) {
-                return $nominatimResult;
-            }
-        }
 
-        // 3. Fallback: OpenRouteService Geocoding (sofern API-Key vorliegt) mit Fokus auf Heimatkoordinaten
+        // 2. OpenRouteService Geocoding (sofern API-Key vorliegt) - Schnell, zuverlässig, ohne IP-Blockade
         if (!empty($this->orsApiKey)) {
+            // Erst strukturierte Suche versuchen (z. B. PLZ 04720 + Ort Döbeln + Straße)
+            $structuredResult = $this->geocodeViaOrsStructured($trimmed);
+            if ($structuredResult !== null) {
+                return $structuredResult;
+            }
+
+            // Dann Freitextsuche für die Kandidaten
             foreach ($candidates as $candidate) {
                 $orsResult = $this->geocodeViaOrs($candidate);
                 if ($orsResult !== null) {
                     return $orsResult;
                 }
+            }
+        }
+
+        // 3. OpenStreetMap Nominatim als Fallback (wenn ORS keinen Treffer liefert)
+        // Bei HTTP 429 (Rate-Limit) sofort abbrechen, um Server-Blockaden nicht zu vertiefen
+        foreach ($candidates as $candidate) {
+            $nominatimResult = $this->geocodeViaNominatim($candidate);
+            if ($nominatimResult === 'RATE_LIMITED') {
+                break;
+            }
+            if (is_array($nominatimResult)) {
+                return $nominatimResult;
             }
         }
 
@@ -164,7 +175,90 @@ class GeocodingService
         return null;
     }
 
-    private function geocodeViaNominatim(string $address): ?array
+    /**
+     * Führt eine strukturierte Geokodierung durch, wenn PLZ, Ort und Straße in der Adresse erkennbar sind.
+     * Dies verhindert Fehl-Matches wie Verwechslungen mit namensgleichen Straßen in anderen Bundesländern.
+     *
+     * @return array{lat: float, lon: float, display_name: string}|null
+     */
+    private function geocodeViaOrsStructured(string $address): ?array
+    {
+        // PLZ (5 Ziffern) und anschließenden Ort finden
+        if (!preg_match('/\b(\d{5})\s+([^,]+)/u', $address, $m)) {
+            return null;
+        }
+
+        $postalcode = $m[1];
+        $locality = trim($m[2]);
+
+        // Straße ermitteln: Wenn Kommas vorhanden sind, typischerweise der Teil vor oder bei der PLZ
+        $street = '';
+        if (str_contains($address, ',')) {
+            $parts = array_map('trim', explode(',', $address));
+            foreach ($parts as $part) {
+                // Wenn dieser Teil eine Hausnummer oder Straßenname enthält, aber nicht die PLZ
+                if (!str_contains($part, $postalcode) && preg_match('/\b\d+[a-zA-Z]?\b/', $part)) {
+                    $street = $part;
+                    break;
+                }
+            }
+        }
+
+        try {
+            $queryParams = [
+                'api_key' => $this->orsApiKey,
+                'postalcode' => $postalcode,
+                'locality' => $locality,
+                'country' => 'DE',
+            ];
+            if ($street !== '') {
+                $queryParams['address'] = $street;
+            }
+
+            $url = 'https://api.openrouteservice.org/geocode/search/structured?' . http_build_query($queryParams);
+
+            $authHeader = str_starts_with($this->orsApiKey, 'Bearer ')
+                ? $this->orsApiKey
+                : (str_starts_with($this->orsApiKey, 'ey') ? 'Bearer ' . $this->orsApiKey : $this->orsApiKey);
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 6,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: ' . $authHeader,
+                    'User-Agent: Kai-TripPlanner/1.0 (https://kai.agent-smith.de)',
+                    'Accept: application/json',
+                ],
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && is_string($response)) {
+                $data = json_decode($response, true);
+                $feature = $data['features'][0] ?? null;
+                if ($feature && isset($feature['geometry']['coordinates'])) {
+                    $coords = $feature['geometry']['coordinates']; // [lon, lat]
+                    return [
+                        'lat' => (float)$coords[1],
+                        'lon' => (float)$coords[0],
+                        'display_name' => (string)($feature['properties']['label'] ?? $address),
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            $this->logger->warn("GeocodingService: ORS structured Fehler: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{lat: float, lon: float, display_name: string}|string|null Array bei Erfolg, 'RATE_LIMITED' bei 429, sonst null
+     */
+    private function geocodeViaNominatim(string $address): array|string|null
     {
         try {
             $url = 'https://nominatim.openstreetmap.org/search?' . http_build_query([
@@ -200,6 +294,9 @@ class GeocodingService
                         'display_name' => (string)($item['display_name'] ?? $address),
                     ];
                 }
+            } elseif ($httpCode === 429) {
+                $this->logger->warn("GeocodingService: Nominatim Rate-Limit (HTTP 429) für '{$address}' erreicht. Breche weitere Nominatim-Anfragen ab.");
+                return 'RATE_LIMITED';
             } else {
                 $this->logger->warn("GeocodingService: Nominatim HTTP {$httpCode} für '{$address}'");
             }
