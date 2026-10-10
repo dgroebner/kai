@@ -380,7 +380,8 @@
 
         const totalCost = (parseFloat(trip.home_charge_cost || 0) + parseFloat(trip.en_route_charge_cost || 0) + parseFloat(trip.additional_cost || 0)).toFixed(2);
         const dist = parseFloat(trip.total_distance_km || 0);
-        const costPer100 = (dist > 0) ? ((totalCost / dist) * 100).toFixed(2) : '0.00';
+        const effectiveDist = parseFloat(trip.actual_distance_km || trip.total_distance_km || 0);
+        const costPer100 = (effectiveDist > 0) ? ((totalCost / effectiveDist) * 100).toFixed(2) : '0.00';
 
         const formatTripTime = (str) => {
             if (!str) return '–';
@@ -436,20 +437,32 @@
             <!-- KPI-Kacheln -->
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Gesamtdistanz</div>
-                    <div style="font-size:1.4rem; font-weight:bold; color:var(--car-blue, #3b82f6);">${dist > 0 ? (dist.toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' km') : '– km'}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">
+                        ${trip.actual_distance_km ? 'Reale Gesamtdistanz' : 'Gesamtdistanz'}
+                    </div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:${trip.actual_distance_km ? 'var(--color-green, #10b981)' : 'var(--car-blue, #3b82f6)'};">
+                        ${trip.actual_distance_km 
+                            ? (parseFloat(trip.actual_distance_km).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' km') 
+                            : (dist > 0 ? (dist.toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' km') : '– km')}
+                    </div>
                     ${trip.actual_distance_km ? `
-                        <div style="font-size:0.75rem; color:var(--color-green); margin-top:0.25rem;">
-                            Ist: ${parseFloat(trip.actual_distance_km).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} km
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                            Plan: ${dist > 0 ? dist.toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) : '–'} km
                         </div>
                     ` : ''}
                 </div>
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Verbrauch (geschätzt)</div>
-                    <div style="font-size:1.4rem; font-weight:bold; color:var(--text-main);">${parseFloat(trip.estimated_consumption_kwh || 0) > 0 ? (parseFloat(trip.estimated_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kWh') : '– kWh'}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">
+                        ${trip.actual_consumption_kwh ? 'Realer Verbrauch' : 'Verbrauch (geschätzt)'}
+                    </div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:${trip.actual_consumption_kwh ? 'var(--color-green, #10b981)' : 'var(--text-main)'};">
+                        ${trip.actual_consumption_kwh 
+                            ? (parseFloat(trip.actual_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kWh') 
+                            : (parseFloat(trip.estimated_consumption_kwh || 0) > 0 ? (parseFloat(trip.estimated_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kWh') : '– kWh')}
+                    </div>
                     ${trip.actual_consumption_kwh ? `
-                        <div style="font-size:0.75rem; color:var(--color-green); margin-top:0.25rem;">
-                            Ist: ${parseFloat(trip.actual_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                            Plan: ${parseFloat(trip.estimated_consumption_kwh || 0) > 0 ? parseFloat(trip.estimated_consumption_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) : '–'} kWh
                         </div>
                     ` : ''}
                 </div>
@@ -458,6 +471,11 @@
                     <div style="font-size:1.4rem; font-weight:bold; color:${trip.planned_departure_soc >= 100 ? '#ef4444' : '#10b981'};">
                         ${KaiHtml.escape(trip.planned_departure_soc)} %
                     </div>
+                    ${trip.actual_arrival_soc !== null && trip.actual_arrival_soc !== undefined ? `
+                        <div style="font-size:0.75rem; color:var(--color-green, #10b981); margin-top:0.25rem;">
+                            Ziel-SoC: <strong>${parseInt(trip.actual_arrival_soc, 10)}%</strong>
+                        </div>
+                    ` : ''}
                     ${trip.can_drive_without_charging && trip.min_departure_soc < trip.planned_departure_soc ? `
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
                             Mindest-SoC: <strong style="color:var(--text-main);">${parseInt(trip.min_departure_soc, 10)}%</strong>
@@ -468,11 +486,6 @@
                             ${trip.current_vehicle_soc >= trip.min_departure_soc 
                                 ? `✅ Ist-Stand (${trip.current_vehicle_soc}%) reicht ohne Nachladen` 
                                 : `⚡ Ist: ${trip.current_vehicle_soc}% (noch mind. +${trip.min_departure_soc - trip.current_vehicle_soc}% bis Start-SoC)`}
-                        </div>
-                    ` : ''}
-                    ${trip.actual_arrival_soc !== null && trip.actual_arrival_soc !== undefined ? `
-                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
-                            Ziel-SoC: <strong style="color:var(--text-main);">${parseInt(trip.actual_arrival_soc, 10)}%</strong>
                         </div>
                     ` : ''}
                 </div>

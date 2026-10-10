@@ -1142,7 +1142,8 @@ if ($tab === 'trips') {
                             $retLocal = !empty($t['return_time']) ? formatTripDateTime($t['return_time']) : null;
                             $tCost = round((float)$t['home_charge_cost'] + (float)$t['en_route_charge_cost'] + (float)$t['additional_cost'], 2);
                             $tDist = (float)$t['total_distance_km'];
-                            $cPer100 = ($tDist > 0) ? round(($tCost / $tDist) * 100.0, 2) : 0.0;
+                            $effectiveDist = !empty($t['actual_distance_km']) ? (float)$t['actual_distance_km'] : $tDist;
+                            $cPer100 = ($effectiveDist > 0) ? round(($tCost / $effectiveDist) * 100.0, 2) : 0.0;
                             
                             $statusBadgeClass = match($t['status']) {
                                 'aktiv' => 'badge-success',
@@ -1212,24 +1213,36 @@ if ($tab === 'trips') {
 
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; background: var(--bg-surface); border: 1px solid var(--bg-surface-hover); padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.85rem;">
                                     <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Strecke</div>
-                                        <div style="font-weight: 700; font-size: 1rem; color: var(--color-blue);">
-                                            <?= $tDist > 0 ? number_format($tDist, 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">km</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– km</span>' ?>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                                            <?= !empty($t['actual_distance_km']) ? 'Reale Strecke' : 'Strecke' ?>
                                         </div>
                                         <?php if (!empty($t['actual_distance_km'])): ?>
-                                            <div style="font-size: 0.7rem; color: var(--color-green); margin-top: 0.15rem;">
-                                                Ist: <?= number_format((float)$t['actual_distance_km'], 1, ',', '.') ?> km
+                                            <div style="font-weight: 700; font-size: 1rem; color: var(--color-green);" title="Reale Fahrtstrecke laut TRONITY-Odometer">
+                                                <?= number_format((float)$t['actual_distance_km'], 1, ',', '.') ?> <span style="font-size:0.75rem; font-weight:normal;">km</span>
+                                            </div>
+                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                                Plan: <?= $tDist > 0 ? number_format($tDist, 1, ',', '.') : '–' ?> km
+                                            </div>
+                                        <?php else: ?>
+                                            <div style="font-weight: 700; font-size: 1rem; color: var(--color-blue);">
+                                                <?= $tDist > 0 ? number_format($tDist, 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">km</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– km</span>' ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
                                     <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Bedarf</div>
-                                        <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
-                                            <?= (float)$t['estimated_consumption_kwh'] > 0 ? number_format((float)$t['estimated_consumption_kwh'], 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">kWh</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– kWh</span>' ?>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                                            <?= !empty($t['actual_consumption_kwh']) ? 'Realer Bedarf' : 'Bedarf' ?>
                                         </div>
                                         <?php if (!empty($t['actual_consumption_kwh'])): ?>
-                                            <div style="font-size: 0.7rem; color: var(--color-green); margin-top: 0.15rem;">
-                                                Ist: <?= number_format((float)$t['actual_consumption_kwh'], 1, ',', '.') ?> kWh
+                                            <div style="font-weight: 700; font-size: 1rem; color: var(--color-green);" title="Realer Netto-Verbrauch laut TRONITY-Batteriedaten">
+                                                <?= number_format((float)$t['actual_consumption_kwh'], 1, ',', '.') ?> <span style="font-size:0.75rem; font-weight:normal;">kWh</span>
+                                            </div>
+                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                                Plan: <?= (float)$t['estimated_consumption_kwh'] > 0 ? number_format((float)$t['estimated_consumption_kwh'], 1, ',', '.') : '–' ?> kWh
+                                            </div>
+                                        <?php else: ?>
+                                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
+                                                <?= (float)$t['estimated_consumption_kwh'] > 0 ? number_format((float)$t['estimated_consumption_kwh'], 1, ',', '.') . ' <span style="font-size:0.75rem; font-weight:normal;">kWh</span>' : '<span style="color:var(--text-muted); font-weight:normal;">– kWh</span>' ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -1238,7 +1251,11 @@ if ($tab === 'trips') {
                                         <div style="font-weight: 700; font-size: 1rem; color: <?= (int)$t['planned_departure_soc'] >= 100 ? 'var(--color-red)' : 'var(--color-green)' ?>;">
                                             <?= htmlspecialchars($t['planned_departure_soc']) ?> <span style="font-size:0.75rem; font-weight:normal;">%</span>
                                         </div>
-                                        <?php if (!empty($t['can_drive_without_charging']) && (int)($t['min_departure_soc'] ?? 0) < (int)$t['planned_departure_soc']): ?>
+                                        <?php if ($t['actual_arrival_soc'] !== null): ?>
+                                            <div style="font-size: 0.7rem; color: var(--color-green); margin-top: 0.15rem;" title="Realer Ankunfts-SoC laut TRONITY">
+                                                Ziel-SoC: <strong><?= (int)$t['actual_arrival_soc'] ?>%</strong>
+                                            </div>
+                                        <?php elseif (!empty($t['can_drive_without_charging']) && (int)($t['min_departure_soc'] ?? 0) < (int)$t['planned_departure_soc']): ?>
                                             <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;" title="Mindest-Akkustand um die Fahrt ohne Ladestopp zu schaffen">
                                                 Min: <strong style="color: <?= ($currentVehicleSoc !== null && $currentVehicleSoc >= (int)$t['min_departure_soc']) ? 'var(--color-green)' : 'var(--text-main)' ?>;"><?= (int)$t['min_departure_soc'] ?>%</strong>
                                                 <?php if ($currentVehicleSoc !== null): ?>
@@ -1248,11 +1265,6 @@ if ($tab === 'trips') {
                                                         <span style="color: var(--color-orange); font-size: 0.75rem;" title="Aktuell <?= $currentVehicleSoc ?>% (noch mind. +<?= ((int)$t['min_departure_soc'] - $currentVehicleSoc) ?>% bis Min-SoC)">⚡</span>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($t['actual_arrival_soc'] !== null): ?>
-                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
-                                                Ziel-SoC: <strong style="color:var(--text-main);"><?= (int)$t['actual_arrival_soc'] ?>%</strong>
                                             </div>
                                         <?php endif; ?>
                                     </div>
