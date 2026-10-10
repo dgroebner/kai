@@ -236,10 +236,20 @@ if ($tab === 'charges') {
 
 $trips = [];
 $totalTrips = 0;
+$tripPage = 1;
+$tripsPerPage = 10;
+$totalTripPages = 1;
+
 if ($tab === 'trips') {
     $tripRepo = new \Kai\Tools\Car\TripRepository();
-    $trips = $tripRepo->getTrips(limit: 100);
     $totalTrips = $tripRepo->countTrips();
+    $tripPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $totalTripPages = max(1, (int)ceil($totalTrips / $tripsPerPage));
+    if ($tripPage > $totalTripPages && $totalTrips > 0) {
+        $tripPage = $totalTripPages;
+    }
+    $tripOffset = ($tripPage - 1) * $tripsPerPage;
+    $trips = $tripRepo->getTrips(limit: $tripsPerPage, offset: $tripOffset);
 }
 
 ?>
@@ -907,7 +917,7 @@ if ($tab === 'trips') {
                         </button>
                     </div>
                 <?php else: ?>
-                    <div class="trips-list">
+                    <div class="trips-list" style="display: flex; flex-direction: column; gap: 1.25rem;">
                         <?php foreach ($trips as $t): 
                             $depLocal = formatTripDateTime($t['departure_time']);
                             $retLocal = !empty($t['return_time']) ? formatTripDateTime($t['return_time']) : null;
@@ -922,28 +932,18 @@ if ($tab === 'trips') {
                                 default => 'badge-warning',
                             };
                         ?>
-                            <div class="card u-mb-md" style="padding: 1.25rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.75rem;">
-                                    <div>
-                                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--text-main);"><?= htmlspecialchars($t['title']) ?></h3>
-                                            <span class="badge <?= $statusBadgeClass ?>"><?= htmlspecialchars(ucfirst($t['status'])) ?></span>
-                                            <?php if (!empty($t['is_round_trip'])): ?>
-                                                <span class="badge badge-info" title="Hin- und Rückreise von zu Hause">🔄 Rundreise</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($t['parent_trip_id'])): ?>
-                                                <span class="badge badge-neutral" title="Verschachtelter Ausflug im Urlaub">🏖️ Ausflug zu „<?= htmlspecialchars($t['parent_title'] ?? 'Hauptreise') ?>“</span>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
-                                            <span>📍</span>
-                                            <strong><?= htmlspecialchars($t['start_address']) ?></strong>
-                                            <span style="opacity: 0.6;">&rarr;</span>
-                                            <strong><?= htmlspecialchars($t['destination_address']) ?></strong>
-                                        </div>
-                                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">
-                                            🗓️ Abfahrt: <strong style="color: var(--text-main);"><?= $depLocal ?></strong><?= $retLocal ? " &bull; Rückkehr: <strong style=\"color: var(--text-main);\">{$retLocal}</strong>" : '' ?>
-                                        </div>
+                            <div class="card" style="padding: 1.25rem;">
+                                <!-- Kopfzeile: Titel & Status links, Aktions-Buttons rechts ausgerichtet -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.75rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--text-main);"><?= htmlspecialchars($t['title']) ?></h3>
+                                        <span class="badge <?= $statusBadgeClass ?>"><?= htmlspecialchars(ucfirst($t['status'])) ?></span>
+                                        <?php if (!empty($t['is_round_trip'])): ?>
+                                            <span class="badge badge-info" title="Hin- und Rückreise von zu Hause">🔄 Rundreise</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($t['parent_trip_id'])): ?>
+                                            <span class="badge badge-neutral" title="Verschachtelter Ausflug im Urlaub">🏖️ Ausflug zu „<?= htmlspecialchars($t['parent_title'] ?? 'Hauptreise') ?>“</span>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
@@ -966,6 +966,19 @@ if ($tab === 'trips') {
                                         <button type="button" class="btn btn-outline btn-sm js-btn-delete-trip" data-trip-id="<?= (int)$t['id'] ?>" title="Reise löschen" style="color: var(--danger, #ef4444);">
                                             🗑️
                                         </button>
+                                    </div>
+                                </div>
+
+                                <!-- Adress- & Reisezeit-Zeile über die volle Breite -->
+                                <div style="margin-bottom: 0.85rem;">
+                                    <div style="color: var(--text-muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                                        <span>📍</span>
+                                        <strong><?= htmlspecialchars($t['start_address']) ?></strong>
+                                        <span style="opacity: 0.6;">&rarr;</span>
+                                        <strong><?= htmlspecialchars($t['destination_address']) ?></strong>
+                                    </div>
+                                    <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">
+                                        🗓️ Abfahrt: <strong style="color: var(--text-main);"><?= $depLocal ?></strong><?= $retLocal ? " &bull; Rückkehr: <strong style=\"color: var(--text-main);\">{$retLocal}</strong>" : '' ?>
                                     </div>
                                 </div>
 
@@ -1032,6 +1045,22 @@ if ($tab === 'trips') {
                             </div>
                         <?php endforeach; ?>
                     </div>
+
+                    <?php if ($totalTripPages > 1): ?>
+                        <div class="pagination u-mt-lg">
+                            <?php if ($tripPage > 1): ?>
+                                <a href="?tab=trips&page=<?= $tripPage - 1 ?>" class="btn btn-outline btn-sm">◀ Zurück</a>
+                            <?php endif; ?>
+
+                            <span class="pagination-gap">
+                                Seite <?= $tripPage ?> von <?= $totalTripPages ?> (<?= $totalTrips ?> Reisen)
+                            </span>
+
+                            <?php if ($tripPage < $totalTripPages): ?>
+                                <a href="?tab=trips&page=<?= $tripPage + 1 ?>" class="btn btn-outline btn-sm">Weiter ▶</a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
