@@ -107,7 +107,16 @@ class MailDispatcher
                     try {
                         $fromEmail = $message->getFrom()[0]->mail ?? '';
                         $toEmail = $this->imapClient->getUsername();
-                        $count = $this->tripPlanningService->processIcsInvite($content, $fromEmail, $toEmail);
+
+                        // E-Mail-Body (HTML oder Text) für Google Calendar "Yes"-Zusagenlink extrahieren
+                        $mailBody = '';
+                        try {
+                            $mailBody = (string)($message->getHTMLBody() ?: $message->getTextBody() ?: '');
+                        } catch (Throwable) {
+                            // Ignorieren falls nicht verfügbar
+                        }
+
+                        $count = $this->tripPlanningService->processIcsInvite($content, $fromEmail, $toEmail, $mailBody);
                         $this->logger->info("MailDispatcher: Kalendereinladung verarbeitet ({$count} Reise(n)).");
                         $processedCount++;
                     } catch (Throwable $e) {

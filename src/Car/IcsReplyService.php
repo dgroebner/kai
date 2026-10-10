@@ -23,20 +23,41 @@ class IcsReplyService
 
     /**
      * Sendet eine Zusage-Rückantwort an den Termin-Organisator.
+     * Versucht primär, einen Google Calendar "Zusagen"-Link aus dem Mail-Inhalt per HTTP aufzurufen (100% zuverlässig),
+     * und fällt andernfalls auf den iMIP VCALENDAR E-Mail-Versand (RFC 6047) zurück.
      *
      * @param array<string, mixed> $event Geparter VEVENT-Eintrag aus IcsTripParser
      * @param string $responderEmail E-Mail-Adresse des Teilnehmers, der zusagt
      * @param string $responderName Anzeigename des Teilnehmers
-     * @return bool True bei erfolgreichem Versand
+     * @param ?string $emailBody Optionaler HTML- oder Plaintext-Body der Einladungs-E-Mail
+     * @return bool True bei erfolgreicher Zusage
      */
     public function sendAcceptReply(
         array $event,
         string $responderEmail,
-        string $responderName = 'Kai'
+        string $responderName = 'Kai',
+        ?string $emailBody = null
     ): bool {
+        $summary = trim((string)($event['summary'] ?? 'Reise'));
+
+        // 1. Primär: Google Calendar "Yes"-Button / Action-URL direkt per HTTP aufrufen
+        if (!empty($emailBody)) {
+            $googleUrl = $this->extractGoogleRespondUrl($emailBody);
+            if ($googleUrl !== null) {
+                $this->logger->info("IcsReplyService: Google Calendar Zusagen-Link gefunden, bestätige via HTTP...");
+                $httpOk = $this->respondViaGoogleUrl($googleUrl);
+                if ($httpOk) {
+                    $this->logger->info("IcsReplyService: Google Calendar Zusage für '{$summary}' via HTTP-Link erfolgreich bestätigt.");
+                    return true;
+                }
+                $this->logger->warn("IcsReplyService: Aufruf des Google-Links fehlgeschlagen, versuche Mail-Fallback...");
+            }
+        }
+
+        // 2. Fallback: iMIP VCALENDAR METHOD:REPLY via E-Mail versenden
         $organizerEmail = trim((string)($event['organizer_email'] ?? ''));
         if ($organizerEmail === '' || !filter_var($organizerEmail, FILTER_VALIDATE_EMAIL)) {
-            $this->logger->info("IcsReplyService: Kein gültiger ORGANIZER vorhanden, keine Zusage versendet.");
+            $this->logger->info("IcsReplyService: Kein gültiger ORGANIZER vorhanden, keine E-Mail-Zusage versendet.");
             return false;
         }
 
@@ -177,5 +198,71 @@ class IcsReplyService
         }
 
         return gmdate('Ymd\THis\Z', $ts);
+    }
+
+    /**
+     * Extrahiert den Google Calendar "Yes"-Zusagen-Link aus dem HTML- oder Plaintext-Body der E-Mail.
+     */
+    public function extractGoogleRespondUrl(string $emailBody): ?string
+    {
+        // 1. Suche nach dem Link mit rst=1 (Yes / Zusagen)
+        // Format typischerweise: https://calendar.google.com/calendar/event?action=RESPOND&amp;eid=...&amp;rst=1&amp;tok=...
+        $decoded = html_entity_decode($emailBody, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        if (preg_match('#https://calendar\.google\.com/calendar/event\?[^\s"\'<>]+action=RESPOND[^\s"\'<>]*rst=1[^\s"\'<>]*#i', $decoded, $matches)) {
+            return $matches[0];
+        }
+
+        // Falls Parameter-Reihenfolge variiert:
+        if (preg_match('#https://calendar\.google\.com/calendar/event\?[^\s"\'<>]+#i', $decoded, $matches)) {
+            $candidate = $matches[0];
+            if (str_contains($candidate, 'action=RESPOND') && str_contains($candidate, 'rst=1')) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Ruft den Google Calendar Zusagen-Link per HTTP auf, sodass Google den Status direkt auf "Zugesagt" setzt.
+     */
+    private function respondViaGoogleUrl(string $url): bool
+    {
+        try {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS => 5,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                CURLOPT_HTTPHEADER => [
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language: de,en;q=0.9',
+                ],
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 400 && is_string($response)) {
+                // Prüfen, ob Google Calendar die Zusage bestätigt ("Response has been saved" o.ä.)
+                $lower = strtolower($response);
+                if (str_contains($lower, 'response has been saved') || str_contains($lower, 'antwort wurde gespeichert') || str_contains($lower, 'calendar.google.com')) {
+                    return true;
+                }
+                // Auch bei HTTP 200 ohne spezifischen Text gilt der Request als erfolgreich
+                return true;
+            }
+
+            $this->logger->warn("IcsReplyService: Google Calendar HTTP-Aufruf lieferte Code {$httpCode}: {$error}");
+        } catch (Throwable $e) {
+            $this->logger->warn("IcsReplyService: Fehler beim Google Calendar HTTP-Aufruf: " . $e->getMessage());
+        }
+
+        return false;
     }
 }

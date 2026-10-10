@@ -451,9 +451,10 @@ class TripPlanningService
      * @param string $icsContent
      * @param string $senderEmail
      * @param ?string $recipientEmail
+     * @param ?string $emailBody Optionaler HTML- oder Plaintext-Body der Einladungs-Mail
      * @return int Anzahl importierter / aktualisierter Reisen
      */
-    public function processIcsInvite(string $icsContent, string $senderEmail, ?string $recipientEmail = null): int
+    public function processIcsInvite(string $icsContent, string $senderEmail, ?string $recipientEmail = null, ?string $emailBody = null): int
     {
         // 1. Absender-Prüfung gegen erlaubte Systemeinstellungen / Allowlist
         if (!$this->isSenderAllowed($senderEmail)) {
@@ -520,11 +521,11 @@ class TripPlanningService
                 $processed++;
             }
 
-            // Automatische Bestätigung (iMIP METHOD:REPLY RFC 6047) senden, falls aktiv
-            if ($tripId !== null && $this->settingsService->isTripCalendarAutoAcceptEnabled() && !empty($event['organizer_email'])) {
+            // Automatische Bestätigung (vorrangig Google Calendar Zusagen-Button via HTTP, sonst iMIP METHOD:REPLY via Mail)
+            if ($tripId !== null && $this->settingsService->isTripCalendarAutoAcceptEnabled()) {
                 $responder = !empty($recipientEmail) ? $recipientEmail : (string)($_ENV['IMAP_USER_KASSENBON'] ?? '');
                 if ($responder !== '') {
-                    $replyOk = $this->icsReplyService->sendAcceptReply($event, $responder, 'Kai Ladeplaner');
+                    $replyOk = $this->icsReplyService->sendAcceptReply($event, $responder, 'Kai Ladeplaner', $emailBody);
                     if ($replyOk) {
                         $this->logger->info("TripPlanningService: Einladung zu '{$title}' an Organisator {$event['organizer_email']} bestätigt.");
                         if ($this->activityLogger !== null) {
