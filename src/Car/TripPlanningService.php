@@ -256,8 +256,11 @@ class TripPlanningService
         if (!empty($trip['destination_address'])) {
             $destGeo = $this->geocodingService->geocode($trip['destination_address']);
             if ($destGeo !== null) {
+                $this->logger->info("TripPlanningService: Zielort für Reise #{$tripId} neu aufgelöst: {$destGeo['lat']}, {$destGeo['lon']} ('{$destGeo['display_name']}')");
                 $destLat = $destGeo['lat'];
                 $destLon = $destGeo['lon'];
+            } else {
+                $this->logger->warn("TripPlanningService: Zielort '{$trip['destination_address']}' konnte für Reise #{$tripId} nicht geocodiert werden.");
             }
         }
         if (!empty($trip['start_address'])) {
