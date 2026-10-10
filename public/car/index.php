@@ -854,7 +854,11 @@ if ($tab === 'trips') {
                                         <?php if ($isHome): ?>
                                             <span class="badge badge-success">🏠 Zuhause</span>
                                         <?php else: ?>
-                                            <span class="badge badge-secondary">📍 Unterwegs</span>
+                                            <?php if ($hasStation || $hasCoords): ?>
+                                                <span class="badge badge-secondary" title="Unterwegs geladen">📍</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-secondary">📍 Unterwegs</span>
+                                            <?php endif; ?>
                                             <?php if (!empty($charge['station_operator'])): ?>
                                                 <span class="badge badge-primary">⚡ <?= htmlspecialchars($charge['station_operator']) ?></span>
                                             <?php endif; ?>
