@@ -128,16 +128,29 @@ try {
 
         $receiptAnalyzer = new ReceiptAnalyzer();
         $receiptRepository = new ReceiptRepository();
+        $tripPlanningService = new \Kai\Tools\Car\TripPlanningService();
 
         $dispatcher = new MailDispatcher(
             $imapClient,
             $creditCardService,
             $receiptAnalyzer,
-            $receiptRepository
+            $receiptRepository,
+            $tripPlanningService
         );
 
         $dispatcher->dispatch();
         $logger->info("Cronjob (mail.php): MailDispatcher erfolgreich beendet.");
+
+        // 5a. Status anstehender & aktiver Reisen synchronisieren
+        try {
+            $syncedTrips = $tripPlanningService->syncTripStatuses();
+            if ($syncedTrips > 0) {
+                $logger->info("Cronjob (mail.php): Status von {$syncedTrips} Reise(n) aktualisiert.");
+            }
+        } catch (Throwable $te) {
+            $logger->warn("Cronjob (mail.php): Fehler beim Synchronisieren der Reisestatus.", ['error' => $te->getMessage()]);
+        }
+
 
         // 5b. Einkaufslisten-Lernen aus neuen eBons aktualisieren
         try {

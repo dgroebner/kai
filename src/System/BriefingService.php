@@ -6,6 +6,7 @@ use DateTimeImmutable;
 use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\BankContractRepository;
 use Kai\Tools\Calendar\CalendarService;
+use Kai\Tools\Car\TripRepository;
 use Kai\Tools\Car\VehicleDashboardRepository;
 use Kai\Tools\Einkaufsliste\ShoppingListRepository;
 use Kai\Tools\PVCharge\PvForecastRepository;
@@ -35,6 +36,7 @@ class BriefingService
     private BesteSchuleRepository $besteSchuleRepo;
     private PvForecastRepository $pvForecastRepo;
     private VehicleDashboardRepository $vehicleDashboardRepo;
+    private TripRepository $tripRepo;
     private ShoppingListRepository $shoppingListRepo;
     private CalendarService $calendarService;
     private BankAccountRepository $bankAccountRepo;
@@ -51,6 +53,7 @@ class BriefingService
         ?BesteSchuleRepository $besteSchuleRepo = null,
         ?PvForecastRepository $pvForecastRepo = null,
         ?VehicleDashboardRepository $vehicleDashboardRepo = null,
+        ?TripRepository $tripRepo = null,
         ?ShoppingListRepository $shoppingListRepo = null,
         ?CalendarService $calendarService = null,
         ?BankAccountRepository $bankAccountRepo = null,
@@ -66,6 +69,7 @@ class BriefingService
         $this->besteSchuleRepo = $besteSchuleRepo ?? new BesteSchuleRepository();
         $this->pvForecastRepo = $pvForecastRepo ?? new PvForecastRepository();
         $this->vehicleDashboardRepo = $vehicleDashboardRepo ?? new VehicleDashboardRepository();
+        $this->tripRepo = $tripRepo ?? new TripRepository();
         $this->shoppingListRepo = $shoppingListRepo ?? new ShoppingListRepository();
         $this->calendarService = $calendarService ?? new CalendarService($this->db);
         $this->bankAccountRepo = $bankAccountRepo ?? new BankAccountRepository();
@@ -541,15 +545,58 @@ class BriefingService
             $badge = ['text' => $isEveningMode ? 'Lade-Tipp morgen' : 'Lade-Tipp', 'type' => 'success'];
         }
 
+        // 4. Prüfung auf anstehende oder aktive Reisen (Reisekosten- & Ladeplanung)
+        $tripAlertActive = false;
+        try {
+            $activeTrips = $this->tripRepo->getActiveTrips();
+            $upcomingTrips = $this->tripRepo->getUpcomingTrips(3);
+            $primaryTrip = !empty($activeTrips) ? $activeTrips[0] : (!empty($upcomingTrips) ? $upcomingTrips[0] : null);
+
+            if ($primaryTrip) {
+                $depDate = substr($primaryTrip['departure_time'], 0, 10);
+                $isTripActive = ($primaryTrip['status'] === 'aktiv' || $depDate === $todayStr);
+                $isTripTomorrow = ($depDate === $tomorrowStr);
+
+                if ($isTripActive) {
+                    $tripAlertActive = true;
+                    $destName = $primaryTrip['destination_address'] ?: $primaryTrip['title'];
+                    $headline = "Reise aktiv: {$destName} ({$primaryTrip['total_distance_km']} km)";
+                    $subtitle = "🗺️ Gute Fahrt! ID.Buzz hat {$soc}% SoC. Navigation über ABRP aufrufbar.";
+                    $pills[] = ['icon' => '🗺️', 'label' => 'Reise aktiv', 'type' => 'warning'];
+                    $badge = ['text' => 'Reise aktiv', 'type' => 'warning'];
+                } elseif ($isTripTomorrow) {
+                    $tripAlertActive = true;
+                    $destName = $primaryTrip['destination_address'] ?: $primaryTrip['title'];
+                    $targetSoc = (int)($primaryTrip['planned_departure_soc'] ?: 100);
+                    $headline = "Reise morgen: {$destName} ({$primaryTrip['total_distance_km']} km)";
+                    $subtitle = "🔌 Vorabend-Check: ID.Buzz an der Wallbox auf {$targetSoc}% vollladen (aktuell {$soc}%)!";
+                    $pills[] = ['icon' => '🔌', 'label' => 'Vorabend-Ladung', 'type' => 'danger'];
+                    $badge = ['text' => "Morgen {$targetSoc}% nötig", 'type' => 'danger'];
+                } elseif ($relevantPvKwh >= 12.0) {
+                    $destName = $primaryTrip['destination_address'] ?: $primaryTrip['title'];
+                    $formattedDate = date('d.m.', strtotime($primaryTrip['departure_time']));
+                    $subtitle = "☀️ PV-Vorlauf für Reise ({$destName} am {$formattedDate}): Heute Überschuss laden (+10%)!";
+                    $pills[] = ['icon' => '☀️', 'label' => 'PV-Reisevorlauf', 'type' => 'success'];
+                }
+            }
+        } catch (Throwable) {
+            // Reise-Check isolieren
+        }
+
+        $widgetUrl = '/pvcharge/index.php';
+        if ($isUnlockedAlert || $tripAlertActive) {
+            $widgetUrl = '/car/index.php?tab=trips';
+        }
+
         return [
             'key' => 'pv_car',
             'title' => 'Energie & ID.Buzz',
             'icon' => '⚡',
-            'url' => $isUnlockedAlert ? '/car/index.php' : '/pvcharge/index.php',
+            'url' => $widgetUrl,
             'headline' => $headline,
             'subtitle' => $subtitle,
             'pills' => $pills,
-            'highlight' => $isUnlockedAlert || $chargeRecommendation,
+            'highlight' => $isUnlockedAlert || $chargeRecommendation || $tripAlertActive,
             'badge' => $badge,
         ];
     }

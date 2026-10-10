@@ -4,6 +4,7 @@ namespace Kai\Tools\Shared\Mail;
 
 use Exception;
 use Kai\Tools\Bank\CreditCardService;
+use Kai\Tools\Car\TripPlanningService;
 use Kai\Tools\Kassenbon\ReceiptAnalyzer;
 use Kai\Tools\Kassenbon\ReceiptMatcher;
 use Kai\Tools\Kassenbon\ReceiptRepository;
@@ -19,19 +20,22 @@ class MailDispatcher
     private CreditCardService $creditCardService;
     private ReceiptAnalyzer $receiptAnalyzer;
     private ReceiptRepository $receiptRepository;
+    private ?TripPlanningService $tripPlanningService;
     private Logger $logger;
 
     public function __construct(
-        ImapClient        $imapClient,
-        CreditCardService $creditCardService,
-        ReceiptAnalyzer   $receiptAnalyzer,
-        ReceiptRepository $receiptRepository
+        ImapClient           $imapClient,
+        CreditCardService    $creditCardService,
+        ReceiptAnalyzer      $receiptAnalyzer,
+        ReceiptRepository    $receiptRepository,
+        ?TripPlanningService $tripPlanningService = null
     )
     {
         $this->imapClient = $imapClient;
         $this->creditCardService = $creditCardService;
         $this->receiptAnalyzer = $receiptAnalyzer;
         $this->receiptRepository = $receiptRepository;
+        $this->tripPlanningService = $tripPlanningService;
         $this->logger = new Logger(14);
     }
 
@@ -93,6 +97,21 @@ class MailDispatcher
                         if (file_exists($tmpFilePath)) {
                             @unlink($tmpFilePath);
                         }
+                    }
+                    continue;
+                }
+
+                // 2. KALENDEREINLADUNGEN (.ics / text/calendar für Reisekosten- & Ladeplanung)
+                if (($extension === 'ics' || str_contains($mimeType, 'calendar') || str_contains($mimeType, 'ics')) && $this->tripPlanningService !== null) {
+                    $this->logger->info("MailDispatcher: Kalendereinladung erkannt ($fileName).");
+                    try {
+                        $fromEmail = $message->getFrom()[0]->mail ?? '';
+                        $count = $this->tripPlanningService->processIcsInvite($content, $fromEmail);
+                        $this->logger->info("MailDispatcher: Kalendereinladung verarbeitet ({$count} Reise(n)).");
+                        $processedCount++;
+                    } catch (Throwable $e) {
+                        $failedCount++;
+                        $this->logger->error("MailDispatcher: Fehler bei Kalender-Verarbeitung ($fileName): " . $e->getMessage());
                     }
                     continue;
                 }

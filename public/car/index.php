@@ -217,7 +217,16 @@ if ($tab === 'charges') {
     }
 }
 
+$trips = [];
+$totalTrips = 0;
+if ($tab === 'trips') {
+    $tripRepo = new \Kai\Tools\Car\TripRepository();
+    $trips = $tripRepo->getTrips(limit: 100);
+    $totalTrips = $tripRepo->countTrips();
+}
+
 ?>
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -253,7 +262,9 @@ if ($tab === 'charges') {
         <div class="period-switcher sub-nav-tabs" style="justify-content: flex-start; margin-bottom: 1.5rem;">
             <a href="index.php?tab=dashboard&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $tab === 'dashboard' ? '' : 'btn-outline' ?>">📊 Dashboard</a>
             <a href="index.php?tab=charges&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $tab === 'charges' ? '' : 'btn-outline' ?>">🔌 Ladevorgänge</a>
+            <a href="index.php?tab=trips&type=<?= $type ?>&date=<?= htmlspecialchars($refDate) ?>" class="btn <?= $tab === 'trips' ? '' : 'btn-outline' ?>">🗺️ Reisen &amp; Ladeplaner</a>
         </div>
+
 
         <?php if ($tab === 'dashboard'): ?>
 
@@ -852,11 +863,253 @@ if ($tab === 'charges') {
                 <?php endif; ?>
             </div>
 
+        <?php elseif ($tab === 'trips'): ?>
+            <div class="trips-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="margin: 0 0 0.25rem 0;">🗺️ Reisekosten- &amp; Ladeplanung</h2>
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">
+                            Ganzheitlicher Lebenszyklus: Vorbereitung &amp; PV-Vorladekette, Vorabend-Netzladung, ABRP-Navigation &amp; Cent-genauer Kostenabgleich
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary js-btn-new-trip">
+                        ➕ Neue Reise planen
+                    </button>
+                </div>
+
+                <?php if (empty($trips)): ?>
+                    <div class="card" style="padding: 3rem 1.5rem; text-align: center; color: var(--text-muted);">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🚐🗺️</div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-main);">Noch keine Reisen geplant</h3>
+                        <p style="max-width: 500px; margin: 0 auto 1.5rem auto; font-size: 0.95rem;">
+                            Plane deine nächste Fahrt bequem über den Button <strong>„Neue Reise planen“</strong>
+                            oder sende Termineinladungen (.ics) an dein IMAP-Postfach, um Routen und PV-Vorladungen automatisch zu generieren.
+                        </p>
+                        <button type="button" class="btn btn-primary js-btn-new-trip">
+                            ➕ Erste Reise anlegen
+                        </button>
+                    </div>
+                <?php else: ?>
+                    <div class="trips-list">
+                        <?php foreach ($trips as $t): 
+                            $depLocal = formatToLocalTime($t['departure_time']);
+                            $retLocal = !empty($t['return_time']) ? formatToLocalTime($t['return_time']) : null;
+                            $tCost = round((float)$t['home_charge_cost'] + (float)$t['en_route_charge_cost'] + (float)$t['additional_cost'], 2);
+                            $tDist = (float)$t['total_distance_km'];
+                            $cPer100 = ($tDist > 0) ? round(($tCost / $tDist) * 100.0, 2) : 0.0;
+                            
+                            $statusBadgeClass = match($t['status']) {
+                                'aktiv' => 'badge-success',
+                                'abgeschlossen' => 'badge-neutral',
+                                'storniert' => 'badge-danger',
+                                default => 'badge-warning',
+                            };
+                        ?>
+                            <div class="card u-mb-md" style="padding: 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                    <div>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                            <h3 style="margin: 0; font-size: 1.15rem;"><?= htmlspecialchars($t['title']) ?></h3>
+                                            <span class="badge <?= $statusBadgeClass ?>"><?= htmlspecialchars(ucfirst($t['status'])) ?></span>
+                                            <?php if (!empty($t['is_round_trip'])): ?>
+                                                <span class="badge" title="Hin- und Rückreise von zu Hause">🔄 Rundreise</span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($t['parent_trip_id'])): ?>
+                                                <span class="badge" title="Verschachtelter Ausflug im Urlaub">🏖️ Ausflug zu „<?= htmlspecialchars($t['parent_title'] ?? 'Hauptreise') ?>“</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+                                            📍 <strong><?= htmlspecialchars($t['start_address']) ?></strong> &rarr; <strong><?= htmlspecialchars($t['destination_address']) ?></strong>
+                                        </div>
+                                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem;">
+                                            🗓️ Abfahrt: <?= $depLocal ?> <?= $retLocal ? " • Rückkehr: {$retLocal}" : '' ?>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <button type="button" class="btn btn-primary btn-sm js-btn-view-trip" data-trip-id="<?= (int)$t['id'] ?>">
+                                            🔍 Details &amp; Abrechnung
+                                        </button>
+                                        <?php if (!empty($t['abrp_deep_link'])): ?>
+                                            <a href="<?= htmlspecialchars($t['abrp_deep_link']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="In ABRP App öffnen">
+                                                ⚡ ABRP
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (empty($t['parent_trip_id'])): ?>
+                                            <button type="button" class="btn btn-outline btn-sm js-btn-new-subtrip" data-parent-id="<?= (int)$t['id'] ?>" data-parent-dest="<?= htmlspecialchars($t['destination_address']) ?>" title="Ausflug während des Aufenthalts anlegen">
+                                                🏖️ Ausflug +
+                                            </button>
+                                        <?php endif; ?>
+                                        <button type="button" class="btn btn-outline btn-sm js-btn-recalc-trip" data-trip-id="<?= (int)$t['id'] ?>" title="Route neu kalkulieren">
+                                            🔄
+                                        </button>
+                                        <button type="button" class="btn btn-outline btn-sm js-btn-delete-trip" data-trip-id="<?= (int)$t['id'] ?>" title="Reise löschen" style="color: var(--danger, #ef4444);">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; background: var(--bg-subtle, #f8fafc); padding: 0.75rem; border-radius: var(--border-radius, 6px); font-size: 0.85rem;">
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Strecke</div>
+                                        <div style="font-weight: bold;"><?= htmlspecialchars($t['total_distance_km']) ?> km</div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Bedarf</div>
+                                        <div style="font-weight: bold;"><?= htmlspecialchars($t['estimated_consumption_kwh']) ?> kWh</div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Start-SoC</div>
+                                        <div style="font-weight: bold; color: <?= (int)$t['planned_departure_soc'] >= 100 ? '#ef4444' : '#10b981' ?>;">
+                                            <?= htmlspecialchars($t['planned_departure_soc']) ?> %
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Unterwegs</div>
+                                        <div style="font-weight: bold; color: var(--car-orange, #f59e0b);">
+                                            <?= htmlspecialchars($t['en_route_charge_kwh']) ?> kWh
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem;">Kostenbilanz</div>
+                                        <div style="font-weight: bold; color: #10b981;">
+                                            <?= number_format($tCost, 2, ',', '.') ?> €
+                                        </div>
+                                        <div style="font-size: 0.7rem; color: var(--text-muted);"><?= number_format($cPer100, 2, ',', '.') ?> € / 100 km</div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- MODAL 1: REISE-DETAILS & BUCHUNGS-ZUORDNUNG -->
+            <div id="trip-detail-modal" class="modal-overlay app-modal hidden" style="display: none;">
+                <div class="modal-card modal-card--lg" style="max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h3>🔍 Reisedetails &amp; Abrechnungsabgleich</h3>
+                        <button type="button" class="modal-close js-btn-close-modal" aria-label="Schließen">&times;</button>
+                    </div>
+                    <div class="modal-body" id="trip-detail-content">
+                        <!-- Wird dynamisch über car_trips.js befüllt -->
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn btn-outline js-btn-close-modal">Schließen</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL 2: NEUE REISE PLANEN -->
+            <div id="trip-edit-modal" class="modal-overlay app-modal hidden" style="display: none;">
+                <div class="modal-card" style="max-width: 550px;">
+                    <div class="modal-header">
+                        <h3 id="trip-modal-title">➕ Neue Reise planen</h3>
+                        <button type="button" class="modal-close js-btn-close-modal" aria-label="Schließen">&times;</button>
+                    </div>
+                    <form id="trip-edit-form">
+                        <input type="hidden" name="trip_id" value="">
+                        <div class="modal-body" style="gap: 1rem;">
+                            <div>
+                                <label for="field-title" class="form-label">Titel / Anlass *</label>
+                                <input type="text" id="field-title" name="title" class="form-control" required placeholder="z. B. Ostseeurlaub Rügen" style="width: 100%;">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <div>
+                                    <label for="field-start" class="form-label">Startort</label>
+                                    <input type="text" id="field-start" name="start_address" class="form-control" value="Zuhause" style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="field-dest" class="form-label">Zielort / Adresse *</label>
+                                    <input type="text" id="field-dest" name="destination_address" class="form-control" required placeholder="z. B. Binz, Rügen" style="width: 100%;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <div>
+                                    <label for="field-dep" class="form-label">Abfahrtszeitpunkt *</label>
+                                    <input type="datetime-local" id="field-dep" name="departure_time" class="form-control" required style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="field-ret" class="form-label">Rückkehr (optional)</label>
+                                    <input type="datetime-local" id="field-ret" name="return_time" class="form-control" style="width: 100%;">
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                <input type="checkbox" id="field-roundtrip" name="is_round_trip" value="1">
+                                <label for="field-roundtrip" style="margin: 0; cursor: pointer; font-size: 0.9rem;">
+                                    🔄 Als Rundreise planen (Heim &rarr; Ziel &rarr; Heim)
+                                </label>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 0.75rem;">
+                                <div>
+                                    <label for="field-target-soc" class="form-label">Ziel-SoC am Ort (%)</label>
+                                    <input type="number" id="field-target-soc" name="target_arrival_soc" class="form-control" value="10" min="5" max="50" style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="field-dep-soc" class="form-label">Geplanter Start-SoC (%)</label>
+                                    <select id="field-dep-soc" name="planned_departure_soc" class="form-control" style="width: 100%;">
+                                        <option value="100" selected>100 % (Vollgeladen via PV/Netz)</option>
+                                        <option value="80">80 % (Alltags-Ladestand)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                            <button type="button" class="btn btn-outline js-btn-close-modal">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">💾 Route berechnen &amp; planen</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MODAL 3: AUSFLUG IM URLAUB PLANEN -->
+            <div id="subtrip-modal" class="modal-overlay app-modal hidden" style="display: none;">
+                <div class="modal-card" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>🏖️ Ausflug während des Aufenthalts</h3>
+                        <button type="button" class="modal-close js-btn-close-modal" aria-label="Schließen">&times;</button>
+                    </div>
+                    <form id="subtrip-form">
+                        <input type="hidden" name="parent_trip_id" value="">
+                        <div class="modal-body" style="gap: 1rem;">
+                            <div>
+                                <label for="field-sub-title" class="form-label">Titel des Ausflugs *</label>
+                                <input type="text" id="field-sub-title" name="title" class="form-control" required placeholder="z. B. Fahrt zum Kap Arkona" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label for="field-sub-start" class="form-label">Startort (Unterkunft)</label>
+                                <input type="text" id="field-sub-start" name="start_address" class="form-control" readonly style="width: 100%; background: var(--bg-subtle, #f8fafc);">
+                            </div>
+                            <div>
+                                <label for="field-sub-dest" class="form-label">Ausflugsziel *</label>
+                                <input type="text" id="field-sub-dest" name="destination_address" class="form-control" required placeholder="z. B. Kap Arkona Parkplatz" style="width: 100%;">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <div>
+                                    <label for="field-sub-dep" class="form-label">Abfahrt *</label>
+                                    <input type="datetime-local" id="field-sub-dep" name="departure_time" class="form-control" required style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label for="field-sub-ret" class="form-label">Rückkehr</label>
+                                    <input type="datetime-local" id="field-sub-ret" name="return_time" class="form-control" style="width: 100%;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                            <button type="button" class="btn btn-outline js-btn-close-modal">Abbrechen</button>
+                            <button type="submit" class="btn btn-primary">💾 Ausflug speichern</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         <?php endif; ?>
     </main>
 </div>
 
 <script src="../js/telemetry.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="../js/car_trips.js?v=<?= APP_VERSION ?>" defer></script>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 </body>
 </html>
+

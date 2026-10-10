@@ -160,7 +160,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 
 | Stelle | Zugriff auf | Begründung |
 |---|---|---|
-| `Shared\Mail\MailDispatcher` | `Bank\*`, `Kassenbon\*` | Orchestrator: verteilt eingehende Mails an die zuständige Domain. Alle Abhängigkeiten werden **per Konstruktor injiziert**, nicht selbst instanziiert. |
+| `Shared\Mail\MailDispatcher` | `Bank\*`, `Kassenbon\*`, `Car\*` | Orchestrator: verteilt eingehende Mails an die zuständige Domain (Kreditkartenabrechnungen, E-Bons, Kalendereinladungen für Reisen). Alle Abhängigkeiten werden **per Konstruktor injiziert**, nicht selbst instanziiert. |
 | `Bank\BankGiroService` | `Kassenbon\ReceiptMatcher` | Nach dem Import neuer Umsätze werden offene Kassenbons den Buchungen zugeordnet. |
 | `Bank\CreditCardService` | `Kassenbon\ReceiptMatcher` | Analog für importierte Kreditkartenabrechnungen. |
 | `public/pvcharge/index.php` | `System\SystemSettingsService` | Liest die globalen Strom-Bezugs- und Einspeisepreise aus `system_settings`. |
@@ -169,7 +169,9 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/shared/mail.php` | `Einkaufsliste\*` | Führt im asynchronen Cronjob die Aktualisierung des Einkaufslisten-Lernens aus eBons durch. |
 | `public/shared/mail.php` | `Calendar\*` | Führt im asynchronen Cronjob den Abgleich und Versand fälliger Kalender- und Geburtstags-Erinnerungen durch. |
 | `public/shared/mail.php` | `System\*` | Führt im asynchronen Cronjob die Prüfung und Generierung der täglichen Weisheit durch. |
+| `public/shared/mail.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Statusabgleich anstehender Reisen durch. |
 | `public/shared/car_cron.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY durch. |
+
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 | `System\BriefingService` | `Weather\*`, `School\*`, `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Calendar\*`, `Bank\*` | Orchestrator: Aggregiert Statuskacheln für das Daily Briefing Popup beim App-Start. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
@@ -376,6 +378,9 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | TRONITY Platform API | Abruf von Fahrzeug-Telemetriedaten (Ladezustand, Reichweite, GPS-Position) | OAuth Client Credentials zur Autorisierung; Empfang von Fahrzeugdaten der verknüpften VIN |
 | Open Food Facts API | Abruf von Lebensmittel-Stammdaten (EAN/GTIN, Marke, Füllmenge, Nutri-Score) | Artikelname als Suchbegriff; keine personenbezogenen Daten |
 | OpenHolidays API | Abruf von bundeslandspezifischen Schulferien (Sachsen) | Keine personenbezogenen Daten; Bundeslandcode DE-SN und Jahreszeitraum |
+| OpenRouteService API | Abruf von Fahrtstrecken, Fahrzeiten und Geocodierung für die Reiseplanung | Start- und Zielkoordinaten bzw. Adresssuchbegriff; keine personenbezogenen Daten |
+| Iternio / ABRP Planning API | Optionale Routen- und Ladebedarfsberechnung v2 | Start- und Zielkoordinaten, ID.Buzz Fahrzeug-Typcode, Ziel-SoC; keine personenbezogenen Daten |
+| OpenStreetMap Nominatim | Geocodierung von Adressangaben und Ortsnamen in Koordinaten | Adresssuchbegriff; keine personenbezogenen Daten |
 
 > **Neue Drittanbieter** müssen in dieser Tabelle dokumentiert werden, bevor sie
 > in den Code integriert werden.

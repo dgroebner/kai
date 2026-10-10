@@ -40,4 +40,14 @@ class SystemSettingsService
     {
         return (int)$this->repository->get('home_geofence_radius_m', 200);
     }
-}
+
+    public function getHomeAddress(): string
+    {
+        return (string)$this->repository->get('home_address', 'Zuhause');
+    }
+
+    public function getTripCalendarAllowedSenders(): string
+    {
+        return (string)$this->repository->get('trip_calendar_allowed_senders', '');
+    }
+}
