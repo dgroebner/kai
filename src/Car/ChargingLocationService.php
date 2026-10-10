@@ -210,8 +210,12 @@ class ChargingLocationService
             return null;
         }
 
-        $lower = mb_strtolower($raw);
-
+        if (str_contains($lower, 'vattenfall') || str_contains($lower, 'incharge')) {
+            return 'Vattenfall InCharge';
+        }
+        if (str_contains($lower, 'leipzig') || str_contains($lower, 'l-charge') || str_contains($lower, 'leipziger stadtwerke')) {
+            return 'Stadtwerke Leipzig';
+        }
         if (str_contains($lower, 'ionity')) {
             return 'Ionity';
         }

@@ -502,4 +502,30 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
         }
     });
+
+    // Standardtarife wiederherstellen
+    const restoreDefaultsBtn = document.getElementById('js-btn-restore-default-tariffs');
+    if (restoreDefaultsBtn) {
+        restoreDefaultsBtn.addEventListener('click', async () => {
+            if (!confirm('Möchtest du alle Tarife auf deine 4 Standardtarife (Leipzig, Vattenfall, EnBW, ADAC) zurücksetzen?')) {
+                return;
+            }
+
+            restoreDefaultsBtn.disabled = true;
+            try {
+                const res = await KaiHttp.postJson('charges_api.php', {
+                    action: 'reset_tariffs'
+                });
+                if (res.success) {
+                    await loadTariffsList();
+                } else {
+                    alert('Fehler: ' + (res.error || 'Unbekannt'));
+                }
+            } catch (err) {
+                alert('Netzwerkfehler beim Wiederherstellen.');
+            } finally {
+                restoreDefaultsBtn.disabled = false;
+            }
+        });
+    }
 });

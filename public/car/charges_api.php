@@ -243,6 +243,12 @@ try {
             exit;
         }
 
+        if ($action === 'reset_tariffs') {
+            $tariffs = $tariffService->resetToDefaultTariffs();
+            echo json_encode(['success' => true, 'tariffs' => $tariffs]);
+            exit;
+        }
+
         Auth::sendJsonError(400, 'Unbekannte POST-Aktion');
     }
 

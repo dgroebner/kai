@@ -68,7 +68,13 @@ class ChargingReceiptService
             $sql .= " ORDER BY r.purchase_date DESC LIMIT 25";
         } else {
             // Standard: Zeitraum +/- 3 Tage ODER Händler passt zu Ladedienstleistern
-            $chargingKeywords = ['ionity', 'enbw', 'ewe', 'aral', 'shell', 'tesla', 'fastned', 'allego', 'maingau', 'ladenetz'];
+            $chargingKeywords = [
+                'stadtwerke leipzig', 'leipziger stadtwerke', 'l-charge',
+                'vattenfall', 'incharge',
+                'enbw', 'mobility+',
+                'aral', 'pulse', 'adac',
+                'ionity', 'ewe', 'shell', 'tesla', 'fastned', 'allego', 'maingau', 'ladenetz'
+            ];
             if (!empty($operator)) {
                 $chargingKeywords[] = mb_strtolower($operator);
             }

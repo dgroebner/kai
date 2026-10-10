@@ -98,12 +98,19 @@ CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO `car_charging_tariffs` (`id`, `name`, `operator_match`, `price_ac_eur_kwh`, `price_dc_eur_kwh`, `is_default`, `notes`) VALUES
-(1, 'EnBW mobility+ L', 'EnBW,mobility+', 0.3900, 0.3900, 0, 'EnBW Vorteilstarif (Viellader)'),
-(2, 'Ionity Passport', 'Ionity', 0.4900, 0.3900, 0, 'Ionity HPC High-Power-Charging'),
-(3, 'EWE Go', 'EWE,EWE Go', 0.5200, 0.5200, 0, 'EWE Go Ladesäulen & Partnernetz'),
-(4, 'Aral pulse / ADAC', 'Aral,pulse,ADAC', 0.5700, 0.5700, 0, 'Aral pulse Schnellladestationen'),
-(5, 'Standard Roaming', '*', 0.5900, 0.6900, 1, 'Standard Roaming-Tarif fallback');
+INSERT INTO `car_charging_tariffs` (`id`, `name`, `operator_match`, `price_ac_eur_kwh`, `price_dc_eur_kwh`, `is_default`, `notes`) VALUES
+(1, 'Stadtwerke Leipzig L-Charge', 'Stadtwerke Leipzig,L-Charge,Leipziger Gruppe,Leipziger Stadtwerke', 0.3900, 0.4900, 0, 'Stromkundentarif der Leipziger Stadtwerke (L-Gruppe)'),
+(2, 'Vattenfall InCharge', 'Vattenfall,InCharge', 0.4400, 0.5900, 0, 'Kostenloser Tarif mit Anmeldung (Vattenfall InCharge Netz)'),
+(3, 'EnBW mobility+', 'EnBW,mobility+', 0.5900, 0.5900, 0, 'Kostenloser Tarif mit Anmeldung (EnBW Ladestationen)'),
+(4, 'ADAC Tarif für Aral Pulse', 'Aral,pulse,ADAC', 0.5700, 0.5700, 0, 'ADAC e-Charge Vorteilskonditionen an Aral pulse Stationen'),
+(5, 'Standard Roaming', '*', 0.5900, 0.6900, 1, 'Standard Roaming-Fallback für sonstige Stationen')
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    operator_match = VALUES(operator_match),
+    price_ac_eur_kwh = VALUES(price_ac_eur_kwh),
+    price_dc_eur_kwh = VALUES(price_dc_eur_kwh),
+    is_default = VALUES(is_default),
+    notes = VALUES(notes);
 
 
 

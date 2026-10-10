@@ -1068,7 +1068,10 @@ if ($tab === 'trips') {
                             </form>
                         </div>
                     </div>
-                    <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+                    <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                        <button type="button" id="js-btn-restore-default-tariffs" class="btn btn-outline btn-sm" title="Stellt deine 4 Haupttarife (Leipzig, Vattenfall, EnBW, ADAC) wieder her">
+                            🔄 Standardtarife wiederherstellen
+                        </button>
                         <button type="button" class="btn btn-outline js-btn-close-modal">Schließen</button>
                     </div>
                 </div>
