@@ -9168,7 +9168,470 @@ body.wisdom-modal-open {
     }
 }
 
+/* ==========================================================================
+   GAMES & TRAVEL TOOLS (Domain: games)
+   ========================================================================== */
+.games-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
 
+.games-tab-nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
 
+.games-tool-pane {
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    border-radius: var(--border-radius);
+    background-color: var(--bg-surface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
 
+.games-tool-header {
+    margin-bottom: 2rem;
+    max-width: 600px;
+}
 
+.games-tool-header h2 {
+    margin-top: 0;
+    margin-bottom: 0.35rem;
+}
+
+.games-tool-actions {
+    margin: 1.75rem 0 1rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.btn-lg {
+    padding: 0.85rem 2rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    border-radius: 10px;
+}
+
+/* --- 1. MÜNZWURF STYLING & 3D ANIMATION --- */
+.games-coin-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0;
+    perspective: 1000px;
+}
+
+.games-coin-wrapper {
+    width: 140px;
+    height: 140px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease;
+}
+
+.games-coin-wrapper:hover {
+    transform: scale(1.05);
+}
+
+.games-coin-wrapper:active {
+    transform: scale(0.96);
+}
+
+.games-coin {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(0deg);
+}
+
+.games-coin-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 0 4px rgba(255, 255, 255, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.5);
+    border: 3px solid #d97706;
+}
+
+.games-coin-front {
+    background: radial-gradient(circle at 35% 35%, #fbbf24 0%, #d97706 65%, #b45309 100%);
+    color: #451a03;
+    transform: rotateY(0deg);
+}
+
+.games-coin-back {
+    background: radial-gradient(circle at 35% 35%, #fde68a 0%, #f59e0b 65%, #92400e 100%);
+    color: #451a03;
+    transform: rotateY(180deg);
+}
+
+.games-coin-icon {
+    font-size: 2.75rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+
+.games-coin-text {
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+    margin-top: 0.25rem;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.games-coin-result-label {
+    margin-top: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    min-height: 2rem;
+    transition: all 0.3s ease;
+}
+
+.games-coin-result-label.is-result {
+    color: #fbbf24;
+    font-size: 1.5rem;
+    font-weight: 800;
+    transform: scale(1.05);
+}
+
+.games-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.6rem 1.2rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.games-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.games-stat-value {
+    color: var(--text-main);
+}
+
+.games-stat-divider {
+    opacity: 0.3;
+}
+
+/* --- 2. WÜRFELBECHER STYLING --- */
+.games-dice-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.games-control-label {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.games-dice-count-selector {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.games-dice-count-selector .btn {
+    min-width: 2.4rem;
+    font-weight: 700;
+}
+
+.games-dice-count-selector .btn.active {
+    background-color: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.games-dice-stage {
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    min-width: 280px;
+    max-width: 520px;
+    width: 100%;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.games-dice-stage:hover {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.games-dice-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
+}
+
+.games-dice-grid.is-rolling .games-die {
+    animation: die-shake 0.15s infinite alternate ease-in-out;
+}
+
+@keyframes die-shake {
+    0% { transform: rotate(-8deg) scale(0.96); }
+    100% { transform: rotate(8deg) scale(1.04); }
+}
+
+.games-die {
+    width: 76px;
+    height: 76px;
+    background: #f8fafc;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.15);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 8px;
+    box-sizing: border-box;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.games-die:hover {
+    transform: translateY(-2px);
+}
+
+.die-pip {
+    width: 12px;
+    height: 12px;
+    background-color: #0f172a;
+    border-radius: 50%;
+    align-self: center;
+    justify-self: center;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Würfelaugen Rasterpositionen */
+.pip-top-left { grid-column: 1; grid-row: 1; }
+.pip-top-right { grid-column: 3; grid-row: 1; }
+.pip-mid-left { grid-column: 1; grid-row: 2; }
+.pip-center { grid-column: 2; grid-row: 2; }
+.pip-mid-right { grid-column: 3; grid-row: 2; }
+.pip-bottom-left { grid-column: 1; grid-row: 3; }
+.pip-bottom-right { grid-column: 3; grid-row: 3; }
+
+.games-dice-sum-display {
+    margin-top: 1.25rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.games-dice-sum-display strong {
+    color: var(--accent);
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-left: 0.25rem;
+}
+
+/* --- 3. STADT-LAND-FLUSS STYLING --- */
+.games-letter-settings {
+    margin-bottom: 1.5rem;
+}
+
+.games-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.games-checkbox-label input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.games-letter-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.games-letter-display {
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border: 2px solid rgba(59, 130, 246, 0.4);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.25rem;
+}
+
+.games-letter-hero {
+    font-size: 5.5rem;
+    font-weight: 900;
+    color: #60a5fa;
+    text-shadow: 0 4px 16px rgba(96, 165, 250, 0.4);
+    line-height: 1;
+    user-select: none;
+    transition: transform 0.1s ease;
+}
+
+.games-letter-hero.is-animating {
+    transform: scale(1.15);
+    color: #93c5fd;
+}
+
+.games-letter-status {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    min-height: 1.75rem;
+    font-weight: 500;
+}
+
+.games-alphabet-section {
+    width: 100%;
+    max-width: 640px;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.games-alphabet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.games-alphabet-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.games-alphabet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 0.5rem;
+}
+
+.games-alphabet-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    user-select: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.games-alphabet-cell.is-available {
+    background: rgba(30, 41, 59, 0.8);
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.games-alphabet-cell.is-current {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.6);
+    border-color: #60a5fa;
+    transform: scale(1.08);
+}
+
+.games-alphabet-cell.is-used {
+    background: rgba(15, 23, 42, 0.6);
+    color: #475569;
+    text-decoration: line-through;
+    opacity: 0.55;
+    border-color: rgba(255, 255, 255, 0.03);
+}
+
+.games-alphabet-cell.is-excluded {
+    background: transparent;
+    color: #334155;
+    opacity: 0.3;
+    border-color: dashed rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 600px) {
+    .games-tool-pane {
+        padding: 1.25rem 1rem;
+    }
+    .games-coin-wrapper {
+        width: 120px;
+        height: 120px;
+    }
+    .games-coin-icon {
+        font-size: 2.25rem;
+    }
+    .games-die {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        padding: 6px;
+    }
+    .die-pip {
+        width: 10px;
+        height: 10px;
+    }
+    .games-letter-display {
+        width: 120px;
+        height: 120px;
+    }
+    .games-letter-hero {
+        font-size: 4.25rem;
+    }
+    .games-alphabet-grid {
+        grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+        gap: 0.35rem;
+    }
+    .games-alphabet-cell {
+        font-size: 0.95rem;
+    }
+}

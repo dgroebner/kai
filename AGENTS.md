@@ -194,6 +194,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
 | School | `Kai\Tools\School\` | `src/School/` | `public/school/` |
 | System | `Kai\Tools\System\` | `src/System/` | `public/system/` |
+| Games | — (Client-Only) | — | `public/games/` |
 | Weather | `Kai\Tools\Weather\` | `src/Weather/` | `public/weather/` |
 
 ### Neue Domain anlegen

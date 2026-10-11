@@ -212,6 +212,11 @@ if (!empty($dailyWisdom)) {
                 </a>
             <?php endif; ?>
 
+            <a href="games/index.php" class="card tool-card">
+                <span class="tool-card-icon">🎲</span>
+                <span class="tool-card-title">Spiele &amp; Tools</span>
+            </a>
+
             <?php if (Auth::hasPermission('system_read')): ?>
                 <a href="system/index.php" class="card tool-card">
                     <span class="tool-card-icon">⚙️</span>
