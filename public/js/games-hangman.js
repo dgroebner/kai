@@ -195,19 +195,35 @@
             this.wordInputModal = document.getElementById('hangman-word-input-modal');
         },
 
+        getUserFirstName(fallback = 'Spieler 1') {
+            const meta = document.querySelector('meta[name="user-first-name"]');
+            const val = meta ? meta.getAttribute('content') : '';
+            return (val && val.trim()) ? val.trim() : fallback;
+        },
+
         loadPlayers() {
+            const defaultFirstName = this.getUserFirstName();
             try {
                 const saved = sessionStorage.getItem(this.STORAGE_PLAYERS_KEY);
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     if (Array.isArray(parsed) && parsed.length >= 1) {
-                        this.players = parsed.map(p => ({
-                            name: String(p.name || 'Spieler').trim() || 'Spieler',
+                        this.players = parsed.map((p, idx) => ({
+                            name: String(p.name || (idx === 0 ? defaultFirstName : `Spieler ${idx + 1}`)).trim() || (idx === 0 ? defaultFirstName : `Spieler ${idx + 1}`),
                             score: Number(p.score) || 0
                         }));
+                        if (this.players[0].name === 'Spieler 1' && defaultFirstName !== 'Spieler 1') {
+                            this.players[0].name = defaultFirstName;
+                        }
+                        return;
                     }
                 }
             } catch (_) {}
+
+            this.players = [
+                { name: defaultFirstName, score: 0 },
+                { name: 'Spieler 2', score: 0 }
+            ];
         },
 
         savePlayers() {
@@ -218,6 +234,10 @@
 
         setPlayerCount(count) {
             count = Math.max(1, Math.min(6, count));
+            const defaultFirstName = this.getUserFirstName();
+            if (count === 1 && this.players[0] && (this.players[0].name === 'Spieler 1' || !this.players[0].name.trim())) {
+                this.players[0].name = defaultFirstName;
+            }
             while (this.players.length < count) {
                 this.players.push({ name: `Spieler ${this.players.length + 1}`, score: 0 });
             }
@@ -233,10 +253,14 @@
             this.previousMode = this.mode;
             this.mode = mode;
 
-            // Wenn Solo gewählt wird, Spieler auf 1 begrenzen falls gewünscht bzw. als Solo markieren
-            if (mode === 'solo' && this.players.length > 1) {
-                // Spieler 1 bleibt aktiv
+            // Wenn Solo gewählt wird, Spieler 1 auf aktiven Nutzer vorbesetzen falls noch Standard
+            if (mode === 'solo') {
                 this.activePlayerIndex = 0;
+                const defaultFirstName = this.getUserFirstName();
+                if (this.players[0] && (this.players[0].name === 'Spieler 1' || !this.players[0].name.trim())) {
+                    this.players[0].name = defaultFirstName;
+                    this.savePlayers();
+                }
             }
 
             // Buttons aktualisieren
@@ -665,12 +689,18 @@
             if (!listEl) return;
             listEl.innerHTML = '';
 
+            const defaultFirstName = this.getUserFirstName();
+
             this.players.forEach((p, idx) => {
+                let currentName = p.name;
+                if (idx === 0 && (currentName === 'Spieler 1' || !currentName.trim()) && this.players.length === 1) {
+                    currentName = defaultFirstName;
+                }
                 const row = document.createElement('div');
                 row.className = 'hangman-setup-name-row';
                 row.innerHTML = `
                     <label for="setup-player-${idx}">Spieler ${idx + 1}:</label>
-                    <input type="text" id="setup-player-${idx}" class="form-control js-setup-name-input" data-index="${idx}" value="${p.name}" maxlength="20">
+                    <input type="text" id="setup-player-${idx}" class="form-control js-setup-name-input" data-index="${idx}" value="${KaiHtml.escape(currentName)}" maxlength="20">
                 `;
                 listEl.appendChild(row);
             });

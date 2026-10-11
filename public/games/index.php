@@ -5,12 +5,17 @@ use Kai\Tools\Shared\Security\Auth;
 
 // Auth-Check — immer zuerst (erfordert nur gültigen Login)
 Auth::requirePage();
+
+$rawUserName = $_SESSION['user_name'] ?? '';
+$parts = preg_split('/\s+/', trim($rawUserName));
+$userFirstName = (!empty($parts[0])) ? $parts[0] : '';
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="user-first-name" content="<?= htmlspecialchars($userFirstName, ENT_QUOTES, 'UTF-8') ?>">
     <title>Spiele &amp; Werkzeuge - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
@@ -37,6 +42,9 @@ Auth::requirePage();
         </button>
         <button type="button" class="btn btn-outline js-games-tab-btn" data-tool="hangman" id="tab-btn-hangman">
             🔤 Galgenraten
+        </button>
+        <button type="button" class="btn btn-outline js-games-tab-btn" data-tool="plates" id="tab-btn-plates">
+            🚗 KfZ-Kennzeichen
         </button>
     </nav>
 
@@ -259,6 +267,109 @@ Auth::requirePage();
                 <button type="button" class="btn btn-primary btn-lg js-hangman-new-game-btn">🔄 Nächstes Wort / Neue Runde</button>
             </div>
         </section>
+
+        <!-- ============================================================== -->
+        <!-- WERKZEUG 5: KFZ-KENNZEICHEN & HERKUNFT                         -->
+        <!-- ============================================================== -->
+        <section id="tool-pane-plates" class="card games-tool-pane hidden" aria-labelledby="tab-btn-plates">
+            <div class="games-tool-header">
+                <h2>🚗 KfZ-Kennzeichen &amp; Herkunft</h2>
+                <p class="text-muted">Kennzeichen-Lexikon zum schnellen Nachschlagen unterwegs &amp; interaktives Quiz für die Autofahrt.</p>
+            </div>
+
+            <!-- Ansichts-Umschaltung: Suchen vs Quiz -->
+            <div class="plates-subnav" role="group" aria-label="Kennzeichen-Ansicht">
+                <button type="button" class="btn btn-sm js-plates-view-btn active" data-view="search">🔍 Suchen &amp; Nachschlagen</button>
+                <button type="button" class="btn btn-sm btn-outline js-plates-view-btn" data-view="quiz">🎯 Kennzeichen-Quiz</button>
+            </div>
+
+            <!-- TEIL A: LIVE-SUCHE & LEXIKON -->
+            <div id="plates-view-search" class="plates-view-section">
+                <div class="plates-search-bar">
+                    <span class="plates-search-icon" aria-hidden="true">🔍</span>
+                    <input type="search" id="plates-search-input" class="form-control" placeholder="Kennzeichen oder Ort suchen (z. B. DD, B, ERZ, Pirna, München)..." autocomplete="off" spellcheck="false" aria-label="Kennzeichen suchen">
+                    <button type="button" class="btn btn-sm btn-outline js-plates-search-clear hidden" title="Suche leeren">✕</button>
+                </div>
+
+                <div class="plates-filter-bar">
+                    <select id="plates-state-filter" class="form-select form-select-sm" aria-label="Bundesland filtern">
+                        <option value="all">Alle Bundesländer</option>
+                        <option value="BW">Baden-Württemberg</option>
+                        <option value="BY">Bayern</option>
+                        <option value="BE">Berlin</option>
+                        <option value="BB">Brandenburg</option>
+                        <option value="HB">Bremen</option>
+                        <option value="HH">Hamburg</option>
+                        <option value="HE">Hessen</option>
+                        <option value="MV">Mecklenburg-Vorpommern</option>
+                        <option value="NI">Niedersachsen</option>
+                        <option value="NW">Nordrhein-Westfalen</option>
+                        <option value="RP">Rheinland-Pfalz</option>
+                        <option value="SL">Saarland</option>
+                        <option value="SN">Sachsen</option>
+                        <option value="ST">Sachsen-Anhalt</option>
+                        <option value="SH">Schleswig-Holstein</option>
+                        <option value="TH">Thüringen</option>
+                        <option value="BUND">Bundesweit / Bund</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline js-plates-filter-popular">⭐ Nur bekannte Kennzeichen</button>
+                </div>
+
+                <div id="plates-results-summary" class="plates-results-summary text-muted text-sm">733 Kennzeichen geladen</div>
+                <div id="plates-results-list" class="plates-results-grid">
+                    <!-- Dynamische Kennzeichen-Kacheln -->
+                </div>
+            </div>
+
+            <!-- TEIL B: INTERAKTIVES QUIZ -->
+            <div id="plates-view-quiz" class="plates-view-section hidden">
+                <div class="plates-quiz-top-bar">
+                    <div class="plates-quiz-modes" role="group" aria-label="Quiz-Modus">
+                        <button type="button" class="btn btn-sm js-quiz-mode-btn active" data-mode="plate_to_place" title="Kennzeichen vorgegeben, Ort erraten">🚗 Kennzeichen ➔ Ort</button>
+                        <button type="button" class="btn btn-sm btn-outline js-quiz-mode-btn" data-mode="place_to_plate" title="Ort vorgegeben, Kennzeichen erraten">🏙️ Ort ➔ Kennzeichen</button>
+                        <button type="button" class="btn btn-sm btn-outline js-quiz-mode-btn" data-mode="reveal" title="Aufdecken für Mitfahrer auf der Rückbank">👁️ Aufdecken (Mitfahrer)</button>
+                    </div>
+
+                    <div class="plates-quiz-pools" role="group" aria-label="Schwierigkeitsgrad">
+                        <button type="button" class="btn btn-sm js-quiz-pool-btn active" data-pool="all">Alle (733)</button>
+                        <button type="button" class="btn btn-sm btn-outline js-quiz-pool-btn" data-pool="popular">Großstädte &amp; Bekannte</button>
+                        <button type="button" class="btn btn-sm btn-outline js-quiz-pool-btn" data-pool="state">Sachsen</button>
+                    </div>
+                </div>
+
+                <div class="plates-quiz-stats-bar">
+                    <div class="plates-player-stat">
+                        <span class="plates-player-icon">👤</span>
+                        <strong id="plates-player-name"><?= htmlspecialchars($userFirstName !== '' ? $userFirstName : 'Du', ENT_QUOTES, 'UTF-8') ?></strong>
+                    </div>
+                    <div class="plates-stat-badge">Punkte: <strong id="plates-stat-score">0</strong></div>
+                    <div class="plates-stat-badge">🔥 Serie: <strong id="plates-stat-streak">0</strong></div>
+                    <button type="button" class="btn btn-sm btn-outline js-plates-reset-score-btn" title="Punktestand zurücksetzen">Zurücksetzen</button>
+                </div>
+
+                <div class="plates-quiz-stage" id="plates-quiz-stage">
+                    <h3 id="plates-quiz-question-title" class="plates-quiz-question">Zu welcher Stadt oder welchem Landkreis gehört dieses Kennzeichen?</h3>
+                    <div id="plates-quiz-plate-display" class="plates-quiz-plate-wrap">
+                        <!-- Großes Euro-Kennzeichen -->
+                    </div>
+                    <div id="plates-quiz-options-grid" class="plates-quiz-options-grid">
+                        <!-- Antwort-Buttons -->
+                    </div>
+                    <div id="plates-quiz-reveal-box" class="plates-quiz-reveal-box hidden">
+                        <button type="button" class="btn btn-primary btn-lg" id="plates-quiz-reveal-trigger">👁️ Auflösung anzeigen</button>
+                        <div id="plates-quiz-reveal-details" class="hidden"></div>
+                        <div id="plates-quiz-reveal-actions" class="plates-reveal-actions hidden">
+                            <button type="button" class="btn btn-success js-reveal-known-btn">✅ Gewusst (+10)</button>
+                            <button type="button" class="btn btn-danger js-reveal-unknown-btn">❌ Nicht gewusst</button>
+                        </div>
+                    </div>
+                    <div id="plates-quiz-feedback" class="plates-feedback-banner hidden" role="alert"></div>
+                    <div class="plates-quiz-actions">
+                        <button type="button" class="btn btn-primary js-quiz-next-btn hidden" id="plates-quiz-next-btn">Nächstes Kennzeichen &rarr;</button>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- Modal für Bestätigung des Runden-Neustarts (Stadt-Land-Fluss) -->
@@ -339,6 +450,7 @@ Auth::requirePage();
 <script src="../js/http.js?v=<?= APP_VERSION ?>"></script>
 <script src="../js/games.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/games-hangman.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="../js/games-plates.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>
 

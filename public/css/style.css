@@ -10132,3 +10132,421 @@ body.wisdom-modal-open {
     }
 }
 
+/* ==========================================================================
+   KFZ-KENNZEICHEN & HERKUNFT (PLATES TOOL)
+   ========================================================================== */
+
+/* Deutsches Euro-Kennzeichen Design */
+.euro-plate {
+    display: inline-flex;
+    align-items: center;
+    background: #ffffff;
+    color: #111111;
+    border: 2.5px solid #1a1a1a;
+    border-radius: 6px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    overflow: hidden;
+    user-select: none;
+    height: 38px;
+    font-family: 'DIN Alternate', 'Arial Black', Impact, sans-serif;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.euro-plate-blue {
+    background-color: #003399;
+    color: #ffcc00;
+    width: 22px;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 0;
+    box-sizing: border-box;
+}
+
+.euro-plate-stars {
+    font-size: 8px;
+    line-height: 1;
+}
+
+.euro-plate-d {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-top: 1px;
+}
+
+.euro-plate-text {
+    padding: 0 10px;
+    font-size: 1.25rem;
+    letter-spacing: 2.5px;
+    color: #111111;
+    text-transform: uppercase;
+}
+
+/* Großes Kennzeichen für Quiz-Bühne */
+.euro-plate.euro-plate-lg {
+    height: 68px;
+    border-width: 3.5px;
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.euro-plate-lg .euro-plate-blue {
+    width: 38px;
+    padding: 6px 0;
+}
+
+.euro-plate-lg .euro-plate-stars {
+    font-size: 14px;
+}
+
+.euro-plate-lg .euro-plate-d {
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+.euro-plate-lg .euro-plate-text {
+    padding: 0 24px;
+    font-size: 2.5rem;
+    letter-spacing: 6px;
+}
+
+/* Sub-Navigationsleiste */
+.plates-subnav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.plates-subnav .btn.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+}
+
+/* Suchleiste */
+.plates-search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+
+.plates-search-icon {
+    position: absolute;
+    left: 1rem;
+    font-size: 1.1rem;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.plates-search-bar input[type="search"] {
+    padding-left: 2.75rem;
+    padding-right: 2.5rem;
+    font-size: 1.05rem;
+    height: 48px;
+    border-radius: 10px;
+}
+
+.js-plates-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+/* Filterleiste */
+.plates-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.plates-filter-bar .form-select {
+    max-width: 260px;
+}
+
+.plates-results-summary {
+    margin-bottom: 1rem;
+}
+
+/* Suchergebnis-Raster */
+.plates-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 0.75rem;
+}
+
+.plates-result-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.plates-result-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.plates-card-badge-col {
+    flex-shrink: 0;
+}
+
+.plates-card-info-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.plates-item-district {
+    font-weight: 600;
+    font-size: 0.98rem;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plates-item-meta {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+.plates-item-derived {
+    color: #90caf9;
+}
+
+.plates-item-state {
+    opacity: 0.9;
+}
+
+.plates-no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.plates-overflow-hint {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Quiz Bereich */
+.plates-quiz-top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.plates-quiz-modes,
+.plates-quiz-pools {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.plates-quiz-modes .btn.active,
+.plates-quiz-pools .btn.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+}
+
+.plates-quiz-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.plates-player-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.plates-stat-badge strong {
+    color: var(--color-primary);
+}
+
+.plates-quiz-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.plates-quiz-question {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.plates-quiz-plate-wrap {
+    margin-bottom: 1.75rem;
+}
+
+/* Antwort-Buttons */
+.plates-quiz-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 1.5rem;
+}
+
+.plates-quiz-opt-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    min-height: 70px;
+    transition: transform 0.1s, background 0.15s, border-color 0.15s;
+}
+
+.plates-quiz-opt-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.plates-opt-sub {
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.plates-quiz-plate-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem;
+    border-radius: 10px;
+    min-height: 70px;
+}
+
+.plates-quiz-opt-btn.is-correct,
+.plates-quiz-plate-btn.is-correct {
+    background-color: #2e7d32 !important;
+    border-color: #4caf50 !important;
+    color: #ffffff !important;
+}
+
+.plates-quiz-opt-btn.is-wrong,
+.plates-quiz-plate-btn.is-wrong {
+    background-color: #c62828 !important;
+    border-color: #ef5350 !important;
+    color: #ffffff !important;
+}
+
+/* Aufdeck-Box */
+.plates-quiz-reveal-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    max-width: 480px;
+}
+
+.plates-reveal-result {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem 2rem;
+    width: 100%;
+}
+
+.plates-reveal-city {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.plates-reveal-state {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.plates-reveal-actions {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.plates-reveal-actions .btn {
+    flex: 1;
+    max-width: 200px;
+}
+
+/* Feedback-Banner */
+.plates-feedback-banner {
+    width: 100%;
+    max-width: 640px;
+    padding: 0.85rem 1.25rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    margin-bottom: 1.25rem;
+    text-align: center;
+}
+
+.plates-feedback-banner.feedback-won {
+    background: rgba(46, 125, 50, 0.2);
+    border: 1.5px solid #4caf50;
+    color: #a5d6a7;
+}
+
+.plates-feedback-banner.feedback-lost {
+    background: rgba(198, 40, 40, 0.2);
+    border: 1.5px solid #ef5350;
+    color: #ffcdd2;
+}
+
+.plates-quiz-actions {
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .plates-quiz-options-grid {
+        grid-template-columns: 1fr;
+    }
+    .euro-plate.euro-plate-lg {
+        height: 54px;
+    }
+    .euro-plate-lg .euro-plate-text {
+        font-size: 1.8rem;
+        letter-spacing: 4px;
+        padding: 0 16px;
+    }
+}
+
+
