@@ -343,10 +343,12 @@
     // =========================================================================
     const CityCountryTool = {
         STORAGE_KEY: 'kai_games_city_country_state_v1',
+        SUPPRESS_CONFIRM_KEY: 'kai_games_suppress_reset_confirm',
         FULL_ALPHABET: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
         RARE_LETTERS: ['Q', 'X', 'Y'],
 
         excludeRare: false,
+        suppressConfirm: false,
         availableLetters: [],
         drawnLetters: [],
         currentLetter: null,
@@ -359,6 +361,16 @@
             this.counterEl = document.getElementById('games-alphabet-counter');
             this.chkExcludeRare = document.getElementById('chk-exclude-rare');
             this.btnNext = document.getElementById('btn-letter-next');
+            this.modalEl = document.getElementById('games-confirm-modal');
+            this.chkSuppressConfirm = document.getElementById('chk-games-suppress-confirm');
+
+            // Prüfen, ob Bestätigungen für diese Session unterdrückt werden sollen
+            try {
+                this.suppressConfirm = sessionStorage.getItem(this.SUPPRESS_CONFIRM_KEY) === '1';
+                if (this.chkSuppressConfirm) {
+                    this.chkSuppressConfirm.checked = this.suppressConfirm;
+                }
+            } catch (_) {}
 
             // Aus sessionStorage laden oder Standard initialisieren
             this.loadState();
@@ -478,12 +490,47 @@
         },
 
         resetRound(confirmPrompt = true) {
-            if (confirmPrompt && this.drawnLetters.length > 0) {
-                if (!window.confirm('Möchtest du die Runde wirklich neu starten? Der bisherige Buchstabenfortschritt wird zurückgesetzt.')) {
-                    return;
-                }
+            // Wenn keine Buchstaben gezogen wurden oder der Nutzer Bestätigungen für diese Session deaktiviert hat:
+            if (!confirmPrompt || this.drawnLetters.length === 0 || this.suppressConfirm) {
+                this.performResetRound();
+                return;
             }
 
+            // Statt blockierendem window.confirm ein hübsches, freundliches In-App-Modal anzeigen
+            this.openConfirmModal();
+        },
+
+        openConfirmModal() {
+            if (!this.modalEl) {
+                this.performResetRound();
+                return;
+            }
+
+            if (this.chkSuppressConfirm) {
+                this.chkSuppressConfirm.checked = this.suppressConfirm;
+            }
+            this.modalEl.classList.remove('hidden');
+            triggerVibration([20]);
+        },
+
+        closeConfirmModal() {
+            if (this.modalEl) {
+                this.modalEl.classList.add('hidden');
+            }
+        },
+
+        confirmResetOk() {
+            if (this.chkSuppressConfirm && this.chkSuppressConfirm.checked) {
+                this.suppressConfirm = true;
+                try {
+                    sessionStorage.setItem(this.SUPPRESS_CONFIRM_KEY, '1');
+                } catch (_) {}
+            }
+            this.closeConfirmModal();
+            this.performResetRound();
+        },
+
+        performResetRound() {
             const pool = this.getActivePool();
             this.availableLetters = [...pool];
             this.drawnLetters = [];
@@ -648,17 +695,35 @@
                 CityCountryTool.resetRound(true);
                 return;
             }
+
+            // 5. Modal Bestätigung
+            if (e.target.closest('.js-games-confirm-ok')) {
+                CityCountryTool.confirmResetOk();
+                return;
+            }
+            if (e.target.closest('.js-games-confirm-cancel') || e.target.classList.contains('games-modal-overlay')) {
+                CityCountryTool.closeConfirmModal();
+                return;
+            }
         });
 
-        // Change-Events (z. B. Checkbox schwierige Buchstaben)
+        // Change-Events (z. B. Checkbox schwierige Buchstaben oder Unterdrückungs-Checkbox)
         mainContainer.addEventListener('change', (e) => {
             if (e.target && e.target.id === 'chk-exclude-rare') {
                 CityCountryTool.setExcludeRare(e.target.checked);
             }
         });
 
-        // Tastaturunterstützung (Enter / Leertaste für Münze und Würfel-Stage & einzelne Würfel)
-        mainContainer.addEventListener('keydown', (e) => {
+        // Tastaturunterstützung (Enter / Leertaste für Münze und Würfel-Stage & einzelne Würfel, Escape für Modal)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('games-confirm-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    CityCountryTool.closeConfirmModal();
+                    return;
+                }
+            }
+
             if (e.key === ' ' || e.key === 'Enter') {
                 if (e.target && e.target.classList.contains('js-coin-flip-trigger')) {
                     e.preventDefault();

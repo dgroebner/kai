@@ -166,6 +166,27 @@ Auth::requirePage();
         </section>
     </main>
 
+    <!-- Modal für Bestätigung des Runden-Neustarts -->
+    <div id="games-confirm-modal" class="games-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="games-confirm-title">
+        <div class="games-modal-dialog">
+            <div class="games-modal-icon">🔄</div>
+            <h3 id="games-confirm-title" class="games-modal-title">Runde neu starten?</h3>
+            <p class="games-modal-desc">
+                Der bisherige Fortschritt aller gezogenen Buchstaben wird zurückgesetzt und das Alphabet steht wieder vollständig zur Verfügung.
+            </p>
+            <div class="games-modal-checkbox">
+                <label class="games-checkbox-label">
+                    <input type="checkbox" id="chk-games-suppress-confirm">
+                    <span>In dieser Sitzung nicht mehr nachfragen</span>
+                </label>
+            </div>
+            <div class="games-modal-actions">
+                <button type="button" class="btn btn-outline js-games-confirm-cancel">Abbrechen</button>
+                <button type="button" class="btn btn-primary js-games-confirm-ok">Ja, neu starten</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="app-footer">
         <div>kai v<?= APP_VERSION ?></div>
     </footer>
