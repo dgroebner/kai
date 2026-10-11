@@ -9786,3 +9786,349 @@ body.wisdom-modal-open {
     flex: 1;
     padding: 0.65rem 1.25rem;
 }
+
+/* ==========================================================================
+   GALGENRATEN (HANGMAN) STYLING
+   ========================================================================== */
+.hangman-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.hangman-mode-switcher {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.hangman-mode-switcher .btn.active {
+    background-color: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.hangman-top-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Spielerleiste (Scoreboard & Zug-Indikator) */
+.hangman-players-bar {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 680px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.hangman-player-badge {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.hangman-player-badge.is-active {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    transform: scale(1.05);
+}
+
+.hangman-player-badge.is-giver {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.hangman-player-badge .player-name {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.hangman-player-badge .player-score {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.85rem;
+    background: rgba(15, 23, 42, 0.8);
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+}
+
+/* Meta Bar (Kategorie & Tipp Button) */
+.hangman-meta-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.hangman-category-badge {
+    font-size: 0.95rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+}
+
+/* Tipp-Box */
+.hangman-hint-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 640px;
+    width: 100%;
+    padding: 0.75rem 1.25rem;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 12px;
+    color: #fde68a;
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+    animation: games-fade-in 0.3s ease;
+}
+
+.hangman-hint-icon {
+    font-size: 1.4rem;
+}
+
+.hangman-hint-text {
+    line-height: 1.45;
+}
+
+/* Galgen-Stage */
+.hangman-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    width: 100%;
+    max-width: 680px;
+    margin: 0.5rem 0 1.5rem;
+    flex-wrap: wrap;
+}
+
+.hangman-svg-container {
+    width: 160px;
+    height: 180px;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 16px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.hangman-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.hangman-part {
+    opacity: 0;
+    transition: opacity 0.3s ease-out, transform 0.2s ease;
+}
+
+.hangman-part.is-visible {
+    opacity: 1;
+}
+
+/* Wort-Slots */
+.hangman-word-slots {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    min-height: 70px;
+}
+
+.hangman-slot {
+    width: 44px;
+    height: 54px;
+    background: rgba(30, 41, 59, 0.85);
+    border-bottom: 4px solid var(--accent);
+    border-radius: 8px 8px 4px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text-main);
+    user-select: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+}
+
+.hangman-slot.slot-revealed-loss {
+    color: #ef4444;
+    border-bottom-color: #ef4444;
+}
+
+/* Status Banner */
+.hangman-status-banner {
+    padding: 0.85rem 1.5rem;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    width: 100%;
+    max-width: 680px;
+    text-align: center;
+    animation: games-slide-up 0.25s ease;
+}
+
+.hangman-status-banner.status-won {
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid #10b981;
+    color: #34d399;
+}
+
+.hangman-status-banner.status-lost {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid #ef4444;
+    color: #f87171;
+}
+
+/* Bildschirmtastatur */
+.hangman-keyboard {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    max-width: 640px;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    user-select: none;
+}
+
+.hangman-key {
+    width: 42px;
+    height: 46px;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 1.15rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+}
+
+.hangman-key:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+.hangman-key:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.hangman-key:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.hangman-key.key-hit {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: #10b981;
+    color: #34d399;
+    opacity: 0.85;
+}
+
+.hangman-key.key-miss {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: #64748b;
+    text-decoration: line-through;
+    opacity: 0.35;
+}
+
+/* Setup Modal */
+.hangman-setup-counts {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    justify-content: center;
+}
+
+.hangman-setup-counts .btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.hangman-setup-names-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.hangman-setup-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: left;
+}
+
+.hangman-setup-name-row label {
+    width: 80px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* Worterfassung Modal */
+.hangman-word-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.hangman-password-wrap {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .hangman-stage {
+        gap: 1rem;
+    }
+    .hangman-svg-container {
+        width: 130px;
+        height: 150px;
+    }
+    .hangman-slot {
+        width: 32px;
+        height: 42px;
+        font-size: 1.4rem;
+    }
+    .hangman-key {
+        width: 34px;
+        height: 42px;
+        font-size: 1rem;
+    }
+}
+
