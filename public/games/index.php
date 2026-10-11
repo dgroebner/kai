@@ -107,7 +107,8 @@ Auth::requirePage();
                 </div>
             </div>
 
-            <div class="games-dice-stage js-dice-roll-trigger" role="button" tabindex="0" aria-label="Würfeln">
+            <div class="games-dice-stage js-dice-stage" aria-label="Würfelbereich">
+                <div class="games-dice-hint">Tippe auf einen Würfel, um ihn für die nächste Runde zu fixieren (Kniffel).</div>
                 <div class="games-dice-grid" id="games-dice-grid">
                     <!-- Würfel werden dynamisch generiert -->
                 </div>
@@ -118,6 +119,7 @@ Auth::requirePage();
 
             <div class="games-tool-actions">
                 <button type="button" class="btn btn-primary btn-lg js-dice-roll-btn">🎲 Würfeln</button>
+                <button type="button" class="btn btn-outline js-dice-unfix-all-btn hidden" id="btn-dice-unfix-all" title="Alle Fixierungen aufheben">🔓 Alle lösen</button>
             </div>
         </section>
 

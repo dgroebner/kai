@@ -139,6 +139,7 @@
         activeDiceCount: 1,
         isRolling: false,
         diceValues: [1],
+        lockedIndices: new Set(),
 
         // SVG-Würfelaugen oder DOM-Pips für 1 bis 6
         pipsMap: {
@@ -154,6 +155,7 @@
             this.gridEl = document.getElementById('games-dice-grid');
             this.sumDisplayEl = document.getElementById('games-dice-sum-display');
             this.sumValEl = document.getElementById('games-dice-sum-val');
+            this.unfixBtn = document.getElementById('btn-dice-unfix-all');
 
             // Zuletzt gewählte Anzahl wiederherstellen falls vorhanden
             try {
@@ -170,6 +172,7 @@
         setDiceCount(count) {
             if (count < 1 || count > 6) return;
             this.activeDiceCount = count;
+            this.lockedIndices.clear(); // Beim Ändern der Würfelanzahl Fixierungen zurücksetzen
             try {
                 sessionStorage.setItem('kai_games_dice_count', String(count));
             } catch (_) {}
@@ -191,8 +194,48 @@
             });
         },
 
+        toggleLock(index) {
+            if (this.isRolling) return;
+            if (index < 0 || index >= this.activeDiceCount) return;
+
+            if (this.lockedIndices.has(index)) {
+                this.lockedIndices.delete(index);
+                triggerVibration([15]);
+            } else {
+                this.lockedIndices.add(index);
+                triggerVibration([25]);
+            }
+
+            this.renderDice();
+            this.updateUnfixButton();
+        },
+
+        unfixAll() {
+            if (this.isRolling || this.lockedIndices.size === 0) return;
+            this.lockedIndices.clear();
+            this.renderDice();
+            this.updateUnfixButton();
+            triggerVibration([20]);
+        },
+
+        updateUnfixButton() {
+            if (this.unfixBtn) {
+                if (this.lockedIndices.size > 0) {
+                    this.unfixBtn.classList.remove('hidden');
+                } else {
+                    this.unfixBtn.classList.add('hidden');
+                }
+            }
+        },
+
         roll(animate = true) {
             if (this.isRolling && animate) return;
+
+            // Wenn alle Würfel fixiert sind, gibt es nichts zu würfeln
+            if (animate && this.lockedIndices.size >= this.activeDiceCount) {
+                triggerVibration([20, 50, 20]);
+                return;
+            }
 
             if (!animate) {
                 this.diceValues = [];
@@ -201,6 +244,7 @@
                 }
                 this.renderDice();
                 this.updateSum();
+                this.updateUnfixButton();
                 return;
             }
 
@@ -212,13 +256,15 @@
                 this.gridEl.classList.add('is-rolling');
             }
 
-            // Schnelles Zufalls-Flimmern während des Rollens
+            // Schnelles Zufalls-Flimmern während des Rollens nur für NICHT fixierte Würfel
             let rollTicks = 0;
             const maxTicks = 6;
             const interval = setInterval(() => {
                 rollTicks++;
                 for (let i = 0; i < this.activeDiceCount; i++) {
-                    this.diceValues[i] = Math.floor(Math.random() * 6) + 1;
+                    if (!this.lockedIndices.has(i)) {
+                        this.diceValues[i] = Math.floor(Math.random() * 6) + 1;
+                    }
                 }
                 this.renderDice();
                 if (rollTicks >= maxTicks) {
@@ -230,10 +276,13 @@
 
         finishRoll() {
             for (let i = 0; i < this.activeDiceCount; i++) {
-                this.diceValues[i] = Math.floor(Math.random() * 6) + 1;
+                if (!this.lockedIndices.has(i)) {
+                    this.diceValues[i] = Math.floor(Math.random() * 6) + 1;
+                }
             }
             this.renderDice();
             this.updateSum();
+            this.updateUnfixButton();
 
             if (this.gridEl) {
                 this.gridEl.classList.remove('is-rolling');
@@ -248,9 +297,23 @@
             this.gridEl.innerHTML = '';
 
             this.diceValues.forEach((val, idx) => {
+                const isLocked = this.lockedIndices.has(idx);
                 const die = document.createElement('div');
-                die.className = `games-die die-val-${val}`;
-                die.setAttribute('aria-label', `Würfel ${idx + 1}: ${val} Augen`);
+                die.className = `games-die die-val-${val} js-die-item ${isLocked ? 'is-locked' : ''}`;
+                die.dataset.index = String(idx);
+                die.setAttribute('role', 'button');
+                die.setAttribute('tabindex', '0');
+                die.setAttribute('aria-label', `Würfel ${idx + 1}: ${val} Augen${isLocked ? ' (fixiert)' : ''}`);
+                die.setAttribute('aria-pressed', isLocked ? 'true' : 'false');
+
+                // Badge / Icon für Fixierung
+                if (isLocked) {
+                    const lockBadge = document.createElement('span');
+                    lockBadge.className = 'die-lock-badge';
+                    lockBadge.textContent = '🔒';
+                    lockBadge.setAttribute('aria-hidden', 'true');
+                    die.appendChild(lockBadge);
+                }
 
                 const pips = this.pipsMap[val] || [];
                 pips.forEach(posClass => {
@@ -555,6 +618,16 @@
             }
 
             // 3. Würfel Aktionen
+            const dieItem = e.target.closest('.js-die-item');
+            if (dieItem) {
+                const idx = Number(dieItem.dataset.index);
+                DiceTool.toggleLock(idx);
+                return;
+            }
+            if (e.target.closest('.js-dice-unfix-all-btn')) {
+                DiceTool.unfixAll();
+                return;
+            }
             const diceCountBtn = e.target.closest('.js-dice-count-btn');
             if (diceCountBtn) {
                 const count = Number(diceCountBtn.dataset.count);
@@ -584,12 +657,16 @@
             }
         });
 
-        // Tastaturunterstützung (Enter / Leertaste für Münze und Würfel-Stage)
+        // Tastaturunterstützung (Enter / Leertaste für Münze und Würfel-Stage & einzelne Würfel)
         mainContainer.addEventListener('keydown', (e) => {
             if (e.key === ' ' || e.key === 'Enter') {
                 if (e.target && e.target.classList.contains('js-coin-flip-trigger')) {
                     e.preventDefault();
                     CoinTool.flip();
+                } else if (e.target && e.target.classList.contains('js-die-item')) {
+                    e.preventDefault();
+                    const idx = Number(e.target.dataset.index);
+                    DiceTool.toggleLock(idx);
                 } else if (e.target && e.target.classList.contains('js-dice-roll-trigger')) {
                     e.preventDefault();
                     DiceTool.roll(true);
