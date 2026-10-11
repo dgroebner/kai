@@ -183,8 +183,9 @@ Auth::requirePage();
             <!-- Modus-Auswahl & Spielerleiste -->
             <div class="hangman-top-bar">
                 <div class="hangman-mode-switcher" role="group" aria-label="Spielmodus">
-                    <button type="button" class="btn btn-sm btn-outline js-hangman-mode-btn" data-mode="pass_play" title="Ein Spieler tippt ein Wort verdeckt ein, die anderen raten">👥 Duell (Pass &amp; Play)</button>
+                    <button type="button" class="btn btn-sm btn-outline js-hangman-mode-btn" data-mode="solo" title="Allein gegen das System spielen">👤 Single-Player</button>
                     <button type="button" class="btn btn-sm js-hangman-mode-btn active" data-mode="offline" title="Gruppe rät gemeinsam gegen über 200 kindgerechte Offline-Wörter">🎒 Kooperativ (Offline)</button>
+                    <button type="button" class="btn btn-sm btn-outline js-hangman-mode-btn" data-mode="pass_play" title="Ein Spieler tippt ein Wort verdeckt ein, die anderen raten">👥 Duell (Pass &amp; Play)</button>
                     <button type="button" class="btn btn-sm btn-outline js-hangman-mode-btn" data-mode="ai" title="Gemini erfindet kindgerechte Wörter samt Umschreibungen">🤖 KI-Spielleiter</button>
                 </div>
 
@@ -286,9 +287,10 @@ Auth::requirePage();
         <div class="games-modal-dialog">
             <div class="games-modal-icon">👥</div>
             <h3 id="hangman-setup-title" class="games-modal-title">Mitspieler einstellen</h3>
-            <p class="games-modal-desc">Wähle die Anzahl der Spieler (2 bis 6) und vergib eigene Spielernamen.</p>
+            <p class="games-modal-desc">Wähle die Anzahl der Spieler (1 bis 6) und vergib eigene Spielernamen.</p>
             
             <div class="hangman-setup-counts" role="group" aria-label="Spieleranzahl">
+                <button type="button" class="btn btn-sm js-setup-count-btn" data-count="1">1 (Solo)</button>
                 <button type="button" class="btn btn-sm js-setup-count-btn active" data-count="2">2 Spieler</button>
                 <button type="button" class="btn btn-sm btn-outline js-setup-count-btn" data-count="3">3 Spieler</button>
                 <button type="button" class="btn btn-sm btn-outline js-setup-count-btn" data-count="4">4 Spieler</button>
@@ -323,6 +325,7 @@ Auth::requirePage();
             </div>
 
             <div class="games-modal-actions">
+                <button type="button" class="btn btn-outline js-word-modal-cancel">Abbrechen</button>
                 <button type="button" class="btn btn-primary js-word-modal-ok">Fertig &amp; Wort sperren</button>
             </div>
         </div>

@@ -146,12 +146,13 @@
         MAX_MISTAKES: 8,
 
         // Status
-        mode: 'offline', // 'pass_play' | 'offline' | 'ai'
+        mode: 'offline', // 'solo' | 'offline' | 'pass_play' | 'ai'
         currentWord: '',
         category: 'Allgemein',
         hint1: '',
         hint2: '',
         wordSource: 'offline',
+        previousMode: 'offline',
 
         // Spieler
         players: [
@@ -199,7 +200,7 @@
                 const saved = sessionStorage.getItem(this.STORAGE_PLAYERS_KEY);
                 if (saved) {
                     const parsed = JSON.parse(saved);
-                    if (Array.isArray(parsed) && parsed.length >= 2) {
+                    if (Array.isArray(parsed) && parsed.length >= 1) {
                         this.players = parsed.map(p => ({
                             name: String(p.name || 'Spieler').trim() || 'Spieler',
                             score: Number(p.score) || 0
@@ -216,7 +217,7 @@
         },
 
         setPlayerCount(count) {
-            count = Math.max(2, Math.min(6, count));
+            count = Math.max(1, Math.min(6, count));
             while (this.players.length < count) {
                 this.players.push({ name: `Spieler ${this.players.length + 1}`, score: 0 });
             }
@@ -228,8 +229,15 @@
         },
 
         setMode(mode) {
-            if (!['pass_play', 'offline', 'ai'].includes(mode)) return;
+            if (!['solo', 'pass_play', 'offline', 'ai'].includes(mode)) return;
+            this.previousMode = this.mode;
             this.mode = mode;
+
+            // Wenn Solo gewählt wird, Spieler auf 1 begrenzen falls gewünscht bzw. als Solo markieren
+            if (mode === 'solo' && this.players.length > 1) {
+                // Spieler 1 bleibt aktiv
+                this.activePlayerIndex = 0;
+            }
 
             // Buttons aktualisieren
             if (this.modeButtons) {
@@ -373,6 +381,15 @@
             triggerVibration([25]);
         },
 
+        cancelWordInput() {
+            if (this.wordInputModal) {
+                this.wordInputModal.classList.add('hidden');
+            }
+            // Wenn man im Duell abbricht, schalten wir auf den vorherigen Modus oder Standard (offline) zurück
+            const fallbackMode = (this.previousMode && this.previousMode !== 'pass_play') ? this.previousMode : 'offline';
+            this.setMode(fallbackMode);
+        },
+
         updateCategoryDisplay() {
             if (this.categoryBadge) {
                 this.categoryBadge.textContent = `Thema: ${this.category}`;
@@ -418,7 +435,10 @@
         },
 
         nextPlayerTurn() {
-            if (this.players.length <= 1) return;
+            if (this.players.length <= 1 || this.mode === 'solo') {
+                this.activePlayerIndex = 0;
+                return;
+            }
 
             if (this.mode === 'pass_play') {
                 // Wortgeber überspringen, da er das Wort kennt
@@ -490,7 +510,8 @@
 
             if (this.statusBanner) {
                 this.statusBanner.className = 'hangman-status-banner status-won';
-                this.statusBanner.textContent = `🎉 Super gelöst! ${winner ? winner.name : 'Die Gruppe'} gewinnt 10 Punkte!`;
+                const winName = (this.mode === 'solo') ? (winner ? winner.name : 'Du') : (winner ? winner.name : 'Die Gruppe');
+                this.statusBanner.textContent = `🎉 Super gelöst! ${winName} gewinnt 10 Punkte!`;
                 this.statusBanner.classList.remove('hidden');
             }
 
@@ -595,7 +616,9 @@
             if (!this.playersBar) return;
             this.playersBar.innerHTML = '';
 
-            this.players.forEach((p, idx) => {
+            const playersToRender = (this.mode === 'solo') ? [this.players[0] || { name: 'Spieler 1', score: 0 }] : this.players;
+
+            playersToRender.forEach((p, idx) => {
                 const badge = document.createElement('div');
                 badge.className = 'hangman-player-badge';
 
@@ -607,7 +630,7 @@
 
                 let title = p.name;
                 if (isGiver) title += ' ✍️';
-                else if (isActive) title += ' 🎯';
+                else if (isActive && this.mode !== 'solo') title += ' 🎯';
 
                 badge.innerHTML = `
                     <span class="player-name">${title}</span>
@@ -770,6 +793,10 @@
                     Hangman.confirmWordInput();
                     return;
                 }
+                if (e.target.closest('.js-word-modal-cancel') || e.target === wordModal) {
+                    Hangman.cancelWordInput();
+                    return;
+                }
                 if (e.target.closest('.js-toggle-word-visibility')) {
                     const inp = document.getElementById('hangman-custom-word');
                     if (inp) {
@@ -783,6 +810,19 @@
 
         // Tastatureingabe für Buchstaben
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const wordM = document.getElementById('hangman-word-input-modal');
+                if (wordM && !wordM.classList.contains('hidden')) {
+                    Hangman.cancelWordInput();
+                    return;
+                }
+                const setupM = document.getElementById('hangman-setup-modal');
+                if (setupM && !setupM.classList.contains('hidden')) {
+                    setupM.classList.add('hidden');
+                    return;
+                }
+            }
+
             // Nur wenn Hangman Tab sichtbar ist
             const hangmanPane = document.getElementById('tool-pane-hangman');
             if (!hangmanPane || hangmanPane.classList.contains('hidden')) return;
