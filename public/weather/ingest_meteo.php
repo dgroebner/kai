@@ -14,7 +14,12 @@ if (!Auth::cronTokenMatches(false)) {
 }
 Auth::requireMethod('POST');
 
-$input = json_decode(file_get_contents('php://input'), true);
+$rawInput = file_get_contents('php://input');
+if ($rawInput !== false && str_starts_with($rawInput, "\x1f\x8b")) {
+    $rawInput = gzdecode($rawInput);
+}
+
+$input = is_string($rawInput) ? json_decode($rawInput, true) : null;
 
 if (!isset($input['data']) || !is_array($input['data'])) {
     Auth::sendJsonError(400, 'Missing or invalid data payload.');

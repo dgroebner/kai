@@ -30,68 +30,83 @@ class WeatherIngestService
         $now = time();
         $limit48h = $now + (48 * 3600);
 
-        if ($isIcon && !empty($data['current'])) {
-            $row = $data['current'];
-        $stmt = $this->pdo->prepare("
-            INSERT INTO weather_state (id, temperature_2m, relative_humidity_2m, is_day, apparent_temperature, precipitation, showers, rain, snowfall, weather_code, cloud_cover, surface_pressure, wind_gusts_10m, wind_direction_10m, wind_speed_10m)
-            VALUES (1, :temperature_2m, :relative_humidity_2m, :is_day, :apparent_temperature, :precipitation, :showers, :rain, :snowfall, :weather_code, :cloud_cover, :surface_pressure, :wind_gusts_10m, :wind_direction_10m, :wind_speed_10m)
-            ON DUPLICATE KEY UPDATE temperature_2m=:temperature_2m2, relative_humidity_2m=:relative_humidity_2m2, is_day=:is_day2, apparent_temperature=:apparent_temperature2, precipitation=:precipitation2, showers=:showers2, rain=:rain2, snowfall=:snowfall2, weather_code=:weather_code2, cloud_cover=:cloud_cover2, surface_pressure=:surface_pressure2, wind_gusts_10m=:wind_gusts_10m2, wind_direction_10m=:wind_direction_10m2, wind_speed_10m=:wind_speed_10m2, updated_at=NOW()
-        ");
+        $this->pdo->beginTransaction();
+        try {
+            if ($isIcon && !empty($data['current'])) {
+                $row = $data['current'];
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO weather_state (id, temperature_2m, relative_humidity_2m, is_day, apparent_temperature, precipitation, showers, rain, snowfall, weather_code, cloud_cover, surface_pressure, wind_gusts_10m, wind_direction_10m, wind_speed_10m)
+                    VALUES (1, :temperature_2m, :relative_humidity_2m, :is_day, :apparent_temperature, :precipitation, :showers, :rain, :snowfall, :weather_code, :cloud_cover, :surface_pressure, :wind_gusts_10m, :wind_direction_10m, :wind_speed_10m)
+                    ON DUPLICATE KEY UPDATE temperature_2m=:temperature_2m2, relative_humidity_2m=:relative_humidity_2m2, is_day=:is_day2, apparent_temperature=:apparent_temperature2, precipitation=:precipitation2, showers=:showers2, rain=:rain2, snowfall=:snowfall2, weather_code=:weather_code2, cloud_cover=:cloud_cover2, surface_pressure=:surface_pressure2, wind_gusts_10m=:wind_gusts_10m2, wind_direction_10m=:wind_direction_10m2, wind_speed_10m=:wind_speed_10m2, updated_at=NOW()
+                ");
 
-        $binds = [
-            ':temperature_2m' => $row['temperature_2m'] ?? null,
-            ':temperature_2m2' => $row['temperature_2m'] ?? null,
-            ':relative_humidity_2m' => $row['relative_humidity_2m'] ?? null,
-            ':relative_humidity_2m2' => $row['relative_humidity_2m'] ?? null,
-            ':is_day' => $row['is_day'] ?? null,
-            ':is_day2' => $row['is_day'] ?? null,
-            ':apparent_temperature' => $row['apparent_temperature'] ?? null,
-            ':apparent_temperature2' => $row['apparent_temperature'] ?? null,
-            ':precipitation' => $row['precipitation'] ?? null,
-            ':precipitation2' => $row['precipitation'] ?? null,
-            ':showers' => $row['showers'] ?? null,
-            ':showers2' => $row['showers'] ?? null,
-            ':rain' => $row['rain'] ?? null,
-            ':rain2' => $row['rain'] ?? null,
-            ':snowfall' => $row['snowfall'] ?? null,
-            ':snowfall2' => $row['snowfall'] ?? null,
-            ':weather_code' => $row['weather_code'] ?? null,
-            ':weather_code2' => $row['weather_code'] ?? null,
-            ':cloud_cover' => $row['cloud_cover'] ?? null,
-            ':cloud_cover2' => $row['cloud_cover'] ?? null,
-            ':surface_pressure' => $row['surface_pressure'] ?? null,
-            ':surface_pressure2' => $row['surface_pressure'] ?? null,
-            ':wind_gusts_10m' => $row['wind_gusts_10m'] ?? null,
-            ':wind_gusts_10m2' => $row['wind_gusts_10m'] ?? null,
-            ':wind_direction_10m' => $row['wind_direction_10m'] ?? null,
-            ':wind_direction_10m2' => $row['wind_direction_10m'] ?? null,
-            ':wind_speed_10m' => $row['wind_speed_10m'] ?? null,
-            ':wind_speed_10m2' => $row['wind_speed_10m'] ?? null,
-        ];
-        $stmt->execute($binds);
-        }
-
-        if (!empty($data['daily'])) {
-            foreach ($data['daily'] as $row) {
-                $this->insertDaily($row, $isEcmwf, $limit48h);
+                $binds = [
+                    ':temperature_2m' => $row['temperature_2m'] ?? null,
+                    ':temperature_2m2' => $row['temperature_2m'] ?? null,
+                    ':relative_humidity_2m' => $row['relative_humidity_2m'] ?? null,
+                    ':relative_humidity_2m2' => $row['relative_humidity_2m'] ?? null,
+                    ':is_day' => $row['is_day'] ?? null,
+                    ':is_day2' => $row['is_day'] ?? null,
+                    ':apparent_temperature' => $row['apparent_temperature'] ?? null,
+                    ':apparent_temperature2' => $row['apparent_temperature'] ?? null,
+                    ':precipitation' => $row['precipitation'] ?? null,
+                    ':precipitation2' => $row['precipitation'] ?? null,
+                    ':showers' => $row['showers'] ?? null,
+                    ':showers2' => $row['showers'] ?? null,
+                    ':rain' => $row['rain'] ?? null,
+                    ':rain2' => $row['rain'] ?? null,
+                    ':snowfall' => $row['snowfall'] ?? null,
+                    ':snowfall2' => $row['snowfall'] ?? null,
+                    ':weather_code' => $row['weather_code'] ?? null,
+                    ':weather_code2' => $row['weather_code'] ?? null,
+                    ':cloud_cover' => $row['cloud_cover'] ?? null,
+                    ':cloud_cover2' => $row['cloud_cover'] ?? null,
+                    ':surface_pressure' => $row['surface_pressure'] ?? null,
+                    ':surface_pressure2' => $row['surface_pressure'] ?? null,
+                    ':wind_gusts_10m' => $row['wind_gusts_10m'] ?? null,
+                    ':wind_gusts_10m2' => $row['wind_gusts_10m'] ?? null,
+                    ':wind_direction_10m' => $row['wind_direction_10m'] ?? null,
+                    ':wind_direction_10m2' => $row['wind_direction_10m'] ?? null,
+                    ':wind_speed_10m' => $row['wind_speed_10m'] ?? null,
+                    ':wind_speed_10m2' => $row['wind_speed_10m'] ?? null,
+                ];
+                $stmt->execute($binds);
             }
-        }
 
-        if (!empty($data['hourly'])) {
-            foreach ($data['hourly'] as $row) {
-                $this->insertHourly($row, $isEcmwf, $limit48h);
+            if (!empty($data['daily'])) {
+                $dailyStmt = $this->pdo->prepare("
+                    INSERT INTO weather_forecast_daily (forecast_date, weather_code, temperature_2m_max, temperature_2m_min, apparent_temperature_max, apparent_temperature_min, uv_index_max, sunrise, sunset, daylight_duration, sunshine_duration, moonrise, moonset, moon_phase, rain_sum, showers_sum, snowfall_sum, precipitation_sum, precipitation_hours, precipitation_probability_max, wind_speed_10m_max, wind_gusts_10m_max, wind_direction_10m_dominant, shortwave_radiation_sum)
+                    VALUES (:fd, :weather_code, :temperature_2m_max, :temperature_2m_min, :apparent_temperature_max, :apparent_temperature_min, :uv_index_max, :sunrise, :sunset, :daylight_duration, :sunshine_duration, :moonrise, :moonset, :moon_phase, :rain_sum, :showers_sum, :snowfall_sum, :precipitation_sum, :precipitation_hours, :precipitation_probability_max, :wind_speed_10m_max, :wind_gusts_10m_max, :wind_direction_10m_dominant, :shortwave_radiation_sum)
+                    ON DUPLICATE KEY UPDATE weather_code=:weather_code2, temperature_2m_max=:temperature_2m_max2, temperature_2m_min=:temperature_2m_min2, apparent_temperature_max=:apparent_temperature_max2, apparent_temperature_min=:apparent_temperature_min2, uv_index_max=:uv_index_max2, sunrise=:sunrise2, sunset=:sunset2, daylight_duration=:daylight_duration2, sunshine_duration=:sunshine_duration2, moonrise=:moonrise2, moonset=:moonset2, moon_phase=:moon_phase2, rain_sum=:rain_sum2, showers_sum=:showers_sum2, snowfall_sum=:snowfall_sum2, precipitation_sum=:precipitation_sum2, precipitation_hours=:precipitation_hours2, precipitation_probability_max=:precipitation_probability_max2, wind_speed_10m_max=:wind_speed_10m_max2, wind_gusts_10m_max=:wind_gusts_10m_max2, wind_direction_10m_dominant=:wind_direction_10m_dominant2, shortwave_radiation_sum=:shortwave_radiation_sum2, updated_at=NOW()
+                ");
+                foreach ($data['daily'] as $row) {
+                    $this->executeDaily($dailyStmt, $row);
+                }
             }
+
+            if (!empty($data['hourly'])) {
+                $hourlyStmt = $this->pdo->prepare("
+                    INSERT INTO weather_forecast_hourly (forecast_time, temperature_2m, relative_humidity_2m, dew_point_2m, apparent_temperature, precipitation_probability, precipitation, rain, showers, snowfall, snow_depth, weather_code, cloud_cover, surface_pressure, visibility, evapotranspiration, wind_speed_10m, wind_direction_10m, wind_gusts_10m, soil_temperature_0cm, soil_moisture_0_to_1cm, uv_index, sunshine_duration, total_column_integrated_water_vapour, cape, lifted_index, convective_inhibition, freezing_level_height)
+                    VALUES (:ft, :temperature_2m, :relative_humidity_2m, :dew_point_2m, :apparent_temperature, :precipitation_probability, :precipitation, :rain, :showers, :snowfall, :snow_depth, :weather_code, :cloud_cover, :surface_pressure, :visibility, :evapotranspiration, :wind_speed_10m, :wind_direction_10m, :wind_gusts_10m, :soil_temperature_0cm, :soil_moisture_0_to_1cm, :uv_index, :sunshine_duration, :total_column_integrated_water_vapour, :cape, :lifted_index, :convective_inhibition, :freezing_level_height)
+                    ON DUPLICATE KEY UPDATE temperature_2m=:temperature_2m2, relative_humidity_2m=:relative_humidity_2m2, dew_point_2m=:dew_point_2m2, apparent_temperature=:apparent_temperature2, precipitation_probability=:precipitation_probability2, precipitation=:precipitation2, rain=:rain2, showers=:showers2, snowfall=:snowfall2, snow_depth=:snow_depth2, weather_code=:weather_code2, cloud_cover=:cloud_cover2, surface_pressure=:surface_pressure2, visibility=:visibility2, evapotranspiration=:evapotranspiration2, wind_speed_10m=:wind_speed_10m2, wind_direction_10m=:wind_direction_10m2, wind_gusts_10m=:wind_gusts_10m2, soil_temperature_0cm=:soil_temperature_0cm2, soil_moisture_0_to_1cm=:soil_moisture_0_to_1cm2, uv_index=:uv_index2, sunshine_duration=:sunshine_duration2, total_column_integrated_water_vapour=:total_column_integrated_water_vapour2, cape=:cape2, lifted_index=:lifted_index2, convective_inhibition=:convective_inhibition2, freezing_level_height=:freezing_level_height2, updated_at=NOW()
+                ");
+                foreach ($data['hourly'] as $row) {
+                    $this->executeHourly($hourlyStmt, $row, $isEcmwf, $limit48h);
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
         }
     }
 
-    private function insertDaily(array $row): void
+    private function executeDaily(\PDOStatement $stmt, array $row): void
     {
         $d = date('Y-m-d', strtotime($row['date']));
-        $stmt = $this->pdo->prepare("
-            INSERT INTO weather_forecast_daily (forecast_date, weather_code, temperature_2m_max, temperature_2m_min, apparent_temperature_max, apparent_temperature_min, uv_index_max, sunrise, sunset, daylight_duration, sunshine_duration, moonrise, moonset, moon_phase, rain_sum, showers_sum, snowfall_sum, precipitation_sum, precipitation_hours, precipitation_probability_max, wind_speed_10m_max, wind_gusts_10m_max, wind_direction_10m_dominant, shortwave_radiation_sum)
-            VALUES (:fd, :weather_code, :temperature_2m_max, :temperature_2m_min, :apparent_temperature_max, :apparent_temperature_min, :uv_index_max, :sunrise, :sunset, :daylight_duration, :sunshine_duration, :moonrise, :moonset, :moon_phase, :rain_sum, :showers_sum, :snowfall_sum, :precipitation_sum, :precipitation_hours, :precipitation_probability_max, :wind_speed_10m_max, :wind_gusts_10m_max, :wind_direction_10m_dominant, :shortwave_radiation_sum)
-            ON DUPLICATE KEY UPDATE weather_code=:weather_code2, temperature_2m_max=:temperature_2m_max2, temperature_2m_min=:temperature_2m_min2, apparent_temperature_max=:apparent_temperature_max2, apparent_temperature_min=:apparent_temperature_min2, uv_index_max=:uv_index_max2, sunrise=:sunrise2, sunset=:sunset2, daylight_duration=:daylight_duration2, sunshine_duration=:sunshine_duration2, moonrise=:moonrise2, moonset=:moonset2, moon_phase=:moon_phase2, rain_sum=:rain_sum2, showers_sum=:showers_sum2, snowfall_sum=:snowfall_sum2, precipitation_sum=:precipitation_sum2, precipitation_hours=:precipitation_hours2, precipitation_probability_max=:precipitation_probability_max2, wind_speed_10m_max=:wind_speed_10m_max2, wind_gusts_10m_max=:wind_gusts_10m_max2, wind_direction_10m_dominant=:wind_direction_10m_dominant2, shortwave_radiation_sum=:shortwave_radiation_sum2, updated_at=NOW()
-        ");
 
         $binds = [
             ':fd' => $d,
@@ -145,7 +160,7 @@ class WeatherIngestService
         $stmt->execute($binds);
     }
 
-    private function insertHourly(array $row, bool $isEcmwf, int $limit48h): void
+    private function executeHourly(\PDOStatement $stmt, array $row, bool $isEcmwf, int $limit48h): void
     {
         $time = strtotime($row['date']);
         
@@ -155,11 +170,6 @@ class WeatherIngestService
         }
         
         $dt = date('Y-m-d H:i:s', $time);
-        $stmt = $this->pdo->prepare("
-            INSERT INTO weather_forecast_hourly (forecast_time, temperature_2m, relative_humidity_2m, dew_point_2m, apparent_temperature, precipitation_probability, precipitation, rain, showers, snowfall, snow_depth, weather_code, cloud_cover, surface_pressure, visibility, evapotranspiration, wind_speed_10m, wind_direction_10m, wind_gusts_10m, soil_temperature_0cm, soil_moisture_0_to_1cm, uv_index, sunshine_duration, total_column_integrated_water_vapour, cape, lifted_index, convective_inhibition, freezing_level_height)
-            VALUES (:ft, :temperature_2m, :relative_humidity_2m, :dew_point_2m, :apparent_temperature, :precipitation_probability, :precipitation, :rain, :showers, :snowfall, :snow_depth, :weather_code, :cloud_cover, :surface_pressure, :visibility, :evapotranspiration, :wind_speed_10m, :wind_direction_10m, :wind_gusts_10m, :soil_temperature_0cm, :soil_moisture_0_to_1cm, :uv_index, :sunshine_duration, :total_column_integrated_water_vapour, :cape, :lifted_index, :convective_inhibition, :freezing_level_height)
-            ON DUPLICATE KEY UPDATE temperature_2m=:temperature_2m2, relative_humidity_2m=:relative_humidity_2m2, dew_point_2m=:dew_point_2m2, apparent_temperature=:apparent_temperature2, precipitation_probability=:precipitation_probability2, precipitation=:precipitation2, rain=:rain2, showers=:showers2, snowfall=:snowfall2, snow_depth=:snow_depth2, weather_code=:weather_code2, cloud_cover=:cloud_cover2, surface_pressure=:surface_pressure2, visibility=:visibility2, evapotranspiration=:evapotranspiration2, wind_speed_10m=:wind_speed_10m2, wind_direction_10m=:wind_direction_10m2, wind_gusts_10m=:wind_gusts_10m2, soil_temperature_0cm=:soil_temperature_0cm2, soil_moisture_0_to_1cm=:soil_moisture_0_to_1cm2, uv_index=:uv_index2, sunshine_duration=:sunshine_duration2, total_column_integrated_water_vapour=:total_column_integrated_water_vapour2, cape=:cape2, lifted_index=:lifted_index2, convective_inhibition=:convective_inhibition2, freezing_level_height=:freezing_level_height2, updated_at=NOW()
-        ");
 
         $binds = [
             ':ft' => $dt,
