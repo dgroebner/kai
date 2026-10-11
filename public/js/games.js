@@ -349,6 +349,7 @@
 
         excludeRare: false,
         suppressConfirm: false,
+        manualExcludedLetters: [],
         availableLetters: [],
         drawnLetters: [],
         currentLetter: null,
@@ -382,6 +383,9 @@
             if (this.excludeRare) {
                 pool = pool.filter(l => !this.RARE_LETTERS.includes(l));
             }
+            if (this.manualExcludedLetters && this.manualExcludedLetters.length > 0) {
+                pool = pool.filter(l => !this.manualExcludedLetters.includes(l));
+            }
             return pool;
         },
 
@@ -391,6 +395,7 @@
                 if (saved) {
                     const data = JSON.parse(saved);
                     this.excludeRare = Boolean(data.excludeRare);
+                    this.manualExcludedLetters = Array.isArray(data.manualExcludedLetters) ? data.manualExcludedLetters : [];
                     this.drawnLetters = Array.isArray(data.drawnLetters) ? data.drawnLetters : [];
                     this.currentLetter = data.currentLetter || null;
                     
@@ -406,6 +411,7 @@
 
             // Standardinitialisierung
             this.excludeRare = false;
+            this.manualExcludedLetters = [];
             this.resetRound(false);
         },
 
@@ -413,6 +419,7 @@
             try {
                 const data = {
                     excludeRare: this.excludeRare,
+                    manualExcludedLetters: this.manualExcludedLetters,
                     drawnLetters: this.drawnLetters,
                     currentLetter: this.currentLetter
                 };
@@ -433,6 +440,47 @@
             this.saveState();
             this.render();
             triggerVibration([15]);
+        },
+
+        toggleLetterExclusion(letter) {
+            if (!this.FULL_ALPHABET.includes(letter)) return;
+
+            // Wenn der Buchstabe bereits durch "Schwierige Buchstaben" ausgeschlossen ist,
+            // Checkbox umschalten oder Hinweis
+            const isRareExcluded = this.excludeRare && this.RARE_LETTERS.includes(letter);
+            if (isRareExcluded) {
+                // Schalter ausschalten und nur diesen Buchstaben wieder erlauben
+                this.excludeRare = false;
+                if (this.chkExcludeRare) this.chkExcludeRare.checked = false;
+                // Die anderen seltenen Buchstaben als manuell ausgeschlossen merken
+                this.RARE_LETTERS.forEach(rl => {
+                    if (rl !== letter && !this.manualExcludedLetters.includes(rl)) {
+                        this.manualExcludedLetters.push(rl);
+                    }
+                });
+            } else {
+                const idx = this.manualExcludedLetters.indexOf(letter);
+                if (idx !== -1) {
+                    // Wieder einschließen
+                    this.manualExcludedLetters.splice(idx, 1);
+                    triggerVibration([15]);
+                } else {
+                    // Manuell ausschließen
+                    this.manualExcludedLetters.push(letter);
+                    triggerVibration([25]);
+                }
+            }
+
+            // Pool synchronisieren
+            const pool = this.getActivePool();
+            this.drawnLetters = this.drawnLetters.filter(l => pool.includes(l));
+            this.availableLetters = pool.filter(l => !this.drawnLetters.includes(l));
+            if (this.currentLetter && !pool.includes(this.currentLetter)) {
+                this.currentLetter = null;
+            }
+
+            this.saveState();
+            this.render();
         },
 
         drawNext() {
@@ -584,27 +632,34 @@
                 const pool = this.getActivePool();
 
                 this.FULL_ALPHABET.forEach(letter => {
-                    const cell = document.createElement('div');
-                    cell.className = 'games-alphabet-cell';
-                    cell.textContent = letter;
+                    const isDrawn = this.drawnLetters.includes(letter);
+                    const isCurrent = (letter === this.currentLetter);
+                    const isExcluded = !pool.includes(letter);
 
-                    if (!pool.includes(letter)) {
-                        // Buchstabe durch Einstellung ausgeschlossen (z.B. Q, X, Y)
+                    const cell = document.createElement('div');
+                    cell.className = 'games-alphabet-cell js-alphabet-cell';
+                    cell.textContent = letter;
+                    cell.dataset.letter = letter;
+                    cell.setAttribute('role', 'button');
+                    cell.setAttribute('tabindex', '0');
+
+                    if (isExcluded) {
                         cell.classList.add('is-excluded');
-                        cell.setAttribute('title', `${letter} (ausgeschlossen)`);
-                    } else if (this.drawnLetters.includes(letter)) {
-                        // Bereits gespielt
+                        cell.setAttribute('title', `Buchstabe „${letter}“ (ausgeschlossen — tippen zum Aktivieren)`);
+                        cell.setAttribute('aria-pressed', 'false');
+                    } else if (isDrawn) {
                         cell.classList.add('is-used');
-                        if (letter === this.currentLetter) {
+                        if (isCurrent) {
                             cell.classList.add('is-current');
-                            cell.setAttribute('title', `${letter} (aktuell)`);
+                            cell.setAttribute('title', `Buchstabe „${letter}“ (aktuell gezogen)`);
                         } else {
-                            cell.setAttribute('title', `${letter} (bereits gezogen)`);
+                            cell.setAttribute('title', `Buchstabe „${letter}“ (in dieser Runde bereits gezogen)`);
                         }
+                        cell.setAttribute('aria-pressed', 'true');
                     } else {
-                        // Noch im Pool
                         cell.classList.add('is-available');
-                        cell.setAttribute('title', `${letter} (verfügbar)`);
+                        cell.setAttribute('title', `Buchstabe „${letter}“ (verfügbar — tippen zum Ausschließen)`);
+                        cell.setAttribute('aria-pressed', 'false');
                     }
 
                     this.gridEl.appendChild(cell);
@@ -687,6 +742,14 @@
             }
 
             // 4. Stadt-Land-Fluss Aktionen
+            const alphabetCell = e.target.closest('.js-alphabet-cell');
+            if (alphabetCell) {
+                const letter = alphabetCell.dataset.letter;
+                if (letter) {
+                    CityCountryTool.toggleLetterExclusion(letter);
+                }
+                return;
+            }
             if (e.target.closest('.js-letter-next-btn')) {
                 CityCountryTool.drawNext();
                 return;
@@ -714,7 +777,7 @@
             }
         });
 
-        // Tastaturunterstützung (Enter / Leertaste für Münze und Würfel-Stage & einzelne Würfel, Escape für Modal)
+        // Tastaturunterstützung (Enter / Leertaste für Münze, Würfel, Alphabet-Zellen, Escape für Modal)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const modal = document.getElementById('games-confirm-modal');
@@ -732,6 +795,12 @@
                     e.preventDefault();
                     const idx = Number(e.target.dataset.index);
                     DiceTool.toggleLock(idx);
+                } else if (e.target && e.target.classList.contains('js-alphabet-cell')) {
+                    e.preventDefault();
+                    const letter = e.target.dataset.letter;
+                    if (letter) {
+                        CityCountryTool.toggleLetterExclusion(letter);
+                    }
                 } else if (e.target && e.target.classList.contains('js-dice-roll-trigger')) {
                     e.preventDefault();
                     DiceTool.roll(true);

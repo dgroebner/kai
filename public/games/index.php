@@ -156,7 +156,10 @@ Auth::requirePage();
             <!-- Alphabet-Raster Historie -->
             <div class="games-alphabet-section">
                 <div class="games-alphabet-header">
-                    <h3>Alphabet-Übersicht</h3>
+                    <div>
+                        <h3>Alphabet-Übersicht</h3>
+                        <div class="games-alphabet-subhint text-muted">Buchstaben anklicken, um sie für diese Runde auszuschließen</div>
+                    </div>
                     <span class="text-muted" id="games-alphabet-counter">26 verbleibend</span>
                 </div>
                 <div class="games-alphabet-grid" id="games-alphabet-grid" aria-label="Alphabet-Raster">
