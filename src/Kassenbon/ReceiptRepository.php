@@ -207,44 +207,48 @@ class ReceiptRepository
     public function findMatchingContract(array $data, string $normalizedStore): ?int
     {
         try {
-            // 1. Mandatsreferenz (höchste Genauigkeit)
-            if (!empty($data['mandate_reference'])) {
-                $mandateClean = trim((string)$data['mandate_reference']);
+            // 1. Mandatsreferenz (höchste Genauigkeit) - Leerzeichen bereinigen
+            $mandateRaw = trim((string)($data['mandate_reference'] ?? ($data['meta']['mandate_reference'] ?? '')));
+            if ($mandateRaw !== '') {
+                $mandateClean = preg_replace('/\s+/', '', $mandateRaw);
                 $stmt = $this->db->prepare("
                     SELECT id FROM bank_contracts 
-                    WHERE status = 'aktiv' 
+                    WHERE (status = 'aktiv' OR status IS NULL)
                       AND mandatsnummer IS NOT NULL 
                       AND mandatsnummer != '' 
                       AND (
-                          :mandate LIKE CONCAT('%', mandatsnummer, '%')
-                          OR mandatsnummer LIKE CONCAT('%', :mandate_short, '%')
+                          REPLACE(mandatsnummer, ' ', '') = :mandate_clean1
+                          OR :mandate_clean2 LIKE CONCAT('%', REPLACE(mandatsnummer, ' ', ''), '%')
+                          OR REPLACE(mandatsnummer, ' ', '') LIKE CONCAT('%', :mandate_short, '%')
                       )
                     LIMIT 1
                 ");
                 $stmt->execute([
-                    ':mandate' => $mandateClean,
-                    ':mandate_short' => substr($mandateClean, 0, 20)
+                    ':mandate_clean1' => $mandateClean,
+                    ':mandate_clean2' => $mandateClean,
+                    ':mandate_short' => substr($mandateClean, 0, 16)
                 ]);
                 $cid = $stmt->fetchColumn();
                 if ($cid) {
-                    $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Mandatsreferenz gefunden.");
+                    $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Mandatsreferenz '$mandateClean' gefunden.");
                     return (int)$cid;
                 }
             }
 
-            // 2. Auftraggeber / Name des Vertrags
+            // 2. Auftraggeber / Name des Vertrags (eindeutige Parameter für PDO)
             $stmt = $this->db->prepare("
                 SELECT id FROM bank_contracts 
-                WHERE status = 'aktiv' 
+                WHERE (status = 'aktiv' OR status IS NULL)
                   AND (
-                      auftraggeber LIKE :store 
-                      OR name LIKE :store
-                      OR :store_clean LIKE CONCAT('%', auftraggeber, '%')
+                      auftraggeber LIKE :store_like1 
+                      OR name LIKE :store_like2
+                      OR (auftraggeber IS NOT NULL AND :store_clean LIKE CONCAT('%', auftraggeber, '%'))
                   )
                 LIMIT 1
             ");
             $stmt->execute([
-                ':store' => '%' . $normalizedStore . '%',
+                ':store_like1' => '%' . $normalizedStore . '%',
+                ':store_like2' => '%' . $normalizedStore . '%',
                 ':store_clean' => $normalizedStore
             ]);
             $cid = $stmt->fetchColumn();
@@ -258,11 +262,11 @@ class ReceiptRepository
                 SELECT r.contract_id, r.pattern_type, r.pattern_value 
                 FROM bank_contract_rules r
                 JOIN bank_contracts c ON r.contract_id = c.id
-                WHERE c.status = 'aktiv'
+                WHERE (c.status = 'aktiv' OR c.status IS NULL)
                 ORDER BY r.priority DESC
             ");
             $rules = $stmtRules ? $stmtRules->fetchAll(PDO::FETCH_ASSOC) : [];
-            $searchSpace = strtolower($normalizedStore . ' ' . ($data['mandate_reference'] ?? '') . ' ' . ($data['invoice_number'] ?? ''));
+            $searchSpace = strtolower($normalizedStore . ' ' . $mandateRaw . ' ' . ($data['invoice_number'] ?? ''));
 
             foreach ($rules as $rule) {
                 $val = strtolower(trim((string)$rule['pattern_value']));
@@ -289,7 +293,7 @@ class ReceiptRepository
                 }
             }
         } catch (\Throwable $e) {
-            $this->logger->debug("ReceiptRepository: Vertragsabgleich übersprungen (" . $e->getMessage() . ")");
+            $this->logger->warn("ReceiptRepository: Vertragsabgleich übersprungen (" . $e->getMessage() . ")");
         }
 
         return null;

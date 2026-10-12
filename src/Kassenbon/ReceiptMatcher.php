@@ -131,12 +131,24 @@ class ReceiptMatcher
             $receiptId = (int)$receipt['id'];
             $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
             $totalAmount = (float)$receipt['total'];
-            $storeName = trim((string)$receipt['store']);
             $contractId = !empty($receipt['contract_id']) ? (int)$receipt['contract_id'] : null;
             $dueDate = !empty($receipt['due_date']) ? (string)$receipt['due_date'] : null;
 
             if ($storeName === '' || abs($totalAmount) < 0.01) {
                 continue;
+            }
+
+            // Falls der Beleg noch keinen Vertrag hat, versuchen wir ihn nachträglich zuzuordnen
+            if ($contractId === null) {
+                if (!empty($receipt['meta_data']) && is_string($receipt['meta_data'])) {
+                    $receipt['meta'] = json_decode($receipt['meta_data'], true) ?: [];
+                }
+                $contractId = (new ReceiptRepository())->findMatchingContract($receipt, $storeName);
+                if ($contractId !== null) {
+                    $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")
+                        ->execute([':cid' => $contractId, ':id' => $receiptId]);
+                    $this->logger->info("ReceiptMatcher: Beleg #$receiptId nachträglich Vertrag #$contractId zugeordnet.");
+                }
             }
 
             $expectedGiroAmount = -abs($totalAmount);
@@ -266,7 +278,7 @@ class ReceiptMatcher
      */
     public function getCandidatesForReceipt(int $receiptId): array
     {
-        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store, contract_id, due_date FROM kb_receipts WHERE id = :id");
+        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store, contract_id, due_date, meta_data, invoice_number FROM kb_receipts WHERE id = :id");
         $stmt->execute([':id' => $receiptId]);
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -277,6 +289,22 @@ class ReceiptMatcher
         $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
         $dueDate = !empty($receipt['due_date']) ? (string)$receipt['due_date'] : null;
         $contractId = !empty($receipt['contract_id']) ? (int)$receipt['contract_id'] : null;
+        $totalAmount = abs((float)$receipt['total']);
+        $store = trim((string)($receipt['store'] ?? ''));
+
+        // Falls noch kein Vertrag hinterlegt ist, versuchen wir ihn zu ermitteln
+        if ($contractId === null) {
+            if (!empty($receipt['meta_data']) && is_string($receipt['meta_data'])) {
+                $receipt['meta'] = json_decode($receipt['meta_data'], true) ?: [];
+            }
+            $contractId = (new ReceiptRepository())->findMatchingContract($receipt, $store);
+            if ($contractId !== null) {
+                $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")->execute([
+                    ':cid' => $contractId,
+                    ':id' => $receiptId
+                ]);
+            }
+        }
 
         if ($dueDate) {
             $dateEnd = date('Y-m-d', strtotime($dueDate . ' +14 days'));
@@ -290,8 +318,6 @@ class ReceiptMatcher
         }
 
         $ccCashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CREDITCARD_LOOKBACK_DAYS . ' days'));
-        $totalAmount = abs((float)$receipt['total']);
-        $store = trim((string)($receipt['store'] ?? ''));
 
         return [
             'giro' => $this->findGiroCandidates(-$totalAmount, $cashStart, $dateEnd, $store, $contractId),
@@ -329,7 +355,8 @@ class ReceiptMatcher
             $contractFilterSql = "AND (t.contract_id IS NULL OR t.contract_id = :contract_id)";
             $params[':contract_id'] = $contractId;
         } else {
-            $contractFilterSql = "AND t.contract_id IS NULL";
+            // Wenn nach konkretem Händler gefiltert wird, erlauben wir auch Buchungen mit Vertrag
+            $contractFilterSql = !empty($storeTokens) ? "" : "AND t.contract_id IS NULL";
         }
 
         if (!empty($storeTokens)) {
