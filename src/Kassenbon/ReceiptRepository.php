@@ -267,11 +267,13 @@ class ReceiptRepository
                 || !empty($data['phone_profiles'])
                 || !empty($data['meta']['phone_profiles'])
                 || stripos((string)($data['billing_period'] ?? ''), 'mobil') !== false
-                || stripos((string)($data['store'] ?? ''), 'mobil') !== false ? 1 : 0;
+                || stripos((string)($data['store'] ?? ''), 'mobil') !== false
+                || (!empty($data['items']) && is_array($data['items']) && array_any($data['items'], fn($it) => (bool)preg_match('/(magentamobil|pluskarte|mobilfunk)/i', (string)($it['name'] ?? '')))) ? 1 : 0;
 
             $isLandline = ($docType === 'landline_bill')
                 || stripos((string)($data['billing_period'] ?? ''), 'festnetz') !== false
-                || stripos((string)($data['store'] ?? ''), 'festnetz') !== false ? 1 : 0;
+                || stripos((string)($data['store'] ?? ''), 'festnetz') !== false
+                || (!empty($data['items']) && is_array($data['items']) && array_any($data['items'], fn($it) => (bool)preg_match('/(magentazuhause|festnetz|dsl|glasfaser)/i', (string)($it['name'] ?? '')))) ? 1 : 0;
 
             // 3. Auftraggeber / Name des Vertrags (mit Priorisierung nach Mobilfunk/Festnetz)
             $stmt = $this->db->prepare("

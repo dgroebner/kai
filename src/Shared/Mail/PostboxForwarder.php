@@ -54,37 +54,66 @@ class PostboxForwarder
 
         $docDate = $receiptData['date'] ?? ($receiptData['purchase_date'] ?? date('Y-m-d'));
         $store = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($receiptData['store'] ?? 'Telekom'));
-        $dispatchedFilename = "{$docDate}_{$store}_Mobilfunk.pdf";
+        $typeLabel = ($tag === '#festnetzrechnung') ? 'Festnetz' : 'Mobilfunk';
+        $dispatchedFilename = "{$docDate}_{$store}_{$typeLabel}.pdf";
 
         $billingPeriod = !empty($receiptData['billing_period']) ? ' ' . trim((string)$receiptData['billing_period']) : '';
         // Das Tag MUSS am Anfang stehen und darf keine Leerzeichen enthalten:
-        $subject = "{$tag} {$receiptData['store']} Mobilfunk-Rechnung{$billingPeriod}";
+        $subject = "{$tag} {$receiptData['store']} {$typeLabel}-Rechnung{$billingPeriod}";
 
         return $this->sendMail($targetEmail, $subject, $tag, $pdfContent, $originalFilename, $dispatchedFilename, $fileHash);
     }
 
     /**
      * Ermittelt den passenden Tag für d.velop.
-     * Aktuell: #mobilfunkrechnung für Mobilfunkbelege.
+     * Unterstützt #mobilfunkrechnung und #festnetzrechnung.
      */
     public function determinePostboxTag(array $receiptData, string $filename): ?string
     {
         $docType = $receiptData['document_type'] ?? '';
         $store = strtolower((string)($receiptData['store'] ?? ''));
         $lowerFile = strtolower($filename);
+        $billingPeriod = strtolower((string)($receiptData['billing_period'] ?? ''));
 
-        if ($docType === 'mobile_bill') {
+        // 1. Festnetz-Erkennung
+        if ($docType === 'landline_bill'
+            || str_contains($lowerFile, 'festnetz')
+            || str_contains($billingPeriod, 'festnetz')
+            || str_contains($store, 'festnetz')
+        ) {
+            return '#festnetzrechnung';
+        }
+
+        if (!empty($receiptData['items']) && is_array($receiptData['items'])) {
+            foreach ($receiptData['items'] as $item) {
+                $itemName = strtolower((string)($item['name'] ?? ''));
+                if (str_contains($itemName, 'magentazuhause') || str_contains($itemName, 'festnetz') || str_contains($itemName, 'dsl') || str_contains($itemName, 'glasfaser')) {
+                    return '#festnetzrechnung';
+                }
+            }
+        }
+
+        // 2. Mobilfunk-Erkennung
+        if ($docType === 'mobile_bill'
+            || str_contains($lowerFile, 'mobilfunk')
+            || str_contains($billingPeriod, 'mobilfunk')
+            || str_contains($store, 'mobilfunk')
+            || !empty($receiptData['meta']['phone_profiles'])
+            || !empty($receiptData['phone_profiles'])
+        ) {
             return '#mobilfunkrechnung';
         }
 
-        if (str_contains($lowerFile, 'mobilfunk')) {
-            return '#mobilfunkrechnung';
+        if (!empty($receiptData['items']) && is_array($receiptData['items'])) {
+            foreach ($receiptData['items'] as $item) {
+                $itemName = strtolower((string)($item['name'] ?? ''));
+                if (str_contains($itemName, 'magentamobil') || str_contains($itemName, 'pluskarte') || str_contains($itemName, 'mobilfunk')) {
+                    return '#mobilfunkrechnung';
+                }
+            }
         }
 
-        if (!empty($receiptData['meta']['phone_profiles'])) {
-            return '#mobilfunkrechnung';
-        }
-
+        // 3. Allgemeiner Telekom-Fallback
         if (str_contains($store, 'telekom') || str_contains($lowerFile, 'telekom')) {
             return '#mobilfunkrechnung';
         }
