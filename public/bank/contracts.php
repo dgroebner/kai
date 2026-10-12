@@ -141,7 +141,7 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
                             <th>Rhythmus</th>
                             <th>Kategorie</th>
                             <th class="text-right">Betrag</th>
-                            <th class="text-right" style="width: 100px;">Akt.</th>
+                            <th class="text-right" style="width: 110px;">Details</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -150,7 +150,7 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
                             ?>
                             <tr id="contract-<?= $c['id'] ?>">
                                 <td data-label="Name">
-                                    <strong><?= htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <strong class="js-edit-contract" data-contract='<?= htmlspecialchars(json_encode($c), ENT_QUOTES, 'UTF-8') ?>' style="cursor: pointer; text-decoration: underline dotted;" title="Vertragsdetails öffnen"><?= htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') ?></strong>
                                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
                                         <?= htmlspecialchars($c['type'], ENT_QUOTES, 'UTF-8') ?>
                                         <span class="badge"
@@ -194,8 +194,9 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
                                 <td data-label="Aktionen" class="text-right">
                                     <button type="button" class="btn btn-outline js-edit-contract"
                                             data-contract='<?= htmlspecialchars(json_encode($c), ENT_QUOTES, 'UTF-8') ?>'
-                                            style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">
-                                        ✏️
+                                            style="padding: 0.25rem 0.6rem; font-size: 0.8rem;"
+                                            title="Vertragsdetails & Rechnungen anzeigen">
+                                        🔍 Details
                                     </button>
                                 </td>
                             </tr>

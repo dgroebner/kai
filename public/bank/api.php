@@ -473,19 +473,24 @@ try {
         exit;
     }
 
-    if ($action === 'get_contract_transactions') {
+    if ($action === 'get_contract_transactions' || $action === 'get_contract_details') {
         $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
-        $limit = filter_var($data['limit'] ?? 5, FILTER_VALIDATE_INT) ?: 5;
+        $limit = filter_var($data['limit'] ?? 10, FILTER_VALIDATE_INT) ?: 10;
 
         if (!$contractId) {
             Auth::sendJsonError(400, 'Ungültige Vertrags-ID');
         }
 
-        $transactions = new BankContractRepository()->getTransactionsForContract($contractId, min($limit, 100));
+        $repo = new BankContractRepository();
+        $transactions = $repo->getTransactionsForContract($contractId, min($limit, 100));
+        $receipts = $repo->getReceiptsForContract($contractId);
+        $contract = $repo->getContractById($contractId);
 
         echo json_encode([
             'success' => true,
-            'transactions' => $transactions
+            'contract' => $contract,
+            'transactions' => $transactions,
+            'receipts' => $receipts
         ]);
         exit;
     }

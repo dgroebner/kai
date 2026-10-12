@@ -1844,124 +1844,253 @@ async function openContractModal(contract) {
     const cDirection = isEdit ? (contract.direction || 'expense') : 'expense';
     const cFaelligkeitstag = isEdit && contract.faelligkeitstag ? contract.faelligkeitstag : '';
 
+    const frequenzMap = {
+        'monatlich': 'Monatlich',
+        'vierteljaehrlich': 'Vierteljährlich',
+        'halbjaehrlich': 'Halbjährlich',
+        'jaehrlich': 'Jährlich',
+        'einmalig': 'Einmalig'
+    };
+
+    const formatMoney = (val) => {
+        const num = parseFloat(val);
+        if (isNaN(num)) return '0,00';
+        return Math.abs(num).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    };
+
+    const formatDateDe = (isoStr) => {
+        if (!isoStr) return '-';
+        const parts = String(isoStr).split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return isoStr;
+    };
+
+    const statusBadge = cStatus === 'aktiv'
+        ? '<span class="badge badge-success">Aktiv</span>'
+        : (cStatus === 'pausiert' ? '<span class="badge badge-warning">Pausiert</span>' : '<span class="badge badge-danger">Gekündigt</span>');
+
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
 
-    const recentTxsSection = isEdit ? `
-        <div style="margin-top: 0.5rem; border-top: 1px solid var(--bg-surface-hover); padding-top: 0.8rem;">
-            <label class="chart-label" style="margin-bottom: 0.5rem;">Letzte zugeordnete Buchungen:</label>
-            <div class="js-modal-recent-txs" style="font-size: 0.85rem; color: var(--text-muted);">Lade Buchungen...</div>
+    // Tabs-Leiste (nur im Bearbeitungsmodus)
+    const tabsNavHtml = isEdit ? `
+        <div class="contract-modal-tabs" style="display: flex; gap: 0.5rem; padding: 0.5rem 1.25rem; border-bottom: 1px solid var(--bg-surface-hover); background: rgba(0,0,0,0.08);">
+            <button type="button" class="btn btn-sm js-tab-btn" data-tab="overview" style="padding: 0.35rem 0.75rem;">
+                📊 Übersicht & Rechnungen
+            </button>
+            <button type="button" class="btn btn-outline btn-sm js-tab-btn" data-tab="edit" style="padding: 0.35rem 0.75rem;">
+                ⚙️ Stammdaten bearbeiten
+            </button>
         </div>
     ` : '';
 
+    // Übersicht-Tab Inhalt (Quick KPIs + Rechnungen + Giro-Umsätze)
+    const overviewTabHtml = isEdit ? `
+        <div class="js-contract-view-overview" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- KPI-Zusammenfassung -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem;">
+                <div class="kpi-card" style="padding: 0.75rem; border-left: 3px solid ${cDirection === 'income' ? 'var(--color-green, #10b981)' : 'var(--color-red, #ef4444)'};">
+                    <div class="kpi-label" style="font-size: 0.75rem;">Betrag & Rhythmus</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: ${cDirection === 'income' ? 'var(--color-green, #10b981)' : 'var(--color-red, #ef4444)'};">
+                        ${cDirection === 'income' ? '+' : '-'}${formatMoney(cBetrag)} €
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        ${frequenzMap[cFrequenz] || cFrequenz} ${cVariabel ? '(variabel)' : ''}
+                    </div>
+                </div>
+
+                <div class="kpi-card" style="padding: 0.75rem;">
+                    <div class="kpi-label" style="font-size: 0.75rem;">Fälligkeit</div>
+                    <div style="font-size: 1.1rem; font-weight: 600;">
+                        ${cFaelligkeitstag ? (cFaelligkeitstag + '. des Monats') : 'Kein Fälligkeitstag'}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        Typ: ${escapeHtml(cType)}
+                    </div>
+                </div>
+
+                <div class="kpi-card" style="padding: 0.75rem;">
+                    <div class="kpi-label" style="font-size: 0.75rem;">Partner & Mandat</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${escapeHtml(cAuftraggeber)}">
+                        ${escapeHtml(cAuftraggeber || 'Nicht hinterlegt')}
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-top: 0.2rem;" title="${escapeHtml(cMandat)}">
+                        ${cMandat ? ('Mandat: ' + escapeHtml(cMandat)) : 'Kein SEPA-Mandat'}
+                    </div>
+                </div>
+
+                <div class="kpi-card" style="padding: 0.75rem;">
+                    <div class="kpi-label" style="font-size: 0.75rem;">Laufzeit</div>
+                    <div style="font-size: 0.85rem; font-weight: 600;">
+                        ${contract.start_datum ? formatDateDe(contract.start_datum) : 'Start unb.'} &rarr; ${contract.end_datum ? formatDateDe(contract.end_datum) : 'unbefristet'}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        ${contract.laufzeit_monate ? (contract.laufzeit_monate + ' Monate') : 'Keine Mindestlaufzeit'}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sektion: Rechnungen & E-Bons -->
+            <div style="border-top: 1px solid var(--bg-surface-hover); padding-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <label class="chart-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                        🧾 Zugeordnete Rechnungen & E-Bons
+                    </label>
+                    <span class="js-receipts-count text-muted" style="font-size: 0.78rem;">Lade Rechnungen...</span>
+                </div>
+                <div class="js-modal-recent-receipts" style="font-size: 0.85rem;">
+                    <div style="padding: 1rem; text-align: center; color: var(--text-muted);">Lade Rechnungsdaten...</div>
+                </div>
+            </div>
+
+            <!-- Sektion: Girokonto-Buchungsverlauf -->
+            <div style="border-top: 1px solid var(--bg-surface-hover); padding-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <label class="chart-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                        🏦 Letzte Girokonto-Buchungen
+                    </label>
+                    <span class="js-txs-count text-muted" style="font-size: 0.78rem;">Lade Buchungen...</span>
+                </div>
+                <div class="js-modal-recent-txs" style="font-size: 0.85rem;">
+                    <div style="padding: 1rem; text-align: center; color: var(--text-muted);">Lade Buchungen...</div>
+                </div>
+            </div>
+        </div>
+    ` : '';
+
+    // Stammdaten-Tab Inhalt (Formular)
+    const editTabHtml = `
+        <div class="js-contract-view-edit" style="display: ${isEdit ? 'none' : 'flex'}; flex-direction: column; gap: 1rem;">
+            <div>
+                <label class="chart-label" style="margin-bottom: 0.3rem;">Name des Vertrags / Abos:</label>
+                <input type="text" id="modal-contract-name" class="tag-search-input" value="${escapeHtml(cName)}" placeholder="z. B. Netflix, Miete, Telekom Mobilfunk" style="font-weight: 600;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Start-Datum:</label>
+                    <input type="date" id="modal-contract-start" class="tag-search-input" value="${escapeHtml(contract?.start_datum || '')}">
+                </div>
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Laufzeit (Monate):</label>
+                    <input type="number" id="modal-contract-laufzeit" class="tag-search-input" placeholder="z.B. 24 für Mobilfunk" value="${escapeHtml(contract?.laufzeit_monate || '')}">
+                </div>
+            </div>
+
+            <div>
+                <label class="chart-label" style="margin-bottom: 0.3rem;">End-Datum (optional / autom. berechnet):</label>
+                <input type="date" id="modal-contract-end" class="tag-search-input" value="${escapeHtml(contract?.end_datum || '')}">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Richtung:</label>
+                    <select id="modal-contract-direction" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                        <option value="expense" ${cDirection === 'expense' ? 'selected' : ''}>Ausgabe (Kosten)</option>
+                        <option value="income" ${cDirection === 'income' ? 'selected' : ''}>Einnahme</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
+                    <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                        <option value="vertrag" ${cType === 'vertrag' ? 'selected' : ''}>Vertrag</option>
+                        <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
+                        <option value="abgabe" ${cType === 'abgabe' ? 'selected' : ''}>Abgabe</option>
+                        <option value="kredit" ${cType === 'kredit' ? 'selected' : ''}>Kredit</option>
+                        <option value="arbeitsvertrag" ${cType === 'arbeitsvertrag' ? 'selected' : ''}>Arbeitsvertrag</option>
+                        <option value="kindergeld" ${cType === 'kindergeld' ? 'selected' : ''}>Kindergeld</option>
+                        <option value="unterhalt" ${cType === 'unterhalt' ? 'selected' : ''}>Unterhalt</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Status:</label>
+                    <select id="modal-contract-status" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                        <option value="aktiv" ${cStatus === 'aktiv' ? 'selected' : ''}>Aktiv</option>
+                        <option value="pausiert" ${cStatus === 'pausiert' ? 'selected' : ''}>Pausiert</option>
+                        <option value="gekuendigt" ${cStatus === 'gekuendigt' ? 'selected' : ''}>Gekündigt</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Betrag (€):</label>
+                    <input type="number" step="0.01" id="modal-contract-betrag" class="tag-search-input" value="${escapeHtml(cBetrag)}" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="chart-label" style="margin-bottom: 0.3rem;">Frequenz:</label>
+                    <select id="modal-contract-frequenz" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
+                        <option value="monatlich" ${cFrequenz === 'monatlich' ? 'selected' : ''}>Monatlich</option>
+                        <option value="vierteljaehrlich" ${cFrequenz === 'vierteljaehrlich' ? 'selected' : ''}>Vierteljährlich</option>
+                        <option value="halbjaehrlich" ${cFrequenz === 'halbjaehrlich' ? 'selected' : ''}>Halbjährlich</option>
+                        <option value="jaehrlich" ${cFrequenz === 'jaehrlich' ? 'selected' : ''}>Jährlich</option>
+                        <option value="einmalig" ${cFrequenz === 'einmalig' ? 'selected' : ''}>Einmalig</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="chart-label" style="margin-bottom: 0.3rem;">Fälligkeitstag im Monat (1–31, optional):</label>
+                <input type="number" min="1" max="31" id="modal-contract-faelligkeitstag" class="tag-search-input" value="${escapeHtml(cFaelligkeitstag)}" placeholder="z. B. 1 für Monatsanfang, 23 etc.">
+            </div>
+
+            <div>
+                <label class="chart-label" style="margin-bottom: 0.3rem;">Auftraggeber / Empfänger (optional):</label>
+                <input type="text" id="modal-contract-auftraggeber" class="tag-search-input" value="${escapeHtml(cAuftraggeber)}" placeholder="z. B. Telekom Deutschland GmbH">
+            </div>
+
+            <div>
+                <label class="chart-label" style="margin-bottom: 0.3rem;">SEPA-Mandatsnummer (optional):</label>
+                <input type="text" id="modal-contract-mandat" class="tag-search-input" value="${escapeHtml(cMandat)}" placeholder="z. B. DE0002050006000000000000014087908">
+            </div>
+
+            <div>
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" id="modal-contract-variabel" ${cVariabel ? 'checked' : ''}>
+                    Variabler Betrag (Schwankungen erlaubt)
+                </label>
+            </div>
+        </div>
+    `;
+
     overlay.innerHTML = `
-        <div class="rule-modal-card" style="max-width: 520px;">
-            <div class="rule-modal-header">
-                <h3>📑 Vertrag ${isEdit ? 'bearbeiten' : 'neu anlegen'}</h3>
+        <div class="rule-modal-card modal-card--lg" style="max-width: 800px; width: 95vw;">
+            <div class="rule-modal-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                    <h3 style="margin: 0;">📑 ${isEdit ? escapeHtml(cName) : 'Neuen Vertrag anlegen'}</h3>
+                    ${isEdit ? `
+                        <div style="display: inline-flex; align-items: center; gap: 0.3rem;">
+                            ${statusBadge}
+                            <span class="badge" style="text-transform: uppercase; font-size: 0.7rem;">${escapeHtml(cType)}</span>
+                            <span class="badge" style="font-size: 0.7rem; background: ${cDirection === 'income' ? 'var(--color-green, #10b981)' : 'var(--bg-surface-hover)'};">
+                                ${cDirection === 'income' ? '📈 Einnahme' : '📉 Ausgabe'}
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
                 <button type="button" class="rule-modal-close js-close-contract-modal">&times;</button>
             </div>
             
-            <div class="rule-modal-body" style="gap: 1rem;">
-                <div>
-                    <label class="chart-label" style="margin-bottom: 0.3rem;">Name des Vertrags / Abos:</label>
-                    <input type="text" id="modal-contract-name" class="tag-search-input" value="${escapeHtml(cName)}" placeholder="z. B. Netflix, Miete, Haftpflicht" style="font-weight: 600;">
-                </div>
+            ${tabsNavHtml}
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Start-Datum:</label>
-                        <input type="date" id="modal-contract-start" class="tag-search-input" value="${escapeHtml(contract?.start_datum || '')}">
-                    </div>
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Laufzeit (Monate):</label>
-                        <input type="number" id="modal-contract-laufzeit" class="tag-search-input" placeholder="z.B. 36 für Kredit" value="${escapeHtml(contract?.laufzeit_monate || '')}">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="chart-label" style="margin-bottom: 0.3rem;">End-Datum (optional / autom. berechnet):</label>
-                    <input type="date" id="modal-contract-end" class="tag-search-input" value="${escapeHtml(contract?.end_datum || '')}">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Richtung:</label>
-                        <select id="modal-contract-direction" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="expense" ${cDirection === 'expense' ? 'selected' : ''}>Ausgabe (Kosten)</option>
-                            <option value="income" ${cDirection === 'income' ? 'selected' : ''}>Einnahme</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Typ:</label>
-                        <select id="modal-contract-type" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="vertrag" ${cType === 'vertrag' ? 'selected' : ''}>Vertrag</option>
-                            <option value="abo" ${cType === 'abo' ? 'selected' : ''}>Abo</option>
-                            <option value="abgabe" ${cType === 'abgabe' ? 'selected' : ''}>Abgabe</option>
-                            <option value="kredit" ${cType === 'kredit' ? 'selected' : ''}>Kredit</option>
-                            <option value="arbeitsvertrag" ${cType === 'arbeitsvertrag' ? 'selected' : ''}>Arbeitsvertrag</option>
-                            <option value="kindergeld" ${cType === 'kindergeld' ? 'selected' : ''}>Kindergeld</option>
-                            <option value="unterhalt" ${cType === 'unterhalt' ? 'selected' : ''}>Unterhalt</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Status:</label>
-                        <select id="modal-contract-status" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="aktiv" ${cStatus === 'aktiv' ? 'selected' : ''}>Aktiv</option>
-                            <option value="pausiert" ${cStatus === 'pausiert' ? 'selected' : ''}>Pausiert</option>
-                            <option value="gekuendigt" ${cStatus === 'gekuendigt' ? 'selected' : ''}>Gekündigt</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Betrag (€):</label>
-                        <input type="number" step="0.01" id="modal-contract-betrag" class="tag-search-input" value="${escapeHtml(cBetrag)}" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="chart-label" style="margin-bottom: 0.3rem;">Frequenz:</label>
-                        <select id="modal-contract-frequenz" class="tag-search-input" style="width: 100%; padding: 0.4rem;">
-                            <option value="monatlich" ${cFrequenz === 'monatlich' ? 'selected' : ''}>Monatlich</option>
-                            <option value="vierteljaehrlich" ${cFrequenz === 'vierteljaehrlich' ? 'selected' : ''}>Vierteljährlich</option>
-                            <option value="halbjaehrlich" ${cFrequenz === 'halbjaehrlich' ? 'selected' : ''}>Halbjährlich</option>
-                            <option value="jaehrlich" ${cFrequenz === 'jaehrlich' ? 'selected' : ''}>Jährlich</option>
-                            <option value="einmalig" ${cFrequenz === 'einmalig' ? 'selected' : ''}>Einmalig</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="chart-label" style="margin-bottom: 0.3rem;">Fälligkeitstag im Monat (1–31, optional):</label>
-                    <input type="number" min="1" max="31" id="modal-contract-faelligkeitstag" class="tag-search-input" value="${escapeHtml(cFaelligkeitstag)}" placeholder="z. B. 1 für Monatsanfang, 15 etc.">
-                </div>
-
-                <div>
-                    <label class="chart-label" style="margin-bottom: 0.3rem;">Auftraggeber / Empfänger (optional):</label>
-                    <input type="text" id="modal-contract-auftraggeber" class="tag-search-input" value="${escapeHtml(cAuftraggeber)}" placeholder="Exakter Name aus Buchung">
-                </div>
-
-                <div>
-                    <label class="chart-label" style="margin-bottom: 0.3rem;">SEPA-Mandatsnummer (optional):</label>
-                    <input type="text" id="modal-contract-mandat" class="tag-search-input" value="${escapeHtml(cMandat)}" placeholder="Mandatsreferenz">
-                </div>
-
-                <div>
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
-                        <input type="checkbox" id="modal-contract-variabel" ${cVariabel ? 'checked' : ''}>
-                        Variabler Betrag (Schwankungen erlaubt)
-                    </label>
-                </div>
-
-                ${recentTxsSection}
+            <div class="rule-modal-body" style="padding: 1.25rem; gap: 1rem; max-height: 75vh; overflow-y: auto;">
+                ${overviewTabHtml}
+                ${editTabHtml}
             </div>
 
             <div class="rule-modal-footer">
-                <div>
-                    ${isEdit ? `<button type="button" class="btn btn-outline btn-danger-outline js-delete-contract">🗑 Löschen</button>` : ''}
+                <div class="js-footer-left">
+                    ${isEdit ? `
+                        <button type="button" class="btn btn-outline btn-sm js-switch-to-edit js-btn-overview-only">✏️ Vertragsdaten bearbeiten</button>
+                        <button type="button" class="btn btn-outline btn-danger-outline js-delete-contract js-btn-edit-only" style="display: none;">🗑 Löschen</button>
+                    ` : ''}
                 </div>
-                <div class="rule-modal-actions">
-                    <button type="button" class="btn btn-outline js-close-contract-modal">Abbrechen</button>
-                    <button type="button" class="btn js-save-contract">Speichern</button>
+                <div class="rule-modal-actions" style="margin-top: 0;">
+                    <button type="button" class="btn btn-outline js-close-contract-modal js-btn-overview-only">Schließen</button>
+                    <button type="button" class="btn btn-outline js-switch-to-overview js-btn-edit-only" style="${isEdit ? 'display: none;' : ''}">${isEdit ? 'Zurück' : 'Abbrechen'}</button>
+                    <button type="button" class="btn js-save-contract js-btn-edit-only" style="${isEdit ? 'display: none;' : ''}">Speichern</button>
                 </div>
             </div>
         </div>
@@ -1970,57 +2099,168 @@ async function openContractModal(contract) {
     document.body.appendChild(overlay);
     activeContractModal = overlay;
 
-    // --- Logik zur automatischen Enddatum-Berechnung (jetzt nach overlay-Erstellung) ---
+    // --- Tab-Umschaltung ---
+    let currentTab = isEdit ? 'overview' : 'edit';
+    const switchTab = (targetTab) => {
+        currentTab = targetTab;
+        const overviewEl = overlay.querySelector('.js-contract-view-overview');
+        const editEl = overlay.querySelector('.js-contract-view-edit');
+        const tabBtns = overlay.querySelectorAll('.js-tab-btn');
+        const overviewBtns = overlay.querySelectorAll('.js-btn-overview-only');
+        const editBtns = overlay.querySelectorAll('.js-btn-edit-only');
+
+        if (overviewEl && editEl) {
+            if (targetTab === 'overview') {
+                overviewEl.style.display = 'flex';
+                editEl.style.display = 'none';
+                overviewBtns.forEach(b => b.style.display = '');
+                editBtns.forEach(b => b.style.display = 'none');
+            } else {
+                overviewEl.style.display = 'none';
+                editEl.style.display = 'flex';
+                overviewBtns.forEach(b => b.style.display = 'none');
+                editBtns.forEach(b => b.style.display = '');
+            }
+        }
+
+        tabBtns.forEach(btn => {
+            if (btn.dataset.tab === targetTab) {
+                btn.className = 'btn btn-sm js-tab-btn';
+            } else {
+                btn.className = 'btn btn-outline btn-sm js-tab-btn';
+            }
+        });
+    };
+
+    overlay.querySelectorAll('.js-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    overlay.querySelectorAll('.js-switch-to-edit').forEach(b => {
+        b.addEventListener('click', () => switchTab('edit'));
+    });
+
+    overlay.querySelectorAll('.js-switch-to-overview').forEach(b => {
+        b.addEventListener('click', () => switchTab('overview'));
+    });
+
+    // --- Logik zur automatischen Enddatum-Berechnung ---
     const startInput = overlay.querySelector('#modal-contract-start');
     const laufzeitInput = overlay.querySelector('#modal-contract-laufzeit');
     const endInput = overlay.querySelector('#modal-contract-end');
 
     const calculateEndDate = () => {
-        const startVal = startInput.value;
-        const monthsVal = parseInt(laufzeitInput.value, 10);
-        if (startVal && !isNaN(monthsVal) && monthsVal > 0) {
+        const startVal = startInput?.value;
+        const monthsVal = parseInt(laufzeitInput?.value, 10);
+        if (startVal && !isNaN(monthsVal) && monthsVal > 0 && endInput) {
             const date = new Date(startVal);
             date.setMonth(date.getMonth() + monthsVal);
             endInput.value = date.toISOString().split('T')[0];
         }
     };
 
-    startInput.addEventListener('change', calculateEndDate);
-    laufzeitInput.addEventListener('input', calculateEndDate);
+    if (startInput) startInput.addEventListener('change', calculateEndDate);
+    if (laufzeitInput) laufzeitInput.addEventListener('input', calculateEndDate);
 
-    document.body.appendChild(overlay);
-    activeContractModal = overlay;
-
-    // Asynchron die letzten Buchungen laden (falls Bearbeitungsmodus)
+    // --- Asynchron Rechnungen und Buchungen laden (im Detailmodus) ---
     if (isEdit) {
         try {
-            const txRes = await KaiHttp.postJson('api.php', {
-                action: 'get_contract_transactions',
+            const historyRes = await KaiHttp.postJson('api.php', {
+                action: 'get_contract_details',
                 contract_id: parseInt(contract.id, 10),
-                limit: 5
+                limit: 10
             });
 
-            const container = overlay.querySelector('.js-modal-recent-txs');
-            if (container) {
-                if (txRes && txRes.success && txRes.transactions && txRes.transactions.length > 0) {
-                    container.innerHTML = `
-                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                            ${txRes.transactions.map(tx => `
-                                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.3rem 0.5rem; border-radius: 4px;">
-                                    <span>${escapeHtml(tx.booking_date)} – ${escapeHtml(tx.remitter || tx.creditor || tx.remittance_info || 'Buchung')}</span>
-                                    <strong class="amount-bold ${tx.amount < 0 ? 'text-danger' : 'text-success'}">${tx.amount} €</strong>
-                                </div>
-                            `).join('')}
+            // 1. Rechnungen & Belege rendern
+            const receiptsContainer = overlay.querySelector('.js-modal-recent-receipts');
+            const receiptsCountEl = overlay.querySelector('.js-receipts-count');
+            if (receiptsContainer && historyRes && historyRes.success) {
+                const receipts = historyRes.receipts || [];
+                if (receiptsCountEl) {
+                    receiptsCountEl.textContent = `${receipts.length} ${receipts.length === 1 ? 'Beleg' : 'Belege'} zugeordnet`;
+                }
+
+                if (receipts.length > 0) {
+                    receiptsContainer.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            ${receipts.map(r => {
+                                const titleStr = r.invoice_number ? `Rechnung #${escapeHtml(r.invoice_number)}` : (r.billing_period ? escapeHtml(r.billing_period) : 'E-Bon / Rechnung');
+                                const subStr = [r.store, r.billing_period].filter(Boolean).join(' · ');
+                                const payStatusHtml = r.giro_booking_date
+                                    ? `<span class="badge badge-success" title="Abgebucht am ${formatDateDe(r.giro_booking_date)}">🟢 Girokonto (${formatDateDe(r.giro_booking_date)})</span>`
+                                    : (r.cc_booking_date
+                                        ? `<span class="badge badge-success" title="Abgebucht am ${formatDateDe(r.cc_booking_date)}">💳 Kreditkarte (${formatDateDe(r.cc_booking_date)})</span>`
+                                        : `<span class="badge badge-warning" title="Noch keiner Buchung zugeordnet">🟡 Noch offen</span>`);
+
+                                return `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--bg-surface-hover); padding: 0.5rem 0.75rem; border-radius: 6px; flex-wrap: wrap; gap: 0.4rem;">
+                                        <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                                <strong style="font-size: 0.88rem;">${titleStr}</strong>
+                                                ${payStatusHtml}
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                📅 ${formatDateDe(r.purchase_date)} ${subStr ? `· ${escapeHtml(subStr)}` : ''}
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <strong class="amount-bold" style="font-size: 0.95rem;">${formatMoney(r.total)} €</strong>
+                                            <a href="../kassenbon/detail.php?id=${r.id}" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; text-decoration: none;" target="_blank">
+                                                Öffnen &rarr;
+                                            </a>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     `;
                 } else {
-                    container.innerHTML = 'Keine zugeordneten Buchungen gefunden.';
+                    receiptsContainer.innerHTML = `
+                        <div style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px dashed var(--bg-surface-hover); border-radius: var(--border-radius); text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+                            ℹ️ Bisher sind keine Rechnungen oder E-Bons für diesen Vertrag hinterlegt.<br>
+                            Eingehende Rechnungen (z. B. via Postfach) werden anhand von Mandatsnummer oder Partner automatisch hier verknüpft.
+                        </div>
+                    `;
+                }
+            }
+
+            // 2. Giro-Umsätze rendern
+            const txsContainer = overlay.querySelector('.js-modal-recent-txs');
+            const txsCountEl = overlay.querySelector('.js-txs-count');
+            if (txsContainer && historyRes && historyRes.success) {
+                const txs = historyRes.transactions || [];
+                if (txsCountEl) {
+                    txsCountEl.textContent = `${txs.length} ${txs.length === 1 ? 'Buchung' : 'Buchungen'}`;
+                }
+
+                if (txs.length > 0) {
+                    txsContainer.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                            ${txs.map(tx => {
+                                const partnerText = tx.creditor || tx.remitter || tx.remittance_info || 'Girokonto-Buchung';
+                                const isExpense = parseFloat(tx.amount) < 0;
+                                return `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.82rem;">
+                                        <div style="display: flex; gap: 0.6rem; align-items: center;">
+                                            <span style="color: var(--text-muted); font-family: monospace;">${formatDateDe(tx.booking_date)}</span>
+                                            <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 380px;">${escapeHtml(partnerText)}</span>
+                                        </div>
+                                        <strong class="amount-bold ${isExpense ? 'text-danger' : 'text-success'}">
+                                            ${isExpense ? '-' : '+'}${formatMoney(tx.amount)} €
+                                        </strong>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                } else {
+                    txsContainer.innerHTML = '<div style="padding: 0.75rem; color: var(--text-muted); font-size: 0.82rem;">Keine zugeordneten Girokonto-Buchungen vorhanden.</div>';
                 }
             }
         } catch (err) {
-            console.error('Fehler beim Laden der Buchungen:', err);
-            const container = overlay.querySelector('.js-modal-recent-txs');
-            if (container) container.innerHTML = `<span style="color: var(--color-red);">Fehler: ${escapeHtml(err.message || 'Unbekannt')}</span>`;
+            console.error('Fehler beim Laden der Vertragsdetails:', err);
+            const rc = overlay.querySelector('.js-modal-recent-receipts');
+            if (rc) rc.innerHTML = `<span style="color: var(--color-red);">Fehler: ${escapeHtml(err.message || 'Ladefehler')}</span>`;
         }
     }
 
@@ -2079,23 +2319,26 @@ async function openContractModal(contract) {
 
     // Löschen-Aktion (falls im Bearbeitungsmodus)
     if (isEdit) {
-        overlay.querySelector('.js-delete-contract').addEventListener('click', async () => {
-            if (!confirm('Diesen Vertrag wirklich löschen?')) return;
-            try {
-                const data = await KaiHttp.postJson('api.php', {
-                    action: 'delete_contract',
-                    contract_id: parseInt(contract.id, 10)
-                });
+        const deleteBtn = overlay.querySelector('.js-delete-contract');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                if (!confirm('Diesen Vertrag wirklich löschen?')) return;
+                try {
+                    const data = await KaiHttp.postJson('api.php', {
+                        action: 'delete_contract',
+                        contract_id: parseInt(contract.id, 10)
+                    });
 
-                if (data && data.success) {
-                    closeModal();
-                    window.location.reload();
-                } else {
-                    alert(data?.message || 'Fehler beim Löschen.');
+                    if (data && data.success) {
+                        closeModal();
+                        window.location.reload();
+                    } else {
+                        alert(data?.message || 'Fehler beim Löschen.');
+                    }
+                } catch (err) {
+                    console.error('Fehler beim Löschen des Vertrags:', err);
                 }
-            } catch (err) {
-                console.error('Fehler beim Löschen des Vertrags:', err);
-            }
-        });
+            });
+        }
     }
 }
