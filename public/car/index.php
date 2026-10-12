@@ -294,8 +294,16 @@ if ($tab === 'trips') {
         }
         .badge-outline {
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15)) !important;
             color: var(--text-color, #f1f5f9);
+            text-decoration: none;
+            transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+        }
+        a.badge-outline:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--primary, #3b82f6) !important;
+            color: #fff;
+            transform: translateY(-1px);
         }
         .charge-kpi-row {
             display: flex;
@@ -899,15 +907,18 @@ if ($tab === 'trips') {
                                             <?php if (!empty($charge['station_operator'])): ?>
                                                 <span class="badge badge-primary">⚡ <?= htmlspecialchars($charge['station_operator']) ?></span>
                                             <?php endif; ?>
-                                            <?php if (!empty($charge['station_name'])): ?>
-                                                <span class="badge badge-outline" title="<?= htmlspecialchars($charge['station_name']) ?>" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                    📍 <?= htmlspecialchars($charge['station_name']) ?>
-                                                </span>
+                                            <?php 
+                                                $locText = !empty($charge['station_name']) ? $charge['station_name'] : 'Unterwegs';
+                                                $osmUrl = $hasCoords ? "https://www.openstreetmap.org/?mlat={$charge['lat']}&mlon={$charge['lon']}#map=18/{$charge['lat']}/{$charge['lon']}" : null;
+                                            ?>
+                                            <?php if ($osmUrl): ?>
+                                                <a href="<?= $osmUrl ?>" target="_blank" rel="noopener" class="badge badge-outline" title="Ladestation in OpenStreetMap ansehen: <?= htmlspecialchars($locText) ?>" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    📍 <?= htmlspecialchars($locText) ?>
+                                                </a>
                                             <?php else: ?>
-                                                <span class="badge badge-outline">📍 Unterwegs</span>
-                                            <?php endif; ?>
-                                            <?php if ($hasCoords): ?>
-                                                <a href="https://www.openstreetmap.org/?mlat=<?= $charge['lat'] ?>&mlon=<?= $charge['lon'] ?>#map=18/<?= $charge['lat'] ?>/<?= $charge['lon'] ?>" target="_blank" rel="noopener" class="btn btn-outline btn-xs" title="Ladestation in OpenStreetMap ansehen" style="font-size: 0.75rem; padding: 2px 6px;">🗺️ OSM</a>
+                                                <span class="badge badge-outline" title="<?= htmlspecialchars($locText) ?>" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    📍 <?= htmlspecialchars($locText) ?>
+                                                </span>
                                             <?php endif; ?>
                                             <?php if ($hasCoords && !$hasStation): ?>
                                                 <button type="button" class="btn btn-outline btn-xs js-btn-resolve-station" data-charge-id="<?= $charge['id'] ?>" title="Ladestation über OpenStreetMap ermitteln" style="font-size: 0.75rem; padding: 2px 6px;">🔍 Station suchen</button>
