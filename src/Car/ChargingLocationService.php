@@ -49,8 +49,8 @@ class ChargingLocationService
             ];
         }
 
-        // 2. Fallback: Reverse Geocoding via ORS für Adresse / Ort
-        $address = $this->reverseGeocodeOrs($lat, $lon);
+        // 2. Fallback: Reverse Geocoding via ORS / Nominatim für Adresse / Ort
+        $address = $this->reverseGeocode($lat, $lon);
         if ($address !== null) {
             return [
                 'station_name' => $address,
@@ -68,6 +68,96 @@ class ChargingLocationService
             'osm_url' => $this->getOsmUrl($lat, $lon),
             'gmaps_url' => $this->getGoogleMapsUrl($lat, $lon),
         ];
+    }
+
+    /**
+     * Löst GPS-Koordinaten in eine lesbare Adresse auf (unterwegs).
+     * Nutzt Caching, um wiederholte Requests bei unverändertem Standort zu vermeiden.
+     */
+    public function reverseGeocode(float $lat, float $lon): ?string
+    {
+        $cacheKey = sprintf('rev_geo_%.4f_%.4f', $lat, $lon);
+        if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION[$cacheKey])) {
+            return $_SESSION[$cacheKey];
+        }
+
+        $cacheFile = sys_get_temp_dir() . '/' . $cacheKey . '.txt';
+        if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 86400) {
+            $cached = @file_get_contents($cacheFile);
+            if (!empty($cached)) {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    $_SESSION[$cacheKey] = $cached;
+                }
+                return $cached;
+            }
+        }
+
+        // 1. Zuerst ORS versuchen (falls konfiguriert)
+        $address = $this->reverseGeocodeOrs($lat, $lon);
+
+        // 2. Fallback auf OpenStreetMap Nominatim
+        if (empty($address)) {
+            $address = $this->reverseGeocodeNominatim($lat, $lon);
+        }
+
+        if (!empty($address)) {
+            @file_put_contents($cacheFile, $address);
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION[$cacheKey] = $address;
+            }
+            return $address;
+        }
+
+        return null;
+    }
+
+    /**
+     * Fallback: Reverse Geocoding über OpenStreetMap Nominatim.
+     */
+    private function reverseGeocodeNominatim(float $lat, float $lon): ?string
+    {
+        $url = 'https://nominatim.openstreetmap.org/reverse?' . http_build_query([
+            'format' => 'jsonv2',
+            'lat' => $lat,
+            'lon' => $lon,
+            'zoom' => 18,
+            'addressdetails' => 1,
+        ]);
+
+        try {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 4,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent: Kai-CarDashboard/1.0 (https://kai.agent-smith.de; contact: kai@agent-smith.de)',
+                    'Accept: application/json',
+                ],
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && is_string($response)) {
+                $data = json_decode($response, true);
+                if (!empty($data['display_name'])) {
+                    $addr = $data['address'] ?? [];
+                    $road = $addr['road'] ?? $addr['pedestrian'] ?? $addr['street'] ?? '';
+                    $houseNumber = $addr['house_number'] ?? '';
+                    $city = $addr['city'] ?? $addr['town'] ?? $addr['village'] ?? $addr['suburb'] ?? '';
+                    
+                    $streetPart = trim($road . ' ' . $houseNumber);
+                    if ($streetPart !== '' && $city !== '') {
+                        return $streetPart . ', ' . $city;
+                    }
+                    return (string)$data['display_name'];
+                }
+            }
+        } catch (Throwable $e) {
+            $this->logger->warn("ChargingLocationService: Nominatim reverse Fehler ({$e->getMessage()})");
+        }
+
+        return null;
     }
 
     /**

@@ -102,6 +102,16 @@ $isHome = ($state && !empty($state['latitude']) && !empty($state['longitude']))
     ? $geofenceService->isHome((float)$state['latitude'], (float)$state['longitude'])
     : null;
 
+$currentAddress = null;
+if ($state && !empty($state['latitude']) && !empty($state['longitude']) && !$isHome) {
+    try {
+        $locService = new \Kai\Tools\Car\ChargingLocationService();
+        $currentAddress = $locService->reverseGeocode((float)$state['latitude'], (float)$state['longitude']);
+    } catch (\Throwable $e) {
+        // Fallback bleibt null -> "Unterwegs"
+    }
+}
+
 // ----------------------------------------------------
 // 2. Zeitraum-Berechnung (Woche, Monat, Jahr in Ortszeit)
 // ----------------------------------------------------
@@ -404,15 +414,19 @@ if ($tab === 'trips') {
                         <span class="info-label">Standort</span>
                         <div>
                         <?php if (!empty($state['latitude']) && !empty($state['longitude'])): ?>
-                            <span class="status-pill <?= $isHome ? 'status-pill-home' : 'status-pill-away' ?>">
-                                <?= $isHome ? '🏠 Zuhause' : '🚗 Unterwegs' ?>
-                            </span>
-                            <a href="https://www.openstreetmap.org/?mlat=<?= urlencode((string)$state['latitude']) ?>&mlon=<?= urlencode((string)$state['longitude']) ?>#map=16/<?= urlencode((string)$state['latitude']) ?>/<?= urlencode((string)$state['longitude']) ?>"
-                               target="_blank" rel="noopener noreferrer" class="status-pill status-pill-location" title="Auf Karte öffnen">
-                                📍 Karte
-                            </a>
+                            <?php if ($isHome): ?>
+                                <span class="badge badge-success">🏠 Zuhause</span>
+                            <?php else: ?>
+                                <?php 
+                                    $locText = !empty($currentAddress) ? $currentAddress : 'Unterwegs';
+                                    $osmUrl = 'https://www.openstreetmap.org/?mlat=' . urlencode((string)$state['latitude']) . '&mlon=' . urlencode((string)$state['longitude']) . '#map=16/' . urlencode((string)$state['latitude']) . '/' . urlencode((string)$state['longitude']);
+                                ?>
+                                <a href="<?= $osmUrl ?>" target="_blank" rel="noopener noreferrer" class="badge badge-outline" title="Standort in OpenStreetMap ansehen: <?= htmlspecialchars($locText) ?>" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">
+                                    📍 <?= htmlspecialchars($locText) ?>
+                                </a>
+                            <?php endif; ?>
                         <?php else: ?>
-                            <span class="status-pill" style="--pill-color: var(--text-muted, #94a3b8);">–</span>
+                            <span class="badge badge-outline" style="color: var(--text-muted, #94a3b8);">–</span>
                         <?php endif; ?>
                         </div>
                     </div>
