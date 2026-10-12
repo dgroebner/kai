@@ -141,6 +141,20 @@ class MailDispatcher
 
                         if ($this->receiptRepository->receiptExists($fileHash)) {
                             $this->logger->info("MailDispatcher: Bon-Hash $fileHash existiert bereits.");
+
+                            // Falls d.velop Postbox-Versand für diesen Beleg noch aussteht, nachholen
+                            if (str_contains($mimeType, 'pdf')) {
+                                try {
+                                    $existingReceipt = $this->receiptRepository->getReceiptByHash($fileHash);
+                                    if ($existingReceipt) {
+                                        $postboxForwarder = new PostboxForwarder(logger: $this->logger, imapClient: $this->imapClient);
+                                        $postboxForwarder->forwardIfEligible($content, $fileName, $fileHash, $existingReceipt);
+                                    }
+                                } catch (Throwable $pte) {
+                                    $this->logger->warn("MailDispatcher: d.velop Postbox-Weiterleitung für bestehenden Bon übersprungen (" . $pte->getMessage() . ")");
+                                }
+                            }
+
                             $processedCount++;
                             continue;
                         }
@@ -178,7 +192,7 @@ class MailDispatcher
                                 // Automatisierte Weiterleitung an die d.velop Postbox (z.B. mit Tag #mobilfunkrechnung)
                                 if (str_contains($mimeType, 'pdf')) {
                                     try {
-                                        $postboxForwarder = new PostboxForwarder(logger: $this->logger);
+                                        $postboxForwarder = new PostboxForwarder(logger: $this->logger, imapClient: $this->imapClient);
                                         $postboxForwarder->forwardIfEligible($content, $fileName, $fileHash, $receiptData);
                                     } catch (Throwable $pte) {
                                         $this->logger->warn("MailDispatcher: d.velop Postbox-Weiterleitung übersprungen (" . $pte->getMessage() . ")");
@@ -262,5 +276,76 @@ class MailDispatcher
                 @unlink($tmpPdf);
             }
         }
+    }
+
+    /**
+     * Prüft die letzten Nachrichten im IMAP-Archivordner auf Mobilfunkrechnungen,
+     * die noch nicht erfolgreich an die d.velop Postbox weitergeleitet wurden,
+     * und holt den Versand nach.
+     */
+    public function retryUnsyncedPostboxMailsFromArchive(int $limit = 20, bool $force = false): int
+    {
+        if (empty($_ENV['DVELOP_POSTBOX_EMAIL'])) {
+            return 0;
+        }
+
+        $this->logger->info("MailDispatcher: Prüfe Archiv auf ungesendete Postbox-Rechnungen (Limit: $limit)...");
+        $forwardedCount = 0;
+
+        try {
+            $this->imapClient->ensureConnected();
+            $messages = $this->imapClient->getMailsFromFolder('Archive', $limit);
+            if (empty($messages)) {
+                $this->logger->info("MailDispatcher: Keine E-Mails im Archiv gefunden.");
+                return 0;
+            }
+
+            $postboxForwarder = new PostboxForwarder(logger: $this->logger, imapClient: $this->imapClient);
+
+            foreach ($messages as $message) {
+                $attachments = [];
+                try {
+                    $attachments = $message->getAttachments();
+                } catch (Throwable) {
+                    continue;
+                }
+
+                foreach ($attachments as $attachment) {
+                    $mimeType = strtolower($attachment->getMimeType() ?: '');
+                    $fileName = $attachment->getName() ?: 'anhang.pdf';
+
+                    if (!str_contains($mimeType, 'pdf') && !str_ends_with(strtolower($fileName), '.pdf')) {
+                        continue;
+                    }
+
+                    $content = $attachment->getContent();
+                    if (empty($content)) {
+                        continue;
+                    }
+
+                    $base64Data = base64_encode($content);
+                    $fileHash = hash('sha256', $base64Data);
+
+                    // Bereits erfolgreich versendet?
+                    if (!$force && $postboxForwarder->isAlreadyDispatched($fileHash)) {
+                        continue;
+                    }
+
+                    $receipt = $this->receiptRepository->getReceiptByHash($fileHash);
+                    if (!$receipt) {
+                        continue;
+                    }
+
+                    if ($postboxForwarder->forwardIfEligible($content, $fileName, $fileHash, $receipt, $force)) {
+                        $forwardedCount++;
+                        $this->logger->info("MailDispatcher: Archiv-Beleg $fileName nachträglich an d.velop versendet.");
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            $this->logger->error("MailDispatcher: Fehler beim Archiv-Abgleich für Postbox: " . $e->getMessage());
+        }
+
+        return $forwardedCount;
     }
 }

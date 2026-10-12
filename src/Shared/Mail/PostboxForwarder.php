@@ -12,11 +12,13 @@ class PostboxForwarder
 {
     private PDO $db;
     private Logger $logger;
+    private ?ImapClient $imapClient;
 
-    public function __construct(?PDO $db = null, ?Logger $logger = null)
+    public function __construct(?PDO $db = null, ?Logger $logger = null, ?ImapClient $imapClient = null)
     {
         $this->db = $db ?? Database::getInstance()->getConnection();
         $this->logger = $logger ?? new Logger(14);
+        $this->imapClient = $imapClient;
     }
 
     /**
@@ -27,7 +29,8 @@ class PostboxForwarder
         string $pdfContent,
         string $originalFilename,
         string $fileHash,
-        array $receiptData
+        array $receiptData,
+        bool $force = false
     ): bool {
         $targetEmail = trim((string)($_ENV['DVELOP_POSTBOX_EMAIL'] ?? ''));
         if ($targetEmail === '') {
@@ -43,12 +46,12 @@ class PostboxForwarder
         }
 
         // Duplikatschutz prüfen
-        if ($this->alreadyDispatched($fileHash, $tag)) {
+        if (!$force && $this->alreadyDispatched($fileHash, $tag)) {
             $this->logger->info("PostboxForwarder: Beleg ($fileHash) wurde bereits mit Tag '$tag' an d.velop versendet.");
             return true;
         }
 
-        $docDate = $receiptData['date'] ?? date('Y-m-d');
+        $docDate = $receiptData['date'] ?? ($receiptData['purchase_date'] ?? date('Y-m-d'));
         $store = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($receiptData['store'] ?? 'Telekom'));
         $dispatchedFilename = "{$docDate}_{$store}_Mobilfunk.pdf";
 
@@ -63,7 +66,7 @@ class PostboxForwarder
      * Ermittelt den passenden Tag für d.velop.
      * Aktuell: #mobilfunkrechnung für Mobilfunkbelege.
      */
-    private function determinePostboxTag(array $receiptData, string $filename): ?string
+    public function determinePostboxTag(array $receiptData, string $filename): ?string
     {
         $docType = $receiptData['document_type'] ?? '';
         $store = strtolower((string)($receiptData['store'] ?? ''));
@@ -73,7 +76,15 @@ class PostboxForwarder
             return '#mobilfunkrechnung';
         }
 
-        if (str_contains($store, 'telekom') || str_contains($lowerFile, 'mobilfunk') || str_contains($lowerFile, 'telekom')) {
+        if (str_contains($lowerFile, 'mobilfunk')) {
+            return '#mobilfunkrechnung';
+        }
+
+        if (!empty($receiptData['meta']['phone_profiles'])) {
+            return '#mobilfunkrechnung';
+        }
+
+        if (str_contains($store, 'telekom') || str_contains($lowerFile, 'telekom')) {
             return '#mobilfunkrechnung';
         }
 
@@ -83,7 +94,7 @@ class PostboxForwarder
     /**
      * Prüft in postbox_sync_log, ob das Dokument bereits erfolgreich versendet wurde.
      */
-    private function alreadyDispatched(string $fileHash, string $tag): bool
+    public function alreadyDispatched(string $fileHash, string $tag): bool
     {
         try {
             $stmt = $this->db->prepare("
@@ -94,6 +105,20 @@ class PostboxForwarder
             return (int)$stmt->fetchColumn() > 0;
         } catch (Throwable $e) {
             $this->logger->warn("PostboxForwarder: Duplikatsprüfung fehlgeschlagen: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function isAlreadyDispatched(string $fileHash, ?string $tag = null): bool
+    {
+        try {
+            if ($tag !== null) {
+                return $this->alreadyDispatched($fileHash, $tag);
+            }
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM postbox_sync_log WHERE file_hash = :hash AND status = 'SUCCESS'");
+            $stmt->execute([':hash' => $fileHash]);
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (Throwable) {
             return false;
         }
     }
@@ -110,13 +135,24 @@ class PostboxForwarder
         string $dispatchedFilename,
         string $fileHash
     ): bool {
-        $fromEmail = trim((string)($_ENV['MAIL_USERNAME'] ?? 'kai@system.local'));
-        $boundary = '=_kai_postbox_' . md5(uniqid((string)mt_rand(), true));
+        $fromEmail = trim((string)(
+            $_ENV['IMAP_USER_KASSENBON']
+            ?? $_ENV['MAIL_FROM']
+            ?? $_ENV['MAIL_USERNAME']
+            ?? ''
+        ));
+        if ($fromEmail === '' || !filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
+            $fromEmail = 'kai@agent-smith.de';
+        }
 
+        $boundary = '=_kai_postbox_' . md5(uniqid((string)mt_rand(), true));
         $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
 
-        $headers = [
+        $fullHeaders = [
+            'Date: ' . date('r'),
             'From: Kai System <' . $fromEmail . '>',
+            'To: <' . $toEmail . '>',
+            'Subject: ' . $encodedSubject,
             'Reply-To: ' . $fromEmail,
             'MIME-Version: 1.0',
             'Content-Type: multipart/mixed; boundary="' . $boundary . '"',
@@ -137,31 +173,70 @@ class PostboxForwarder
         $body .= chunk_split(base64_encode($pdfContent)) . "\r\n";
         $body .= "--{$boundary}--";
 
+        $rawMimeMessage = implode("\r\n", $fullHeaders) . "\r\n\r\n" . $body;
+
+        $sent = false;
         $status = 'FAILED';
         $errorMessage = null;
 
+        // 1. Primär: Authentifizierter SMTP-Versand via Strato (Port 465 SSL)
         try {
-            $sent = @mail($toEmail, $encodedSubject, $body, implode("\r\n", $headers));
-            if ($sent) {
-                $status = 'SUCCESS';
-                $this->logger->info("PostboxForwarder: Rechnung erfolgreich an d.velop versendet ({$dispatchedFilename} mit Betreff '{$subject}').");
-
-                try {
-                    $activityLogger = new ActivityLogger(Database::getInstance());
-                    $activityLogger->log('postbox', "Rechnung weitergeleitet an d.velop Postbox: {$dispatchedFilename} ({$tag})");
-                } catch (Throwable) {}
-
-                $this->logDispatch($fileHash, $originalFilename, $dispatchedFilename, $tag, $status, null);
-                return true;
-            }
-
-            $errorMessage = 'mail() Rückgabewert war false.';
-            $this->logger->warn("PostboxForwarder: Versand an {$toEmail} fehlgeschlagen.");
-        } catch (Throwable $e) {
-            $errorMessage = $e->getMessage();
-            $this->logger->error("PostboxForwarder: Ausnahme beim Versand: " . $errorMessage);
+            $smtpClient = new SmtpClient(logger: $this->logger);
+            $sent = $smtpClient->send($toEmail, $subject, $rawMimeMessage, $fromEmail);
+        } catch (Throwable $smtpErr) {
+            $this->logger->warn("PostboxForwarder: SMTP-Versand fehlgeschlagen (" . $smtpErr->getMessage() . "), teste PHP mail()...");
+            $errorMessage = $smtpErr->getMessage();
         }
 
+        // 2. Fallback: PHP mail() mit Envelope-Sender -f
+        if (!$sent) {
+            try {
+                $extraParams = "-f" . escapeshellarg($fromEmail);
+                $mailHeaders = [
+                    'From: Kai System <' . $fromEmail . '>',
+                    'Reply-To: ' . $fromEmail,
+                    'MIME-Version: 1.0',
+                    'Content-Type: multipart/mixed; boundary="' . $boundary . '"',
+                    'X-Mailer: Kai-Toolset/1.20',
+                ];
+                $sent = @mail($toEmail, $encodedSubject, $body, implode("\r\n", $mailHeaders), $extraParams);
+                if ($sent) {
+                    $errorMessage = null;
+                } else {
+                    $errorMessage = ($errorMessage ? $errorMessage . ' | ' : '') . 'mail() mit Envelope-Sender lieferte false.';
+                }
+            } catch (Throwable $mailErr) {
+                $errorMessage = ($errorMessage ? $errorMessage . ' | ' : '') . $mailErr->getMessage();
+            }
+        }
+
+        if ($sent) {
+            $status = 'SUCCESS';
+            $this->logger->info("PostboxForwarder: Rechnung erfolgreich an d.velop versendet ({$dispatchedFilename} mit Betreff '{$subject}').");
+
+            // 3. Kopie in "Gesendte Objekte" auf dem IMAP-Server ablegen
+            try {
+                if ($this->imapClient) {
+                    $this->imapClient->appendSentMessage($rawMimeMessage);
+                } elseif (!empty($_ENV['IMAP_USER_KASSENBON']) && !empty($_ENV['IMAP_PASS_KASSENBON'])) {
+                    $imap = new ImapClient($_ENV['IMAP_USER_KASSENBON'], $_ENV['IMAP_PASS_KASSENBON']);
+                    $imap->appendSentMessage($rawMimeMessage);
+                    $imap->disconnect();
+                }
+            } catch (Throwable $imapErr) {
+                $this->logger->warn("PostboxForwarder: Kopie in Gesendete Objekte konnte nicht abgelegt werden: " . $imapErr->getMessage());
+            }
+
+            try {
+                $activityLogger = new ActivityLogger(Database::getInstance());
+                $activityLogger->log('postbox', "Rechnung weitergeleitet an d.velop Postbox: {$dispatchedFilename} ({$tag})");
+            } catch (Throwable) {}
+
+            $this->logDispatch($fileHash, $originalFilename, $dispatchedFilename, $tag, $status, null);
+            return true;
+        }
+
+        $this->logger->warn("PostboxForwarder: Versand an {$toEmail} fehlgeschlagen ($errorMessage).");
         $this->logDispatch($fileHash, $originalFilename, $dispatchedFilename, $tag, $status, $errorMessage);
         return false;
     }

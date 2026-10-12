@@ -141,6 +141,17 @@ try {
         $dispatcher->dispatch();
         $logger->info("Cronjob (mail.php): MailDispatcher erfolgreich beendet.");
 
+        // 4b. Ausstehende Weiterleitungen an d.velop Postbox aus dem Archiv nachholen
+        try {
+            $forcePostbox = isset($_GET['force_postbox']) || isset($_GET['retry_postbox']);
+            $retriedCount = $dispatcher->retryUnsyncedPostboxMailsFromArchive(limit: 20, force: $forcePostbox);
+            if ($retriedCount > 0) {
+                $logger->info("Cronjob (mail.php): {$retriedCount} Rechnung(en) aus dem Archiv an d.velop nachgesendet.");
+            }
+        } catch (Throwable $rpe) {
+            $logger->warn("Cronjob (mail.php): Fehler beim d.velop Archiv-Retry: " . $rpe->getMessage());
+        }
+
         // 5a. Status anstehender & aktiver Reisen synchronisieren
         try {
             $syncedTrips = $tripPlanningService->syncTripStatuses();

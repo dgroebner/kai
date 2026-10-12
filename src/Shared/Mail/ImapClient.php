@@ -125,6 +125,18 @@ class ImapClient
         }
     }
 
+    public function ensureConnected(): void
+    {
+        try {
+            if (!$this->client->isConnected()) {
+                $this->client->connect();
+                $this->logger->info("ImapClient: Reconnect erfolgreich.");
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warn("ImapClient: Reconnect fehlgeschlagen: " . $e->getMessage());
+        }
+    }
+
     public function disconnect(): void
     {
         try {
@@ -137,5 +149,95 @@ class ImapClient
     public function getUsername(): string
     {
         return $this->username;
+    }
+
+    /**
+     * Legt eine gesendete E-Mail im IMAP-Ordner "Gesendete Objekte" (Sent) ab.
+     */
+    public function appendSentMessage(string $rawMessage): bool
+    {
+        try {
+            $this->ensureConnected();
+            $candidateNames = ['INBOX.Sent', 'Sent', 'INBOX.Gesendete Objekte', 'Gesendete Objekte', 'Sent Items'];
+            $sentFolder = null;
+            foreach ($candidateNames as $name) {
+                try {
+                    $sentFolder = $this->client->getFolderByPath($name);
+                    if ($sentFolder) {
+                        break;
+                    }
+                } catch (\Throwable) {}
+            }
+
+            if (!$sentFolder) {
+                try {
+                    $folders = $this->client->getFolders();
+                    foreach ($folders as $folder) {
+                        $fn = strtolower($folder->name);
+                        if ($fn === 'sent' || $fn === 'gesendete objekte' || str_contains($fn, 'sent')) {
+                            $sentFolder = $folder;
+                            break;
+                        }
+                    }
+                } catch (\Throwable) {}
+            }
+
+            if ($sentFolder) {
+                $sentFolder->appendMessage($rawMessage, ['\Seen']);
+                $this->logger->info("ImapClient: Gesendete Mail erfolgreich in '{$sentFolder->path}' hinterlegt.");
+                return true;
+            }
+
+            $this->logger->warn("ImapClient: Kein Gesendet-Ordner (Sent) gefunden.");
+            return false;
+        } catch (\Throwable $e) {
+            $this->logger->warn("ImapClient: Konnte Mail nicht in Sent-Ordner ablegen: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Ruft Nachrichten aus einem beliebigen IMAP-Ordner (z.B. Archive) ab.
+     *
+     * @return array
+     */
+    public function getMailsFromFolder(string $folderName = 'Archive', int $limit = 20): array
+    {
+        try {
+            $this->ensureConnected();
+            $folder = null;
+            try {
+                $folder = $this->client->getFolder($folderName);
+            } catch (\Throwable) {}
+
+            if (!$folder) {
+                try {
+                    $folder = $this->client->getFolderByPath('INBOX.' . $folderName);
+                } catch (\Throwable) {}
+            }
+
+            if (!$folder) {
+                try {
+                    $folders = $this->client->getFolders();
+                    foreach ($folders as $f) {
+                        $fn = strtolower($f->name);
+                        if ($fn === strtolower($folderName) || str_contains($fn, strtolower($folderName))) {
+                            $folder = $f;
+                            break;
+                        }
+                    }
+                } catch (\Throwable) {}
+            }
+
+            if (!$folder) {
+                return [];
+            }
+
+            $messages = $folder->query()->all()->limit($limit)->get();
+            return $messages ? $messages->all() : [];
+        } catch (\Throwable $e) {
+            $this->logger->warn("ImapClient: Konnte Mails aus '$folderName' nicht abrufen: " . $e->getMessage());
+            return [];
+        }
     }
 }

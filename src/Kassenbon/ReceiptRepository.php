@@ -48,6 +48,20 @@ class ReceiptRepository
     }
 
     /**
+     * Lädt einen Beleg anhand seines Dateihashes.
+     */
+    public function getReceiptByHash(string $hash): ?array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM kb_receipts WHERE file_hash = :hash LIMIT 1");
+        $stmt->execute([':hash' => $hash]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['meta_data']) && is_string($row['meta_data'])) {
+            $row['meta'] = json_decode($row['meta_data'], true) ?: [];
+        }
+        return $row ?: null;
+    }
+
+    /**
      * Speichert den Bon. (Signatur um $fileHash erweitert)
      * @throws Exception
      */
