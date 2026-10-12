@@ -55,7 +55,7 @@ class ReceiptMatcher
     public function syncUnlinkedReceipts(): array
     {
         $stmtUnlinked = $this->pdo->query("
-            SELECT id, purchase_date, total, store, contract_id, due_date
+            SELECT id, purchase_date, total, store, contract_id, due_date, meta_data, invoice_number, document_type, billing_period
             FROM kb_receipts
             WHERE bank_giro_transaction_id IS NULL
               AND bank_cc_transaction_id IS NULL
@@ -139,17 +139,20 @@ class ReceiptMatcher
                 continue;
             }
 
-            // Falls der Beleg noch keinen Vertrag hat, versuchen wir ihn nachträglich zuzuordnen
-            if ($contractId === null) {
-                if (!empty($receipt['meta_data']) && is_string($receipt['meta_data'])) {
-                    $receipt['meta'] = json_decode($receipt['meta_data'], true) ?: [];
-                }
-                $contractId = (new ReceiptRepository())->findMatchingContract($receipt, $storeName);
-                if ($contractId !== null) {
-                    $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")
-                        ->execute([':cid' => $contractId, ':id' => $receiptId]);
-                    $this->logger->info("ReceiptMatcher: Beleg #$receiptId nachträglich Vertrag #$contractId zugeordnet.");
-                }
+            // Metadaten parsen, falls vorhanden
+            if (!empty($receipt['meta_data'])) {
+                $receipt['meta'] = is_string($receipt['meta_data'])
+                    ? json_decode($receipt['meta_data'], true) ?: []
+                    : (array)$receipt['meta_data'];
+            }
+
+            // Vertragszuordnung für offene Belege prüfen bzw. aktualisieren
+            $matchedContractId = (new ReceiptRepository())->findMatchingContract($receipt, $storeName);
+            if ($matchedContractId !== null && $matchedContractId !== $contractId) {
+                $contractId = $matchedContractId;
+                $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")
+                    ->execute([':cid' => $contractId, ':id' => $receiptId]);
+                $this->logger->info("ReceiptMatcher: Beleg #$receiptId Vertrag auf #$contractId korrigiert/zugeordnet.");
             }
 
             $expectedGiroAmount = -abs($totalAmount);
@@ -180,8 +183,12 @@ class ReceiptMatcher
                 }
             }
 
-            $dateStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::BOOKING_LOOKBACK_DAYS . ' days'));
-            $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
+            $dateStart = $dueDate
+                ? date('Y-m-d', strtotime($dueDate . ' -7 days'))
+                : date('Y-m-d', strtotime($purchaseDate . ' -' . self::BOOKING_LOOKBACK_DAYS . ' days'));
+            $dateEnd = $dueDate
+                ? date('Y-m-d', strtotime($dueDate . ' +14 days'))
+                : date('Y-m-d', strtotime($purchaseDate . ' +' . ($contractId !== null ? 35 : self::BOOKING_DELAY_DAYS) . ' days'));
 
             $merchantParam = '%' . $this->escapeLike($storeName) . '%';
             $shortToken = $this->buildStoreToken($storeName);
@@ -279,7 +286,7 @@ class ReceiptMatcher
      */
     public function getCandidatesForReceipt(int $receiptId): array
     {
-        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store, contract_id, due_date, meta_data, invoice_number FROM kb_receipts WHERE id = :id");
+        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store, contract_id, due_date, meta_data, invoice_number, document_type, billing_period FROM kb_receipts WHERE id = :id");
         $stmt->execute([':id' => $receiptId]);
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -293,18 +300,20 @@ class ReceiptMatcher
         $totalAmount = abs((float)$receipt['total']);
         $store = trim((string)($receipt['store'] ?? ''));
 
-        // Falls noch kein Vertrag hinterlegt ist, versuchen wir ihn zu ermitteln
-        if ($contractId === null) {
-            if (!empty($receipt['meta_data']) && is_string($receipt['meta_data'])) {
-                $receipt['meta'] = json_decode($receipt['meta_data'], true) ?: [];
-            }
-            $contractId = (new ReceiptRepository())->findMatchingContract($receipt, $store);
-            if ($contractId !== null) {
-                $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")->execute([
-                    ':cid' => $contractId,
-                    ':id' => $receiptId
-                ]);
-            }
+        // Metadaten prüfen und ggf. Vertrag zuordnen / korrigieren
+        if (!empty($receipt['meta_data'])) {
+            $receipt['meta'] = is_string($receipt['meta_data'])
+                ? json_decode($receipt['meta_data'], true) ?: []
+                : (array)$receipt['meta_data'];
+        }
+        $matchedContractId = (new ReceiptRepository())->findMatchingContract($receipt, $store);
+        if ($matchedContractId !== null && $matchedContractId !== $contractId) {
+            $contractId = $matchedContractId;
+            $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")->execute([
+                ':cid' => $contractId,
+                ':id' => $receiptId
+            ]);
+            $this->logger->info("ReceiptMatcher: Vertrag für Beleg #$receiptId korrigiert auf #$contractId.");
         }
 
         if ($dueDate) {
@@ -473,6 +482,22 @@ class ReceiptMatcher
                 'diff' => $diff
             ];
         }
+
+        // Kandidaten sortieren: Exakter Betrag (< 1 Cent) immer zuerst, dann geringste Differenz, dann jüngeres Datum
+        usort($candidates, static function (array $a, array $b): int {
+            $diffA = abs((float)$a['diff']);
+            $diffB = abs((float)$b['diff']);
+            if ($diffA < 0.005 && $diffB >= 0.005) {
+                return -1;
+            }
+            if ($diffB < 0.005 && $diffA >= 0.005) {
+                return 1;
+            }
+            if ($diffA !== $diffB) {
+                return $diffA <=> $diffB;
+            }
+            return strcmp((string)$b['booking_date'], (string)$a['booking_date']);
+        });
 
         return $candidates;
     }
@@ -659,17 +684,13 @@ class ReceiptMatcher
                 $stmtReceipt->execute([':id' => $receiptId]);
                 $receiptContractId = $stmtReceipt->fetchColumn();
 
-                if (!empty($receiptContractId) && (int)$receiptContractId !== (int)$txContractId) {
-                    $this->logger->warn("ReceiptMatcher: Giro-Transaktion #$txId gehört zu Vertrag #$txContractId, Beleg #$receiptId aber zu Vertrag #$receiptContractId.");
-                    return false;
-                }
-
-                // Falls der Beleg noch keinen Vertrag hatte, übernimmt er den Vertrag der Buchung
-                if (empty($receiptContractId)) {
+                // Falls der Beleg einen abweichenden oder noch keinen Vertrag hat, übernehmen wir den Vertrag der gewählten Buchung
+                if (empty($receiptContractId) || (int)$receiptContractId !== (int)$txContractId) {
                     $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")->execute([
                         ':cid' => $txContractId,
                         ':id' => $receiptId
                     ]);
+                    $this->logger->info("ReceiptMatcher: Beleg #$receiptId übernimmt Vertrag #$txContractId von gewählter Giro-Transaktion #$txId.");
                 }
             }
 

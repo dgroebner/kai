@@ -210,9 +210,17 @@ class ReceiptRepository
             ? trim($normalizedStore)
             : MerchantNormalizer::normalize($data['store'] ?? '');
 
+        if (empty($data['meta']) && !empty($data['meta_data'])) {
+            $data['meta'] = is_string($data['meta_data']) ? json_decode($data['meta_data'], true) : (array)$data['meta_data'];
+        }
+
         try {
             // 1. Mandatsreferenz (höchste Genauigkeit) - Leerzeichen bereinigen
-            $mandateRaw = trim((string)($data['mandate_reference'] ?? ($data['meta']['mandate_reference'] ?? '')));
+            $mandateRaw = trim((string)(
+                $data['mandate_reference']
+                ?? ($data['meta']['mandate_reference'] ?? '')
+            ));
+
             if ($mandateRaw !== '') {
                 $mandateClean = preg_replace('/\s+/', '', $mandateRaw);
                 $stmt = $this->db->prepare("
@@ -239,7 +247,19 @@ class ReceiptRepository
                 }
             }
 
-            // 2. Auftraggeber / Name des Vertrags (eindeutige Parameter für PDO)
+            // 2. Dokumenttyp / Kontext prüfen (Mobilfunk vs. Festnetz unterscheiden)
+            $docType = $data['document_type'] ?? '';
+            $isMobile = ($docType === 'mobile_bill')
+                || !empty($data['phone_profiles'])
+                || !empty($data['meta']['phone_profiles'])
+                || stripos((string)($data['billing_period'] ?? ''), 'mobil') !== false
+                || stripos((string)($data['store'] ?? ''), 'mobil') !== false ? 1 : 0;
+
+            $isLandline = ($docType === 'landline_bill')
+                || stripos((string)($data['billing_period'] ?? ''), 'festnetz') !== false
+                || stripos((string)($data['store'] ?? ''), 'festnetz') !== false ? 1 : 0;
+
+            // 3. Auftraggeber / Name des Vertrags (mit Priorisierung nach Mobilfunk/Festnetz)
             $stmt = $this->db->prepare("
                 SELECT id FROM bank_contracts 
                 WHERE (status = 'aktiv' OR status IS NULL)
@@ -248,28 +268,49 @@ class ReceiptRepository
                       OR name LIKE :store_like2
                       OR (auftraggeber IS NOT NULL AND :store_clean LIKE CONCAT('%', auftraggeber, '%'))
                   )
+                ORDER BY
+                  CASE 
+                    WHEN :is_mobile = 1 AND (name LIKE '%mobil%' OR name LIKE '%funk%') THEN 1
+                    WHEN :is_landline = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%' OR name LIKE '%internet%') THEN 1
+                    WHEN :is_mobile = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%') THEN 3
+                    ELSE 2
+                  END ASC,
+                  id ASC
                 LIMIT 1
             ");
             $stmt->execute([
                 ':store_like1' => '%' . $normalizedStore . '%',
                 ':store_like2' => '%' . $normalizedStore . '%',
-                ':store_clean' => $normalizedStore
+                ':store_clean' => $normalizedStore,
+                ':is_mobile' => $isMobile,
+                ':is_landline' => $isLandline
             ]);
             $cid = $stmt->fetchColumn();
             if ($cid) {
-                $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Partner/Name '$normalizedStore' gefunden.");
+                $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Partner/Name '$normalizedStore' (isMobile=$isMobile) gefunden.");
                 return (int)$cid;
             }
 
-            // 3. bank_contract_rules prüfen
-            $stmtRules = $this->db->query("
+            // 4. bank_contract_rules prüfen
+            $stmtRules = $this->db->prepare("
                 SELECT r.contract_id, r.pattern_type, r.pattern_value 
                 FROM bank_contract_rules r
                 JOIN bank_contracts c ON r.contract_id = c.id
                 WHERE (c.status = 'aktiv' OR c.status IS NULL)
-                ORDER BY r.priority DESC
+                ORDER BY 
+                  CASE 
+                    WHEN :is_mobile = 1 AND (c.name LIKE '%mobil%' OR c.name LIKE '%funk%') THEN 1
+                    WHEN :is_landline = 1 AND (c.name LIKE '%fest%' OR c.name LIKE '%dsl%') THEN 1
+                    WHEN :is_mobile = 1 AND (c.name LIKE '%fest%' OR c.name LIKE '%dsl%') THEN 3
+                    ELSE 2
+                  END ASC,
+                  r.priority DESC
             ");
-            $rules = $stmtRules ? $stmtRules->fetchAll(PDO::FETCH_ASSOC) : [];
+            $stmtRules->execute([
+                ':is_mobile' => $isMobile,
+                ':is_landline' => $isLandline
+            ]);
+            $rules = $stmtRules->fetchAll(PDO::FETCH_ASSOC);
             $searchSpace = strtolower($normalizedStore . ' ' . $mandateRaw . ' ' . ($data['invoice_number'] ?? ''));
 
             foreach ($rules as $rule) {
