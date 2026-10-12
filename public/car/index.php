@@ -1241,9 +1241,14 @@ if ($tab === 'trips') {
                                             </a>
                                         <?php endif; ?>
                                         <?php 
-                                            $gmapsTarget = !empty($t['destination_lat']) && !empty($t['destination_lon'])
-                                                ? ((float)$t['destination_lat'] . ',' . (float)$t['destination_lon'])
-                                                : urlencode($t['destination_address']);
+                                            $destAddr = trim((string)($t['destination_address'] ?? ''));
+                                            $isHomeDest = in_array(strtolower($destAddr), ['zuhause', 'home', 'heimat', 'daheim', 'heim'], true);
+                                            // Reale Adresse als Navigationsziel bevorzugen, damit Google Maps direkt zum richtigen POI/Ort führt
+                                            $gmapsTarget = (!$isHomeDest && $destAddr !== '')
+                                                ? urlencode($destAddr)
+                                                : (!empty($t['destination_lat']) && !empty($t['destination_lon'])
+                                                    ? ((float)$t['destination_lat'] . ',' . (float)$t['destination_lon'])
+                                                    : urlencode($destAddr));
                                             $gmapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' . $gmapsTarget;
                                         ?>
                                         <a href="<?= htmlspecialchars($gmapsUrl) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="Navigation in Google Maps öffnen">

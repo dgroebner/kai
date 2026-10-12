@@ -158,12 +158,18 @@ class GeocodingService
                 $data = json_decode($response, true);
                 $feature = $data['features'][0] ?? null;
                 if ($feature && isset($feature['geometry']['coordinates'])) {
-                    $coords = $feature['geometry']['coordinates']; // [lon, lat]
-                    return [
-                        'lat' => (float)$coords[1],
-                        'lon' => (float)$coords[0],
-                        'display_name' => (string)($feature['properties']['label'] ?? $address),
-                    ];
+                    $props = $feature['properties'] ?? [];
+                    // Falls eine Hausnummer oder konkrete Straße gesucht wurde, ORS aber nur einen Fallback auf Ortschaft/Gemeinde liefert:
+                    if (preg_match('/\d/', $address) && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
+                        $this->logger->info("GeocodingService: ORS free-text lieferte nur Fallback-Zentroid für '{$address}', suche weiter.");
+                    } else {
+                        $coords = $feature['geometry']['coordinates']; // [lon, lat]
+                        return [
+                            'lat' => (float)$coords[1],
+                            'lon' => (float)$coords[0],
+                            'display_name' => (string)($feature['properties']['label'] ?? $address),
+                        ];
+                    }
                 }
             } else {
                 $this->logger->warn("GeocodingService: ORS HTTP {$httpCode} für '{$address}'");
@@ -240,12 +246,18 @@ class GeocodingService
                 $data = json_decode($response, true);
                 $feature = $data['features'][0] ?? null;
                 if ($feature && isset($feature['geometry']['coordinates'])) {
-                    $coords = $feature['geometry']['coordinates']; // [lon, lat]
-                    return [
-                        'lat' => (float)$coords[1],
-                        'lon' => (float)$coords[0],
-                        'display_name' => (string)($feature['properties']['label'] ?? $address),
-                    ];
+                    $props = $feature['properties'] ?? [];
+                    // Wenn eine Straße gesucht wurde, ORS aber nur einen Fallback auf Ortschaft/Gemeinde liefert:
+                    if ($street !== '' && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
+                        $this->logger->info("GeocodingService: ORS structured lieferte nur Fallback-Zentroid für '{$address}', suche weiter.");
+                    } else {
+                        $coords = $feature['geometry']['coordinates']; // [lon, lat]
+                        return [
+                            'lat' => (float)$coords[1],
+                            'lon' => (float)$coords[0],
+                            'display_name' => (string)($feature['properties']['label'] ?? $address),
+                        ];
+                    }
                 }
             }
         } catch (Throwable $e) {

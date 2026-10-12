@@ -415,9 +415,13 @@
                         </a>
                     ` : ''}
                     ${(() => {
-                        const target = (trip.destination_lat && trip.destination_lon)
-                            ? `${parseFloat(trip.destination_lat)},${parseFloat(trip.destination_lon)}`
-                            : encodeURIComponent(trip.destination_address || '');
+                        const destAddr = (trip.destination_address || '').trim();
+                        const isHomeDest = ['zuhause', 'home', 'heimat', 'daheim', 'heim'].includes(destAddr.toLowerCase());
+                        const target = (!isHomeDest && destAddr !== '')
+                            ? encodeURIComponent(destAddr)
+                            : ((trip.destination_lat && trip.destination_lon)
+                                ? `${parseFloat(trip.destination_lat)},${parseFloat(trip.destination_lon)}`
+                                : encodeURIComponent(destAddr));
                         const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${target}`;
                         return `
                             <a href="${KaiHtml.escape(gmapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="Navigation in Google Maps öffnen">
