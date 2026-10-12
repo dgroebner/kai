@@ -256,6 +256,9 @@ class TripPlanningService
         // Koordinaten anhand der Adressen frisch auflösen, um fehlerhafte oder unpräzise Alt-Geocodes zu korrigieren
         if (!empty($trip['destination_address'])) {
             $destGeo = $this->geocodingService->geocode($trip['destination_address']);
+            if ($destGeo === null && !empty($trip['title'])) {
+                $destGeo = $this->geocodingService->geocode($trip['title'] . ', ' . $trip['destination_address']);
+            }
             if ($destGeo !== null) {
                 $this->logger->info("TripPlanningService: Zielort für Reise #{$tripId} neu aufgelöst: {$destGeo['lat']}, {$destGeo['lon']} ('{$destGeo['display_name']}')");
                 $destLat = $destGeo['lat'];

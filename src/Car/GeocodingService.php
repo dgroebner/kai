@@ -48,18 +48,19 @@ class GeocodingService
         }
 
         $candidates = $this->buildAddressCandidates($trimmed);
+        $fallbackCentroid = null;
 
         // 2. OpenRouteService Geocoding (sofern API-Key vorliegt) - Schnell, zuverlässig, ohne IP-Blockade
         if (!empty($this->orsApiKey)) {
             // Erst strukturierte Suche versuchen (z. B. PLZ 04720 + Ort Döbeln + Straße)
-            $structuredResult = $this->geocodeViaOrsStructured($trimmed);
+            $structuredResult = $this->geocodeViaOrsStructured($trimmed, $fallbackCentroid);
             if ($structuredResult !== null) {
                 return $structuredResult;
             }
 
             // Dann Freitextsuche für die Kandidaten
             foreach ($candidates as $candidate) {
-                $orsResult = $this->geocodeViaOrs($candidate);
+                $orsResult = $this->geocodeViaOrs($candidate, $trimmed, $fallbackCentroid);
                 if ($orsResult !== null) {
                     return $orsResult;
                 }
@@ -78,13 +79,20 @@ class GeocodingService
             }
         }
 
+        // 4. Falls kein exakter Punkt/POI/Adresse gefunden wurde, aber ein Ortschafts-Fallback vorliegt:
+        if ($fallbackCentroid !== null) {
+            $this->logger->info("GeocodingService: Verwende Ortschafts-Fallback für '{$trimmed}': {$fallbackCentroid['lat']}, {$fallbackCentroid['lon']}");
+            return $fallbackCentroid;
+        }
+
         return null;
     }
 
     /**
      * Erzeugt sinnvolle Suchvarianten für Geocoder.
      * Wenn z. B. "Karls Erlebnis-Dorf - Döbeln, Erdbeerstraße 1, 04720 Döbeln, Deutschland" übergeben wird,
-     * können auch "Erdbeerstraße 1, 04720 Döbeln, Deutschland" und "Erdbeerstraße 1, 04720 Döbeln" versucht werden.
+     * werden u. a. "Karls Erlebnis-Dorf Döbeln", "Karls Erlebnis-Dorf, 04720 Döbeln",
+     * "Erdbeerstraße 1, 04720 Döbeln, Deutschland" etc. erzeugt.
      *
      * @return string[]
      */
@@ -95,6 +103,38 @@ class GeocodingService
         // Falls die Adresse durch Kommas getrennt ist (z. B. "POI Name, Straße Hausnummer, PLZ Ort, Land")
         if (str_contains($address, ',')) {
             $parts = array_map('trim', explode(',', $address));
+
+            // POI-Name (erster Teil) & Ort/PLZ
+            $poiName = $parts[0];
+            $poiClean = str_contains($poiName, ' - ') ? trim(explode(' - ', $poiName)[0]) : $poiName;
+
+            $cityPart = null;
+            foreach ($parts as $p) {
+                if (preg_match('/\b\d{5}\b/', $p)) {
+                    $cityPart = $p;
+                    break;
+                }
+            }
+            if ($cityPart === null && count($parts) >= 2) {
+                $cityPart = $parts[count($parts) - 2];
+            }
+
+            if ($cityPart !== null) {
+                $cityName = trim(preg_replace('/\b\d{5}\b/', '', $cityPart));
+                $combos = [
+                    $poiClean . ' ' . $cityName,
+                    $poiClean . ', ' . $cityPart,
+                    $poiClean . ', ' . $cityName,
+                    $poiName . ', ' . $cityPart,
+                ];
+                foreach ($combos as $combo) {
+                    $combo = trim($combo, " ,");
+                    if ($combo !== '' && !in_array($combo, $candidates, true)) {
+                        $candidates[] = $combo;
+                    }
+                }
+            }
+
             // Wenn der erste Teil ein Name ist und mindestens 2 weitere Teile folgen (Straße, Ort)
             if (count($parts) >= 3) {
                 $withoutPoi = implode(', ', array_slice($parts, 1));
@@ -115,8 +155,9 @@ class GeocodingService
         return $candidates;
     }
 
-    private function geocodeViaOrs(string $address): ?array
+    private function geocodeViaOrs(string $address, ?string $originalQuery = null, ?array &$fallbackCentroid = null): ?array
     {
+        $checkQuery = $originalQuery ?? $address;
         try {
             $homeLat = $this->settingsService->getHomeLatitude();
             $homeLon = $this->settingsService->getHomeLongitude();
@@ -144,7 +185,7 @@ class GeocodingService
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 6,
                 CURLOPT_HTTPHEADER => [
-                    'Authorization: ' . $authHeader,
+                    'Authorization' => $authHeader,
                     'User-Agent: Kai-TripPlanner/1.0 (https://kai.agent-smith.de)',
                     'Accept: application/json',
                 ],
@@ -159,17 +200,24 @@ class GeocodingService
                 $feature = $data['features'][0] ?? null;
                 if ($feature && isset($feature['geometry']['coordinates'])) {
                     $props = $feature['properties'] ?? [];
-                    // Falls eine Hausnummer oder konkrete Straße gesucht wurde, ORS aber nur einen Fallback auf Ortschaft/Gemeinde liefert:
-                    if (preg_match('/\d/', $address) && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
-                        $this->logger->info("GeocodingService: ORS free-text lieferte nur Fallback-Zentroid für '{$address}', suche weiter.");
-                    } elseif (!$this->isGeocodeMatchPlausible($address, $props)) {
-                        $this->logger->info("GeocodingService: ORS free-text Treffer ist geografisch unplausibel für '{$address}', suche weiter.");
+                    if (!$this->isGeocodeMatchPlausible($checkQuery, $props)) {
+                        $this->logger->info("GeocodingService: ORS free-text Treffer ist geografisch unplausibel für '{$checkQuery}', suche weiter.");
+                    } elseif (preg_match('/\d/', $address) && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
+                        $this->logger->info("GeocodingService: ORS free-text lieferte nur Fallback-Zentroid für '{$address}', merke als Fallback vor.");
+                        if ($fallbackCentroid === null) {
+                            $coords = $feature['geometry']['coordinates'];
+                            $fallbackCentroid = [
+                                'lat' => (float)$coords[1],
+                                'lon' => (float)$coords[0],
+                                'display_name' => (string)($props['label'] ?? $address),
+                            ];
+                        }
                     } else {
                         $coords = $feature['geometry']['coordinates']; // [lon, lat]
                         return [
                             'lat' => (float)$coords[1],
                             'lon' => (float)$coords[0],
-                            'display_name' => (string)($feature['properties']['label'] ?? $address),
+                            'display_name' => (string)($props['label'] ?? $address),
                         ];
                     }
                 }
@@ -189,7 +237,7 @@ class GeocodingService
      *
      * @return array{lat: float, lon: float, display_name: string}|null
      */
-    private function geocodeViaOrsStructured(string $address): ?array
+    private function geocodeViaOrsStructured(string $address, ?array &$fallbackCentroid = null): ?array
     {
         // PLZ (5 Ziffern) und anschließenden Ort finden
         if (!preg_match('/\b(\d{5})\s+([^,]+)/u', $address, $m)) {
@@ -234,7 +282,7 @@ class GeocodingService
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 6,
                 CURLOPT_HTTPHEADER => [
-                    'Authorization: ' . $authHeader,
+                    'Authorization' => $authHeader,
                     'User-Agent: Kai-TripPlanner/1.0 (https://kai.agent-smith.de)',
                     'Accept: application/json',
                 ],
@@ -251,7 +299,15 @@ class GeocodingService
                     $props = $feature['properties'] ?? [];
                     // Wenn eine Straße gesucht wurde, ORS aber nur einen Fallback auf Ortschaft/Gemeinde liefert:
                     if ($street !== '' && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
-                        $this->logger->info("GeocodingService: ORS structured lieferte nur Fallback-Zentroid für '{$address}', suche weiter.");
+                        $this->logger->info("GeocodingService: ORS structured lieferte nur Fallback-Zentroid für '{$address}', merke als Fallback vor.");
+                        if ($fallbackCentroid === null) {
+                            $coords = $feature['geometry']['coordinates'];
+                            $fallbackCentroid = [
+                                'lat' => (float)$coords[1],
+                                'lon' => (float)$coords[0],
+                                'display_name' => (string)($props['label'] ?? $address),
+                            ];
+                        }
                     } elseif (!$this->isGeocodeMatchPlausible($address, $props)) {
                         $this->logger->info("GeocodingService: ORS structured Treffer ist geografisch unplausibel für '{$address}', suche weiter.");
                     } else {
@@ -259,7 +315,7 @@ class GeocodingService
                         return [
                             'lat' => (float)$coords[1],
                             'lon' => (float)$coords[0],
-                            'display_name' => (string)($feature['properties']['label'] ?? $address),
+                            'display_name' => (string)($props['label'] ?? $address),
                         ];
                     }
                 }
