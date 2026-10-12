@@ -174,37 +174,37 @@ $phoneProfiles = $meta['phone_profiles'] ?? [];
                         </span>
                     <?php endif; ?>
                 </h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
                     <?php if (!empty($receipt['invoice_number'])): ?>
-                        <div>
+                        <div style="min-width: 0;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Rechnungsnummer</div>
-                            <strong><?= htmlspecialchars($receipt['invoice_number'], ENT_QUOTES, 'UTF-8') ?></strong>
+                            <strong style="word-break: break-all; display: block;"><?= htmlspecialchars($receipt['invoice_number'], ENT_QUOTES, 'UTF-8') ?></strong>
                         </div>
                     <?php endif; ?>
                     <?php if (!empty($receipt['due_date'])): ?>
-                        <div>
+                        <div style="min-width: 0;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SEPA-Abbuchungstermin</div>
-                            <strong style="color: var(--color-green, #10b981);">
+                            <strong style="color: var(--color-green, #10b981); display: block;">
                                 <?= date('d.m.Y', strtotime($receipt['due_date'])) ?>
                             </strong>
                         </div>
                     <?php endif; ?>
                     <?php if (!empty($meta['mandate_reference'])): ?>
-                        <div>
+                        <div style="min-width: 0;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Mandatsreferenz</div>
-                            <span style="font-family: monospace; font-size: 0.85rem;"><?= htmlspecialchars($meta['mandate_reference'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span style="font-family: monospace; font-size: 0.82rem; word-break: break-all; overflow-wrap: anywhere; display: block;"><?= htmlspecialchars($meta['mandate_reference'], ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
                     <?php endif; ?>
                     <?php if (!empty($meta['customer_account']) || !empty($meta['customer_number'])): ?>
-                        <div>
+                        <div style="min-width: 0;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Kundenkonto / Kd.-Nr.</div>
-                            <span><?= htmlspecialchars(($meta['customer_account'] ?? '') . ($meta['customer_account'] && $meta['customer_number'] ? ' / ' : '') . ($meta['customer_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                            <span style="word-break: break-word; display: block;"><?= htmlspecialchars(($meta['customer_account'] ?? '') . ($meta['customer_account'] && $meta['customer_number'] ? ' / ' : '') . ($meta['customer_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
                     <?php endif; ?>
                     <?php if (isset($meta['net_amount']) || isset($meta['tax_amount'])): ?>
-                        <div>
+                        <div style="min-width: 0;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Steueraufschlüsselung</div>
-                            <span>
+                            <span style="display: block;">
                                 Netto: <?= number_format((float)($meta['net_amount'] ?? 0), 2, ',', '.') ?> € &bull;
                                 19% USt: <?= number_format((float)($meta['tax_amount'] ?? 0), 2, ',', '.') ?> €
                             </span>
