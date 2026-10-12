@@ -284,9 +284,9 @@ class ReceiptRepository
                   )
                 ORDER BY
                   CASE 
-                    WHEN :is_mobile = 1 AND (name LIKE '%mobil%' OR name LIKE '%funk%') THEN 1
-                    WHEN :is_landline = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%' OR name LIKE '%internet%') THEN 1
-                    WHEN :is_mobile = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%') THEN 3
+                    WHEN :is_mobile_prio = 1 AND (name LIKE '%mobil%' OR name LIKE '%funk%') THEN 1
+                    WHEN :is_landline_prio = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%' OR name LIKE '%internet%') THEN 1
+                    WHEN :is_mobile_penalty = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%') THEN 3
                     ELSE 2
                   END ASC,
                   id ASC
@@ -296,8 +296,9 @@ class ReceiptRepository
                 ':store_like1' => '%' . $normalizedStore . '%',
                 ':store_like2' => '%' . $normalizedStore . '%',
                 ':store_clean' => $normalizedStore,
-                ':is_mobile' => $isMobile,
-                ':is_landline' => $isLandline
+                ':is_mobile_prio' => $isMobile,
+                ':is_landline_prio' => $isLandline,
+                ':is_mobile_penalty' => $isMobile
             ]);
             $cid = $stmt->fetchColumn();
             if ($cid) {
@@ -313,16 +314,17 @@ class ReceiptRepository
                 WHERE (c.status = 'aktiv' OR c.status IS NULL)
                 ORDER BY 
                   CASE 
-                    WHEN :is_mobile = 1 AND (c.name LIKE '%mobil%' OR c.name LIKE '%funk%') THEN 1
-                    WHEN :is_landline = 1 AND (c.name LIKE '%fest%' OR c.name LIKE '%dsl%') THEN 1
-                    WHEN :is_mobile = 1 AND (c.name LIKE '%fest%' OR c.name LIKE '%dsl%') THEN 3
+                    WHEN :is_mobile_prio_r = 1 AND (c.name LIKE '%mobil%' OR c.name LIKE '%funk%') THEN 1
+                    WHEN :is_landline_prio_r = 1 AND (c.name LIKE '%fest%' OR c.name LIKE '%dsl%') THEN 1
+                    WHEN :is_mobile_penalty_r = 1 AND (c.name LIKE '%fest%' OR c.name LIKE '%dsl%') THEN 3
                     ELSE 2
                   END ASC,
                   r.priority DESC
             ");
             $stmtRules->execute([
-                ':is_mobile' => $isMobile,
-                ':is_landline' => $isLandline
+                ':is_mobile_prio_r' => $isMobile,
+                ':is_landline_prio_r' => $isLandline,
+                ':is_mobile_penalty_r' => $isMobile
             ]);
             $rules = $stmtRules->fetchAll(PDO::FETCH_ASSOC);
             $searchSpace = strtolower($normalizedStore . ' ' . $mandateRaw . ' ' . ($data['invoice_number'] ?? ''));
