@@ -162,6 +162,8 @@ class GeocodingService
                     // Falls eine Hausnummer oder konkrete Straße gesucht wurde, ORS aber nur einen Fallback auf Ortschaft/Gemeinde liefert:
                     if (preg_match('/\d/', $address) && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
                         $this->logger->info("GeocodingService: ORS free-text lieferte nur Fallback-Zentroid für '{$address}', suche weiter.");
+                    } elseif (!$this->isGeocodeMatchPlausible($address, $props)) {
+                        $this->logger->info("GeocodingService: ORS free-text Treffer ist geografisch unplausibel für '{$address}', suche weiter.");
                     } else {
                         $coords = $feature['geometry']['coordinates']; // [lon, lat]
                         return [
@@ -250,6 +252,8 @@ class GeocodingService
                     // Wenn eine Straße gesucht wurde, ORS aber nur einen Fallback auf Ortschaft/Gemeinde liefert:
                     if ($street !== '' && ($props['match_type'] ?? '') === 'fallback' && in_array($props['layer'] ?? '', ['locality', 'county', 'region', 'country'], true)) {
                         $this->logger->info("GeocodingService: ORS structured lieferte nur Fallback-Zentroid für '{$address}', suche weiter.");
+                    } elseif (!$this->isGeocodeMatchPlausible($address, $props)) {
+                        $this->logger->info("GeocodingService: ORS structured Treffer ist geografisch unplausibel für '{$address}', suche weiter.");
                     } else {
                         $coords = $feature['geometry']['coordinates']; // [lon, lat]
                         return [
@@ -277,6 +281,7 @@ class GeocodingService
                 'q' => $address,
                 'format' => 'json',
                 'limit' => 1,
+                'countrycodes' => 'de',
                 'addressdetails' => 0,
                 'email' => 'kai@agent-smith.de',
             ]);
@@ -317,5 +322,34 @@ class GeocodingService
         }
 
         return null;
+    }
+
+    /**
+     * Prüft, ob ein Geocoding-Treffer plausibel zur Suchanfrage passt.
+     * Verhindert grobe Verwechslungen (z. B. gleiche Straße in einem völlig anderen Bundesland oder falscher Ort).
+     */
+    private function isGeocodeMatchPlausible(string $query, array $properties): bool
+    {
+        // 1. PLZ-Prüfung: Wenn in der Suchanfrage eine 5-stellige deutsche PLZ vorkommt
+        if (preg_match('/\b(\d{5})\b/', $query, $mPostal)) {
+            $expectedPostal = $mPostal[1];
+            $resultPostal = $properties['postalcode'] ?? null;
+            if (!empty($resultPostal) && $resultPostal !== $expectedPostal) {
+                return false;
+            }
+        }
+
+        // 2. Orts-Prüfung: Wenn ein Ortsname nach einer PLZ angegeben wurde (z. B. "04720 Döbeln")
+        if (preg_match('/\b\d{5}\s+([^,]+)/u', $query, $mLoc)) {
+            $expectedCity = mb_strtolower(trim($mLoc[1]));
+            $label = mb_strtolower($properties['label'] ?? '');
+            $locality = mb_strtolower($properties['locality'] ?? '');
+            $county = mb_strtolower($properties['county'] ?? '');
+            if ($expectedCity !== '' && !str_contains($label, $expectedCity) && !str_contains($locality, $expectedCity) && !str_contains($county, $expectedCity)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
