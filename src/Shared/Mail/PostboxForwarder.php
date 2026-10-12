@@ -41,7 +41,8 @@ class PostboxForwarder
         // Tag und Zieldateiname ermitteln
         $tag = $this->determinePostboxTag($receiptData, $originalFilename);
         if ($tag === null) {
-            $this->logger->debug("PostboxForwarder: Kein passender Postbox-Tag für Beleg gefunden.");
+            $storeName = (string)($receiptData['store'] ?? 'unbekannt');
+            $this->logger->debug("PostboxForwarder: Kein passender Postbox-Tag für Beleg '{$originalFilename}' (Händler: '{$storeName}') gefunden.");
             return false;
         }
 
