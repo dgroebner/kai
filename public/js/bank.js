@@ -2205,7 +2205,7 @@ async function openContractModal(contract) {
                                         </div>
                                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                                             <strong class="amount-bold" style="font-size: 0.95rem;">${formatMoney(r.total)} €</strong>
-                                            <a href="../kassenbon/detail.php?id=${r.id}" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; text-decoration: none;" target="_blank">
+                                            <a href="../kassenbon/detail.php?id=${r.id}" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; text-decoration: none;">
                                                 Öffnen &rarr;
                                             </a>
                                         </div>
