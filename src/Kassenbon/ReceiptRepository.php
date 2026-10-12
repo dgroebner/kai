@@ -204,8 +204,12 @@ class ReceiptRepository
      * Versucht, anhand von Mandatsreferenz, Händlername oder Vertragsregeln
      * einen passenden aktiven Vertrag aus bank_contracts zu finden.
      */
-    public function findMatchingContract(array $data, string $normalizedStore): ?int
+    public function findMatchingContract(array $data, ?string $normalizedStore = null): ?int
     {
+        $normalizedStore = !empty($normalizedStore)
+            ? trim($normalizedStore)
+            : MerchantNormalizer::normalize($data['store'] ?? '');
+
         try {
             // 1. Mandatsreferenz (höchste Genauigkeit) - Leerzeichen bereinigen
             $mandateRaw = trim((string)($data['mandate_reference'] ?? ($data['meta']['mandate_reference'] ?? '')));

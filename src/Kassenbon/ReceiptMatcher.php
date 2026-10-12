@@ -131,6 +131,7 @@ class ReceiptMatcher
             $receiptId = (int)$receipt['id'];
             $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
             $totalAmount = (float)$receipt['total'];
+            $storeName = trim((string)($receipt['store'] ?? ''));
             $contractId = !empty($receipt['contract_id']) ? (int)$receipt['contract_id'] : null;
             $dueDate = !empty($receipt['due_date']) ? (string)$receipt['due_date'] : null;
 
