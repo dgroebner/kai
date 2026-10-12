@@ -41,11 +41,13 @@ class ReceiptQueryRepository
                 COUNT(i.id) as item_count,
                 gt.booking_date AS giro_booking_date,
                 ct.booking_date AS cc_booking_date,
-                ct.statement_id AS cc_statement_id
+                ct.statement_id AS cc_statement_id,
+                c.name AS contract_name
             FROM kb_receipts r
             LEFT JOIN kb_items i ON r.id = i.receipt_id
             LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
             LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
+            LEFT JOIN bank_contracts c ON r.contract_id = c.id
             GROUP BY r.id
             ORDER BY r.purchase_date DESC, r.id DESC
             LIMIT :limit OFFSET :offset
@@ -73,10 +75,12 @@ class ReceiptQueryRepository
                 r.*,
                 gt.booking_date AS giro_booking_date,
                 ct.booking_date AS cc_booking_date,
-                ct.statement_id AS cc_statement_id
+                ct.statement_id AS cc_statement_id,
+                c.name AS contract_name
             FROM kb_receipts r
             LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
             LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
+            LEFT JOIN bank_contracts c ON r.contract_id = c.id
             WHERE r.id = :id
         ");
         $stmt->execute([':id' => $receiptId]);
@@ -84,6 +88,11 @@ class ReceiptQueryRepository
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         if ($receipt !== null) {
             $receipt['store'] = MerchantNormalizer::normalize($receipt['store'] ?? '');
+            if (!empty($receipt['meta_data']) && is_string($receipt['meta_data'])) {
+                $receipt['meta'] = json_decode($receipt['meta_data'], true) ?: [];
+            } else {
+                $receipt['meta'] = [];
+            }
         }
 
         return $receipt;

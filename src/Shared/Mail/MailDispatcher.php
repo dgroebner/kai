@@ -175,6 +175,16 @@ class MailDispatcher
                                     $this->logger->warn("MailDispatcher: Ladevorgang-Abgleich übersprungen (" . $cte->getMessage() . ")");
                                 }
 
+                                // Automatisierte Weiterleitung an die d.velop Postbox (z.B. mit Tag #mobilfunkrechnung)
+                                if (str_contains($mimeType, 'pdf')) {
+                                    try {
+                                        $postboxForwarder = new PostboxForwarder(logger: $this->logger);
+                                        $postboxForwarder->forwardIfEligible($content, $fileName, $fileHash, $receiptData);
+                                    } catch (Throwable $pte) {
+                                        $this->logger->warn("MailDispatcher: d.velop Postbox-Weiterleitung übersprungen (" . $pte->getMessage() . ")");
+                                    }
+                                }
+
                                 $this->logger->info("MailDispatcher: E-Bon erfolgreich verarbeitet und gespeichert.");
                                 $processedCount++;
                             } else {

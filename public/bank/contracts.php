@@ -156,6 +156,16 @@ $netMonthlyCashflow = $totalMonthlyIncome - $totalMonthlyExpenses;
                                         <span class="badge"
                                               style="font-size: 0.65rem; padding: 0.1rem 0.3rem; margin-left: 0.3rem;"><?= htmlspecialchars($c['status'], ENT_QUOTES, 'UTF-8') ?></span>
                                     </div>
+                                    <?php if (!empty($c['latest_receipt_id'])): ?>
+                                        <div style="margin-top: 0.35rem;">
+                                            <a href="../kassenbon/detail.php?id=<?= (int)$c['latest_receipt_id'] ?>"
+                                               class="badge <?= !empty($c['latest_receipt_giro_id']) ? 'badge-success' : 'badge-warning' ?>"
+                                               style="text-decoration: none; font-size: 0.72rem; font-weight: normal; display: inline-flex; align-items: center; gap: 0.25rem;"
+                                               title="Zugeordnete Rechnung anzeigen">
+                                                <span>🧾 Letzte Rechnung: <?= number_format((float)$c['latest_receipt_total'], 2, ',', '.') ?> € (<?= date('d.m.Y', strtotime($c['latest_receipt_date'])) ?>) <?= !empty($c['latest_receipt_giro_id']) ? '🟢' : '🟡' ?> &rarr;</span>
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td data-label="Auftraggeber" style="font-size: 0.85rem; color: var(--text-muted);">
                                     <?= htmlspecialchars($c['auftraggeber'] ?? '-', ENT_QUOTES, 'UTF-8') ?>

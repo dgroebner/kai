@@ -125,5 +125,31 @@ ON DUPLICATE KEY UPDATE
     is_default = VALUES(is_default),
     notes = VALUES(notes);
 
+-- Rechnungsverarbeitung, Vertragsverknüpfung und d.velop Postbox Sync
+ALTER TABLE `kb_receipts`
+    ADD COLUMN IF NOT EXISTS `contract_id` INT UNSIGNED NULL DEFAULT NULL AFTER `bank_cc_transaction_id`,
+    ADD COLUMN IF NOT EXISTS `invoice_number` VARCHAR(100) NULL DEFAULT NULL AFTER `total`,
+    ADD COLUMN IF NOT EXISTS `due_date` DATE NULL DEFAULT NULL AFTER `invoice_number`,
+    ADD COLUMN IF NOT EXISTS `billing_period` VARCHAR(100) NULL DEFAULT NULL AFTER `due_date`,
+    ADD COLUMN IF NOT EXISTS `document_type` VARCHAR(50) NOT NULL DEFAULT 'receipt' AFTER `billing_period`,
+    ADD COLUMN IF NOT EXISTS `meta_data` JSON NULL DEFAULT NULL AFTER `document_type`,
+    ADD INDEX IF NOT EXISTS `idx_contract_id` (`contract_id`),
+    ADD INDEX IF NOT EXISTS `idx_document_type` (`document_type`);
+
+CREATE TABLE IF NOT EXISTS `postbox_sync_log` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `file_hash` VARCHAR(64) NOT NULL,
+  `source_channel` VARCHAR(30) NOT NULL DEFAULT 'IMAP',
+  `original_filename` VARCHAR(255) NULL,
+  `dispatched_filename` VARCHAR(255) NOT NULL,
+  `postbox_tag` VARCHAR(100) NOT NULL,
+  `dispatched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` ENUM('SUCCESS', 'FAILED') NOT NULL DEFAULT 'SUCCESS',
+  `error_message` TEXT NULL,
+  INDEX `idx_postbox_file_hash` (`file_hash`),
+  INDEX `idx_postbox_tag` (`postbox_tag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 
 

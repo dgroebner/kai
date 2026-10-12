@@ -58,17 +58,44 @@ class ReceiptRepository
             $this->logger->info("ReceiptRepository: Starte Transaktion für Kassenbon von '$normalizedStore'...");
             $this->db->beginTransaction();
 
+            $contractId = $this->findMatchingContract($data, $normalizedStore);
+            $documentType = !empty($data['document_type']) ? (string)$data['document_type'] : 'receipt';
+            $invoiceNumber = !empty($data['invoice_number']) ? trim((string)$data['invoice_number']) : null;
+            $dueDate = !empty($data['due_date']) ? date('Y-m-d', strtotime((string)$data['due_date'])) : null;
+            $billingPeriod = !empty($data['billing_period']) ? trim((string)$data['billing_period']) : null;
+
+            $meta = [];
+            if (!empty($data['phone_profiles'])) $meta['phone_profiles'] = $data['phone_profiles'];
+            if (!empty($data['mandate_reference'])) $meta['mandate_reference'] = $data['mandate_reference'];
+            if (!empty($data['customer_number'])) $meta['customer_number'] = $data['customer_number'];
+            if (!empty($data['customer_account'])) $meta['customer_account'] = $data['customer_account'];
+            if (isset($data['tax_amount'])) $meta['tax_amount'] = (float)$data['tax_amount'];
+            if (isset($data['net_amount'])) $meta['net_amount'] = (float)$data['net_amount'];
+            $metaJson = !empty($meta) ? json_encode($meta, JSON_UNESCAPED_UNICODE) : null;
+
             // 1. Metadaten in kb_receipts speichern
             $stmtReceipt = $this->db->prepare("
-				INSERT INTO kb_receipts (file_hash, store, purchase_date, total) 
-				VALUES (:hash, :store, :date, :total)
+				INSERT INTO kb_receipts (
+				    file_hash, store, purchase_date, total,
+				    contract_id, invoice_number, due_date, billing_period, document_type, meta_data
+				) 
+				VALUES (
+				    :hash, :store, :date, :total,
+				    :contract_id, :invoice_number, :due_date, :billing_period, :document_type, :meta_data
+				)
 			");
 
             $stmtReceipt->execute([
                 ':hash' => $fileHash,
                 ':store' => $normalizedStore,
                 ':date' => $data['date'] ?? date('Y-m-d'),
-                ':total' => $data['total'] ?? 0.00
+                ':total' => $data['total'] ?? 0.00,
+                ':contract_id' => $contractId,
+                ':invoice_number' => $invoiceNumber,
+                ':due_date' => $dueDate,
+                ':billing_period' => $billingPeriod,
+                ':document_type' => $documentType,
+                ':meta_data' => $metaJson
             ]);
 
             $receiptId = $this->db->lastInsertId();
@@ -171,5 +198,100 @@ class ReceiptRepository
     {
         $stmt = $this->db->prepare("UPDATE kb_items SET category = :cat WHERE id = :id");
         $stmt->execute([':cat' => $categoryName, ':id' => $itemId]);
+    }
+
+    /**
+     * Versucht, anhand von Mandatsreferenz, Händlername oder Vertragsregeln
+     * einen passenden aktiven Vertrag aus bank_contracts zu finden.
+     */
+    public function findMatchingContract(array $data, string $normalizedStore): ?int
+    {
+        try {
+            // 1. Mandatsreferenz (höchste Genauigkeit)
+            if (!empty($data['mandate_reference'])) {
+                $mandateClean = trim((string)$data['mandate_reference']);
+                $stmt = $this->db->prepare("
+                    SELECT id FROM bank_contracts 
+                    WHERE status = 'aktiv' 
+                      AND mandatsnummer IS NOT NULL 
+                      AND mandatsnummer != '' 
+                      AND (
+                          :mandate LIKE CONCAT('%', mandatsnummer, '%')
+                          OR mandatsnummer LIKE CONCAT('%', :mandate_short, '%')
+                      )
+                    LIMIT 1
+                ");
+                $stmt->execute([
+                    ':mandate' => $mandateClean,
+                    ':mandate_short' => substr($mandateClean, 0, 20)
+                ]);
+                $cid = $stmt->fetchColumn();
+                if ($cid) {
+                    $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Mandatsreferenz gefunden.");
+                    return (int)$cid;
+                }
+            }
+
+            // 2. Auftraggeber / Name des Vertrags
+            $stmt = $this->db->prepare("
+                SELECT id FROM bank_contracts 
+                WHERE status = 'aktiv' 
+                  AND (
+                      auftraggeber LIKE :store 
+                      OR name LIKE :store
+                      OR :store_clean LIKE CONCAT('%', auftraggeber, '%')
+                  )
+                LIMIT 1
+            ");
+            $stmt->execute([
+                ':store' => '%' . $normalizedStore . '%',
+                ':store_clean' => $normalizedStore
+            ]);
+            $cid = $stmt->fetchColumn();
+            if ($cid) {
+                $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Partner/Name '$normalizedStore' gefunden.");
+                return (int)$cid;
+            }
+
+            // 3. bank_contract_rules prüfen
+            $stmtRules = $this->db->query("
+                SELECT r.contract_id, r.pattern_type, r.pattern_value 
+                FROM bank_contract_rules r
+                JOIN bank_contracts c ON r.contract_id = c.id
+                WHERE c.status = 'aktiv'
+                ORDER BY r.priority DESC
+            ");
+            $rules = $stmtRules ? $stmtRules->fetchAll(PDO::FETCH_ASSOC) : [];
+            $searchSpace = strtolower($normalizedStore . ' ' . ($data['mandate_reference'] ?? '') . ' ' . ($data['invoice_number'] ?? ''));
+
+            foreach ($rules as $rule) {
+                $val = strtolower(trim((string)$rule['pattern_value']));
+                if ($val === '') {
+                    continue;
+                }
+                if ($rule['pattern_type'] === 'substring' && str_contains($searchSpace, $val)) {
+                    $cid = (int)$rule['contract_id'];
+                    $this->logger->info("ReceiptRepository: Vertrag #$cid über Regel '$val' gefunden.");
+                    return $cid;
+                }
+                if ($rule['pattern_type'] === 'exact_match' && strtolower($normalizedStore) === $val) {
+                    $cid = (int)$rule['contract_id'];
+                    $this->logger->info("ReceiptRepository: Vertrag #$cid über Exact-Match '$val' gefunden.");
+                    return $cid;
+                }
+                if ($rule['pattern_type'] === 'regex') {
+                    $regex = '/' . trim($rule['pattern_value'], '/') . '/i';
+                    if (@preg_match($regex, $searchSpace)) {
+                        $cid = (int)$rule['contract_id'];
+                        $this->logger->info("ReceiptRepository: Vertrag #$cid über Regex gefunden.");
+                        return $cid;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug("ReceiptRepository: Vertragsabgleich übersprungen (" . $e->getMessage() . ")");
+        }
+
+        return null;
     }
 }

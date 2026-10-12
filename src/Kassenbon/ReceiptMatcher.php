@@ -55,7 +55,7 @@ class ReceiptMatcher
     public function syncUnlinkedReceipts(): array
     {
         $stmtUnlinked = $this->pdo->query("
-            SELECT id, purchase_date, total, store
+            SELECT id, purchase_date, total, store, contract_id, due_date
             FROM kb_receipts
             WHERE bank_giro_transaction_id IS NULL
               AND bank_cc_transaction_id IS NULL
@@ -69,9 +69,24 @@ class ReceiptMatcher
         $linkedGiro = 0;
         $linkedCc = 0;
 
-        // Query A: Girokonto-Umsatz suchen (Betrag negativ, nur aktive Girokonten).
-        // Der Händlername steht je nach Buchungsart im Verwendungszweck oder in
-        // einem der Partnerfelder (creditor/remitter/debitor).
+        // Query A1: Girokonto-Umsatz für Vertragsbeleg suchen (gezielte contract_id)
+        $stmtFindGiroContract = $this->pdo->prepare("
+            SELECT t.id
+            FROM bank_giro_transactions t
+            JOIN bank_accounts a ON a.id = t.account_id
+            WHERE a.account_type = 'checking'
+              AND a.is_active = 1
+              AND t.amount = :amount
+              AND t.contract_id = :contract_id
+              AND t.booking_date BETWEEN :date_start AND :date_end
+              AND t.id NOT IN (
+                  SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
+              )
+            ORDER BY t.booking_date ASC
+            LIMIT 1
+        ");
+
+        // Query A2: Standard-Girokonto-Umsatz suchen (ohne Vertragsbindung)
         $stmtFindGiro = $this->pdo->prepare("
             SELECT t.id
             FROM bank_giro_transactions t
@@ -117,6 +132,8 @@ class ReceiptMatcher
             $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
             $totalAmount = (float)$receipt['total'];
             $storeName = trim((string)$receipt['store']);
+            $contractId = !empty($receipt['contract_id']) ? (int)$receipt['contract_id'] : null;
+            $dueDate = !empty($receipt['due_date']) ? (string)$receipt['due_date'] : null;
 
             if ($storeName === '' || abs($totalAmount) < 0.01) {
                 continue;
@@ -124,6 +141,31 @@ class ReceiptMatcher
 
             $expectedGiroAmount = -abs($totalAmount);
             $expectedCcAmount = abs($totalAmount);
+
+            // 1. Spezieller Abgleich für Belege mit Vertragszuordnung (z.B. Telekom-Rechnung)
+            if ($contractId !== null) {
+                $contractDateStart = $dueDate
+                    ? date('Y-m-d', strtotime($dueDate . ' -7 days'))
+                    : date('Y-m-d', strtotime($purchaseDate . ' -7 days'));
+                $contractDateEnd = $dueDate
+                    ? date('Y-m-d', strtotime($dueDate . ' +14 days'))
+                    : date('Y-m-d', strtotime($purchaseDate . ' +35 days'));
+
+                $stmtFindGiroContract->execute([
+                    ':amount' => $expectedGiroAmount,
+                    ':contract_id' => $contractId,
+                    ':date_start' => $contractDateStart,
+                    ':date_end' => $contractDateEnd
+                ]);
+                $contractGiroTxId = $stmtFindGiroContract->fetchColumn();
+
+                if ($contractGiroTxId) {
+                    $stmtUpdateGiro->execute([':tx_id' => $contractGiroTxId, ':receipt_id' => $receiptId]);
+                    $linkedGiro++;
+                    $this->logger->info("ReceiptMatcher: Rechnung #$receiptId automatisch mit Giro-Vertragsbuchung #$contractGiroTxId (Vertrag #$contractId) verknüpft.");
+                    continue;
+                }
+            }
 
             $dateStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::BOOKING_LOOKBACK_DAYS . ' days'));
             $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
@@ -133,7 +175,7 @@ class ReceiptMatcher
             $hasShort = $shortToken !== '' ? 1 : 0;
             $merchantShort = $hasShort ? '%' . $this->escapeLike($shortToken) . '%' : '';
 
-            // 1. Erst auf dem Girokonto suchen (nur Buchungen ohne Vertragszuordnung)
+            // 2. Standard-Girokonto-Umsatz suchen (Buchungen ohne Vertragszuordnung)
             $stmtFindGiro->execute([
                 ':amount' => $expectedGiroAmount,
                 ':date_start' => $dateStart,
@@ -224,7 +266,7 @@ class ReceiptMatcher
      */
     public function getCandidatesForReceipt(int $receiptId): array
     {
-        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store FROM kb_receipts WHERE id = :id");
+        $stmt = $this->pdo->prepare("SELECT purchase_date, total, store, contract_id, due_date FROM kb_receipts WHERE id = :id");
         $stmt->execute([':id' => $receiptId]);
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -233,14 +275,26 @@ class ReceiptMatcher
         }
 
         $purchaseDate = date('Y-m-d', strtotime((string)$receipt['purchase_date']));
-        $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
-        $cashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
+        $dueDate = !empty($receipt['due_date']) ? (string)$receipt['due_date'] : null;
+        $contractId = !empty($receipt['contract_id']) ? (int)$receipt['contract_id'] : null;
+
+        if ($dueDate) {
+            $dateEnd = date('Y-m-d', strtotime($dueDate . ' +14 days'));
+            $cashStart = date('Y-m-d', strtotime($dueDate . ' -7 days'));
+        } elseif ($contractId !== null) {
+            $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +35 days'));
+            $cashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
+        } else {
+            $dateEnd = date('Y-m-d', strtotime($purchaseDate . ' +' . self::BOOKING_DELAY_DAYS . ' days'));
+            $cashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CASH_LOOKBACK_DAYS . ' days'));
+        }
+
         $ccCashStart = date('Y-m-d', strtotime($purchaseDate . ' -' . self::CREDITCARD_LOOKBACK_DAYS . ' days'));
         $totalAmount = abs((float)$receipt['total']);
         $store = trim((string)($receipt['store'] ?? ''));
 
         return [
-            'giro' => $this->findGiroCandidates(-$totalAmount, $cashStart, $dateEnd, $store),
+            'giro' => $this->findGiroCandidates(-$totalAmount, $cashStart, $dateEnd, $store, $contractId),
             'cc' => $this->findCcCandidates($totalAmount, $ccCashStart, $dateEnd, $store)
         ];
     }
@@ -254,7 +308,8 @@ class ReceiptMatcher
         float  $expectedAmount,
         string $cashStart,
         string $dateEnd,
-        string $store = ''
+        string $store = '',
+        ?int   $contractId = null
     ): array
     {
         $receiptTotal = abs($expectedAmount);
@@ -269,6 +324,13 @@ class ReceiptMatcher
             ':min_amount' => $minAmount,
             ':max_amount' => $maxAmount
         ];
+
+        if ($contractId !== null) {
+            $contractFilterSql = "AND (t.contract_id IS NULL OR t.contract_id = :contract_id)";
+            $params[':contract_id'] = $contractId;
+        } else {
+            $contractFilterSql = "AND t.contract_id IS NULL";
+        }
 
         if (!empty($storeTokens)) {
             foreach ($storeTokens as $i => $token) {
@@ -292,7 +354,7 @@ class ReceiptMatcher
             WHERE a.account_type = 'checking'
               AND a.is_active = 1
               AND t.amount < 0
-              AND t.contract_id IS NULL
+              {$contractFilterSql}
               AND t.id NOT IN (
                   SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
               )
@@ -308,6 +370,17 @@ class ReceiptMatcher
         // Fallback: Wenn mit Händler-Filter keine Treffer erzielt wurden,
         // suchen wir nach betragsnahen Buchungen im Zeitfenster ohne Händlerfilter
         if (empty($rows) && !empty($storeConditions)) {
+            $fallbackParams = [
+                ':date_start' => $cashStart,
+                ':date_end' => $dateEnd,
+                ':min_amount' => $minAmount,
+                ':max_amount' => $maxAmount,
+                ':receipt_total' => $receiptTotal
+            ];
+            if ($contractId !== null) {
+                $fallbackParams[':contract_id'] = $contractId;
+            }
+
             $stmtFallback = $this->pdo->prepare("
                 SELECT t.id,
                        t.booking_date,
@@ -320,7 +393,7 @@ class ReceiptMatcher
                 WHERE a.account_type = 'checking'
                   AND a.is_active = 1
                   AND t.amount < 0
-                  AND t.contract_id IS NULL
+                  {$contractFilterSql}
                   AND t.id NOT IN (
                       SELECT bank_giro_transaction_id FROM kb_receipts WHERE bank_giro_transaction_id IS NOT NULL
                   )
@@ -328,13 +401,7 @@ class ReceiptMatcher
                   AND t.amount BETWEEN :min_amount AND :max_amount
                 ORDER BY ABS(ABS(t.amount) - :receipt_total) ASC, t.booking_date ASC
             ");
-            $stmtFallback->execute([
-                ':date_start' => $cashStart,
-                ':date_end' => $dateEnd,
-                ':min_amount' => $minAmount,
-                ':max_amount' => $maxAmount,
-                ':receipt_total' => $receiptTotal
-            ]);
+            $stmtFallback->execute($fallbackParams);
             $rows = $stmtFallback->fetchAll(PDO::FETCH_ASSOC);
         }
 
@@ -554,13 +621,28 @@ class ReceiptMatcher
         }
 
         if ($accountType === 'giro') {
-            // Buchung darf keinem Vertrag zugeordnet sein
+            // Buchung darf keinem abweichenden Vertrag zugeordnet sein
             $stmtCheck = $this->pdo->prepare("SELECT contract_id FROM bank_giro_transactions WHERE id = :id LIMIT 1");
             $stmtCheck->execute([':id' => $txId]);
-            $contractId = $stmtCheck->fetchColumn();
-            if (!empty($contractId)) {
-                $this->logger->warn("ReceiptMatcher: Giro-Transaktion #$txId ist bereits Vertrag #$contractId zugeordnet.");
-                return false;
+            $txContractId = $stmtCheck->fetchColumn();
+
+            if (!empty($txContractId)) {
+                $stmtReceipt = $this->pdo->prepare("SELECT contract_id FROM kb_receipts WHERE id = :id LIMIT 1");
+                $stmtReceipt->execute([':id' => $receiptId]);
+                $receiptContractId = $stmtReceipt->fetchColumn();
+
+                if (!empty($receiptContractId) && (int)$receiptContractId !== (int)$txContractId) {
+                    $this->logger->warn("ReceiptMatcher: Giro-Transaktion #$txId gehört zu Vertrag #$txContractId, Beleg #$receiptId aber zu Vertrag #$receiptContractId.");
+                    return false;
+                }
+
+                // Falls der Beleg noch keinen Vertrag hatte, übernimmt er den Vertrag der Buchung
+                if (empty($receiptContractId)) {
+                    $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")->execute([
+                        ':cid' => $txContractId,
+                        ':id' => $receiptId
+                    ]);
+                }
             }
 
             $stmt = $this->pdo->prepare("UPDATE kb_receipts SET bank_giro_transaction_id = :tx_id, bank_cc_transaction_id = NULL WHERE id = :receipt_id");

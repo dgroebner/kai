@@ -121,6 +121,14 @@ try {
                     <span class="badge badge-warning" style="font-size: 0.85rem;">🟡 Zahlung offen</span>
                 <?php endif; ?>
 
+                <?php if (!empty($receipt['contract_id'])): ?>
+                    <a href="../bank/contracts.php#contract-<?= (int)$receipt['contract_id'] ?>"
+                       class="badge badge-info" style="text-decoration: none; font-size: 0.85rem;"
+                       title="Zum Vertrag in der Finanzverwaltung wechseln">
+                        📑 Vertrag: <?= htmlspecialchars($receipt['contract_name'] ?? 'Vertrag', ENT_QUOTES, 'UTF-8') ?> &rarr;
+                    </a>
+                <?php endif; ?>
+
                 <?php foreach ($linkedCharges as $vc): 
                     $vcDate = (new DateTime($vc['start_time']))->format('Y-m-d');
                     $vcTime = (new DateTime($vc['start_time']))->format('d.m.Y H:i');
@@ -143,26 +151,122 @@ $itemsWithKey = array_map(static function (array $item) use ($chargesByItemId): 
     $item['linked_charge'] = $chargesByItemId[(int)$item['id']] ?? null;
     return $item;
 }, $items);
+
+$meta = $receipt['meta'] ?? [];
+$isInvoice = (!empty($receipt['document_type']) && in_array($receipt['document_type'], ['invoice', 'mobile_bill'], true))
+    || !empty($receipt['invoice_number'])
+    || !empty($meta['phone_profiles']);
+$phoneProfiles = $meta['phone_profiles'] ?? [];
 ?>
     <main id="kassenbonDetailApp"
           data-categories='<?= htmlspecialchars(json_encode($allCategories), ENT_QUOTES, 'UTF-8') ?>'
           data-items='<?= htmlspecialchars(json_encode($itemsWithKey), ENT_QUOTES, 'UTF-8') ?>'
           data-total="<?= (float)$receipt['total'] ?>">
 
-        <!-- Kopfbereich: Donut & Legende -->
-        <section class="card">
-            <h3>Kategorien-Anteil</h3>
-            <div class="analysis-grid">
-                <div class="category-legend" id="categoryLegend"></div>
-                <div class="chart-container">
-                    <canvas id="categoryChart"></canvas>
-                    <div class="chart-center-text">
-                        <span class="label">Gesamt</span>
-                        <span class="value"><?= number_format((float)$receipt['total'], 2, ',', '.') ?> €</span>
+        <?php if ($isInvoice): ?>
+            <!-- Rechnungs-Kopfdaten -->
+            <section class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-top: 0; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span>📄 Rechnungsdaten</span>
+                    <?php if (!empty($receipt['billing_period'])): ?>
+                        <span class="badge badge-primary" style="font-size: 0.85rem; font-weight: normal;">
+                            Zeitraum: <?= htmlspecialchars($receipt['billing_period'], ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                    <?php endif; ?>
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <?php if (!empty($receipt['invoice_number'])): ?>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Rechnungsnummer</div>
+                            <strong><?= htmlspecialchars($receipt['invoice_number'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($receipt['due_date'])): ?>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">SEPA-Abbuchungstermin</div>
+                            <strong style="color: var(--color-green, #10b981);">
+                                <?= date('d.m.Y', strtotime($receipt['due_date'])) ?>
+                            </strong>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($meta['mandate_reference'])): ?>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Mandatsreferenz</div>
+                            <span style="font-family: monospace; font-size: 0.85rem;"><?= htmlspecialchars($meta['mandate_reference'], ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($meta['customer_account']) || !empty($meta['customer_number'])): ?>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Kundenkonto / Kd.-Nr.</div>
+                            <span><?= htmlspecialchars(($meta['customer_account'] ?? '') . ($meta['customer_account'] && $meta['customer_number'] ? ' / ' : '') . ($meta['customer_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (isset($meta['net_amount']) || isset($meta['tax_amount'])): ?>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Steueraufschlüsselung</div>
+                            <span>
+                                Netto: <?= number_format((float)($meta['net_amount'] ?? 0), 2, ',', '.') ?> € &bull;
+                                19% USt: <?= number_format((float)($meta['tax_amount'] ?? 0), 2, ',', '.') ?> €
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <?php if (!empty($phoneProfiles)): ?>
+                <!-- Aufschlüsselung nach Mobilfunk-Rufnummern -->
+                <section class="card" style="margin-bottom: 1.5rem;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem;">📱 Mobilfunk-Rufnummern (<?= count($phoneProfiles) ?> Profile)</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                        <?php foreach ($phoneProfiles as $p): ?>
+                            <div class="card" style="border: 1px solid var(--border-color); background: var(--bg-surface-alt, rgba(255,255,255,0.03)); padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                                    <div>
+                                        <strong style="font-size: 1.05rem; font-family: monospace;"><?= htmlspecialchars($p['phone_number'] ?? 'Ohne Nummer', ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <?php if (!empty($p['tariff'])): ?>
+                                            <div style="font-size: 0.8rem; color: var(--text-muted);"><?= htmlspecialchars($p['tariff'], ENT_QUOTES, 'UTF-8') ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="amount-bold" style="font-size: 1.05rem;">
+                                        <?= number_format((float)($p['total'] ?? 0), 2, ',', '.') ?> €
+                                    </span>
+                                </div>
+                                <?php if (!empty($p['profile_number'])): ?>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                                        Karten-/Profil-Nr.: <?= htmlspecialchars($p['profile_number'], ENT_QUOTES, 'UTF-8') ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($p['items']) && is_array($p['items'])): ?>
+                                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1.2rem; font-size: 0.8rem; color: var(--text-muted);">
+                                        <?php foreach ($p['items'] as $pItem): ?>
+                                            <li>
+                                                <?= htmlspecialchars($pItem['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>:
+                                                <strong><?= number_format((float)($pItem['price'] ?? 0), 2, ',', '.') ?> €</strong>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
+        <?php else: ?>
+            <!-- Kopfbereich: Donut & Legende für reguläre Kassenbons -->
+            <section class="card">
+                <h3>Kategorien-Anteil</h3>
+                <div class="analysis-grid">
+                    <div class="category-legend" id="categoryLegend"></div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                        <div class="chart-center-text">
+                            <span class="label">Gesamt</span>
+                            <span class="value"><?= number_format((float)$receipt['total'], 2, ',', '.') ?> €</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        <?php endif; ?>
 
         <!-- Einzelpositionen -->
         <section class="card u-mt-lg">

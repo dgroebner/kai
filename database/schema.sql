@@ -263,17 +263,40 @@ CREATE TABLE IF NOT EXISTS `kb_receipts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `bank_giro_transaction_id` INT NULL DEFAULT NULL,
   `bank_cc_transaction_id` INT UNSIGNED NULL DEFAULT NULL,
+  `contract_id` INT UNSIGNED NULL DEFAULT NULL,
   `shopping_session_id` INT NULL DEFAULT NULL,
   `file_hash` varchar(64) DEFAULT NULL,
   `store` varchar(255) NOT NULL,
   `purchase_date` date NOT NULL,
   `total` decimal(10,2) NOT NULL,
+  `invoice_number` varchar(100) DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `billing_period` varchar(100) DEFAULT NULL,
+  `document_type` varchar(50) NOT NULL DEFAULT 'receipt',
+  `meta_data` json DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_file_hash` (`file_hash`),
   FOREIGN KEY (`bank_giro_transaction_id`) REFERENCES `bank_giro_transactions`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`bank_cc_transaction_id`) REFERENCES `bank_cc_transactions`(`id`) ON DELETE SET NULL,
-  INDEX `idx_shopping_session_id` (`shopping_session_id`)
+  FOREIGN KEY (`contract_id`) REFERENCES `bank_contracts`(`id`) ON DELETE SET NULL,
+  INDEX `idx_shopping_session_id` (`shopping_session_id`),
+  INDEX `idx_contract_id` (`contract_id`),
+  INDEX `idx_document_type` (`document_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `postbox_sync_log` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `file_hash` VARCHAR(64) NOT NULL,
+  `source_channel` VARCHAR(30) NOT NULL DEFAULT 'IMAP',
+  `original_filename` VARCHAR(255) NULL,
+  `dispatched_filename` VARCHAR(255) NOT NULL,
+  `postbox_tag` VARCHAR(100) NOT NULL,
+  `dispatched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` ENUM('SUCCESS', 'FAILED') NOT NULL DEFAULT 'SUCCESS',
+  `error_message` TEXT NULL,
+  INDEX `idx_postbox_file_hash` (`file_hash`),
+  INDEX `idx_postbox_tag` (`postbox_tag`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `kb_items` (

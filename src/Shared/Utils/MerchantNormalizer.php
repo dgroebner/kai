@@ -89,6 +89,13 @@ final class MerchantNormalizer
         '/\b(fastned)\b/i'                 => 'Fastned',
         '/\b(allego)\b/i'                  => 'Allego',
         '/\b(tesla)\b/i'                   => 'Tesla',
+
+        // Telekommunikation & Verträge
+        '/\b(telekom|deutsche\s+telekom)\b/i' => 'Telekom',
+        '/\b(vodafone)\b/i'                => 'Vodafone',
+        '/\b(o2|telefonica)\b/i'           => 'O2',
+        '/\b(1&1|1\s*und\s*1)\b/i'         => '1&1',
+        '/\b(congstar)\b/i'                => 'congstar',
     ];
 
     /**

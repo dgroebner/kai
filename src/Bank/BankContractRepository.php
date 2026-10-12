@@ -21,9 +21,25 @@ class BankContractRepository
     public function getAllContracts(?string $status = null): array
     {
         $sql = "
-            SELECT c.*, cat.name AS category_name 
+            SELECT c.*, cat.name AS category_name,
+                   lr.id AS latest_receipt_id,
+                   lr.total AS latest_receipt_total,
+                   lr.purchase_date AS latest_receipt_date,
+                   lr.invoice_number AS latest_receipt_invoice_number,
+                   lr.due_date AS latest_receipt_due_date,
+                   lr.bank_giro_transaction_id AS latest_receipt_giro_id
             FROM bank_contracts c
             LEFT JOIN bank_categories cat ON c.category_id = cat.id
+            LEFT JOIN (
+                SELECT r1.id, r1.contract_id, r1.total, r1.purchase_date, r1.invoice_number, r1.due_date, r1.bank_giro_transaction_id
+                FROM kb_receipts r1
+                INNER JOIN (
+                    SELECT contract_id, MAX(id) as max_id
+                    FROM kb_receipts
+                    WHERE contract_id IS NOT NULL
+                    GROUP BY contract_id
+                ) r2 ON r1.contract_id = r2.contract_id AND r1.id = r2.max_id
+            ) lr ON c.id = lr.contract_id
         ";
 
         if ($status !== null) {
@@ -43,7 +59,7 @@ class BankContractRepository
     }
 
     /**
-     * Lädt einen einzelnen Vertrag inklusive seiner Regeln.
+     * Lädt einen einzelnen Vertrag inklusive seiner Regeln und zugeordneten Rechnungen.
      */
     public function getContractById(int $id): ?array
     {
@@ -62,8 +78,32 @@ class BankContractRepository
 
         // Regeln für diesen Vertrag laden
         $contract['rules'] = $this->getRulesForContract($id);
+        $contract['receipts'] = $this->getReceiptsForContract($id);
 
         return $contract;
+    }
+
+    /**
+     * Lädt alle Rechnungen/Belege, die diesem Vertrag zugeordnet sind.
+     */
+    public function getReceiptsForContract(int $contractId): array
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT r.*,
+                       gt.booking_date AS giro_booking_date,
+                       ct.booking_date AS cc_booking_date
+                FROM kb_receipts r
+                LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
+                LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
+                WHERE r.contract_id = :cid
+                ORDER BY r.purchase_date DESC, r.id DESC
+            ");
+            $stmt->execute([':cid' => $contractId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**
