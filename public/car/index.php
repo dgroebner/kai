@@ -292,6 +292,41 @@ if ($tab === 'trips') {
             background: rgba(59, 130, 246, 0.08) !important;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
         }
+        .badge-outline {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+            color: var(--text-color, #f1f5f9);
+        }
+        .charge-kpi-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.6rem;
+            font-size: 0.9rem;
+            align-items: flex-start;
+        }
+        .charge-kpi-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .charge-kpi-label {
+            color: var(--text-muted, #94a3b8);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .charge-kpi-val {
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+        }
+        .charge-kpi-charged  { min-width: 140px; }
+        .charge-kpi-power    { min-width: 110px; }
+        .charge-kpi-duration { min-width: 85px; }
+        .charge-kpi-cost     { min-width: 155px; }
+        .charge-kpi-solar    { min-width: 105px; }
+        .charge-kpi-grid     { min-width: 105px; }
     </style>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
@@ -861,22 +896,18 @@ if ($tab === 'trips') {
                                         <?php if ($isHome): ?>
                                             <span class="badge badge-success">🏠 Zuhause</span>
                                         <?php else: ?>
-                                            <?php if ($hasStation || $hasCoords): ?>
-                                                <span class="badge badge-secondary" title="Unterwegs geladen">📍</span>
-                                            <?php else: ?>
-                                                <span class="badge badge-secondary">📍 Unterwegs</span>
-                                            <?php endif; ?>
                                             <?php if (!empty($charge['station_operator'])): ?>
                                                 <span class="badge badge-primary">⚡ <?= htmlspecialchars($charge['station_operator']) ?></span>
                                             <?php endif; ?>
                                             <?php if (!empty($charge['station_name'])): ?>
-                                                <span class="badge badge-outline" title="<?= htmlspecialchars($charge['station_name']) ?>" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                    <?= htmlspecialchars($charge['station_name']) ?>
+                                                <span class="badge badge-outline" title="<?= htmlspecialchars($charge['station_name']) ?>" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    📍 <?= htmlspecialchars($charge['station_name']) ?>
                                                 </span>
+                                            <?php else: ?>
+                                                <span class="badge badge-outline">📍 Unterwegs</span>
                                             <?php endif; ?>
                                             <?php if ($hasCoords): ?>
                                                 <a href="https://www.openstreetmap.org/?mlat=<?= $charge['lat'] ?>&mlon=<?= $charge['lon'] ?>#map=18/<?= $charge['lat'] ?>/<?= $charge['lon'] ?>" target="_blank" rel="noopener" class="btn btn-outline btn-xs" title="Ladestation in OpenStreetMap ansehen" style="font-size: 0.75rem; padding: 2px 6px;">🗺️ OSM</a>
-                                                <a href="https://www.google.com/maps/search/?api=1&query=<?= urlencode(($charge['station_name'] ? $charge['station_name'] . ', ' : '') . $charge['lat'] . ',' . $charge['lon']) ?>" target="_blank" rel="noopener" class="btn btn-outline btn-xs" title="In Google Maps ansehen" style="font-size: 0.75rem; padding: 2px 6px;">📍 Maps</a>
                                             <?php endif; ?>
                                             <?php if ($hasCoords && !$hasStation): ?>
                                                 <button type="button" class="btn btn-outline btn-xs js-btn-resolve-station" data-charge-id="<?= $charge['id'] ?>" title="Ladestation über OpenStreetMap ermitteln" style="font-size: 0.75rem; padding: 2px 6px;">🔍 Station suchen</button>
@@ -886,35 +917,29 @@ if ($tab === 'trips') {
                                     </div>
                                 </div>
                                 
-                                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.9rem; align-items: flex-end;">
-                                    <div>
-                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Geladen</div>
-                                        <strong><?= number_format($charge['charged_net_kwh'], 1, ',', '.') ?> kWh</strong> 
-                                        <span class="text-success">(+<?= $charge['delta_soc_pct'] ?>%)</span>
+                                <div class="charge-kpi-row">
+                                    <div class="charge-kpi-item charge-kpi-charged">
+                                        <div class="charge-kpi-label">Geladen</div>
+                                        <div class="charge-kpi-val">
+                                            <strong><?= number_format($charge['charged_net_kwh'], 1, ',', '.') ?> kWh</strong>&nbsp;<span class="text-success">(+<?= $charge['delta_soc_pct'] ?>%)</span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Max. Leistung</div>
-                                        <strong><?= number_format($charge['avg_charge_power_kw'], 1, ',', '.') ?> kW</strong>
+                                    <div class="charge-kpi-item charge-kpi-power">
+                                        <div class="charge-kpi-label">Max. Leistung</div>
+                                        <div class="charge-kpi-val">
+                                            <strong><?= number_format($charge['avg_charge_power_kw'], 1, ',', '.') ?> kW</strong>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Dauer</div>
-                                        <strong><?= $durStr ?></strong>
+                                    <div class="charge-kpi-item charge-kpi-duration">
+                                        <div class="charge-kpi-label">Dauer</div>
+                                        <div class="charge-kpi-val">
+                                            <strong><?= $durStr ?></strong>
+                                        </div>
                                     </div>
                                     
-                                    <?php if ($isHome): ?>
-                                        <div>
-                                            <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Solar (PV)</div>
-                                            <strong class="text-success">☀️ <?= number_format($charge['home_pv_kwh'] ?? 0, 1, ',', '.') ?> kWh</strong>
-                                        </div>
-                                        <div>
-                                            <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Netzbezug</div>
-                                            <strong class="text-danger">⚡ <?= number_format($charge['home_grid_kwh'] ?? 0, 1, ',', '.') ?> kWh</strong>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <div>
-                                        <div class="u-muted" style="font-size: 0.75rem; text-transform: uppercase;">Kosten &amp; Beleg</div>
-                                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <div class="charge-kpi-item charge-kpi-cost">
+                                        <div class="charge-kpi-label">Kosten &amp; Beleg</div>
+                                        <div class="charge-kpi-val" style="gap: 0.5rem; flex-wrap: wrap;">
                                             <?php if ($hasReceipt): ?>
                                                 <span class="badge badge-success" style="font-size: 0.85rem; padding: 4px 8px;">
                                                     🧾 <a href="../kassenbon/detail.php?id=<?= (int)$charge['receipt_id'] ?>" style="color: inherit; text-decoration: underline; font-weight: bold;">
@@ -950,6 +975,21 @@ if ($tab === 'trips') {
                                             <?php endif; ?>
                                         </div>
                                     </div>
+                                    
+                                    <?php if ($isHome): ?>
+                                        <div class="charge-kpi-item charge-kpi-solar">
+                                            <div class="charge-kpi-label">Solar (PV)</div>
+                                            <div class="charge-kpi-val">
+                                                <strong class="text-success">☀️ <?= number_format($charge['home_pv_kwh'] ?? 0, 1, ',', '.') ?> kWh</strong>
+                                            </div>
+                                        </div>
+                                        <div class="charge-kpi-item charge-kpi-grid">
+                                            <div class="charge-kpi-label">Netzbezug</div>
+                                            <div class="charge-kpi-val">
+                                                <strong class="text-danger">⚡ <?= number_format($charge['home_grid_kwh'] ?? 0, 1, ',', '.') ?> kWh</strong>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
