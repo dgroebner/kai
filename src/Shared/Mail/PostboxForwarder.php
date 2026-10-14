@@ -54,7 +54,11 @@ class PostboxForwarder
 
         $docDate = $receiptData['date'] ?? ($receiptData['purchase_date'] ?? date('Y-m-d'));
         $store = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($receiptData['store'] ?? 'Telekom'));
-        $typeLabel = ($tag === '#festnetzrechnung') ? 'Festnetz' : 'Mobilfunk';
+        $typeLabel = match ($tag) {
+            '#festnetzrechnung' => 'Festnetz',
+            '#alarmrechnung' => 'Alarm',
+            default => 'Mobilfunk',
+        };
         $dispatchedFilename = "{$docDate}_{$store}_{$typeLabel}.pdf";
 
         $billingPeriod = !empty($receiptData['billing_period']) ? ' ' . trim((string)$receiptData['billing_period']) : '';
@@ -66,7 +70,7 @@ class PostboxForwarder
 
     /**
      * Ermittelt den passenden Tag für d.velop.
-     * Unterstützt #mobilfunkrechnung und #festnetzrechnung.
+     * Unterstützt #mobilfunkrechnung, #festnetzrechnung und #alarmrechnung.
      */
     public function determinePostboxTag(array $receiptData, string $filename): ?string
     {
@@ -75,7 +79,31 @@ class PostboxForwarder
         $lowerFile = strtolower($filename);
         $billingPeriod = strtolower((string)($receiptData['billing_period'] ?? ''));
 
-        // 1. Festnetz-Erkennung
+        // 1. Alarm- & Sicherheitsrechnungen (z.B. StadtRitter)
+        if ($docType === 'alarm_bill'
+            || str_contains($lowerFile, 'alarm')
+            || str_contains($lowerFile, 'stadtritter')
+            || str_contains($billingPeriod, 'alarm')
+            || str_contains($store, 'stadtritter')
+        ) {
+            return '#alarmrechnung';
+        }
+
+        if (!empty($receiptData['items']) && is_array($receiptData['items'])) {
+            foreach ($receiptData['items'] as $item) {
+                $itemName = strtolower((string)($item['name'] ?? ''));
+                if (str_contains($itemName, 'stadtritter')
+                    || str_contains($itemName, 'alarm')
+                    || str_contains($itemName, 'aufschaltung')
+                    || str_contains($itemName, 'leitstelle')
+                    || str_contains($itemName, 'sicherheitsdienst')
+                ) {
+                    return '#alarmrechnung';
+                }
+            }
+        }
+
+        // 2. Festnetz-Erkennung
         if ($docType === 'landline_bill'
             || str_contains($lowerFile, 'festnetz')
             || str_contains($billingPeriod, 'festnetz')

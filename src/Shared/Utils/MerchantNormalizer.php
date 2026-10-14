@@ -96,6 +96,9 @@ final class MerchantNormalizer
         '/\b(o2|telefonica)\b/i'           => 'O2',
         '/\b(1&1|1\s*und\s*1)\b/i'         => '1&1',
         '/\b(congstar)\b/i'                => 'congstar',
+
+        // Sicherheit, Alarm & Gebäudeüberwachung
+        '/\b(stadtritter)\b/i'             => 'StadtRitter',
     ];
 
     /**
