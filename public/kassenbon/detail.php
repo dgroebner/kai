@@ -106,7 +106,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <title>eBon <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> - Kai</title>
+    <title><?= (!empty($receipt['document_type']) && $receipt['document_type'] !== 'receipt') ? 'Rechnung' : 'Beleg' ?> <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?> - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
 </head>
@@ -160,7 +160,7 @@ try {
                 <?php endforeach; ?>
             </div>
         </div>
-        <a href="index.php" class="btn btn-outline">&larr; Zurück zu der Übersicht</a>
+        <a href="index.php" class="btn btn-outline">&larr; Zurück zu Rechnungen</a>
     </header>
 
 <?php
@@ -172,7 +172,7 @@ $itemsWithKey = array_map(static function (array $item) use ($chargesByItemId): 
 }, $items);
 
 $meta = $receipt['meta'] ?? [];
-$isInvoice = (!empty($receipt['document_type']) && in_array($receipt['document_type'], ['invoice', 'mobile_bill'], true))
+$isInvoice = (!empty($receipt['document_type']) && in_array($receipt['document_type'], ['invoice', 'mobile_bill', 'landline_bill', 'alarm_bill', 'hosting_bill', 'charging_invoice'], true))
     || !empty($receipt['invoice_number'])
     || !empty($meta['phone_profiles']);
 $phoneProfiles = $meta['phone_profiles'] ?? [];

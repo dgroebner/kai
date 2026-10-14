@@ -63,13 +63,13 @@ $eventGroups = [
             ],
         ],
     ],
-    'E-Bons' => [
+    'Rechnungen' => [
         'permission' => 'ebon_read',
         'events' => [
             'receipt_created' => [
                 'icon' => '🧾',
-                'label' => 'Neuer Kassenbon',
-                'desc' => 'E-Bons aus E-Mail-Postfächern digital erfasst'
+                'label' => 'Neue Rechnung / Beleg',
+                'desc' => 'Rechnungen und Belege aus E-Mail-Postfächern digital erfasst'
             ],
         ],
     ],

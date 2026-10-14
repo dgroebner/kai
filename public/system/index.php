@@ -295,7 +295,7 @@ function getEventLabel(string $eventType): string
 {
     return match ($eventType) {
         'school_plan_updated' => 'Schul-Vertretungsplan aktualisiert',
-        'receipt_created' => 'Neuer E-Bon erfasst',
+        'receipt_created' => 'Neue Rechnung / Beleg erfasst',
         'creditcard_statement_created' => 'Neue Kreditkartenabrechnung erfasst',
         'bank_data_imported' => 'Neue Bankdaten importiert',
         'pv_forecast_loaded' => 'Neue PV-Prognose geladen',

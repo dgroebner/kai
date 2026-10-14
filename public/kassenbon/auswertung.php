@@ -120,7 +120,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
-    <title>Bon-Auswertung</title>
+    <title>E-Bon-Auswertung - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
 </head>
@@ -128,14 +128,14 @@ try {
 <div class="container" id="auswertung-container">
     <!-- Standard-Header wie bei Kreditkarten -->
     <header class="page-header">
-        <h1>📈 Bon-Auswertung</h1>
+        <h1>📈 E-Bon-Auswertung</h1>
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
 
-    <!-- Tab-Switcher (eBons / Auswertung / Inflation) -->
+    <!-- Tab-Switcher (Rechnungen / E-Bon-Auswertung / Inflation) -->
     <div class="period-switcher sub-nav-tabs">
-        <a href="index.php" class="btn btn-outline">🧾 eBons</a>
-        <a href="auswertung.php" class="btn">📈 Auswertung</a>
+        <a href="index.php" class="btn btn-outline">🧾 Rechnungen</a>
+        <a href="auswertung.php" class="btn">📈 E-Bon-Auswertung</a>
         <a href="inflation.php" class="btn btn-outline">🏷️ Inflation</a>
     </div>
 
@@ -156,7 +156,7 @@ try {
         <div class="current-period-label">
             <?= htmlspecialchars($periodLabel) ?>
             <span class="period-range-sub">
-                Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDate)) ?> bis <?= date('d.m.Y', strtotime($endDate)) ?>
+                Auswertungszeitraum: <?= date('d.m.Y', strtotime($startDate)) ?> bis <?= date('d.m.Y', strtotime($endDate)) ?> &bull; Nur E-Bons (Einzelhandel & Supermärkte)
             </span>
         </div>
         <a href="?type=<?= $type ?>&date=<?= htmlspecialchars($nextDate) ?>"
@@ -165,7 +165,7 @@ try {
 
     <?php if (empty($items)): ?>
         <div class="card empty-state">
-            <p class="empty-state-text">Keine Kassenbon-Positionen für diesen Zeitraum gefunden.</p>
+            <p class="empty-state-text">Keine E-Bon-Positionen für diesen Zeitraum gefunden.</p>
         </div>
     <?php else: ?>
         <div class="category-analysis-wrapper">

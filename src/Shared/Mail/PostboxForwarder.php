@@ -57,6 +57,7 @@ class PostboxForwarder
         $typeLabel = match ($tag) {
             '#festnetzrechnung' => 'Festnetz',
             '#alarmrechnung' => 'Alarm',
+            '#strato' => 'Hosting',
             default => 'Mobilfunk',
         };
         $dispatchedFilename = "{$docDate}_{$store}_{$typeLabel}.pdf";
@@ -70,7 +71,7 @@ class PostboxForwarder
 
     /**
      * Ermittelt den passenden Tag für d.velop.
-     * Unterstützt #mobilfunkrechnung, #festnetzrechnung und #alarmrechnung.
+     * Unterstützt #mobilfunkrechnung, #festnetzrechnung, #alarmrechnung und #strato.
      */
     public function determinePostboxTag(array $receiptData, string $filename): ?string
     {
@@ -79,7 +80,25 @@ class PostboxForwarder
         $lowerFile = strtolower($filename);
         $billingPeriod = strtolower((string)($receiptData['billing_period'] ?? ''));
 
-        // 1. Alarm- & Sicherheitsrechnungen (z.B. StadtRitter)
+        // 1. Strato / Hosting-Rechnungen
+        if ($docType === 'hosting_bill'
+            || str_contains($store, 'strato')
+            || str_contains($lowerFile, 'strato')
+            || str_contains($billingPeriod, 'strato')
+        ) {
+            return '#strato';
+        }
+
+        if (!empty($receiptData['items']) && is_array($receiptData['items'])) {
+            foreach ($receiptData['items'] as $item) {
+                $itemName = strtolower((string)($item['name'] ?? ''));
+                if (str_contains($itemName, 'strato')) {
+                    return '#strato';
+                }
+            }
+        }
+
+        // 2. Alarm- & Sicherheitsrechnungen (z.B. StadtRitter)
         if ($docType === 'alarm_bill'
             || str_contains($lowerFile, 'alarm')
             || str_contains($lowerFile, 'stadtritter')

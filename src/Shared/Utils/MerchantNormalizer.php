@@ -99,6 +99,9 @@ final class MerchantNormalizer
 
         // Sicherheit, Alarm & Gebäudeüberwachung
         '/\b(stadtritter)\b/i'             => 'StadtRitter',
+
+        // Hosting, Server, Domain & Cloud
+        '/\b(strato)\b/i'                  => 'STRATO',
     ];
 
     /**

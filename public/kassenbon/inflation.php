@@ -118,10 +118,10 @@ try {
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
 
-    <!-- Tab-Switcher (eBons / Auswertung / Inflation) -->
+    <!-- Tab-Switcher (Rechnungen / E-Bon-Auswertung / Inflation) -->
     <div class="period-switcher sub-nav-tabs">
-        <a href="index.php" class="btn btn-outline">🧾 eBons</a>
-        <a href="auswertung.php" class="btn btn-outline">📈 Auswertung</a>
+        <a href="index.php" class="btn btn-outline">🧾 Rechnungen</a>
+        <a href="auswertung.php" class="btn btn-outline">📈 E-Bon-Auswertung</a>
         <a href="inflation.php" class="btn">🏷️ Inflation</a>
     </div>
 

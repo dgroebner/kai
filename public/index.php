@@ -194,7 +194,7 @@ if (!empty($dailyWisdom)) {
             <?php if (Auth::hasPermission('ebon_read')): ?>
                 <a href="kassenbon/index.php" class="card tool-card">
                     <span class="tool-card-icon">🧾</span>
-                    <span class="tool-card-title">E-Bons</span>
+                    <span class="tool-card-title">Rechnungen</span>
                 </a>
             <?php endif; ?>
 

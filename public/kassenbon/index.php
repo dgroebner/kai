@@ -48,21 +48,21 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <title>Meine eBons - Kai</title>
+    <title>Rechnungen - Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <?php include __DIR__ . '/../shared/head-pwa.php'; ?>
 </head>
 <?php include __DIR__ . '/../shared/body-tag.php'; ?>
 <div class="container">
     <header class="page-header">
-        <h1>🧾 Meine eBons</h1>
+        <h1>🧾 Rechnungen</h1>
         <a href="../index.php" class="btn btn-outline">&larr; Zurück zur Übersicht</a>
     </header>
 
-    <!-- Tab-Switcher (eBons / Auswertung / Inflation) -->
+    <!-- Tab-Switcher (Rechnungen / E-Bon-Auswertung / Inflation) -->
     <div class="period-switcher sub-nav-tabs">
-        <a href="index.php" class="btn">🧾 eBons</a>
-        <a href="auswertung.php" class="btn btn-outline">📈 Auswertung</a>
+        <a href="index.php" class="btn">🧾 Rechnungen</a>
+        <a href="auswertung.php" class="btn btn-outline">📈 E-Bon-Auswertung</a>
         <a href="inflation.php" class="btn btn-outline">🏷️ Inflation</a>
     </div>
 
@@ -84,7 +84,24 @@ try {
                     <tr>
                         <td data-label="Datum"><?= date('d.m.Y', strtotime($receipt['purchase_date'])) ?></td>
                         <td data-label="Händler"
-                            class="amount-bold"><?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                            class="amount-bold">
+                            <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                            <?php
+                            $dt = $receipt['document_type'] ?? 'receipt';
+                            if ($dt === 'mobile_bill'): ?>
+                                <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">📱 Mobilfunk</span>
+                            <?php elseif ($dt === 'landline_bill'): ?>
+                                <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">☎️ Festnetz</span>
+                            <?php elseif ($dt === 'hosting_bill'): ?>
+                                <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">🌐 Hosting</span>
+                            <?php elseif ($dt === 'alarm_bill'): ?>
+                                <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">🛡️ Alarm</span>
+                            <?php elseif ($dt === 'charging_invoice'): ?>
+                                <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">⚡ Laden</span>
+                            <?php elseif ($dt === 'invoice'): ?>
+                                <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">📄 Rechnung</span>
+                            <?php endif; ?>
+                        </td>
                         <td data-label="Zahlungsstatus">
                             <?php if (!empty($receipt['bank_giro_transaction_id'])): ?>
                                 <a href="../bank/index.php?tx=<?= (int)$receipt['bank_giro_transaction_id'] ?>"

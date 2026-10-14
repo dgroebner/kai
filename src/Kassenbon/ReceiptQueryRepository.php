@@ -138,17 +138,32 @@ class ReceiptQueryRepository
 
     /**
      * Alle Positionen eines Zeitraums inklusive Einkaufsdatum für die Auswertung.
+     * Standardmäßig gefiltert auf reguläre E-Bons (Einzelhandel & Supermärkte),
+     * da Rechnungen (Verträge, Hosting, Mobilfunk etc.) bereits im Finanzreport ausgewertet werden.
      */
-    public function getItemsForPeriod(string $startDate, string $endDate): array
+    public function getItemsForPeriod(string $startDate, string $endDate, ?string $documentType = 'receipt'): array
     {
-        $stmt = $this->pdo->prepare("
+        $sql = "
             SELECT i.*, r.purchase_date
             FROM kb_items i
             JOIN kb_receipts r ON i.receipt_id = r.id
             WHERE r.purchase_date BETWEEN :start AND :end
-            ORDER BY r.purchase_date DESC, r.id DESC, i.id
-        ");
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        ";
+        $params = [':start' => $startDate, ':end' => $endDate];
+
+        if ($documentType !== null) {
+            if ($documentType === 'receipt') {
+                $sql .= " AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')";
+            } else {
+                $sql .= " AND r.document_type = :doc_type";
+                $params[':doc_type'] = $documentType;
+            }
+        }
+
+        $sql .= " ORDER BY r.purchase_date DESC, r.id DESC, i.id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -156,10 +171,11 @@ class ReceiptQueryRepository
     /**
      * Alle Positionen eines Zeitraums inklusive Einkaufsdatum und Händler
      * für die Inflations- und Preisanalyse.
+     * Standardmäßig gefiltert auf reguläre E-Bons (Einzelhandel & Supermärkte).
      *
      * @return array<int, array<string, mixed>>
      */
-    public function getItemsForInflation(?string $startDate = null, ?string $endDate = null): array
+    public function getItemsForInflation(?string $startDate = null, ?string $endDate = null, ?string $documentType = 'receipt'): array
     {
         $sql = "
             SELECT 
@@ -178,6 +194,14 @@ class ReceiptQueryRepository
         ";
 
         $params = [];
+        if ($documentType !== null) {
+            if ($documentType === 'receipt') {
+                $sql .= " AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')";
+            } else {
+                $sql .= " AND r.document_type = :doc_type";
+                $params[':doc_type'] = $documentType;
+            }
+        }
         if ($startDate !== null) {
             $sql .= " AND r.purchase_date >= :start";
             $params[':start'] = $startDate;
