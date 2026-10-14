@@ -463,6 +463,13 @@ table, .data-table, .receipts-table, .details-table {
     border-collapse: collapse;
 }
 
+.item-name-cell,
+td[data-label="Artikel"] {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
 th, td {
     padding: 12px 15px;
     text-align: left;
@@ -904,6 +911,17 @@ tr.is-today-row {
         font-size: 0.9rem;
     }
 
+    .stack-table td[data-label="Artikel"] {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        width: 100%;
+        gap: 0.25rem;
+    }
+
     /* Beschriftung aus HTML data-label Attribut auslesen */
     .stack-table td[data-label]::before {
         content: attr(data-label);
@@ -912,6 +930,11 @@ tr.is-today-row {
         color: var(--text-muted);
         font-weight: 600;
         margin-right: 1rem;
+    }
+
+    .stack-table td[data-label="Artikel"]::before {
+        margin-right: 0;
+        margin-bottom: 0.15rem;
     }
 
     /* Eingabefelder in Mobil-Kacheln anpassen */

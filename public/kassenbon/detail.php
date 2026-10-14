@@ -298,11 +298,11 @@ $phoneProfiles = $meta['phone_profiles'] ?? [];
                 <table class="receipts-table stack-table" id="itemsTable">
                     <thead>
                     <tr>
-                        <th>Menge</th>
+                        <th style="width: 85px; white-space: nowrap;">Menge</th>
                         <th>Artikel</th>
-                        <th>Kategorie</th>
-                        <th class="text-right">Einzelpreis</th>
-                        <th class="text-right">Gesamt</th>
+                        <th style="width: 180px; white-space: nowrap;">Kategorie</th>
+                        <th class="text-right" style="width: 115px; white-space: nowrap;">Einzelpreis</th>
+                        <th class="text-right" style="width: 115px; white-space: nowrap;">Gesamt</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -312,8 +312,8 @@ $phoneProfiles = $meta['phone_profiles'] ?? [];
                             data-item-name="<?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                             data-product-key="<?= htmlspecialchars($item['product_key'], ENT_QUOTES, 'UTF-8') ?>"
                             data-category-name="<?= htmlspecialchars($item['category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?>">
-                            <td data-label="Menge"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
-                            <td data-label="Artikel" class="amount-bold">
+                            <td data-label="Menge" style="white-space: nowrap;"><?= number_format((float)$item['quantity'], 3, ',', '.') ?> x</td>
+                            <td data-label="Artikel" class="item-name-cell" style="font-weight: 600;">
                                 <?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                                 <?php if (!empty($item['linked_charge'])): 
                                     $vc = $item['linked_charge'];
