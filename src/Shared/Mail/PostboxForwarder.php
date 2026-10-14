@@ -58,6 +58,7 @@ class PostboxForwarder
             '#festnetzrechnung' => 'Festnetz',
             '#alarmrechnung' => 'Alarm',
             '#strato' => 'Hosting',
+            '#Lex248e' => 'Werkstatt',
             default => 'Mobilfunk',
         };
         $dispatchedFilename = "{$docDate}_{$store}_{$typeLabel}.pdf";
@@ -71,7 +72,7 @@ class PostboxForwarder
 
     /**
      * Ermittelt den passenden Tag für d.velop.
-     * Unterstützt #mobilfunkrechnung, #festnetzrechnung, #alarmrechnung und #strato.
+     * Unterstützt #mobilfunkrechnung, #festnetzrechnung, #alarmrechnung, #strato und #Lex248e.
      */
     public function determinePostboxTag(array $receiptData, string $filename): ?string
     {
@@ -80,7 +81,29 @@ class PostboxForwarder
         $lowerFile = strtolower($filename);
         $billingPeriod = strtolower((string)($receiptData['billing_period'] ?? ''));
 
-        // 1. Strato / Hosting-Rechnungen
+        // 1. KFZ- & Werkstatt-Rechnungen für Fahrzeug L-EX 248E
+        $licensePlate = strtolower(str_replace([' ', '-', '_'], '', (string)($receiptData['license_plate'] ?? $receiptData['meta']['license_plate'] ?? '')));
+        $vin = strtolower((string)($receiptData['vin'] ?? $receiptData['meta']['vin'] ?? ''));
+        $cleanFile = strtolower(str_replace([' ', '-', '_'], '', $filename));
+
+        if (str_contains($licensePlate, 'lex248e') || str_contains($licensePlate, 'lex248')
+            || str_contains($cleanFile, 'lex248e') || str_contains($cleanFile, 'lex248')
+            || str_contains($vin, 'wv2zzzebxvh003011')
+            || str_contains($store, 'volkswagen automobile') || str_contains($store, 'vw automobile')
+        ) {
+            return '#Lex248e';
+        }
+
+        if (!empty($receiptData['items']) && is_array($receiptData['items'])) {
+            foreach ($receiptData['items'] as $item) {
+                $cleanItem = strtolower(str_replace([' ', '-', '_'], '', (string)($item['name'] ?? '')));
+                if (str_contains($cleanItem, 'lex248') || str_contains($cleanItem, 'wv2zzzebxvh003011') || str_contains($cleanItem, 'ebjr7s')) {
+                    return '#Lex248e';
+                }
+            }
+        }
+
+        // 2. Strato / Hosting-Rechnungen
         if ($docType === 'hosting_bill'
             || str_contains($store, 'strato')
             || str_contains($lowerFile, 'strato')

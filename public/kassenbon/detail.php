@@ -220,6 +220,18 @@ $phoneProfiles = $meta['phone_profiles'] ?? [];
                             <span style="word-break: break-word; display: block;"><?= htmlspecialchars(($meta['customer_account'] ?? '') . ($meta['customer_account'] && $meta['customer_number'] ? ' / ' : '') . ($meta['customer_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
                     <?php endif; ?>
+                    <?php if (!empty($meta['license_plate'])): ?>
+                        <div style="min-width: 0;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Kennzeichen</div>
+                            <strong style="word-break: break-word; display: block;"><?= htmlspecialchars($meta['license_plate'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($meta['vin'])): ?>
+                        <div style="min-width: 0;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Fahrzeug-Ident.-Nr. (FIN)</div>
+                            <span style="font-family: monospace; font-size: 0.82rem; word-break: break-all; overflow-wrap: anywhere; display: block;"><?= htmlspecialchars($meta['vin'], ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                    <?php endif; ?>
                     <?php if (isset($meta['net_amount']) || isset($meta['tax_amount'])): 
                         $netAmount = isset($meta['net_amount']) ? (float)$meta['net_amount'] : null;
                         $taxAmount = isset($meta['tax_amount']) ? (float)$meta['tax_amount'] : null;

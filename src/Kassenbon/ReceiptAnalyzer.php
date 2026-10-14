@@ -42,18 +42,18 @@ class ReceiptAnalyzer
             "Setze 'document_type' auf 'charging_invoice'. " .
             "Erfasse jeden Einzelladevorgang als separaten Posten in 'items' mit Ladedatum, Ort und geladener kWh im Namen (z.B. 'Ladevorgang 20.09.2026 Ehrenfriedersdorf'), " .
             "'quantity' als geladene kWh (z.B. 17.40) und 'total_price' als Bruttobetrag dieses Ladevorgangs. " .
-            "BESONDERHEIT BEI RECHNUNGEN (z.B. Telekom, Vodafone, O2, StadtRitter, STRATO): " .
-            "Setze 'document_type' auf 'mobile_bill' (bei Mobilfunkrechnungen) bzw. 'landline_bill' (bei Festnetz-/DSL-/Internet-Rechnungen) bzw. 'alarm_bill' (bei Alarmanlagen-, Sicherheits- und Aufschaltungsrechnungen wie StadtRitter) bzw. 'hosting_bill' (bei Webhosting-, Server-, Domain- und Cloud-Rechnungen wie STRATO) bzw. 'invoice' (bei sonstigen Rechnungen). " .
+            "BESONDERHEIT BEI RECHNUNGEN (z.B. Telekom, Vodafone, O2, StadtRitter, STRATO, Volkswagen / Werkstatt): " .
+            "Setze 'document_type' auf 'mobile_bill' (bei Mobilfunkrechnungen) bzw. 'landline_bill' (bei Festnetz-/DSL-/Internet-Rechnungen) bzw. 'alarm_bill' (bei Alarmanlagen-, Sicherheits- und Aufschaltungsrechnungen wie StadtRitter) bzw. 'hosting_bill' (bei Webhosting-, Server-, Domain- und Cloud-Rechnungen wie STRATO) bzw. 'invoice' (bei sonstigen Rechnungen, z.B. Werkstatt- & Fahrzeugrechnungen). " .
             "Extrahiere zusätzlich: 'invoice_number' (Rechnungsnummer), 'due_date' (angekündigtes Abbuchungs-/Zahlungsdatum YYYY-MM-DD), " .
             "'billing_period' (z.B. 'September 2026' oder '01.10.2026 bis 31.03.2027'), 'mandate_reference' (SEPA-Mandatsreferenz), 'customer_number' (Kundennummer), " .
-            "'customer_account' (Kundenkonto), 'tax_amount' (USt.-Betrag), 'net_amount' (Nettobetrag). " .
+            "'customer_account' (Kundenkonto), 'tax_amount' (USt.-Betrag), 'net_amount' (Nettobetrag), 'license_plate' (amtliches Kennzeichen, z.B. 'L-EX 248E'), 'vin' (Fahrzeug-Identifizierungsnummer / FIN). " .
             "Falls die Rechnung nach Mobilfunk-Rufnummern / SIM-Karten unterteilt ist, erstelle 'phone_profiles': " .
             "[ { \"phone_number\": \"0151...\", \"profile_number\": \"8-...\", \"tariff\": \"Tarifname\", \"total\": 10.00, \"items\": [ { \"name\": \"Postenname\", \"price\": 10.00 } ] } ]. " .
             "Rabatte/Vorteile (z.B. MagentaEINS Vorteil -5,00 €) in 'items' mit negativem unit_price und total_price erfassen. " .
             "Das JSON muss exakt dieses Format haben: " .
             "{ \"store\": \"Kettenname des Händlers\", \"date\": \"YYYY-MM-DD\", \"total\": 0.00, \"document_type\": \"receipt|charging_invoice|mobile_bill|landline_bill|alarm_bill|hosting_bill|invoice\", " .
             "\"invoice_number\": null, \"due_date\": null, \"billing_period\": null, \"mandate_reference\": null, " .
-            "\"customer_number\": null, \"customer_account\": null, \"tax_amount\": null, \"net_amount\": null, \"phone_profiles\": null, " .
+            "\"customer_number\": null, \"customer_account\": null, \"tax_amount\": null, \"net_amount\": null, \"license_plate\": null, \"vin\": null, \"phone_profiles\": null, " .
             "\"items\": [ { \"name\": \"Artikelname\", \"quantity\": 1.0, \"unit_price\": 0.00, \"total_price\": 0.00, \"category\": \"Kategorie-Name\" } ] }";
 
         try {

@@ -102,6 +102,9 @@ final class MerchantNormalizer
 
         // Hosting, Server, Domain & Cloud
         '/\b(strato)\b/i'                  => 'STRATO',
+
+        // KFZ, Werkstatt & Service
+        '/\b(volkswagen|vw)\s*(automobile|autohaus)?(\s*leipzig)?\b/i' => 'Volkswagen Automobile Leipzig',
     ];
 
     /**

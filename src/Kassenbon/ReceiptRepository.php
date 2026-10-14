@@ -95,6 +95,8 @@ class ReceiptRepository
             if (!empty($data['mandate_reference'])) $meta['mandate_reference'] = $data['mandate_reference'];
             if (!empty($data['customer_number'])) $meta['customer_number'] = $data['customer_number'];
             if (!empty($data['customer_account'])) $meta['customer_account'] = $data['customer_account'];
+            if (!empty($data['license_plate'])) $meta['license_plate'] = $data['license_plate'];
+            if (!empty($data['vin'])) $meta['vin'] = $data['vin'];
             if (isset($data['tax_amount'])) $meta['tax_amount'] = (float)$data['tax_amount'];
             if (isset($data['net_amount'])) $meta['net_amount'] = (float)$data['net_amount'];
             $metaJson = !empty($meta) ? json_encode($meta, JSON_UNESCAPED_UNICODE) : null;
