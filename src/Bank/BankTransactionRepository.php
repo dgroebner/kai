@@ -181,6 +181,17 @@ class BankTransactionRepository
     {
         $stmt = $this->pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :contract_id WHERE id = :tx_id");
         $stmt->execute([':contract_id' => $contractId, ':tx_id' => $transactionId]);
+
+        // Verknüpfte Rechnung (kb_receipts) automatisch mit dem Vertrag synchronisieren
+        if ($contractId !== null) {
+            $stmtReceipt = $this->pdo->prepare("
+                UPDATE kb_receipts 
+                SET contract_id = :contract_id 
+                WHERE bank_giro_transaction_id = :tx_id 
+                  AND (contract_id IS NULL OR contract_id = 0)
+            ");
+            $stmtReceipt->execute([':contract_id' => $contractId, ':tx_id' => $transactionId]);
+        }
     }
 
     /**

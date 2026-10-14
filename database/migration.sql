@@ -155,8 +155,7 @@ UPDATE `kb_receipts` r
 SET r.contract_id = NULL
 WHERE r.contract_id IS NOT NULL
   AND (
-      r.vehicle_charge_id IS NOT NULL
-      OR r.document_type = 'charging_invoice'
+      r.document_type = 'charging_invoice'
       OR EXISTS (
           SELECT 1 FROM `vehicle_charges` vc WHERE vc.receipt_id = r.id
       )
@@ -183,4 +182,12 @@ WHERE (r.document_type IN ('receipt', 'invoice', '') OR r.document_type IS NULL)
       EXISTS (SELECT 1 FROM `vehicle_charges` vc WHERE vc.receipt_id = r.id)
       OR EXISTS (SELECT 1 FROM `kb_items` ki WHERE ki.receipt_id = r.id AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%'))
   );
+
+-- Verträge von verknüpften Giro-Transaktionen auf Rechnungen übertragen (falls nachträglich angelegt)
+UPDATE `kb_receipts` r
+JOIN `bank_giro_transactions` gt ON r.bank_giro_transaction_id = gt.id
+SET r.contract_id = gt.contract_id
+WHERE (r.contract_id IS NULL OR r.contract_id = 0)
+  AND gt.contract_id IS NOT NULL;
+
 

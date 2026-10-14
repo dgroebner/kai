@@ -123,13 +123,17 @@ try {
                         <td data-label="Datum"><?= date('d.m.Y', strtotime($tx['booking_date'])) ?></td>
                         <td data-label="Händler / Ort">
                             <strong style="display:block;"><?= htmlspecialchars($tx['merchant_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></strong>
-                            <?php if (!empty($tx['linked_receipt_id'])): ?>
+                            <?php if (!empty($tx['linked_receipt_id'])): 
+                                $isInvoiceCc = (!empty($tx['linked_receipt_type']) && $tx['linked_receipt_type'] !== 'receipt')
+                                    || !empty($tx['linked_receipt_invoice_number']);
+                                $receiptBadgeLabelCc = $isInvoiceCc ? '📄 Rechnung' : '🧾 E-Bon';
+                            ?>
                                 <div style="margin-top: 0.25rem;">
                                     <a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>"
                                        class="badge badge-success"
                                        style="text-decoration: none; font-size: 0.75rem;"
-                                       title="Zum E-Bon wechseln">
-                                        🧾 E-Bon vorhanden &rarr;
+                                       title="Zu <?= $receiptBadgeLabelCc ?> wechseln">
+                                        <?= $receiptBadgeLabelCc ?> vorhanden &rarr;
                                     </a>
                                 </div>
                             <?php endif; ?>

@@ -76,7 +76,9 @@ class CreditCardRepository
             SELECT
                 t.*,
                 c.name AS category_name,
-                rec.id AS linked_receipt_id
+                rec.id AS linked_receipt_id,
+                rec.document_type AS linked_receipt_type,
+                rec.invoice_number AS linked_receipt_invoice_number
             FROM bank_cc_transactions t
             LEFT JOIN bank_categories c ON t.category_id = c.id
             LEFT JOIN kb_receipts rec ON t.id = rec.bank_cc_transaction_id

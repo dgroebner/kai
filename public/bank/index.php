@@ -658,9 +658,14 @@ try {
                                                    class="badge badge-primary" style="font-size: 0.75rem;">💳
                                                     Kreditkarten-Abrechnung &rarr;</a>
                                             <?php endif; ?>
-                                            <?php if (!empty($tx['linked_receipt_id'])): ?>
+                                            <?php if (!empty($tx['linked_receipt_id'])): 
+                                                $isInvoiceTx = (!empty($tx['linked_receipt_type']) && $tx['linked_receipt_type'] !== 'receipt')
+                                                    || !empty($tx['linked_receipt_invoice_number'])
+                                                    || !empty($tx['contract_id']);
+                                                $receiptBadgeLabel = $isInvoiceTx ? '📄 Rechnung' : '🧾 E-Bon';
+                                            ?>
                                                 <a href="../kassenbon/detail.php?id=<?= (int)$tx['linked_receipt_id'] ?>"
-                                                   class="badge badge-success" style="font-size: 0.75rem;">🧾 E-Bon
+                                                   class="badge badge-success" style="font-size: 0.75rem;"><?= $receiptBadgeLabel ?>
                                                     vorhanden &rarr;</a>
                                             <?php endif; ?>
                                             <?php if (!empty($tx['contract_id'])): ?>

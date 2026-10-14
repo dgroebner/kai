@@ -39,10 +39,11 @@ class ReceiptQueryRepository
             SELECT
                 r.*,
                 COUNT(i.id) as item_count,
+                COALESCE(r.contract_id, gt.contract_id) AS contract_id,
                 gt.booking_date AS giro_booking_date,
                 ct.booking_date AS cc_booking_date,
                 ct.statement_id AS cc_statement_id,
-                c.name AS contract_name,
+                COALESCE(c.name, c_gt.name) AS contract_name,
                 EXISTS (
                     SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id
                 ) AS has_linked_charge,
@@ -56,6 +57,7 @@ class ReceiptQueryRepository
             LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
             LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
             LEFT JOIN bank_contracts c ON r.contract_id = c.id
+            LEFT JOIN bank_contracts c_gt ON gt.contract_id = c_gt.id
             GROUP BY r.id
             ORDER BY r.purchase_date DESC, r.id DESC
             LIMIT :limit OFFSET :offset
@@ -86,10 +88,12 @@ class ReceiptQueryRepository
         $stmt = $this->pdo->prepare("
             SELECT
                 r.*,
+                COALESCE(r.contract_id, gt.contract_id) AS contract_id,
                 gt.booking_date AS giro_booking_date,
                 ct.booking_date AS cc_booking_date,
                 ct.statement_id AS cc_statement_id,
-                c.name AS contract_name,
+                COALESCE(c.name, c_gt.name) AS contract_name,
+                gt.contract_id AS gt_contract_id,
                 EXISTS (
                     SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id
                 ) AS has_linked_charge,
@@ -102,6 +106,7 @@ class ReceiptQueryRepository
             LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
             LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
             LEFT JOIN bank_contracts c ON r.contract_id = c.id
+            LEFT JOIN bank_contracts c_gt ON gt.contract_id = c_gt.id
             WHERE r.id = :id
         ");
         $stmt->execute([':id' => $receiptId]);
@@ -109,6 +114,11 @@ class ReceiptQueryRepository
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         if ($receipt !== null) {
             $receipt['store'] = MerchantNormalizer::normalize($receipt['store'] ?? '');
+            if (!empty($receipt['gt_contract_id']) && (empty($receipt['contract_id']) || $receipt['contract_id'] === $receipt['gt_contract_id'])) {
+                // Bei Bedarf auch in der Datenbank nachziehen
+                $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id AND (contract_id IS NULL OR contract_id = 0)")
+                    ->execute([':cid' => $receipt['gt_contract_id'], ':id' => $receiptId]);
+            }
             if (($receipt['document_type'] ?? '') === 'receipt' || ($receipt['document_type'] ?? '') === 'invoice' || empty($receipt['document_type'])) {
                 if (!empty($receipt['has_linked_charge']) || !empty($receipt['has_charging_items'])) {
                     $receipt['document_type'] = 'charging_invoice';

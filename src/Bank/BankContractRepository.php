@@ -97,9 +97,10 @@ class BankContractRepository
                 LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
                 LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
                 WHERE r.contract_id = :cid
+                   OR (r.contract_id IS NULL AND gt.contract_id = :cid2)
                 ORDER BY r.purchase_date DESC, r.id DESC
             ");
-            $stmt->execute([':cid' => $contractId]);
+            $stmt->execute([':cid' => $contractId, ':cid2' => $contractId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (\Throwable) {
             return [];

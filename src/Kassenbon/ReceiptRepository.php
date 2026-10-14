@@ -271,8 +271,7 @@ class ReceiptRepository
                 $stmtChargeCheck = $this->db->prepare("
                     SELECT 1 FROM kb_receipts r
                     WHERE r.id = :id AND (
-                        r.vehicle_charge_id IS NOT NULL
-                        OR EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+                        EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
                         OR EXISTS (
                             SELECT 1 FROM kb_items ki 
                             WHERE ki.receipt_id = r.id 

@@ -125,6 +125,8 @@ class GiroOverviewRepository
                 s.id AS linked_statement_id,
                 s.statement_date AS linked_statement_date,
                 rec.id AS linked_receipt_id,
+                rec.document_type AS linked_receipt_type,
+                rec.invoice_number AS linked_receipt_invoice_number,
                 c.id AS contract_id,
                 c.name AS contract_name,
                 GROUP_CONCAT(CONCAT(t.id, '" . self::TAG_FIELD_SEPARATOR . "', t.name, '"
