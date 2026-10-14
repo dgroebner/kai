@@ -74,6 +74,18 @@ class ReceiptRepository
 
             $contractId = $this->findMatchingContract($data, $normalizedStore);
             $documentType = !empty($data['document_type']) ? (string)$data['document_type'] : 'receipt';
+            if ($documentType === 'receipt' || $documentType === 'invoice') {
+                if (!empty($data['items']) && is_array($data['items'])) {
+                    $hasChargingItems = array_any($data['items'], fn($it) =>
+                        (bool)preg_match('/(ladevorgang|ladepunkt|ladekarte|ladetarif|\bkwh\b)/i', (string)($it['name'] ?? ''))
+                        || stripos((string)($it['category'] ?? ''), 'laden') !== false
+                        || stripos((string)($it['category'] ?? ''), 'e-auto') !== false
+                    );
+                    if ($hasChargingItems) {
+                        $documentType = 'charging_invoice';
+                    }
+                }
+            }
             $invoiceNumber = !empty($data['invoice_number']) ? trim((string)$data['invoice_number']) : null;
             $dueDate = !empty($data['due_date']) ? date('Y-m-d', strtotime((string)$data['due_date'])) : null;
             $billingPeriod = !empty($data['billing_period']) ? trim((string)$data['billing_period']) : null;

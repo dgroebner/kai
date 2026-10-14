@@ -174,3 +174,13 @@ WHERE r.contract_id IS NOT NULL
         AND bc.name NOT LIKE '%auto%'
         AND bc.name NOT LIKE '%mobil%'
   );
+
+-- Bestehende Ladeabrechnungen auf document_type = 'charging_invoice' aktualisieren
+UPDATE `kb_receipts` r
+SET r.document_type = 'charging_invoice'
+WHERE (r.document_type IN ('receipt', 'invoice', '') OR r.document_type IS NULL)
+  AND (
+      EXISTS (SELECT 1 FROM `vehicle_charges` vc WHERE vc.receipt_id = r.id)
+      OR EXISTS (SELECT 1 FROM `kb_items` ki WHERE ki.receipt_id = r.id AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%'))
+  );
+

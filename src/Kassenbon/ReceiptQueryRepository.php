@@ -42,7 +42,15 @@ class ReceiptQueryRepository
                 gt.booking_date AS giro_booking_date,
                 ct.booking_date AS cc_booking_date,
                 ct.statement_id AS cc_statement_id,
-                c.name AS contract_name
+                c.name AS contract_name,
+                EXISTS (
+                    SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id
+                ) AS has_linked_charge,
+                EXISTS (
+                    SELECT 1 FROM kb_items ki 
+                    WHERE ki.receipt_id = r.id 
+                      AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%')
+                ) AS has_charging_items
             FROM kb_receipts r
             LEFT JOIN kb_items i ON r.id = i.receipt_id
             LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
@@ -59,6 +67,11 @@ class ReceiptQueryRepository
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($rows as &$row) {
             $row['store'] = MerchantNormalizer::normalize($row['store'] ?? '');
+            if (($row['document_type'] ?? '') === 'receipt' || ($row['document_type'] ?? '') === 'invoice' || empty($row['document_type'])) {
+                if (!empty($row['has_linked_charge']) || !empty($row['has_charging_items'])) {
+                    $row['document_type'] = 'charging_invoice';
+                }
+            }
         }
         unset($row);
 
@@ -76,7 +89,15 @@ class ReceiptQueryRepository
                 gt.booking_date AS giro_booking_date,
                 ct.booking_date AS cc_booking_date,
                 ct.statement_id AS cc_statement_id,
-                c.name AS contract_name
+                c.name AS contract_name,
+                EXISTS (
+                    SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id
+                ) AS has_linked_charge,
+                EXISTS (
+                    SELECT 1 FROM kb_items ki 
+                    WHERE ki.receipt_id = r.id 
+                      AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%')
+                ) AS has_charging_items
             FROM kb_receipts r
             LEFT JOIN bank_giro_transactions gt ON r.bank_giro_transaction_id = gt.id
             LEFT JOIN bank_cc_transactions ct ON r.bank_cc_transaction_id = ct.id
@@ -88,6 +109,11 @@ class ReceiptQueryRepository
         $receipt = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         if ($receipt !== null) {
             $receipt['store'] = MerchantNormalizer::normalize($receipt['store'] ?? '');
+            if (($receipt['document_type'] ?? '') === 'receipt' || ($receipt['document_type'] ?? '') === 'invoice' || empty($receipt['document_type'])) {
+                if (!empty($receipt['has_linked_charge']) || !empty($receipt['has_charging_items'])) {
+                    $receipt['document_type'] = 'charging_invoice';
+                }
+            }
             if (!empty($receipt['meta_data']) && is_string($receipt['meta_data'])) {
                 $receipt['meta'] = json_decode($receipt['meta_data'], true) ?: [];
             } else {
@@ -153,7 +179,9 @@ class ReceiptQueryRepository
 
         if ($documentType !== null) {
             if ($documentType === 'receipt') {
-                $sql .= " AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')";
+                $sql .= " AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+                          AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+                          AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))";
             } else {
                 $sql .= " AND r.document_type = :doc_type";
                 $params[':doc_type'] = $documentType;
@@ -196,7 +224,9 @@ class ReceiptQueryRepository
         $params = [];
         if ($documentType !== null) {
             if ($documentType === 'receipt') {
-                $sql .= " AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')";
+                $sql .= " AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+                          AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+                          AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))";
             } else {
                 $sql .= " AND r.document_type = :doc_type";
                 $params[':doc_type'] = $documentType;

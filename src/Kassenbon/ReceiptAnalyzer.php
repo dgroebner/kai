@@ -39,6 +39,7 @@ class ReceiptAnalyzer
             "(z.B. 'REWE', 'Globus', 'Obi', 'Edeka', 'Netto', 'Lidl', 'Aldi', 'Penny', 'Kaufland', 'Flaschenpost', 'Fressnapf', 'dm', 'Rossmann', 'EnBW', 'Stadtwerke Leipzig', 'Vattenfall', 'Aral'). " .
             "Entferne Inhabernamen (wie Lucas Musculus oHG, e.K.), Rechtsformen (GmbH, AG, KG etc.), Filialangaben und Ortsnamen vollständig. " .
             "BESONDERHEIT BEI LADEABRECHNUNGEN / MOBILITÄT (z.B. EnBW mobility+, Stadtwerke Leipzig): " .
+            "Setze 'document_type' auf 'charging_invoice'. " .
             "Erfasse jeden Einzelladevorgang als separaten Posten in 'items' mit Ladedatum, Ort und geladener kWh im Namen (z.B. 'Ladevorgang 20.09.2026 Ehrenfriedersdorf'), " .
             "'quantity' als geladene kWh (z.B. 17.40) und 'total_price' als Bruttobetrag dieses Ladevorgangs. " .
             "BESONDERHEIT BEI RECHNUNGEN (z.B. Telekom, Vodafone, O2, StadtRitter, STRATO): " .
@@ -50,7 +51,7 @@ class ReceiptAnalyzer
             "[ { \"phone_number\": \"0151...\", \"profile_number\": \"8-...\", \"tariff\": \"Tarifname\", \"total\": 10.00, \"items\": [ { \"name\": \"Postenname\", \"price\": 10.00 } ] } ]. " .
             "Rabatte/Vorteile (z.B. MagentaEINS Vorteil -5,00 €) in 'items' mit negativem unit_price und total_price erfassen. " .
             "Das JSON muss exakt dieses Format haben: " .
-            "{ \"store\": \"Kettenname des Händlers\", \"date\": \"YYYY-MM-DD\", \"total\": 0.00, \"document_type\": \"receipt|mobile_bill|landline_bill|alarm_bill|hosting_bill|invoice\", " .
+            "{ \"store\": \"Kettenname des Händlers\", \"date\": \"YYYY-MM-DD\", \"total\": 0.00, \"document_type\": \"receipt|charging_invoice|mobile_bill|landline_bill|alarm_bill|hosting_bill|invoice\", " .
             "\"invoice_number\": null, \"due_date\": null, \"billing_period\": null, \"mandate_reference\": null, " .
             "\"customer_number\": null, \"customer_account\": null, \"tax_amount\": null, \"net_amount\": null, \"phone_profiles\": null, " .
             "\"items\": [ { \"name\": \"Artikelname\", \"quantity\": 1.0, \"unit_price\": 0.00, \"total_price\": 0.00, \"category\": \"Kategorie-Name\" } ] }";

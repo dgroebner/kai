@@ -88,6 +88,7 @@ try {
                             <?= htmlspecialchars($receipt['store'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                             <?php
                             $dt = $receipt['document_type'] ?? 'receipt';
+                            $isCharging = ($dt === 'charging_invoice') || !empty($receipt['has_linked_charge']) || !empty($receipt['has_charging_items']);
                             if ($dt === 'mobile_bill'): ?>
                                 <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">📱 Mobilfunk</span>
                             <?php elseif ($dt === 'landline_bill'): ?>
@@ -96,7 +97,7 @@ try {
                                 <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">🌐 Hosting</span>
                             <?php elseif ($dt === 'alarm_bill'): ?>
                                 <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">🛡️ Alarm</span>
-                            <?php elseif ($dt === 'charging_invoice'): ?>
+                            <?php elseif ($isCharging): ?>
                                 <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">⚡ Laden</span>
                             <?php elseif ($dt === 'invoice'): ?>
                                 <span class="badge badge-info" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.25rem;">📄 Rechnung</span>
