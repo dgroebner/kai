@@ -220,13 +220,36 @@ $phoneProfiles = $meta['phone_profiles'] ?? [];
                             <span style="word-break: break-word; display: block;"><?= htmlspecialchars(($meta['customer_account'] ?? '') . ($meta['customer_account'] && $meta['customer_number'] ? ' / ' : '') . ($meta['customer_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
                     <?php endif; ?>
-                    <?php if (isset($meta['net_amount']) || isset($meta['tax_amount'])): ?>
+                    <?php if (isset($meta['net_amount']) || isset($meta['tax_amount'])): 
+                        $netAmount = isset($meta['net_amount']) ? (float)$meta['net_amount'] : null;
+                        $taxAmount = isset($meta['tax_amount']) ? (float)$meta['tax_amount'] : null;
+                        $grossAmount = !empty($receipt['total']) ? (float)$receipt['total'] : (($netAmount ?? 0) + ($taxAmount ?? 0));
+                        $taxRateLabel = 'USt';
+                        if ($netAmount !== null && $netAmount > 0 && $taxAmount !== null && $taxAmount >= 0) {
+                            $calculatedRate = (int)round(($taxAmount / $netAmount) * 100);
+                            if ($calculatedRate >= 0 && $calculatedRate <= 100) {
+                                $taxRateLabel = $calculatedRate . '% USt';
+                            }
+                        }
+                    ?>
                         <div style="min-width: 0;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Steueraufschlüsselung</div>
-                            <span style="display: block;">
-                                Netto: <?= number_format((float)($meta['net_amount'] ?? 0), 2, ',', '.') ?> € &bull;
-                                19% USt: <?= number_format((float)($meta['tax_amount'] ?? 0), 2, ',', '.') ?> €
-                            </span>
+                            <table class="tax-table">
+                                <thead>
+                                    <tr>
+                                        <th>Netto</th>
+                                        <th class="text-right"><?= htmlspecialchars($taxRateLabel, ENT_QUOTES, 'UTF-8') ?></th>
+                                        <th class="text-right">Brutto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><?= $netAmount !== null ? number_format($netAmount, 2, ',', '.') . '&nbsp;€' : '—' ?></td>
+                                        <td class="text-right"><?= $taxAmount !== null ? number_format($taxAmount, 2, ',', '.') . '&nbsp;€' : '—' ?></td>
+                                        <td class="text-right tax-gross"><?= number_format($grossAmount, 2, ',', '.') ?>&nbsp;€</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>

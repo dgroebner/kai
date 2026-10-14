@@ -10572,4 +10572,49 @@ body.wisdom-modal-open {
     }
 }
 
+/* ==========================================================================
+   Steueraufschlüsselung / Tax Table
+   ========================================================================== */
+.tax-table {
+    width: 100%;
+    max-width: 280px;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin-top: 0.35rem;
+    background: var(--bg-surface-alt, rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.tax-table th,
+.tax-table td {
+    padding: 4px 8px;
+    border: none;
+    vertical-align: middle;
+}
+
+.tax-table th {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.tax-table td {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.tax-table .text-right {
+    text-align: right;
+}
+
+.tax-table .tax-gross {
+    font-weight: 600;
+    color: var(--color-green, #10b981);
+}
+
+
 
