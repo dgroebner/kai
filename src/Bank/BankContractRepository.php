@@ -265,6 +265,21 @@ class BankContractRepository
         $stmt->execute([':id' => $contractId]);
     }
 
+    /**
+     * Trennt einen Beleg von einem Vertrag.
+     */
+    public function unlinkReceipt(int $receiptId, ?int $contractId = null): void
+    {
+        $sql = "UPDATE kb_receipts SET contract_id = NULL WHERE id = :id";
+        $params = [':id' => $receiptId];
+        if ($contractId !== null && $contractId > 0) {
+            $sql .= " AND contract_id = :cid";
+            $params[':cid'] = $contractId;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+    }
+
     public function getTransactionsForContract(int $contractId, int $limit): array
     {
         $stmt = $this->pdo->prepare("

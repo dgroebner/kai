@@ -153,6 +153,29 @@ class ReceiptMatcher
                 $this->pdo->prepare("UPDATE kb_receipts SET contract_id = :cid WHERE id = :id")
                     ->execute([':cid' => $contractId, ':id' => $receiptId]);
                 $this->logger->info("ReceiptMatcher: Beleg #$receiptId Vertrag auf #$contractId korrigiert/zugeordnet.");
+            } elseif ($matchedContractId === null && $contractId !== null) {
+                // Prüfen ob es sich um eine fehlerhafte Zuordnung handelt (z. B. Ladebeleg mit reinem Strom-/Energievertrag)
+                $stmtCheckInvalid = $this->pdo->prepare("
+                    SELECT 1 FROM bank_contracts c
+                    WHERE c.id = :cid
+                      AND (c.name LIKE '%strom%' OR c.name LIKE '%energie%' OR c.name LIKE '%gas%')
+                      AND c.name NOT LIKE '%lade%' AND c.name NOT LIKE '%auto%' AND c.name NOT LIKE '%mobil%'
+                      AND (
+                          EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = :id)
+                          OR EXISTS (
+                              SELECT 1 FROM kb_items ki 
+                              WHERE ki.receipt_id = :id2 
+                                AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%')
+                          )
+                      )
+                    LIMIT 1
+                ");
+                $stmtCheckInvalid->execute([':cid' => $contractId, ':id' => $receiptId, ':id2' => $receiptId]);
+                if ($stmtCheckInvalid->fetchColumn()) {
+                    $contractId = null;
+                    $this->pdo->prepare("UPDATE kb_receipts SET contract_id = NULL WHERE id = :id")->execute([':id' => $receiptId]);
+                    $this->logger->info("ReceiptMatcher: Fehlerhafte Zuordnung von Ladebeleg #$receiptId zu Stromvertrag aufgehoben.");
+                }
             }
 
             $expectedGiroAmount = -abs($totalAmount);
@@ -314,6 +337,28 @@ class ReceiptMatcher
                 ':id' => $receiptId
             ]);
             $this->logger->info("ReceiptMatcher: Vertrag für Beleg #$receiptId korrigiert auf #$contractId.");
+        } elseif ($matchedContractId === null && $contractId !== null) {
+            $stmtCheckInvalid = $this->pdo->prepare("
+                SELECT 1 FROM bank_contracts c
+                WHERE c.id = :cid
+                  AND (c.name LIKE '%strom%' OR c.name LIKE '%energie%' OR c.name LIKE '%gas%')
+                  AND c.name NOT LIKE '%lade%' AND c.name NOT LIKE '%auto%' AND c.name NOT LIKE '%mobil%'
+                  AND (
+                      EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = :id)
+                      OR EXISTS (
+                          SELECT 1 FROM kb_items ki 
+                          WHERE ki.receipt_id = :id2 
+                            AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%')
+                      )
+                  )
+                LIMIT 1
+            ");
+            $stmtCheckInvalid->execute([':cid' => $contractId, ':id' => $receiptId, ':id2' => $receiptId]);
+            if ($stmtCheckInvalid->fetchColumn()) {
+                $contractId = null;
+                $this->pdo->prepare("UPDATE kb_receipts SET contract_id = NULL WHERE id = :id")->execute([':id' => $receiptId]);
+                $this->logger->info("ReceiptMatcher: Fehlerhafte Zuordnung von Ladebeleg #$receiptId zu Stromvertrag aufgehoben.");
+            }
         }
 
         if ($dueDate) {

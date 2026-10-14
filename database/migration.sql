@@ -150,6 +150,27 @@ CREATE TABLE IF NOT EXISTS `postbox_sync_log` (
   INDEX `idx_postbox_tag` (`postbox_tag`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
-
-
+-- Falsch zugeordnete Ladebelege von reinen Haushaltsstrom-/Energieverträgen trennen
+UPDATE `kb_receipts` r
+SET r.contract_id = NULL
+WHERE r.contract_id IS NOT NULL
+  AND (
+      r.vehicle_charge_id IS NOT NULL
+      OR r.document_type = 'charging_invoice'
+      OR EXISTS (
+          SELECT 1 FROM `vehicle_charges` vc WHERE vc.receipt_id = r.id
+      )
+      OR EXISTS (
+          SELECT 1 FROM `kb_items` ki
+          WHERE ki.receipt_id = r.id
+            AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%')
+      )
+  )
+  AND EXISTS (
+      SELECT 1 FROM `bank_contracts` bc
+      WHERE bc.id = r.contract_id
+        AND (bc.name LIKE '%strom%' OR bc.name LIKE '%energie%' OR bc.name LIKE '%gas%')
+        AND bc.name NOT LIKE '%lade%'
+        AND bc.name NOT LIKE '%auto%'
+        AND bc.name NOT LIKE '%mobil%'
+  );

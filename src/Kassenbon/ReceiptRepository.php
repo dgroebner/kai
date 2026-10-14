@@ -215,6 +215,16 @@ class ReceiptRepository
     }
 
     /**
+     * Hebt die Verknüpfung zwischen einem Beleg und einem Vertrag auf.
+     */
+    public function unlinkContract(int $receiptId): void
+    {
+        $stmt = $this->db->prepare("UPDATE kb_receipts SET contract_id = NULL WHERE id = :id");
+        $stmt->execute([':id' => $receiptId]);
+        $this->logger->info("ReceiptRepository: Beleg #$receiptId von Vertrag getrennt.");
+    }
+
+    /**
      * Versucht, anhand von Mandatsreferenz, Händlername oder Vertragsregeln
      * einen passenden aktiven Vertrag aus bank_contracts zu finden.
      */
@@ -229,14 +239,72 @@ class ReceiptRepository
         }
 
         try {
+            $receiptId = !empty($data['id']) ? (int)$data['id'] : null;
+
+            // 0. Erkennung Ladevorgang / Mobilität (E-Auto laden)
+            $docType = $data['document_type'] ?? '';
+            $isCharging = ($docType === 'charging_invoice')
+                || (!empty($data['category']) && (stripos($data['category'], 'laden') !== false || stripos($data['category'], 'e-auto') !== false))
+                || !empty($data['vehicle_charge_id']);
+
+            if (!$isCharging && !empty($data['items']) && is_array($data['items'])) {
+                $isCharging = array_any($data['items'], fn($it) =>
+                    (bool)preg_match('/(ladevorgang|ladepunkt|ladekarte|ladetarif|\bkwh\b)/i', (string)($it['name'] ?? ''))
+                    || stripos((string)($it['category'] ?? ''), 'laden') !== false
+                    || stripos((string)($it['category'] ?? ''), 'e-auto') !== false
+                );
+            }
+
+            if (!$isCharging && $receiptId !== null) {
+                $stmtChargeCheck = $this->db->prepare("
+                    SELECT 1 FROM kb_receipts r
+                    WHERE r.id = :id AND (
+                        r.vehicle_charge_id IS NOT NULL
+                        OR EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+                        OR EXISTS (
+                            SELECT 1 FROM kb_items ki 
+                            WHERE ki.receipt_id = r.id 
+                              AND (ki.category = 'E-Auto laden' OR ki.name LIKE '%Ladevorgang%' OR ki.name LIKE '%kWh%')
+                        )
+                    )
+                    LIMIT 1
+                ");
+                $stmtChargeCheck->execute([':id' => $receiptId]);
+                $isCharging = (bool)$stmtChargeCheck->fetchColumn();
+            }
+
+            // Falls bereits mit einer Giro-Transaktion verknüpft:
+            // 1) Wenn die Transaktion bereits einen Vertrag hat, diesen übernehmen
+            // 2) Mandatsnummer aus der Buchung als Fallback heranziehen
+            $giroTxId = !empty($data['bank_giro_transaction_id']) ? (int)$data['bank_giro_transaction_id'] : null;
+            $giroContractId = null;
+            $giroMandate = null;
+            if ($giroTxId !== null) {
+                $stmtTx = $this->db->prepare("SELECT contract_id, dc_mandate_id FROM bank_giro_transactions WHERE id = :tx_id LIMIT 1");
+                $stmtTx->execute([':tx_id' => $giroTxId]);
+                $txRow = $stmtTx->fetch(PDO::FETCH_ASSOC);
+                if ($txRow) {
+                    $giroContractId = !empty($txRow['contract_id']) ? (int)$txRow['contract_id'] : null;
+                    $giroMandate = trim((string)($txRow['dc_mandate_id'] ?? ''));
+                }
+            }
+
+            if ($giroContractId !== null) {
+                return $giroContractId;
+            }
+
             // 1. Mandatsreferenz (höchste Genauigkeit) - Leerzeichen bereinigen
             $mandateRaw = trim((string)(
                 $data['mandate_reference']
                 ?? ($data['meta']['mandate_reference'] ?? '')
             ));
+            if ($mandateRaw === '' && !empty($giroMandate)) {
+                $mandateRaw = $giroMandate;
+            }
 
-            if ($mandateRaw !== '') {
-                $mandateClean = preg_replace('/\s+/', '', $mandateRaw);
+            $mandateClean = $mandateRaw !== '' ? preg_replace('/\s+/', '', $mandateRaw) : '';
+
+            if ($mandateClean !== '') {
                 $stmt = $this->db->prepare("
                     SELECT id FROM bank_contracts 
                     WHERE (status = 'aktiv' OR status IS NULL)
@@ -262,7 +330,6 @@ class ReceiptRepository
             }
 
             // 2. Dokumenttyp / Kontext prüfen (Mobilfunk vs. Festnetz unterscheiden)
-            $docType = $data['document_type'] ?? '';
             $isMobile = ($docType === 'mobile_bill')
                 || !empty($data['phone_profiles'])
                 || !empty($data['meta']['phone_profiles'])
@@ -275,45 +342,19 @@ class ReceiptRepository
                 || stripos((string)($data['store'] ?? ''), 'festnetz') !== false
                 || (!empty($data['items']) && is_array($data['items']) && array_any($data['items'], fn($it) => (bool)preg_match('/(magentazuhause|festnetz|dsl|glasfaser)/i', (string)($it['name'] ?? '')))) ? 1 : 0;
 
-            // 3. Auftraggeber / Name des Vertrags (mit Priorisierung nach Mobilfunk/Festnetz)
-            $stmt = $this->db->prepare("
-                SELECT id FROM bank_contracts 
-                WHERE (status = 'aktiv' OR status IS NULL)
-                  AND (
-                      auftraggeber LIKE :store_like1 
-                      OR name LIKE :store_like2
-                      OR (auftraggeber IS NOT NULL AND :store_clean LIKE CONCAT('%', auftraggeber, '%'))
-                  )
-                ORDER BY
-                  CASE 
-                    WHEN :is_mobile_prio = 1 AND (name LIKE '%mobil%' OR name LIKE '%funk%') THEN 1
-                    WHEN :is_landline_prio = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%' OR name LIKE '%internet%') THEN 1
-                    WHEN :is_mobile_penalty = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%') THEN 3
-                    ELSE 2
-                  END ASC,
-                  id ASC
-                LIMIT 1
-            ");
-            $stmt->execute([
-                ':store_like1' => '%' . $normalizedStore . '%',
-                ':store_like2' => '%' . $normalizedStore . '%',
-                ':store_clean' => $normalizedStore,
-                ':is_mobile_prio' => $isMobile,
-                ':is_landline_prio' => $isLandline,
-                ':is_mobile_penalty' => $isMobile
-            ]);
-            $cid = $stmt->fetchColumn();
-            if ($cid) {
-                $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Partner/Name '$normalizedStore' (isMobile=$isMobile) gefunden.");
-                return (int)$cid;
-            }
-
-            // 4. bank_contract_rules prüfen
+            // 3. bank_contract_rules prüfen (vor heuristischer Partner-Suche)
             $stmtRules = $this->db->prepare("
-                SELECT r.contract_id, r.pattern_type, r.pattern_value 
+                SELECT r.contract_id, r.pattern_type, r.pattern_value, c.name as contract_name, c.auftraggeber
                 FROM bank_contract_rules r
                 JOIN bank_contracts c ON r.contract_id = c.id
                 WHERE (c.status = 'aktiv' OR c.status IS NULL)
+                  AND (
+                      :is_charging_r = 0
+                      OR (
+                          c.name LIKE '%lade%' OR c.name LIKE '%charge%' OR c.name LIKE '%auto%' OR c.name LIKE '%mobil%'
+                          OR c.auftraggeber LIKE '%lade%' OR c.auftraggeber LIKE '%charge%'
+                      )
+                  )
                 ORDER BY 
                   CASE 
                     WHEN :is_mobile_prio_r = 1 AND (c.name LIKE '%mobil%' OR c.name LIKE '%funk%') THEN 1
@@ -324,6 +365,7 @@ class ReceiptRepository
                   r.priority DESC
             ");
             $stmtRules->execute([
+                ':is_charging_r' => $isCharging ? 1 : 0,
                 ':is_mobile_prio_r' => $isMobile,
                 ':is_landline_prio_r' => $isLandline,
                 ':is_mobile_penalty_r' => $isMobile
@@ -354,6 +396,58 @@ class ReceiptRepository
                         return $cid;
                     }
                 }
+            }
+
+            // 4. Auftraggeber / Name des Vertrags (Heuristischer Fallback)
+            // Beachte:
+            // a) Wenn es ein Ladevorgang ist, dürfen reine Haushaltsstrom-/Energieverträge nicht matchen.
+            // b) Wenn der Beleg eine Mandatsnummer hat, dürfen Verträge mit abweichender Mandatsnummer nicht matchen.
+            $stmt = $this->db->prepare("
+                SELECT id FROM bank_contracts 
+                WHERE (status = 'aktiv' OR status IS NULL)
+                  AND (
+                      auftraggeber LIKE :store_like1 
+                      OR name LIKE :store_like2
+                      OR (auftraggeber IS NOT NULL AND :store_clean LIKE CONCAT('%', auftraggeber, '%'))
+                  )
+                  AND (
+                      :is_charging = 0
+                      OR (
+                          name LIKE '%lade%' OR name LIKE '%charge%' OR name LIKE '%auto%' OR name LIKE '%mobil%'
+                          OR auftraggeber LIKE '%lade%' OR auftraggeber LIKE '%charge%'
+                      )
+                  )
+                  AND (
+                      :has_mandate = 0
+                      OR mandatsnummer IS NULL
+                      OR mandatsnummer = ''
+                      OR REPLACE(mandatsnummer, ' ', '') = :mandate_clean
+                  )
+                ORDER BY
+                  CASE 
+                    WHEN :is_mobile_prio = 1 AND (name LIKE '%mobil%' OR name LIKE '%funk%') THEN 1
+                    WHEN :is_landline_prio = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%' OR name LIKE '%internet%') THEN 1
+                    WHEN :is_mobile_penalty = 1 AND (name LIKE '%fest%' OR name LIKE '%dsl%') THEN 3
+                    ELSE 2
+                  END ASC,
+                  id ASC
+                LIMIT 1
+            ");
+            $stmt->execute([
+                ':store_like1' => '%' . $normalizedStore . '%',
+                ':store_like2' => '%' . $normalizedStore . '%',
+                ':store_clean' => $normalizedStore,
+                ':is_charging' => $isCharging ? 1 : 0,
+                ':has_mandate' => $mandateClean !== '' ? 1 : 0,
+                ':mandate_clean' => $mandateClean,
+                ':is_mobile_prio' => $isMobile,
+                ':is_landline_prio' => $isLandline,
+                ':is_mobile_penalty' => $isMobile
+            ]);
+            $cid = $stmt->fetchColumn();
+            if ($cid) {
+                $this->logger->info("ReceiptRepository: Vertrag #$cid anhand Partner/Name '$normalizedStore' (isMobile=$isMobile, isCharging=" . ($isCharging ? 1 : 0) . ") gefunden.");
+                return (int)$cid;
             }
         } catch (\Throwable $e) {
             $this->logger->warn("ReceiptRepository: Vertragsabgleich übersprungen (" . $e->getMessage() . ")");

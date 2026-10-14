@@ -150,6 +150,21 @@ try {
         exit;
     }
 
+    if ($action === 'unlink_contract') {
+        if (!Auth::hasPermission('ebon_write')) {
+            Auth::sendJsonError(403, 'Keine Schreibberechtigung');
+        }
+        $receiptId = filter_var($data['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($receiptId === false || $receiptId === null || $receiptId <= 0) {
+            Auth::sendJsonError(400, 'Ungültige Parameter');
+        }
+
+        (new ReceiptRepository())->unlinkContract($receiptId);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     Auth::sendJsonError(400, 'Unbekannte Aktion');
 
 } catch (Throwable $e) {

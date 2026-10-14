@@ -31,6 +31,18 @@ try {
     $items = $receiptQueryRepository->getItemsForReceipt($id);
     $linkedCharges = $receiptQueryRepository->getLinkedChargesForReceipt($id);
 
+    // Automatische Bereinigung fehlerhafter Vertragszuordnungen bei Ladevorgängen
+    if (!empty($receipt['contract_id']) && (!empty($linkedCharges) || !empty($receipt['vehicle_charge_id']))) {
+        $cName = strtolower($receipt['contract_name'] ?? '');
+        if ((str_contains($cName, 'strom') || str_contains($cName, 'energie') || str_contains($cName, 'gas'))
+            && !str_contains($cName, 'lade') && !str_contains($cName, 'mobil') && !str_contains($cName, 'auto')) {
+            $receiptRepo = new ReceiptRepository();
+            $receiptRepo->unlinkContract($id);
+            $receipt['contract_id'] = null;
+            $receipt['contract_name'] = null;
+        }
+    }
+
     // Zuordnung der Ladevorgänge zu den einzelnen Positionen ($items)
     $chargesByItemId = [];
     $unassignedCharges = [];
@@ -122,11 +134,18 @@ try {
                 <?php endif; ?>
 
                 <?php if (!empty($receipt['contract_id'])): ?>
-                    <a href="../bank/contracts.php#contract-<?= (int)$receipt['contract_id'] ?>"
-                       class="badge badge-info" style="text-decoration: none; font-size: 0.85rem;"
-                       title="Zum Vertrag in der Finanzverwaltung wechseln">
-                        📑 Vertrag: <?= htmlspecialchars($receipt['contract_name'] ?? 'Vertrag', ENT_QUOTES, 'UTF-8') ?> &rarr;
-                    </a>
+                    <span class="badge badge-info" style="font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <a href="../bank/contracts.php#contract-<?= (int)$receipt['contract_id'] ?>"
+                           style="text-decoration: none; color: inherit;"
+                           title="Zum Vertrag in der Finanzverwaltung wechseln">
+                            📑 Vertrag: <?= htmlspecialchars($receipt['contract_name'] ?? 'Vertrag', ENT_QUOTES, 'UTF-8') ?> &rarr;
+                        </a>
+                        <button type="button" class="js-unlink-contract-btn" data-receipt-id="<?= (int)$receipt['id'] ?>"
+                                title="Vertragszuordnung aufheben"
+                                style="background: none; border: none; color: inherit; cursor: pointer; padding: 0 0.2rem; font-size: 1rem; line-height: 1; opacity: 0.8;">
+                            &times;
+                        </button>
+                    </span>
                 <?php endif; ?>
 
                 <?php foreach ($linkedCharges as $vc): 

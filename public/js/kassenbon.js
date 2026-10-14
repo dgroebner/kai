@@ -98,6 +98,40 @@ function initKassenbonAnalysis() {
             enableCategoryEdit(badge, badge.dataset.itemId);
         }
     });
+
+    // Click Delegation für Vertragsverknüpfung aufheben
+    document.addEventListener('click', async (e) => {
+        const unlinkBtn = e.target.closest('.js-unlink-contract-btn');
+        if (!unlinkBtn) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const receiptId = unlinkBtn.dataset.receiptId;
+        if (!receiptId) return;
+
+        if (!confirm('Möchtest du die Vertragszuordnung für diesen Beleg wirklich aufheben?')) {
+            return;
+        }
+
+        try {
+            unlinkBtn.disabled = true;
+            const res = await KaiHttp.postJson('api.php', {
+                action: 'unlink_contract',
+                receipt_id: parseInt(receiptId, 10)
+            });
+
+            if (res && res.success) {
+                window.location.reload();
+            } else {
+                alert(res?.error || 'Fehler beim Aufheben der Vertragszuordnung.');
+                unlinkBtn.disabled = false;
+            }
+        } catch (err) {
+            alert('Netzwerk- oder Serverfehler.');
+            unlinkBtn.disabled = false;
+        }
+    });
 }
 
 function filterByCategory(catName) {

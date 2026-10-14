@@ -2193,7 +2193,7 @@ async function openContractModal(contract) {
                                         : `<span class="badge badge-warning" title="Noch keiner Buchung zugeordnet">🟡 Noch offen</span>`);
 
                                 return `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--bg-surface-hover); padding: 0.5rem 0.75rem; border-radius: 6px; flex-wrap: wrap; gap: 0.4rem;">
+                                    <div class="js-contract-receipt-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--bg-surface-hover); padding: 0.5rem 0.75rem; border-radius: 6px; flex-wrap: wrap; gap: 0.4rem;">
                                         <div style="display: flex; flex-direction: column; gap: 0.15rem;">
                                             <div style="display: flex; align-items: center; gap: 0.4rem;">
                                                 <strong style="font-size: 0.88rem;">${titleStr}</strong>
@@ -2203,11 +2203,14 @@ async function openContractModal(contract) {
                                                 📅 ${formatDateDe(r.purchase_date)} ${subStr ? `· ${escapeHtml(subStr)}` : ''}
                                             </div>
                                         </div>
-                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
                                             <strong class="amount-bold" style="font-size: 0.95rem;">${formatMoney(r.total)} €</strong>
                                             <a href="../kassenbon/detail.php?id=${r.id}" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; text-decoration: none;">
                                                 Öffnen &rarr;
                                             </a>
+                                            <button type="button" class="btn btn-outline btn-sm btn-danger-outline js-unlink-contract-receipt-btn" data-receipt-id="${r.id}" data-contract-id="${contract.id}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" title="Beleg von diesem Vertrag trennen">
+                                                &times; Trennen
+                                            </button>
                                         </div>
                                     </div>
                                 `;
@@ -2342,3 +2345,56 @@ async function openContractModal(contract) {
         }
     }
 }
+
+// Globales Event-Delegation für das Trennen von Belegen aus dem Vertragsmodal
+document.addEventListener('click', async (e) => {
+    const unlinkBtn = e.target.closest('.js-unlink-contract-receipt-btn');
+    if (!unlinkBtn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const receiptId = unlinkBtn.dataset.receiptId;
+    const contractId = unlinkBtn.dataset.contractId;
+    if (!receiptId || !contractId) return;
+
+    if (!confirm('Möchtest du diesen Beleg wirklich von diesem Vertrag trennen?')) {
+        return;
+    }
+
+    try {
+        unlinkBtn.disabled = true;
+        const res = await KaiHttp.postJson('api.php', {
+            action: 'unlink_receipt',
+            receipt_id: parseInt(receiptId, 10),
+            contract_id: parseInt(contractId, 10)
+        });
+
+        if (res && res.success) {
+            const row = unlinkBtn.closest('.js-contract-receipt-row');
+            if (row) {
+                row.remove();
+            }
+            const countEl = document.querySelector('.js-receipts-count');
+            const container = document.querySelector('.js-modal-recent-receipts');
+            if (container && countEl) {
+                const remaining = container.querySelectorAll('.js-unlink-contract-receipt-btn').length;
+                countEl.textContent = `${remaining} ${remaining === 1 ? 'Beleg' : 'Belege'} zugeordnet`;
+                if (remaining === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px dashed var(--bg-surface-hover); border-radius: var(--border-radius); text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+                            ℹ️ Bisher sind keine Rechnungen oder E-Bons für diesen Vertrag hinterlegt.<br>
+                            Eingehende Rechnungen (z. B. via Postfach) werden anhand von Mandatsnummer oder Partner automatisch hier verknüpft.
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            alert(res?.error || 'Fehler beim Trennen des Belegs.');
+            unlinkBtn.disabled = false;
+        }
+    } catch (err) {
+        alert('Netzwerk- oder Serverfehler.');
+        unlinkBtn.disabled = false;
+    }
+});

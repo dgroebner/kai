@@ -534,6 +534,21 @@ try {
         exit;
     }
 
+    // Beleg von Vertrag trennen
+    if ($action === 'unlink_receipt') {
+        $receiptId = filter_var($data['receipt_id'] ?? null, FILTER_VALIDATE_INT);
+        $contractId = filter_var($data['contract_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$receiptId) {
+            Auth::sendJsonError(400, 'Ungültige Beleg-ID');
+        }
+
+        (new BankContractRepository())->unlinkReceipt($receiptId, $contractId ?: null);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     // KI-Finanzreport neu generieren / aktualisieren
     if ($action === 'generate_financial_report') {
         $periodType = trim((string)($data['period_type'] ?? 'month'));
