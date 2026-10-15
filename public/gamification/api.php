@@ -88,13 +88,15 @@ try {
                 Auth::sendJsonError(400, 'Bitte gib an, was du gemacht hast.');
             }
             $category = trim((string)($input['category'] ?? 'haushalt'));
+            $tier = trim((string)($input['tier'] ?? 'mittel'));
             $notes = isset($input['notes']) ? trim((string)$input['notes']) : null;
 
             $taskId = $gamifService->getTaskRepository()->createPitchedTask(
                 (int)$currentProfile['id'],
                 $title,
                 $category,
-                $notes
+                $notes,
+                $tier
             );
 
             echo json_encode([

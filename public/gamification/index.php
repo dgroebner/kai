@@ -400,6 +400,15 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="pitch-tier">Wie viel Aufwand war es? (Schweregrad)</label>
+                        <select id="pitch-tier" name="tier" class="form-control">
+                            <option value="klein">🟢 Klein / Schnell (ca. 5–10 Min., z. B. Tisch abräumen, Müll raus) — 15 🪙</option>
+                            <option value="mittel" selected>🟡 Mittel / Normal (ca. 15–30 Min., z. B. Spülmaschine, Zimmer saugen) — 30 🪙</option>
+                            <option value="gross">🔵 Groß / Fleißig (ca. 30–60 Min., z. B. Rasen mähen, Bad putzen) — 50 🪙</option>
+                            <option value="meister">🟣 Meisterlich (Großprojekt, ab 1 Std., z. B. Keller entrümpeln) — 80 🪙</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="pitch-notes">Zusatz-Info (optional)</label>
                         <textarea id="pitch-notes" name="notes" class="form-control" rows="2" placeholder="z. B. Zusammen mit Mama gemacht oder ganz alleine"></textarea>
                     </div>

@@ -288,7 +288,8 @@ class GamificationTaskRepository
         int $profileId,
         string $title,
         string $category = 'haushalt',
-        ?string $notes = null
+        ?string $notes = null,
+        string $tier = 'mittel'
     ): int {
         $title = trim($title);
         if ($title === '') {
@@ -305,9 +306,30 @@ class GamificationTaskRepository
             $notes = null;
         }
 
-        $baseCoins = 20;
-        $baseXp = 50;
-        $initiativeCoins = 15; // Passend zur Triage: Spontane Mithilfe (+15 Initiative-Münzen)
+        switch ($tier) {
+            case 'klein':
+                $baseCoins = 10;
+                $initiativeCoins = 5;
+                $baseXp = 25;
+                break;
+            case 'gross':
+                $baseCoins = 35;
+                $initiativeCoins = 15;
+                $baseXp = 100;
+                break;
+            case 'meister':
+                $baseCoins = 60;
+                $initiativeCoins = 20;
+                $baseXp = 180;
+                break;
+            case 'mittel':
+            default:
+                $tier = 'mittel';
+                $baseCoins = 20;
+                $initiativeCoins = 10;
+                $baseXp = 50;
+                break;
+        }
 
         $hasTaskCol = $this->hasCanEscalateColumn();
         $colSql = $hasTaskCol ? ", can_escalate" : "";

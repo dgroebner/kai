@@ -5949,11 +5949,20 @@ body {
 
 .gamif-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 1.5rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 0.5rem;
-    overflow-x: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.gamif-tabs::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 
 .gamif-tab-btn {

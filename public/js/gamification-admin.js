@@ -138,9 +138,87 @@ document.addEventListener('DOMContentLoaded', () => {
             if (approveFeedbackInput) {
                 approveFeedbackInput.value = 'Super erledigt! 👍';
             }
+            if (formApproveTask) {
+                formApproveTask.querySelectorAll('.js-modal-tier-btn').forEach(b => {
+                    const bCoins = b.getAttribute('data-coins');
+                    const bXp = b.getAttribute('data-xp');
+                    if (bCoins === String(coins) && bXp === String(xp)) {
+                        b.classList.remove('btn-outline');
+                        b.classList.add('btn-primary');
+                    } else {
+                        b.classList.remove('btn-primary');
+                        b.classList.add('btn-outline');
+                    }
+                });
+            }
             openModal(modalApproveTask);
         }
     });
+
+    // Klick auf Schweregrad-Button auf der Triage-Karte
+    document.addEventListener('click', (e) => {
+        const tierBtn = e.target.closest('.js-card-tier-btn');
+        if (tierBtn) {
+            const card = tierBtn.closest('.gamif-triage-card');
+            if (!card) return;
+            const coins = tierBtn.getAttribute('data-coins');
+            const xp = tierBtn.getAttribute('data-xp');
+
+            card.querySelectorAll('.js-card-tier-btn').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-outline');
+            });
+            tierBtn.classList.remove('btn-outline');
+            tierBtn.classList.add('btn-primary');
+
+            const coinsDisplay = card.querySelector('.js-triage-coins-display');
+            const xpDisplay = card.querySelector('.js-triage-xp-display');
+            if (coinsDisplay) coinsDisplay.textContent = `🪙 ${coins}`;
+            if (xpDisplay) xpDisplay.textContent = `⭐ ${xp}`;
+
+            const approveBtn = card.querySelector('.js-triage-approve-btn');
+            if (approveBtn) {
+                approveBtn.setAttribute('data-coins', coins);
+                approveBtn.setAttribute('data-xp', xp);
+            }
+        }
+    });
+
+    // Klick auf Schweregrad-Button im Genehmigen-Modal
+    document.addEventListener('click', (e) => {
+        const modalTierBtn = e.target.closest('.js-modal-tier-btn');
+        if (modalTierBtn && formApproveTask) {
+            const coins = modalTierBtn.getAttribute('data-coins');
+            const xp = modalTierBtn.getAttribute('data-xp');
+            if (approveCoinsInput) approveCoinsInput.value = coins;
+            if (approveXpInput) approveXpInput.value = xp;
+
+            formApproveTask.querySelectorAll('.js-modal-tier-btn').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-outline');
+            });
+            modalTierBtn.classList.remove('btn-outline');
+            modalTierBtn.classList.add('btn-primary');
+        }
+    });
+
+    if (approveCoinsInput && approveXpInput && formApproveTask) {
+        [approveCoinsInput, approveXpInput].forEach(inp => {
+            inp.addEventListener('input', () => {
+                formApproveTask.querySelectorAll('.js-modal-tier-btn').forEach(b => {
+                    const bCoins = b.getAttribute('data-coins');
+                    const bXp = b.getAttribute('data-xp');
+                    if (bCoins === approveCoinsInput.value && bXp === approveXpInput.value) {
+                        b.classList.remove('btn-outline');
+                        b.classList.add('btn-primary');
+                    } else {
+                        b.classList.remove('btn-primary');
+                        b.classList.add('btn-outline');
+                    }
+                });
+            });
+        });
+    }
 
     if (formApproveTask) {
         formApproveTask.addEventListener('submit', async (e) => {

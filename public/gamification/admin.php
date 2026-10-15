@@ -201,6 +201,19 @@ $metricTypeMap = [
                         $recipientName = $t['claimed_name'] ?: $t['assigned_name'] ?: $t['origin_name'] ?: 'Kind';
                         $isBounty = !empty($t['bounty_bonus_coins']);
                         $isPitch = !empty($t['initiative_bonus_coins']);
+                        $totalCoins = (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'];
+                        $totalXp = (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'];
+
+                        $activeTier = 'mittel';
+                        if ($totalCoins <= 20) {
+                            $activeTier = 'klein';
+                        } elseif ($totalCoins <= 35) {
+                            $activeTier = 'mittel';
+                        } elseif ($totalCoins <= 65) {
+                            $activeTier = 'gross';
+                        } else {
+                            $activeTier = 'meister';
+                        }
                     ?>
                         <div class="gamif-triage-card">
                             <div class="gamif-triage-header">
@@ -214,8 +227,8 @@ $metricTypeMap = [
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 <?= (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'] ?></span>
-                                    <span class="gamif-stat-chip gamif-stat-chip--xp">⭐ <?= (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'] ?></span>
+                                    <span class="gamif-stat-chip gamif-stat-chip--coins js-triage-coins-display">🪙 <?= $totalCoins ?></span>
+                                    <span class="gamif-stat-chip gamif-stat-chip--xp js-triage-xp-display">⭐ <?= $totalXp ?></span>
                                 </div>
                             </div>
 
@@ -225,7 +238,7 @@ $metricTypeMap = [
                                     <span class="gamif-tag gamif-tag--rescue">🔥 Gerettete Aufgabe (+<?= (int)$t['bounty_bonus_coins'] ?> Retter-Münzen)</span>
                                 <?php endif; ?>
                                 <?php if ($isPitch): ?>
-                                    <span class="gamif-tag" style="background:rgba(59,130,246,0.2); color:#60a5fa;">💡 Spontane Mithilfe (+15 Initiative-Münzen)</span>
+                                    <span class="gamif-tag" style="background:rgba(59,130,246,0.2); color:#60a5fa;">💡 Spontane Mithilfe (+<?= (int)$t['initiative_bonus_coins'] ?> Initiative-Münzen)</span>
                                 <?php endif; ?>
                             </div>
 
@@ -235,9 +248,32 @@ $metricTypeMap = [
                                 </p>
                             <?php endif; ?>
 
-                            <div class="gamif-triage-actions">
+                            <?php if ($isPitch): ?>
+                                <div class="gamif-triage-tier-selector" style="margin-top:0.75rem; padding:0.6rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:var(--border-radius);">
+                                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center;">
+                                        <span>🎯 Schweregrad anpassen:</span>
+                                        <span class="text-muted" style="font-size:0.75rem;">Klick ändert Belohnung sofort</span>
+                                    </div>
+                                    <div class="gamif-card-tier-group" style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'klein' ? 'btn-primary' : 'btn-outline' ?>" data-tier="klein" data-coins="15" data-xp="25" title="Klein / Schnell (ca. 5–10 Min., z. B. Tisch abräumen, Müll rausbringen)">
+                                            🟢 Klein <span style="opacity:0.8; font-size:0.75rem;">(15 🪙 · 25 ⭐)</span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'mittel' ? 'btn-primary' : 'btn-outline' ?>" data-tier="mittel" data-coins="30" data-xp="50" title="Mittel / Standard (ca. 15–30 Min., z. B. Spülmaschine, Zimmer saugen)">
+                                            🟡 Mittel <span style="opacity:0.8; font-size:0.75rem;">(30 🪙 · 50 ⭐)</span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'gross' ? 'btn-primary' : 'btn-outline' ?>" data-tier="gross" data-coins="50" data-xp="100" title="Groß / Fleißig (ca. 30–60 Min., z. B. Rasen mähen, Bad putzen)">
+                                            🔵 Groß <span style="opacity:0.8; font-size:0.75rem;">(50 🪙 · 100 ⭐)</span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'meister' ? 'btn-primary' : 'btn-outline' ?>" data-tier="meister" data-coins="80" data-xp="180" title="Meisterlich (ab 1h, z. B. Keller entrümpeln, Großputz)">
+                                            🟣 Meisterlich <span style="opacity:0.8; font-size:0.75rem;">(80 🪙 · 180 ⭐)</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="gamif-triage-actions" style="margin-top:0.75rem;">
                                 <button type="button" class="btn btn-outline btn-sm js-triage-reject-btn" data-task-id="<?= (int)$t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>">❌ Ablehnen / Nachbessern</button>
-                                <button type="button" class="btn btn-primary btn-sm js-triage-approve-btn" data-task-id="<?= (int)$t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>" data-recipient="<?= htmlspecialchars($recipientName, ENT_QUOTES, 'UTF-8') ?>" data-coins="<?= (int)$t['base_coins'] + (int)$t['bounty_bonus_coins'] + (int)$t['initiative_bonus_coins'] ?>" data-xp="<?= (int)$t['base_xp'] + (int)$t['bounty_bonus_xp'] ?>">✅ Bestätigen & Punkte gutschreiben</button>
+                                <button type="button" class="btn btn-primary btn-sm js-triage-approve-btn" data-task-id="<?= (int)$t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>" data-recipient="<?= htmlspecialchars($recipientName, ENT_QUOTES, 'UTF-8') ?>" data-coins="<?= $totalCoins ?>" data-xp="<?= $totalXp ?>">✅ Bestätigen & Punkte gutschreiben</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -1142,6 +1178,25 @@ $metricTypeMap = [
                 <form id="form-approve-task">
                     <input type="hidden" id="approve-task-id" name="task_id">
                     <p id="approve-task-desc" class="text-muted"></p>
+
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="font-weight:600; margin-bottom:0.35rem; display:block; font-size:0.9rem;">🎯 Schweregrad als Vorlage:</label>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.4rem;">
+                            <button type="button" class="btn btn-outline btn-sm js-modal-tier-btn" data-tier="klein" data-coins="15" data-xp="25">
+                                🟢 <strong>Klein</strong><br><small style="opacity:0.8;">15 🪙 · 25 ⭐</small>
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm js-modal-tier-btn" data-tier="mittel" data-coins="30" data-xp="50">
+                                🟡 <strong>Mittel</strong><br><small style="opacity:0.8;">30 🪙 · 50 ⭐</small>
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm js-modal-tier-btn" data-tier="gross" data-coins="50" data-xp="100">
+                                🔵 <strong>Groß</strong><br><small style="opacity:0.8;">50 🪙 · 100 ⭐</small>
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm js-modal-tier-btn" data-tier="meister" data-coins="80" data-xp="180">
+                                🟣 <strong>Meisterlich</strong><br><small style="opacity:0.8;">80 🪙 · 180 ⭐</small>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
                         <div class="form-group">
                             <label for="approve-coins">Münzen gutschreiben:</label>

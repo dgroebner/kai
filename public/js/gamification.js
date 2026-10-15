@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const title = document.getElementById('pitch-title').value.trim();
             const category = document.getElementById('pitch-category').value;
+            const tier = document.getElementById('pitch-tier') ? document.getElementById('pitch-tier').value : 'mittel';
             const notes = document.getElementById('pitch-notes').value.trim();
 
             if (!title) return;
@@ -117,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 action: 'task_pitch',
                 title: title,
                 category: category,
+                tier: tier,
                 notes: notes
             });
 
