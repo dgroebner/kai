@@ -138,23 +138,28 @@ $newBadges = $gamifService->getAchievementService()->checkAndAwardAchievements($
                             <div class="gamif-card-header">
                                 <h3 class="gamif-card-title"><?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?></h3>
                                 <div class="gamif-card-reward">
-                                    <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 +<?= (int)$task['base_coins'] ?></span>
+                                    <span class="gamif-stat-chip gamif-stat-chip--coins">🪙 +<?= (int)$task['base_coins'] + (int)($task['initiative_bonus_coins'] ?? 0) ?></span>
                                     <span class="gamif-stat-chip gamif-stat-chip--xp">⭐ +<?= (int)$task['base_xp'] ?></span>
                                 </div>
                             </div>
 
                             <div class="gamif-card-meta">
                                 <span class="gamif-tag"><?= htmlspecialchars(ucfirst($task['category']), ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php if (!empty($task['initiative_bonus_coins'])): ?>
+                                    <span class="gamif-tag" style="background:rgba(59,130,246,0.2); color:#60a5fa;">💡 Spontane Mithilfe (+<?= (int)$task['initiative_bonus_coins'] ?> Bonus)</span>
+                                <?php endif; ?>
                                 <?php if (!empty($task['due_time'])): ?>
                                     <span class="gamif-tag gamif-tag--time">⏰ Bis <?= htmlspecialchars(substr($task['due_time'], 0, 5), ENT_QUOTES, 'UTF-8') ?> Uhr</span>
                                 <?php endif; ?>
-                                <?php if (isset($task['can_escalate']) && (int)$task['can_escalate'] === 0): ?>
+                                <?php if (isset($task['can_escalate']) && (int)$task['can_escalate'] === 0 && empty($task['initiative_bonus_coins']) && !$isDone): ?>
                                     <span class="gamif-tag gamif-tag--no-rescue" data-gamif-title="📌 Keine Rettung" data-gamif-tooltip="Feste Routine: Bleibt fest bei dir und wandert bei Fristversäumnis nicht auf das Schwarze Brett (kann nicht von Geschwistern übernommen werden).">📌 Keine Rettung</span>
                                 <?php endif; ?>
                             </div>
 
-                            <?php if (!empty($task['description'])): ?>
-                                <p class="gamif-card-desc"><?= htmlspecialchars($task['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <?php 
+                            $displayDesc = !empty($task['description']) ? $task['description'] : (!empty($task['submission_notes']) ? $task['submission_notes'] : '');
+                            if (!empty($displayDesc)): ?>
+                                <p class="gamif-card-desc"><?= htmlspecialchars($displayDesc, ENT_QUOTES, 'UTF-8') ?></p>
                             <?php endif; ?>
                         </div>
 

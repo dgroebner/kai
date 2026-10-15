@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (res.success) {
+                formPitch.reset();
                 showFeedback('Klasse Initiative! 🚀', res.message || 'Deine Hilfe wurde eingereicht!', true);
             } else {
                 showFeedback('Fehler', res.message || 'Fehler beim Einreichen.');

@@ -280,6 +280,74 @@ class GamificationTaskRepository
         return (int)$this->db->getConnection()->lastInsertId();
     }
 
+    /**
+     * Erstellt eine spontane Mithilfe ("Ich hab geholfen!" / Chore Pitch) durch ein Kind
+     * und reicht sie direkt zur Prüfung bei den Eltern ein.
+     */
+    public function createPitchedTask(
+        int $profileId,
+        string $title,
+        string $category = 'haushalt',
+        ?string $notes = null
+    ): int {
+        $title = trim($title);
+        if ($title === '') {
+            throw new \InvalidArgumentException('Titel darf nicht leer sein.');
+        }
+
+        $allowedCategories = ['haushalt', 'tiere', 'zimmer', 'garten', 'projekt', 'kochen', 'schule'];
+        if (!in_array($category, $allowedCategories, true)) {
+            $category = 'haushalt';
+        }
+
+        $notes = $notes !== null ? trim($notes) : null;
+        if ($notes === '') {
+            $notes = null;
+        }
+
+        $baseCoins = 20;
+        $baseXp = 50;
+        $initiativeCoins = 15; // Passend zur Triage: Spontane Mithilfe (+15 Initiative-Münzen)
+
+        $hasTaskCol = $this->hasCanEscalateColumn();
+        $colSql = $hasTaskCol ? ", can_escalate" : "";
+        $valSql = $hasTaskCol ? ", :can_escalate" : "";
+
+        $stmt = $this->db->getConnection()->prepare("
+            INSERT INTO gamification_tasks (
+                template_id, title, description, category,
+                assigned_profile_id, origin_profile_id, status, is_bounty,
+                due_date, base_xp, base_coins, initiative_bonus_coins,
+                submitted_at, submission_notes{$colSql}
+            ) VALUES (
+                NULL, :title, :description, :category,
+                :assigned_profile_id, :origin_profile_id, 'submitted', 0,
+                :due_date, :base_xp, :base_coins, :initiative_bonus_coins,
+                NOW(), :submission_notes{$valSql}
+            )
+        ");
+
+        $params = [
+            'title' => $title,
+            'description' => $notes,
+            'category' => $category,
+            'assigned_profile_id' => $profileId,
+            'origin_profile_id' => $profileId,
+            'due_date' => date('Y-m-d'),
+            'base_xp' => $baseXp,
+            'base_coins' => $baseCoins,
+            'initiative_bonus_coins' => $initiativeCoins,
+            'submission_notes' => $notes,
+        ];
+        if ($hasTaskCol) {
+            $params['can_escalate'] = 0;
+        }
+
+        $stmt->execute($params);
+
+        return (int)$this->db->getConnection()->lastInsertId();
+    }
+
     private function hasCanEscalateColumn(): bool
     {
         static $hasCol = null;

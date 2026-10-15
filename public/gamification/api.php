@@ -81,6 +81,29 @@ try {
             echo json_encode(['success' => true, 'helper_claim_id' => $claimId, 'message' => 'Mithilfe gemeldet! Deine Eltern bestätigen deinen Helfer-Bonus.']);
             break;
 
+        case 'task_pitch':
+            Auth::requireApi('gamification_write');
+            $title = trim((string)($input['title'] ?? ''));
+            if ($title === '') {
+                Auth::sendJsonError(400, 'Bitte gib an, was du gemacht hast.');
+            }
+            $category = trim((string)($input['category'] ?? 'haushalt'));
+            $notes = isset($input['notes']) ? trim((string)$input['notes']) : null;
+
+            $taskId = $gamifService->getTaskRepository()->createPitchedTask(
+                (int)$currentProfile['id'],
+                $title,
+                $category,
+                $notes
+            );
+
+            echo json_encode([
+                'success' => true,
+                'task_id' => $taskId,
+                'message' => 'Klasse Initiative! Deine Hilfe wurde zur Prüfung eingereicht.'
+            ]);
+            break;
+
         case 'task_start_ondemand':
             Auth::requireApi('gamification_write');
             $tmplId = filter_var($input['template_id'] ?? null, FILTER_VALIDATE_INT);
