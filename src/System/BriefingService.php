@@ -5,6 +5,7 @@ namespace Kai\Tools\System;
 use DateTimeImmutable;
 use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\BankContractRepository;
+use Kai\Tools\Bank\LiquidityAdvisorService;
 use Kai\Tools\Calendar\CalendarService;
 use Kai\Tools\Car\TripRepository;
 use Kai\Tools\Car\VehicleDashboardRepository;
@@ -41,6 +42,7 @@ class BriefingService
     private CalendarService $calendarService;
     private BankAccountRepository $bankAccountRepo;
     private BankContractRepository $bankContractRepo;
+    private LiquidityAdvisorService $liquidityAdvisor;
 
     public function __construct(
         ?Database $db = null,
@@ -57,7 +59,8 @@ class BriefingService
         ?ShoppingListRepository $shoppingListRepo = null,
         ?CalendarService $calendarService = null,
         ?BankAccountRepository $bankAccountRepo = null,
-        ?BankContractRepository $bankContractRepo = null
+        ?BankContractRepository $bankContractRepo = null,
+        ?LiquidityAdvisorService $liquidityAdvisor = null
     ) {
         $this->db = $db ?? Database::getInstance();
         $this->logger = $logger ?? new Logger();
@@ -74,6 +77,7 @@ class BriefingService
         $this->calendarService = $calendarService ?? new CalendarService($this->db);
         $this->bankAccountRepo = $bankAccountRepo ?? new BankAccountRepository();
         $this->bankContractRepo = $bankContractRepo ?? new BankContractRepository();
+        $this->liquidityAdvisor = $liquidityAdvisor ?? new LiquidityAdvisorService($this->bankAccountRepo, $this->bankContractRepo);
     }
 
     /**
@@ -724,6 +728,7 @@ class BriefingService
      * - Berechtigungsabhängig für Profile mit finance_read
      * - Gesamtsaldo des Girokontos
      * - Kumulierte Summe der anstehenden Ein- und Ausgänge der nächsten 3 Tage
+     * - Intelligenter Liquiditäts- & Rücklagen-Assistent (4.000-€-Puffer via Visa-Trigger & 500-€-Notfallwächter)
      */
     private function buildFinanceWidget(string $userEmail): ?array
     {
@@ -732,10 +737,11 @@ class BriefingService
         }
 
         $account = $this->bankAccountRepo->getAccountByType('checking');
+        $accountId = isset($account['id']) ? (int)$account['id'] : null;
         $currentBalance = (float)($account['current_balance'] ?? 0.0);
 
         // Anstehende Buchungen der nächsten 3 Tage
-        $upcomingTx = $this->bankContractRepo->getUpcomingExpectedTransactions(3);
+        $upcomingTx = $this->bankContractRepo->getUpcomingExpectedTransactions(3, $accountId);
 
         $pendingExpenses = 0.0;
         $pendingIncome = 0.0;
@@ -767,20 +773,52 @@ class BriefingService
             $pills[] = ['icon' => '📈', 'label' => "Eingänge 3 Tage: +{$incFormatted}", 'type' => 'success'];
         }
 
+        $headline = "Girokonto-Saldo: {$balanceFormatted}";
         $subtitle = ($pendingCount > 0)
             ? "{$pendingCount} Fixkosten/Verträge in den nächsten 3 Tagen erwartet (-{$expFormatted})"
             : "Keine offenen Vertragskosten in den nächsten 3 Tagen";
+        $highlight = false;
+        $badge = $pendingCount > 0 ? ['text' => "{$pendingCount} anstehend", 'type' => 'info'] : null;
+
+        try {
+            $advice = $this->liquidityAdvisor->analyze($accountId);
+            $advStatus = $advice['status'] ?? 'optimal';
+            $recAmountFormatted = number_format((float)($advice['recommended_amount'] ?? 0.0), 2, ',', '.') . ' €';
+
+            if ($advStatus === 'emergency') {
+                $headline = "⚠️ Not-Rückbuchung: +{$recAmountFormatted} vom Sparkonto";
+                $subtitle = $advice['subtitle'] ?? $subtitle;
+                $pills[] = ['icon' => '🚨', 'label' => "Rückholen: +{$recAmountFormatted}", 'type' => 'danger'];
+                $highlight = true;
+                $badge = ['text' => 'Not-Rückbuchung!', 'type' => 'danger'];
+            } elseif ($advStatus === 'reserve_ready') {
+                $headline = "💡 Rücklage möglich: +{$recAmountFormatted} aufs Sparkonto";
+                $subtitle = $advice['subtitle'] ?? $subtitle;
+                $pills[] = ['icon' => '💰', 'label' => "Rücklage: +{$recAmountFormatted}", 'type' => 'success'];
+                $highlight = true;
+                $badge = ['text' => 'Rücklage möglich', 'type' => 'success'];
+            } elseif ($advStatus === 'visa_reminder') {
+                $pills[] = ['icon' => '💳', 'label' => 'Visa-Abrechnung für Rücklagen-Check offen', 'type' => 'warning'];
+                if ($badge === null) {
+                    $badge = ['text' => 'Visa-PDF offen', 'type' => 'warning'];
+                }
+            } elseif ($advStatus === 'reserve_no_excess') {
+                $pills[] = ['icon' => '✓', 'label' => 'Rücklagen-Check: Keine Umbuchung nötig', 'type' => 'neutral'];
+            }
+        } catch (Throwable $e) {
+            $this->logger->error('BriefingService: Fehler im LiquidityAdvisorService', ['error' => $e->getMessage()]);
+        }
 
         return [
             'key' => 'finance',
             'title' => 'Finanzen',
             'icon' => '🏦',
             'url' => '/bank/index.php',
-            'headline' => "Girokonto-Saldo: {$balanceFormatted}",
+            'headline' => $headline,
             'subtitle' => $subtitle,
             'pills' => $pills,
-            'highlight' => false,
-            'badge' => $pendingCount > 0 ? ['text' => "{$pendingCount} anstehend", 'type' => 'info'] : null,
+            'highlight' => $highlight,
+            'badge' => $badge,
         ];
     }
 

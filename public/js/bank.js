@@ -2398,3 +2398,38 @@ document.addEventListener('click', async (e) => {
         unlinkBtn.disabled = false;
     }
 });
+
+// Event-Delegation für den Liquiditäts- & Rücklagen-Assistenten ("Für diesen Monat erledigt")
+document.addEventListener('click', async (e) => {
+    const dismissBtn = e.target.closest('.js-dismiss-reserve-advisor');
+    if (!dismissBtn) return;
+
+    e.preventDefault();
+    const yearMonth = dismissBtn.dataset.yearMonth || '';
+
+    try {
+        dismissBtn.disabled = true;
+        dismissBtn.textContent = '⏳ Wird gespeichert...';
+
+        const res = await KaiHttp.postJson('api.php', {
+            action: 'mark_reserve_check_done',
+            year_month: yearMonth
+        });
+
+        if (res && res.success) {
+            const banner = document.getElementById('liquidity-advisor-banner');
+            if (banner) {
+                banner.remove();
+            }
+            window.location.reload();
+        } else {
+            alert(res?.error || 'Status konnte nicht gespeichert werden.');
+            dismissBtn.disabled = false;
+            dismissBtn.textContent = '✓ Für diesen Monat erledigt';
+        }
+    } catch (err) {
+        console.error('Fehler beim Markieren des Rücklagen-Checks:', err);
+        dismissBtn.disabled = false;
+        dismissBtn.textContent = '✓ Für diesen Monat erledigt';
+    }
+});

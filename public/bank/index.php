@@ -5,6 +5,7 @@ use Kai\Tools\Bank\BankAccountRepository;
 use Kai\Tools\Bank\BankContractRepository;
 use Kai\Tools\Bank\BankTagRepository;
 use Kai\Tools\Bank\GiroOverviewRepository;
+use Kai\Tools\Bank\LiquidityAdvisorService;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\Shared\Security\Sanitizer;
@@ -21,6 +22,7 @@ $accountRepository = new BankAccountRepository();
 $giroRepository = new GiroOverviewRepository();
 $tagRepository = new BankTagRepository();
 $contractRepository = new BankContractRepository();
+$liquidityAdvisor = new LiquidityAdvisorService($accountRepository, $contractRepository, $tagRepository);
 
 // Girokonto dynamisch auflösen — alle Abfragen dieser Seite beziehen sich darauf
 $checkingAccount = $accountRepository->getAccountByType('checking');
@@ -33,6 +35,7 @@ $accountId = (int)$checkingAccount['id'];
 
 // Erwartete Vertragsbuchungen in den nächsten 3 Tagen abrufen
 $upcomingExpectedBookings = $contractRepository->getUpcomingExpectedTransactions(3, $accountId);
+$liquidityAdvice = $liquidityAdvisor->analyze($accountId);
 
 // ----------------------------------------------------
 // 1.5 Direkter Transaktions-Sprung per ?tx=ID & Seitenberechnung
@@ -347,20 +350,126 @@ try {
     </div>
 
     <!-- Salden-Dashboard -->
+    <?php
+    $advStatus = $liquidityAdvice['status'] ?? 'optimal';
+    $advProjected5d = (float)($liquidityAdvice['projected_balance_5d'] ?? $checkingBalance);
+    $advKpiBorder = match ($advStatus) {
+        'emergency' => '1px solid var(--color-red, #ef4444)',
+        'reserve_ready' => '1px solid var(--color-green, #10b981)',
+        'visa_reminder' => '1px solid var(--color-yellow, #eab308)',
+        default => '1px solid rgba(255,255,255,0.08)',
+    };
+    ?>
     <section class="kpi-grid" style="margin-bottom: 1.5rem;">
         <div class="kpi-card" style="border: 1px solid var(--accent);">
-            <div class="kpi-label">🏦 Girokonto</div>
+            <div class="kpi-label">🏦 Girokonto (Zielpuffer: 4.000 €)</div>
             <div class="kpi-value" style="font-size: 1.5rem;">
                 <?= number_format((float)$checkingBalance, 2, ',', '.') ?> €
             </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                5-Tage-Vorschau: <strong class="<?= $advProjected5d < 500 ? 'text-danger' : '' ?>"><?= number_format($advProjected5d, 2, ',', '.') ?> €</strong>
+            </div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">💰 Sparkonto</div>
+            <div class="kpi-label">💰 Sparkonto (Rücklagen)</div>
             <div class="kpi-value" style="font-size: 1.5rem; color: var(--color-green);">
                 <?= number_format((float)$savingsBalance, 2, ',', '.') ?> €
             </div>
+            <?php if (($liquidityAdvice['monthly_reserve_transferred'] ?? 0) > 0): ?>
+                <div style="font-size: 0.78rem; color: var(--color-green); margin-top: 0.25rem;">
+                    ✓ Diesen Monat +<?= number_format((float)$liquidityAdvice['monthly_reserve_transferred'], 2, ',', '.') ?> € zurückgelegt
+                </div>
+            <?php else: ?>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    Notfall-Untergrenze Giro: 500,00 €
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="kpi-card" style="border: <?= $advKpiBorder ?>;">
+            <div class="kpi-label" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <span>🛡️ Liquiditäts-Assistent</span>
+                <span class="badge" style="font-size: 0.7rem; padding: 0.15rem 0.45rem;"><?= htmlspecialchars($liquidityAdvice['badge_text'] ?? 'Stabil', ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <?php if ($advStatus === 'emergency'): ?>
+                <div class="kpi-value text-danger" style="font-size: 1.25rem;">
+                    Rückholen: +<?= number_format((float)$liquidityAdvice['recommended_amount'], 2, ',', '.') ?> €
+                </div>
+            <?php elseif ($advStatus === 'reserve_ready'): ?>
+                <div class="kpi-value text-success" style="font-size: 1.25rem;">
+                    Sparen: +<?= number_format((float)$liquidityAdvice['recommended_amount'], 2, ',', '.') ?> €
+                </div>
+            <?php elseif ($advStatus === 'visa_reminder'): ?>
+                <div class="kpi-value" style="font-size: 1.1rem; color: var(--color-yellow, #eab308);">
+                    💳 Visa-PDF importieren
+                </div>
+            <?php else: ?>
+                <div class="kpi-value" style="font-size: 1.1rem;">
+                    <?= htmlspecialchars($liquidityAdvice['headline'] ?? 'Stabil', ENT_QUOTES, 'UTF-8') ?>
+                </div>
+            <?php endif; ?>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                <?= htmlspecialchars($liquidityAdvice['subtitle'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+            </div>
         </div>
     </section>
+
+    <!-- Detaillierter Handlungs-Banner bei aktivem Rücklagen-Check, Visa-Erinnerung oder Not-Rückbuchung -->
+    <?php if (in_array($advStatus, ['emergency', 'reserve_ready', 'reserve_no_excess', 'visa_reminder'], true)):
+        $bannerColor = match ($advStatus) {
+            'emergency' => 'var(--color-red, #ef4444)',
+            'reserve_ready' => 'var(--color-green, #10b981)',
+            'visa_reminder' => 'var(--color-yellow, #eab308)',
+            default => 'var(--accent, #3b82f6)',
+        };
+        $bannerBg = match ($advStatus) {
+            'emergency' => 'rgba(239, 68, 68, 0.08)',
+            'reserve_ready' => 'rgba(16, 185, 129, 0.08)',
+            'visa_reminder' => 'rgba(234, 179, 8, 0.08)',
+            default => 'rgba(59, 130, 246, 0.06)',
+        };
+        ?>
+        <section id="liquidity-advisor-banner" class="card" style="margin-bottom: 1.5rem; border-left: 4px solid <?= $bannerColor ?>; background: <?= $bannerBg ?>;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1; min-width: 260px;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
+                        <strong style="font-size: 1.05rem; color: var(--text-main);">
+                            <?= htmlspecialchars($liquidityAdvice['headline'], ENT_QUOTES, 'UTF-8') ?>
+                        </strong>
+                    </div>
+                    <p style="margin: 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.45;">
+                        <?= htmlspecialchars($liquidityAdvice['subtitle'], ENT_QUOTES, 'UTF-8') ?>
+                    </p>
+
+                    <?php if (!empty($liquidityAdvice['details'])): ?>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.82rem;">
+                            <?php foreach ($liquidityAdvice['details'] as $dLabel => $dVal): ?>
+                                <div>
+                                    <span style="color: var(--text-muted);"><?= htmlspecialchars((string)$dLabel, ENT_QUOTES, 'UTF-8') ?>:</span>
+                                    <strong style="margin-left: 0.25rem;"><?= htmlspecialchars((string)$dVal, ENT_QUOTES, 'UTF-8') ?></strong>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                    <?php if ($advStatus === 'visa_reminder'): ?>
+                        <a href="creditcard.php" class="btn btn-outline" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">
+                            💳 Zur Kreditkarte
+                        </a>
+                    <?php endif; ?>
+                    <?php if (!empty($liquidityAdvice['can_dismiss'])): ?>
+                        <button type="button" class="btn btn-outline js-dismiss-reserve-advisor"
+                                data-year-month="<?= htmlspecialchars(date('Y-m'), ENT_QUOTES, 'UTF-8') ?>"
+                                style="font-size: 0.82rem; padding: 0.4rem 0.75rem;"
+                                title="Rücklagen-Check für diesen Monat als erledigt markieren">
+                            ✓ Für diesen Monat erledigt
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <!-- Schnelleinstellungen (Typ) -->
     <div class="period-switcher">

@@ -12,6 +12,7 @@ use Kai\Tools\Bank\ComdirectClient;
 use Kai\Tools\Bank\ContractAssignmentService;
 use Kai\Tools\Bank\CreditCardRepository;
 use Kai\Tools\Bank\FinancialReportService;
+use Kai\Tools\Bank\LiquidityAdvisorService;
 use Kai\Tools\Bank\RuleMatcher;
 use Kai\Tools\Bank\StatementMatcher;
 use Kai\Tools\Shared\AI\GeminiClient;
@@ -570,6 +571,15 @@ try {
             'success' => true,
             'report' => $report,
         ]);
+        exit;
+    }
+
+    // Monatlichen Rücklagen-Check für den aktuellen Monat als erledigt / ignoriert markieren
+    if ($action === 'mark_reserve_check_done') {
+        $yearMonth = isset($data['year_month']) ? trim((string)$data['year_month']) : null;
+        (new LiquidityAdvisorService())->markMonthDone($yearMonth);
+
+        echo json_encode(['success' => true]);
         exit;
     }
 
