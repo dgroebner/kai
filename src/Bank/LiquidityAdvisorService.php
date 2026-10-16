@@ -206,7 +206,7 @@ class LiquidityAdvisorService
             'is_actionable' => false,
             'can_dismiss' => false,
             'badge_text' => 'Optimal',
-            'badge_type' => 'info',
+            'badge_type' => 'success',
             'headline' => 'Girokonto im grünen Bereich',
             'subtitle' => "Regulärer Kontobetrieb (5-Tage-Vorschau: {$projFormatted}). Der monatliche Rücklagen-Check startet mit Eingang der Visa-Abrechnung (ca. 25. " . $today->format('m.') . ").",
             'recommended_amount' => 0.0,
@@ -684,7 +684,7 @@ class LiquidityAdvisorService
     {
         $startDate = $minDate ?: ($yearMonth . '-01');
         $endDate = date('Y-m-t', strtotime($yearMonth . '-01'));
-        $transferTagIds = $this->tagRepo->getTransferTagIds();
+        $reserveTagIds = $this->tagRepo->getReserveSpecificTagIds();
 
         $stmt = $this->pdo->prepare("
             SELECT t.id, t.amount, t.remittance_info, t.remitter, t.debitor, t.creditor,
@@ -709,13 +709,15 @@ class LiquidityAdvisorService
         foreach ($rows as $row) {
             $isReserve = false;
 
-            if (!empty($row['tag_ids'])) {
+            // 1. Spezifisches Rücklagen-Tag (z. B. "Rücklage", "Tagesgeld", "Sparkonto" - KEINE generische Umbuchung wie Visa/Transit)
+            if (!empty($row['tag_ids']) && !empty($reserveTagIds)) {
                 $txTagIds = array_map('intval', explode(',', (string)$row['tag_ids']));
-                if (!empty(array_intersect($txTagIds, $transferTagIds))) {
+                if (!empty(array_intersect($txTagIds, $reserveTagIds))) {
                     $isReserve = true;
                 }
             }
 
+            // 2. IBAN-Abgleich mit dem Sparkonto (Gegenkonto im Verwendungszweck oder Partnerfeld)
             if (!$isReserve && $normalizedSavingsIban !== null && $normalizedSavingsIban !== '') {
                 $combined = strtoupper(str_replace(' ', '',
                     ($row['remittance_info'] ?? '') . ' ' .
@@ -728,6 +730,7 @@ class LiquidityAdvisorService
                 }
             }
 
+            // 3. Eindeutige Schlüsselwörter im Text (Tagesgeld, Sparkonto, Sparbuch, Rücklage), sofern kein Visa-/Karteneinzug
             if (!$isReserve) {
                 $info = mb_strtolower(
                     ($row['remittance_info'] ?? '') . ' ' .
@@ -736,11 +739,20 @@ class LiquidityAdvisorService
                     ($row['debitor'] ?? ''),
                     'UTF-8'
                 );
-                if (
-                    (str_contains($info, 'umbuchung') || str_contains($info, 'übertrag') || str_contains($info, 'uebertrag'))
-                    && (str_contains($info, 'rücklage') || str_contains($info, 'ruecklage') || str_contains($info, 'tagesgeld') || str_contains($info, 'sparkonto'))
-                ) {
-                    $isReserve = true;
+                $isVisaOrCard = str_contains($info, 'visa') || str_contains($info, 'kreditkarte') || str_contains($info, 'credit card');
+
+                if (!$isVisaOrCard) {
+                    if (
+                        str_contains($info, 'tagesgeld') ||
+                        str_contains($info, 'sparkonto') ||
+                        str_contains($info, 'sparbuch') ||
+                        (
+                            (str_contains($info, 'umbuchung') || str_contains($info, 'übertrag') || str_contains($info, 'uebertrag'))
+                            && (str_contains($info, 'rücklage') || str_contains($info, 'ruecklage'))
+                        )
+                    ) {
+                        $isReserve = true;
+                    }
                 }
             }
 

@@ -141,10 +141,11 @@ class FinancialReportAggregator
         ?string $savingsIban = null,
         ?int $savingsAccountId = null
     ): bool {
-        // 1. Tag-Matching: Transaktion besitzt ein Umbuchungs- oder Rücklagen-Tag
+        // 1. Spezifisches Rücklagen-Tag (z. B. "Rücklage", "Tagesgeld", "Sparkonto" - KEINE generische Umbuchung wie Visa/Transit)
         if (!empty($tx['tag_ids'])) {
             $txTagIds = array_map('intval', explode(',', (string)$tx['tag_ids']));
-            if (!empty(array_intersect($txTagIds, $transferTagIds))) {
+            $reserveTagIds = $this->bankTagRepository->getReserveSpecificTagIds();
+            if (!empty(array_intersect($txTagIds, $reserveTagIds))) {
                 return true;
             }
         }
@@ -167,18 +168,26 @@ class FinancialReportAggregator
             }
         }
 
-        // 4. Eindeutige Schlüsselwörter im Buchungstext (Übertrag/Umbuchung auf/vom Tagesgeld/Sparkonto)
+        // 4. Eindeutige Schlüsselwörter im Buchungstext, sofern kein Visa- oder Kreditkartenbezug
         $text = mb_strtolower(
             ($tx['remittance_info'] ?? '') . ' ' .
             ($tx['remitter'] ?? '') . ' ' .
             ($tx['creditor'] ?? '') . ' ' .
             ($tx['debitor'] ?? '')
         );
-        if (
-            (str_contains($text, 'umbuchung') || str_contains($text, 'übertrag') || str_contains($text, 'uebertrag')) &&
-            (str_contains($text, 'tagesgeld') || str_contains($text, 'sparkonto') || str_contains($text, 'sparbuch') || str_contains($text, 'rücklage') || str_contains($text, 'ruecklage'))
-        ) {
-            return true;
+        $isVisaOrCard = str_contains($text, 'visa') || str_contains($text, 'kreditkarte') || str_contains($text, 'credit card');
+        if (!$isVisaOrCard) {
+            if (
+                str_contains($text, 'tagesgeld') ||
+                str_contains($text, 'sparkonto') ||
+                str_contains($text, 'sparbuch') ||
+                (
+                    (str_contains($text, 'umbuchung') || str_contains($text, 'übertrag') || str_contains($text, 'uebertrag')) &&
+                    (str_contains($text, 'rücklage') || str_contains($text, 'ruecklage'))
+                )
+            ) {
+                return true;
+            }
         }
 
         return false;
@@ -274,13 +283,25 @@ class FinancialReportAggregator
                     ];
                 }
             } else {
-                // Reguläre Einnahmen und Ausgaben
-                if ($amount > 0) {
-                    $actualIncome += $amount;
-                } elseif ($amount < 0) {
-                    $actualExpenses += abs($amount);
-                    if (!empty($row['contract_id'])) {
-                        $fixedBooked += abs($amount);
+                // Prüfen, ob es eine interne Umbuchung ist (z. B. Visa-Einzug, durchlaufender Posten),
+                // die weder reguläre Konsumausgabe noch reguläre Einnahme ist
+                $isInternalTransfer = false;
+                if (!empty($row['tag_ids']) && !empty($transferTagIds)) {
+                    $txTagIds = array_map('intval', explode(',', (string)$row['tag_ids']));
+                    if (!empty(array_intersect($txTagIds, $transferTagIds))) {
+                        $isInternalTransfer = true;
+                    }
+                }
+
+                if (!$isInternalTransfer) {
+                    // Reguläre Einnahmen und Ausgaben
+                    if ($amount > 0) {
+                        $actualIncome += $amount;
+                    } elseif ($amount < 0) {
+                        $actualExpenses += abs($amount);
+                        if (!empty($row['contract_id'])) {
+                            $fixedBooked += abs($amount);
+                        }
                     }
                 }
             }
@@ -1063,10 +1084,20 @@ class FinancialReportAggregator
                     $dataByKey[$mKey]['reserve_outflow'] += $amount;
                 }
             } else {
-                if ($amount > 0) {
-                    $dataByKey[$mKey]['income'] += $amount;
-                } elseif ($amount < 0) {
-                    $dataByKey[$mKey]['expenses'] += abs($amount);
+                $isInternalTransfer = false;
+                if (!empty($row['tag_ids']) && !empty($transferTagIds)) {
+                    $txTagIds = array_map('intval', explode(',', (string)$row['tag_ids']));
+                    if (!empty(array_intersect($txTagIds, $transferTagIds))) {
+                        $isInternalTransfer = true;
+                    }
+                }
+
+                if (!$isInternalTransfer) {
+                    if ($amount > 0) {
+                        $dataByKey[$mKey]['income'] += $amount;
+                    } elseif ($amount < 0) {
+                        $dataByKey[$mKey]['expenses'] += abs($amount);
+                    }
                 }
             }
         }

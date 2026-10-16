@@ -385,19 +385,19 @@ try {
     <?php
     $bannerBorder = match ($advStatus) {
         'emergency' => '1px solid var(--color-red, #ef4444)',
-        'reserve_ready' => '1px solid var(--color-green, #10b981)',
+        'reserve_ready', 'optimal', 'reserve_done' => '1px solid rgba(16, 185, 129, 0.25)',
         'visa_reminder' => '1px solid var(--color-yellow, #eab308)',
         default => '1px solid rgba(255, 255, 255, 0.08)',
     };
     $bannerLeft = match ($advStatus) {
         'emergency' => '4px solid var(--color-red, #ef4444)',
-        'reserve_ready' => '4px solid var(--color-green, #10b981)',
+        'reserve_ready', 'optimal', 'reserve_done' => '4px solid var(--color-green, #10b981)',
         'visa_reminder' => '4px solid var(--color-yellow, #eab308)',
         default => '4px solid var(--accent, #3b82f6)',
     };
     $bannerBg = match ($advStatus) {
         'emergency' => 'rgba(239, 68, 68, 0.08)',
-        'reserve_ready' => 'rgba(16, 185, 129, 0.08)',
+        'reserve_ready', 'optimal', 'reserve_done' => 'rgba(16, 185, 129, 0.04)',
         'visa_reminder' => 'rgba(234, 179, 8, 0.08)',
         default => 'var(--bg-surface)',
     };

@@ -52,6 +52,27 @@ class BankTagRepository
     }
 
     /**
+     * Ermittelt Tag-IDs speziell für Rücklagen und Sparkonto (ohne generische Umbuchungen wie Visa/Transit).
+     *
+     * @return int[]
+     */
+    public function getReserveSpecificTagIds(): array
+    {
+        try {
+            $stmt = $this->pdo->query("
+                SELECT id FROM bank_tags 
+                WHERE LOWER(name) IN ('rücklage', 'rücklagen', 'tagesgeld', 'sparkonto', 'sparen')
+            ");
+            if ($stmt) {
+                return array_values(array_unique(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            }
+        } catch (\Throwable) {
+        }
+
+        return [];
+    }
+
+    /**
      * Lädt alle Tags für Popover und Auto-Suggest.
      */
     public function getAllTags(): array
