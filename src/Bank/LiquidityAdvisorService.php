@@ -79,7 +79,17 @@ class LiquidityAdvisorService
         $currentYearMonth = $today->format('Y-m');
         $dayOfMonth = (int)$today->format('j');
 
-        // 1. 5-Tage-Vorschau & Not-Rückbuchungs-Wächter (< 500 €)
+        // 1. Monatsbezogene Daten & bisherige Umbuchungen laden
+        $allReserveTransfersThisMonth = $this->getMonthlyReserveTransfers($accountId, $currentYearMonth, $savingsIban);
+        $monthlyReserveTransferred = $allReserveTransfersThisMonth['inflow_total'];
+
+        $markedDoneMonth = $this->getSetting(self::SETTING_DONE_MONTH);
+        $isManuallyDone = ($markedDoneMonth === $currentYearMonth);
+
+        // Aktuelle Visa-Abrechnung des laufenden Monats suchen
+        $currentVisaStatement = $this->getVisaStatementForMonth($currentYearMonth);
+
+        // 2. 5-Tage-Vorschau & Not-Rückbuchungs-Wächter (< 500 €)
         $forecast5d = $this->calculateShortTermForecast($accountId, $currentBalance, self::EMERGENCY_LOOKAHEAD_DAYS);
         $projectedBalance5d = $forecast5d['projected_balance'];
 
@@ -88,28 +98,41 @@ class LiquidityAdvisorService
                 $accountId,
                 $currentBalance,
                 $savingsBalance,
-                $forecast5d
+                $forecast5d,
+                $monthlyReserveTransferred
             );
         }
 
-        // 2. Prüfen, ob im aktuellen Monat bereits eine Rücklage aufs Sparkonto überwiesen
-        //    oder der Check manuell als erledigt markiert wurde
-        $reserveTransferThisMonth = $this->getMonthlyReserveTransfers($accountId, $currentYearMonth, $savingsIban);
-        $markedDoneMonth = $this->getSetting(self::SETTING_DONE_MONTH);
-        $isManuallyDone = ($markedDoneMonth === $currentYearMonth);
+        // 3. Prüfen, ob nach Eingang der Visa-Abrechnung bereits eine Rücklage getätigt wurde
+        $hasPostVisaTransfer = false;
+        $postVisaTransferAmount = 0.0;
+        if ($currentVisaStatement !== null && !empty($currentVisaStatement['statement_date'])) {
+            $postVisaTransfers = $this->getMonthlyReserveTransfers(
+                $accountId,
+                $currentYearMonth,
+                $savingsIban,
+                $currentVisaStatement['statement_date']
+            );
+            if ($postVisaTransfers['inflow_total'] > 0) {
+                $hasPostVisaTransfer = true;
+                $postVisaTransferAmount = $postVisaTransfers['inflow_total'];
+            }
+        }
 
-        // Aktuelle Visa-Abrechnung des laufenden Monats suchen
-        $currentVisaStatement = $this->getVisaStatementForMonth($currentYearMonth);
-
-        if ($reserveTransferThisMonth['inflow_total'] > 0 || $isManuallyDone) {
-            $inflowFormatted = number_format($reserveTransferThisMonth['inflow_total'], 2, ',', '.') . ' €';
-            $headline = $reserveTransferThisMonth['inflow_total'] > 0
+        // Als erledigt gilt es NUR wenn:
+        // a) der Nutzer den Monat manuell als erledigt markiert hat, ODER
+        // b) die Visa-Abrechnung vorliegt UND danach eine Umbuchung aufs Sparkonto stattfand
+        if ($isManuallyDone || $hasPostVisaTransfer) {
+            $inflowFormatted = number_format($postVisaTransferAmount > 0 ? $postVisaTransferAmount : $monthlyReserveTransferred, 2, ',', '.') . ' €';
+            $headline = ($postVisaTransferAmount > 0 || $monthlyReserveTransferred > 0)
                 ? "Rücklage für diesen Monat erledigt (+{$inflowFormatted})"
                 : 'Rücklagen-Check für diesen Monat abgeschlossen';
 
-            $subtitle = $reserveTransferThisMonth['inflow_total'] > 0
-                ? "Umbuchung auf das Sparkonto wurde im laufenden Monat bereits erfasst."
-                : "Der monatliche Rücklagen-Check wurde für {$today->format('m/Y')} als erledigt markiert.";
+            $subtitle = $postVisaTransferAmount > 0
+                ? "Umbuchung nach Visa-Abrechnung auf das Sparkonto wurde erfasst."
+                : ($monthlyReserveTransferred > 0
+                    ? "Rücklagen-Umbuchung auf das Sparkonto wurde erfasst."
+                    : "Der monatliche Rücklagen-Check wurde für {$today->format('m/Y')} als erledigt markiert.");
 
             return [
                 'status' => 'reserve_done',
@@ -128,12 +151,12 @@ class LiquidityAdvisorService
                 'projected_balance_5d' => $projectedBalance5d,
                 'forecast_5d' => $forecast5d,
                 'visa_statement' => $currentVisaStatement,
-                'monthly_reserve_transferred' => $reserveTransferThisMonth['inflow_total'],
+                'monthly_reserve_transferred' => $monthlyReserveTransferred,
                 'details' => [],
             ];
         }
 
-        // 3. Wenn aktuelle Visa-Abrechnung vorliegt -> Monatlichen Rücklagen-Check ausführen
+        // 4. Wenn aktuelle Visa-Abrechnung vorliegt -> Monatlichen Rücklagen-Check ausführen
         if ($currentVisaStatement !== null) {
             return $this->buildVisaTriggeredReserveAdvice(
                 $accountId,
@@ -142,11 +165,12 @@ class LiquidityAdvisorService
                 $projectedBalance5d,
                 $forecast5d,
                 $currentVisaStatement,
-                $today
+                $today,
+                $monthlyReserveTransferred
             );
         }
 
-        // 4. Ab dem 25. des Monats ohne Visa-Abrechnung -> Dezente Erinnerung
+        // 5. Ab dem 25. des Monats ohne Visa-Abrechnung -> Dezente Erinnerung
         if ($dayOfMonth >= self::VISA_REMINDER_DAY) {
             return [
                 'status' => 'visa_reminder',
@@ -165,7 +189,7 @@ class LiquidityAdvisorService
                 'projected_balance_5d' => $projectedBalance5d,
                 'forecast_5d' => $forecast5d,
                 'visa_statement' => null,
-                'monthly_reserve_transferred' => 0.0,
+                'monthly_reserve_transferred' => $monthlyReserveTransferred,
                 'details' => [
                     'Aktueller Giro-Saldo' => number_format($currentBalance, 2, ',', '.') . ' €',
                     '5-Tage-Prognose' => number_format($projectedBalance5d, 2, ',', '.') . ' €',
@@ -173,7 +197,7 @@ class LiquidityAdvisorService
             ];
         }
 
-        // 5. Standard-Status unter dem Monat (vor dem 25.)
+        // 6. Standard-Status unter dem Monat (vor dem 25.)
         $bufferDiff = $currentBalance - self::TARGET_BUFFER;
         $projFormatted = number_format($projectedBalance5d, 2, ',', '.') . ' €';
 
@@ -181,10 +205,10 @@ class LiquidityAdvisorService
             'status' => 'optimal',
             'is_actionable' => false,
             'can_dismiss' => false,
-            'badge_text' => 'Stabil',
+            'badge_text' => 'Optimal',
             'badge_type' => 'info',
-            'headline' => 'Liquidität im grünen Bereich',
-            'subtitle' => "5-Tage-Vorschau: {$projFormatted} (Notfall-Untergrenze: 500,00 € · Nächster Rücklagen-Check ab Visa-Abrechnung).",
+            'headline' => 'Girokonto im grünen Bereich',
+            'subtitle' => "Regulärer Kontobetrieb (5-Tage-Vorschau: {$projFormatted}). Der monatliche Rücklagen-Check startet mit Eingang der Visa-Abrechnung (ca. 25. " . $today->format('m.') . ").",
             'recommended_amount' => 0.0,
             'direction' => 'none',
             'current_balance' => $currentBalance,
@@ -195,7 +219,7 @@ class LiquidityAdvisorService
             'buffer_diff' => $bufferDiff,
             'forecast_5d' => $forecast5d,
             'visa_statement' => null,
-            'monthly_reserve_transferred' => 0.0,
+            'monthly_reserve_transferred' => $monthlyReserveTransferred,
             'details' => [],
         ];
     }
@@ -295,7 +319,8 @@ class LiquidityAdvisorService
         int $accountId,
         float $currentBalance,
         float $savingsBalance,
-        array $forecast5d
+        array $forecast5d,
+        float $monthlyReserveTransferred = 0.0
     ): array {
         // Alle offenen Ausgaben & Einnahmen für die nächsten 14 Tage (bzw. bis zum nächsten Gehaltseingang) prüfen,
         // damit eine einzige Rückbuchung vom Sparkonto ausreicht.
@@ -369,7 +394,7 @@ class LiquidityAdvisorService
             'projected_balance_5d' => $forecast5d['projected_balance'],
             'forecast_5d' => $forecast5d,
             'visa_statement' => $openVisa14d,
-            'monthly_reserve_transferred' => 0.0,
+            'monthly_reserve_transferred' => $monthlyReserveTransferred,
             'details' => [
                 'Aktueller Giro-Saldo' => $curFormatted,
                 'Anstehende Ausgaben (5 Tage)' => '-' . number_format($forecast5d['pending_expenses'], 2, ',', '.') . ' €',
@@ -396,7 +421,8 @@ class LiquidityAdvisorService
         float $projectedBalance5d,
         array $forecast5d,
         array $visaStatement,
-        DateTimeImmutable $today
+        DateTimeImmutable $today,
+        float $monthlyReserveTransferred = 0.0
     ): array {
         $visaAmount = abs((float)($visaStatement['total_amount'] ?? 0.0));
         $isVisaAlreadyDebited = !empty($visaStatement['bank_transaction_id']);
@@ -488,7 +514,7 @@ class LiquidityAdvisorService
                 'projected_balance_5d' => $projectedBalance5d,
                 'forecast_5d' => $forecast5d,
                 'visa_statement' => $visaStatement,
-                'monthly_reserve_transferred' => 0.0,
+                'monthly_reserve_transferred' => $monthlyReserveTransferred,
                 'details' => $details,
             ];
         }
@@ -511,7 +537,7 @@ class LiquidityAdvisorService
             'projected_balance_5d' => $projectedBalance5d,
             'forecast_5d' => $forecast5d,
             'visa_statement' => $visaStatement,
-            'monthly_reserve_transferred' => 0.0,
+            'monthly_reserve_transferred' => $monthlyReserveTransferred,
             'details' => $details,
         ];
     }
@@ -651,12 +677,13 @@ class LiquidityAdvisorService
     }
 
     /**
-     * Ermittelt alle bereits gebuchten Rücklagen-Umbuchungen im angegebenen Monat (`YYYY-MM`).
+     * Ermittelt alle bereits gebuchten Rücklagen-Umbuchungen im angegebenen Monat (`YYYY-MM`),
+     * optional erst ab einem bestimmten Buchungsdatum (`YYYY-MM-DD`).
      */
-    private function getMonthlyReserveTransfers(int $accountId, string $yearMonth, ?string $savingsIban): array
+    private function getMonthlyReserveTransfers(int $accountId, string $yearMonth, ?string $savingsIban, ?string $minDate = null): array
     {
-        $startDate = $yearMonth . '-01';
-        $endDate = date('Y-m-t', strtotime($startDate));
+        $startDate = $minDate ?: ($yearMonth . '-01');
+        $endDate = date('Y-m-t', strtotime($yearMonth . '-01'));
         $transferTagIds = $this->tagRepo->getTransferTagIds();
 
         $stmt = $this->pdo->prepare("
