@@ -12,16 +12,43 @@ use PDO;
 class BankTagRepository
 {
     /**
-     * Tags, die nicht in die Zeitraum-Statistik einfließen sollen.
+     * Standard-Tags, die nicht in die Ausgaben-Statistik einfließen sollen.
      * ID 17 = „Umbuchungen" (Übertrag zwischen eigenen Konten, kein echter Umsatz).
      */
-    private const array STATISTICS_EXCLUDED_TAG_IDS = [17];
+    public const array STATISTICS_EXCLUDED_TAG_IDS = [17];
 
     private PDO $pdo;
 
     public function __construct()
     {
         $this->pdo = Database::getInstance()->getConnection();
+    }
+
+    /**
+     * Ermittelt alle Tag-IDs für interne Umbuchungen und Rücklagen.
+     * Schließt Standard-ID 17 sowie alle Tags mit entsprechenden Namen ein.
+     *
+     * @return int[]
+     */
+    public function getTransferTagIds(): array
+    {
+        $ids = self::STATISTICS_EXCLUDED_TAG_IDS;
+        try {
+            $stmt = $this->pdo->query("
+                SELECT id FROM bank_tags 
+                WHERE id = 17 
+                   OR LOWER(name) IN ('umbuchung', 'umbuchungen', 'rücklage', 'rücklagen', 'tagesgeld', 'sparkonto')
+            ");
+            if ($stmt) {
+                while ($val = $stmt->fetchColumn()) {
+                    $ids[] = (int)$val;
+                }
+            }
+        } catch (\Throwable) {
+            // Fallback auf Default-IDs
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     /**
@@ -36,11 +63,11 @@ class BankTagRepository
 
     /**
      * Ermittelt Häufigkeit und Summe je Tag für einen Zeitraum.
-     * Ausgeschlossene Tags (siehe STATISTICS_EXCLUDED_TAG_IDS) bleiben unberücksichtigt.
+     * Ausgeschlossene Tags (Umbuchungen / Rücklagen) bleiben unberücksichtigt.
      */
     public function getTagStatistics(int $accountId, string $startDate, string $endDate): array
     {
-        $excludedIds = self::STATISTICS_EXCLUDED_TAG_IDS;
+        $excludedIds = $this->getTransferTagIds();
         $placeholders = implode(',', array_fill(0, count($excludedIds), '?'));
 
         $stmt = $this->pdo->prepare("

@@ -4121,6 +4121,10 @@ body {
     border: 1px solid var(--accent) !important;
 }
 
+.report-kpi-reserve {
+    border: 1px solid var(--color-blue, #3b82f6) !important;
+}
+
 .report-feedback-banner {
     padding: 0.8rem 1.2rem;
     border-radius: var(--border-radius);

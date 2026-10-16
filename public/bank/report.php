@@ -99,6 +99,12 @@ $netBalance = (float)($cashflow['net_balance'] ?? 0);
 $savingsRate = (float)($cashflow['savings_rate_percent'] ?? 0);
 $fixedExpenses = (float)($cashflow['fixed_expenses_total'] ?? 0);
 $variableExpenses = (float)($cashflow['variable_expenses_total'] ?? 0);
+$reserveInflow = (float)($cashflow['reserve_inflow'] ?? 0);
+$reserveOutflow = (float)($cashflow['reserve_outflow'] ?? 0);
+$netReserveChange = (float)($cashflow['net_reserve_change'] ?? 0);
+$savingsBalance = (float)($cashflow['savings_account_balance'] ?? 0);
+$reserveTransactions = $cashflow['reserve_transactions'] ?? [];
+$giroCashflowBalance = (float)($cashflow['giro_cashflow_balance'] ?? 0);
 
 // Cashflow-Historie (6 Monate bzw. 12 Monate für Trend-Visualisierung)
 $cashflowHistory = $aggregated['cashflow_history'] ?? $aggregator->calculateCashflowHistory($periodType, $periodTarget);
@@ -369,6 +375,28 @@ $canEdit = Auth::hasPermission('finance_write');
                 </div>
             <?php endif; ?>
         </div>
+        <div class="kpi-card report-kpi-reserve">
+            <div class="kpi-label">
+                🏦 Rücklagen &amp; Sparkonto
+            </div>
+            <div class="kpi-value-sm <?= $netReserveChange > 0 ? 'text-green' : ($netReserveChange < 0 ? 'text-orange' : '') ?>">
+                <?= $netReserveChange > 0 ? '+' : '' ?><?= number_format($netReserveChange, 2, ',', '.') ?> €
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                <?php if ($reserveInflow > 0 && $reserveOutflow > 0): ?>
+                    +<?= number_format($reserveInflow, 2, ',', '.') ?> € zugeführt / -<?= number_format($reserveOutflow, 2, ',', '.') ?> € entnommen
+                <?php elseif ($reserveInflow > 0): ?>
+                    +<?= number_format($reserveInflow, 2, ',', '.') ?> € zugeführt (Sparen)
+                <?php elseif ($reserveOutflow > 0): ?>
+                    -<?= number_format($reserveOutflow, 2, ',', '.') ?> € abgeschmolzen
+                <?php else: ?>
+                    Keine Rücklagenbewegung
+                <?php endif; ?>
+                <?php if ($savingsBalance > 0): ?>
+                    &bull; Stand: <?= number_format($savingsBalance, 2, ',', '.') ?> €
+                <?php endif; ?>
+            </div>
+        </div>
     </section>
 
     <!-- NEUES FINANZ-COCKPIT (Barometer & 50/30/20-Verteilung) -->
@@ -507,7 +535,7 @@ $canEdit = Auth::hasPermission('finance_write');
                     </div>
                     <div class="report-budget-stat-item">
                         <div class="report-budget-stat-header">
-                            <span>Sparen</span>
+                            <span>Sparen / Saldo</span>
                             <span><?= $savingsRate >= 20.0 ? '✅' : ($netBalance >= 0 ? '🟡' : '🔴') ?></span>
                         </div>
                         <div class="report-budget-stat-val <?= $netBalance >= 0 ? 'text-green' : 'text-red' ?>">
@@ -515,6 +543,16 @@ $canEdit = Auth::hasPermission('finance_write');
                         </div>
                         <div class="report-budget-stat-sub">
                             <?= ($netBalance >= 0 ? '+' : '') . number_format($netBalance, 2, ',', '.') ?> € (Soll: &ge; 20%)
+                            <?php if ($reserveInflow > 0 || $reserveOutflow > 0): ?>
+                                <div style="font-size: 0.72rem; margin-top: 0.35rem; border-top: 1px dashed var(--border-color, #334155); padding-top: 0.25rem;">
+                                    <?php if ($reserveInflow > 0): ?>
+                                        <div class="text-green">🏦 +<?= number_format($reserveInflow, 2, ',', '.') ?> € Rücklage (Sparkonto)</div>
+                                    <?php endif; ?>
+                                    <?php if ($reserveOutflow > 0): ?>
+                                        <div class="text-orange">📦 -<?= number_format($reserveOutflow, 2, ',', '.') ?> € Rücklagenentnahme</div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1046,6 +1084,94 @@ $canEdit = Auth::hasPermission('finance_write');
                                             <span class="co-tag-chip"><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></span>
                                         <?php endforeach; ?>
                                     </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <!-- 4. Umbuchungen & Rücklagen (Sparkonto) -->
+        <section class="card">
+            <div class="card-header">
+                <h2>🏦 Umbuchungen &amp; Rücklagenbewegungen</h2>
+            </div>
+            <p class="subtitle">
+                Erfassung interner Vermögensüberträge zwischen Girokonto und Sparkonto (Rücklagenaufbau vs. Abschmelzen).
+            </p>
+
+            <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 1rem;">
+                <div class="kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="kpi-label">📥 Zuführung zur Rücklage</div>
+                    <div class="kpi-value-sm text-green">
+                        +<?= number_format($reserveInflow, 2, ',', '.') ?> €
+                    </div>
+                </div>
+                <div class="kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="kpi-label">📤 Abschmelzen der Rücklage</div>
+                    <div class="kpi-value-sm text-orange">
+                        -<?= number_format($reserveOutflow, 2, ',', '.') ?> €
+                    </div>
+                </div>
+                <div class="kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="kpi-label">⚖️ Netto-Veränderung</div>
+                    <div class="kpi-value-sm <?= $netReserveChange >= 0 ? 'text-green' : 'text-orange' ?>">
+                        <?= $netReserveChange > 0 ? '+' : '' ?><?= number_format($netReserveChange, 2, ',', '.') ?> €
+                    </div>
+                </div>
+                <?php if ($savingsBalance > 0): ?>
+                    <div class="kpi-card" style="padding: 0.75rem 1rem;">
+                        <div class="kpi-label">💰 Stand Sparkonto</div>
+                        <div class="kpi-value-sm">
+                            <?= number_format($savingsBalance, 2, ',', '.') ?> €
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($reserveTransactions)): ?>
+                <p class="text-muted">Keine Umbuchungen auf oder vom Sparkonto im ausgewählten Zeitraum.</p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="receipts-table stack-table">
+                        <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Art der Bewegung</th>
+                            <th>Partner / Konto</th>
+                            <th>Verwendungszweck</th>
+                            <th class="text-right">Betrag</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($reserveTransactions as $rtx): ?>
+                            <tr>
+                                <td data-label="Datum">
+                                    <?= date('d.m.Y', strtotime($rtx['booking_date'])) ?>
+                                </td>
+                                <td data-label="Art">
+                                    <?php if ($rtx['direction'] === 'inflow'): ?>
+                                        <span class="report-status-badge report-status-healthy">
+                                            📥 Zuführung zur Rücklage
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="report-status-badge report-status-tight">
+                                            📤 Abschmelzen der Rücklage
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td data-label="Partner">
+                                    <?= htmlspecialchars($rtx['partner'] ?: 'Sparkonto', ENT_QUOTES, 'UTF-8') ?>
+                                </td>
+                                <td data-label="Verwendungszweck">
+                                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                        <?= htmlspecialchars($rtx['remittance_info'] ?: 'Umbuchung', ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </td>
+                                <td data-label="Betrag" class="text-right <?= $rtx['direction'] === 'inflow' ? 'text-green' : 'text-orange' ?>">
+                                    <strong><?= $rtx['direction'] === 'inflow' ? '+' : '-' ?><?= number_format((float)$rtx['amount'], 2, ',', '.') ?> €</strong>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

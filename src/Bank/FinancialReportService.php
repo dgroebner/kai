@@ -166,9 +166,15 @@ WICHTIGE REGELN ZU VERTRÄGEN & REGELMÄSSIGEN BUCHUNGEN (`contract_deviations`)
     -> Ein positiver Betragsunterschied (`difference > 0`) bedeutet eine Mehrausgabe/höhere Abbuchung (Prüfhinweis/Kostentreiber).
 - Achte bei Handlungsempfehlungen (`action_items`) peinlich genau darauf, Einnahmen nicht als Abbuchungen oder Sparpotenziale misszuverstehen!
 
+WICHTIGE REGELN ZU UMBUCHUNGEN & RÜCKLAGEN (`cashflow_totals`):
+- Umbuchungen zwischen Giro- und Sparkonto sind Vermögensverschiebungen (interne Überträge) und KEINE Konsumausgaben oder Gehälter:
+  * `reserve_inflow` (> 0): Geld, das aktiv vom Girokonto auf das Sparkonto umgebucht wurde (Zuführung zur Rücklage / Ersparnis). Dies ist eine aktive Sparleistung und KEINE Konsumausgabe. Hebe dies positiv als Ersparnis/Rücklagenaufbau hervor!
+  * `reserve_outflow` (> 0): Geld, das vom Sparkonto auf das Girokonto umgebucht wurde (Abschmelzen der Rücklage / Entnahme). Dies ist KEIN reguläres Einkommen, sondern die gezielte Entnahme aus Ersparnissen für Anschaffungen oder den Ausgleich eines Monatsdefizits. Bezeichne dies niemals als Gehaltseingang oder Einnahme!
+  * `net_reserve_change`: Zeigt die Netto-Rücklagenveränderung (Zuführung minus Abschmelzen). Positiv = Rücklagen aufgebaut, Negativ = Rücklagen abgeschmolzen.
+
 AUFGABEN:
 1. Verfasse ein kurzes, ermutigendes und klares Fazit (maximal 3 einfache Sätze).
-2. Erkläre einfach das Verhältnis von festen Kosten (Leasingraten, Verträge) zu veränderbaren Ausgaben (Einkaufen, Freizeit).
+2. Erkläre einfach das Verhältnis von festen Kosten (Leasingraten, Verträge) zu veränderbaren Ausgaben (Einkaufen, Freizeit). Falls Rücklagen gebildet oder entnommen wurden, erwähne dies verständlich.
 3. Zeige auffällige Ausgabenkategorien verständlich auf und erkläre anhand der `overlap_tags`, warum die Ausgaben entstanden sind (z. B. „Mehr für Freizeit ausgegeben, vor allem wegen Urlaubsaktivitäten“).
 4. Melde Unregelmäßigkeiten bei Verträgen und regelmäßigen Buchungen direkt (z. B. wenn eine Abbuchung höher war als sonst, ein erwarteter Zahlungseingang abwich oder eine Zahlung gefehlt hat). Achte strikt auf den Unterschied zwischen Einnahmen (Geldeingänge) und Ausgaben (Abbuchungen).
 5. Erkläre Auffälligkeiten bei Kassenbons und Einkäufen (wo wurde eingekauft, wurden bestimmte Produkte teurer, gab es viele kleine Spontankäufe).
@@ -349,13 +355,25 @@ PROMPT;
             ];
         }
 
+        $reserveInflow = (float)($cashflow['reserve_inflow'] ?? 0.0);
+        $reserveOutflow = (float)($cashflow['reserve_outflow'] ?? 0.0);
+        $reserveText = '';
+        if ($reserveInflow > 0 && $reserveOutflow > 0) {
+            $reserveText = sprintf(' Zudem wurden %.2f € auf das Sparkonto zurückgelegt und %.2f € aus Rücklagen entnommen.', $reserveInflow, $reserveOutflow);
+        } elseif ($reserveInflow > 0) {
+            $reserveText = sprintf(' Zudem wurden %.2f € aktiv als Rücklage auf das Sparkonto gelegt.', $reserveInflow);
+        } elseif ($reserveOutflow > 0) {
+            $reserveText = sprintf(' Zur Deckung wurden %.2f € aus bestehenden Rücklagen (Sparkonto) entnommen.', $reserveOutflow);
+        }
+
         return [
-            'summary' => $summary,
+            'summary' => $summary . $reserveText,
             'fixed_vs_variable' => [
                 'analysis' => sprintf(
-                    'Für feste Verträge und Abos gingen %.2f € ab, für alltägliche Ausgaben wurden %.2f € genutzt.',
+                    'Für feste Verträge und Abos gingen %.2f € ab, für alltägliche Ausgaben wurden %.2f € genutzt.%s',
                     (float)($cashflow['fixed_expenses_total'] ?? 0),
-                    (float)($cashflow['variable_expenses_total'] ?? 0)
+                    (float)($cashflow['variable_expenses_total'] ?? 0),
+                    $reserveText
                 ),
                 'status' => $net >= 0 ? 'healthy' : 'tight',
             ],

@@ -10,10 +10,17 @@ use PDO;
 class FinancialReportAggregator
 {
     private PDO $pdo;
+    private BankTagRepository $bankTagRepository;
+    private BankAccountRepository $bankAccountRepository;
 
-    public function __construct()
-    {
-        $this->pdo = Database::getInstance()->getConnection();
+    public function __construct(
+        ?PDO $pdo = null,
+        ?BankTagRepository $bankTagRepository = null,
+        ?BankAccountRepository $bankAccountRepository = null
+    ) {
+        $this->pdo = $pdo ?? Database::getInstance()->getConnection();
+        $this->bankTagRepository = $bankTagRepository ?? new BankTagRepository();
+        $this->bankAccountRepository = $bankAccountRepository ?? new BankAccountRepository();
     }
 
     /**
@@ -120,26 +127,211 @@ class FinancialReportAggregator
     }
 
     /**
-     * Berechnet die disjunkten Gesamtsummen auf Buchungsebene (jede Buchung exakt 1x gewertet).
-     * In einem laufenden Monat wird eine Prognose zum Monatsende berechnet, die alle noch ausstehenden
-     * Vertragsbuchungen (Einnahmen und Fixkosten) hinzurechnet.
+     * Prüft, ob eine Transaktion als interne Umbuchung / Rücklagenbewegung zu werten ist.
+     *
+     * @param array $tx Transaktionsdaten
+     * @param int[] $transferTagIds IDs der Umbuchungs-/Rücklagen-Tags
+     * @param string|null $savingsIban Bereinigte IBAN des Sparkontos (ohne Leerzeichen)
+     * @param int|null $savingsAccountId ID des Sparkontos
+     * @return bool
+     */
+    public function isReserveTransaction(
+        array $tx,
+        array $transferTagIds,
+        ?string $savingsIban = null,
+        ?int $savingsAccountId = null
+    ): bool {
+        // 1. Tag-Matching: Transaktion besitzt ein Umbuchungs- oder Rücklagen-Tag
+        if (!empty($tx['tag_ids'])) {
+            $txTagIds = array_map('intval', explode(',', (string)$tx['tag_ids']));
+            if (!empty(array_intersect($txTagIds, $transferTagIds))) {
+                return true;
+            }
+        }
+
+        // 2. Transaktion gehört direkt zum Sparkonto
+        if ($savingsAccountId !== null && isset($tx['account_id']) && (int)$tx['account_id'] === $savingsAccountId) {
+            return true;
+        }
+
+        // 3. IBAN-Abgleich mit dem Sparkonto (Gegenkonto im Verwendungszweck oder Partnerfeld)
+        if ($savingsIban !== null && $savingsIban !== '') {
+            $combined = strtoupper(str_replace(' ', '',
+                ($tx['remittance_info'] ?? '') . ' ' .
+                ($tx['remitter'] ?? '') . ' ' .
+                ($tx['creditor'] ?? '') . ' ' .
+                ($tx['debitor'] ?? '')
+            ));
+            if (str_contains($combined, $savingsIban)) {
+                return true;
+            }
+        }
+
+        // 4. Eindeutige Schlüsselwörter im Buchungstext (Übertrag/Umbuchung auf/vom Tagesgeld/Sparkonto)
+        $text = mb_strtolower(
+            ($tx['remittance_info'] ?? '') . ' ' .
+            ($tx['remitter'] ?? '') . ' ' .
+            ($tx['creditor'] ?? '') . ' ' .
+            ($tx['debitor'] ?? '')
+        );
+        if (
+            (str_contains($text, 'umbuchung') || str_contains($text, 'übertrag') || str_contains($text, 'uebertrag')) &&
+            (str_contains($text, 'tagesgeld') || str_contains($text, 'sparkonto') || str_contains($text, 'sparbuch') || str_contains($text, 'rücklage') || str_contains($text, 'ruecklage'))
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Berechnet die disjunkten Gesamtsummen auf Buchungsebene.
+     * Interne Umbuchungen auf das Sparkonto werden als Zuführung zur Rücklage gewertet
+     * (und nicht als Konsumausgabe), Umbuchungen vom Sparkonto auf das Girokonto werden
+     * als Abschmelzen der Rücklage gewertet (und nicht als reguläres Einkommen).
      */
     private function calculateCashflowTotals(string $startDate, string $endDate, string $periodType, ?string $periodTarget = null): array
     {
+        $transferTagIds = $this->bankTagRepository->getTransferTagIds();
+        $savingsAccount = $this->bankAccountRepository->getAccountByType('savings');
+        $savingsAccountId = $savingsAccount ? (int)$savingsAccount['id'] : null;
+        $savingsIban = !empty($savingsAccount['iban']) ? str_replace(' ', '', strtoupper($savingsAccount['iban'])) : null;
+        $savingsBalance = (float)($savingsAccount['current_balance'] ?? 0.0);
+
+        // Alle Transaktionen im Zeitraum laden
         $stmt = $this->pdo->prepare("
             SELECT
-                COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) AS total_income,
-                COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS total_expenses,
-                COALESCE(SUM(CASE WHEN amount < 0 AND contract_id IS NOT NULL THEN ABS(amount) ELSE 0 END), 0) AS fixed_booked
-            FROM bank_giro_transactions
-            WHERE booking_date BETWEEN :start AND :end
+                bgt.id,
+                bgt.account_id,
+                bgt.booking_date,
+                bgt.amount,
+                bgt.contract_id,
+                bgt.remittance_info,
+                bgt.remitter,
+                bgt.debitor,
+                bgt.creditor,
+                GROUP_CONCAT(btt.tag_id) AS tag_ids
+            FROM bank_giro_transactions bgt
+            LEFT JOIN bank_transaction_tags btt ON bgt.id = btt.transaction_id
+            WHERE bgt.booking_date BETWEEN :start AND :end
+            GROUP BY bgt.id
+            ORDER BY bgt.booking_date ASC, bgt.id ASC
         ");
         $stmt->execute([':start' => $startDate, ':end' => $endDate]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        $actualIncome = (float)($row['total_income'] ?? 0.0);
-        $actualExpenses = (float)($row['total_expenses'] ?? 0.0);
-        $fixedBooked = (float)($row['fixed_booked'] ?? 0.0);
+        $actualIncome = 0.0;
+        $actualExpenses = 0.0;
+        $fixedBooked = 0.0;
+
+        $reserveInflow = 0.0;
+        $reserveOutflow = 0.0;
+        $reserveTransactions = [];
+
+        // Transaktionen nach Girokonto und Sparkonto trennen, um Doppelzählung bei Gegenbuchungen zu vermeiden
+        $giroRows = [];
+        $savingsRows = [];
+        foreach ($rows as $row) {
+            if ($savingsAccountId !== null && isset($row['account_id']) && (int)$row['account_id'] === $savingsAccountId) {
+                $savingsRows[] = $row;
+            } else {
+                $giroRows[] = $row;
+            }
+        }
+
+        // 1. Girokonto-Umsätze verarbeiten
+        foreach ($giroRows as $row) {
+            $amount = (float)$row['amount'];
+            $isReserve = $this->isReserveTransaction($row, $transferTagIds, $savingsIban, $savingsAccountId);
+
+            if ($isReserve) {
+                $absAmount = abs($amount);
+                $partner = !empty($row['creditor']) ? $row['creditor'] : (!empty($row['debitor']) ? $row['debitor'] : ($row['remitter'] ?? ''));
+
+                if ($amount < 0) {
+                    // Abfluss vom Girokonto auf Sparkonto = Zuführung zur Rücklage
+                    $reserveInflow += $absAmount;
+                    $reserveTransactions[] = [
+                        'id' => (int)$row['id'],
+                        'booking_date' => $row['booking_date'],
+                        'amount' => $absAmount,
+                        'direction' => 'inflow',
+                        'direction_label' => 'Zuführung zur Rücklage (auf Sparkonto)',
+                        'partner' => $partner,
+                        'remittance_info' => $row['remittance_info'] ?? '',
+                    ];
+                } else {
+                    // Zufluss auf Girokonto vom Sparkonto = Abschmelzen der Rücklage
+                    $reserveOutflow += $absAmount;
+                    $reserveTransactions[] = [
+                        'id' => (int)$row['id'],
+                        'booking_date' => $row['booking_date'],
+                        'amount' => $absAmount,
+                        'direction' => 'outflow',
+                        'direction_label' => 'Abschmelzen der Rücklage (vom Sparkonto)',
+                        'partner' => $partner,
+                        'remittance_info' => $row['remittance_info'] ?? '',
+                    ];
+                }
+            } else {
+                // Reguläre Einnahmen und Ausgaben
+                if ($amount > 0) {
+                    $actualIncome += $amount;
+                } elseif ($amount < 0) {
+                    $actualExpenses += abs($amount);
+                    if (!empty($row['contract_id'])) {
+                        $fixedBooked += abs($amount);
+                    }
+                }
+            }
+        }
+
+        // 2. Eigenständige Sparkonto-Umsätze (z.B. Zinsgutschriften), die keine Gegenbuchung auf Giro haben
+        foreach ($savingsRows as $sRow) {
+            $sAmount = (float)$sRow['amount'];
+            $sAbs = abs($sAmount);
+
+            // Prüfen, ob bereits als Gegenbuchung auf Girokonto erfasst
+            $alreadyCounted = false;
+            foreach ($reserveTransactions as $rt) {
+                if (abs($rt['amount'] - $sAbs) < 0.01 && abs(strtotime($rt['booking_date']) - strtotime($sRow['booking_date'])) <= 86400 * 3) {
+                    $alreadyCounted = true;
+                    break;
+                }
+            }
+
+            if (!$alreadyCounted) {
+                $partner = !empty($sRow['creditor']) ? $sRow['creditor'] : (!empty($sRow['debitor']) ? $sRow['debitor'] : ($sRow['remitter'] ?? ''));
+                if ($sAmount > 0) {
+                    $reserveInflow += $sAbs;
+                    $reserveTransactions[] = [
+                        'id' => (int)$sRow['id'],
+                        'booking_date' => $sRow['booking_date'],
+                        'amount' => $sAbs,
+                        'direction' => 'inflow',
+                        'direction_label' => 'Zuführung zur Rücklage (Sparkonto-Gutschrift)',
+                        'partner' => $partner,
+                        'remittance_info' => $sRow['remittance_info'] ?? '',
+                    ];
+                } else {
+                    $reserveOutflow += $sAbs;
+                    $reserveTransactions[] = [
+                        'id' => (int)$sRow['id'],
+                        'booking_date' => $sRow['booking_date'],
+                        'amount' => $sAbs,
+                        'direction' => 'outflow',
+                        'direction_label' => 'Abschmelzen der Rücklage (Sparkonto-Belastung)',
+                        'partner' => $partner,
+                        'remittance_info' => $sRow['remittance_info'] ?? '',
+                    ];
+                }
+            }
+        }
+
+        // Chronologische Sortierung der Rücklagen-Transaktionen
+        usort($reserveTransactions, fn($a, $b) => strcmp($b['booking_date'], $a['booking_date']));
+
+        $netReserveChange = round($reserveInflow - $reserveOutflow, 2);
 
         // Prüfen, ob es sich um den aktuell noch laufenden Monat handelt
         $isCurrentMonth = ($periodType === 'month' && $periodTarget === date('Y-m'));
@@ -189,6 +381,8 @@ class FinancialReportAggregator
             $actualSavingsRate = -100.0;
         }
 
+        $giroCashflowBalance = round($netBalance - $reserveInflow + $reserveOutflow, 2);
+
         return [
             'is_projection' => $isProjection,
             'total_income' => round($totalIncome, 2),
@@ -210,6 +404,14 @@ class FinancialReportAggregator
             'pending_income' => $pendingIncome,
             'pending_expenses' => $pendingExpenses,
             'pending_contracts' => $pendingData['contracts'],
+
+            // Umbuchungen & Rücklagen-Kennzahlen
+            'reserve_inflow' => round($reserveInflow, 2),
+            'reserve_outflow' => round($reserveOutflow, 2),
+            'net_reserve_change' => $netReserveChange,
+            'reserve_transactions' => $reserveTransactions,
+            'savings_account_balance' => round($savingsBalance, 2),
+            'giro_cashflow_balance' => $giroCashflowBalance,
         ];
     }
 
@@ -340,7 +542,11 @@ class FinancialReportAggregator
         string $refStart,
         string $refEnd
     ): array {
-        // Tag-Summen im Zielzeitraum (Ausgaben)
+        $transferTagIds = $this->bankTagRepository->getTransferTagIds();
+        $placeholders = !empty($transferTagIds) ? implode(',', array_fill(0, count($transferTagIds), '?')) : '';
+        $excludeSql = $placeholders !== '' ? "AND t.id NOT IN ($placeholders)" : '';
+
+        // Tag-Summen im Zielzeitraum (Ausgaben ohne interne Umbuchungen)
         $stmtTarget = $this->pdo->prepare("
             SELECT
                 t.id AS tag_id,
@@ -350,12 +556,13 @@ class FinancialReportAggregator
             FROM bank_tags t
             JOIN bank_transaction_tags btt ON t.id = btt.tag_id
             JOIN bank_giro_transactions bgt ON btt.transaction_id = bgt.id
-            WHERE bgt.booking_date BETWEEN :start AND :end
+            WHERE bgt.booking_date BETWEEN ? AND ?
               AND bgt.amount < 0
+              $excludeSql
             GROUP BY t.id, t.name
             ORDER BY target_sum DESC
         ");
-        $stmtTarget->execute([':start' => $targetStart, ':end' => $targetEnd]);
+        $stmtTarget->execute(array_merge([$targetStart, $targetEnd], $transferTagIds));
         $targetRows = $stmtTarget->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         // Tag-Summen im Referenzzeitraum
@@ -366,11 +573,12 @@ class FinancialReportAggregator
             FROM bank_tags t
             JOIN bank_transaction_tags btt ON t.id = btt.tag_id
             JOIN bank_giro_transactions bgt ON btt.transaction_id = bgt.id
-            WHERE bgt.booking_date BETWEEN :start AND :end
+            WHERE bgt.booking_date BETWEEN ? AND ?
               AND bgt.amount < 0
+              $excludeSql
             GROUP BY t.id
         ");
-        $stmtRef->execute([':start' => $refStart, ':end' => $refEnd]);
+        $stmtRef->execute(array_merge([$refStart, $refEnd], $transferTagIds));
         $refMap = [];
         foreach ($stmtRef->fetchAll(PDO::FETCH_ASSOC) as $r) {
             $refMap[(int)$r['tag_id']] = (float)$r['ref_sum'];
@@ -797,31 +1005,80 @@ class FinancialReportAggregator
             }
         }
 
+        $transferTagIds = $this->bankTagRepository->getTransferTagIds();
+        $savingsAccount = $this->bankAccountRepository->getAccountByType('savings');
+        $savingsAccountId = $savingsAccount ? (int)$savingsAccount['id'] : null;
+        $savingsIban = !empty($savingsAccount['iban']) ? str_replace(' ', '', strtoupper($savingsAccount['iban'])) : null;
+
         $stmt = $this->pdo->prepare("
             SELECT
-                DATE_FORMAT(booking_date, '%Y-%m') AS month_key,
-                COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) AS total_income,
-                COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS total_expenses
-            FROM bank_giro_transactions
-            WHERE booking_date BETWEEN :start AND :end
-            GROUP BY DATE_FORMAT(booking_date, '%Y-%m')
-            ORDER BY month_key ASC
+                bgt.id,
+                bgt.account_id,
+                DATE_FORMAT(bgt.booking_date, '%Y-%m') AS month_key,
+                bgt.amount,
+                bgt.remittance_info,
+                bgt.remitter,
+                bgt.debitor,
+                bgt.creditor,
+                GROUP_CONCAT(btt.tag_id) AS tag_ids
+            FROM bank_giro_transactions bgt
+            LEFT JOIN bank_transaction_tags btt ON bgt.id = btt.transaction_id
+            WHERE bgt.booking_date BETWEEN :start AND :end
+            GROUP BY bgt.id
+            ORDER BY bgt.booking_date ASC
         ");
         $stmt->execute([':start' => $startDate, ':end' => $endDate]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $dataByKey = [];
         foreach ($rows as $row) {
-            $dataByKey[$row['month_key']] = [
-                'income' => (float)$row['total_income'],
-                'expenses' => (float)$row['total_expenses'],
-            ];
+            $mKey = $row['month_key'];
+            if (!isset($dataByKey[$mKey])) {
+                $dataByKey[$mKey] = [
+                    'income' => 0.0,
+                    'expenses' => 0.0,
+                    'reserve_inflow' => 0.0,
+                    'reserve_outflow' => 0.0,
+                ];
+            }
+
+            $amount = (float)$row['amount'];
+            $isDirectSavings = ($savingsAccountId !== null && isset($row['account_id']) && (int)$row['account_id'] === $savingsAccountId);
+
+            if ($isDirectSavings) {
+                if ($amount > 0) {
+                    $dataByKey[$mKey]['reserve_inflow'] += $amount;
+                } else {
+                    $dataByKey[$mKey]['reserve_outflow'] += abs($amount);
+                }
+                continue;
+            }
+
+            $isReserve = $this->isReserveTransaction($row, $transferTagIds, $savingsIban, $savingsAccountId);
+
+            if ($isReserve) {
+                if ($amount < 0) {
+                    $dataByKey[$mKey]['reserve_inflow'] += abs($amount);
+                } else {
+                    $dataByKey[$mKey]['reserve_outflow'] += $amount;
+                }
+            } else {
+                if ($amount > 0) {
+                    $dataByKey[$mKey]['income'] += $amount;
+                } elseif ($amount < 0) {
+                    $dataByKey[$mKey]['expenses'] += abs($amount);
+                }
+            }
         }
 
         $history = [];
         foreach ($monthKeys as $key => $label) {
             $income = $dataByKey[$key]['income'] ?? 0.0;
             $expenses = $dataByKey[$key]['expenses'] ?? 0.0;
+            $resInflow = $dataByKey[$key]['reserve_inflow'] ?? 0.0;
+            $resOutflow = $dataByKey[$key]['reserve_outflow'] ?? 0.0;
+            $net = $income - $expenses;
+
             if ($income > 0.01) {
                 $savingsRate = round(($net / $income) * 100, 1);
             } elseif ($expenses > 0.01) {
@@ -836,6 +1093,8 @@ class FinancialReportAggregator
                 'total_income' => round($income, 2),
                 'total_expenses' => round($expenses, 2),
                 'net_balance' => round($net, 2),
+                'reserve_inflow' => round($resInflow, 2),
+                'reserve_outflow' => round($resOutflow, 2),
                 'savings_rate_percent' => $savingsRate,
                 'is_current' => ($periodType === 'month' && $key === $periodTarget)
             ];
