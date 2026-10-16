@@ -660,7 +660,7 @@ class LiquidityAdvisorService
         $transferTagIds = $this->tagRepo->getTransferTagIds();
 
         $stmt = $this->pdo->prepare("
-            SELECT t.id, t.amount, t.remittance_info, t.creditor_iban, t.remitter_iban,
+            SELECT t.id, t.amount, t.remittance_info, t.remitter, t.debitor, t.creditor,
                    GROUP_CONCAT(tt.tag_id) AS tag_ids
             FROM bank_giro_transactions t
             LEFT JOIN bank_transaction_tags tt ON t.id = tt.transaction_id
@@ -690,20 +690,28 @@ class LiquidityAdvisorService
             }
 
             if (!$isReserve && $normalizedSavingsIban !== null && $normalizedSavingsIban !== '') {
-                $credIban = strtoupper(str_replace(' ', '', (string)($row['creditor_iban'] ?? '')));
-                $remIban = strtoupper(str_replace(' ', '', (string)($row['remitter_iban'] ?? '')));
-                if ($credIban === $normalizedSavingsIban || $remIban === $normalizedSavingsIban) {
+                $combined = strtoupper(str_replace(' ', '',
+                    ($row['remittance_info'] ?? '') . ' ' .
+                    ($row['remitter'] ?? '') . ' ' .
+                    ($row['creditor'] ?? '') . ' ' .
+                    ($row['debitor'] ?? '')
+                ));
+                if (str_contains($combined, $normalizedSavingsIban)) {
                     $isReserve = true;
                 }
             }
 
             if (!$isReserve) {
-                $info = mb_strtolower((string)($row['remittance_info'] ?? ''), 'UTF-8');
+                $info = mb_strtolower(
+                    ($row['remittance_info'] ?? '') . ' ' .
+                    ($row['remitter'] ?? '') . ' ' .
+                    ($row['creditor'] ?? '') . ' ' .
+                    ($row['debitor'] ?? ''),
+                    'UTF-8'
+                );
                 if (
-                    str_contains($info, 'umbuchung')
-                    || str_contains($info, 'rücklage')
-                    || str_contains($info, 'ruecklage')
-                    || str_contains($info, 'tagesgeld')
+                    (str_contains($info, 'umbuchung') || str_contains($info, 'übertrag') || str_contains($info, 'uebertrag'))
+                    && (str_contains($info, 'rücklage') || str_contains($info, 'ruecklage') || str_contains($info, 'tagesgeld') || str_contains($info, 'sparkonto'))
                 ) {
                     $isReserve = true;
                 }
