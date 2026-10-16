@@ -283,25 +283,13 @@ class FinancialReportAggregator
                     ];
                 }
             } else {
-                // Prüfen, ob es eine interne Umbuchung ist (z. B. Visa-Einzug, durchlaufender Posten),
-                // die weder reguläre Konsumausgabe noch reguläre Einnahme ist
-                $isInternalTransfer = false;
-                if (!empty($row['tag_ids']) && !empty($transferTagIds)) {
-                    $txTagIds = array_map('intval', explode(',', (string)$row['tag_ids']));
-                    if (!empty(array_intersect($txTagIds, $transferTagIds))) {
-                        $isInternalTransfer = true;
-                    }
-                }
-
-                if (!$isInternalTransfer) {
-                    // Reguläre Einnahmen und Ausgaben
-                    if ($amount > 0) {
-                        $actualIncome += $amount;
-                    } elseif ($amount < 0) {
-                        $actualExpenses += abs($amount);
-                        if (!empty($row['contract_id'])) {
-                            $fixedBooked += abs($amount);
-                        }
+                // Reguläre Einnahmen und Ausgaben (inkl. Visa-Abrechnungen; nur echte Sparkonto-Rücklagen werden oben herausgenommen)
+                if ($amount > 0) {
+                    $actualIncome += $amount;
+                } elseif ($amount < 0) {
+                    $actualExpenses += abs($amount);
+                    if (!empty($row['contract_id'])) {
+                        $fixedBooked += abs($amount);
                     }
                 }
             }
@@ -1084,20 +1072,10 @@ class FinancialReportAggregator
                     $dataByKey[$mKey]['reserve_outflow'] += $amount;
                 }
             } else {
-                $isInternalTransfer = false;
-                if (!empty($row['tag_ids']) && !empty($transferTagIds)) {
-                    $txTagIds = array_map('intval', explode(',', (string)$row['tag_ids']));
-                    if (!empty(array_intersect($txTagIds, $transferTagIds))) {
-                        $isInternalTransfer = true;
-                    }
-                }
-
-                if (!$isInternalTransfer) {
-                    if ($amount > 0) {
-                        $dataByKey[$mKey]['income'] += $amount;
-                    } elseif ($amount < 0) {
-                        $dataByKey[$mKey]['expenses'] += abs($amount);
-                    }
+                if ($amount > 0) {
+                    $dataByKey[$mKey]['income'] += $amount;
+                } elseif ($amount < 0) {
+                    $dataByKey[$mKey]['expenses'] += abs($amount);
                 }
             }
         }
