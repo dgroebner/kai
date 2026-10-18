@@ -11,7 +11,7 @@ $gamifService = new GamificationService();
 $gamifService->syncDailyState();
 
 $currentUserEmail = $_SESSION['user_email'] ?? '';
-$isAdmin = Auth::hasPermission('gamification_admin');
+$isAdmin = Auth::hasPermission('gamification_admin') || Auth::hasPermission('gamification_write');
 $profileRepo = $gamifService->getProfileRepository();
 $currentProfile = $profileRepo->getOrCreateProfile($currentUserEmail, $_SESSION['user_name'] ?? null, $isAdmin);
 $profileId = (int)$currentProfile['id'];

@@ -171,6 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tierBtn.classList.remove('btn-outline');
             tierBtn.classList.add('btn-primary');
 
+            const cardCoinsInp = card.querySelector('.js-card-coins-input');
+            const cardXpInp = card.querySelector('.js-card-xp-input');
+            if (cardCoinsInp) cardCoinsInp.value = coins;
+            if (cardXpInp) cardXpInp.value = xp;
+
             const coinsDisplay = card.querySelector('.js-triage-coins-display');
             const xpDisplay = card.querySelector('.js-triage-xp-display');
             if (coinsDisplay) coinsDisplay.textContent = `🪙 ${coins}`;
@@ -181,6 +186,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 approveBtn.setAttribute('data-coins', coins);
                 approveBtn.setAttribute('data-xp', xp);
             }
+        }
+    });
+
+    // Manuelle Eingabe von Punkten auf der Triage-Karte
+    document.addEventListener('input', (e) => {
+        const input = e.target.closest('.js-card-coins-input, .js-card-xp-input');
+        if (input) {
+            const card = input.closest('.gamif-triage-card');
+            if (!card) return;
+
+            const cardCoinsInp = card.querySelector('.js-card-coins-input');
+            const cardXpInp = card.querySelector('.js-card-xp-input');
+            const coins = cardCoinsInp ? parseInt(cardCoinsInp.value, 10) || 0 : 0;
+            const xp = cardXpInp ? parseInt(cardXpInp.value, 10) || 0 : 0;
+
+            const coinsDisplay = card.querySelector('.js-triage-coins-display');
+            const xpDisplay = card.querySelector('.js-triage-xp-display');
+            if (coinsDisplay) coinsDisplay.textContent = `🪙 ${coins}`;
+            if (xpDisplay) xpDisplay.textContent = `⭐ ${xp}`;
+
+            const approveBtn = card.querySelector('.js-triage-approve-btn');
+            if (approveBtn) {
+                approveBtn.setAttribute('data-coins', coins);
+                approveBtn.setAttribute('data-xp', xp);
+            }
+
+            card.querySelectorAll('.js-card-tier-btn').forEach(b => {
+                const bCoins = b.getAttribute('data-coins');
+                const bXp = b.getAttribute('data-xp');
+                if (bCoins === String(coins) && bXp === String(xp)) {
+                    b.classList.remove('btn-outline');
+                    b.classList.add('btn-primary');
+                } else {
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-outline');
+                }
+            });
         }
     });
 

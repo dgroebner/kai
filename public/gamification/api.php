@@ -25,7 +25,7 @@ $currentUserEmail = $_SESSION['user_email'] ?? '';
 $logger = new Logger();
 $gamifService = new GamificationService();
 $profileRepo = $gamifService->getProfileRepository();
-$isAdmin = Auth::hasPermission('gamification_admin');
+$isAdmin = Auth::hasPermission('gamification_admin') || Auth::hasPermission('gamification_write');
 $currentProfile = $profileRepo->getOrCreateProfile($currentUserEmail, $_SESSION['user_name'] ?? null, $isAdmin);
 
 try {
@@ -217,7 +217,9 @@ try {
         // ELTERN-AKTIONEN (FREIGABEN, VORLAGEN, PRÄMIEN, ADMIN)
         // -------------------------------------------------------------
         case 'triage_review_task':
-            Auth::requireApi('gamification_admin');
+            if (!Auth::hasPermission('gamification_admin') && !Auth::hasPermission('gamification_write')) {
+                Auth::sendJsonError(403, 'Fehlendes Recht zur Aufgaben-Prüfung');
+            }
             $taskId = filter_var($input['task_id'] ?? null, FILTER_VALIDATE_INT);
             $subAction = in_array($input['sub_action'] ?? '', ['approve', 'reject'], true) ? $input['sub_action'] : 'approve';
             $feedback = isset($input['feedback']) ? trim((string)$input['feedback']) : null;
@@ -250,7 +252,9 @@ try {
             break;
 
         case 'triage_review_helper':
-            Auth::requireApi('gamification_admin');
+            if (!Auth::hasPermission('gamification_admin') && !Auth::hasPermission('gamification_write')) {
+                Auth::sendJsonError(403, 'Fehlendes Recht zur Aufgaben-Prüfung');
+            }
             $helperId = filter_var($input['helper_id'] ?? null, FILTER_VALIDATE_INT);
             $approved = !empty($input['approved']);
             $coins = isset($input['custom_coins']) ? (int)$input['custom_coins'] : null;
@@ -265,7 +269,9 @@ try {
             break;
 
         case 'triage_review_redemption':
-            Auth::requireApi('gamification_admin');
+            if (!Auth::hasPermission('gamification_admin') && !Auth::hasPermission('gamification_write')) {
+                Auth::sendJsonError(403, 'Fehlendes Recht zur Prämien-Prüfung');
+            }
             $redemptionId = filter_var($input['redemption_id'] ?? null, FILTER_VALIDATE_INT);
             $subAction = in_array($input['sub_action'] ?? '', ['approve', 'reject'], true) ? $input['sub_action'] : 'approve';
             $parentNote = isset($input['parent_note']) ? trim((string)$input['parent_note']) : null;
@@ -448,7 +454,9 @@ try {
             break;
 
         case 'run_escalation':
-            Auth::requireApi('gamification_admin');
+            if (!Auth::hasPermission('gamification_admin') && !Auth::hasPermission('gamification_write')) {
+                Auth::sendJsonError(403, 'Fehlendes Recht zur Fristen-Prüfung');
+            }
             $gamifService->syncDailyState();
             echo json_encode(['success' => true, 'message' => 'Fristen abgeglichen und Tagesaufgaben erzeugt.']);
             break;

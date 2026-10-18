@@ -1804,6 +1804,7 @@ tr.is-today-row {
     gap: 1rem;
     max-height: 80vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer,

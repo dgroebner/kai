@@ -4,8 +4,10 @@ require_once __DIR__ . '/../../bootstrap.php';
 use Kai\Tools\Gamification\GamificationService;
 use Kai\Tools\Shared\Security\Auth;
 
-// 1. Auth-Check: Nur für Eltern (Admin-Berechtigung)
-Auth::requirePage('gamification_admin');
+// 1. Auth-Check: Für Eltern / Aufgabensupervisor (gamification_admin oder gamification_write)
+if (!Auth::hasPermission('gamification_admin') && !Auth::hasPermission('gamification_write')) {
+    Auth::requirePage('gamification_admin');
+}
 
 $gamifService = new GamificationService();
 $gamifService->syncDailyState();
@@ -248,28 +250,37 @@ $metricTypeMap = [
                                 </p>
                             <?php endif; ?>
 
-                            <?php if ($isPitch): ?>
-                                <div class="gamif-triage-tier-selector" style="margin-top:0.75rem; padding:0.6rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:var(--border-radius);">
-                                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center;">
-                                        <span>🎯 Schweregrad anpassen:</span>
-                                        <span class="text-muted" style="font-size:0.75rem;">Klick ändert Belohnung sofort</span>
-                                    </div>
-                                    <div class="gamif-card-tier-group" style="display:flex; flex-wrap:wrap; gap:0.4rem;">
-                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'klein' ? 'btn-primary' : 'btn-outline' ?>" data-tier="klein" data-coins="15" data-xp="25" title="Klein / Schnell (ca. 5–10 Min., z. B. Tisch abräumen, Müll rausbringen)">
-                                            🟢 Klein <span style="opacity:0.8; font-size:0.75rem;">(15 🪙 · 25 ⭐)</span>
-                                        </button>
-                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'mittel' ? 'btn-primary' : 'btn-outline' ?>" data-tier="mittel" data-coins="30" data-xp="50" title="Mittel / Standard (ca. 15–30 Min., z. B. Spülmaschine, Zimmer saugen)">
-                                            🟡 Mittel <span style="opacity:0.8; font-size:0.75rem;">(30 🪙 · 50 ⭐)</span>
-                                        </button>
-                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'gross' ? 'btn-primary' : 'btn-outline' ?>" data-tier="gross" data-coins="50" data-xp="100" title="Groß / Fleißig (ca. 30–60 Min., z. B. Rasen mähen, Bad putzen)">
-                                            🔵 Groß <span style="opacity:0.8; font-size:0.75rem;">(50 🪙 · 100 ⭐)</span>
-                                        </button>
-                                        <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'meister' ? 'btn-primary' : 'btn-outline' ?>" data-tier="meister" data-coins="80" data-xp="180" title="Meisterlich (ab 1h, z. B. Keller entrümpeln, Großputz)">
-                                            🟣 Meisterlich <span style="opacity:0.8; font-size:0.75rem;">(80 🪙 · 180 ⭐)</span>
-                                        </button>
-                                    </div>
+                            <div class="gamif-triage-tier-selector" style="margin-top:0.75rem; padding:0.6rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:var(--border-radius);">
+                                <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
+                                    <span>🎯 Belohnung anpassen:</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">Vorlage wählen oder Punkte manuell eintragen</span>
                                 </div>
-                            <?php endif; ?>
+                                <div class="gamif-card-tier-group" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.5rem;">
+                                    <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'klein' ? 'btn-primary' : 'btn-outline' ?>" data-tier="klein" data-coins="15" data-xp="25" title="Klein / Schnell (ca. 5–10 Min., z. B. Tisch abräumen, Müll rausbringen)">
+                                        🟢 Klein <span style="opacity:0.8; font-size:0.75rem;">(15 🪙 · 25 ⭐)</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'mittel' ? 'btn-primary' : 'btn-outline' ?>" data-tier="mittel" data-coins="30" data-xp="50" title="Mittel / Standard (ca. 15–30 Min., z. B. Spülmaschine, Zimmer saugen)">
+                                        🟡 Mittel <span style="opacity:0.8; font-size:0.75rem;">(30 🪙 · 50 ⭐)</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'gross' ? 'btn-primary' : 'btn-outline' ?>" data-tier="gross" data-coins="50" data-xp="100" title="Groß / Fleißig (ca. 30–60 Min., z. B. Rasen mähen, Bad putzen)">
+                                        🔵 Groß <span style="opacity:0.8; font-size:0.75rem;">(50 🪙 · 100 ⭐)</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm js-card-tier-btn <?= $activeTier === 'meister' ? 'btn-primary' : 'btn-outline' ?>" data-tier="meister" data-coins="80" data-xp="180" title="Meisterlich (ab 1h, z. B. Keller entrümpeln, Großputz)">
+                                        🟣 Meisterlich <span style="opacity:0.8; font-size:0.75rem;">(80 🪙 · 180 ⭐)</span>
+                                    </button>
+                                </div>
+                                <div class="gamif-triage-manual-inputs" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; padding-top:0.35rem; border-top:1px dashed rgba(255,255,255,0.08);">
+                                    <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">✍️ Manuell:</span>
+                                    <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.85rem; margin:0; font-weight:500;">
+                                        🪙 Münzen:
+                                        <input type="number" class="form-control form-control-sm js-card-coins-input" value="<?= $totalCoins ?>" min="0" style="width:75px; padding:0.25rem 0.4rem; font-weight:600;">
+                                    </label>
+                                    <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.85rem; margin:0; font-weight:500;">
+                                        ⭐ XP:
+                                        <input type="number" class="form-control form-control-sm js-card-xp-input" value="<?= $totalXp ?>" min="0" style="width:75px; padding:0.25rem 0.4rem; font-weight:600;">
+                                    </label>
+                                </div>
+                            </div>
 
                             <div class="gamif-triage-actions" style="margin-top:0.75rem;">
                                 <button type="button" class="btn btn-outline btn-sm js-triage-reject-btn" data-task-id="<?= (int)$t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES, 'UTF-8') ?>">❌ Ablehnen / Nachbessern</button>
@@ -1197,14 +1208,14 @@ $metricTypeMap = [
                         </div>
                     </div>
 
-                    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-                        <div class="form-group">
-                            <label for="approve-coins">Münzen gutschreiben:</label>
-                            <input type="number" id="approve-coins" name="custom_coins" class="form-control" min="0" required>
+                    <div class="form-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem; margin-bottom:1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="approve-coins" style="font-weight:600; display:block; margin-bottom:0.25rem;">🪙 Münzen gutschreiben:</label>
+                            <input type="number" id="approve-coins" name="custom_coins" class="form-control" min="0" required style="font-size:1.05rem; font-weight:600;">
                         </div>
-                        <div class="form-group">
-                            <label for="approve-xp">XP gutschreiben:</label>
-                            <input type="number" id="approve-xp" name="custom_xp" class="form-control" min="0" required>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="approve-xp" style="font-weight:600; display:block; margin-bottom:0.25rem;">⭐ XP gutschreiben:</label>
+                            <input type="number" id="approve-xp" name="custom_xp" class="form-control" min="0" required style="font-size:1.05rem; font-weight:600;">
                         </div>
                     </div>
                     <div class="form-group">
