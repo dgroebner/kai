@@ -406,10 +406,17 @@
                 }
             }
 
-            // Weitere Abfahrten als Badges aktualisieren
+            // Weitere Abfahrten als Badges aktualisieren (ohne Hero-Abfahrt)
             const badgesContainer = document.querySelector('.js-departures-badges');
             if (badgesContainer && Array.isArray(data.departures)) {
-                badgesContainer.innerHTML = renderDepartureBadgesHtml(data.departures);
+                const furtherDeps = data.departures.filter(dep => {
+                    if (!nextDep) return true;
+                    if (dep.journey_id && nextDep.journey_id) {
+                        return dep.journey_id !== nextDep.journey_id;
+                    }
+                    return !(dep.line === nextDep.line && dep.real_time === nextDep.real_time);
+                });
+                badgesContainer.innerHTML = renderDepartureBadgesHtml(furtherDeps);
             }
 
             // Tür-zu-Tür Verbindungsempfehlungen aktualisieren

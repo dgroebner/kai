@@ -11076,18 +11076,19 @@ body.wisdom-modal-open {
 }
 
 .transit-trip-card {
-    background: var(--bg-hover, #f8f9fa);
-    border: 1px solid var(--border-color, #e2e8f0);
-    border-radius: 8px;
+    background: var(--bg-surface-hover, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-radius: var(--border-radius, 8px);
     padding: 0.85rem 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+    color: var(--text-main);
 }
 
 .transit-trip-card:hover {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .transit-trip-summary {
@@ -11103,16 +11104,17 @@ body.wisdom-modal-open {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    color: var(--text-main);
 }
 
 .transit-trip-arrow {
-    color: var(--text-muted, #718096);
+    color: var(--text-muted, #94a3b8);
     font-size: 0.9rem;
 }
 
 .transit-trip-duration {
     font-size: 0.88rem;
-    color: var(--text-muted, #718096);
+    color: var(--text-muted, #94a3b8);
     margin-left: 0.35rem;
 }
 
@@ -11124,7 +11126,7 @@ body.wisdom-modal-open {
 }
 
 .transit-trip-transfers {
-    color: var(--text-muted, #718096);
+    color: var(--text-muted, #94a3b8);
 }
 
 .transit-trip-legs {
@@ -11132,19 +11134,20 @@ body.wisdom-modal-open {
     align-items: center;
     flex-wrap: wrap;
     gap: 0.4rem;
-    padding-top: 0.35rem;
-    border-top: 1px dashed var(--border-color, #e2e8f0);
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
 .transit-trip-leg-item {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    background: var(--card-bg, #ffffff);
+    background: var(--bg-surface, #1e293b);
     padding: 0.2rem 0.5rem 0.2rem 0.25rem;
     border-radius: 4px;
-    border: 1px solid var(--border-color, #e2e8f0);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     max-width: 260px;
+    color: var(--text-main);
 }
 
 .transit-leg-dir {
@@ -11153,21 +11156,22 @@ body.wisdom-modal-open {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 180px;
+    color: var(--text-main);
 }
 
 .transit-leg-separator {
-    color: var(--text-muted, #a0aec0);
+    color: var(--text-muted, #94a3b8);
     font-size: 1.1rem;
     line-height: 1;
 }
 
 .transit-trip-walk {
     font-size: 0.8rem;
-    color: var(--text-muted, #718096);
-    background: var(--card-bg, #ffffff);
+    color: var(--text-muted, #94a3b8);
+    background: var(--bg-surface, #1e293b);
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
-    border: 1px dashed var(--border-color, #cbd5e0);
+    border: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
 .transit-table-wrap {

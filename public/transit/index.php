@@ -250,6 +250,11 @@ $csrfToken = Auth::csrfToken();
                         <?php if (!empty($status['departures'])): ?>
                             <?php foreach ($status['departures'] as $dep): ?>
                                 <?php 
+                                    if ($nextDep !== null && !empty($dep['line']) && !empty($dep['real_time'])) {
+                                        if ($dep['line'] === $nextDep['line'] && $dep['real_time'] === $nextDep['real_time']) {
+                                            continue;
+                                        }
+                                    }
                                     $b = $dep['badge'] ?? InsaClient::getLvbBadgeInfo($dep['line'], $dep['mode']); 
                                     $countdownText = ($dep['countdown_minutes'] !== null && $dep['countdown_minutes'] >= 0) 
                                         ? "in {$dep['countdown_minutes']} Min" 

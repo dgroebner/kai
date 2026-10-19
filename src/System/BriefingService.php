@@ -360,8 +360,8 @@ class BriefingService
 
         // Pill 2: Folgeabfahrt
         $deps = $activeStatus['departures'] ?? [];
-        if (isset($deps[1])) {
-            $secondDep = $deps[1];
+        $secondDep = $deps[0] ?? null;
+        if ($secondDep !== null) {
             $pills[] = [
                 'icon' => '⏱️',
                 'label' => "Folge: {$secondDep['real_time']} Uhr" . ($secondDep['delay_minutes'] > 0 ? " (+{$secondDep['delay_minutes']})" : ''),

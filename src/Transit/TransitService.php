@@ -215,7 +215,7 @@ class TransitService
             'offset_minutes' => $offsetMinutes,
             'query_time' => $now->format('H:i'),
             'next_departure' => $nextDeparture,
-            'departures' => array_slice($effectiveDepartures, 0, 5),
+            'departures' => array_slice($effectiveDepartures, 1, 5),
             'transfer_status' => $transferStatus,
             'trip_recommendations' => $tripRecommendations,
         ];
