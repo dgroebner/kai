@@ -16,9 +16,9 @@
         initEventListeners();
         startAutoRefresh();
 
-        // Verbindungen asynchron beim ersten Seitenaufruf nachladen
+        // Verbindungen asynchron beim ersten Seitenaufruf nachladen (nur wenn Profilkarte sichtbar)
         const card = document.querySelector('.transit-profile-card');
-        if (card && card.dataset.profileId) {
+        if (card && card.dataset.profileId && !card.classList.contains('hidden')) {
             loadTripRecommendations(card.dataset.profileId, card.dataset.direction || 'outbound');
         }
     }
@@ -38,16 +38,47 @@
                 if (profileId) {
                     e.preventDefault();
                     // Sofortiges visuelles Feedback auf den Reitern
-                    document.querySelectorAll('.transit-tab-btn[data-profile-id]').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.transit-tab-bar .transit-tab-btn').forEach(b => b.classList.remove('active'));
                     tabBtn.classList.add('active');
 
-                    // URL ohne Seiten-Reload aktualisieren
-                    history.pushState(null, '', `index.php?profile=${encodeURIComponent(profileId)}`);
+                    // Haltestellensuche verstecken, Profilansicht anzeigen
+                    const searchSec = document.querySelector('.js-search-section');
+                    if (searchSec) searchSec.classList.add('hidden');
 
-                    // Profil asynchron laden
-                    switchToProfile(profileId);
+                    const card = document.querySelector('.transit-profile-card');
+                    if (card) {
+                        card.classList.remove('hidden');
+                        // URL ohne Seiten-Reload aktualisieren
+                        history.pushState(null, '', `index.php?profile=${encodeURIComponent(profileId)}`);
+                        // Profil asynchron laden
+                        switchToProfile(profileId);
+                    } else {
+                        window.location.href = `index.php?profile=${encodeURIComponent(profileId)}`;
+                    }
                     return;
                 }
+            }
+
+            // 0b. Haltestellensuche-Reiter umschalten
+            const searchTabBtn = e.target.closest('.transit-tab-btn[data-tab="search"]');
+            if (searchTabBtn) {
+                e.preventDefault();
+                document.querySelectorAll('.transit-tab-bar .transit-tab-btn').forEach(b => b.classList.remove('active'));
+                searchTabBtn.classList.add('active');
+
+                // Profilansicht verstecken, Haltestellensuche anzeigen
+                const card = document.querySelector('.transit-profile-card');
+                if (card) card.classList.add('hidden');
+
+                const searchSec = document.querySelector('.js-search-section');
+                if (searchSec) {
+                    searchSec.classList.remove('hidden');
+                    const input = document.getElementById('station-search-input');
+                    if (input) input.focus();
+                }
+
+                history.pushState(null, '', 'index.php?tab=search');
+                return;
             }
 
             // 1. Manuelle Aktualisierung
@@ -70,28 +101,6 @@
                 const offset = card.dataset.offset || '0';
                 history.pushState(null, '', `index.php?profile=${encodeURIComponent(profileId)}&dir=${encodeURIComponent(newDir)}&offset=${encodeURIComponent(offset)}`);
                 switchToProfile(profileId, newDir);
-                return;
-            }
-
-            // 3. Haltestellensuche öffnen / schließen
-            const openSearchBtn = e.target.closest('.js-open-search-tab');
-            if (openSearchBtn) {
-                e.preventDefault();
-                const searchSec = document.querySelector('.js-search-section');
-                if (searchSec) {
-                    searchSec.classList.remove('hidden');
-                    searchSec.scrollIntoView({ behavior: 'smooth' });
-                    const input = document.getElementById('station-search-input');
-                    if (input) input.focus();
-                }
-                return;
-            }
-
-            const closeSearchBtn = e.target.closest('.js-close-search');
-            if (closeSearchBtn) {
-                e.preventDefault();
-                const searchSec = document.querySelector('.js-search-section');
-                if (searchSec) searchSec.classList.add('hidden');
                 return;
             }
 
@@ -697,6 +706,34 @@
 
             document.getElementById('p_id').value = data.id || '';
             document.getElementById('p_name').value = data.profile_name || '';
+
+            const userEmailEl = document.getElementById('p_user_email');
+            if (userEmailEl) {
+                if (userEmailEl.tagName === 'SELECT') {
+                    if (data.user_email) {
+                        const val = data.user_email.toLowerCase();
+                        let optionExists = false;
+                        for (let i = 0; i < userEmailEl.options.length; i++) {
+                            if (userEmailEl.options[i].value === val) {
+                                optionExists = true;
+                                break;
+                            }
+                        }
+                        if (!optionExists) {
+                            const opt = document.createElement('option');
+                            opt.value = val;
+                            opt.textContent = val;
+                            userEmailEl.appendChild(opt);
+                        }
+                        userEmailEl.value = val;
+                    } else {
+                        userEmailEl.value = '';
+                    }
+                } else {
+                    userEmailEl.value = (userEmailEl.dataset.currentUser || userEmailEl.value || '').toLowerCase();
+                }
+            }
+
             document.getElementById('p_lines').value = data.preferred_lines || '';
             document.getElementById('p_modes').value = data.transport_modes || 'all';
             document.getElementById('p_transfer_min').value = data.min_transfer_minutes || 4;
@@ -719,6 +756,16 @@
             if (title) title.textContent = 'Neues Pendlerprofil anlegen';
             if (deleteBtn) deleteBtn.style.display = 'none';
             document.getElementById('p_id').value = '';
+
+            const userEmailEl = document.getElementById('p_user_email');
+            if (userEmailEl) {
+                if (userEmailEl.tagName === 'SELECT') {
+                    userEmailEl.value = (userEmailEl.dataset.currentUser || '').toLowerCase();
+                } else {
+                    userEmailEl.value = (userEmailEl.dataset.currentUser || userEmailEl.value || '').toLowerCase();
+                }
+            }
+
             form.querySelectorAll('input[name="active_days[]"]').forEach(cb => {
                 cb.checked = [1, 2, 3, 4, 5].includes(parseInt(cb.value, 10));
             });
@@ -745,6 +792,7 @@
 
         const profileObj = {
             id: formData.get('id') ? parseInt(formData.get('id'), 10) : null,
+            user_email: formData.get('user_email') ? formData.get('user_email').trim() : null,
             profile_name: formData.get('profile_name'),
             origin_station_name: formData.get('origin_station_name'),
             origin_station_id: formData.get('origin_station_id'),

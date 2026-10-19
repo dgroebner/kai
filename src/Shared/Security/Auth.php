@@ -130,6 +130,18 @@ final class Auth
     }
 
     /**
+     * Prüft, ob der angemeldete Benutzer Admin-Rechte besitzt.
+     */
+    public static function isAdmin(): bool
+    {
+        $adminEmail = $_ENV['ADMIN_EMAIL'] ?? null;
+        if ($adminEmail && isset($_SESSION['user_email']) && strtolower($_SESSION['user_email']) === strtolower($adminEmail)) {
+            return empty($_SESSION['temp_group_id']);
+        }
+        return false;
+    }
+
+    /**
      * Schützt JSON-Endpunkte: antwortet mit 401 statt einer Weiterleitung.
      * Prüft optional auf ein benötigtes Recht.
      */

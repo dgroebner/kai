@@ -322,7 +322,7 @@ class BriefingService
      */
     private function buildTransitWidget(string $userEmail): ?array
     {
-        $profiles = $this->transitProfileRepo->getActive($userEmail);
+        $profiles = $this->transitProfileRepo->getActiveForUser($userEmail);
         if (empty($profiles)) {
             return null;
         }

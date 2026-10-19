@@ -10,28 +10,62 @@ use Kai\Tools\Transit\TransitService;
 Auth::requirePage('transit_read');
 
 $canWrite = Auth::hasPermission('transit_write');
+$isAdmin = Auth::isAdmin();
 $currentUserEmail = strtolower(trim((string)($_SESSION['user_email'] ?? '')));
 
 $profileRepo = new TransitProfileRepository();
 $transitService = new TransitService(null, $profileRepo);
 
-$profiles = $profileRepo->getAll($currentUserEmail);
+// Profile laden: Admin sieht alle Profile, normale Nutzer nur ihre eigenen (strict)
+$profiles = $isAdmin ? $profileRepo->getAll(null) : $profileRepo->getAll($currentUserEmail, true);
 $activeProfiles = array_values(array_filter($profiles, static fn($p) => !empty($p['is_active'])));
+
+$systemUsers = [];
+if ($isAdmin) {
+    try {
+        $systemUsers = (new \Kai\Tools\System\GroupRepository())->getAllUsers();
+    } catch (\Throwable $e) {
+        $systemUsers = [];
+    }
+    $knownEmails = array_map(static fn($u) => strtolower($u['email']), $systemUsers);
+    if (!in_array($currentUserEmail, $knownEmails, true) && $currentUserEmail !== '') {
+        $systemUsers[] = ['email' => $currentUserEmail, 'name' => $_SESSION['user_name'] ?? $currentUserEmail];
+    }
+}
+
+$isSearchTab = ($_GET['tab'] ?? '') === 'search' || empty($profiles);
 
 $selectedProfileId = filter_var($_GET['profile'] ?? null, FILTER_VALIDATE_INT);
 $selectedProfile = null;
 
-if ($selectedProfileId) {
-    foreach ($profiles as $p) {
-        if ($p['id'] === $selectedProfileId) {
-            $selectedProfile = $p;
-            break;
+if (!$isSearchTab) {
+    if ($selectedProfileId) {
+        foreach ($profiles as $p) {
+            if ($p['id'] === $selectedProfileId) {
+                $selectedProfile = $p;
+                break;
+            }
         }
     }
-}
 
-if (!$selectedProfile && !empty($activeProfiles)) {
-    $selectedProfile = $activeProfiles[0];
+    if (!$selectedProfile && !empty($profiles)) {
+        $selectedProfile = !empty($activeProfiles) ? $activeProfiles[0] : $profiles[0];
+    }
+} else {
+    // Falls Haltestellensuche aktiv, aber Profile existieren: Erstes Profil vorbereiten
+    if (!empty($profiles)) {
+        if ($selectedProfileId) {
+            foreach ($profiles as $p) {
+                if ($p['id'] === $selectedProfileId) {
+                    $selectedProfile = $p;
+                    break;
+                }
+            }
+        }
+        if (!$selectedProfile) {
+            $selectedProfile = !empty($activeProfiles) ? $activeProfiles[0] : $profiles[0];
+        }
+    }
 }
 
 $directionOverride = isset($_GET['dir']) && in_array($_GET['dir'], ['outbound', 'return'], true) ? $_GET['dir'] : null;
@@ -70,24 +104,31 @@ $csrfToken = Auth::csrfToken();
         <!-- Profil-Reiter / Tabs -->
         <div class="transit-tab-bar">
             <?php foreach ($profiles as $p): ?>
-                <?php $isActiveTab = ($selectedProfile && $selectedProfile['id'] === $p['id']); ?>
+                <?php $isActiveTab = (!$isSearchTab && $selectedProfile && $selectedProfile['id'] === $p['id']); ?>
                 <a href="index.php?profile=<?= $p['id'] ?>" 
                    class="transit-tab-btn <?= $isActiveTab ? 'active' : '' ?> <?= empty($p['is_active']) ? 'transit-tab-disabled' : '' ?>"
                    data-profile-id="<?= (int)$p['id'] ?>">
                     <span><?= htmlspecialchars($p['profile_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php if ($isAdmin && !empty($p['user_email'])): ?>
+                        <span class="transit-user-pill" title="Zugeordnet zu: <?= htmlspecialchars($p['user_email'], ENT_QUOTES, 'UTF-8') ?>">
+                            👤 <?= htmlspecialchars(explode('@', $p['user_email'])[0], ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                    <?php endif; ?>
                     <?php if (!empty($p['only_school_days'])): ?>
                         <span class="transit-tab-badge" title="Nur an Schultagen aktiv">🎒</span>
                     <?php endif; ?>
                 </a>
             <?php endforeach; ?>
-            <button type="button" class="transit-tab-btn js-open-search-tab">
+            <a href="index.php?tab=search" 
+               class="transit-tab-btn <?= $isSearchTab ? 'active' : '' ?>"
+               data-tab="search">
                 <span>🔍 Haltestellensuche</span>
-            </button>
+            </a>
         </div>
 
         <?php if ($selectedProfile && $status): ?>
             <!-- Haupt-Monitor für das ausgewählte Profil -->
-            <section class="card transit-profile-card" data-profile-id="<?= (int)$selectedProfile['id'] ?>" data-direction="<?= htmlspecialchars($status['direction'], ENT_QUOTES, 'UTF-8') ?>">
+            <section class="card transit-profile-card <?= $isSearchTab ? 'hidden' : '' ?>" data-profile-id="<?= (int)$selectedProfile['id'] ?>" data-direction="<?= htmlspecialchars($status['direction'], ENT_QUOTES, 'UTF-8') ?>">
                 <div class="transit-card-header">
                     <div class="transit-route-info">
                         <div class="transit-direction-tag"><?= htmlspecialchars($status['direction_label'], ENT_QUOTES, 'UTF-8') ?></div>
@@ -264,11 +305,10 @@ $csrfToken = Auth::csrfToken();
             </section>
         <?php endif; ?>
 
-        <!-- Freie Haltestellensuche (Modal oder Section) -->
-        <section class="card transit-search-section hidden js-search-section">
+        <!-- Freie Haltestellensuche -->
+        <section class="card transit-search-section js-search-section <?= !$isSearchTab ? 'hidden' : '' ?>">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h2>🔍 Freie Haltestellen-Abfrage</h2>
-                <button type="button" class="btn btn-outline btn-sm js-close-search">✕ Schließen</button>
             </div>
             
             <p class="text-muted">Wähle eine Schnellstation oder suche nach einer beliebigen Haltestelle in Leipzig und dem MDV-Gebiet:</p>
@@ -309,6 +349,21 @@ $csrfToken = Auth::csrfToken();
                                 <label for="p_name" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Profilbezeichnung:</label>
                                 <input type="text" id="p_name" name="profile_name" class="yield-input" style="width: 100%;" placeholder="z. B. Büro (Daniel)" required>
                             </div>
+                            <?php if ($isAdmin): ?>
+                                <div>
+                                    <label for="p_user_email" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Benutzer-Zuordnung (Admin):</label>
+                                    <select id="p_user_email" name="user_email" class="yield-input" style="width: 100%;" data-current-user="<?= htmlspecialchars($currentUserEmail, ENT_QUOTES, 'UTF-8') ?>">
+                                        <option value="">(Keine Zuordnung / Allgemein)</option>
+                                        <?php foreach ($systemUsers as $u): ?>
+                                            <option value="<?= htmlspecialchars(strtolower($u['email']), ENT_QUOTES, 'UTF-8') ?>">
+                                                <?= htmlspecialchars($u['name'] ? "{$u['name']} ({$u['email']})" : $u['email'], ENT_QUOTES, 'UTF-8') ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            <?php else: ?>
+                                <input type="hidden" id="p_user_email" name="user_email" value="<?= htmlspecialchars($currentUserEmail, ENT_QUOTES, 'UTF-8') ?>">
+                            <?php endif; ?>
                             <div>
                                 <label for="p_lines" style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Bevorzugte Linien (optional):</label>
                                 <input type="text" id="p_lines" name="preferred_lines" class="yield-input" style="width: 100%;" placeholder="z. B. 15 oder 15,2">

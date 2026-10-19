@@ -23,6 +23,8 @@ try {
     if ($method === 'GET') {
         $action = trim((string)($_GET['action'] ?? 'status'));
 
+        $isAdmin = Auth::isAdmin();
+
         if ($action === 'status') {
             $profileId = filter_var($_GET['profile_id'] ?? null, FILTER_VALIDATE_INT);
             $direction = isset($_GET['direction']) && in_array($_GET['direction'], ['outbound', 'return'], true) ? $_GET['direction'] : null;
@@ -34,8 +36,11 @@ try {
 
             if ($profileId) {
                 $profile = $profileRepo->getById($profileId);
+                if ($profile && !$isAdmin && strtolower((string)($profile['user_email'] ?? '')) !== $currentUserEmail) {
+                    $profile = null;
+                }
             } else {
-                $active = $profileRepo->getActive($currentUserEmail);
+                $active = $isAdmin ? $profileRepo->getActive(null) : $profileRepo->getActive($currentUserEmail, true);
                 $profile = $active[0] ?? null;
             }
 
@@ -55,8 +60,11 @@ try {
 
             if ($profileId) {
                 $profile = $profileRepo->getById($profileId);
+                if ($profile && !$isAdmin && strtolower((string)($profile['user_email'] ?? '')) !== $currentUserEmail) {
+                    $profile = null;
+                }
             } else {
-                $active = $profileRepo->getActive($currentUserEmail);
+                $active = $isAdmin ? $profileRepo->getActive(null) : $profileRepo->getActive($currentUserEmail, true);
                 $profile = $active[0] ?? null;
             }
 
@@ -119,10 +127,30 @@ try {
 
         $action = trim((string)($input['action'] ?? ''));
 
+        $isAdmin = Auth::isAdmin();
+
         if ($action === 'save_profile') {
             $profileData = $input['profile'] ?? null;
             if (!is_array($profileData)) {
                 Auth::sendJsonError(400, 'Ungültige Profildaten');
+            }
+
+            $profileId = !empty($profileData['id']) ? (int)$profileData['id'] : null;
+
+            if (!$isAdmin) {
+                // Normale Nutzer erstellen immer Profile für sich selbst
+                $profileData['user_email'] = $currentUserEmail;
+
+                // Falls bestehendes Profil aktualisiert wird: prüfen, ob es dem Nutzer gehört
+                if ($profileId !== null) {
+                    $existing = $profileRepo->getById($profileId);
+                    if (!$existing || strtolower((string)($existing['user_email'] ?? '')) !== $currentUserEmail) {
+                        Auth::sendJsonError(403, 'Keine Berechtigung zum Bearbeiten dieses Profils');
+                    }
+                }
+            } else {
+                // Admin darf Profile beliebig zuweisen oder auf null setzen
+                $profileData['user_email'] = !empty($profileData['user_email']) ? strtolower(trim((string)$profileData['user_email'])) : null;
             }
 
             $savedId = $profileRepo->save($profileData);
@@ -145,6 +173,14 @@ try {
             if (!$id) {
                 Auth::sendJsonError(400, 'Ungültige ID');
             }
+
+            if (!$isAdmin) {
+                $existing = $profileRepo->getById($id);
+                if (!$existing || strtolower((string)($existing['user_email'] ?? '')) !== $currentUserEmail) {
+                    Auth::sendJsonError(403, 'Keine Berechtigung zum Löschen dieses Profils');
+                }
+            }
+
             $service->clearProfileCache($id);
             $success = $profileRepo->delete($id);
             echo json_encode(['success' => $success]);

@@ -21,20 +21,22 @@ class TransitProfileRepository
     /**
      * Liefert alle Profile, optional gefiltert nach Benutzer.
      *
+     * @param string|null $userEmail E-Mail des Benutzers
+     * @param bool $strict Wenn true, werden nur Profile geliefert, die exakt diesem Benutzer zugeordnet sind (kein NULL-Fallback).
      * @return array<int, array<string, mixed>>
      */
-    public function getAll(?string $userEmail = null): array
+    public function getAll(?string $userEmail = null, bool $strict = false): array
     {
         $this->ensureSeedProfiles();
 
         $conn = $this->db->getConnection();
         if ($userEmail !== null && $userEmail !== '') {
-            $stmt = $conn->prepare("
-                SELECT * FROM transit_profiles 
-                WHERE user_email = :email OR user_email IS NULL 
-                ORDER BY sort_order ASC, id ASC
-            ");
-            $stmt->execute(['email' => $userEmail]);
+            $normalizedEmail = strtolower(trim($userEmail));
+            $sql = $strict
+                ? "SELECT * FROM transit_profiles WHERE LOWER(user_email) = :email ORDER BY sort_order ASC, id ASC"
+                : "SELECT * FROM transit_profiles WHERE LOWER(user_email) = :email OR user_email IS NULL ORDER BY sort_order ASC, id ASC";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute(['email' => $normalizedEmail]);
         } else {
             $stmt = $conn->query("SELECT * FROM transit_profiles ORDER BY sort_order ASC, id ASC");
         }
@@ -46,12 +48,25 @@ class TransitProfileRepository
     /**
      * Liefert alle aktiven Profile.
      *
+     * @param string|null $userEmail
+     * @param bool $strict
      * @return array<int, array<string, mixed>>
      */
-    public function getActive(?string $userEmail = null): array
+    public function getActive(?string $userEmail = null, bool $strict = false): array
     {
-        $all = $this->getAll($userEmail);
+        $all = $this->getAll($userEmail, $strict);
         return array_values(array_filter($all, static fn($p) => !empty($p['is_active'])));
+    }
+
+    /**
+     * Liefert alle aktiven Profile strikt für einen Benutzer (z. B. für das Daily Briefing).
+     *
+     * @param string $userEmail
+     * @return array<int, array<string, mixed>>
+     */
+    public function getActiveForUser(string $userEmail): array
+    {
+        return $this->getActive($userEmail, true);
     }
 
     /**
