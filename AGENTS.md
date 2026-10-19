@@ -48,6 +48,7 @@ kai_root/
 │   ├── school/      ← Öffentliche Einstiegspunkte der Domain "School" (Stunden- & Vertretungsplan)
 │   ├── calendar/    ← Öffentliche Einstiegspunkte der Domain "Calendar" (Geburtstage & Jahrestage)
 │   ├── system/      ← Öffentliche Einstiegspunkte der Domain "System"
+│   ├── transit/     ← Öffentliche Einstiegspunkte der Domain "Transit" (ÖPNV & Pendler-Monitor)
 │   └── weather/     ← Öffentliche Einstiegspunkte der Domain "Weather"
 │
 ├── src/             ← Servercode (nicht öffentlich erreichbar, PSR-4 autoloaded)
@@ -66,6 +67,7 @@ kai_root/
 │   ├── PVCharge/    ← Business-Logik der Domain "PVCharge"
 │   ├── School/      ← Business-Logik der Domain "School" (VPPlan24-Client, Parser, Stundenplan)
 │   ├── System/      ← Business-Logik der Domain "System" (Aktivitäts-Log, Einstellungen)
+│   ├── Transit/     ← Business-Logik der Domain "Transit" (HAFAS-Client, Pendler-Profile)
 │   └── Weather/     ← Business-Logik der Domain "Weather"
 │
 ├── database/
@@ -177,7 +179,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `Bank\BankContractRepository` | `kb_receipts` (Kassenbon) | Ermöglicht die Anzeige und Verlinkung der jeweils letzten bzw. offenen Rechnungen in der Vertragsübersicht. |
 
 | `Assistant\AssistantService` | `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Weather\*`, `School\*` | Orchestrator: verarbeitet Sprach- und Smart-Home-Befehle von Home Assistant / Google Assistant. Alle Abhängigkeiten werden per Konstruktor injiziert. |
-| `System\BriefingService` | `Weather\*`, `School\*`, `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Calendar\*`, `Bank\*` | Orchestrator: Aggregiert Statuskacheln für das Daily Briefing Popup beim App-Start. Alle Abhängigkeiten werden per Konstruktor injiziert. |
+| `System\BriefingService` | `Weather\*`, `School\*`, `PVCharge\*`, `Car\*`, `Einkaufsliste\*`, `Calendar\*`, `Bank\*`, `Transit\*` | Orchestrator: Aggregiert Statuskacheln für das Daily Briefing Popup beim App-Start. Alle Abhängigkeiten werden per Konstruktor injiziert. |
 
 Die Kopplung verläuft dabei stets **in eine Richtung** (Bank → Kassenbon, PVCharge → System, Assistant → Fachdomänen, System\BriefingService → Fachdomänen);
 Rückwärts- oder Zirkelbezüge sind unzulässig.
@@ -196,6 +198,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | PVCharge | `Kai\Tools\PVCharge\` | `src/PVCharge/` | `public/pvcharge/` |
 | School | `Kai\Tools\School\` | `src/School/` | `public/school/` |
 | System | `Kai\Tools\System\` | `src/System/` | `public/system/` |
+| Transit | `Kai\Tools\Transit\` | `src/Transit/` | `public/transit/` |
 | Games | — (Client-Only) | — | `public/games/` |
 | Weather | `Kai\Tools\Weather\` | `src/Weather/` | `public/weather/` |
 

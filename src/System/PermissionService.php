@@ -100,6 +100,7 @@ class PermissionService
                 'car_read', 'car_write',
                 'system_read', 'system_write',
                 'gamification_read', 'gamification_write', 'gamification_admin',
+                'transit_read', 'transit_write',
             ];
         }
 

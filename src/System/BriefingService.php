@@ -15,6 +15,8 @@ use Kai\Tools\School\BesteSchuleRepository;
 use Kai\Tools\School\SchoolService;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\Shared\Log\Logger;
+use Kai\Tools\Transit\TransitProfileRepository;
+use Kai\Tools\Transit\TransitService;
 use Kai\Tools\Weather\WeatherEvaluator;
 use Kai\Tools\Weather\WeatherService;
 use Throwable;
@@ -43,6 +45,8 @@ class BriefingService
     private BankAccountRepository $bankAccountRepo;
     private BankContractRepository $bankContractRepo;
     private LiquidityAdvisorService $liquidityAdvisor;
+    private TransitProfileRepository $transitProfileRepo;
+    private TransitService $transitService;
 
     public function __construct(
         ?Database $db = null,
@@ -60,7 +64,9 @@ class BriefingService
         ?CalendarService $calendarService = null,
         ?BankAccountRepository $bankAccountRepo = null,
         ?BankContractRepository $bankContractRepo = null,
-        ?LiquidityAdvisorService $liquidityAdvisor = null
+        ?LiquidityAdvisorService $liquidityAdvisor = null,
+        ?TransitProfileRepository $transitProfileRepo = null,
+        ?TransitService $transitService = null
     ) {
         $this->db = $db ?? Database::getInstance();
         $this->logger = $logger ?? new Logger();
@@ -78,6 +84,8 @@ class BriefingService
         $this->bankAccountRepo = $bankAccountRepo ?? new BankAccountRepository();
         $this->bankContractRepo = $bankContractRepo ?? new BankContractRepository();
         $this->liquidityAdvisor = $liquidityAdvisor ?? new LiquidityAdvisorService($this->bankAccountRepo, $this->bankContractRepo);
+        $this->transitProfileRepo = $transitProfileRepo ?? new TransitProfileRepository($this->db);
+        $this->transitService = $transitService ?? new TransitService(null, $this->transitProfileRepo, null, $this->db, $this->logger);
     }
 
     /**
@@ -110,6 +118,7 @@ class BriefingService
             try {
                 $widgetData = match ($widgetKey) {
                     'weather' => $this->buildWeatherWidget(),
+                    'transit' => $this->buildTransitWidget($userEmail),
                     'school' => $this->buildSchoolWidget($userEmail),
                     'pv_car' => $this->buildPvCarWidget(),
                     'shopping' => $this->buildShoppingWidget(),
@@ -299,6 +308,107 @@ class BriefingService
             'url' => '/weather/index.php',
             'headline' => "{$curFormatted} (6h: {$minFormatted}° bis {$maxFormatted}°C)",
             'subtitle' => $hasRain ? "Regenschirm empfohlen ({$maxPrecipProb}% Regenwahrscheinlichkeit)" : "In den nächsten 6h kein Regen erwartet",
+            'pills' => $pills,
+            'highlight' => $highlight,
+            'badge' => $badge,
+        ];
+    }
+
+    /**
+     * 2.1b. ÖPNV & Pendeln
+     * - Prüft die aktiven Pendlerprofile für den aktuellen Benutzer.
+     * - Blendet das Widget aus, falls heute kein Pendlertag ist oder Ferien/Feiertage aktiv sind.
+     * - Liefert Live-Pünktlichkeit, nächste Abfahrten und Umstiegsstatus.
+     */
+    private function buildTransitWidget(string $userEmail): ?array
+    {
+        $profiles = $this->transitProfileRepo->getActive($userEmail);
+        if (empty($profiles)) {
+            return null;
+        }
+
+        $activeStatus = null;
+        foreach ($profiles as $profile) {
+            $status = $this->transitService->getProfileStatus($profile);
+            // Profil nur anzeigen, wenn heute ein Pendlertag ist und keine Ferien/Feiertage (bei Schulprofilen)
+            if (!empty($status['is_scheduled_day']) && empty($status['is_holiday_or_vacation'])) {
+                $activeStatus = $status;
+                break;
+            }
+        }
+
+        // Falls kein Profil heute aktiv ist (z. B. Dienstag/Freitag bei Mo,Mi,Do oder Ferien)
+        if ($activeStatus === null) {
+            return null;
+        }
+
+        $nextDep = $activeStatus['next_departure'] ?? null;
+        $pills = [];
+
+        // Pill 1: Nächste Abfahrt
+        if ($nextDep !== null) {
+            $countdownText = ($nextDep['countdown_minutes'] !== null && $nextDep['countdown_minutes'] >= 0)
+                ? "in {$nextDep['countdown_minutes']} Min ({$nextDep['real_time']})"
+                : "um {$nextDep['real_time']} Uhr";
+            
+            $pills[] = [
+                'icon' => ($nextDep['mode'] === 'tram' ? '🚋' : '🚌'),
+                'label' => "Linie {$nextDep['line']} {$countdownText}",
+                'type' => ($nextDep['delay_minutes'] >= 3 ? 'warning' : 'neutral'),
+            ];
+        }
+
+        // Pill 2: Folgeabfahrt
+        $deps = $activeStatus['departures'] ?? [];
+        if (isset($deps[1])) {
+            $secondDep = $deps[1];
+            $pills[] = [
+                'icon' => '⏱️',
+                'label' => "Folge: {$secondDep['real_time']} Uhr" . ($secondDep['delay_minutes'] > 0 ? " (+{$secondDep['delay_minutes']})" : ''),
+                'type' => 'neutral',
+            ];
+        }
+
+        // Pill 3: Umstieg (falls konfiguriert)
+        $transfer = $activeStatus['transfer_status'] ?? null;
+        if ($transfer !== null) {
+            $pills[] = [
+                'icon' => '🔄',
+                'label' => $transfer['message'],
+                'type' => ($transfer['severity'] === 'danger' ? 'danger' : ($transfer['severity'] === 'warning' ? 'warning' : 'success')),
+            ];
+        }
+
+        $badge = null;
+        $highlight = false;
+
+        if ($activeStatus['status_severity'] === 'danger') {
+            $badge = ['text' => $activeStatus['status_text'], 'type' => 'danger'];
+            $highlight = true;
+        } elseif ($activeStatus['status_severity'] === 'warning') {
+            $badge = ['text' => $activeStatus['status_text'], 'type' => 'warning'];
+            $highlight = true;
+        } elseif ($nextDep !== null) {
+            $badge = ['text' => 'Pünktlich', 'type' => 'success'];
+        }
+
+        $headline = $activeStatus['profile_name'] . ' (' . $activeStatus['direction_label'] . ')';
+        $subtitle = 'Ab ' . $activeStatus['from_station'] . ' → ' . $activeStatus['to_station'];
+
+        if ($nextDep !== null) {
+            $subtitle .= ' · Nächste Tram ' . $nextDep['line'] . ' ' . $nextDep['real_time'] . ' Uhr';
+            if ($nextDep['delay_minutes'] > 0) {
+                $subtitle .= ' (+' . $nextDep['delay_minutes'] . ' Min)';
+            }
+        }
+
+        return [
+            'key' => 'transit',
+            'title' => 'ÖPNV & Pendeln',
+            'icon' => '🚋',
+            'url' => '/transit/index.php',
+            'headline' => $headline,
+            'subtitle' => $subtitle,
             'pills' => $pills,
             'highlight' => $highlight,
             'badge' => $badge,

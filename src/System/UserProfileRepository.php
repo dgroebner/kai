@@ -44,6 +44,7 @@ class UserProfileRepository
 
     public const DEFAULT_BRIEFING_PREFERENCES = [
         'weather' => ['enabled' => true, 'order' => 10],
+        'transit' => ['enabled' => true, 'order' => 15],
         'school' => ['enabled' => true, 'order' => 20],
         'pv_car' => ['enabled' => true, 'order' => 30],
         'shopping' => ['enabled' => true, 'order' => 40],
@@ -57,6 +58,12 @@ class UserProfileRepository
             'icon' => '🌤️',
             'desc' => '6-Stunden-Wetterprognose, Kleidungsempfehlung & Regenschirm',
             'permission' => 'weather_read',
+        ],
+        'transit' => [
+            'label' => 'ÖPNV & Pendeln',
+            'icon' => '🚋',
+            'desc' => 'Live-Abfahrtszeiten, Verspätungen & Umstiege für Arbeits- und Schulweg',
+            'permission' => 'transit_read',
         ],
         'school' => [
             'label' => 'Schule & Aufgaben',

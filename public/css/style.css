@@ -10736,5 +10736,395 @@ body.wisdom-modal-open {
     color: var(--color-green, #10b981);
 }
 
+/* ==========================================================================
+   DOMAIN: ÖPNV & PENDLER-MONITOR (Transit)
+   ========================================================================== */
+
+.transit-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.transit-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.transit-tab-btn:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-main);
+}
+
+.transit-tab-btn.active {
+    background: var(--color-blue-dim);
+    border-color: var(--color-blue);
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.transit-tab-disabled {
+    opacity: 0.5;
+}
+
+.transit-tab-badge {
+    font-size: 0.85rem;
+}
+
+.transit-profile-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.transit-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.transit-direction-tag {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-blue);
+    margin-bottom: 0.25rem;
+}
+
+.transit-stations {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.transit-arrow {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.transit-header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.transit-control-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--bg-surface-hover);
+    margin-bottom: 1.25rem;
+}
+
+.transit-status-indicator {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.transit-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.transit-status--success {
+    background: var(--color-green-dim);
+    color: var(--color-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.transit-status--warning {
+    background: var(--color-orange-dim);
+    color: var(--color-orange);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.transit-status--danger {
+    background: var(--color-red-dim);
+    color: var(--color-red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.transit-status--info {
+    background: var(--color-blue-dim);
+    color: var(--color-blue);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.transit-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.transit-time-offsets {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.transit-hero-departure {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(30, 41, 59, 0.5) 100%);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: var(--border-radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.transit-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.transit-line-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    height: 48px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.transit-mode-tram {
+    background-color: #f59e0b;
+    color: #1e293b;
+}
+
+.transit-mode-bus {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+
+.transit-mode-train {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
+.transit-hero-direction {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.transit-hero-times {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.transit-hero-real {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.transit-hero-delay {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.transit-hero-sched {
+    font-size: 0.85rem;
+}
+
+.transit-countdown-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    min-width: 75px;
+    text-align: center;
+}
+
+.transit-countdown-val {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--color-blue);
+}
+
+.transit-countdown-unit {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.transit-hero-empty {
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--border-radius);
+    margin-bottom: 1.25rem;
+}
+
+.transit-transfer-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.25rem;
+    border: 1px solid transparent;
+}
+
+.transit-transfer--success {
+    background: var(--color-green-dim);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.transit-transfer--warning {
+    background: var(--color-orange-dim);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
+.transit-transfer--danger {
+    background: var(--color-red-dim);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.transit-transfer-icon {
+    font-size: 1.25rem;
+    line-height: 1.2;
+}
+
+.transit-transfer-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+}
+
+.transit-transfer-sub {
+    font-size: 0.85rem;
+}
+
+.transit-table-wrap {
+    margin-top: 1.5rem;
+}
+
+.transit-table-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
+.transit-line-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.transit-row-cancelled {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.transit-quick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.75rem 0 1.25rem 0;
+}
+
+.transit-search-box {
+    position: relative;
+    max-width: 500px;
+}
+
+.transit-search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.transit-search-item {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s ease;
+}
+
+.transit-search-item:hover {
+    background: var(--bg-surface-hover);
+}
+
+.transit-days-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.transit-days-picker label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+
 
 

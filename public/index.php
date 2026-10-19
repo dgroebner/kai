@@ -212,6 +212,13 @@ if (!empty($dailyWisdom)) {
                 </a>
             <?php endif; ?>
 
+            <?php if (Auth::hasPermission('transit_read')): ?>
+                <a href="transit/index.php" class="card tool-card">
+                    <span class="tool-card-icon">🚋</span>
+                    <span class="tool-card-title">ÖPNV</span>
+                </a>
+            <?php endif; ?>
+
             <a href="games/index.php" class="card tool-card">
                 <span class="tool-card-icon">🎲</span>
                 <span class="tool-card-title">Spiele &amp; Tools</span>

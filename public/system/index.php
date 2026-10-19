@@ -749,6 +749,8 @@ function getEventLabel(string $eventType): string
                                     'calendar_read', 'calendar_write',
                                     // Familien-Quests (Gamification)
                                     'gamification_read', 'gamification_write', 'gamification_admin',
+                                    // ÖPNV & Pendler-Monitor
+                                    'transit_read', 'transit_write',
                             ];
                             ?>
 
