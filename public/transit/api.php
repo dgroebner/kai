@@ -70,6 +70,19 @@ try {
             exit;
         }
 
+        if ($action === 'refresh_routes') {
+            $profileId = filter_var($_GET['profile_id'] ?? null, FILTER_VALIDATE_INT);
+            if ($profileId) {
+                $p = $profileRepo->getById($profileId);
+                if ($p) {
+                    $routes = $service->getProfileRouteDirections($p, true);
+                    echo json_encode(['success' => true, 'data' => $routes]);
+                    exit;
+                }
+            }
+            Auth::sendJsonError(400, 'Ungültiges Profil');
+        }
+
         Auth::sendJsonError(400, 'Unbekannte Aktion');
     }
 
@@ -91,6 +104,15 @@ try {
             }
 
             $savedId = $profileRepo->save($profileData);
+            $savedProfile = $profileRepo->getById($savedId);
+            if ($savedProfile) {
+                try {
+                    $service->getProfileRouteDirections($savedProfile, true);
+                } catch (\Throwable $te) {
+                    $logger->warn('Konnte Routencache nach Profil-Speichern nicht sofort aktualisieren', ['error' => $te->getMessage()]);
+                }
+            }
+
             echo json_encode(['success' => true, 'data' => ['id' => $savedId]]);
             exit;
         }

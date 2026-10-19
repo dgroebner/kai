@@ -105,6 +105,17 @@ try {
         $logger->warn("Cronjob (mail.php): Fehler beim Kalender-Erinnerungsabgleich.", ['error' => $ce->getMessage()]);
     }
 
+    // 3b. ÖPNV / Transit: Tägliche Aktualisierung der Pendler-Routen & Zielrichtungen
+    try {
+        $transitService = new \Kai\Tools\Transit\TransitService(db: $db, logger: $logger);
+        $transitRefreshed = $transitService->refreshAllProfileRoutes();
+        if ($transitRefreshed > 0) {
+            $logger->info("Cronjob (mail.php): Transit-Routencache für $transitRefreshed Profile aktualisiert.");
+        }
+    } catch (Throwable $te) {
+        $logger->warn("Cronjob (mail.php): Fehler beim Transit-Routenabgleich.", ['error' => $te->getMessage()]);
+    }
+
     // 4. Open Food Facts Queue: Neue und abgelaufene Artikel einreihen
     try {
         $offRepo = new \Kai\Tools\Kassenbon\OpenFoodFactsQueueRepository();

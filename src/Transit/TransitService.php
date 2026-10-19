@@ -88,6 +88,15 @@ class TransitService
         $toStationId = $isReturn ? $profile['origin_station_id'] : $profile['destination_station_id'];
         $toStationName = $isReturn ? $profile['origin_station_name'] : $profile['destination_station_name'];
 
+        // Gecachte Routen- und Richtungsprofile abrufen (24h Cache)
+        $routeDirections = $this->getProfileRouteDirections($profile);
+        $allowedDirsForLeg = $isReturn
+            ? ($routeDirections['return']['allowed_directions'] ?? [])
+            : ($routeDirections['outbound']['allowed_directions'] ?? []);
+        $viaAllowedDirsForLeg = $isReturn
+            ? ($routeDirections['return']['via_allowed_directions'] ?? [])
+            : ($routeDirections['outbound']['via_allowed_directions'] ?? []);
+
         // Abfahrten an der Abfahrtshaltestelle abrufen
         $departuresData = $this->getCachedDepartures($fromStationId, $fromStationName, $now);
         $rawDepartures = $departuresData['departures'] ?? [];
@@ -111,23 +120,37 @@ class TransitService
                 continue;
             }
 
-            // Richtungsfilter (Grobe Plausibilitätsprüfung für Leipzig)
-            if ($isReturn) {
-                // Auf dem Rückweg nach Meusdorf
-                if (!empty($profile['origin_station_name']) && stripos($profile['origin_station_name'], 'Meusdorf') !== false) {
-                    if (stripos($dep['direction'], 'Meusdorf') === false && stripos($dep['direction'], 'Probstheida') === false) {
-                        // Bei fest vorgegebener Linie wie 15 nur Richtungen nach Meusdorf akzeptieren
-                        if (in_array($dep['line'], ['15', 'Str 15'], true)) {
-                            continue;
-                        }
+            // Richtungsfilterung basierend auf dem gelernten/gecachten Linienverlauf
+            $lineKey = $dep['line'];
+            if (!empty($allowedDirsForLeg[$lineKey])) {
+                $depDir = mb_strtolower(trim($dep['direction']));
+                $matches = false;
+                foreach ($allowedDirsForLeg[$lineKey] as $allowedDir) {
+                    $allowedLower = mb_strtolower(trim($allowedDir));
+                    // Prüfen ob Substring übereinstimmt (z. B. "Böhlitz-Ehrenberg" in "Böhlitz-Ehrenberg über Hauptbahnhof")
+                    if (str_contains($depDir, $allowedLower) || str_contains($allowedLower, $depDir)) {
+                        $matches = true;
+                        break;
                     }
                 }
+                if (!$matches) {
+                    continue; // Gegenrichtung verwerfen!
+                }
             } else {
-                // Auf dem Hinweg ab Meusdorf
-                if (!empty($profile['origin_station_name']) && stripos($profile['origin_station_name'], 'Meusdorf') !== false) {
-                    // Von Meusdorf Richtung Stadtzentrum (Miltitz, Hauptbahnhof etc.)
-                    if (stripos($dep['direction'], 'Meusdorf') !== false) {
-                        continue;
+                // Heuristischer Fallback für ungelernte Linien
+                if ($isReturn) {
+                    if (!empty($profile['origin_station_name']) && stripos($profile['origin_station_name'], 'Meusdorf') !== false) {
+                        if (in_array($dep['line'], ['15', 'Str 15'], true)) {
+                            if (stripos($dep['direction'], 'Meusdorf') === false && stripos($dep['direction'], 'Probstheida') === false) {
+                                continue;
+                            }
+                        }
+                    }
+                } else {
+                    if (!empty($profile['origin_station_name']) && stripos($profile['origin_station_name'], 'Meusdorf') !== false) {
+                        if (stripos($dep['direction'], 'Meusdorf') !== false) {
+                            continue;
+                        }
                     }
                 }
             }
@@ -161,13 +184,21 @@ class TransitService
 
         // Umstiegs- / Anschlussprüfung (falls via_station konfiguriert)
         $transferStatus = null;
-        if (!empty($profile['via_station_id']) && !$isReturn && count($effectiveDepartures) > 0) {
+        if (!empty($profile['via_station_id']) && count($effectiveDepartures) > 0) {
             $transferStatus = $this->evaluateTransferLeg(
                 $profile,
                 $effectiveDepartures[0],
-                $now
+                $now,
+                $viaAllowedDirsForLeg
             );
         }
+
+        // Tür-zu-Tür Verbindungsempfehlungen abrufen (inkl. Schnell-Alternativen)
+        $fromStationDesc = ['id' => $fromStationId, 'name' => $fromStationName];
+        $toStationDesc = ['id' => $toStationId, 'name' => $toStationName];
+        $viaStationDesc = !empty($profile['via_station_name']) ? ['id' => $profile['via_station_id'], 'name' => $profile['via_station_name']] : null;
+
+        $tripRecommendations = $this->getCachedTripRecommendations($fromStationDesc, $toStationDesc, $viaStationDesc, $now);
 
         return [
             'profile_id' => $profile['id'],
@@ -189,29 +220,37 @@ class TransitService
             'next_departure' => $nextDeparture,
             'departures' => array_slice($effectiveDepartures, 0, 5),
             'transfer_status' => $transferStatus,
+            'trip_recommendations' => $tripRecommendations,
         ];
     }
 
     /**
      * Prüft die Anschlussverbindung an einer Umstiegshaltestelle.
+     *
+     * @param array $profile
+     * @param array $firstLegDep
+     * @param DateTimeImmutable $now
+     * @param array<string, string[]> $viaAllowedDirs
+     * @return array<string, mixed>|null
      */
-    private function evaluateTransferLeg(array $profile, array $firstLegDep, DateTimeImmutable $now): ?array
-    {
+    private function evaluateTransferLeg(
+        array $profile,
+        array $firstLegDep,
+        DateTimeImmutable $now,
+        array $viaAllowedDirs = []
+    ): ?array {
         $viaStationId = (string)$profile['via_station_id'];
         $viaStationName = (string)($profile['via_station_name'] ?? 'Umstieg');
         $minBufferMinutes = (int)($profile['min_transfer_minutes'] ?? 4);
 
-        // Fahrzeit von Meusdorf zum Umstieg (ca. 18 Min von Meusdorf zum Augustusplatz/Wilhelm-Leuschner-Platz)
-        $estimatedTravelMinutes = 18;
+        // Fahrzeit zum Umstieg (ca. 15 Min)
+        $estimatedTravelMinutes = 15;
         $arrivalEstimated = $now->modify("+{$estimatedTravelMinutes} minutes")
             ->modify(($firstLegDep['delay_minutes'] >= 0 ? "+{$firstLegDep['delay_minutes']}" : "{$firstLegDep['delay_minutes']}") . ' minutes');
 
         // Abfahrten an der Umstiegshaltestelle abrufen
         $viaData = $this->getCachedDepartures($viaStationId, $viaStationName, $arrivalEstimated);
         $viaDepartures = $viaData['departures'] ?? [];
-
-        // Nächste Abfahrt nach geschätzter Ankunft + Mindestpuffer suchen
-        $earliestConnectingTime = $arrivalEstimated->modify("+{$minBufferMinutes} minutes");
 
         $connectingDep = null;
         $actualBufferMinutes = null;
@@ -220,6 +259,23 @@ class TransitService
             if ($dep['mode'] === 'bus' && ($profile['transport_modes'] ?? '') === 'tram') {
                 continue;
             }
+
+            // Richtungsfilter am Umstieg (falls im Cache gelernt)
+            if (!empty($viaAllowedDirs[$dep['line']])) {
+                $depDir = mb_strtolower(trim($dep['direction']));
+                $matches = false;
+                foreach ($viaAllowedDirs[$dep['line']] as $allowedDir) {
+                    $allowedLower = mb_strtolower(trim($allowedDir));
+                    if (str_contains($depDir, $allowedLower) || str_contains($allowedLower, $depDir)) {
+                        $matches = true;
+                        break;
+                    }
+                }
+                if (!$matches) {
+                    continue;
+                }
+            }
+
             if ($dep['countdown_minutes'] !== null && $dep['countdown_minutes'] >= $minBufferMinutes) {
                 $connectingDep = $dep;
                 $actualBufferMinutes = $dep['countdown_minutes'];
@@ -260,6 +316,258 @@ class TransitService
             'severity' => $connectionSeverity,
             'message' => $connectionText,
         ];
+    }
+
+    /**
+     * Ermittelt und cacht die gültigen Linien und Zielrichtungen (Hinweg und Rückweg) für ein Profil.
+     * Nutzt HAFAS-TripSearch, um exakte Endstationen (dirTxt) pro Teilstrecke zu lernen.
+     * Gültigkeit: 24 Stunden.
+     *
+     * @param array $profile
+     * @param bool $forceRefresh
+     * @return array{outbound: array{allowed_directions: array<string, string[]>, via_allowed_directions: array<string, string[]>}, return: array{allowed_directions: array<string, string[]>, via_allowed_directions: array<string, string[]>}, cached_at: string}
+     */
+    public function getProfileRouteDirections(array $profile, bool $forceRefresh = false): array
+    {
+        $profileId = (int)($profile['id'] ?? 0);
+        $cacheKey = "transit_routes_p{$profileId}";
+        $conn = $this->db->getConnection();
+        $currentTime = date('Y-m-d H:i:s');
+
+        if (!$forceRefresh) {
+            try {
+                $stmt = $conn->prepare("
+                    SELECT payload FROM transit_cache 
+                    WHERE cache_key = :key AND expires_at > :now 
+                    LIMIT 1
+                ");
+                $stmt->execute(['key' => $cacheKey, 'now' => $currentTime]);
+                $cachedPayload = $stmt->fetchColumn();
+
+                if ($cachedPayload !== false && $cachedPayload !== null) {
+                    $decoded = json_decode((string)$cachedPayload, true);
+                    if (is_array($decoded) && isset($decoded['outbound'], $decoded['return'])) {
+                        return $decoded;
+                    }
+                }
+            } catch (Throwable $e) {
+                $this->logger->warn('TransitService: Fehler beim Lesen des Routen-Caches', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Routen via HAFAS TripSearch analysieren
+        $originDesc = ['id' => $profile['origin_station_id'], 'name' => $profile['origin_station_name']];
+        $destDesc = ['id' => $profile['destination_station_id'], 'name' => $profile['destination_station_name']];
+        $viaDesc = !empty($profile['via_station_name']) ? ['id' => $profile['via_station_id'], 'name' => $profile['via_station_name']] : null;
+
+        // 1. Hinfahrt (Origin -> Destination)
+        $outboundTrips = $this->client->searchTrips($originDesc, $destDesc, $viaDesc, 3);
+        $outboundAltTrips = ($viaDesc !== null) ? $this->client->searchTrips($originDesc, $destDesc, null, 2) : ['connections' => []];
+        $allOutbound = array_merge($outboundTrips['connections'] ?? [], $outboundAltTrips['connections'] ?? []);
+
+        // 2. Rückfahrt (Destination -> Origin)
+        $returnTrips = $this->client->searchTrips($destDesc, $originDesc, $viaDesc, 3);
+        $returnAltTrips = ($viaDesc !== null) ? $this->client->searchTrips($destDesc, $originDesc, null, 2) : ['connections' => []];
+        $allReturn = array_merge($returnTrips['connections'] ?? [], $returnAltTrips['connections'] ?? []);
+
+        $outboundAnalysis = $this->extractAllowedDirectionsFromConnections($allOutbound, $profile['origin_station_name'], $profile['via_station_name'] ?? null);
+        $returnAnalysis = $this->extractAllowedDirectionsFromConnections($allReturn, $profile['destination_station_name'], $profile['via_station_name'] ?? null);
+
+        $result = [
+            'outbound' => $outboundAnalysis,
+            'return' => $returnAnalysis,
+            'cached_at' => date('c'),
+        ];
+
+        // Im Cache ablegen (24 Stunden TTL)
+        try {
+            $expiresAt = date('Y-m-d H:i:s', time() + 86400);
+            $stmt = $conn->prepare("
+                INSERT INTO transit_cache (cache_key, payload, expires_at)
+                VALUES (:key, :payload, :expires)
+                ON DUPLICATE KEY UPDATE payload = :payload2, expires_at = :expires2
+            ");
+            $encoded = json_encode($result, JSON_UNESCAPED_UNICODE);
+            $stmt->execute([
+                'key' => $cacheKey,
+                'payload' => $encoded,
+                'expires' => $expiresAt,
+                'payload2' => $encoded,
+                'expires2' => $expiresAt,
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->warn('TransitService: Fehler beim Schreiben des Routen-Caches', ['error' => $e->getMessage()]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Extrahiert erlaubte Linienrichtungen für Abfahrtshaltestelle und optionale Umstiegshaltestelle.
+     *
+     * @param array<int, array<string, mixed>> $connections
+     * @param string $startStationName
+     * @param string|null $viaStationName
+     * @return array{allowed_directions: array<string, string[]>, via_allowed_directions: array<string, string[]>}
+     */
+    private function extractAllowedDirectionsFromConnections(array $connections, string $startStationName, ?string $viaStationName): array
+    {
+        $startAllowed = [];
+        $viaAllowed = [];
+
+        foreach ($connections as $con) {
+            $legs = $con['legs'] ?? [];
+            $transportLegs = array_values(array_filter($legs, static fn($l) => ($l['type'] ?? '') === 'transport'));
+            if (empty($transportLegs)) {
+                continue;
+            }
+
+            // Erstes Transport-Leg (Start ab Abfahrtshaltestelle)
+            $firstLeg = $transportLegs[0];
+            $line = $firstLeg['line'] ?? '';
+            $dir = trim((string)($firstLeg['direction'] ?? ''));
+            if ($line !== '' && $dir !== '') {
+                $startAllowed[$line][] = $dir;
+            }
+
+            // Folgende Transport-Legs (z. B. Umstieg an Via-Haltestelle)
+            if ($viaStationName !== null && $viaStationName !== '' && count($transportLegs) > 1) {
+                for ($i = 1; $i < count($transportLegs); $i++) {
+                    $leg = $transportLegs[$i];
+                    $line = $leg['line'] ?? '';
+                    $dir = trim((string)($leg['direction'] ?? ''));
+                    if ($line !== '' && $dir !== '') {
+                        $viaAllowed[$line][] = $dir;
+                    }
+                }
+            }
+        }
+
+        foreach ($startAllowed as $line => $dirs) {
+            $startAllowed[$line] = array_values(array_unique($dirs));
+        }
+        foreach ($viaAllowed as $line => $dirs) {
+            $viaAllowed[$line] = array_values(array_unique($dirs));
+        }
+
+        return [
+            'allowed_directions' => $startAllowed,
+            'via_allowed_directions' => $viaAllowed,
+        ];
+    }
+
+    /**
+     * Ruft aktuelle Verbindungsempfehlungen (Tür-zu-Tür) ab und cacht diese für 120 Sekunden.
+     *
+     * @param array{id: string, name: string} $fromDesc
+     * @param array{id: string, name: string} $toDesc
+     * @param array{id?: string, name?: string}|null $viaDesc
+     * @param DateTimeImmutable $when
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCachedTripRecommendations(
+        array $fromDesc,
+        array $toDesc,
+        ?array $viaDesc,
+        DateTimeImmutable $when
+    ): array {
+        $viaName = $viaDesc['name'] ?? '';
+        $cacheKey = 'transit_trips_' . md5($fromDesc['name'] . '_' . $toDesc['name'] . '_' . $viaName) . '_' . $when->format('YmdHi');
+        $conn = $this->db->getConnection();
+        $currentTime = date('Y-m-d H:i:s');
+
+        try {
+            $stmt = $conn->prepare("
+                SELECT payload FROM transit_cache 
+                WHERE cache_key = :key AND expires_at > :now 
+                LIMIT 1
+            ");
+            $stmt->execute(['key' => $cacheKey, 'now' => $currentTime]);
+            $cachedPayload = $stmt->fetchColumn();
+
+            if ($cachedPayload !== false && $cachedPayload !== null) {
+                $decoded = json_decode((string)$cachedPayload, true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
+        } catch (Throwable $e) {
+            $this->logger->warn('TransitService: Cache-Lesefehler bei Trips', ['error' => $e->getMessage()]);
+        }
+
+        // Live über InsaClient abfragen (sowohl mit Via als auch ohne Via für Alternativen)
+        $trips1 = $this->client->searchTrips($fromDesc, $toDesc, $viaDesc, 3, $when);
+        $trips2 = ($viaDesc !== null) ? $this->client->searchTrips($fromDesc, $toDesc, null, 2, $when) : ['connections' => []];
+
+        $merged = array_merge($trips1['connections'] ?? [], $trips2['connections'] ?? []);
+
+        // Deduplizieren anhand Abfahrtszeit und Linien-Kette
+        $unique = [];
+        $seen = [];
+        foreach ($merged as $con) {
+            $legSignature = implode('>', array_map(static fn($l) => ($l['line'] ?? ($l['type'] ?? '')), $con['legs'] ?? []));
+            $sig = ($con['departure_time'] ?? '') . '_' . ($con['arrival_time'] ?? '') . '_' . $legSignature;
+            if (!isset($seen[$sig])) {
+                $seen[$sig] = true;
+                $unique[] = $con;
+            }
+        }
+
+        // Sortieren nach Abfahrtszeit
+        usort($unique, static function ($a, $b) {
+            return strcmp((string)($a['departure_time'] ?? ''), (string)($b['departure_time'] ?? ''));
+        });
+
+        $topConnections = array_slice($unique, 0, 4);
+
+        // Im Cache speichern (TTL 120 Sekunden)
+        try {
+            $expiresAt = date('Y-m-d H:i:s', time() + 120);
+            $stmt = $conn->prepare("
+                INSERT INTO transit_cache (cache_key, payload, expires_at)
+                VALUES (:key, :payload, :expires)
+                ON DUPLICATE KEY UPDATE payload = :payload2, expires_at = :expires2
+            ");
+            $encoded = json_encode($topConnections, JSON_UNESCAPED_UNICODE);
+            $stmt->execute([
+                'key' => $cacheKey,
+                'payload' => $encoded,
+                'expires' => $expiresAt,
+                'payload2' => $encoded,
+                'expires2' => $expiresAt,
+            ]);
+        } catch (Throwable $e) {
+            $this->logger->warn('TransitService: Cache-Schreibfehler bei Trips', ['error' => $e->getMessage()]);
+        }
+
+        return $topConnections;
+    }
+
+    /**
+     * Aktualisiert den Routencache aller aktiven Pendlerprofile.
+     * Vorgesehen für den täglichen Aufruf via Cronjob (public/shared/mail.php).
+     *
+     * @return int Anzahl der aktualisierten Profile
+     */
+    public function refreshAllProfileRoutes(): int
+    {
+        $profiles = $this->profileRepo->getAll();
+        $count = 0;
+        foreach ($profiles as $p) {
+            if (empty($p['is_active'])) {
+                continue;
+            }
+            try {
+                $this->getProfileRouteDirections($p, true);
+                $count++;
+            } catch (Throwable $e) {
+                $this->logger->warn("TransitService: Fehler beim Routenabgleich für Profil {$p['id']}", [
+                    'profile' => $p['profile_name'] ?? $p['id'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        return $count;
     }
 
     /**

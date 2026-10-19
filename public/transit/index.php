@@ -184,6 +184,61 @@ $csrfToken = Auth::csrfToken();
                     </div>
                 <?php endif; ?>
 
+                <!-- Tür-zu-Tür Verbindungen & Alternativen -->
+                <?php $trips = $status['trip_recommendations'] ?? []; ?>
+                <?php if (!empty($trips)): ?>
+                    <div class="transit-trips-wrap">
+                        <div class="transit-trips-header">
+                            <h3 class="transit-table-title" style="margin-bottom: 0;">🧭 Verbindungen &amp; Alternativen</h3>
+                            <span class="text-muted" style="font-size: 0.85rem;">Von Tür zu Tür (Echtzeit)</span>
+                        </div>
+                        <div class="transit-trips-list js-trips-list">
+                            <?php foreach ($trips as $con): ?>
+                                <div class="transit-trip-card">
+                                    <div class="transit-trip-summary">
+                                        <div class="transit-trip-times">
+                                            <strong><?= htmlspecialchars($con['departure_time'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <span class="transit-trip-arrow">&rarr;</span>
+                                            <strong><?= htmlspecialchars($con['arrival_time'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                            <span class="transit-trip-duration">(<?= (int)$con['duration_minutes'] ?> Min)</span>
+                                        </div>
+                                        <div class="transit-trip-meta">
+                                            <span class="transit-trip-transfers">
+                                                <?= $con['transfers'] === 0 ? 'Direkt' : ($con['transfers'] === 1 ? '1 Umstieg' : "{$con['transfers']} Umstiege") ?>
+                                            </span>
+                                            <?php if ($con['is_cancelled']): ?>
+                                                <span class="badge badge-danger">Fahrt fällt aus</span>
+                                            <?php elseif ($con['delay_minutes'] > 0): ?>
+                                                <span class="text-danger">+<?= (int)$con['delay_minutes'] ?> Min</span>
+                                            <?php elseif ($con['countdown_minutes'] !== null && $con['countdown_minutes'] >= 0): ?>
+                                                <span class="badge badge-success">in <?= (int)$con['countdown_minutes'] ?> Min</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="transit-trip-legs">
+                                        <?php foreach ($con['legs'] as $legIdx => $leg): ?>
+                                            <?php if ($legIdx > 0): ?>
+                                                <span class="transit-leg-separator">&rsaquo;</span>
+                                            <?php endif; ?>
+                                            <?php if (($leg['type'] ?? '') === 'transport'): ?>
+                                                <?php $lb = $leg['badge'] ?? InsaClient::getLvbBadgeInfo($leg['line'], $leg['mode']); ?>
+                                                <div class="transit-trip-leg-item">
+                                                    <span class="transit-line-pill <?= htmlspecialchars($lb['css_class'], ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($lb['bg'], ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($lb['text_color'], ENT_QUOTES, 'UTF-8') ?>;">
+                                                        <?= htmlspecialchars($leg['line'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </span>
+                                                    <span class="transit-leg-dir" title="Richtung <?= htmlspecialchars($leg['direction'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($leg['direction'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                </div>
+                                            <?php elseif (($leg['type'] ?? '') === 'walk'): ?>
+                                                <span class="transit-trip-walk" title="Fußweg <?= (int)$leg['duration_minutes'] ?> Min">🚶 <?= (int)$leg['duration_minutes'] ?>m</span>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Abfahrtstabelle mit den nächsten Bahnen -->
                 <div class="transit-table-wrap">
                     <h3 class="transit-table-title">Weitere Abfahrten</h3>

@@ -171,6 +171,7 @@ Die folgenden domainübergreifenden Zugriffe sind bewusst gesetzt und dokumentie
 | `public/shared/mail.php` | `Einkaufsliste\*` | Führt im asynchronen Cronjob die Aktualisierung des Einkaufslisten-Lernens aus eBons durch. |
 | `public/shared/mail.php` | `Calendar\*` | Führt im asynchronen Cronjob den Abgleich und Versand fälliger Kalender- und Geburtstags-Erinnerungen durch. |
 | `public/shared/mail.php` | `System\*` | Führt im asynchronen Cronjob die Prüfung und Generierung der täglichen Weisheit durch. |
+| `public/shared/mail.php` | `Transit\*` | Führt im asynchronen Cronjob die tägliche Aktualisierung der Pendler-Routencaches und Fahrtrichtungen durch. |
 | `public/shared/mail.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Statusabgleich anstehender Reisen durch. |
 | `public/shared/car_cron.php` | `Car\*` | Führt im asynchronen Cronjob den periodischen Abgleich von Fahrzeugdaten via TRONITY sowie den Status- und Telemetrieabgleich anstehender Reisen durch. |
 | `Car\ChargingReceiptService` | `Kassenbon\*` | Ermöglicht die Zuordnung von E-Bons/Ladeabrechnungen zu Fahrzeug-Ladevorgängen. |

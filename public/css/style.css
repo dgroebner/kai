@@ -11054,6 +11054,122 @@ body.wisdom-modal-open {
     font-size: 0.85rem;
 }
 
+/* Tür-zu-Tür Verbindungsempfehlungen */
+.transit-trips-wrap {
+    margin-top: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.transit-trips-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.transit-trips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.transit-trip-card {
+    background: var(--bg-hover, #f8f9fa);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.transit-trip-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.transit-trip-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.transit-trip-times {
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.transit-trip-arrow {
+    color: var(--text-muted, #718096);
+    font-size: 0.9rem;
+}
+
+.transit-trip-duration {
+    font-size: 0.88rem;
+    color: var(--text-muted, #718096);
+    margin-left: 0.35rem;
+}
+
+.transit-trip-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.transit-trip-transfers {
+    color: var(--text-muted, #718096);
+}
+
+.transit-trip-legs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding-top: 0.35rem;
+    border-top: 1px dashed var(--border-color, #e2e8f0);
+}
+
+.transit-trip-leg-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--card-bg, #ffffff);
+    padding: 0.2rem 0.5rem 0.2rem 0.25rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    max-width: 260px;
+}
+
+.transit-leg-dir {
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.transit-leg-separator {
+    color: var(--text-muted, #a0aec0);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.transit-trip-walk {
+    font-size: 0.8rem;
+    color: var(--text-muted, #718096);
+    background: var(--card-bg, #ffffff);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    border: 1px dashed var(--border-color, #cbd5e0);
+}
+
 .transit-table-wrap {
     margin-top: 1.5rem;
 }

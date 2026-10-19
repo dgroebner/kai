@@ -246,6 +246,229 @@ class InsaClient
     }
 
     /**
+     * Sucht Verbindungen (Fahrtketten / Routen) zwischen Start und Ziel (TripSearch).
+     *
+     * @param string|array{name?: string, id?: string} $from
+     * @param string|array{name?: string, id?: string} $to
+     * @param string|array{name?: string, id?: string}|null $via
+     * @param int $numTrips
+     * @param DateTimeImmutable|null $when
+     * @return array{connections: array<int, array<string, mixed>>, query_time: string}
+     */
+    public function searchTrips(
+        string|array $from,
+        string|array $to,
+        string|array|null $via = null,
+        int $numTrips = 3,
+        ?DateTimeImmutable $when = null
+    ): array {
+        $now = $when ?? new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin'));
+        $dateStr = $now->format('Ymd');
+        $timeStr = $now->format('His');
+
+        $depLoc = $this->buildLocDescriptor($from);
+        $arrLoc = $this->buildLocDescriptor($to);
+
+        $req = [
+            'depLocL' => [$depLoc],
+            'arrLocL' => [$arrLoc],
+            'date' => $dateStr,
+            'time' => $timeStr,
+            'numF' => max(1, min($numTrips, 5)),
+            'minChgTime' => 2,
+        ];
+
+        if ($via !== null && $via !== '' && $via !== []) {
+            $viaLoc = $this->buildLocDescriptor($via);
+            $req['viaLocL'] = [['loc' => $viaLoc]];
+        }
+
+        $payload = [
+            'auth' => ['type' => 'AID', 'aid' => self::AUTH_AID],
+            'client' => [
+                'type' => self::CLIENT_TYPE,
+                'id' => self::CLIENT_ID,
+                'v' => self::CLIENT_VERSION,
+                'name' => self::CLIENT_NAME,
+            ],
+            'ver' => self::PROTOCOL_VERSION,
+            'lang' => 'deu',
+            'svcReqL' => [
+                [
+                    'meth' => 'TripSearch',
+                    'req' => $req,
+                ],
+            ],
+        ];
+
+        $response = $this->sendRequest($payload);
+        if ($response === null) {
+            return ['connections' => [], 'query_time' => $now->format('c')];
+        }
+
+        $svcResItem = $response['svcResL'][0] ?? null;
+        if (!is_array($svcResItem) || (($svcResItem['err'] ?? 'OK') !== 'OK')) {
+            return ['connections' => [], 'query_time' => $now->format('c')];
+        }
+
+        $res = $svcResItem['res'] ?? [];
+        $locList = $res['common']['locL'] ?? [];
+        $prodList = $res['common']['prodL'] ?? [];
+        $outConL = $res['outConL'] ?? [];
+
+        $connections = [];
+        foreach ($outConL as $con) {
+            $conDep = $con['dep'] ?? [];
+            $conArr = $con['arr'] ?? [];
+
+            $schedDepTimeRaw = (string)($conDep['dTimeS'] ?? '');
+            $realDepTimeRaw = (string)($conDep['dTimeR'] ?? '');
+            $schedArrTimeRaw = (string)($conArr['aTimeS'] ?? '');
+            $realArrTimeRaw = (string)($conArr['aTimeR'] ?? '');
+
+            $depDate = (string)($con['date'] ?? $dateStr);
+            $schedDepDt = $this->parseHafasTime($depDate, $schedDepTimeRaw);
+            $realDepDt = ($realDepTimeRaw !== '') ? $this->parseHafasTime($depDate, $realDepTimeRaw) : $schedDepDt;
+
+            $arrDate = (string)($con['date'] ?? $dateStr);
+            $schedArrDt = $this->parseHafasTime($arrDate, $schedArrTimeRaw);
+            $realArrDt = ($realArrTimeRaw !== '') ? $this->parseHafasTime($arrDate, $realArrTimeRaw) : $schedArrDt;
+
+            // Dauer in Minuten aus "dur" (z. B. "002200" -> 22 Min)
+            $durRaw = (string)($con['dur'] ?? '000000');
+            $durHours = (int)substr($durRaw, 0, 2);
+            $durMinutes = (int)substr($durRaw, 2, 2);
+            $totalDurationMinutes = ($durHours * 60) + $durMinutes;
+
+            $depDelay = 0;
+            if ($schedDepDt !== null && $realDepDt !== null) {
+                $depDelay = (int)round(($realDepDt->getTimestamp() - $schedDepDt->getTimestamp()) / 60);
+            }
+
+            // Countdown ab aktuellem Zeitpunkt
+            $effectiveDepDt = $realDepDt ?? $schedDepDt;
+            $countdownMinutes = null;
+            if ($effectiveDepDt !== null) {
+                $countdownMinutes = (int)floor(($effectiveDepDt->getTimestamp() - $now->getTimestamp()) / 60);
+            }
+
+            $transfers = (int)($con['chg'] ?? 0);
+            $isCancelled = !empty($con['isCncl']) || !empty($conDep['dCncl']) || !empty($conArr['aCncl']);
+
+            // Einzelne Abschnitte (Legs) parsen
+            $legs = [];
+            foreach ($con['secL'] ?? [] as $sec) {
+                $secType = $sec['type'] ?? 'JNY';
+                $secDep = $sec['dep'] ?? [];
+                $secArr = $sec['arr'] ?? [];
+
+                $fromLocName = (string)($locList[$secDep['locX'] ?? -1]['name'] ?? '');
+                $toLocName = (string)($locList[$secArr['locX'] ?? -1]['name'] ?? '');
+
+                if ($secType === 'JNY') {
+                    $jny = $sec['jny'] ?? [];
+                    $prodIdx = $jny['prodX'] ?? null;
+                    $prod = ($prodIdx !== null && isset($prodList[$prodIdx])) ? $prodList[$prodIdx] : [];
+
+                    $lineRaw = (string)($prod['name'] ?? '');
+                    $lineClean = self::cleanLineName($lineRaw);
+                    $mode = self::detectTransportMode($lineRaw, $prod);
+                    $badge = self::getLvbBadgeInfo($lineClean, $mode);
+
+                    $secDepSchedRaw = (string)($secDep['dTimeS'] ?? '');
+                    $secDepRealRaw = (string)($secDep['dTimeR'] ?? '');
+                    $secArrSchedRaw = (string)($secArr['aTimeS'] ?? '');
+                    $secArrRealRaw = (string)($secArr['aTimeR'] ?? '');
+
+                    $secDepDt = $this->parseHafasTime($depDate, $secDepRealRaw !== '' ? $secDepRealRaw : $secDepSchedRaw);
+                    $secArrDt = $this->parseHafasTime($arrDate, $secArrRealRaw !== '' ? $secArrRealRaw : $secArrSchedRaw);
+
+                    $secDelay = 0;
+                    if ($secDepSchedRaw !== '' && $secDepRealRaw !== '') {
+                        $sDt = $this->parseHafasTime($depDate, $secDepSchedRaw);
+                        $rDt = $this->parseHafasTime($depDate, $secDepRealRaw);
+                        if ($sDt && $rDt) {
+                            $secDelay = (int)round(($rDt->getTimestamp() - $sDt->getTimestamp()) / 60);
+                        }
+                    }
+
+                    $legs[] = [
+                        'type' => 'transport',
+                        'line' => $lineClean,
+                        'line_raw' => $lineRaw,
+                        'mode' => $mode,
+                        'badge' => $badge,
+                        'direction' => (string)($jny['dirTxt'] ?? ''),
+                        'from_name' => $fromLocName,
+                        'to_name' => $toLocName,
+                        'departure_time' => $secDepDt?->format('H:i') ?? substr($secDepSchedRaw, 0, 4),
+                        'arrival_time' => $secArrDt?->format('H:i') ?? substr($secArrSchedRaw, 0, 4),
+                        'delay_minutes' => $secDelay,
+                    ];
+                } elseif ($secType === 'WALK' || $secType === 'GIS') {
+                    $gis = $sec['gis'] ?? [];
+                    $walkDurRaw = (string)($gis['durS'] ?? '000000');
+                    $walkMinutes = ((int)substr($walkDurRaw, 0, 2) * 60) + (int)substr($walkDurRaw, 2, 2);
+
+                    if ($walkMinutes >= 1 || ($fromLocName !== '' && $toLocName !== '' && $fromLocName !== $toLocName)) {
+                        $legs[] = [
+                            'type' => 'walk',
+                            'duration_minutes' => max(1, $walkMinutes),
+                            'from_name' => $fromLocName,
+                            'to_name' => $toLocName,
+                        ];
+                    }
+                }
+            }
+
+            $connections[] = [
+                'departure_time' => $realDepDt?->format('H:i') ?? ($schedDepDt?->format('H:i') ?? substr($schedDepTimeRaw, 0, 4)),
+                'arrival_time' => $realArrDt?->format('H:i') ?? ($schedArrDt?->format('H:i') ?? substr($schedArrTimeRaw, 0, 4)),
+                'scheduled_departure' => $schedDepDt?->format('H:i') ?? substr($schedDepTimeRaw, 0, 4),
+                'scheduled_arrival' => $schedArrDt?->format('H:i') ?? substr($schedArrTimeRaw, 0, 4),
+                'duration_minutes' => $totalDurationMinutes,
+                'transfers' => $transfers,
+                'delay_minutes' => $depDelay,
+                'countdown_minutes' => $countdownMinutes,
+                'is_cancelled' => $isCancelled,
+                'legs' => $legs,
+            ];
+        }
+
+        return [
+            'connections' => $connections,
+            'query_time' => $now->format('c'),
+        ];
+    }
+
+    /**
+     * Erstellt den HAFAS-Stations-Deskriptor für Anfragen.
+     *
+     * @param string|array{name?: string, id?: string} $loc
+     * @return array<string, string>
+     */
+    private function buildLocDescriptor(string|array $loc): array
+    {
+        if (is_array($loc)) {
+            $desc = ['type' => 'S'];
+            if (!empty($loc['id'])) {
+                $desc['extId'] = (string)$loc['id'];
+            }
+            if (!empty($loc['name'])) {
+                $desc['name'] = (string)$loc['name'];
+            }
+            return $desc;
+        }
+
+        $loc = trim($loc);
+        if (ctype_digit($loc) || (strlen($loc) >= 5 && is_numeric($loc))) {
+            return ['type' => 'S', 'extId' => $loc];
+        }
+
+        return ['type' => 'S', 'name' => $loc];
+    }
+
+    /**
      * Sendet den HTTPS-POST an das INSA-Gateway.
      */
     private function sendRequest(array $payload): ?array
