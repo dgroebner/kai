@@ -267,14 +267,25 @@ $canEdit = Auth::hasPermission('finance_write');
                     <?php endif; ?>
                 </p>
                 <?php if ($isProjection && !empty($cashflow['pending_contracts'])): ?>
-                    <div style="margin-top: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
-                        <strong style="display: inline; color: #60a5fa;">Ausstehende Verträge:</strong>
-                        <?= implode(', ', array_map(function ($c) {
-                            $dueStr = !empty($c['expected_date']) ? ' (erwartet: ' . date('d.m.', strtotime($c['expected_date'])) . ')' : '';
-                            $sign = ($c['direction'] ?? 'expense') === 'income' ? '+' : '-';
-                            return htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') . ' (' . $sign . number_format((float)$c['amount'], 2, ',', '.') . ' €' . $dueStr . ')';
-                        }, $cashflow['pending_contracts'])) ?>
-                    </div>
+                    <details class="report-pending-contracts-details" open>
+                        <summary class="report-pending-contracts-summary">
+                            <strong>Ausstehende Verträge (<?= count($cashflow['pending_contracts']) ?>):</strong>
+                            <span class="report-pending-contracts-hint">Ein-/Ausklappen</span>
+                        </summary>
+                        <div class="report-pending-contracts-grid">
+                            <?php foreach ($cashflow['pending_contracts'] as $c):
+                                $isIncome = ($c['direction'] ?? 'expense') === 'income';
+                                $sign = $isIncome ? '+' : '-';
+                                $dueStr = !empty($c['expected_date']) ? date('d.m.', strtotime($c['expected_date'])) : 'offen';
+                            ?>
+                                <div class="pending-contract-chip <?= $isIncome ? 'is-income' : 'is-expense' ?>">
+                                    <span class="pending-chip-date" title="Erwartete Fälligkeit"><?= htmlspecialchars($dueStr, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="pending-chip-name"><?= htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="pending-chip-amount"><?= $sign . number_format((float)$c['amount'], 2, ',', '.') ?> €</span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </details>
                 <?php endif; ?>
             </div>
         </div>
