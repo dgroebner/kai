@@ -1533,10 +1533,11 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
                             <!-- D. Polarlichter (Aurora Borealis Vorhang) -->
                             <?php
-                            $kpVal = (float)($astroState['kp_current'] ?? 2.0);
-                            $auroraChance = $astroState['aurora_chance'] ?? 'none';
-                            $showAurora = ($kpVal >= 4.5 || $auroraChance !== 'none');
-                            $auroraOpacity = $kpVal >= 7.0 ? 0.95 : ($kpVal >= 5.5 ? 0.65 : 0.35);
+                            $kpVal = (float)($astroState['kp_current'] ?? 0.0);
+                            $auroraChance = strtolower((string)($astroState['aurora_chance'] ?? 'none'));
+                            // Polarlichter sind auf Leipziger Breite (~51,3° N) erst ab Kp >= 5.5 (fotografisch) bzw. Kp >= 7.0 (visuell) sichtbar.
+                            $showAurora = ($kpVal >= 5.5 || in_array($auroraChance, ['high', 'very_high', 'storm', 'alert'], true));
+                            $auroraOpacity = ($kpVal >= 7.0 || in_array($auroraChance, ['storm', 'alert'], true)) ? 0.95 : 0.50;
                             ?>
                             <?php if ($showAurora): ?>
                                 <g opacity="<?= $auroraOpacity ?>">
