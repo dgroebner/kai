@@ -75,7 +75,12 @@ class InsaClient
             return [];
         }
 
-        $matchList = $response['svcResL'][0]['res']['match']['locL'] ?? [];
+        $svcResItem = $response['svcResL'][0] ?? null;
+        if (!is_array($svcResItem) || (($svcResItem['err'] ?? 'OK') !== 'OK')) {
+            return [];
+        }
+
+        $matchList = $svcResItem['res']['match']['locL'] ?? [];
         $results = [];
 
         foreach ($matchList as $loc) {
@@ -108,7 +113,7 @@ class InsaClient
         int $maxJourneys = 15,
         ?DateTimeImmutable $when = null
     ): array {
-        $now = $when ?? new DateTimeImmutable();
+        $now = $when ?? new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin'));
         $dateStr = $now->format('Ymd');
         $timeStr = $now->format('His');
 
@@ -154,7 +159,23 @@ class InsaClient
             ];
         }
 
-        $svcRes = $response['svcResL'][0]['res'] ?? [];
+        $svcResItem = $response['svcResL'][0] ?? null;
+        if (!is_array($svcResItem) || (($svcResItem['err'] ?? 'OK') !== 'OK')) {
+            if ($svcResItem && ($svcResItem['err'] ?? 'OK') !== 'OK') {
+                $this->logger->warn('InsaClient: StationBoard Fehler in svcRes.', [
+                    'err' => $svcResItem['err'] ?? '',
+                    'errTxt' => $svcResItem['errTxt'] ?? '',
+                ]);
+            }
+            return [
+                'station_name' => $stationName ?? $stationId,
+                'station_id' => $stationId,
+                'query_time' => $now->format('c'),
+                'departures' => [],
+            ];
+        }
+
+        $svcRes = $svcResItem['res'] ?? [];
         $prodList = $svcRes['common']['prodL'] ?? [];
         $rawJourneys = $svcRes['jnyL'] ?? [];
 
@@ -266,7 +287,7 @@ class InsaClient
 
         try {
             $data = json_decode($rawResponse, true, 512, JSON_THROW_ON_ERROR);
-            if (!is_array($data) || isset($data['err'])) {
+            if (!is_array($data) || (isset($data['err']) && $data['err'] !== 'OK')) {
                 $this->logger->warn('InsaClient: Fehlermeldung im HAFAS-Response.', [
                     'err' => $data['err'] ?? 'unbekannt',
                     'errTxt' => $data['errTxt'] ?? '',
@@ -335,7 +356,7 @@ class InsaClient
         $timePadded = str_pad($timePart, 6, '0', STR_PAD_RIGHT);
         $full = $datePart . $timePadded;
 
-        $dt = DateTimeImmutable::createFromFormat('YmdHis', $full);
+        $dt = DateTimeImmutable::createFromFormat('YmdHis', $full, new DateTimeZone('Europe/Berlin'));
         return ($dt !== false) ? $dt : null;
     }
 }
