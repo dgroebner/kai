@@ -216,11 +216,14 @@ class InsaClient
                 $countdownMinutes = (int)floor(($effectiveDateTime->getTimestamp() - $referenceTimestamp) / 60);
             }
 
+            $badge = self::getLvbBadgeInfo($lineClean, $transportMode);
+
             $departures[] = [
                 'journey_id' => (string)($jny['jid'] ?? ''),
                 'line' => $lineClean,
                 'line_raw' => $lineRaw,
                 'mode' => $transportMode,
+                'badge' => $badge,
                 'direction' => $direction,
                 'platform' => $platform,
                 'scheduled_time' => $schedDateTime?->format('H:i') ?? substr($schedTimeRaw, 0, 4),
@@ -306,17 +309,17 @@ class InsaClient
     }
 
     /**
-     * Bereinigt Liniennamen für die kompakte Anzeige (z. B. "Str 15" -> "15", "Bus 75" -> "75").
+     * Bereinigt Liniennamen für die kompakte Anzeige (z. B. "Str 15" -> "15", "Str N10" -> "N10", "Bus 75" -> "75").
      */
-    private function cleanLineName(string $raw): string
+    public static function cleanLineName(string $raw): string
     {
         $clean = trim($raw);
-        // "Str 15" -> "15", "Tram 15" -> "15"
-        if (preg_match('/^(?:Str|Tram)\s*(\d+[a-zA-Z]?)$/i', $clean, $m)) {
+        // "Str 15" -> "15", "Tram 15" -> "15", "Str N10" -> "N10"
+        if (preg_match('/^(?:Str|Tram)\s*([a-zA-Z0-9]+)$/i', $clean, $m)) {
             return $m[1];
         }
-        // "Bus 75" -> "75", "Bus 690" -> "690"
-        if (preg_match('/^Bus\s*(\d+[a-zA-Z]?)$/i', $clean, $m)) {
+        // "Bus 75" -> "75", "Bus N1" -> "N1", "Bus 690" -> "690"
+        if (preg_match('/^Bus\s*([a-zA-Z0-9]+)$/i', $clean, $m)) {
             return $m[1];
         }
         return $clean;
@@ -325,24 +328,174 @@ class InsaClient
     /**
      * Erkennt die Verkehrsart (tram, bus, train, suburban).
      */
-    private function detectTransportMode(string $lineRaw, array $prod): string
+    public static function detectTransportMode(string $lineRaw, array $prod = []): string
     {
         $lineUpper = strtoupper(trim($lineRaw));
         $cls = (int)($prod['cls'] ?? 0);
+        $clean = strtoupper(self::cleanLineName($lineRaw));
+
+        // Nachtstraßenbahnen N10 und N17 sind Straßenbahnen!
+        if (in_array($clean, ['N10', 'N17'], true)) {
+            return 'tram';
+        }
 
         if (str_starts_with($lineUpper, 'STR') || str_starts_with($lineUpper, 'TRAM') || ($cls & 16)) {
             return 'tram';
         }
-        if (str_starts_with($lineUpper, 'BUS') || ($cls & 32) || ($cls & 64)) {
+        if (str_starts_with($lineUpper, 'BUS') || ($cls & 32) || ($cls & 64) || preg_match('/^N[1-9]$/i', $clean)) {
             return 'bus';
         }
-        if (str_starts_with($lineUpper, 'S ') || str_starts_with($lineUpper, 'S-BAHN') || ($cls & 8)) {
+        if (str_starts_with($lineUpper, 'S ') || str_starts_with($lineUpper, 'S-BAHN') || ($cls & 8) || preg_match('/^S\d/i', $clean)) {
             return 'suburban';
         }
         if (str_starts_with($lineUpper, 'RE') || str_starts_with($lineUpper, 'RB') || ($cls & 4)) {
             return 'train';
         }
+
+        // Fallback anhand Liniennummer: 1 bis 49 sind in Leipzig Straßenbahnen
+        $num = (int)preg_replace('/\D/', '', $clean);
+        if ($num >= 1 && $num <= 49 && !str_starts_with($clean, 'N')) {
+            return 'tram';
+        }
+        if ($num >= 60 && $num <= 999) {
+            return 'bus';
+        }
+
         return 'other';
+    }
+
+    /**
+     * Ermittelt die exakten Badge-Eigenschaften nach LVB-Corporate-Design.
+     *
+     * - Straßenbahnen: quadratisch
+     *   - Linie 2, 8: Gelb (#ffd200), schwarzer Text
+     *   - Linie 1, 3, N17: Grün (#50af28), weißer Text
+     *   - Linie 4, 7, 12, 15: Dunkelblau (#003882), weißer Text
+     *   - Linie 10, 11, 14, 16, N10: Rot (#e2001a), weißer Text
+     *   - Linie 30 bis 49 (Baustellenlinien, z.B. 38): Orange (#f37021), weißer Text
+     *   - Sonstige Straßenbahnen: Dunkelblau (#003882)
+     * - Busse: rund
+     *   - Nightliner N1 bis N9: Dunkelblau (#003882), weißer Text
+     *   - Reguläre Busse: Lila (#8e126e), weißer Text
+     * - S-Bahn: S-Bahn Grün (#008638), rund
+     * - Regionalzug: DB Rot (#ba0c2f), quadratisch
+     *
+     * @return array{shape: 'square'|'circle', color_name: string, bg: string, text_color: string, css_class: string}
+     */
+    public static function getLvbBadgeInfo(string $line, string $mode): array
+    {
+        $lineClean = strtoupper(trim(self::cleanLineName($line)));
+        $lineNum = (int)preg_replace('/\D/', '', $lineClean);
+
+        // 1. S-Bahn & Regionalzug
+        if ($mode === 'suburban' || str_starts_with($lineClean, 'S')) {
+            return [
+                'shape' => 'circle',
+                'color_name' => 'sbahn',
+                'bg' => '#008638',
+                'text_color' => '#ffffff',
+                'css_class' => 'transit-shape-circle transit-lvb-sbahn',
+            ];
+        }
+        if ($mode === 'train' || str_starts_with($lineClean, 'RE') || str_starts_with($lineClean, 'RB')) {
+            return [
+                'shape' => 'square',
+                'color_name' => 'train',
+                'bg' => '#ba0c2f',
+                'text_color' => '#ffffff',
+                'css_class' => 'transit-shape-square transit-lvb-train',
+            ];
+        }
+
+        // 2. Straßenbahn-Prüfung
+        $isTram = ($mode === 'tram') || in_array($lineClean, ['N10', 'N17'], true) || ($lineNum >= 1 && $lineNum <= 49 && !str_starts_with($lineClean, 'N'));
+
+        if ($isTram) {
+            // Gelb: 2, 8
+            if (in_array($lineClean, ['2', '8'], true)) {
+                return [
+                    'shape' => 'square',
+                    'color_name' => 'yellow',
+                    'bg' => '#ffd200',
+                    'text_color' => '#000000',
+                    'css_class' => 'transit-shape-square transit-lvb-yellow',
+                ];
+            }
+
+            // Grün: 1, 3, N17
+            if (in_array($lineClean, ['1', '3', 'N17'], true)) {
+                return [
+                    'shape' => 'square',
+                    'color_name' => 'green',
+                    'bg' => '#50af28',
+                    'text_color' => '#ffffff',
+                    'css_class' => 'transit-shape-square transit-lvb-green',
+                ];
+            }
+
+            // Dunkelblau: 4, 7, 12, 15
+            if (in_array($lineClean, ['4', '7', '12', '15'], true)) {
+                return [
+                    'shape' => 'square',
+                    'color_name' => 'blue',
+                    'bg' => '#003882',
+                    'text_color' => '#ffffff',
+                    'css_class' => 'transit-shape-square transit-lvb-blue',
+                ];
+            }
+
+            // Rot: 10, 11, 14, 16, N10
+            if (in_array($lineClean, ['10', '11', '14', '16', 'N10'], true)) {
+                return [
+                    'shape' => 'square',
+                    'color_name' => 'red',
+                    'bg' => '#e2001a',
+                    'text_color' => '#ffffff',
+                    'css_class' => 'transit-shape-square transit-lvb-red',
+                ];
+            }
+
+            // Baustellenlinien: 30 bis 49 (z. B. 38)
+            if ($lineNum >= 30 && $lineNum <= 49) {
+                return [
+                    'shape' => 'square',
+                    'color_name' => 'orange',
+                    'bg' => '#f37021',
+                    'text_color' => '#ffffff',
+                    'css_class' => 'transit-shape-square transit-lvb-orange',
+                ];
+            }
+
+            // Fallback Tram (z.B. Linie 9)
+            return [
+                'shape' => 'square',
+                'color_name' => 'blue',
+                'bg' => '#003882',
+                'text_color' => '#ffffff',
+                'css_class' => 'transit-shape-square transit-lvb-blue',
+            ];
+        }
+
+        // 3. Busse (rund)
+        // Nightliner Busse: N1 bis N9
+        if (preg_match('/^N[1-9]$/i', $lineClean)) {
+            return [
+                'shape' => 'circle',
+                'color_name' => 'nightblue',
+                'bg' => '#003882',
+                'text_color' => '#ffffff',
+                'css_class' => 'transit-shape-circle transit-lvb-nightblue',
+            ];
+        }
+
+        // Reguläre Busse (60, 62, 65, 70, 72, 73, 74, 75, 79, 87, 88, 89, 131, 173, 175 etc.): Lila
+        return [
+            'shape' => 'circle',
+            'color_name' => 'purple',
+            'bg' => '#8e126e',
+            'text_color' => '#ffffff',
+            'css_class' => 'transit-shape-circle transit-lvb-purple',
+        ];
     }
 
     /**

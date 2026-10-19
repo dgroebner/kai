@@ -396,7 +396,8 @@ class BriefingService
         $subtitle = 'Ab ' . $activeStatus['from_station'] . ' → ' . $activeStatus['to_station'];
 
         if ($nextDep !== null) {
-            $subtitle .= ' · Nächste Tram ' . $nextDep['line'] . ' ' . $nextDep['real_time'] . ' Uhr';
+            $modeLabel = ($nextDep['mode'] === 'bus') ? 'Bus' : 'Tram';
+            $subtitle .= ' · Nächste ' . $modeLabel . ' ' . $nextDep['line'] . ' ' . $nextDep['real_time'] . ' Uhr';
             if ($nextDep['delay_minutes'] > 0) {
                 $subtitle .= ' (+' . $nextDep['delay_minutes'] . ' Min)';
             }

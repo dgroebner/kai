@@ -10913,31 +10913,42 @@ body.wisdom-modal-open {
 }
 
 .transit-line-badge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 48px;
-    height: 48px;
-    padding: 0 10px;
-    border-radius: 8px;
-    font-size: 1.4rem;
+    min-width: 46px;
+    height: 46px;
+    font-size: 1.45rem;
     font-weight: 800;
-    color: #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    letter-spacing: -0.02em;
+}
+
+.transit-line-badge.transit-shape-square {
+    width: 46px;
+    padding: 0;
+    border-radius: 6px !important;
+}
+
+.transit-line-badge.transit-shape-circle {
+    min-width: 46px;
+    padding: 0 10px;
+    border-radius: 9999px !important;
 }
 
 .transit-mode-tram {
-    background-color: #f59e0b;
-    color: #1e293b;
+    background-color: #003882;
+    color: #ffffff;
 }
 
 .transit-mode-bus {
-    background-color: #3b82f6;
+    background-color: #8e126e;
     color: #ffffff;
 }
 
 .transit-mode-train {
-    background-color: #ef4444;
+    background-color: #ba0c2f;
     color: #ffffff;
 }
 
@@ -11056,11 +11067,81 @@ body.wisdom-modal-open {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    padding: 2px 7px;
-    border-radius: 4px;
     font-weight: 700;
     font-size: 0.85rem;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    letter-spacing: -0.01em;
+}
+
+.transit-line-pill.transit-shape-square {
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    border-radius: 4px !important;
+}
+
+.transit-line-pill.transit-shape-circle {
+    min-width: 28px;
+    height: 26px;
+    padding: 0 7px;
+    border-radius: 9999px !important;
+}
+
+/* ==========================================================================
+   LVB ORIGINALFARBEN (Leipziger Verkehrsbetriebe)
+   ========================================================================== */
+.transit-shape-square {
+    border-radius: 6px;
+}
+
+.transit-shape-circle {
+    border-radius: 9999px;
+}
+
+.transit-lvb-yellow {
+    background-color: #ffd200 !important;
+    color: #000000 !important;
+}
+
+.transit-lvb-green {
+    background-color: #50af28 !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-blue {
+    background-color: #003882 !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-red {
+    background-color: #e2001a !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-orange {
+    background-color: #f37021 !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-purple {
+    background-color: #8e126e !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-nightblue {
+    background-color: #003882 !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-sbahn {
+    background-color: #008638 !important;
+    color: #ffffff !important;
+}
+
+.transit-lvb-train {
+    background-color: #ba0c2f !important;
+    color: #ffffff !important;
 }
 
 .transit-row-cancelled {

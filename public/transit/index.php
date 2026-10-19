@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\Transit\InsaClient;
 use Kai\Tools\Transit\TransitProfileRepository;
 use Kai\Tools\Transit\TransitService;
 
@@ -140,9 +141,10 @@ $csrfToken = Auth::csrfToken();
                 <!-- Hero-Abfahrt: Nächste Bahn prominent -->
                 <?php $nextDep = $status['next_departure'] ?? null; ?>
                 <?php if ($nextDep): ?>
+                    <?php $heroBadge = $nextDep['badge'] ?? InsaClient::getLvbBadgeInfo($nextDep['line'], $nextDep['mode']); ?>
                     <div class="transit-hero-departure">
                         <div class="transit-hero-left">
-                            <div class="transit-line-badge transit-mode-<?= htmlspecialchars($nextDep['mode'], ENT_QUOTES, 'UTF-8') ?>">
+                            <div class="transit-line-badge <?= htmlspecialchars($heroBadge['css_class'], ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($heroBadge['bg'], ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($heroBadge['text_color'], ENT_QUOTES, 'UTF-8') ?>;">
                                 <?= htmlspecialchars($nextDep['line'], ENT_QUOTES, 'UTF-8') ?>
                             </div>
                             <div class="transit-hero-details">
@@ -187,7 +189,7 @@ $csrfToken = Auth::csrfToken();
                                 <span><?= htmlspecialchars($transfer['message'], ENT_QUOTES, 'UTF-8') ?></span>
                             </div>
                             <div class="transit-transfer-sub text-muted">
-                                Anschluss an Linie <?= htmlspecialchars($transfer['connecting_line'], ENT_QUOTES, 'UTF-8') ?> Richtung <?= htmlspecialchars($transfer['connecting_direction'], ENT_QUOTES, 'UTF-8') ?> um <?= htmlspecialchars($transfer['connecting_time'], ENT_QUOTES, 'UTF-8') ?> Uhr
+                                Anschluss an <span class="transit-line-pill <?= htmlspecialchars($transfer['connecting_badge']['css_class'] ?? 'transit-shape-square transit-lvb-blue', ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($transfer['connecting_badge']['bg'] ?? '#003882', ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($transfer['connecting_badge']['text_color'] ?? '#ffffff', ENT_QUOTES, 'UTF-8') ?>;"><?= htmlspecialchars($transfer['connecting_line'], ENT_QUOTES, 'UTF-8') ?></span> Richtung <?= htmlspecialchars($transfer['connecting_direction'], ENT_QUOTES, 'UTF-8') ?> um <?= htmlspecialchars($transfer['connecting_time'], ENT_QUOTES, 'UTF-8') ?> Uhr
                                 <?php if ($transfer['connecting_delay'] > 0): ?>
                                     <span class="text-danger">(+<?= (int)$transfer['connecting_delay'] ?> Min)</span>
                                 <?php endif; ?>
@@ -213,9 +215,10 @@ $csrfToken = Auth::csrfToken();
                             </thead>
                             <tbody class="js-departures-tbody">
                                 <?php foreach ($status['departures'] as $dep): ?>
+                                    <?php $b = $dep['badge'] ?? InsaClient::getLvbBadgeInfo($dep['line'], $dep['mode']); ?>
                                     <tr class="<?= $dep['is_cancelled'] ? 'transit-row-cancelled' : '' ?>">
                                         <td data-label="Linie">
-                                            <span class="transit-line-pill transit-mode-<?= htmlspecialchars($dep['mode'], ENT_QUOTES, 'UTF-8') ?>">
+                                            <span class="transit-line-pill <?= htmlspecialchars($b['css_class'], ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($b['bg'], ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($b['text_color'], ENT_QUOTES, 'UTF-8') ?>;">
                                                 <?= htmlspecialchars($dep['line'], ENT_QUOTES, 'UTF-8') ?>
                                             </span>
                                         </td>

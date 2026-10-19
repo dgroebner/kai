@@ -231,6 +231,48 @@
         }
     }
 
+    function getLvbBadge(dep) {
+        if (dep && dep.badge && dep.badge.css_class) {
+            return dep.badge;
+        }
+        const line = (dep && dep.line ? String(dep.line) : '').trim().toUpperCase();
+        const mode = dep && dep.mode ? dep.mode : '';
+        const num = parseInt(line.replace(/\D/g, ''), 10) || 0;
+
+        if (mode === 'suburban' || line.startsWith('S')) {
+            return { css_class: 'transit-shape-circle transit-lvb-sbahn', bg: '#008638', text_color: '#ffffff' };
+        }
+        if (mode === 'train' || line.startsWith('RE') || line.startsWith('RB')) {
+            return { css_class: 'transit-shape-square transit-lvb-train', bg: '#ba0c2f', text_color: '#ffffff' };
+        }
+
+        const isTram = (mode === 'tram') || line === 'N10' || line === 'N17' || (num >= 1 && num <= 49 && !line.startsWith('N'));
+        if (isTram) {
+            if (line === '2' || line === '8') {
+                return { css_class: 'transit-shape-square transit-lvb-yellow', bg: '#ffd200', text_color: '#000000' };
+            }
+            if (line === '1' || line === '3' || line === 'N17') {
+                return { css_class: 'transit-shape-square transit-lvb-green', bg: '#50af28', text_color: '#ffffff' };
+            }
+            if (['4', '7', '12', '15'].includes(line)) {
+                return { css_class: 'transit-shape-square transit-lvb-blue', bg: '#003882', text_color: '#ffffff' };
+            }
+            if (['10', '11', '14', '16', 'N10'].includes(line)) {
+                return { css_class: 'transit-shape-square transit-lvb-red', bg: '#e2001a', text_color: '#ffffff' };
+            }
+            if (num >= 30 && num <= 49) {
+                return { css_class: 'transit-shape-square transit-lvb-orange', bg: '#f37021', text_color: '#ffffff' };
+            }
+            return { css_class: 'transit-shape-square transit-lvb-blue', bg: '#003882', text_color: '#ffffff' };
+        }
+
+        // Busse (N1..N9 Nightliner dunkelblau, alle anderen lila)
+        if (/^N[1-9]$/i.test(line)) {
+            return { css_class: 'transit-shape-circle transit-lvb-nightblue', bg: '#003882', text_color: '#ffffff' };
+        }
+        return { css_class: 'transit-shape-circle transit-lvb-purple', bg: '#8e126e', text_color: '#ffffff' };
+    }
+
     async function loadStationBoard(stationId, stationName) {
         const container = document.getElementById('free-board-container');
         const titleEl = document.getElementById('free-board-title');
@@ -262,11 +304,12 @@
                 }
 
                 const inMinutes = (dep.countdown_minutes !== null && dep.countdown_minutes >= 0) ? `${dep.countdown_minutes} Min` : '–';
+                const b = getLvbBadge(dep);
 
                 html += `
                     <tr class="${dep.is_cancelled ? 'transit-row-cancelled' : ''}">
                         <td data-label="Linie">
-                            <span class="transit-line-pill transit-mode-${KaiHtml.escape(dep.mode)}">
+                            <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
                                 ${KaiHtml.escape(dep.line)}
                             </span>
                         </td>
@@ -302,13 +345,23 @@
 
             // Hero aktualisieren
             const nextDep = data.next_departure;
+            const heroBadge = document.querySelector('.transit-hero-left .transit-line-badge');
             const heroReal = document.querySelector('.transit-hero-real');
             const heroDelay = document.querySelector('.transit-hero-delay');
             const countdownVal = document.querySelector('.transit-countdown-val');
 
-            if (nextDep && heroReal && countdownVal) {
-                heroReal.textContent = `${nextDep.real_time} Uhr`;
-                if (nextDep.countdown_minutes !== null && nextDep.countdown_minutes >= 0) {
+            if (nextDep) {
+                if (heroBadge) {
+                    const b = getLvbBadge(nextDep);
+                    heroBadge.textContent = nextDep.line;
+                    heroBadge.className = `transit-line-badge ${b.css_class}`;
+                    heroBadge.style.backgroundColor = b.bg;
+                    heroBadge.style.color = b.text_color;
+                }
+                if (heroReal) {
+                    heroReal.textContent = `${nextDep.real_time} Uhr`;
+                }
+                if (countdownVal && nextDep.countdown_minutes !== null && nextDep.countdown_minutes >= 0) {
                     countdownVal.textContent = nextDep.countdown_minutes;
                 }
                 if (heroDelay) {
@@ -337,11 +390,12 @@
                     }
 
                     const inMin = (dep.countdown_minutes !== null && dep.countdown_minutes >= 0) ? `${dep.countdown_minutes} Min` : '–';
+                    const b = getLvbBadge(dep);
 
                     html += `
                         <tr class="${dep.is_cancelled ? 'transit-row-cancelled' : ''}">
                             <td data-label="Linie">
-                                <span class="transit-line-pill transit-mode-${KaiHtml.escape(dep.mode)}">
+                                <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
                                     ${KaiHtml.escape(dep.line)}
                                 </span>
                             </td>

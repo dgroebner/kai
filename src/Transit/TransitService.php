@@ -243,10 +243,16 @@ class TransitService
             $connectionText = 'Knapper Umstieg (' . $actualBufferMinutes . ' Min Puffer)';
         }
 
+        $connectingLine = $connectingDep['line'] ?? 'Tram';
+        $connectingMode = $connectingDep['mode'] ?? 'tram';
+        $connectingBadge = $connectingDep['badge'] ?? InsaClient::getLvbBadgeInfo($connectingLine, $connectingMode);
+
         return [
             'via_station' => $viaStationName,
             'via_station_id' => $viaStationId,
-            'connecting_line' => $connectingDep['line'] ?? 'Tram',
+            'connecting_line' => $connectingLine,
+            'connecting_mode' => $connectingMode,
+            'connecting_badge' => $connectingBadge,
             'connecting_direction' => $connectingDep['direction'] ?? '',
             'connecting_time' => $connectingDep['real_time'] ?? '',
             'connecting_delay' => $connectingDep['delay_minutes'] ?? 0,
