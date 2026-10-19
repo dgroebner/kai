@@ -278,7 +278,7 @@ $csrfToken = Auth::csrfToken();
                 <button type="button" class="btn btn-sm btn-outline js-quick-station" data-id="13002" data-name="Leipzig, Augustusplatz">📍 Augustusplatz</button>
                 <button type="button" class="btn btn-sm btn-outline js-quick-station" data-id="12992" data-name="Leipzig, Wilhelm-Leuschner-Platz (Tram/Bus)">📍 Wilhelm-Leuschner-Platz</button>
                 <button type="button" class="btn btn-sm btn-outline js-quick-station" data-id="90014" data-name="Leipzig, Hbf">📍 Hauptbahnhof</button>
-                <button type="button" class="btn btn-sm btn-outline js-quick-station" data-id="11029" data-name="Leipzig, Connewitz Kreuz">📍 Connewitz Kreuz</button>
+                <button type="button" class="btn btn-sm btn-outline js-quick-station" data-id="12086" data-name="Leipzig, Franzosenallee">📍 Franzosenallee</button>
             </div>
 
             <div class="transit-search-box">
