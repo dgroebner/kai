@@ -273,14 +273,76 @@
         return { css_class: 'transit-shape-circle transit-lvb-purple', bg: '#8e126e', text_color: '#ffffff' };
     }
 
+    function renderDepartureBadgesHtml(departures) {
+        if (!Array.isArray(departures) || departures.length === 0) {
+            return '<div class="transit-departures-empty text-muted">Keine weiteren Abfahrten in den nächsten 60 Minuten gemeldet.</div>';
+        }
+
+        let html = '';
+        for (const dep of departures) {
+            const b = getLvbBadge(dep);
+            const countdownText = (dep.countdown_minutes !== null && dep.countdown_minutes >= 0)
+                ? `in ${dep.countdown_minutes} Min`
+                : (dep.countdown_minutes === 0 ? 'Jetzt' : '–');
+
+            let countdownBadgeHtml = '';
+            if (dep.is_cancelled) {
+                countdownBadgeHtml = '<span class="badge badge-danger">Ausfall</span>';
+            } else if (dep.countdown_minutes !== null && dep.countdown_minutes >= 0) {
+                countdownBadgeHtml = `<span class="badge badge-success">${KaiHtml.escape(countdownText)}</span>`;
+            }
+
+            let statusHtml = '<span class="text-muted">Fahrplan</span>';
+            if (dep.is_cancelled) {
+                statusHtml = '<span class="text-danger font-semibold">Fahrt entfällt</span>';
+            } else if (dep.delay_minutes > 0) {
+                statusHtml = `<span class="text-danger font-semibold">+${dep.delay_minutes} Min</span>`;
+            } else if (dep.has_realtime) {
+                statusHtml = '<span class="text-success font-semibold">Pünktlich</span>';
+            }
+
+            let timesHtml = `<span class="transit-dep-time-real">${KaiHtml.escape(dep.real_time)} Uhr</span>`;
+            if (dep.delay_minutes > 0) {
+                timesHtml += ` <span class="transit-dep-time-plan text-muted">(Plan ${KaiHtml.escape(dep.scheduled_time)})</span>`;
+            }
+
+            html += `
+                <div class="transit-dep-badge ${dep.is_cancelled ? 'transit-dep-cancelled' : ''}">
+                    <div class="transit-dep-badge-row transit-dep-badge-top">
+                        <div class="transit-dep-badge-line">
+                            <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
+                                ${KaiHtml.escape(dep.line)}
+                            </span>
+                            <span class="transit-dep-badge-dir" title="Richtung ${KaiHtml.escape(dep.direction)}">
+                                ${KaiHtml.escape(dep.direction)}
+                            </span>
+                        </div>
+                        <div class="transit-dep-badge-countdown">
+                            ${countdownBadgeHtml}
+                        </div>
+                    </div>
+                    <div class="transit-dep-badge-row transit-dep-badge-bottom">
+                        <div class="transit-dep-badge-times">
+                            ${timesHtml}
+                        </div>
+                        <div class="transit-dep-badge-status">
+                            ${statusHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        return html;
+    }
+
     async function loadStationBoard(stationId, stationName) {
         const container = document.getElementById('free-board-container');
         const titleEl = document.getElementById('free-board-title');
-        const tbody = document.getElementById('free-board-tbody');
-        if (!container || !titleEl || !tbody) return;
+        const badgesEl = document.getElementById('free-board-badges');
+        if (!container || !titleEl || !badgesEl) return;
 
         titleEl.textContent = `Live-Abfahrten: ${stationName}`;
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Lade Live-Zeiten...</td></tr>';
+        badgesEl.innerHTML = '<div class="transit-departures-empty text-muted">Lade Live-Zeiten...</div>';
         container.classList.remove('hidden');
 
         try {
@@ -288,43 +350,13 @@
             const res = await resp.json();
 
             if (!res.success || !res.data || !Array.isArray(res.data.departures) || res.data.departures.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Keine Abfahrten in den nächsten 60 Minuten gemeldet.</td></tr>';
+                badgesEl.innerHTML = '<div class="transit-departures-empty text-muted">Keine Abfahrten in den nächsten 60 Minuten gemeldet.</div>';
                 return;
             }
 
-            let html = '';
-            for (const dep of res.data.departures) {
-                let statusHtml = '<span class="text-muted">Fahrplan</span>';
-                if (dep.is_cancelled) {
-                    statusHtml = '<span class="badge badge-danger">Ausfall</span>';
-                } else if (dep.delay_minutes > 0) {
-                    statusHtml = `<span class="text-danger">+${dep.delay_minutes} Min</span>`;
-                } else if (dep.has_realtime) {
-                    statusHtml = '<span class="text-success">Pünktlich</span>';
-                }
-
-                const inMinutes = (dep.countdown_minutes !== null && dep.countdown_minutes >= 0) ? `${dep.countdown_minutes} Min` : '–';
-                const b = getLvbBadge(dep);
-
-                html += `
-                    <tr class="${dep.is_cancelled ? 'transit-row-cancelled' : ''}">
-                        <td data-label="Linie">
-                            <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
-                                ${KaiHtml.escape(dep.line)}
-                            </span>
-                        </td>
-                        <td data-label="Richtung" class="transit-col-dir">${KaiHtml.escape(dep.direction)}</td>
-                        <td data-label="Plan" class="text-muted">${KaiHtml.escape(dep.scheduled_time)}</td>
-                        <td data-label="Echtzeit"><strong>${KaiHtml.escape(dep.real_time)}</strong></td>
-                        <td data-label="Status">${statusHtml}</td>
-                        <td data-label="In" style="text-align: right;"><strong>${KaiHtml.escape(inMinutes)}</strong></td>
-                    </tr>
-                `;
-            }
-
-            tbody.innerHTML = html;
+            badgesEl.innerHTML = renderDepartureBadgesHtml(res.data.departures);
         } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Fehler beim Laden der Abfahrten.</td></tr>';
+            badgesEl.innerHTML = '<div class="transit-departures-empty text-danger">Fehler beim Laden der Abfahrten.</div>';
         }
     }
 
@@ -374,39 +406,10 @@
                 }
             }
 
-            // Tabelle aktualisieren
-            const tbody = document.querySelector('.js-departures-tbody');
-            if (tbody && Array.isArray(data.departures)) {
-                let html = '';
-                for (const dep of data.departures) {
-                    let statusHtml = '<span class="text-muted">Fahrplan</span>';
-                    if (dep.is_cancelled) {
-                        statusHtml = '<span class="badge badge-danger">Ausfall</span>';
-                    } else if (dep.delay_minutes > 0) {
-                        statusHtml = `<span class="text-danger">+${dep.delay_minutes} Min</span>`;
-                    } else if (dep.has_realtime) {
-                        statusHtml = '<span class="text-success">Pünktlich</span>';
-                    }
-
-                    const inMin = (dep.countdown_minutes !== null && dep.countdown_minutes >= 0) ? `${dep.countdown_minutes} Min` : '–';
-                    const b = getLvbBadge(dep);
-
-                    html += `
-                        <tr class="${dep.is_cancelled ? 'transit-row-cancelled' : ''}">
-                            <td data-label="Linie">
-                                <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
-                                    ${KaiHtml.escape(dep.line)}
-                                </span>
-                            </td>
-                            <td data-label="Richtung" class="transit-col-dir">${KaiHtml.escape(dep.direction)}</td>
-                            <td data-label="Plan" class="text-muted">${KaiHtml.escape(dep.scheduled_time)}</td>
-                            <td data-label="Echtzeit"><strong>${KaiHtml.escape(dep.real_time)}</strong></td>
-                            <td data-label="Status">${statusHtml}</td>
-                            <td data-label="In" style="text-align: right;"><strong>${KaiHtml.escape(inMin)}</strong></td>
-                        </tr>
-                    `;
-                }
-                tbody.innerHTML = html;
+            // Weitere Abfahrten als Badges aktualisieren
+            const badgesContainer = document.querySelector('.js-departures-badges');
+            if (badgesContainer && Array.isArray(data.departures)) {
+                badgesContainer.innerHTML = renderDepartureBadgesHtml(data.departures);
             }
 
             // Tür-zu-Tür Verbindungsempfehlungen aktualisieren

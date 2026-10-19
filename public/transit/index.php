@@ -239,61 +239,60 @@ $csrfToken = Auth::csrfToken();
                     </div>
                 <?php endif; ?>
 
-                <!-- Abfahrtstabelle mit den nächsten Bahnen -->
-                <div class="transit-table-wrap">
+                <!-- Weitere / alternative Abfahrten als Badges -->
+                <div class="transit-departures-wrap">
                     <h3 class="transit-table-title">Weitere Abfahrten</h3>
-                    <div class="table-responsive">
-                        <table class="data-table transit-departures-table">
-                            <thead>
-                                <tr>
-                                    <th>Linie</th>
-                                    <th>Richtung</th>
-                                    <th>Plan</th>
-                                    <th>Echtzeit</th>
-                                    <th>Status</th>
-                                    <th style="text-align: right;">In</th>
-                                </tr>
-                            </thead>
-                            <tbody class="js-departures-tbody">
-                                <?php foreach ($status['departures'] as $dep): ?>
-                                    <?php $b = $dep['badge'] ?? InsaClient::getLvbBadgeInfo($dep['line'], $dep['mode']); ?>
-                                    <tr class="<?= $dep['is_cancelled'] ? 'transit-row-cancelled' : '' ?>">
-                                        <td data-label="Linie">
+                    <div class="transit-departures-badges js-departures-badges">
+                        <?php if (!empty($status['departures'])): ?>
+                            <?php foreach ($status['departures'] as $dep): ?>
+                                <?php 
+                                    $b = $dep['badge'] ?? InsaClient::getLvbBadgeInfo($dep['line'], $dep['mode']); 
+                                    $countdownText = ($dep['countdown_minutes'] !== null && $dep['countdown_minutes'] >= 0) 
+                                        ? "in {$dep['countdown_minutes']} Min" 
+                                        : ($dep['countdown_minutes'] === 0 ? 'Jetzt' : '–');
+                                ?>
+                                <div class="transit-dep-badge <?= $dep['is_cancelled'] ? 'transit-dep-cancelled' : '' ?>">
+                                    <div class="transit-dep-badge-row transit-dep-badge-top">
+                                        <div class="transit-dep-badge-line">
                                             <span class="transit-line-pill <?= htmlspecialchars($b['css_class'], ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($b['bg'], ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($b['text_color'], ENT_QUOTES, 'UTF-8') ?>;">
                                                 <?= htmlspecialchars($dep['line'], ENT_QUOTES, 'UTF-8') ?>
                                             </span>
-                                        </td>
-                                        <td data-label="Richtung" class="transit-col-dir">
-                                            <?= htmlspecialchars($dep['direction'], ENT_QUOTES, 'UTF-8') ?>
-                                        </td>
-                                        <td data-label="Plan" class="text-muted">
-                                            <?= htmlspecialchars($dep['scheduled_time'], ENT_QUOTES, 'UTF-8') ?>
-                                        </td>
-                                        <td data-label="Echtzeit">
-                                            <strong><?= htmlspecialchars($dep['real_time'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                        </td>
-                                        <td data-label="Status">
+                                            <span class="transit-dep-badge-dir" title="Richtung <?= htmlspecialchars($dep['direction'], ENT_QUOTES, 'UTF-8') ?>">
+                                                <?= htmlspecialchars($dep['direction'], ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
+                                        </div>
+                                        <div class="transit-dep-badge-countdown">
                                             <?php if ($dep['is_cancelled']): ?>
                                                 <span class="badge badge-danger">Ausfall</span>
+                                            <?php elseif ($dep['countdown_minutes'] !== null && $dep['countdown_minutes'] >= 0): ?>
+                                                <span class="badge badge-success"><?= htmlspecialchars($countdownText, ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="transit-dep-badge-row transit-dep-badge-bottom">
+                                        <div class="transit-dep-badge-times">
+                                            <span class="transit-dep-time-real"><?= htmlspecialchars($dep['real_time'], ENT_QUOTES, 'UTF-8') ?> Uhr</span>
+                                            <?php if ($dep['delay_minutes'] > 0): ?>
+                                                <span class="transit-dep-time-plan text-muted">(Plan <?= htmlspecialchars($dep['scheduled_time'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="transit-dep-badge-status">
+                                            <?php if ($dep['is_cancelled']): ?>
+                                                <span class="text-danger font-semibold">Fahrt entfällt</span>
                                             <?php elseif ($dep['delay_minutes'] > 0): ?>
-                                                <span class="text-danger">+<?= (int)$dep['delay_minutes'] ?> Min</span>
+                                                <span class="text-danger font-semibold">+<?= (int)$dep['delay_minutes'] ?> Min</span>
                                             <?php elseif ($dep['has_realtime']): ?>
-                                                <span class="text-success">Pünktlich</span>
+                                                <span class="text-success font-semibold">Pünktlich</span>
                                             <?php else: ?>
                                                 <span class="text-muted">Fahrplan</span>
                                             <?php endif; ?>
-                                        </td>
-                                        <td data-label="In" style="text-align: right;">
-                                            <?php if ($dep['countdown_minutes'] !== null && $dep['countdown_minutes'] >= 0): ?>
-                                                <strong><?= (int)$dep['countdown_minutes'] ?> Min</strong>
-                                            <?php else: ?>
-                                                –
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="transit-departures-empty text-muted">Keine weiteren Abfahrten in den nächsten 60 Minuten gemeldet.</div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </section>
@@ -322,22 +321,8 @@ $csrfToken = Auth::csrfToken();
             </div>
 
             <div id="free-board-container" class="hidden" style="margin-top: 1.5rem;">
-                <h3 id="free-board-title" style="margin-bottom: 0.75rem;"></h3>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Linie</th>
-                                <th>Richtung</th>
-                                <th>Plan</th>
-                                <th>Echtzeit</th>
-                                <th>Status</th>
-                                <th style="text-align: right;">In</th>
-                            </tr>
-                        </thead>
-                        <tbody id="free-board-tbody"></tbody>
-                    </table>
-                </div>
+                <h3 id="free-board-title" class="transit-table-title" style="margin-bottom: 0.75rem;"></h3>
+                <div id="free-board-badges" class="transit-departures-badges"></div>
             </div>
         </section>
 
