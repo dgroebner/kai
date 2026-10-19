@@ -9,10 +9,28 @@
 
     let autoRefreshTimer = null;
     let searchDebounceTimer = null;
+    let profilesCache = {};
 
     document.addEventListener('DOMContentLoaded', init);
 
     function init() {
+        // Profil-Cache aus eingebettetem JSON initialisieren
+        const scriptEl = document.getElementById('transit-profiles-data');
+        if (scriptEl && scriptEl.textContent) {
+            try {
+                const list = JSON.parse(scriptEl.textContent);
+                if (Array.isArray(list)) {
+                    list.forEach(p => {
+                        if (p && p.id) {
+                            profilesCache[p.id] = p;
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn('Fehler beim Initialisieren des Profil-Caches', err);
+            }
+        }
+
         initEventListeners();
         startAutoRefresh();
 
@@ -152,11 +170,24 @@
             const editProfileBtn = e.target.closest('.js-edit-profile');
             if (editProfileBtn) {
                 e.preventDefault();
-                try {
-                    const data = JSON.parse(editProfileBtn.dataset.profile || '{}');
-                    openProfileModal(data);
-                } catch (err) {
-                    console.error('Fehler beim Parsen der Profildaten', err);
+                const card = document.querySelector('.transit-profile-card');
+                const profileId = card && card.dataset.profileId ? parseInt(card.dataset.profileId, 10) : null;
+                if (!profileId) return;
+
+                if (profilesCache[profileId]) {
+                    openProfileModal(profilesCache[profileId]);
+                } else {
+                    fetch(`api.php?action=get_profile&id=${encodeURIComponent(profileId)}`)
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res.success && res.data) {
+                                profilesCache[res.data.id] = res.data;
+                                openProfileModal(res.data);
+                            } else {
+                                alert('Profil konnte nicht geladen werden');
+                            }
+                        })
+                        .catch(() => alert('Netzwerkfehler beim Laden des Profils'));
                 }
                 return;
             }
@@ -447,6 +478,10 @@
 
         card.dataset.profileId = data.profile_id;
         card.dataset.direction = data.direction;
+
+        if (data.profile) {
+            profilesCache[data.profile.id] = data.profile;
+        }
 
         // Richtung & Haltestellennamen im Header
         const dirTag = card.querySelector('.transit-direction-tag');

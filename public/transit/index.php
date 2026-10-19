@@ -441,6 +441,7 @@ $csrfToken = Auth::csrfToken();
     </main>
 </div>
 
+<script id="transit-profiles-data" type="application/json"><?= json_encode($profiles, JSON_UNESCAPED_UNICODE) ?></script>
 <?php include __DIR__ . '/../shared/footer_scripts.php'; ?>
 <script src="../js/transit.js?v=<?= APP_VERSION ?>_<?= time() ?>" defer></script>
 </body>

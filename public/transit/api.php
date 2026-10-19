@@ -50,7 +50,27 @@ try {
             }
 
             $status = $service->getProfileStatus($profile, $direction, $offsetMinutes, $includeTrips);
+            $status['profile'] = $profile;
             echo json_encode(['success' => true, 'data' => $status]);
+            exit;
+        }
+
+        if ($action === 'get_profile') {
+            $profileId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$profileId) {
+                Auth::sendJsonError(400, 'Ungültige Profil-ID');
+            }
+
+            $profile = $profileRepo->getById($profileId);
+            if ($profile && !$isAdmin && strtolower((string)($profile['user_email'] ?? '')) !== $currentUserEmail) {
+                $profile = null;
+            }
+
+            if (!$profile) {
+                Auth::sendJsonError(404, 'Profil nicht gefunden');
+            }
+
+            echo json_encode(['success' => true, 'data' => $profile]);
             exit;
         }
 
