@@ -38,7 +38,7 @@ $directionOverride = isset($_GET['dir']) && in_array($_GET['dir'], ['outbound', 
 
 $status = null;
 if ($selectedProfile) {
-    $status = $transitService->getProfileStatus($selectedProfile, $directionOverride, 0);
+    $status = $transitService->getProfileStatus($selectedProfile, $directionOverride, 0, false);
 }
 
 $csrfToken = Auth::csrfToken();
@@ -72,7 +72,8 @@ $csrfToken = Auth::csrfToken();
             <?php foreach ($profiles as $p): ?>
                 <?php $isActiveTab = ($selectedProfile && $selectedProfile['id'] === $p['id']); ?>
                 <a href="index.php?profile=<?= $p['id'] ?>" 
-                   class="transit-tab-btn <?= $isActiveTab ? 'active' : '' ?> <?= empty($p['is_active']) ? 'transit-tab-disabled' : '' ?>">
+                   class="transit-tab-btn <?= $isActiveTab ? 'active' : '' ?> <?= empty($p['is_active']) ? 'transit-tab-disabled' : '' ?>"
+                   data-profile-id="<?= (int)$p['id'] ?>">
                     <span><?= htmlspecialchars($p['profile_name'], ENT_QUOTES, 'UTF-8') ?></span>
                     <?php if (!empty($p['only_school_days'])): ?>
                         <span class="transit-tab-badge" title="Nur an Schultagen aktiv">🎒</span>
@@ -166,80 +167,36 @@ $csrfToken = Auth::csrfToken();
 
                 <!-- Umstiegs- & Anschlussanzeige (falls via-Station vorhanden) -->
                 <?php $transfer = $status['transfer_status'] ?? null; ?>
-                <?php if ($transfer): ?>
-                    <div class="transit-transfer-card transit-transfer--<?= htmlspecialchars($transfer['severity'], ENT_QUOTES, 'UTF-8') ?>">
-                        <div class="transit-transfer-icon">🔄</div>
-                        <div class="transit-transfer-body">
-                            <div class="transit-transfer-title">
-                                <strong>Umstieg an <?= htmlspecialchars($transfer['via_station'], ENT_QUOTES, 'UTF-8') ?>:</strong>
-                                <span><?= htmlspecialchars($transfer['message'], ENT_QUOTES, 'UTF-8') ?></span>
-                            </div>
-                            <div class="transit-transfer-sub text-muted">
-                                Anschluss an <span class="transit-line-pill <?= htmlspecialchars($transfer['connecting_badge']['css_class'] ?? 'transit-shape-square transit-lvb-blue', ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($transfer['connecting_badge']['bg'] ?? '#003882', ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($transfer['connecting_badge']['text_color'] ?? '#ffffff', ENT_QUOTES, 'UTF-8') ?>;"><?= htmlspecialchars($transfer['connecting_line'], ENT_QUOTES, 'UTF-8') ?></span> Richtung <?= htmlspecialchars($transfer['connecting_direction'], ENT_QUOTES, 'UTF-8') ?> um <?= htmlspecialchars($transfer['connecting_time'], ENT_QUOTES, 'UTF-8') ?> Uhr
-                                <?php if ($transfer['connecting_delay'] > 0): ?>
-                                    <span class="text-danger">(+<?= (int)$transfer['connecting_delay'] ?> Min)</span>
-                                <?php endif; ?>
+                <div class="transit-transfer-wrap js-transfer-wrap <?= !$transfer ? 'hidden' : '' ?>">
+                    <?php if ($transfer): ?>
+                        <div class="transit-transfer-card transit-transfer--<?= htmlspecialchars($transfer['severity'], ENT_QUOTES, 'UTF-8') ?>">
+                            <div class="transit-transfer-icon">🔄</div>
+                            <div class="transit-transfer-body">
+                                <div class="transit-transfer-title">
+                                    <strong>Umstieg an <span class="js-transfer-via"><?= htmlspecialchars($transfer['via_station'], ENT_QUOTES, 'UTF-8') ?></span>:</strong>
+                                    <span class="js-transfer-msg"><?= htmlspecialchars($transfer['message'], ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+                                <div class="transit-transfer-sub text-muted">
+                                    Anschluss an <span class="transit-line-pill js-transfer-pill <?= htmlspecialchars($transfer['connecting_badge']['css_class'] ?? 'transit-shape-square transit-lvb-blue', ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($transfer['connecting_badge']['bg'] ?? '#003882', ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($transfer['connecting_badge']['text_color'] ?? '#ffffff', ENT_QUOTES, 'UTF-8') ?>;"><?= htmlspecialchars($transfer['connecting_line'], ENT_QUOTES, 'UTF-8') ?></span> Richtung <span class="js-transfer-dir"><?= htmlspecialchars($transfer['connecting_direction'], ENT_QUOTES, 'UTF-8') ?></span> um <span class="js-transfer-time"><?= htmlspecialchars($transfer['connecting_time'], ENT_QUOTES, 'UTF-8') ?></span> Uhr
+                                    <span class="text-danger js-transfer-delay <?= ($transfer['connecting_delay'] > 0) ? '' : 'hidden' ?>">(+<?= (int)$transfer['connecting_delay'] ?> Min)</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                <?php endif; ?>
+                    <?php else: ?>
+                        <div class="transit-transfer-card"></div>
+                    <?php endif; ?>
+                </div>
 
                 <!-- Tür-zu-Tür Verbindungen & Alternativen -->
-                <?php $trips = $status['trip_recommendations'] ?? []; ?>
                 <div class="transit-trips-wrap">
                     <div class="transit-trips-header">
                         <h3 class="transit-table-title" style="margin-bottom: 0;">🧭 Verbindungen &amp; Alternativen</h3>
                         <span class="text-muted" style="font-size: 0.85rem;">Wunschroute &amp; Alternativen von Tür zu Tür (Echtzeit)</span>
                     </div>
                     <div class="transit-trips-list js-trips-list">
-                        <?php if (!empty($trips)): ?>
-                            <?php foreach ($trips as $con): ?>
-                                <div class="transit-trip-card">
-                                    <div class="transit-trip-summary">
-                                        <div class="transit-trip-times">
-                                            <strong><?= htmlspecialchars($con['departure_time'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <span class="transit-trip-arrow">&rarr;</span>
-                                            <strong><?= htmlspecialchars($con['arrival_time'], ENT_QUOTES, 'UTF-8') ?></strong>
-                                            <span class="transit-trip-duration">(<?= (int)$con['duration_minutes'] ?> Min)</span>
-                                        </div>
-                                        <div class="transit-trip-meta">
-                                            <span class="transit-trip-transfers">
-                                                <?= $con['transfers'] === 0 ? 'Direkt' : ($con['transfers'] === 1 ? '1 Umstieg' : "{$con['transfers']} Umstiege") ?>
-                                            </span>
-                                            <?php if ($con['is_cancelled']): ?>
-                                                <span class="badge badge-danger">Fahrt fällt aus</span>
-                                            <?php elseif ($con['delay_minutes'] > 0): ?>
-                                                <span class="text-danger">+<?= (int)$con['delay_minutes'] ?> Min</span>
-                                            <?php elseif ($con['countdown_minutes'] !== null && $con['countdown_minutes'] >= 0): ?>
-                                                <span class="badge badge-success">in <?= (int)$con['countdown_minutes'] ?> Min</span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="transit-trip-legs">
-                                        <?php foreach ($con['legs'] as $legIdx => $leg): ?>
-                                            <?php if ($legIdx > 0): ?>
-                                                <span class="transit-leg-separator">&rsaquo;</span>
-                                            <?php endif; ?>
-                                            <?php if (($leg['type'] ?? '') === 'transport'): ?>
-                                                <?php $lb = $leg['badge'] ?? InsaClient::getLvbBadgeInfo($leg['line'], $leg['mode']); ?>
-                                                <div class="transit-trip-leg-item">
-                                                    <span class="transit-line-pill <?= htmlspecialchars($lb['css_class'], ENT_QUOTES, 'UTF-8') ?>" style="background-color: <?= htmlspecialchars($lb['bg'], ENT_QUOTES, 'UTF-8') ?>; color: <?= htmlspecialchars($lb['text_color'], ENT_QUOTES, 'UTF-8') ?>;">
-                                                        <?= htmlspecialchars($leg['line'], ENT_QUOTES, 'UTF-8') ?>
-                                                    </span>
-                                                    <span class="transit-leg-dir" title="Richtung <?= htmlspecialchars($leg['direction'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($leg['direction'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                </div>
-                                            <?php elseif (($leg['type'] ?? '') === 'walk'): ?>
-                                                <span class="transit-trip-walk" title="Fußweg <?= (int)$leg['duration_minutes'] ?> Min">🚶 <?= (int)$leg['duration_minutes'] ?>m</span>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="transit-departures-empty text-muted">
-                                Suche aktuelle Verbindungen und Alternativen...
-                            </div>
-                        <?php endif; ?>
+                        <div class="transit-departures-empty text-muted js-trips-placeholder">
+                            <span class="transit-spinner"></span> Suche beste Verbindungen &amp; Alternativen (Echtzeit)...
+                        </div>
                     </div>
                 </div>
 

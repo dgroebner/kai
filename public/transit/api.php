@@ -30,6 +30,7 @@ try {
             if ($offsetMinutes === false) {
                 $offsetMinutes = 0;
             }
+            $includeTrips = isset($_GET['include_trips']) ? (bool)filter_var($_GET['include_trips'], FILTER_VALIDATE_BOOLEAN) : false;
 
             if ($profileId) {
                 $profile = $profileRepo->getById($profileId);
@@ -43,8 +44,29 @@ try {
                 exit;
             }
 
-            $status = $service->getProfileStatus($profile, $direction, $offsetMinutes);
+            $status = $service->getProfileStatus($profile, $direction, $offsetMinutes, $includeTrips);
             echo json_encode(['success' => true, 'data' => $status]);
+            exit;
+        }
+
+        if ($action === 'trips' || $action === 'trip_recommendations') {
+            $profileId = filter_var($_GET['profile_id'] ?? null, FILTER_VALIDATE_INT);
+            $direction = isset($_GET['direction']) && in_array($_GET['direction'], ['outbound', 'return'], true) ? $_GET['direction'] : null;
+
+            if ($profileId) {
+                $profile = $profileRepo->getById($profileId);
+            } else {
+                $active = $profileRepo->getActive($currentUserEmail);
+                $profile = $active[0] ?? null;
+            }
+
+            if (!$profile) {
+                echo json_encode(['success' => false, 'message' => 'Kein Profil gefunden']);
+                exit;
+            }
+
+            $trips = $service->getProfileTripRecommendations($profile, $direction);
+            echo json_encode(['success' => true, 'data' => $trips]);
             exit;
         }
 

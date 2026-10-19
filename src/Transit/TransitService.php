@@ -44,7 +44,12 @@ class TransitService
      * @param int $offsetMinutes Manuelle Zeitverschiebung in Minuten (z. B. +45 Min bei Unterrichtsausfall)
      * @return array<string, mixed>
      */
-    public function getProfileStatus(array $profile, ?string $directionOverride = null, int $offsetMinutes = 0): array
+    public function getProfileStatus(
+        array $profile,
+        ?string $directionOverride = null,
+        int $offsetMinutes = 0,
+        bool $includeTrips = true
+    ): array
     {
         $now = (new DateTimeImmutable())->modify(($offsetMinutes >= 0 ? "+{$offsetMinutes}" : "{$offsetMinutes}") . ' minutes');
         $dayOfWeek = (int)$now->format('N'); // 1 = Mo, 7 = So
@@ -186,16 +191,19 @@ class TransitService
                 $profile,
                 $effectiveDepartures[0],
                 $now,
-                $viaAllowedDirsForLeg
+                $viaAllowedDirsForLeg,
+                $toStationName
             );
         }
 
-        // Tür-zu-Tür Verbindungsempfehlungen abrufen (inkl. Schnell-Alternativen)
-        $fromStationDesc = ['id' => $fromStationId, 'name' => $fromStationName];
-        $toStationDesc = ['id' => $toStationId, 'name' => $toStationName];
-        $viaStationDesc = !empty($profile['via_station_name']) ? ['id' => $profile['via_station_id'], 'name' => $profile['via_station_name']] : null;
-
-        $tripRecommendations = $this->getCachedTripRecommendations($fromStationDesc, $toStationDesc, $viaStationDesc, $now);
+        // Tür-zu-Tür Verbindungsempfehlungen abrufen (nur wenn explizit angefordert)
+        $tripRecommendations = [];
+        if ($includeTrips) {
+            $fromStationDesc = ['id' => $fromStationId, 'name' => $fromStationName];
+            $toStationDesc = ['id' => $toStationId, 'name' => $toStationName];
+            $viaStationDesc = !empty($profile['via_station_name']) ? ['id' => $profile['via_station_id'], 'name' => $profile['via_station_name']] : null;
+            $tripRecommendations = $this->getCachedTripRecommendations($fromStationDesc, $toStationDesc, $viaStationDesc, $now);
+        }
 
         return [
             'profile_id' => $profile['id'],
@@ -222,19 +230,61 @@ class TransitService
     }
 
     /**
+     * Ruft aktuelle Verbindungsempfehlungen (Tür-zu-Tür) für ein Profil ab.
+     *
+     * @param array $profile
+     * @param string|null $directionOverride
+     * @param DateTimeImmutable|null $now
+     * @return array<int, array<string, mixed>>
+     */
+    public function getProfileTripRecommendations(
+        array $profile,
+        ?string $directionOverride = null,
+        ?DateTimeImmutable $now = null
+    ): array {
+        $now = $now ?? new DateTimeImmutable();
+        $currentTime = $now->format('H:i:s');
+
+        $isReturn = false;
+        if ($directionOverride === 'return') {
+            $isReturn = true;
+        } elseif ($directionOverride === 'outbound') {
+            $isReturn = false;
+        } else {
+            $eveningStart = ($profile['evening_window_start'] ?? '15:00') . ':00';
+            if ($currentTime >= '13:00:00' || $currentTime >= $eveningStart) {
+                $isReturn = true;
+            }
+        }
+
+        $fromStationId = $isReturn ? $profile['destination_station_id'] : $profile['origin_station_id'];
+        $fromStationName = $isReturn ? $profile['destination_station_name'] : $profile['origin_station_name'];
+        $toStationId = $isReturn ? $profile['origin_station_id'] : $profile['destination_station_id'];
+        $toStationName = $isReturn ? $profile['origin_station_name'] : $profile['destination_station_name'];
+
+        $fromStationDesc = ['id' => $fromStationId, 'name' => $fromStationName];
+        $toStationDesc = ['id' => $toStationId, 'name' => $toStationName];
+        $viaStationDesc = !empty($profile['via_station_name']) ? ['id' => $profile['via_station_id'], 'name' => $profile['via_station_name']] : null;
+
+        return $this->getCachedTripRecommendations($fromStationDesc, $toStationDesc, $viaStationDesc, $now);
+    }
+
+    /**
      * Prüft die Anschlussverbindung an einer Umstiegshaltestelle.
      *
      * @param array $profile
      * @param array $firstLegDep
      * @param DateTimeImmutable $now
      * @param array<string, string[]> $viaAllowedDirs
+     * @param string $toStationName
      * @return array<string, mixed>|null
      */
     private function evaluateTransferLeg(
         array $profile,
         array $firstLegDep,
         DateTimeImmutable $now,
-        array $viaAllowedDirs = []
+        array $viaAllowedDirs = [],
+        string $toStationName = ''
     ): ?array {
         $viaStationId = (string)$profile['via_station_id'];
         $viaStationName = (string)($profile['via_station_name'] ?? 'Umstieg');
@@ -258,7 +308,11 @@ class TransitService
             }
 
             // Richtungsfilter am Umstieg (falls im Cache gelernt)
-            if (!empty($viaAllowedDirs[$dep['line']])) {
+            if (!empty($viaAllowedDirs)) {
+                // Die Linie MUSS in den erlaubten Umstiegslinien vorkommen!
+                if (!isset($viaAllowedDirs[$dep['line']])) {
+                    continue;
+                }
                 $matches = false;
                 foreach ($viaAllowedDirs[$dep['line']] as $allowedDir) {
                     if (self::matchDirection($dep['direction'], $allowedDir)) {
@@ -267,6 +321,11 @@ class TransitService
                     }
                 }
                 if (!$matches) {
+                    continue;
+                }
+            } else {
+                // Fallback: Richtung muss Zielhaltestelle entsprechen/enthalten
+                if ($toStationName !== '' && !self::matchDirection($dep['direction'], $toStationName)) {
                     continue;
                 }
             }
@@ -278,9 +337,9 @@ class TransitService
             }
         }
 
-        if ($connectingDep === null && !empty($viaDepartures)) {
-            $connectingDep = $viaDepartures[0];
-            $actualBufferMinutes = $connectingDep['countdown_minutes'] ?? 0;
+        // Kein beliebiger Fallback mehr! Wenn kein passender Anschluss in Zielrichtung existiert -> kein Umsteigehinweis
+        if ($connectingDep === null) {
+            return null;
         }
 
         $connectionSeverity = 'success';

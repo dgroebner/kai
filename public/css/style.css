@@ -10789,6 +10789,12 @@ body.wisdom-modal-open {
     border-radius: var(--border-radius);
     padding: 1.5rem;
     margin-bottom: 2rem;
+    transition: opacity 0.15s ease;
+}
+
+.transit-profile-card.transit-card-loading {
+    opacity: 0.55;
+    pointer-events: none;
 }
 
 .transit-card-header {
@@ -11136,6 +11142,77 @@ body.wisdom-modal-open {
     gap: 0.4rem;
     padding-top: 0.4rem;
     border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+/* Vertikales Layout für Verbindungsabschnitte mit Umstieg */
+.transit-trip-legs--vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.transit-trip-leg-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.transit-leg-line-dir {
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.transit-leg-line-dir strong {
+    color: var(--text-main);
+}
+
+.transit-leg-time {
+    font-size: 0.82rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.transit-trip-transfer-point {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    color: var(--text-muted, #94a3b8);
+    padding-left: 0.85rem;
+    margin: -0.1rem 0;
+    flex-wrap: wrap;
+}
+
+.transit-transfer-node {
+    font-size: 1.1rem;
+    color: var(--accent, #3b82f6);
+    line-height: 1;
+}
+
+.transit-transfer-station {
+    color: var(--text-muted, #94a3b8);
+}
+
+.transit-transfer-station strong {
+    color: var(--text-main);
+}
+
+.transit-spinner {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 2px solid var(--text-muted, #94a3b8);
+    border-top-color: var(--accent, #3b82f6);
+    border-radius: 50%;
+    animation: transit-spin 0.75s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.4rem;
+}
+
+@keyframes transit-spin {
+    to { transform: rotate(360deg); }
 }
 
 .transit-trip-leg-item {

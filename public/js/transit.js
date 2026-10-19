@@ -15,11 +15,41 @@
     function init() {
         initEventListeners();
         startAutoRefresh();
+
+        // Verbindungen asynchron beim ersten Seitenaufruf nachladen
+        const card = document.querySelector('.transit-profile-card');
+        if (card && card.dataset.profileId) {
+            loadTripRecommendations(card.dataset.profileId, card.dataset.direction || 'outbound');
+        }
     }
 
     function initEventListeners() {
+        // Popstate für Browser-Vor/Zurück
+        window.addEventListener('popstate', function () {
+            window.location.reload();
+        });
+
         // Event-Delegation für Klick-Aktionen
         document.addEventListener('click', function (e) {
+            // 0. Profil-Reiter umschalten (sofortiges Feedback & asynchrones Nachladen)
+            const tabBtn = e.target.closest('.transit-tab-btn[data-profile-id]');
+            if (tabBtn) {
+                const profileId = tabBtn.dataset.profileId;
+                if (profileId) {
+                    e.preventDefault();
+                    // Sofortiges visuelles Feedback auf den Reitern
+                    document.querySelectorAll('.transit-tab-btn[data-profile-id]').forEach(b => b.classList.remove('active'));
+                    tabBtn.classList.add('active');
+
+                    // URL ohne Seiten-Reload aktualisieren
+                    history.pushState(null, '', `index.php?profile=${encodeURIComponent(profileId)}`);
+
+                    // Profil asynchron laden
+                    switchToProfile(profileId);
+                    return;
+                }
+            }
+
             // 1. Manuelle Aktualisierung
             const refreshBtn = e.target.closest('.js-refresh-transit');
             if (refreshBtn) {
@@ -38,7 +68,8 @@
                 const newDir = (currentDir === 'outbound') ? 'return' : 'outbound';
                 const profileId = card.dataset.profileId || '';
                 const offset = card.dataset.offset || '0';
-                window.location.href = `index.php?profile=${encodeURIComponent(profileId)}&dir=${encodeURIComponent(newDir)}&offset=${encodeURIComponent(offset)}`;
+                history.pushState(null, '', `index.php?profile=${encodeURIComponent(profileId)}&dir=${encodeURIComponent(newDir)}&offset=${encodeURIComponent(offset)}`);
+                switchToProfile(profileId, newDir);
                 return;
             }
 
@@ -360,6 +391,186 @@
         }
     }
 
+    async function switchToProfile(profileId, direction = null) {
+        const card = document.querySelector('.transit-profile-card');
+        if (!card) return;
+
+        // 1. Loading-Zustand (Transparenz) auf der Karte aktivieren
+        card.classList.add('transit-card-loading');
+        card.dataset.profileId = profileId;
+        if (direction) {
+            card.dataset.direction = direction;
+        }
+
+        // 2. Sofort Platzhalter für Verbindungen zeigen
+        const tripsList = document.querySelector('.js-trips-list');
+        if (tripsList) {
+            tripsList.innerHTML = '<div class="transit-departures-empty text-muted js-trips-placeholder"><span class="transit-spinner"></span> Suche beste Verbindungen &amp; Alternativen (Echtzeit)...</div>';
+        }
+
+        const currentDir = direction || card.dataset.direction || 'outbound';
+
+        // 3. Status und Abfahrten entkoppelt und schnell laden
+        try {
+            const resp = await fetch(`api.php?action=status&include_trips=0&profile_id=${encodeURIComponent(profileId)}&direction=${encodeURIComponent(currentDir)}`);
+            const res = await resp.json();
+            if (res.success && res.data) {
+                applyProfileData(res.data);
+            } else {
+                window.location.href = `index.php?profile=${encodeURIComponent(profileId)}`;
+                return;
+            }
+        } catch (err) {
+            console.warn('Schnellumschaltung fehlgeschlagen', err);
+            window.location.href = `index.php?profile=${encodeURIComponent(profileId)}`;
+            return;
+        } finally {
+            card.classList.remove('transit-card-loading');
+        }
+
+        // 4. Tür-zu-Tür Verbindungen asynchron im Hintergrund laden
+        loadTripRecommendations(profileId, card.dataset.direction || 'outbound');
+    }
+
+    function applyProfileData(data) {
+        const card = document.querySelector('.transit-profile-card');
+        if (!card || !data) return;
+
+        card.dataset.profileId = data.profile_id;
+        card.dataset.direction = data.direction;
+
+        // Richtung & Haltestellennamen im Header
+        const dirTag = card.querySelector('.transit-direction-tag');
+        if (dirTag) dirTag.textContent = data.direction_label;
+
+        const fromStation = card.querySelector('.transit-station-from');
+        if (fromStation) fromStation.textContent = data.from_station;
+
+        const toStation = card.querySelector('.transit-station-to');
+        if (toStation) toStation.textContent = data.to_station;
+
+        // Status-Pill
+        const statusPill = card.querySelector('.transit-status-pill');
+        if (statusPill) {
+            statusPill.className = `transit-status-pill transit-status--${KaiHtml.escape(data.status_severity)}`;
+            statusPill.innerHTML = `<span class="transit-status-dot"></span> ${KaiHtml.escape(data.status_text)}`;
+        }
+
+        // Hero-Abfahrt
+        const nextDep = data.next_departure;
+        const heroBadge = card.querySelector('.transit-hero-left .transit-line-badge');
+        const heroReal = card.querySelector('.transit-hero-real');
+        const heroDelay = card.querySelector('.transit-hero-delay');
+        const heroDir = card.querySelector('.transit-hero-direction');
+        const countdownVal = card.querySelector('.transit-countdown-val');
+        const countdownUnit = card.querySelector('.transit-countdown-unit');
+
+        if (nextDep) {
+            if (heroBadge) {
+                const b = getLvbBadge(nextDep);
+                heroBadge.textContent = nextDep.line;
+                heroBadge.className = `transit-line-badge ${b.css_class}`;
+                heroBadge.style.backgroundColor = b.bg;
+                heroBadge.style.color = b.text_color;
+            }
+            if (heroDir) {
+                heroDir.textContent = `Richtung ${nextDep.direction}`;
+            }
+            if (heroReal) {
+                heroReal.textContent = `${nextDep.real_time} Uhr`;
+            }
+            if (countdownVal) {
+                if (nextDep.countdown_minutes !== null && nextDep.countdown_minutes >= 0) {
+                    countdownVal.textContent = nextDep.countdown_minutes;
+                    if (countdownUnit) countdownUnit.textContent = 'Min';
+                } else {
+                    countdownVal.textContent = 'Sofort';
+                    if (countdownUnit) countdownUnit.textContent = '';
+                }
+            }
+            if (heroDelay) {
+                if (nextDep.delay_minutes > 0) {
+                    heroDelay.textContent = `+${nextDep.delay_minutes} Min`;
+                    heroDelay.className = 'transit-hero-delay text-danger';
+                } else if (nextDep.has_realtime) {
+                    heroDelay.textContent = 'pünktlich';
+                    heroDelay.className = 'transit-hero-delay text-success';
+                } else {
+                    heroDelay.textContent = '';
+                }
+            }
+        }
+
+        // Umstiegs- & Anschlusskarte
+        const transferWrap = card.querySelector('.js-transfer-wrap');
+        if (transferWrap) {
+            if (data.transfer_status) {
+                const tf = data.transfer_status;
+                const viaEl = transferWrap.querySelector('.js-transfer-via');
+                const msgEl = transferWrap.querySelector('.js-transfer-msg');
+                const pillEl = transferWrap.querySelector('.js-transfer-pill');
+                const dirEl = transferWrap.querySelector('.js-transfer-dir');
+                const timeEl = transferWrap.querySelector('.js-transfer-time');
+                const delayEl = transferWrap.querySelector('.js-transfer-delay');
+
+                if (viaEl) viaEl.textContent = tf.via_station;
+                if (msgEl) msgEl.textContent = tf.message;
+                if (pillEl) {
+                    const badge = tf.connecting_badge || {};
+                    pillEl.textContent = tf.connecting_line;
+                    pillEl.className = `transit-line-pill js-transfer-pill ${badge.css_class || 'transit-shape-square transit-lvb-blue'}`;
+                    pillEl.style.backgroundColor = badge.bg || '#003882';
+                    pillEl.style.color = badge.text_color || '#ffffff';
+                }
+                if (dirEl) dirEl.textContent = tf.connecting_direction;
+                if (timeEl) timeEl.textContent = tf.connecting_time;
+                if (delayEl) {
+                    if (tf.connecting_delay > 0) {
+                        delayEl.textContent = `(+${tf.connecting_delay} Min)`;
+                        delayEl.classList.remove('hidden');
+                    } else {
+                        delayEl.classList.add('hidden');
+                    }
+                }
+                transferWrap.classList.remove('hidden');
+            } else {
+                transferWrap.classList.add('hidden');
+            }
+        }
+
+        // Weitere Abfahrten als Badges aktualisieren (ohne Hero-Abfahrt)
+        const badgesContainer = card.querySelector('.js-departures-badges');
+        if (badgesContainer && Array.isArray(data.departures)) {
+            const furtherDeps = data.departures.filter(dep => {
+                if (!nextDep) return true;
+                if (dep.journey_id && nextDep.journey_id) {
+                    return dep.journey_id !== nextDep.journey_id;
+                }
+                return !(dep.line === nextDep.line && dep.real_time === nextDep.real_time);
+            });
+            badgesContainer.innerHTML = renderDepartureBadgesHtml(furtherDeps);
+        }
+    }
+
+    async function loadTripRecommendations(profileId, direction) {
+        const tripsList = document.querySelector('.js-trips-list');
+        if (!tripsList) return;
+
+        try {
+            const resp = await fetch(`api.php?action=trips&profile_id=${encodeURIComponent(profileId)}&direction=${encodeURIComponent(direction || 'outbound')}`);
+            const res = await resp.json();
+
+            if (res.success && Array.isArray(res.data)) {
+                tripsList.innerHTML = renderTripCardsHtml(res.data);
+            } else {
+                tripsList.innerHTML = '<div class="transit-departures-empty text-muted">Keine Tür-zu-Tür Verbindungen für den aktuellen Zeitpunkt gefunden.</div>';
+            }
+        } catch (err) {
+            console.warn('Verbindungssuche fehlgeschlagen', err);
+            tripsList.innerHTML = '<div class="transit-departures-empty text-muted">Verbindungen konnten nicht geladen werden. Bitte erneut versuchen.</div>';
+        }
+    }
+
     async function reloadProfileData() {
         const card = document.querySelector('.transit-profile-card');
         if (!card) return;
@@ -368,123 +579,107 @@
         const direction = card.dataset.direction || 'outbound';
 
         try {
-            const resp = await fetch(`api.php?action=status&profile_id=${encodeURIComponent(profileId)}&direction=${encodeURIComponent(direction)}`);
+            const resp = await fetch(`api.php?action=status&include_trips=0&profile_id=${encodeURIComponent(profileId)}&direction=${encodeURIComponent(direction)}`);
             const res = await resp.json();
-            if (!res.success || !res.data) return;
-
-            const data = res.data;
-
-            // Hero aktualisieren
-            const nextDep = data.next_departure;
-            const heroBadge = document.querySelector('.transit-hero-left .transit-line-badge');
-            const heroReal = document.querySelector('.transit-hero-real');
-            const heroDelay = document.querySelector('.transit-hero-delay');
-            const countdownVal = document.querySelector('.transit-countdown-val');
-
-            if (nextDep) {
-                if (heroBadge) {
-                    const b = getLvbBadge(nextDep);
-                    heroBadge.textContent = nextDep.line;
-                    heroBadge.className = `transit-line-badge ${b.css_class}`;
-                    heroBadge.style.backgroundColor = b.bg;
-                    heroBadge.style.color = b.text_color;
-                }
-                if (heroReal) {
-                    heroReal.textContent = `${nextDep.real_time} Uhr`;
-                }
-                if (countdownVal && nextDep.countdown_minutes !== null && nextDep.countdown_minutes >= 0) {
-                    countdownVal.textContent = nextDep.countdown_minutes;
-                }
-                if (heroDelay) {
-                    if (nextDep.delay_minutes > 0) {
-                        heroDelay.textContent = `+${nextDep.delay_minutes} Min`;
-                        heroDelay.className = 'transit-hero-delay text-danger';
-                    } else if (nextDep.has_realtime) {
-                        heroDelay.textContent = 'pünktlich';
-                        heroDelay.className = 'transit-hero-delay text-success';
-                    }
-                }
-            }
-
-            // Weitere Abfahrten als Badges aktualisieren (ohne Hero-Abfahrt)
-            const badgesContainer = document.querySelector('.js-departures-badges');
-            if (badgesContainer && Array.isArray(data.departures)) {
-                const furtherDeps = data.departures.filter(dep => {
-                    if (!nextDep) return true;
-                    if (dep.journey_id && nextDep.journey_id) {
-                        return dep.journey_id !== nextDep.journey_id;
-                    }
-                    return !(dep.line === nextDep.line && dep.real_time === nextDep.real_time);
-                });
-                badgesContainer.innerHTML = renderDepartureBadgesHtml(furtherDeps);
-            }
-
-            // Tür-zu-Tür Verbindungsempfehlungen aktualisieren
-            const tripsList = document.querySelector('.js-trips-list');
-            if (tripsList) {
-                if (Array.isArray(data.trip_recommendations) && data.trip_recommendations.length > 0) {
-                    let tripHtml = '';
-                    for (const con of data.trip_recommendations) {
-                        const transfersLabel = con.transfers === 0 ? 'Direkt' : (con.transfers === 1 ? '1 Umstieg' : `${con.transfers} Umstiege`);
-                        let metaBadge = '';
-                        if (con.is_cancelled) {
-                            metaBadge = '<span class="badge badge-danger">Fahrt fällt aus</span>';
-                        } else if (con.delay_minutes > 0) {
-                            metaBadge = `<span class="text-danger">+${con.delay_minutes} Min</span>`;
-                        } else if (con.countdown_minutes !== null && con.countdown_minutes >= 0) {
-                            metaBadge = `<span class="badge badge-success">in ${con.countdown_minutes} Min</span>`;
-                        }
-
-                        let legsHtml = '';
-                        if (Array.isArray(con.legs)) {
-                            con.legs.forEach((leg, idx) => {
-                                if (idx > 0) {
-                                    legsHtml += '<span class="transit-leg-separator">&rsaquo;</span>';
-                                }
-                                if (leg.type === 'transport') {
-                                    const b = getLvbBadge(leg);
-                                    legsHtml += `
-                                        <div class="transit-trip-leg-item">
-                                            <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
-                                                ${KaiHtml.escape(leg.line)}
-                                            </span>
-                                            <span class="transit-leg-dir" title="Richtung ${KaiHtml.escape(leg.direction)}">${KaiHtml.escape(leg.direction)}</span>
-                                        </div>
-                                    `;
-                                } else if (leg.type === 'walk') {
-                                    legsHtml += `<span class="transit-trip-walk" title="Fußweg ${KaiHtml.escape(leg.duration_minutes)} Min">🚶 ${KaiHtml.escape(leg.duration_minutes)}m</span>`;
-                                }
-                            });
-                        }
-
-                        tripHtml += `
-                            <div class="transit-trip-card">
-                                <div class="transit-trip-summary">
-                                    <div class="transit-trip-times">
-                                        <strong>${KaiHtml.escape(con.departure_time)}</strong>
-                                        <span class="transit-trip-arrow">&rarr;</span>
-                                        <strong>${KaiHtml.escape(con.arrival_time)}</strong>
-                                        <span class="transit-trip-duration">(${KaiHtml.escape(con.duration_minutes)} Min)</span>
-                                    </div>
-                                    <div class="transit-trip-meta">
-                                        <span class="transit-trip-transfers">${KaiHtml.escape(transfersLabel)}</span>
-                                        ${metaBadge}
-                                    </div>
-                                </div>
-                                <div class="transit-trip-legs">
-                                    ${legsHtml}
-                                </div>
-                            </div>
-                        `;
-                    }
-                    tripsList.innerHTML = tripHtml;
-                } else {
-                    tripsList.innerHTML = '<div class="transit-departures-empty text-muted">Keine Tür-zu-Tür Verbindungen für den aktuellen Zeitpunkt gefunden.</div>';
-                }
+            if (res.success && res.data) {
+                applyProfileData(res.data);
             }
         } catch (err) {
             console.warn('Hintergrund-Aktualisierung fehlgeschlagen', err);
         }
+
+        loadTripRecommendations(profileId, direction);
+    }
+
+    function renderTripCardsHtml(trips) {
+        if (!Array.isArray(trips) || trips.length === 0) {
+            return '<div class="transit-departures-empty text-muted">Keine Tür-zu-Tür Verbindungen für den aktuellen Zeitpunkt gefunden.</div>';
+        }
+
+        let tripHtml = '';
+        for (const con of trips) {
+            const transfersLabel = con.transfers === 0 ? 'Direkt' : (con.transfers === 1 ? '1 Umstieg' : `${con.transfers} Umstiege`);
+            let metaBadge = '';
+            if (con.is_cancelled) {
+                metaBadge = '<span class="badge badge-danger">Fahrt fällt aus</span>';
+            } else if (con.delay_minutes > 0) {
+                metaBadge = `<span class="text-danger">+${con.delay_minutes} Min</span>`;
+            } else if (con.countdown_minutes !== null && con.countdown_minutes >= 0) {
+                metaBadge = `<span class="badge badge-success">in ${con.countdown_minutes} Min</span>`;
+            }
+
+            let legsHtml = '';
+            const legs = Array.isArray(con.legs) ? con.legs : [];
+
+            // Abschnitte vertikal rendern mit Benennung der Umstiegshaltestelle
+            for (let i = 0; i < legs.length; i++) {
+                const leg = legs[i];
+                if (leg.type === 'transport') {
+                    const b = getLvbBadge(leg);
+                    const depTime = leg.departure_time ? `<span class="transit-leg-time">(ab ${KaiHtml.escape(leg.departure_time)})</span>` : '';
+                    legsHtml += `
+                        <div class="transit-trip-leg-row">
+                            <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
+                                ${KaiHtml.escape(leg.line)}
+                            </span>
+                            <span class="transit-leg-line-dir">Richtung <strong>${KaiHtml.escape(leg.direction)}</strong></span>
+                            ${depTime}
+                        </div>
+                    `;
+
+                    // Prüfen, ob nach diesem Leg ein Umstieg zu einem weiteren Transport-Leg erfolgt
+                    let nextTransportLeg = null;
+                    let walkBetweenMinutes = 0;
+                    for (let j = i + 1; j < legs.length; j++) {
+                        if (legs[j].type === 'walk') {
+                            walkBetweenMinutes += (legs[j].duration_minutes || 0);
+                        } else if (legs[j].type === 'transport') {
+                            nextTransportLeg = legs[j];
+                            break;
+                        }
+                    }
+
+                    if (nextTransportLeg) {
+                        const transferStation = leg.to_name || nextTransportLeg.from_name || 'Umstieg';
+                        const walkNote = walkBetweenMinutes > 0 ? `<span class="transit-trip-walk">🚶 ${KaiHtml.escape(walkBetweenMinutes)}m Fußweg</span>` : '';
+                        legsHtml += `
+                            <div class="transit-trip-transfer-point">
+                                <span class="transit-transfer-node">↳</span>
+                                <span class="transit-transfer-station">Umstieg an <strong>${KaiHtml.escape(transferStation)}</strong></span>
+                                ${walkNote}
+                            </div>
+                        `;
+                    }
+                } else if (leg.type === 'walk' && i === 0 && (leg.duration_minutes || 0) > 0) {
+                    legsHtml += `
+                        <div class="transit-trip-walk-row">
+                            <span class="transit-trip-walk">🚶 ${KaiHtml.escape(leg.duration_minutes)}m Fußweg ab ${KaiHtml.escape(leg.from_name || 'Start')}</span>
+                        </div>
+                    `;
+                }
+            }
+
+            tripHtml += `
+                <div class="transit-trip-card">
+                    <div class="transit-trip-summary">
+                        <div class="transit-trip-times">
+                            <strong>${KaiHtml.escape(con.departure_time)}</strong>
+                            <span class="transit-trip-arrow">&rarr;</span>
+                            <strong>${KaiHtml.escape(con.arrival_time)}</strong>
+                            <span class="transit-trip-duration">(${KaiHtml.escape(con.duration_minutes)} Min)</span>
+                        </div>
+                        <div class="transit-trip-meta">
+                            <span class="transit-trip-transfers">${KaiHtml.escape(transfersLabel)}</span>
+                            ${metaBadge}
+                        </div>
+                    </div>
+                    <div class="transit-trip-legs--vertical">
+                        ${legsHtml}
+                    </div>
+                </div>
+            `;
+        }
+        return tripHtml;
     }
 
     function openProfileModal(data) {

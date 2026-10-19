@@ -329,7 +329,7 @@ class BriefingService
 
         $activeStatus = null;
         foreach ($profiles as $profile) {
-            $status = $this->transitService->getProfileStatus($profile);
+            $status = $this->transitService->getProfileStatus($profile, null, 0, false);
             // Profil nur anzeigen, wenn heute ein Pendlertag ist und keine Ferien/Feiertage (bei Schulprofilen)
             if (!empty($status['is_scheduled_day']) && empty($status['is_holiday_or_vacation'])) {
                 $activeStatus = $status;
