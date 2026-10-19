@@ -111,7 +111,7 @@ class InsaClient
     public function getStationDepartures(
         string $stationId,
         ?string $stationName = null,
-        int $maxJourneys = 15,
+        int $maxJourneys = 30,
         ?DateTimeImmutable $when = null
     ): array {
         $now = $when ?? new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin'));

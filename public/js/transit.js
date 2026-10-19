@@ -334,10 +334,9 @@
 
         const profileId = card.dataset.profileId;
         const direction = card.dataset.direction || 'outbound';
-        const offset = card.dataset.offset || 0;
 
         try {
-            const resp = await fetch(`api.php?action=status&profile_id=${encodeURIComponent(profileId)}&direction=${encodeURIComponent(direction)}&offset_minutes=${encodeURIComponent(offset)}`);
+            const resp = await fetch(`api.php?action=status&profile_id=${encodeURIComponent(profileId)}&direction=${encodeURIComponent(direction)}`);
             const res = await resp.json();
             if (!res.success || !res.data) return;
 

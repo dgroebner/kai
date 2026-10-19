@@ -294,7 +294,7 @@ class TransitService
         }
 
         // Live von INSA abrufen
-        $data = $this->client->getStationDepartures($stationId, $stationName, 15, $now);
+        $data = $this->client->getStationDepartures($stationId, $stationName, 30, $now);
 
         // Im Cache ablegen
         try {

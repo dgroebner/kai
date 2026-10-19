@@ -35,14 +35,10 @@ if (!$selectedProfile && !empty($activeProfiles)) {
 }
 
 $directionOverride = isset($_GET['dir']) && in_array($_GET['dir'], ['outbound', 'return'], true) ? $_GET['dir'] : null;
-$offsetMinutes = filter_var($_GET['offset'] ?? 0, FILTER_VALIDATE_INT);
-if ($offsetMinutes === false) {
-    $offsetMinutes = 0;
-}
 
 $status = null;
 if ($selectedProfile) {
-    $status = $transitService->getProfileStatus($selectedProfile, $directionOverride, $offsetMinutes);
+    $status = $transitService->getProfileStatus($selectedProfile, $directionOverride, 0);
 }
 
 $csrfToken = Auth::csrfToken();
@@ -90,7 +86,7 @@ $csrfToken = Auth::csrfToken();
 
         <?php if ($selectedProfile && $status): ?>
             <!-- Haupt-Monitor für das ausgewählte Profil -->
-            <section class="card transit-profile-card" data-profile-id="<?= (int)$selectedProfile['id'] ?>" data-direction="<?= htmlspecialchars($status['direction'], ENT_QUOTES, 'UTF-8') ?>" data-offset="<?= (int)$offsetMinutes ?>">
+            <section class="card transit-profile-card" data-profile-id="<?= (int)$selectedProfile['id'] ?>" data-direction="<?= htmlspecialchars($status['direction'], ENT_QUOTES, 'UTF-8') ?>">
                 <div class="transit-card-header">
                     <div class="transit-route-info">
                         <div class="transit-direction-tag"><?= htmlspecialchars($status['direction_label'], ENT_QUOTES, 'UTF-8') ?></div>
@@ -113,7 +109,7 @@ $csrfToken = Auth::csrfToken();
                     </div>
                 </div>
 
-                <!-- Statusleiste & Schnellverschiebung -->
+                <!-- Statusleiste -->
                 <div class="transit-control-strip">
                     <div class="transit-status-indicator">
                         <span class="transit-status-pill transit-status--<?= htmlspecialchars($status['status_severity'], ENT_QUOTES, 'UTF-8') ?>">
@@ -125,16 +121,6 @@ $csrfToken = Auth::csrfToken();
                         <?php elseif (!$status['is_scheduled_day']): ?>
                             <span class="badge badge-outline" title="Heute laut Wochentag-Plan kein regulärer Pendlertag">📅 Nicht im Wochenplan</span>
                         <?php endif; ?>
-                    </div>
-
-                    <!-- Zeit-Schnellverschiebung -->
-                    <div class="transit-time-offsets">
-                        <span class="text-muted" style="font-size: 0.85rem; margin-right: 0.25rem;">Abfahrt:</span>
-                        <a href="index.php?profile=<?= $selectedProfile['id'] ?>&dir=<?= $status['direction'] ?>&offset=0" class="btn btn-sm <?= $offsetMinutes === 0 ? 'btn-primary' : 'btn-outline' ?>">Jetzt</a>
-                        <a href="index.php?profile=<?= $selectedProfile['id'] ?>&dir=<?= $status['direction'] ?>&offset=15" class="btn btn-sm <?= $offsetMinutes === 15 ? 'btn-primary' : 'btn-outline' ?>">+15m</a>
-                        <a href="index.php?profile=<?= $selectedProfile['id'] ?>&dir=<?= $status['direction'] ?>&offset=30" class="btn btn-sm <?= $offsetMinutes === 30 ? 'btn-primary' : 'btn-outline' ?>">+30m</a>
-                        <a href="index.php?profile=<?= $selectedProfile['id'] ?>&dir=<?= $status['direction'] ?>&offset=45" class="btn btn-sm <?= $offsetMinutes === 45 ? 'btn-primary' : 'btn-outline' ?>">+45m</a>
-                        <a href="index.php?profile=<?= $selectedProfile['id'] ?>&dir=<?= $status['direction'] ?>&offset=60" class="btn btn-sm <?= $offsetMinutes === 60 ? 'btn-primary' : 'btn-outline' ?>">+1h</a>
                     </div>
                 </div>
 
