@@ -52,7 +52,7 @@ class ReceiptSessionService
         $minDate = min($startDate, $endDate);
         $maxDate = max($startDate, $endDate);
 
-        // Primary search: Bons im Fenster von -7 Tagen vor Start bis +7 Tage nach Ende/heute suchen
+        // Primary search: Bons im Fenster von -7 Tagen vor Start bis +7 Tage nach Ende/heute suchen (nur E-Bons)
         $stmt = $this->pdo->prepare("
             SELECT r.*, 
                    COUNT(i.id) AS item_count,
@@ -61,6 +61,10 @@ class ReceiptSessionService
             LEFT JOIN kb_items i ON r.id = i.receipt_id
             WHERE (r.shopping_session_id IS NULL OR r.shopping_session_id = :session_id_filter)
               AND r.purchase_date BETWEEN DATE_SUB(:min_date, INTERVAL 7 DAY) AND DATE_ADD(:max_date, INTERVAL 7 DAY)
+              AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+              AND r.contract_id IS NULL
+              AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+              AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))
             GROUP BY r.id
             ORDER BY is_currently_linked DESC, r.purchase_date DESC, r.id DESC
         ");
@@ -86,6 +90,10 @@ class ReceiptSessionService
                 LEFT JOIN kb_items i ON r.id = i.receipt_id
                 WHERE (r.shopping_session_id IS NULL OR r.shopping_session_id = :session_id_filter)
                   AND r.purchase_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+                  AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+                  AND r.contract_id IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+                  AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))
                 GROUP BY r.id
                 ORDER BY is_currently_linked DESC, r.purchase_date DESC, r.id DESC
                 LIMIT 30
@@ -161,6 +169,8 @@ class ReceiptSessionService
             FROM kb_receipts r
             LEFT JOIN kb_items i ON r.id = i.receipt_id
             WHERE r.shopping_session_id = :session_id
+              AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+              AND r.contract_id IS NULL
             GROUP BY r.id
             ORDER BY r.purchase_date ASC, r.id ASC
         ");
@@ -256,6 +266,9 @@ class ReceiptSessionService
             FROM kb_items i
             JOIN kb_receipts r ON i.receipt_id = r.id
             WHERE i.receipt_id IN ($placeholders)
+              AND (i.category IS NULL OR (i.category != 'E-Auto laden' AND i.category NOT LIKE '%Ladevorgang%'))
+              AND i.name NOT LIKE '%Ladevorgang%'
+              AND i.name NOT LIKE '%kWh%'
             ORDER BY r.store ASC, i.id ASC
         ");
         $itemsStmt->execute($receiptIds);

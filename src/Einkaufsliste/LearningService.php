@@ -54,7 +54,7 @@ class LearningService
         // Zunächst eventuelle Altdaten oder verfälschte Kategorien automatisch reparieren
         $this->categoryRepo->repairInvalidCategories();
 
-        // 1. Alle Kassenbon-Positionen chronologisch laden
+        // 1. Alle Kassenbon-Positionen chronologisch laden (ausschließlich reguläre E-Bons, keine Rechnungen/Ladevorgänge)
         $stmt = $this->pdo->query("
             SELECT 
                 i.name,
@@ -64,6 +64,13 @@ class LearningService
             FROM kb_items i
             JOIN kb_receipts r ON i.receipt_id = r.id
             WHERE i.name IS NOT NULL AND TRIM(i.name) != ''
+              AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+              AND r.contract_id IS NULL
+              AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+              AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))
+              AND (i.category IS NULL OR (i.category != 'E-Auto laden' AND i.category NOT LIKE '%Ladevorgang%'))
+              AND i.name NOT LIKE '%Ladevorgang%'
+              AND i.name NOT LIKE '%kWh%'
             ORDER BY r.purchase_date ASC, i.id ASC
         ");
 
@@ -291,7 +298,7 @@ class LearningService
     public function getInboxItems(): array
     {
         // Alle Kassenbon-Namen, die nicht in ebon_product_mappings stehen.
-        // Wir aggregieren gleich die Metadaten.
+        // Nur reguläre E-Bons berücksichtigen (Rechnungen, Ladevorgänge, Verträge ausschließen).
         $stmt = $this->pdo->query("
             SELECT 
                 i.name,
@@ -304,6 +311,13 @@ class LearningService
             WHERE i.name NOT IN (SELECT ebon_name FROM ebon_product_mappings)
               AND i.name IS NOT NULL 
               AND TRIM(i.name) != ''
+              AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+              AND r.contract_id IS NULL
+              AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+              AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))
+              AND (i.category IS NULL OR (i.category != 'E-Auto laden' AND i.category NOT LIKE '%Ladevorgang%'))
+              AND i.name NOT LIKE '%Ladevorgang%'
+              AND i.name NOT LIKE '%kWh%'
             GROUP BY i.name, i.category
             ORDER BY `count` DESC, i.name ASC
         ");
@@ -378,7 +392,8 @@ class LearningService
         $keywords = [
             'rabatt', 'coupon', 'aktionsnachlass', 'gutschein', 'treuepunkt',
             'bonus', 'ersparnis', 'nachlass', 'leergut', 'pfand', 'rückgabe',
-            'spende', 'aufrund',
+            'spende', 'aufrund', 'ladevorgang', 'ladepunkt', 'kwh', 'grundgebühr',
+            'bereitstellungspreis',
         ];
 
         foreach ($keywords as $kw) {

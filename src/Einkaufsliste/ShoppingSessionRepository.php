@@ -301,6 +301,8 @@ class ShoppingSessionRepository
                 SELECT shopping_session_id, COUNT(*) AS receipt_count, SUM(total) AS receipts_total
                 FROM kb_receipts
                 WHERE shopping_session_id IS NOT NULL
+                  AND (document_type = 'receipt' OR document_type IS NULL OR document_type = '')
+                  AND contract_id IS NULL
                 GROUP BY shopping_session_id
             ) r_stats ON s.id = r_stats.shopping_session_id
             WHERE s.status = 'completed'

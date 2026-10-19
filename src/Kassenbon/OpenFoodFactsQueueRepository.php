@@ -42,7 +42,8 @@ class OpenFoodFactsQueueRepository
         $ignoredPatterns = [
             'rabatt', 'abverkauf', 'pfand', 'leergut', 'coupon', 'gutschein',
             'aktionsrabatt', 'sofortrabatt', 'leergutbon', 'pfandrückgabe',
-            'pfandflasche', 'pfandglas', 'mehrwegpfand', 'einwegpfand', 'rückgeld', 'auszahlung'
+            'pfandflasche', 'pfandglas', 'mehrwegpfand', 'einwegpfand', 'rückgeld', 'auszahlung',
+            'ladevorgang', 'ladepunkt', 'kwh', 'grundgebühr', 'bereitstellungspreis'
         ];
         
         foreach ($ignoredPatterns as $pattern) {
@@ -297,8 +298,20 @@ class OpenFoodFactsQueueRepository
      */
     public function enqueueAllPendingItems(): int
     {
-        // Schritt 1: Alle kb_items holen und in PHP normalisieren, um saubere Keys zu garantieren
-        $stmt = $this->pdo->prepare("SELECT DISTINCT name FROM kb_items WHERE TRIM(name) != ''");
+        // Schritt 1: Alle kb_items aus regulären E-Bons holen und in PHP normalisieren
+        $stmt = $this->pdo->prepare("
+            SELECT DISTINCT i.name 
+            FROM kb_items i
+            JOIN kb_receipts r ON i.receipt_id = r.id
+            WHERE TRIM(i.name) != ''
+              AND (r.document_type = 'receipt' OR r.document_type IS NULL OR r.document_type = '')
+              AND r.contract_id IS NULL
+              AND NOT EXISTS (SELECT 1 FROM vehicle_charges vc WHERE vc.receipt_id = r.id)
+              AND NOT EXISTS (SELECT 1 FROM kb_items ki2 WHERE ki2.receipt_id = r.id AND (ki2.category = 'E-Auto laden' OR ki2.name LIKE '%Ladevorgang%' OR ki2.name LIKE '%kWh%'))
+              AND (i.category IS NULL OR (i.category != 'E-Auto laden' AND i.category NOT LIKE '%Ladevorgang%'))
+              AND i.name NOT LIKE '%Ladevorgang%'
+              AND i.name NOT LIKE '%kWh%'
+        ");
         $stmt->execute();
         $allNames = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
