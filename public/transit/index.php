@@ -186,13 +186,13 @@ $csrfToken = Auth::csrfToken();
 
                 <!-- Tür-zu-Tür Verbindungen & Alternativen -->
                 <?php $trips = $status['trip_recommendations'] ?? []; ?>
-                <?php if (!empty($trips)): ?>
-                    <div class="transit-trips-wrap">
-                        <div class="transit-trips-header">
-                            <h3 class="transit-table-title" style="margin-bottom: 0;">🧭 Verbindungen &amp; Alternativen</h3>
-                            <span class="text-muted" style="font-size: 0.85rem;">Von Tür zu Tür (Echtzeit)</span>
-                        </div>
-                        <div class="transit-trips-list js-trips-list">
+                <div class="transit-trips-wrap">
+                    <div class="transit-trips-header">
+                        <h3 class="transit-table-title" style="margin-bottom: 0;">🧭 Verbindungen &amp; Alternativen</h3>
+                        <span class="text-muted" style="font-size: 0.85rem;">Wunschroute &amp; Alternativen von Tür zu Tür (Echtzeit)</span>
+                    </div>
+                    <div class="transit-trips-list js-trips-list">
+                        <?php if (!empty($trips)): ?>
                             <?php foreach ($trips as $con): ?>
                                 <div class="transit-trip-card">
                                     <div class="transit-trip-summary">
@@ -235,9 +235,13 @@ $csrfToken = Auth::csrfToken();
                                     </div>
                                 </div>
                             <?php endforeach; ?>
-                        </div>
+                        <?php else: ?>
+                            <div class="transit-departures-empty text-muted">
+                                Suche aktuelle Verbindungen und Alternativen...
+                            </div>
+                        <?php endif; ?>
                     </div>
-                <?php endif; ?>
+                </div>
 
                 <!-- Weitere / alternative Abfahrten als Badges -->
                 <div class="transit-departures-wrap">

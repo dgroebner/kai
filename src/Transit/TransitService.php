@@ -123,12 +123,9 @@ class TransitService
             // Richtungsfilterung basierend auf dem gelernten/gecachten Linienverlauf
             $lineKey = $dep['line'];
             if (!empty($allowedDirsForLeg[$lineKey])) {
-                $depDir = mb_strtolower(trim($dep['direction']));
                 $matches = false;
                 foreach ($allowedDirsForLeg[$lineKey] as $allowedDir) {
-                    $allowedLower = mb_strtolower(trim($allowedDir));
-                    // Prüfen ob Substring übereinstimmt (z. B. "Böhlitz-Ehrenberg" in "Böhlitz-Ehrenberg über Hauptbahnhof")
-                    if (str_contains($depDir, $allowedLower) || str_contains($allowedLower, $depDir)) {
+                    if (self::matchDirection($dep['direction'], $allowedDir)) {
                         $matches = true;
                         break;
                     }
@@ -262,11 +259,9 @@ class TransitService
 
             // Richtungsfilter am Umstieg (falls im Cache gelernt)
             if (!empty($viaAllowedDirs[$dep['line']])) {
-                $depDir = mb_strtolower(trim($dep['direction']));
                 $matches = false;
                 foreach ($viaAllowedDirs[$dep['line']] as $allowedDir) {
-                    $allowedLower = mb_strtolower(trim($allowedDir));
-                    if (str_contains($depDir, $allowedLower) || str_contains($allowedLower, $depDir)) {
+                    if (self::matchDirection($dep['direction'], $allowedDir)) {
                         $matches = true;
                         break;
                     }
@@ -346,7 +341,11 @@ class TransitService
 
                 if ($cachedPayload !== false && $cachedPayload !== null) {
                     $decoded = json_decode((string)$cachedPayload, true);
-                    if (is_array($decoded) && isset($decoded['outbound'], $decoded['return'])) {
+                    if (
+                        is_array($decoded)
+                        && isset($decoded['outbound'], $decoded['return'])
+                        && (!empty($decoded['outbound']['allowed_directions']) || !empty($decoded['return']['allowed_directions']))
+                    ) {
                         return $decoded;
                     }
                 }
@@ -379,27 +378,77 @@ class TransitService
             'cached_at' => date('c'),
         ];
 
-        // Im Cache ablegen (24 Stunden TTL)
-        try {
-            $expiresAt = date('Y-m-d H:i:s', time() + 86400);
-            $stmt = $conn->prepare("
-                INSERT INTO transit_cache (cache_key, payload, expires_at)
-                VALUES (:key, :payload, :expires)
-                ON DUPLICATE KEY UPDATE payload = :payload2, expires_at = :expires2
-            ");
-            $encoded = json_encode($result, JSON_UNESCAPED_UNICODE);
-            $stmt->execute([
-                'key' => $cacheKey,
-                'payload' => $encoded,
-                'expires' => $expiresAt,
-                'payload2' => $encoded,
-                'expires2' => $expiresAt,
-            ]);
-        } catch (Throwable $e) {
-            $this->logger->warn('TransitService: Fehler beim Schreiben des Routen-Caches', ['error' => $e->getMessage()]);
+        // Im Cache ablegen (24 Stunden TTL) - nur wenn Richtungen ermittelt werden konnten
+        if (!empty($outboundAnalysis['allowed_directions']) || !empty($returnAnalysis['allowed_directions'])) {
+            try {
+                $expiresAt = date('Y-m-d H:i:s', time() + 86400);
+                $stmt = $conn->prepare("
+                    INSERT INTO transit_cache (cache_key, payload, expires_at)
+                    VALUES (:key, :payload, :expires)
+                    ON DUPLICATE KEY UPDATE payload = :payload2, expires_at = :expires2
+                ");
+                $encoded = json_encode($result, JSON_UNESCAPED_UNICODE);
+                $stmt->execute([
+                    'key' => $cacheKey,
+                    'payload' => $encoded,
+                    'expires' => $expiresAt,
+                    'payload2' => $encoded,
+                    'expires2' => $expiresAt,
+                ]);
+            } catch (Throwable $e) {
+                $this->logger->warn('TransitService: Fehler beim Schreiben des Routen-Caches', ['error' => $e->getMessage()]);
+            }
         }
 
         return $result;
+    }
+
+    /**
+     * Löscht den gecachten Routen- und Richtungsverlauf für ein Pendlerprofil.
+     */
+    public function clearProfileCache(int $profileId): void
+    {
+        try {
+            $conn = $this->db->getConnection();
+            $stmt = $conn->prepare("DELETE FROM transit_cache WHERE cache_key = :key");
+            $stmt->execute(['key' => "transit_routes_p{$profileId}"]);
+        } catch (Throwable $e) {
+            $this->logger->warn('TransitService: Fehler beim Löschen des Profil-Caches', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Prüft flexibel und fehlertolerant, ob zwei Zielrichtungsangaben übereinstimmen.
+     * Berücksichtigt "über"-Zusätze, "Leipzig, "-Präfixe und Teilstrings.
+     */
+    public static function matchDirection(string $dir1, string $dir2): bool
+    {
+        $normalize = static function(string $s): string {
+            $s = mb_strtolower(trim($s));
+            // "Leipzig, " oder "L. " am Anfang entfernen
+            $s = preg_replace('/^(?:leipzig,\s*|l\.\s*)/i', '', $s);
+            return trim((string)$s);
+        };
+
+        $n1 = $normalize($dir1);
+        $n2 = $normalize($dir2);
+
+        if ($n1 === '' || $n2 === '') {
+            return false;
+        }
+
+        if (str_contains($n1, $n2) || str_contains($n2, $n1)) {
+            return true;
+        }
+
+        // Hauptziel vor "über" vergleichen (z.B. "Böhlitz-Ehrenberg über Hauptbahnhof" -> "Böhlitz-Ehrenberg")
+        $main1 = trim(explode(' über ', $n1)[0]);
+        $main2 = trim(explode(' über ', $n2)[0]);
+        if ($main1 !== '' && $main2 !== '' && ($main1 === $main2 || str_contains($main1, $main2) || str_contains($main2, $main1))) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -487,7 +536,7 @@ class TransitService
 
             if ($cachedPayload !== false && $cachedPayload !== null) {
                 $decoded = json_decode((string)$cachedPayload, true);
-                if (is_array($decoded)) {
+                if (is_array($decoded) && !empty($decoded)) {
                     return $decoded;
                 }
             }
@@ -520,24 +569,26 @@ class TransitService
 
         $topConnections = array_slice($unique, 0, 4);
 
-        // Im Cache speichern (TTL 120 Sekunden)
-        try {
-            $expiresAt = date('Y-m-d H:i:s', time() + 120);
-            $stmt = $conn->prepare("
-                INSERT INTO transit_cache (cache_key, payload, expires_at)
-                VALUES (:key, :payload, :expires)
-                ON DUPLICATE KEY UPDATE payload = :payload2, expires_at = :expires2
-            ");
-            $encoded = json_encode($topConnections, JSON_UNESCAPED_UNICODE);
-            $stmt->execute([
-                'key' => $cacheKey,
-                'payload' => $encoded,
-                'expires' => $expiresAt,
-                'payload2' => $encoded,
-                'expires2' => $expiresAt,
-            ]);
-        } catch (Throwable $e) {
-            $this->logger->warn('TransitService: Cache-Schreibfehler bei Trips', ['error' => $e->getMessage()]);
+        // Im Cache speichern (TTL 120 Sekunden, nur wenn Verbindungen gefunden)
+        if (!empty($topConnections)) {
+            try {
+                $expiresAt = date('Y-m-d H:i:s', time() + 120);
+                $stmt = $conn->prepare("
+                    INSERT INTO transit_cache (cache_key, payload, expires_at)
+                    VALUES (:key, :payload, :expires)
+                    ON DUPLICATE KEY UPDATE payload = :payload2, expires_at = :expires2
+                ");
+                $encoded = json_encode($topConnections, JSON_UNESCAPED_UNICODE);
+                $stmt->execute([
+                    'key' => $cacheKey,
+                    'payload' => $encoded,
+                    'expires' => $expiresAt,
+                    'payload2' => $encoded,
+                    'expires2' => $expiresAt,
+                ]);
+            } catch (Throwable $e) {
+                $this->logger->warn('TransitService: Cache-Schreibfehler bei Trips', ['error' => $e->getMessage()]);
+            }
         }
 
         return $topConnections;

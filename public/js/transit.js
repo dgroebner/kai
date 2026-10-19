@@ -414,62 +414,66 @@
 
             // Tür-zu-Tür Verbindungsempfehlungen aktualisieren
             const tripsList = document.querySelector('.js-trips-list');
-            if (tripsList && Array.isArray(data.trip_recommendations) && data.trip_recommendations.length > 0) {
-                let tripHtml = '';
-                for (const con of data.trip_recommendations) {
-                    const transfersLabel = con.transfers === 0 ? 'Direkt' : (con.transfers === 1 ? '1 Umstieg' : `${con.transfers} Umstiege`);
-                    let metaBadge = '';
-                    if (con.is_cancelled) {
-                        metaBadge = '<span class="badge badge-danger">Fahrt fällt aus</span>';
-                    } else if (con.delay_minutes > 0) {
-                        metaBadge = `<span class="text-danger">+${con.delay_minutes} Min</span>`;
-                    } else if (con.countdown_minutes !== null && con.countdown_minutes >= 0) {
-                        metaBadge = `<span class="badge badge-success">in ${con.countdown_minutes} Min</span>`;
-                    }
+            if (tripsList) {
+                if (Array.isArray(data.trip_recommendations) && data.trip_recommendations.length > 0) {
+                    let tripHtml = '';
+                    for (const con of data.trip_recommendations) {
+                        const transfersLabel = con.transfers === 0 ? 'Direkt' : (con.transfers === 1 ? '1 Umstieg' : `${con.transfers} Umstiege`);
+                        let metaBadge = '';
+                        if (con.is_cancelled) {
+                            metaBadge = '<span class="badge badge-danger">Fahrt fällt aus</span>';
+                        } else if (con.delay_minutes > 0) {
+                            metaBadge = `<span class="text-danger">+${con.delay_minutes} Min</span>`;
+                        } else if (con.countdown_minutes !== null && con.countdown_minutes >= 0) {
+                            metaBadge = `<span class="badge badge-success">in ${con.countdown_minutes} Min</span>`;
+                        }
 
-                    let legsHtml = '';
-                    if (Array.isArray(con.legs)) {
-                        con.legs.forEach((leg, idx) => {
-                            if (idx > 0) {
-                                legsHtml += '<span class="transit-leg-separator">&rsaquo;</span>';
-                            }
-                            if (leg.type === 'transport') {
-                                const b = getLvbBadge(leg);
-                                legsHtml += `
-                                    <div class="transit-trip-leg-item">
-                                        <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
-                                            ${KaiHtml.escape(leg.line)}
-                                        </span>
-                                        <span class="transit-leg-dir" title="Richtung ${KaiHtml.escape(leg.direction)}">${KaiHtml.escape(leg.direction)}</span>
+                        let legsHtml = '';
+                        if (Array.isArray(con.legs)) {
+                            con.legs.forEach((leg, idx) => {
+                                if (idx > 0) {
+                                    legsHtml += '<span class="transit-leg-separator">&rsaquo;</span>';
+                                }
+                                if (leg.type === 'transport') {
+                                    const b = getLvbBadge(leg);
+                                    legsHtml += `
+                                        <div class="transit-trip-leg-item">
+                                            <span class="transit-line-pill ${KaiHtml.escape(b.css_class)}" style="background-color: ${KaiHtml.escape(b.bg)}; color: ${KaiHtml.escape(b.text_color)};">
+                                                ${KaiHtml.escape(leg.line)}
+                                            </span>
+                                            <span class="transit-leg-dir" title="Richtung ${KaiHtml.escape(leg.direction)}">${KaiHtml.escape(leg.direction)}</span>
+                                        </div>
+                                    `;
+                                } else if (leg.type === 'walk') {
+                                    legsHtml += `<span class="transit-trip-walk" title="Fußweg ${KaiHtml.escape(leg.duration_minutes)} Min">🚶 ${KaiHtml.escape(leg.duration_minutes)}m</span>`;
+                                }
+                            });
+                        }
+
+                        tripHtml += `
+                            <div class="transit-trip-card">
+                                <div class="transit-trip-summary">
+                                    <div class="transit-trip-times">
+                                        <strong>${KaiHtml.escape(con.departure_time)}</strong>
+                                        <span class="transit-trip-arrow">&rarr;</span>
+                                        <strong>${KaiHtml.escape(con.arrival_time)}</strong>
+                                        <span class="transit-trip-duration">(${KaiHtml.escape(con.duration_minutes)} Min)</span>
                                     </div>
-                                `;
-                            } else if (leg.type === 'walk') {
-                                legsHtml += `<span class="transit-trip-walk" title="Fußweg ${KaiHtml.escape(leg.duration_minutes)} Min">🚶 ${KaiHtml.escape(leg.duration_minutes)}m</span>`;
-                            }
-                        });
+                                    <div class="transit-trip-meta">
+                                        <span class="transit-trip-transfers">${KaiHtml.escape(transfersLabel)}</span>
+                                        ${metaBadge}
+                                    </div>
+                                </div>
+                                <div class="transit-trip-legs">
+                                    ${legsHtml}
+                                </div>
+                            </div>
+                        `;
                     }
-
-                    tripHtml += `
-                        <div class="transit-trip-card">
-                            <div class="transit-trip-summary">
-                                <div class="transit-trip-times">
-                                    <strong>${KaiHtml.escape(con.departure_time)}</strong>
-                                    <span class="transit-trip-arrow">&rarr;</span>
-                                    <strong>${KaiHtml.escape(con.arrival_time)}</strong>
-                                    <span class="transit-trip-duration">(${KaiHtml.escape(con.duration_minutes)} Min)</span>
-                                </div>
-                                <div class="transit-trip-meta">
-                                    <span class="transit-trip-transfers">${KaiHtml.escape(transfersLabel)}</span>
-                                    ${metaBadge}
-                                </div>
-                            </div>
-                            <div class="transit-trip-legs">
-                                ${legsHtml}
-                            </div>
-                        </div>
-                    `;
+                    tripsList.innerHTML = tripHtml;
+                } else {
+                    tripsList.innerHTML = '<div class="transit-departures-empty text-muted">Keine Tür-zu-Tür Verbindungen für den aktuellen Zeitpunkt gefunden.</div>';
                 }
-                tripsList.innerHTML = tripHtml;
             }
         } catch (err) {
             console.warn('Hintergrund-Aktualisierung fehlgeschlagen', err);

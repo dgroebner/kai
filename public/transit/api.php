@@ -104,6 +104,7 @@ try {
             }
 
             $savedId = $profileRepo->save($profileData);
+            $service->clearProfileCache($savedId);
             $savedProfile = $profileRepo->getById($savedId);
             if ($savedProfile) {
                 try {
@@ -122,6 +123,7 @@ try {
             if (!$id) {
                 Auth::sendJsonError(400, 'Ungültige ID');
             }
+            $service->clearProfileCache($id);
             $success = $profileRepo->delete($id);
             echo json_encode(['success' => $success]);
             exit;

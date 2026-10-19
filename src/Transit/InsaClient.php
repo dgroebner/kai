@@ -272,8 +272,8 @@ class InsaClient
         $req = [
             'depLocL' => [$depLoc],
             'arrLocL' => [$arrLoc],
-            'date' => $dateStr,
-            'time' => $timeStr,
+            'outDate' => $dateStr,
+            'outTime' => $timeStr,
             'numF' => max(1, min($numTrips, 5)),
             'minChgTime' => 2,
         ];
