@@ -2,7 +2,7 @@
 // Service Worker für die kai PWA
 // Strategie: Network-First für HTML-Seiten, Cache-First für statische Assets
 
-const CACHE_VERSION = 'v29';
+const CACHE_VERSION = 'v30';
 const CACHE_NAME = `kai-${CACHE_VERSION}`;
 
 // Statische Assets, die beim Install gecacht werden
@@ -12,6 +12,7 @@ const PRECACHE_ASSETS = [
     '/js/games.js',
     '/js/games-hangman.js',
     '/js/games-plates.js',
+    '/js/games-tictactoe.js',
     '/js/offline.js',
     '/js/pwa-register.js',
     '/android-chrome-192x192.png',

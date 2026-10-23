@@ -46,6 +46,9 @@ $userFirstName = (!empty($parts[0])) ? $parts[0] : '';
         <button type="button" class="btn btn-outline js-games-tab-btn" data-tool="plates" id="tab-btn-plates">
             🚗 KfZ-Kennzeichen
         </button>
+        <button type="button" class="btn btn-outline js-games-tab-btn" data-tool="tictactoe" id="tab-btn-tictactoe">
+            ❌⭕ Tic-Tac-Toe &amp; Tant Fant
+        </button>
     </nav>
 
     <main class="games-main">
@@ -370,6 +373,139 @@ $userFirstName = (!empty($parts[0])) ? $parts[0] : '';
                 </div>
             </div>
         </section>
+
+        <!-- ============================================================== -->
+        <!-- WERKZEUG 6: TIC-TAC-TOE & TANT FANT                            -->
+        <!-- ============================================================== -->
+        <section id="tool-pane-tictactoe" class="card games-tool-pane hidden" aria-labelledby="tab-btn-tictactoe">
+            <div class="games-tool-header">
+                <h2>❌⭕ Tic-Tac-Toe &amp; Tant Fant</h2>
+                <p class="text-muted">Das zeitlose 3×3-Duell: Spiele klassisches Drei gewinnt oder die taktische Tant Fant Variante (3 Steine ziehen), allein gegen den Computer oder zu zweit.</p>
+            </div>
+
+            <!-- Steuerleiste: Spielvariante & Modus -->
+            <div class="ttt-top-controls">
+                <div class="ttt-variant-switcher" role="group" aria-label="Spielvariante">
+                    <button type="button" class="btn btn-sm js-ttt-variant-btn active" data-variant="tantfant" title="3 Marker je Spieler, abwechselnd ziehen">
+                        🎯 Tant Fant (3 Steine ziehen)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline js-ttt-variant-btn" data-variant="classic" title="Klassisches Tic-Tac-Toe mit Setzen auf leere Felder">
+                        ❌⭕ Klassisch (Drei gewinnt)
+                    </button>
+                </div>
+
+                <div class="ttt-opponent-switcher" role="group" aria-label="Gegner">
+                    <button type="button" class="btn btn-sm js-ttt-mode-btn active" data-mode="ai" title="Allein gegen den Computer spielen">
+                        🤖 Gegen Computer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline js-ttt-mode-btn" data-mode="pvp" title="Zu zweit an einem Gerät abwechselnd ziehen">
+                        👥 2 Spieler (Pass &amp; Play)
+                    </button>
+                </div>
+            </div>
+
+            <!-- KI-Schwierigkeitsgrad (nur sichtbar wenn Gegen Computer) -->
+            <div class="ttt-difficulty-bar" id="ttt-difficulty-bar" role="group" aria-label="Schwierigkeitsgrad">
+                <span class="ttt-diff-label text-muted">KI-Stufe:</span>
+                <button type="button" class="btn btn-sm btn-outline js-ttt-diff-btn" data-diff="easy">🟢 Leicht</button>
+                <button type="button" class="btn btn-sm js-ttt-diff-btn active" data-diff="medium">🟡 Taktisch</button>
+                <button type="button" class="btn btn-sm btn-outline js-ttt-diff-btn" data-diff="hard">🔴 Unschlagbar</button>
+            </div>
+
+            <!-- Scoreboard & Zuganzeige -->
+            <div class="ttt-scoreboard" id="ttt-scoreboard" aria-label="Punktestände und Zugstatus">
+                <div class="ttt-score-card ttt-score-player1 is-active" id="ttt-card-p1">
+                    <div class="ttt-player-marker marker-x">✕</div>
+                    <div class="ttt-player-info">
+                        <span class="ttt-player-title" id="ttt-label-p1"><?= htmlspecialchars($userFirstName !== '' ? $userFirstName : 'Du', ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="ttt-turn-badge" id="ttt-turn-badge-p1">Am Zug</span>
+                    </div>
+                    <div class="ttt-score-num" id="ttt-score-p1">0</div>
+                </div>
+
+                <div class="ttt-score-card ttt-score-draw" id="ttt-card-draw">
+                    <div class="ttt-draw-icon">🤝</div>
+                    <div class="ttt-player-info">
+                        <span class="ttt-player-title">Remis</span>
+                    </div>
+                    <div class="ttt-score-num" id="ttt-score-draw">0</div>
+                </div>
+
+                <div class="ttt-score-card ttt-score-player2" id="ttt-card-p2">
+                    <div class="ttt-score-num" id="ttt-score-p2">0</div>
+                    <div class="ttt-player-info">
+                        <span class="ttt-player-title" id="ttt-label-p2">Computer</span>
+                        <span class="ttt-turn-badge hidden" id="ttt-turn-badge-p2">Am Zug</span>
+                    </div>
+                    <div class="ttt-player-marker marker-o">○</div>
+                </div>
+            </div>
+
+            <!-- Status- & Anweisungshinweis -->
+            <div class="ttt-instruction-bar" id="ttt-instruction-bar" role="status" aria-live="polite">
+                Wähle einen deiner 3 Steine und bewege ihn auf ein freies Nachbarfeld.
+            </div>
+
+            <!-- Spielfeld-Bühne -->
+            <div class="ttt-stage-wrap">
+                <div class="ttt-board-container is-tantfant" id="ttt-board-container">
+                    <!-- SVG-Liniennetz für Tant Fant & Klassisch -->
+                    <svg class="ttt-grid-svg" id="ttt-grid-svg" viewBox="0 0 300 300" aria-hidden="true">
+                        <!-- Außenquadrat -->
+                        <line x1="50" y1="50" x2="250" y2="50" class="ttt-grid-line" />
+                        <line x1="250" y1="50" x2="250" y2="250" class="ttt-grid-line" />
+                        <line x1="250" y1="250" x2="50" y2="250" class="ttt-grid-line" />
+                        <line x1="50" y1="250" x2="50" y2="50" class="ttt-grid-line" />
+                        <!-- Kreuz -->
+                        <line x1="50" y1="150" x2="250" y2="150" class="ttt-grid-line" />
+                        <line x1="150" y1="50" x2="150" y2="250" class="ttt-grid-line" />
+                        <!-- Diagonalen (für Tant Fant) -->
+                        <line x1="50" y1="50" x2="250" y2="250" class="ttt-grid-line ttt-diagonal-line" />
+                        <line x1="250" y1="50" x2="50" y2="250" class="ttt-grid-line ttt-diagonal-line" />
+                    </svg>
+
+                    <!-- Interaktives 3x3 Gitter -->
+                    <div class="ttt-cells-grid" id="ttt-cells-grid" role="grid" aria-label="Spielfeld">
+                        <!-- 9 Zellen werden dynamisch initialisiert -->
+                    </div>
+
+                    <!-- Gewinnlinien-Overlay (SVG animierter Strich) -->
+                    <svg class="ttt-win-svg hidden" id="ttt-win-svg" viewBox="0 0 300 300" aria-hidden="true">
+                        <line id="ttt-win-line" x1="0" y1="0" x2="0" y2="0" class="ttt-win-line-path" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Banner bei Rundenende -->
+            <div id="ttt-result-banner" class="ttt-result-banner hidden" role="alert">
+                <div class="ttt-result-text" id="ttt-result-text">🎉 Du hast gewonnen!</div>
+            </div>
+
+            <!-- Aktionen -->
+            <div class="games-tool-actions">
+                <button type="button" class="btn btn-primary btn-lg js-ttt-restart-btn" id="btn-ttt-restart">🔄 Neues Spiel</button>
+                <button type="button" class="btn btn-outline js-ttt-draw-btn hidden" id="btn-ttt-draw" title="Ein Unentschieden vorschlagen">🤝 Remis vereinbaren</button>
+                <button type="button" class="btn btn-outline js-ttt-reset-scores-btn" id="btn-ttt-reset-scores" title="Scoreboard auf Null setzen">Punkte 0</button>
+            </div>
+
+            <!-- Regel-Akkordeon / Info-Box -->
+            <details class="card ttt-rules-details">
+                <summary class="ttt-rules-summary">📜 Spielregeln &amp; Varianten anzeigen</summary>
+                <div class="ttt-rules-body text-muted">
+                    <p><strong>🎯 Tant Fant (Indisches Schiebespiel / 3-Steine-Mühle):</strong></p>
+                    <ul>
+                        <li>Jeder Spieler hat genau 3 Steine. Spieler 1 (blau) startet in der oberen Reihe, Spieler 2 (rot) in der unteren. Das Zentrum ist frei.</li>
+                        <li>Pro Zug ziehst du einen eigenen Stein auf ein direkt verbundenes freies Nachbarfeld (waagerecht, senkrecht oder diagonal).</li>
+                        <li>Ziel ist eine 3er-Reihe – die eigene anfängliche Startreihe zählt jedoch nicht als Sieg.</li>
+                    </ul>
+                    <p><strong>❌⭕ Klassisches Tic-Tac-Toe:</strong></p>
+                    <ul>
+                        <li>Das 3×3-Brett beginnt leer. Die Spieler setzen abwechselnd ihr Symbol (✕ bzw. ○).</li>
+                        <li>Wer zuerst eine 3er-Reihe schafft, gewinnt. Sind alle Felder voll ohne Reihe, endet die Partie unentschieden.</li>
+                    </ul>
+                </div>
+            </details>
+        </section>
     </main>
 
     <!-- Modal für Bestätigung des Runden-Neustarts (Stadt-Land-Fluss) -->
@@ -451,6 +587,7 @@ $userFirstName = (!empty($parts[0])) ? $parts[0] : '';
 <script src="../js/games.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/games-hangman.js?v=<?= APP_VERSION ?>" defer></script>
 <script src="../js/games-plates.js?v=<?= APP_VERSION ?>" defer></script>
+<script src="../js/games-tictactoe.js?v=<?= APP_VERSION ?>" defer></script>
 </body>
 </html>
 
