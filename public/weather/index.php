@@ -168,7 +168,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
             // Fenster-Positionen für die Schwibbögen im Haus (X, Y, Skalierung, perspektivischer Neigungswinkel)
             $schwibbogenWindows = [
                 ['x' => 834,  'y' => 547, 's' => 0.65], // Erdgeschoss Front-Hauptfenster
-                ['x' => 664,  'y' => 339, 's' => 0.42], // Dachgaube links (exakt auf der Fensterbank unter dem Rollladen)
+                ['x' => 664,  'y' => 339, 's' => 0.42, 'skew' => -8], // Dachgaube links (exakt auf der schrägen Fensterbank)
                 ['x' => 833,  'y' => 294, 's' => 0.45], // Dachgaube rechts
                 ['x' => 1110, 'y' => 330, 's' => 0.32, 'skew' => 28], // Schmalseite OG links
                 ['x' => 1209, 'y' => 372, 's' => 0.28, 'skew' => 28, 'winter_only' => true], // Schmalseite OG rechts (im Sommer/Herbst hinter Baum)
