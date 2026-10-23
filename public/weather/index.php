@@ -167,12 +167,12 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
 
             // Fenster-Positionen für die Schwibbögen im Haus (X, Y, Skalierung)
             $schwibbogenWindows = [
-                ['x' => 825,  'y' => 548, 's' => 0.68], // Erdgeschoss Front-Hauptfenster
-                ['x' => 655,  'y' => 325, 's' => 0.45], // Dachgaube links
-                ['x' => 825,  'y' => 285, 's' => 0.45], // Dachgaube rechts
-                ['x' => 1080, 'y' => 305, 's' => 0.38], // Schmalseite OG links
-                ['x' => 1180, 'y' => 326, 's' => 0.38], // Schmalseite OG rechts
-                ['x' => 1080, 'y' => 495, 's' => 0.42], // Schmalseite EG
+                ['x' => 834,  'y' => 547, 's' => 0.65], // Erdgeschoss Front-Hauptfenster
+                ['x' => 659,  'y' => 378, 's' => 0.42], // Dachgaube links
+                ['x' => 833,  'y' => 294, 's' => 0.45], // Dachgaube rechts
+                ['x' => 1110, 'y' => 330, 's' => 0.32], // Schmalseite OG links
+                ['x' => 1209, 'y' => 372, 's' => 0.28], // Schmalseite OG rechts
+                ['x' => 1102, 'y' => 566, 's' => 0.34], // Schmalseite EG
             ];
 
             $weatherCode = $forecast['current']['weather_code'] ?? 0;
@@ -628,11 +628,15 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <!-- Weihnachtsmann mit Rentierschlitten & Geschenk-Abwurf (24. - 26. Dezember) -->
                                 <!-- Vergrößert (scale 1.45) & Flugroute nach rechts zum Baum orientiert -->
                                 <g id="diorama-santa-flight">
-                                    <!-- Schlitten-Gruppe mit 28s Flugzyklus -->
+                                    <!-- Schlitten-Gruppe mit 28s Flugzyklus: Fliegt nur von links nach rechts, Reset unsichtbar -->
                                     <g>
+                                        <animate attributeName="opacity"
+                                            values="1; 1; 0; 0; 0; 1"
+                                            keyTimes="0; 0.36; 0.38; 0.98; 0.99; 1"
+                                            dur="28s" repeatCount="indefinite" />
                                         <animateTransform attributeName="transform" type="translate"
-                                            values="-450,110; 150,135; 750,95; 1250,120; 1750,105; 2050,130; 2500,130; -450,110"
-                                            keyTimes="0; 0.08; 0.16; 0.24; 0.32; 0.36; 0.99; 1"
+                                            values="-450,110; 150,135; 665,95; 1250,120; 1750,105; 2150,130; 2150,130; -450,110; -450,110"
+                                            keyTimes="0; 0.08; 0.16; 0.24; 0.32; 0.36; 0.98; 0.985; 1"
                                             dur="28s" repeatCount="indefinite" />
                                         
                                         <!-- Vergrößertes Gespann (scale 1.45) mit Galoppbewegung -->
@@ -744,16 +748,16 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                         </g>
                                     </g>
 
-                                    <!-- DAS FALLENDE GESCHENK: Vergrößert & zielt punktgenau direkt links neben den Weihnachtsbaum (Landung bei X=1130, Y=835) -->
+                                    <!-- DAS FALLENDE GESCHENK: Zielt punktgenau direkt links neben den Weihnachtsbaum (Landung bei X=665, Y=835) -->
                                     <g id="diorama-santa-gift">
                                         <animate attributeName="opacity"
                                             values="0; 0; 1; 1; 0; 0"
-                                            keyTimes="0; 0.17; 0.18; 0.68; 0.75; 1"
+                                            keyTimes="0; 0.16; 0.17; 0.68; 0.75; 1"
                                             dur="28s" repeatCount="indefinite" />
 
-                                        <!-- Trajektorie: Sinkt sanft aus dem Himmel nach rechts neben den Baum -->
+                                        <!-- Trajektorie: Sinkt sanft aus dem Himmel direkt links neben den Baum -->
                                         <animateTransform attributeName="transform" type="translate"
-                                            values="1120,120; 1122,250; 1125,410; 1126,580; 1126,730; 1125,835; 1125,835; 1125,835"
+                                            values="665,105; 665,240; 665,410; 665,580; 665,730; 665,835; 665,835; 665,835"
                                             keyTimes="0; 0.20; 0.25; 0.30; 0.35; 0.40; 0.75; 1"
                                             dur="28s" repeatCount="indefinite" />
 
@@ -1276,7 +1280,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php endif; ?>
                             <?php if ($isTreeSeason): ?>
                                 <!-- Geschmückter Weihnachtsbaum im Garten (24. Dezember bis Lichtmess) -->
-                                <g id="diorama-xmas-tree" transform="translate(1190, 815) scale(1.15)">
+                                <g id="diorama-xmas-tree" transform="translate(720, 815) scale(1.15)">
                                     <!-- Baumschatten auf dem Boden -->
                                     <ellipse cx="0" cy="18" rx="42" ry="10" fill="#000000" opacity="0.35" />
 
