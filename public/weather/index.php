@@ -165,14 +165,14 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
             // 3. Weihnachtsmann mit Rentierschlitten: Heiligabend bis 2. Weihnachtsfeiertag (24. bis 26. Dezember)
             $isSantaSeason = ($m === 12 && $d >= 24 && $d <= 26);
 
-            // Fenster-Positionen für die Schwibbögen im Haus (X, Y, Skalierung)
+            // Fenster-Positionen für die Schwibbögen im Haus (X, Y, Skalierung, perspektivischer Neigungswinkel)
             $schwibbogenWindows = [
                 ['x' => 834,  'y' => 547, 's' => 0.65], // Erdgeschoss Front-Hauptfenster
-                ['x' => 659,  'y' => 378, 's' => 0.42], // Dachgaube links
+                ['x' => 664,  'y' => 339, 's' => 0.42], // Dachgaube links (exakt auf der Fensterbank unter dem Rollladen)
                 ['x' => 833,  'y' => 294, 's' => 0.45], // Dachgaube rechts
-                ['x' => 1110, 'y' => 330, 's' => 0.32], // Schmalseite OG links
-                ['x' => 1209, 'y' => 372, 's' => 0.28], // Schmalseite OG rechts
-                ['x' => 1102, 'y' => 566, 's' => 0.34], // Schmalseite EG
+                ['x' => 1110, 'y' => 330, 's' => 0.32, 'skew' => 28], // Schmalseite OG links
+                ['x' => 1209, 'y' => 372, 's' => 0.28, 'skew' => 28, 'winter_only' => true], // Schmalseite OG rechts (im Sommer/Herbst hinter Baum)
+                ['x' => 1102, 'y' => 566, 's' => 0.34, 'skew' => 28, 'winter_only' => true], // Schmalseite EG (im Sommer/Herbst hinter Busch)
             ];
 
             $weatherCode = $forecast['current']['weather_code'] ?? 0;
@@ -567,12 +567,19 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             <?php if ($isSchwibbogenSeason): ?>
                                 <!-- Erzgebirgische Schwibbögen in den Fenstern des Hauses (Tag nach Totensonntag bis Lichtmess) -->
                                 <g id="diorama-schwibboegen">
-                                    <?php foreach ($schwibbogenWindows as $win): 
+                                    <?php 
+                                    $isWinterBg = (strpos($bgUrl, 'winter') !== false);
+                                    foreach ($schwibbogenWindows as $win): 
+                                        if (!empty($win['winter_only']) && !$isWinterBg) {
+                                            continue; // Hinter den belaubten Herbst-/Sommerbäumen verdeckt
+                                        }
                                         $wx = $win['x'];
                                         $wy = $win['y'];
                                         $ws = $win['s'];
+                                        $wskew = $win['skew'] ?? 0;
+                                        $skewStr = $wskew ? " skewY({$wskew})" : "";
                                     ?>
-                                    <g transform="translate(<?= $wx ?>, <?= $wy ?>) scale(<?= $ws ?>)">
+                                    <g transform="translate(<?= $wx ?>, <?= $wy ?>) scale(<?= $ws ?>)<?= $skewStr ?>">
                                         <!-- Bei Nacht / Dämmerung: Gemütlicher, warmer Fenster-Kerzenschein -->
                                         <?php if ($isNight || $isGoldenHour): ?>
                                         <ellipse cx="0" cy="-14" rx="36" ry="24" fill="#f59e0b" opacity="0.38" filter="url(#candleGlowFilter)">
