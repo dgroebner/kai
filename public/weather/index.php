@@ -146,6 +146,34 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
             // Halloween-Saison: Woche vor Halloween und Halloween selbst (24. bis 31. Oktober)
             $isHalloween = ($m === 10 && $d >= 24 && $d <= 31);
 
+            // Weihnachts- & Winter-Saisons (Erzgebirgische & sächsische Tradition):
+            // 1. Schwibbögen: Tag nach Totensonntag bis einschließlich Lichtmess (2. Februar)
+            $y = (int)date('Y');
+            $checkYear = ($m <= 2) ? $y - 1 : $y;
+            $dec25 = new DateTimeImmutable("{$checkYear}-12-25");
+            $advent4 = ($dec25->format('N') == 7) ? $dec25->modify('-1 week') : $dec25->modify('last sunday');
+            $advent1 = $advent4->modify('-3 weeks');
+            $totensonntag = $advent1->modify('-1 week');
+            $schwibbogenStart = $totensonntag->modify('+1 day 00:00:00');
+            $lichtmess = new DateTimeImmutable(($checkYear + 1) . '-02-02 23:59:59');
+            $nowDt = new DateTimeImmutable('now');
+            $isSchwibbogenSeason = ($nowDt >= $schwibbogenStart && $nowDt <= $lichtmess);
+
+            // 2. Geschmückter Weihnachtsbaum: Heiligabend (24.12.) bis Lichtmess (02.02.)
+            $isTreeSeason = (($m === 12 && $d >= 24) || ($m === 1) || ($m === 2 && $d <= 2));
+
+            // 3. Weihnachtsmann mit Rentierschlitten: Heiligabend bis 2. Weihnachtsfeiertag (24. bis 26. Dezember)
+            $isSantaSeason = ($m === 12 && $d >= 24 && $d <= 26);
+
+            // Fenster-Positionen für die Schwibbögen im Haus (X, Y, Skalierung)
+            $schwibbogenWindows = [
+                ['x' => 680,  'y' => 430, 's' => 0.55], // Obergeschoss links
+                ['x' => 780,  'y' => 430, 's' => 0.55], // Obergeschoss mitte
+                ['x' => 1020, 'y' => 430, 's' => 0.55], // Obergeschoss rechts
+                ['x' => 640,  'y' => 550, 's' => 0.65], // Erdgeschoss links
+                ['x' => 1020, 'y' => 550, 's' => 0.65], // Erdgeschoss rechts
+            ];
+
             $weatherCode = $forecast['current']['weather_code'] ?? 0;
             $cloudCover = $forecast['current']['cloud_cover'] ?? 0;
             $windSpeed = $forecast['current']['wind_speed_10m'] ?? 0;
@@ -200,6 +228,9 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 if (isset($_GET['dbg_golden']))     $isGoldenHour = (bool)(int)$_GET['dbg_golden'];
                 if (isset($_GET['dbg_cloud']))      $cloudCover   = max(0, min(100, (int)$_GET['dbg_cloud']));
                 $isHalloween = isset($_GET['dbg_halloween']) && (int)$_GET['dbg_halloween'] === 1;
+                $isSchwibbogenSeason = isset($_GET['dbg_schwibbogen']) && (int)$_GET['dbg_schwibbogen'] === 1;
+                $isTreeSeason = isset($_GET['dbg_xmas_tree']) && (int)$_GET['dbg_xmas_tree'] === 1;
+                $isSantaSeason = isset($_GET['dbg_santa']) && (int)$_GET['dbg_santa'] === 1;
 
                 // Debug Regen (Aus, Leicht, Mäßig, Stark inkl. Abwärtskompatibilität)
                 if (isset($_GET['dbg_rain'])) {
@@ -290,6 +321,12 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                 $greeting = "Moin! Regenschirm aufspannen, von oben kommt ordentlich was runter.";
             } elseif ($isFog) {
                 $greeting = "Moin! Ziemlich neblig heute, fahr vorsichtig.";
+            } elseif ($isSantaSeason) {
+                $greeting = "Ho Ho Ho! 🎅 Frohe Weihnachten! Der Weihnachtsmann dreht seine Runden über Holzhausen ✨";
+            } elseif ($isTreeSeason && $m === 12) {
+                $greeting = "Schöne Weihnachtszeit! 🎄 Genieße die gemütlichen Festtage in Leipzig-Holzhausen.";
+            } elseif ($isSchwibbogenSeason && $isNight) {
+                $greeting = "Guten Abend! Die Schwibbögen erleuchten Holzhausen im gemütlichen Schein.";
             } elseif ($isHalloween && $isNight) {
                 $greeting = "Buh! 🎃 Schaurig-schöne Nacht – die Geister gehen um in Leipzig-Holzhausen!";
             } elseif ($isHalloween) {
@@ -345,7 +382,258 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     <circle cx="calc(92% + <?= $maskOffsetPx ?>px)" cy="7%" r="40" fill="black"/>
                                 </mask>
                                 <?php endif; ?>
-                                <?php if ($isHalloween && $isNight): ?>
+                                
+                            <?php if ($isSchwibbogenSeason): ?>
+                                <!-- Erzgebirgische Schwibbögen in den Fenstern des Hauses (Tag nach Totensonntag bis Lichtmess) -->
+                                <g id="diorama-schwibboegen">
+                                    <?php foreach ($schwibbogenWindows as $win): 
+                                        $wx = $win['x'];
+                                        $wy = $win['y'];
+                                        $ws = $win['s'];
+                                    ?>
+                                    <g transform="translate(<?= $wx ?>, <?= $wy ?>) scale(<?= $ws ?>)">
+                                        <!-- Bei Nacht / Dämmerung: Gemütlicher, warmer Fenster-Kerzenschein -->
+                                        <?php if ($isNight || $isGoldenHour): ?>
+                                        <ellipse cx="0" cy="-14" rx="36" ry="24" fill="#f59e0b" opacity="0.35" filter="url(#candleGlowFilter)">
+                                            <animate attributeName="opacity" values="0.30;0.42;0.28;0.38;0.30" dur="3s" repeatCount="indefinite" />
+                                        </ellipse>
+                                        <?php endif; ?>
+
+                                        <!-- Schwibbogen-Sockel (Holz) -->
+                                        <rect x="-30" y="0" width="60" height="4" rx="1.5" fill="#451a03" stroke="#271002" stroke-width="0.8" />
+                                        <rect x="-26" y="4" width="52" height="2" rx="0.8" fill="#361402" />
+
+                                        <!-- Äußerer und innerer Holzbogen -->
+                                        <path d="M -26,0 A 26,26 0 0,1 26,0" fill="none" stroke="#451a03" stroke-width="3" stroke-linecap="round" />
+                                        <path d="M -21,0 A 21,21 0 0,1 21,0" fill="none" stroke="#5c2406" stroke-width="1.8" stroke-linecap="round" />
+
+                                        <!-- Filigrane Innenverzierung (Scherenschnitt-Stern/Motiv) -->
+                                        <polygon points="0,-14 2,-7 8,-7 3,-3 5,3 0,0 -5,3 -3,-3 -8,-7 -2,-7" fill="#ca8a04" opacity="0.85" />
+                                        <line x1="-12" y1="0" x2="-6" y2="-12" stroke="#5c2406" stroke-width="1.2" />
+                                        <line x1="12" y1="0" x2="6" y2="-12" stroke="#5c2406" stroke-width="1.2" />
+                                        <line x1="0" y1="0" x2="0" y2="-6" stroke="#5c2406" stroke-width="1.4" />
+
+                                        <!-- 7 Kerzen auf dem Bogen -->
+                                        <?php
+                                        $candles = [
+                                            ['cx' => -25, 'cy' => -7],
+                                            ['cx' => -20, 'cy' => -16],
+                                            ['cx' => -11, 'cy' => -23],
+                                            ['cx' => 0,   'cy' => -26],
+                                            ['cx' => 11,  'cy' => -23],
+                                            ['cx' => 20,  'cy' => -16],
+                                            ['cx' => 25,  'cy' => -7],
+                                        ];
+                                        foreach ($candles as $ci => $cpos):
+                                            $cx = $cpos['cx'];
+                                            $cy = $cpos['cy'];
+                                            $flickerDur = 0.8 + (($ci % 3) * 0.2);
+                                        ?>
+                                            <rect x="<?= $cx - 2 ?>" y="<?= $cy ?>" width="4" height="2" rx="0.5" fill="#ca8a04" />
+                                            <rect x="<?= $cx - 1 ?>" y="<?= $cy - 5 ?>" width="2" height="5" fill="#fef3c7" />
+                                            <line x1="<?= $cx ?>" y1="<?= $cy - 5 ?>" x2="<?= $cx ?>" y2="<?= $cy - 6.5 ?>" stroke="#1f2937" stroke-width="0.6" />
+                                            <ellipse cx="<?= $cx ?>" cy="<?= $cy - 8 ?>" rx="1.2" ry="2.2" fill="#f59e0b">
+                                                <animate attributeName="ry" values="2.2;1.8;2.4;2.0;2.2" dur="<?= $flickerDur ?>s" repeatCount="indefinite" />
+                                                <animate attributeName="opacity" values="0.85;1;0.75;0.95;0.85" dur="<?= $flickerDur ?>s" repeatCount="indefinite" />
+                                            </ellipse>
+                                            <ellipse cx="<?= $cx ?>" cy="<?= $cy - 7.6 ?>" rx="0.6" ry="1.2" fill="#fef08a" />
+                                        <?php endforeach; ?>
+                                    </g>
+                                    <?php endforeach; ?>
+                                </g>
+                            <?php endif; ?>
+
+                            <?php if ($isSantaSeason): ?>
+                                <!-- Weihnachtsmann mit Rentierschlitten & Geschenk-Abwurf (24. - 26. Dezember) -->
+                                <g id="diorama-santa-flight">
+                                    <!-- Schlitten-Gruppe mit 28s Flugzyklus -->
+                                    <g>
+                                        <animateTransform attributeName="transform" type="translate"
+                                            values="-320,110; 150,135; 650,100; 1150,130; 1650,105; 1850,140; 2200,140; -320,110"
+                                            keyTimes="0; 0.08; 0.16; 0.24; 0.32; 0.36; 0.99; 1"
+                                            dur="28s" repeatCount="indefinite" />
+                                        
+                                        <!-- Leichte Nick- und Galoppbewegung des Gespanns -->
+                                        <g>
+                                            <animateTransform attributeName="transform" type="rotate"
+                                                values="-2; 3; -1; 2; -2"
+                                                dur="1.2s" repeatCount="indefinite" />
+
+                                            <!-- Sternenstaub / Glitzerspur hinter dem Schlitten -->
+                                            <g opacity="0.85">
+                                                <circle cx="-50" cy="16" r="2.2" fill="#fde047" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="0.6s" repeatCount="indefinite" />
+                                                    <animate attributeName="r" values="2.2;1.0;2.2" dur="0.6s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-75" cy="22" r="1.8" fill="#ffffff">
+                                                    <animate attributeName="opacity" values="0.2;0.9;0.2" dur="0.8s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-105" cy="18" r="2.0" fill="#facc15" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.7s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-135" cy="26" r="1.5" fill="#fef08a">
+                                                    <animate attributeName="opacity" values="0.1;0.8;0.1" dur="0.5s" repeatCount="indefinite" />
+                                                </circle>
+                                                <polygon points="-65,10 -63,14 -59,14 -62,17 -60,21 -65,18 -70,21 -68,17 -71,14 -67,14" fill="#ffffff" opacity="0.7">
+                                                    <animate attributeName="opacity" values="0.3;1;0.3" dur="0.9s" repeatCount="indefinite" />
+                                                </polygon>
+                                                <polygon points="-120,20 -118,23 -115,23 -117,25 -116,28 -120,26 -124,28 -123,25 -125,23 -122,23" fill="#fde047" opacity="0.6">
+                                                    <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.1s" repeatCount="indefinite" />
+                                                </polygon>
+                                            </g>
+
+                                            <!-- Zügel (Goldgelb) -->
+                                            <path d="M -10,14 Q 30,12 85,14" fill="none" stroke="#f59e0b" stroke-width="1.2" opacity="0.85" />
+                                            <path d="M -10,16 Q 15,16 48,18" fill="none" stroke="#f59e0b" stroke-width="1.2" opacity="0.85" />
+
+                                            <!-- Rentier 1: Rudolph (vorne mit leuchtend roter Nase) -->
+                                            <g transform="translate(85, 12)">
+                                                <line x1="-8" y1="10" x2="-14" y2="24" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <line x1="6" y1="10" x2="12" y2="24" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <ellipse cx="0" cy="6" rx="14" ry="8" fill="#92400e" />
+                                                <path d="M 8,4 L 16,-6 L 22,-4 L 14,8 Z" fill="#92400e" />
+                                                <ellipse cx="20" cy="-4" rx="5" ry="4" fill="#92400e" />
+                                                <path d="M 17,-8 L 16,-17 M 16,-14 L 12,-16 M 16,-12 L 20,-15" stroke="#451a03" stroke-width="1.8" stroke-linecap="round" />
+                                                <ellipse cx="16" cy="-6" rx="2" ry="1.2" fill="#78350f" />
+                                                <circle cx="21" cy="-5" r="1" fill="#0f172a" />
+                                                <!-- RUDOLPHS ROTE NASE (Pulsierender Leucht-Effekt) -->
+                                                <circle cx="25" cy="-3" r="3.2" fill="#ef4444" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="r" values="3.0;4.5;3.0" dur="0.9s" repeatCount="indefinite" />
+                                                    <animate attributeName="opacity" values="0.85;1;0.85" dur="0.9s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="24.5" cy="-3.5" r="1.2" fill="#ffffff" />
+                                                <path d="M 2,12 Q 10,10 12,2" fill="none" stroke="#dc2626" stroke-width="2" />
+                                                <circle cx="7" cy="9" r="1.5" fill="#facc15" />
+                                            </g>
+
+                                            <!-- Rentier 2: Dasher (dahinter) -->
+                                            <g transform="translate(45, 16)">
+                                                <line x1="-8" y1="10" x2="-12" y2="23" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <line x1="6" y1="10" x2="10" y2="23" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <ellipse cx="0" cy="6" rx="13" ry="7.5" fill="#854d0e" />
+                                                <path d="M 7,4 L 15,-5 L 21,-3 L 13,8 Z" fill="#854d0e" />
+                                                <ellipse cx="19" cy="-3" rx="4.5" ry="3.8" fill="#854d0e" />
+                                                <path d="M 16,-7 L 15,-15 M 15,-12 L 11,-14 M 15,-10 L 19,-13" stroke="#451a03" stroke-width="1.6" stroke-linecap="round" />
+                                                <circle cx="20" cy="-4" r="0.9" fill="#0f172a" />
+                                                <circle cx="23" cy="-2.5" r="1.8" fill="#1f2937" />
+                                                <path d="M 2,11 Q 9,9 11,2" fill="none" stroke="#dc2626" stroke-width="1.8" />
+                                                <circle cx="6" cy="8" r="1.4" fill="#facc15" />
+                                            </g>
+
+                                            <!-- Der Schlitten -->
+                                            <g transform="translate(-25, 10)">
+                                                <path d="M -30,26 L 22,26 Q 34,26 36,16 Q 37,10 32,8" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" />
+                                                <line x1="-20" y1="26" x2="-15" y2="18" stroke="#d97706" stroke-width="2" />
+                                                <line x1="0" y1="26" x2="5" y2="18" stroke="#d97706" stroke-width="2" />
+                                                <line x1="16" y1="26" x2="18" y2="18" stroke="#d97706" stroke-width="2" />
+
+                                                <ellipse cx="-22" cy="6" rx="14" ry="13" fill="#a16207" />
+                                                <path d="M -28,-4 Q -22,-9 -16,-4 Q -22,0 -28,-4 Z" fill="#ca8a04" />
+                                                <path d="M -20,-3 Q -17,-14 -12,-12 Q -8,-10 -10,-4" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" />
+                                                <path d="M -20,-3 Q -17,-14 -12,-12 Q -8,-10 -10,-4" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="3 3" stroke-linecap="round" />
+
+                                                <path d="M -28,8 Q -24,20 0,20 Q 22,20 26,12 Q 28,6 20,4 Q 8,4 0,10 Q -14,10 -22,4 Z"
+                                                      fill="#b91c1c" stroke="#f59e0b" stroke-width="2" />
+
+                                                <!-- Der Weihnachtsmann -->
+                                                <g transform="translate(4, -2)">
+                                                    <ellipse cx="-2" cy="10" rx="9" ry="8" fill="#dc2626" />
+                                                    <rect x="-10" y="11" width="16" height="3" fill="#18181b" />
+                                                    <rect x="-4" y="10" width="4" height="5" fill="#facc15" />
+                                                    <circle cx="0" cy="1" r="5" fill="#fecdd3" />
+                                                    <path d="M -5,2 Q 0,11 5,2 Q 6,6 0,9 Q -6,6 -5,2 Z" fill="#ffffff" />
+                                                    <circle cx="1" cy="0" r="1.3" fill="#fb7185" />
+                                                    <circle cx="-1.5" cy="-1.5" r="0.8" fill="#1e293b" />
+                                                    <circle cx="2.5" cy="-1.5" r="0.8" fill="#1e293b" />
+                                                    <path d="M -5,-3 Q 0,-14 9,-10 Q 5,-4 4,-2 Z" fill="#dc2626" />
+                                                    <rect x="-6" y="-3" width="11" height="2.5" rx="1" fill="#ffffff" />
+                                                    <circle cx="10" cy="-9.5" r="2.2" fill="#ffffff" />
+                                                    <!-- Winkender Arm -->
+                                                    <g>
+                                                        <animateTransform attributeName="transform" type="rotate"
+                                                            values="-10 4 4; 20 4 4; -10 4 4"
+                                                            dur="0.8s" repeatCount="indefinite" />
+                                                        <path d="M 4,6 Q 10,0 12,-4" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" />
+                                                        <circle cx="12" cy="-4" r="2" fill="#ffffff" />
+                                                        <circle cx="13" cy="-5" r="1.8" fill="#18181b" />
+                                                    </g>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+
+                                    <!-- DAS FALLENDE GESCHENK (Synchronisierter 28s-Zyklus: Abwurf bei ca. 5s, Landung bei 11s, liegt bis 19s, Fade-Out) -->
+                                    <g id="diorama-santa-gift">
+                                        <!-- Gesamt-Sichtbarkeit des Geschenks -->
+                                        <animate attributeName="opacity"
+                                            values="0; 0; 1; 1; 0; 0"
+                                            keyTimes="0; 0.17; 0.18; 0.68; 0.75; 1"
+                                            dur="28s" repeatCount="indefinite" />
+
+                                        <!-- Trajektorie: Vom Himmel sanft in den Vorgarten -->
+                                        <animateTransform attributeName="transform" type="translate"
+                                            values="650,105; 610,230; 550,400; 480,590; 430,740; 410,835; 410,835; 410,835"
+                                            keyTimes="0; 0.20; 0.25; 0.30; 0.35; 0.40; 0.75; 1"
+                                            dur="28s" repeatCount="indefinite" />
+
+                                        <!-- Sanftes Hin- und Herschaukeln -->
+                                        <g>
+                                            <animateTransform attributeName="transform" type="rotate"
+                                                values="-12; 14; -10; 12; -6; 0; 0"
+                                                keyTimes="0; 0.20; 0.25; 0.30; 0.35; 0.40; 1"
+                                                dur="28s" repeatCount="indefinite" />
+
+                                            <!-- Fallschirm (Nur während des Sinkfluges aktiv, faltet sich am Boden zusammen) -->
+                                            <g>
+                                                <animate attributeName="opacity"
+                                                    values="1; 1; 0; 0"
+                                                    keyTimes="0; 0.38; 0.42; 1"
+                                                    dur="28s" repeatCount="indefinite" />
+                                                <animateTransform attributeName="transform" type="scale"
+                                                    values="1,1; 1,1; 0.2,0.1; 0,0"
+                                                    keyTimes="0; 0.38; 0.42; 1"
+                                                    dur="28s" repeatCount="indefinite" />
+
+                                                <!-- Fallschirm-Kappe (Rot-Weiß gestreift) -->
+                                                <path d="M -26,-20 Q 0,-52 26,-20 Q 13,-17 0,-17 Q -13,-17 -26,-20 Z" fill="#dc2626" />
+                                                <path d="M -13,-24 Q 0,-52 0,-17 Q -7,-18 -13,-24 Z" fill="#ffffff" />
+                                                <path d="M 13,-24 Q 0,-52 0,-17 Q 7,-18 13,-24 Z" fill="#ffffff" />
+                                                <line x1="-24" y1="-20" x2="-8" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                                <line x1="-12" y1="-18" x2="-4" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                                <line x1="12" y1="-18" x2="4" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                                <line x1="24" y1="-20" x2="8" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                            </g>
+
+                                            <!-- Das Geschenkpaket selbst -->
+                                            <g>
+                                                <ellipse cx="0" cy="10" rx="14" ry="4" fill="#000000" opacity="0.4" />
+                                                <rect x="-9" y="-9" width="18" height="18" rx="2.5" fill="#dc2626" stroke="#991b1b" stroke-width="1" />
+                                                <rect x="-2.5" y="-9" width="5" height="18" fill="#facc15" />
+                                                <rect x="-9" y="-2.5" width="18" height="5" fill="#facc15" />
+                                                <path d="M -5,-11 Q -2,-16 0,-10 Q 2,-16 5,-11 Q 2,-8 0,-9 Q -2,-8 -5,-11 Z" fill="#facc15" stroke="#eab308" stroke-width="0.8" />
+                                                <circle cx="0" cy="-9.5" r="1.5" fill="#fef08a" />
+                                            </g>
+
+                                            <!-- Glitzersternchen um das gelandete Geschenk im Rasen -->
+                                            <g opacity="0.85">
+                                                <circle cx="-14" cy="-5" r="1.5" fill="#fde047" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.1;0.9;0.1" dur="0.8s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="16" cy="-2" r="1.8" fill="#ffffff">
+                                                    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="0.9s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-4" cy="-16" r="1.3" fill="#facc15" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.2;1;0.2" dur="0.7s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="12" cy="-14" r="1.4" fill="#ffffff">
+                                                    <animate attributeName="opacity" values="0.9;0.1;0.9" dur="1.0s" repeatCount="indefinite" />
+                                                </circle>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                            <?php endif; ?>
+                            <?php if ($isHalloween && $isNight): ?>
                                 <linearGradient id="ghostGrad" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
                                     <stop offset="60%" stop-color="#f0f9ff" stop-opacity="0.88"/>
@@ -360,6 +648,29 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 </filter>
                                 <filter id="pumpkinGlowFilter" x="-60%" y="-60%" width="220%" height="220%">
                                     <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                                <?php endif; ?>
+                                <?php if ($isSchwibbogenSeason || $isTreeSeason || $isSantaSeason): ?>
+                                <filter id="candleGlowFilter" x="-60%" y="-60%" width="220%" height="220%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                                <filter id="treeGlowFilter" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                                <filter id="goldGlowFilter" x="-60%" y="-60%" width="220%" height="220%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
                                     <feMerge>
                                         <feMergeNode in="blur"/>
                                         <feMergeNode in="SourceGraphic"/>
@@ -502,6 +813,257 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <rect width="100%" height="100%" fill="#cbd5e1" opacity="0.35"/>
                             <?php endif; ?>
 
+                            
+                            <?php if ($isSchwibbogenSeason): ?>
+                                <!-- Erzgebirgische Schwibbögen in den Fenstern des Hauses (Tag nach Totensonntag bis Lichtmess) -->
+                                <g id="diorama-schwibboegen">
+                                    <?php foreach ($schwibbogenWindows as $win): 
+                                        $wx = $win['x'];
+                                        $wy = $win['y'];
+                                        $ws = $win['s'];
+                                    ?>
+                                    <g transform="translate(<?= $wx ?>, <?= $wy ?>) scale(<?= $ws ?>)">
+                                        <!-- Bei Nacht / Dämmerung: Gemütlicher, warmer Fenster-Kerzenschein -->
+                                        <?php if ($isNight || $isGoldenHour): ?>
+                                        <ellipse cx="0" cy="-14" rx="36" ry="24" fill="#f59e0b" opacity="0.35" filter="url(#candleGlowFilter)">
+                                            <animate attributeName="opacity" values="0.30;0.42;0.28;0.38;0.30" dur="3s" repeatCount="indefinite" />
+                                        </ellipse>
+                                        <?php endif; ?>
+
+                                        <!-- Schwibbogen-Sockel (Holz) -->
+                                        <rect x="-30" y="0" width="60" height="4" rx="1.5" fill="#451a03" stroke="#271002" stroke-width="0.8" />
+                                        <rect x="-26" y="4" width="52" height="2" rx="0.8" fill="#361402" />
+
+                                        <!-- Äußerer und innerer Holzbogen -->
+                                        <path d="M -26,0 A 26,26 0 0,1 26,0" fill="none" stroke="#451a03" stroke-width="3" stroke-linecap="round" />
+                                        <path d="M -21,0 A 21,21 0 0,1 21,0" fill="none" stroke="#5c2406" stroke-width="1.8" stroke-linecap="round" />
+
+                                        <!-- Filigrane Innenverzierung (Scherenschnitt-Stern/Motiv) -->
+                                        <polygon points="0,-14 2,-7 8,-7 3,-3 5,3 0,0 -5,3 -3,-3 -8,-7 -2,-7" fill="#ca8a04" opacity="0.85" />
+                                        <line x1="-12" y1="0" x2="-6" y2="-12" stroke="#5c2406" stroke-width="1.2" />
+                                        <line x1="12" y1="0" x2="6" y2="-12" stroke="#5c2406" stroke-width="1.2" />
+                                        <line x1="0" y1="0" x2="0" y2="-6" stroke="#5c2406" stroke-width="1.4" />
+
+                                        <!-- 7 Kerzen auf dem Bogen -->
+                                        <?php
+                                        $candles = [
+                                            ['cx' => -25, 'cy' => -7],
+                                            ['cx' => -20, 'cy' => -16],
+                                            ['cx' => -11, 'cy' => -23],
+                                            ['cx' => 0,   'cy' => -26],
+                                            ['cx' => 11,  'cy' => -23],
+                                            ['cx' => 20,  'cy' => -16],
+                                            ['cx' => 25,  'cy' => -7],
+                                        ];
+                                        foreach ($candles as $ci => $cpos):
+                                            $cx = $cpos['cx'];
+                                            $cy = $cpos['cy'];
+                                            $flickerDur = 0.8 + (($ci % 3) * 0.2);
+                                        ?>
+                                            <rect x="<?= $cx - 2 ?>" y="<?= $cy ?>" width="4" height="2" rx="0.5" fill="#ca8a04" />
+                                            <rect x="<?= $cx - 1 ?>" y="<?= $cy - 5 ?>" width="2" height="5" fill="#fef3c7" />
+                                            <line x1="<?= $cx ?>" y1="<?= $cy - 5 ?>" x2="<?= $cx ?>" y2="<?= $cy - 6.5 ?>" stroke="#1f2937" stroke-width="0.6" />
+                                            <ellipse cx="<?= $cx ?>" cy="<?= $cy - 8 ?>" rx="1.2" ry="2.2" fill="#f59e0b">
+                                                <animate attributeName="ry" values="2.2;1.8;2.4;2.0;2.2" dur="<?= $flickerDur ?>s" repeatCount="indefinite" />
+                                                <animate attributeName="opacity" values="0.85;1;0.75;0.95;0.85" dur="<?= $flickerDur ?>s" repeatCount="indefinite" />
+                                            </ellipse>
+                                            <ellipse cx="<?= $cx ?>" cy="<?= $cy - 7.6 ?>" rx="0.6" ry="1.2" fill="#fef08a" />
+                                        <?php endforeach; ?>
+                                    </g>
+                                    <?php endforeach; ?>
+                                </g>
+                            <?php endif; ?>
+
+                            <?php if ($isSantaSeason): ?>
+                                <!-- Weihnachtsmann mit Rentierschlitten & Geschenk-Abwurf (24. - 26. Dezember) -->
+                                <g id="diorama-santa-flight">
+                                    <!-- Schlitten-Gruppe mit 28s Flugzyklus -->
+                                    <g>
+                                        <animateTransform attributeName="transform" type="translate"
+                                            values="-320,110; 150,135; 650,100; 1150,130; 1650,105; 1850,140; 2200,140; -320,110"
+                                            keyTimes="0; 0.08; 0.16; 0.24; 0.32; 0.36; 0.99; 1"
+                                            dur="28s" repeatCount="indefinite" />
+                                        
+                                        <!-- Leichte Nick- und Galoppbewegung des Gespanns -->
+                                        <g>
+                                            <animateTransform attributeName="transform" type="rotate"
+                                                values="-2; 3; -1; 2; -2"
+                                                dur="1.2s" repeatCount="indefinite" />
+
+                                            <!-- Sternenstaub / Glitzerspur hinter dem Schlitten -->
+                                            <g opacity="0.85">
+                                                <circle cx="-50" cy="16" r="2.2" fill="#fde047" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="0.6s" repeatCount="indefinite" />
+                                                    <animate attributeName="r" values="2.2;1.0;2.2" dur="0.6s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-75" cy="22" r="1.8" fill="#ffffff">
+                                                    <animate attributeName="opacity" values="0.2;0.9;0.2" dur="0.8s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-105" cy="18" r="2.0" fill="#facc15" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.7s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-135" cy="26" r="1.5" fill="#fef08a">
+                                                    <animate attributeName="opacity" values="0.1;0.8;0.1" dur="0.5s" repeatCount="indefinite" />
+                                                </circle>
+                                                <polygon points="-65,10 -63,14 -59,14 -62,17 -60,21 -65,18 -70,21 -68,17 -71,14 -67,14" fill="#ffffff" opacity="0.7">
+                                                    <animate attributeName="opacity" values="0.3;1;0.3" dur="0.9s" repeatCount="indefinite" />
+                                                </polygon>
+                                                <polygon points="-120,20 -118,23 -115,23 -117,25 -116,28 -120,26 -124,28 -123,25 -125,23 -122,23" fill="#fde047" opacity="0.6">
+                                                    <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.1s" repeatCount="indefinite" />
+                                                </polygon>
+                                            </g>
+
+                                            <!-- Zügel (Goldgelb) -->
+                                            <path d="M -10,14 Q 30,12 85,14" fill="none" stroke="#f59e0b" stroke-width="1.2" opacity="0.85" />
+                                            <path d="M -10,16 Q 15,16 48,18" fill="none" stroke="#f59e0b" stroke-width="1.2" opacity="0.85" />
+
+                                            <!-- Rentier 1: Rudolph (vorne mit leuchtend roter Nase) -->
+                                            <g transform="translate(85, 12)">
+                                                <line x1="-8" y1="10" x2="-14" y2="24" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <line x1="6" y1="10" x2="12" y2="24" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <ellipse cx="0" cy="6" rx="14" ry="8" fill="#92400e" />
+                                                <path d="M 8,4 L 16,-6 L 22,-4 L 14,8 Z" fill="#92400e" />
+                                                <ellipse cx="20" cy="-4" rx="5" ry="4" fill="#92400e" />
+                                                <path d="M 17,-8 L 16,-17 M 16,-14 L 12,-16 M 16,-12 L 20,-15" stroke="#451a03" stroke-width="1.8" stroke-linecap="round" />
+                                                <ellipse cx="16" cy="-6" rx="2" ry="1.2" fill="#78350f" />
+                                                <circle cx="21" cy="-5" r="1" fill="#0f172a" />
+                                                <!-- RUDOLPHS ROTE NASE (Pulsierender Leucht-Effekt) -->
+                                                <circle cx="25" cy="-3" r="3.2" fill="#ef4444" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="r" values="3.0;4.5;3.0" dur="0.9s" repeatCount="indefinite" />
+                                                    <animate attributeName="opacity" values="0.85;1;0.85" dur="0.9s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="24.5" cy="-3.5" r="1.2" fill="#ffffff" />
+                                                <path d="M 2,12 Q 10,10 12,2" fill="none" stroke="#dc2626" stroke-width="2" />
+                                                <circle cx="7" cy="9" r="1.5" fill="#facc15" />
+                                            </g>
+
+                                            <!-- Rentier 2: Dasher (dahinter) -->
+                                            <g transform="translate(45, 16)">
+                                                <line x1="-8" y1="10" x2="-12" y2="23" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <line x1="6" y1="10" x2="10" y2="23" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                                                <ellipse cx="0" cy="6" rx="13" ry="7.5" fill="#854d0e" />
+                                                <path d="M 7,4 L 15,-5 L 21,-3 L 13,8 Z" fill="#854d0e" />
+                                                <ellipse cx="19" cy="-3" rx="4.5" ry="3.8" fill="#854d0e" />
+                                                <path d="M 16,-7 L 15,-15 M 15,-12 L 11,-14 M 15,-10 L 19,-13" stroke="#451a03" stroke-width="1.6" stroke-linecap="round" />
+                                                <circle cx="20" cy="-4" r="0.9" fill="#0f172a" />
+                                                <circle cx="23" cy="-2.5" r="1.8" fill="#1f2937" />
+                                                <path d="M 2,11 Q 9,9 11,2" fill="none" stroke="#dc2626" stroke-width="1.8" />
+                                                <circle cx="6" cy="8" r="1.4" fill="#facc15" />
+                                            </g>
+
+                                            <!-- Der Schlitten -->
+                                            <g transform="translate(-25, 10)">
+                                                <path d="M -30,26 L 22,26 Q 34,26 36,16 Q 37,10 32,8" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" />
+                                                <line x1="-20" y1="26" x2="-15" y2="18" stroke="#d97706" stroke-width="2" />
+                                                <line x1="0" y1="26" x2="5" y2="18" stroke="#d97706" stroke-width="2" />
+                                                <line x1="16" y1="26" x2="18" y2="18" stroke="#d97706" stroke-width="2" />
+
+                                                <ellipse cx="-22" cy="6" rx="14" ry="13" fill="#a16207" />
+                                                <path d="M -28,-4 Q -22,-9 -16,-4 Q -22,0 -28,-4 Z" fill="#ca8a04" />
+                                                <path d="M -20,-3 Q -17,-14 -12,-12 Q -8,-10 -10,-4" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" />
+                                                <path d="M -20,-3 Q -17,-14 -12,-12 Q -8,-10 -10,-4" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="3 3" stroke-linecap="round" />
+
+                                                <path d="M -28,8 Q -24,20 0,20 Q 22,20 26,12 Q 28,6 20,4 Q 8,4 0,10 Q -14,10 -22,4 Z"
+                                                      fill="#b91c1c" stroke="#f59e0b" stroke-width="2" />
+
+                                                <!-- Der Weihnachtsmann -->
+                                                <g transform="translate(4, -2)">
+                                                    <ellipse cx="-2" cy="10" rx="9" ry="8" fill="#dc2626" />
+                                                    <rect x="-10" y="11" width="16" height="3" fill="#18181b" />
+                                                    <rect x="-4" y="10" width="4" height="5" fill="#facc15" />
+                                                    <circle cx="0" cy="1" r="5" fill="#fecdd3" />
+                                                    <path d="M -5,2 Q 0,11 5,2 Q 6,6 0,9 Q -6,6 -5,2 Z" fill="#ffffff" />
+                                                    <circle cx="1" cy="0" r="1.3" fill="#fb7185" />
+                                                    <circle cx="-1.5" cy="-1.5" r="0.8" fill="#1e293b" />
+                                                    <circle cx="2.5" cy="-1.5" r="0.8" fill="#1e293b" />
+                                                    <path d="M -5,-3 Q 0,-14 9,-10 Q 5,-4 4,-2 Z" fill="#dc2626" />
+                                                    <rect x="-6" y="-3" width="11" height="2.5" rx="1" fill="#ffffff" />
+                                                    <circle cx="10" cy="-9.5" r="2.2" fill="#ffffff" />
+                                                    <!-- Winkender Arm -->
+                                                    <g>
+                                                        <animateTransform attributeName="transform" type="rotate"
+                                                            values="-10 4 4; 20 4 4; -10 4 4"
+                                                            dur="0.8s" repeatCount="indefinite" />
+                                                        <path d="M 4,6 Q 10,0 12,-4" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" />
+                                                        <circle cx="12" cy="-4" r="2" fill="#ffffff" />
+                                                        <circle cx="13" cy="-5" r="1.8" fill="#18181b" />
+                                                    </g>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+
+                                    <!-- DAS FALLENDE GESCHENK (Synchronisierter 28s-Zyklus: Abwurf bei ca. 5s, Landung bei 11s, liegt bis 19s, Fade-Out) -->
+                                    <g id="diorama-santa-gift">
+                                        <!-- Gesamt-Sichtbarkeit des Geschenks -->
+                                        <animate attributeName="opacity"
+                                            values="0; 0; 1; 1; 0; 0"
+                                            keyTimes="0; 0.17; 0.18; 0.68; 0.75; 1"
+                                            dur="28s" repeatCount="indefinite" />
+
+                                        <!-- Trajektorie: Vom Himmel sanft in den Vorgarten -->
+                                        <animateTransform attributeName="transform" type="translate"
+                                            values="650,105; 610,230; 550,400; 480,590; 430,740; 410,835; 410,835; 410,835"
+                                            keyTimes="0; 0.20; 0.25; 0.30; 0.35; 0.40; 0.75; 1"
+                                            dur="28s" repeatCount="indefinite" />
+
+                                        <!-- Sanftes Hin- und Herschaukeln -->
+                                        <g>
+                                            <animateTransform attributeName="transform" type="rotate"
+                                                values="-12; 14; -10; 12; -6; 0; 0"
+                                                keyTimes="0; 0.20; 0.25; 0.30; 0.35; 0.40; 1"
+                                                dur="28s" repeatCount="indefinite" />
+
+                                            <!-- Fallschirm (Nur während des Sinkfluges aktiv, faltet sich am Boden zusammen) -->
+                                            <g>
+                                                <animate attributeName="opacity"
+                                                    values="1; 1; 0; 0"
+                                                    keyTimes="0; 0.38; 0.42; 1"
+                                                    dur="28s" repeatCount="indefinite" />
+                                                <animateTransform attributeName="transform" type="scale"
+                                                    values="1,1; 1,1; 0.2,0.1; 0,0"
+                                                    keyTimes="0; 0.38; 0.42; 1"
+                                                    dur="28s" repeatCount="indefinite" />
+
+                                                <!-- Fallschirm-Kappe (Rot-Weiß gestreift) -->
+                                                <path d="M -26,-20 Q 0,-52 26,-20 Q 13,-17 0,-17 Q -13,-17 -26,-20 Z" fill="#dc2626" />
+                                                <path d="M -13,-24 Q 0,-52 0,-17 Q -7,-18 -13,-24 Z" fill="#ffffff" />
+                                                <path d="M 13,-24 Q 0,-52 0,-17 Q 7,-18 13,-24 Z" fill="#ffffff" />
+                                                <line x1="-24" y1="-20" x2="-8" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                                <line x1="-12" y1="-18" x2="-4" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                                <line x1="12" y1="-18" x2="4" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                                <line x1="24" y1="-20" x2="8" y2="-9" stroke="#ffffff" stroke-width="0.9" opacity="0.8" />
+                                            </g>
+
+                                            <!-- Das Geschenkpaket selbst -->
+                                            <g>
+                                                <ellipse cx="0" cy="10" rx="14" ry="4" fill="#000000" opacity="0.4" />
+                                                <rect x="-9" y="-9" width="18" height="18" rx="2.5" fill="#dc2626" stroke="#991b1b" stroke-width="1" />
+                                                <rect x="-2.5" y="-9" width="5" height="18" fill="#facc15" />
+                                                <rect x="-9" y="-2.5" width="18" height="5" fill="#facc15" />
+                                                <path d="M -5,-11 Q -2,-16 0,-10 Q 2,-16 5,-11 Q 2,-8 0,-9 Q -2,-8 -5,-11 Z" fill="#facc15" stroke="#eab308" stroke-width="0.8" />
+                                                <circle cx="0" cy="-9.5" r="1.5" fill="#fef08a" />
+                                            </g>
+
+                                            <!-- Glitzersternchen um das gelandete Geschenk im Rasen -->
+                                            <g opacity="0.85">
+                                                <circle cx="-14" cy="-5" r="1.5" fill="#fde047" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.1;0.9;0.1" dur="0.8s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="16" cy="-2" r="1.8" fill="#ffffff">
+                                                    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="0.9s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="-4" cy="-16" r="1.3" fill="#facc15" filter="url(#goldGlowFilter)">
+                                                    <animate attributeName="opacity" values="0.2;1;0.2" dur="0.7s" repeatCount="indefinite" />
+                                                </circle>
+                                                <circle cx="12" cy="-14" r="1.4" fill="#ffffff">
+                                                    <animate attributeName="opacity" values="0.9;0.1;0.9" dur="1.0s" repeatCount="indefinite" />
+                                                </circle>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                            <?php endif; ?>
                             <?php if ($isHalloween && $isNight): ?>
                                 <!-- Halloween: Fliegende Geister in der Nacht (Animiert via SVG SMIL) -->
                                 <g id="diorama-halloween-ghosts">
@@ -960,6 +1522,98 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     </g>
                                 </g>
                             <?php endif; ?>
+                            <?php if ($isTreeSeason): ?>
+                                <!-- Geschmückter Weihnachtsbaum im Garten (24. Dezember bis Lichtmess) -->
+                                <g id="diorama-xmas-tree" transform="translate(260, 810)">
+                                    <!-- Baumschatten auf dem Boden -->
+                                    <ellipse cx="0" cy="18" rx="42" ry="10" fill="#000000" opacity="0.35" />
+
+                                    <!-- Holzstamm & Baumständer -->
+                                    <rect x="-7" y="0" width="14" height="20" fill="#451a03" stroke="#271002" stroke-width="1" />
+                                    <rect x="-18" y="16" width="36" height="5" rx="2" fill="#361402" />
+
+                                    <!-- Tannenzweige (4 Etagen von unten nach oben) -->
+                                    <polygon points="0,-45 -62,-2 62,-2" fill="#14532d" />
+                                    <polygon points="0,-45 -55,-2 55,-2" fill="#166534" />
+                                    <polygon points="0,-80 -48,-38 48,-38" fill="#15803d" />
+                                    <polygon points="0,-80 -42,-38 42,-38" fill="#166534" />
+                                    <polygon points="0,-112 -36,-72 36,-72" fill="#15803d" />
+                                    <polygon points="0,-112 -30,-72 30,-72" fill="#16a34a" />
+                                    <polygon points="0,-140 -24,-104 24,-104" fill="#15803d" />
+                                    <polygon points="0,-140 -18,-104 18,-104" fill="#16a34a" />
+
+                                    <!-- Schneehauben bei Winter / Schneefall -->
+                                    <?php if ($isWinter || $isSnowing): ?>
+                                    <path d="M -56,-2 Q -30,-8 0,-7 Q 30,-8 56,-2 Q 40,-4 0,-3 Q -40,-4 -56,-2 Z" fill="#f8fafc" opacity="0.95" />
+                                    <path d="M -44,-38 Q -20,-43 0,-42 Q 20,-43 44,-38 Q 30,-40 0,-39 Q -30,-40 -44,-38 Z" fill="#f8fafc" opacity="0.95" />
+                                    <path d="M -32,-72 Q -15,-76 0,-75 Q 15,-76 32,-72 Q 20,-74 0,-73 Q -20,-74 -32,-72 Z" fill="#f8fafc" opacity="0.95" />
+                                    <path d="M -20,-104 Q -10,-107 0,-106 Q 10,-107 20,-104 Q 12,-105 0,-105 Q -12,-105 -20,-104 Z" fill="#f8fafc" opacity="0.95" />
+                                    <ellipse cx="0" cy="17" rx="20" ry="5" fill="#f8fafc" opacity="0.9" />
+                                    <?php endif; ?>
+
+                                    <!-- Christbaumkugeln (Glänzend mit Lichtreflex) -->
+                                    <?php
+                                    $baubles = [
+                                        ['cx' => -36, 'cy' => -10, 'r' => 4.5, 'color' => '#dc2626'],
+                                        ['cx' => 22,  'cy' => -12, 'r' => 4.5, 'color' => '#dc2626'],
+                                        ['cx' => -18, 'cy' => -48, 'r' => 4.0, 'color' => '#dc2626'],
+                                        ['cx' => 12,  'cy' => -82, 'r' => 3.5, 'color' => '#dc2626'],
+                                        ['cx' => 38,  'cy' => -8,  'r' => 4.5, 'color' => '#f59e0b'],
+                                        ['cx' => -14, 'cy' => -14, 'r' => 4.0, 'color' => '#f59e0b'],
+                                        ['cx' => 20,  'cy' => -46, 'r' => 4.0, 'color' => '#f59e0b'],
+                                        ['cx' => -8,  'cy' => -80, 'r' => 3.5, 'color' => '#f59e0b'],
+                                        ['cx' => 0,   'cy' => -114,'r' => 3.2, 'color' => '#f59e0b'],
+                                        ['cx' => 2,   'cy' => -10, 'r' => 4.2, 'color' => '#2563eb'],
+                                        ['cx' => -30, 'cy' => -44, 'r' => 4.0, 'color' => '#2563eb'],
+                                        ['cx' => 4,   'cy' => -50, 'r' => 3.8, 'color' => '#2563eb'],
+                                        ['cx' => -10, 'cy' => -112,'r' => 3.0, 'color' => '#2563eb'],
+                                        ['cx' => -20, 'cy' => -12, 'r' => 3.8, 'color' => '#e2e8f0'],
+                                        ['cx' => -4,  'cy' => -44, 'r' => 3.8, 'color' => '#e2e8f0'],
+                                        ['cx' => 18,  'cy' => -78, 'r' => 3.4, 'color' => '#e2e8f0'],
+                                    ];
+                                    foreach ($baubles as $b):
+                                    ?>
+                                        <circle cx="<?= $b['cx'] ?>" cy="<?= $b['cy'] ?>" r="<?= $b['r'] ?>" fill="<?= $b['color'] ?>" />
+                                        <circle cx="<?= $b['cx'] - ($b['r'] * 0.3) ?>" cy="<?= $b['cy'] - ($b['r'] * 0.3) ?>" r="<?= $b['r'] * 0.3 ?>" fill="#ffffff" opacity="0.75" />
+                                    <?php endforeach; ?>
+
+                                    <!-- Lichterkette mit warmweißem und goldenem Funkeln -->
+                                    <?php
+                                    $lights = [
+                                        ['cx' => -46, 'cy' => -6,  'dur' => '1.4s'],
+                                        ['cx' => -26, 'cy' => -18, 'dur' => '1.9s'],
+                                        ['cx' => 8,   'cy' => -16, 'dur' => '1.3s'],
+                                        ['cx' => 46,  'cy' => -6,  'dur' => '2.1s'],
+                                        ['cx' => -36, 'cy' => -42, 'dur' => '1.6s'],
+                                        ['cx' => -6,  'cy' => -46, 'dur' => '1.2s'],
+                                        ['cx' => 28,  'cy' => -40, 'dur' => '1.8s'],
+                                        ['cx' => -22, 'cy' => -76, 'dur' => '1.5s'],
+                                        ['cx' => 6,   'cy' => -78, 'dur' => '2.0s'],
+                                        ['cx' => 22,  'cy' => -74, 'dur' => '1.4s'],
+                                        ['cx' => -12, 'cy' => -108,'dur' => '1.7s'],
+                                        ['cx' => 10,  'cy' => -108,'dur' => '1.3s'],
+                                    ];
+                                    foreach ($lights as $li):
+                                    ?>
+                                        <circle cx="<?= $li['cx'] ?>" cy="<?= $li['cy'] ?>" r="4" fill="#fde047" opacity="0.5" filter="url(#treeGlowFilter)">
+                                            <animate attributeName="opacity" values="0.25;0.7;0.25" dur="<?= $li['dur'] ?>" repeatCount="indefinite" />
+                                        </circle>
+                                        <circle cx="<?= $li['cx'] ?>" cy="<?= $li['cy'] ?>" r="2" fill="#fffbeb">
+                                            <animate attributeName="fill" values="#fffbeb;#fde047;#fef08a;#fffbeb" dur="<?= $li['dur'] ?>" repeatCount="indefinite" />
+                                        </circle>
+                                    <?php endforeach; ?>
+
+                                    <!-- Strahlender Baum-Spitzenstern -->
+                                    <g transform="translate(0, -145)">
+                                        <circle cx="0" cy="0" r="14" fill="#facc15" opacity="0.45" filter="url(#goldGlowFilter)">
+                                            <animate attributeName="r" values="12;16;12" dur="2s" repeatCount="indefinite" />
+                                            <animate attributeName="opacity" values="0.35;0.65;0.35" dur="2s" repeatCount="indefinite" />
+                                        </circle>
+                                        <polygon points="0,-12 3.5,-4 11,-4 5,1 7,8 0,4 -7,8 -5,1 -11,-4 -3.5,-4" fill="#facc15" stroke="#eab308" stroke-width="1" />
+                                        <circle cx="0" cy="0" r="2.5" fill="#ffffff" opacity="0.9" />
+                                    </g>
+                                </g>
+                            <?php endif; ?>
                         </svg>
                     </div>
                 </div>
@@ -997,6 +1651,23 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <label class="diorama-debug-row">
                                     <span>Goldene Stunde</span>
                                     <input type="checkbox" name="dbg_golden" value="1" <?= $isGoldenHour ? 'checked' : '' ?>>
+                                </label>
+
+                                <div class="diorama-debug-section">🎄 Weihnachts- &amp; Winter-Special</div>
+
+                                <label class="diorama-debug-row">
+                                    <span>Schwibbögen (Fenster)</span>
+                                    <input type="checkbox" name="dbg_schwibbogen" value="1" <?= $isSchwibbogenSeason ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>Geschmückter Weihnachtsbaum</span>
+                                    <input type="checkbox" name="dbg_xmas_tree" value="1" <?= $isTreeSeason ? 'checked' : '' ?>>
+                                </label>
+
+                                <label class="diorama-debug-row">
+                                    <span>🎅 Weihnachtsmann &amp; Schlitten</span>
+                                    <input type="checkbox" name="dbg_santa" value="1" <?= $isSantaSeason ? 'checked' : '' ?>>
                                 </label>
 
                                 <label class="diorama-debug-row">
