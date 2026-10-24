@@ -91,6 +91,15 @@
                 btnRematch.addEventListener('click', () => this.rematch());
             }
 
+            // Name ändern (Klick auf Button im Header oder eigene Spielerkarte/Lobby-Pille)
+            document.addEventListener('click', (e) => {
+                const btnEdit = e.target.closest('.js-btn-edit-name') || e.target.closest('.js-edit-my-name');
+                if (btnEdit) {
+                    e.preventDefault();
+                    this.editPlayerName();
+                }
+            });
+
             // Klick auf eine Kategorie im Spielblatt (Event Delegation)
             document.querySelectorAll('.js-category-row').forEach(row => {
                 row.addEventListener('click', () => {
@@ -178,10 +187,16 @@
             this.gameMode = data.room.mode || 'digital_dice';
             this.players = data.players || [];
             this.mySheet = data.me.sheet;
+            this.myName = data.me.name || '';
             this.myScore = data.me.score_summary || {};
             this.previews = data.previews || {};
             this.isHost = Boolean(data.me.is_host);
             this.myPlayerId = data.me.id;
+
+            // Eigenen Namen in der Top-Bar aktualisieren
+            document.querySelectorAll('.js-my-name-display').forEach(el => {
+                el.textContent = this.myName || 'Ich';
+            });
 
             const status = data.room.status;
 
@@ -215,11 +230,14 @@
         renderLobby() {
             const list = document.getElementById('lobby-players-list');
             if (list) {
-                list.innerHTML = this.players.map(p => `
-                    <div style="background: rgba(255,255,255,0.06); padding: 0.4rem 0.8rem; border-radius: 999px; font-weight: 600; font-size: 0.88rem;">
-                        ${HubHtml.escape(p.name)} ${p.is_host ? '👑' : ''}
-                    </div>
-                `).join('');
+                list.innerHTML = this.players.map(p => {
+                    const isMe = p.is_me;
+                    return `
+                        <div class="${isMe ? 'js-edit-my-name' : ''}" style="background: rgba(255,255,255,0.06); padding: 0.4rem 0.8rem; border-radius: 999px; font-weight: 600; font-size: 0.88rem; ${isMe ? 'cursor: pointer; border: 1px dashed var(--color-blue);' : ''}" title="${isMe ? 'Klicken zum Ändern deines Namens' : ''}">
+                            ${HubHtml.escape(p.name)} ${p.is_host ? '👑' : ''} ${isMe ? '<span style="opacity: 0.75; font-size: 0.78rem;">(Du ✏️)</span>' : ''}
+                        </div>
+                    `;
+                }).join('');
             }
 
             const hostControls = document.getElementById('lobby-host-controls');
@@ -246,9 +264,9 @@
                 const bonusStatus = p.bonus_reached ? '🏆 +35' : `${p.upper_sum || 0}/63`;
 
                 return `
-                    <div class="qwixx-player-card ${isActive ? 'is-active-turn' : ''} ${isMe ? 'is-me' : ''}">
+                    <div class="qwixx-player-card ${isActive ? 'is-active-turn' : ''} ${isMe ? 'is-me js-edit-my-name' : ''}" ${isMe ? 'style="cursor: pointer;" title="Klicken zum Ändern deines Namens"' : ''}>
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.35rem; margin-bottom: 0.2rem;">
-                            <span class="qwixx-player-name">${HubHtml.escape(p.name)}</span>
+                            <span class="qwixx-player-name">${HubHtml.escape(p.name)} ${isMe ? '<span style="font-size: 0.75rem; opacity: 0.7;">✏️</span>' : ''}</span>
                             ${isActive ? '<span class="qwixx-badge-active">🎲 dran</span>' : ''}
                         </div>
                         <div class="qwixx-player-kpis" style="justify-content: space-between;">
@@ -624,6 +642,40 @@
                 room_code: this.roomCode
             });
             if (res.ok) this.fetchState();
+        },
+
+        async editPlayerName() {
+            const currentName = this.myName || localStorage.getItem('kai_gh_player_name') || '';
+            const newName = await HubDialog.prompt(
+                'Spielername ändern',
+                'Wie möchtest du im laufenden Spiel heißen?',
+                currentName,
+                {
+                    icon: '✏️',
+                    confirmText: 'Speichern',
+                    placeholder: 'Dein Name...',
+                }
+            );
+
+            if (!newName || newName === currentName) {
+                return;
+            }
+
+            const res = await HubHttp.postJson('./api.php?action=update_name', {
+                room_code: this.roomCode,
+                player_name: newName,
+            });
+
+            if (res.ok && res.data && res.data.success) {
+                this.myName = newName;
+                localStorage.setItem('kai_gh_player_name', newName);
+                document.querySelectorAll('.js-my-name-display').forEach(el => {
+                    el.textContent = newName;
+                });
+                this.fetchState();
+            } else if (res.data?.message) {
+                await HubDialog.alert('Hinweis', res.data.message, '⚠️');
+            }
         },
 
         renderGameOver() {

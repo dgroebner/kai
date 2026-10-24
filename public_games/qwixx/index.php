@@ -22,7 +22,10 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 <a href="../index.php" style="color: var(--text-muted); font-size: 0.85rem; display: block;">&larr; Lobby</a>
                 <span class="qwixx-room-pill" id="room-code-display">RAUM: <?= $roomCode ?: '...' ?></span>
             </div>
-            <div style="display: flex; gap: 0.4rem;">
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <button type="button" class="btn btn-sm btn-outline js-btn-edit-name" title="Spielername ändern" style="display: flex; align-items: center; gap: 0.25rem;">
+                    ✏️ <span class="js-my-name-display" style="max-width: 95px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ich</span>
+                </button>
                 <button type="button" class="btn btn-sm btn-whatsapp js-share-whatsapp" title="Per WhatsApp einladen">
                     📲 Einladen
                 </button>

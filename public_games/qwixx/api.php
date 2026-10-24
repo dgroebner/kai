@@ -177,6 +177,7 @@ try {
             $isMe = ((int)$p['id'] === (int)$player['id']);
             if ($isMe) {
                 $player['sheet'] = $p['sheet'];
+                $player['player_name'] = $p['player_name'];
             }
             $isCurActive = ((int)$p['id'] === $activePlayerId);
             $pScore = $qwixx->calculateTotalScore($p['sheet']);
@@ -623,6 +624,33 @@ try {
 
         $repo->updateRoomState($roomId, $initialState, 'active');
         echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. SPIELERNAME ÄNDERN (im laufenden Spiel oder in der Lobby)
+    // -------------------------------------------------------------------------
+    if ($action === 'update_name') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Nur POST erlaubt']);
+            exit;
+        }
+
+        $newName = trim((string)($input['player_name'] ?? ''));
+        if ($newName === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Bitte gib einen Spielernamen ein']);
+            exit;
+        }
+
+        $newName = mb_substr($newName, 0, 25);
+        $repo->updatePlayerName((int)$player['id'], $newName);
+
+        echo json_encode([
+            'success' => true,
+            'player_name' => $newName,
+        ]);
         exit;
     }
 

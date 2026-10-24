@@ -70,6 +70,9 @@ const HubDialog = {
                     <div id="hub-dialog-icon" style="font-size: 2.75rem; margin-bottom: 0.5rem; line-height: 1;">ℹ️</div>
                     <h3 id="hub-dialog-title" class="hub-modal-title" style="margin-bottom: 0.5rem; font-size: 1.25rem;">Hinweis</h3>
                     <div id="hub-dialog-message" style="color: var(--text-muted); font-size: 0.93rem; line-height: 1.5; margin-bottom: 1.35rem; white-space: pre-line;"></div>
+                    <div id="hub-dialog-input-wrap" class="hidden" style="margin-bottom: 1.25rem;">
+                        <input type="text" id="hub-dialog-input" class="form-control text-center" maxlength="25" style="font-size: 1.1rem; font-weight: 600;">
+                    </div>
                     <div id="hub-dialog-actions" class="hub-modal-actions" style="justify-content: center; gap: 0.65rem;">
                         <button type="button" class="btn btn-outline" id="hub-dialog-cancel">Abbrechen</button>
                         <button type="button" class="btn btn-primary" id="hub-dialog-confirm">OK</button>
@@ -94,6 +97,9 @@ const HubDialog = {
             if (iconEl) iconEl.textContent = icon;
             if (titleEl) titleEl.textContent = title;
             if (msgEl) msgEl.textContent = message;
+
+            const inputWrap = document.getElementById('hub-dialog-input-wrap');
+            if (inputWrap) inputWrap.classList.add('hidden');
 
             if (btnCancel) btnCancel.classList.add('hidden');
             if (btnConfirm) {
@@ -135,6 +141,9 @@ const HubDialog = {
             if (titleEl) titleEl.textContent = title;
             if (msgEl) msgEl.textContent = message;
 
+            const inputWrap = document.getElementById('hub-dialog-input-wrap');
+            if (inputWrap) inputWrap.classList.add('hidden');
+
             if (btnCancel) {
                 btnCancel.classList.remove('hidden');
                 btnCancel.className = 'btn btn-outline';
@@ -166,6 +175,89 @@ const HubDialog = {
             btnCancel?.addEventListener('click', onCancel);
             btnConfirm?.addEventListener('click', onConfirm);
             overlay.classList.remove('hidden');
+        });
+    },
+
+    prompt(title, message, defaultValue = '', options = {}) {
+        return new Promise((resolve) => {
+            const overlay = this._ensureModal();
+            const iconEl = document.getElementById('hub-dialog-icon');
+            const titleEl = document.getElementById('hub-dialog-title');
+            const msgEl = document.getElementById('hub-dialog-message');
+            const inputWrap = document.getElementById('hub-dialog-input-wrap');
+            const inputEl = document.getElementById('hub-dialog-input');
+            const btnCancel = document.getElementById('hub-dialog-cancel');
+            const btnConfirm = document.getElementById('hub-dialog-confirm');
+
+            const icon = options.icon || '✏️';
+            const confirmText = options.confirmText || 'Speichern';
+            const cancelText = options.cancelText || 'Abbrechen';
+            const placeholder = options.placeholder || 'Dein Name...';
+
+            if (iconEl) iconEl.textContent = icon;
+            if (titleEl) titleEl.textContent = title;
+            if (msgEl) msgEl.textContent = message;
+
+            if (inputWrap) inputWrap.classList.remove('hidden');
+            if (inputEl) {
+                inputEl.value = defaultValue;
+                inputEl.placeholder = placeholder;
+            }
+
+            if (btnCancel) {
+                btnCancel.classList.remove('hidden');
+                btnCancel.className = 'btn btn-outline';
+                btnCancel.style.flex = '1';
+                btnCancel.textContent = cancelText;
+            }
+            if (btnConfirm) {
+                btnConfirm.className = 'btn btn-primary';
+                btnConfirm.style.flex = '1';
+                btnConfirm.textContent = confirmText;
+            }
+
+            const onCancel = () => {
+                cleanup();
+                resolve(null);
+            };
+
+            const onConfirm = () => {
+                const val = (inputEl?.value || '').trim();
+                if (!val) {
+                    inputEl?.focus();
+                    return;
+                }
+                cleanup();
+                resolve(val);
+            };
+
+            const onKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onConfirm();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    onCancel();
+                }
+            };
+
+            const cleanup = () => {
+                overlay.classList.add('hidden');
+                if (inputWrap) inputWrap.classList.add('hidden');
+                btnCancel?.removeEventListener('click', onCancel);
+                btnConfirm?.removeEventListener('click', onConfirm);
+                inputEl?.removeEventListener('keydown', onKeyDown);
+            };
+
+            btnCancel?.addEventListener('click', onCancel);
+            btnConfirm?.addEventListener('click', onConfirm);
+            inputEl?.addEventListener('keydown', onKeyDown);
+            overlay.classList.remove('hidden');
+
+            setTimeout(() => {
+                inputEl?.focus();
+                inputEl?.select();
+            }, 60);
         });
     }
 };

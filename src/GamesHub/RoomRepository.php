@@ -230,6 +230,23 @@ class RoomRepository
     }
 
     /**
+     * Aktualisiert den Anzeigenamen eines Spielers.
+     */
+    public function updatePlayerName(int $playerId, string $playerName): bool
+    {
+        $stmt = $this->pdo->prepare('
+            UPDATE games_hub_players
+            SET player_name = :name,
+                updated_at = NOW()
+            WHERE id = :id
+        ');
+        return $stmt->execute([
+            ':id' => $playerId,
+            ':name' => $playerName,
+        ]);
+    }
+
+    /**
      * Bereinigt veraltete Räume, die älter als 48 Stunden sind.
      */
     public function cleanupOldRooms(): void
