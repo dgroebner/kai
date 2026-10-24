@@ -77,19 +77,24 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                     <!-- 6 Würfel -->
                 </div>
                 <div class="qwixx-stage-actions" id="stage-actions">
-                    <div class="qwixx-white-sum-box" id="white-sum-box">
-                        <span>⚪➕⚪ Weiß:</span>
-                        <strong id="white-sum-val" style="font-size: 1.3rem; color: #fff;">-</strong>
-                    </div>
-                    <button type="button" class="btn btn-action-pass js-btn-pass-white hidden" id="btn-pass-white" title="Zug bzw. weiße Summe auslassen">
-                        ⚪ Zug auslassen
-                    </button>
+                    <!-- Primäre Aktions-Buttons (oben) -->
                     <button type="button" class="btn btn-action-roll js-btn-roll hidden" id="btn-roll-dice">
                         🎲 Jetzt Würfeln
                     </button>
                     <button type="button" class="btn btn-action-next js-btn-next-turn hidden" id="btn-next-turn">
                         ⏭️ Nächster Spieler &rarr;
                     </button>
+
+                    <!-- Weiße Summe & Auslassen (darunter) -->
+                    <div class="qwixx-white-actions-row">
+                        <div class="qwixx-white-sum-box" id="white-sum-box">
+                            <span>⚪➕⚪ Weiß:</span>
+                            <strong id="white-sum-val" style="font-size: 1.3rem; color: #fff;">-</strong>
+                        </div>
+                        <button type="button" class="btn btn-action-pass js-btn-pass-white hidden" id="btn-pass-white" title="Zug bzw. weiße Summe auslassen">
+                            ⚪ Zug auslassen
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Hilfsanzeige für Farbkombinationen des aktiven Spielers -->
