@@ -20,13 +20,30 @@ require_once __DIR__ . '/../bootstrap.php';
             <p class="hub-subtitle">Gesellschaftsspiele online oder als digitaler Spielblock am Tisch</p>
         </header>
 
-        <!-- Dein Spielername -->
-        <div class="card-box">
-            <div class="form-group" style="margin-bottom: 0;">
+        <!-- Dein Spielername & Schnellbeitritt -->
+        <div class="card-box" style="margin-bottom: 1.75rem;">
+            <div class="form-group" style="margin-bottom: 1rem;">
                 <label for="hub-player-name">Dein Spielername:</label>
                 <input type="text" id="hub-player-name" class="form-control" placeholder="z. B. Danny, Lisa..." maxlength="25">
             </div>
+
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1rem;">
+                <h3 style="font-size: 1.05rem; margin-bottom: 0.35rem;">🚀 Spielraum beitreten</h3>
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    Gib den 6-stelligen Code ein (z. B. aus dem WhatsApp-Chat):
+                </p>
+                <form id="form-join-room">
+                    <div class="hub-join-bar">
+                        <input type="text" id="join-room-code" class="form-control room-code-input" placeholder="CODE" maxlength="6" autocomplete="off" spellcheck="false">
+                        <button type="submit" class="btn btn-primary">Beitreten</button>
+                    </div>
+                </form>
+            </div>
         </div>
+
+        <h2 style="font-size: 1.15rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">
+            Neues Spiel starten (Host)
+        </h2>
 
         <!-- Spielauswahl Kacheln -->
         <div class="games-kachel-grid">
@@ -49,20 +66,6 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">Demnächst</span>
             </div>
-        </div>
-
-        <!-- Direkt beitreten per Raum-Code -->
-        <div class="card-box">
-            <h3>Raum beitreten</h3>
-            <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 1rem;">
-                Du hast einen 6-stelligen Code oder Einladungslink erhalten?
-            </p>
-            <form id="form-join-room">
-                <div class="hub-join-bar">
-                    <input type="text" id="join-room-code" class="form-control room-code-input" placeholder="CODE" maxlength="6" autocomplete="off" spellcheck="false">
-                    <button type="submit" class="btn btn-primary">Beitreten</button>
-                </div>
-            </form>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
