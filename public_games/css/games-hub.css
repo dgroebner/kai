@@ -540,6 +540,31 @@ body.games-hub-body {
     position: absolute;
 }
 
+/* Visuelle Hervorhebung möglicher Würfelzüge */
+.qwixx-cell.is-possible-move {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 12px rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.04);
+    z-index: 2;
+    animation: cell-pulse 1.8s infinite ease-in-out;
+}
+
+.qwixx-cell.is-possible-white {
+    border-color: #f8fafc !important;
+    box-shadow: 0 0 0 2px #f8fafc, 0 0 10px rgba(248, 250, 252, 0.5);
+}
+
+.qwixx-cell.is-possible-color {
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 0 2px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.6);
+}
+
+@keyframes cell-pulse {
+    0%, 100% { transform: translateY(-2px) scale(1.04); }
+    50% { transform: translateY(-2px) scale(1.08); }
+}
+
 .qwixx-cell.is-disabled {
     opacity: 0.25;
     cursor: not-allowed;

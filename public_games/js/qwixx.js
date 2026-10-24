@@ -539,16 +539,22 @@
                     }
 
                     // Im Digitalen Modus: Nur Zahlen aktivieren, die tatsächlich als Würfelkombination möglich sind!
-                    if (isDigital && !disabled && !isCellCrossed) {
-                        const canTakeWhite = !whiteDone && (num === whiteSum);
-                        const canTakeColor = isMyTurn && !colorDone && allowedColorSums.includes(num);
+                    let isWhiteMatch = false;
+                    let isColorMatch = false;
 
-                        if (!canTakeWhite && !canTakeColor) {
+                    if (isDigital && !disabled && !isCellCrossed) {
+                        isWhiteMatch = !whiteDone && (num === whiteSum);
+                        isColorMatch = isMyTurn && !colorDone && allowedColorSums.includes(num);
+
+                        if (!isWhiteMatch && !isColorMatch) {
                             disabled = true;
                         }
                     }
 
                     cell.classList.toggle('is-disabled', disabled && !isCellCrossed);
+                    cell.classList.toggle('is-possible-move', !disabled && !isCellCrossed && (isWhiteMatch || isColorMatch));
+                    cell.classList.toggle('is-possible-white', !disabled && !isCellCrossed && isWhiteMatch);
+                    cell.classList.toggle('is-possible-color', !disabled && !isCellCrossed && isColorMatch && !isWhiteMatch);
                 });
             });
 
