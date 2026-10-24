@@ -57,14 +57,14 @@ require_once __DIR__ . '/../bootstrap.php';
                 <span class="game-kachel-badge">2–6 Spieler</span>
             </div>
 
-            <!-- Vorbereitung: Kniffel Kachel (Coming Soon) -->
-            <div class="game-kachel" style="opacity: 0.65; cursor: default;">
+            <!-- Kniffel Kachel -->
+            <div class="game-kachel" id="card-kniffel" role="button" tabindex="0">
                 <div class="game-kachel-icon">🏆</div>
                 <div class="game-kachel-content">
                     <h2>Kniffel</h2>
-                    <p>Große &amp; kleine Straße, Full House und Kniffel. Digitaler Punktezettel.</p>
+                    <p>Große &amp; kleine Straße, Full House und Kniffel. Mit intelligenter Live-Ausfüllhilfe.</p>
                 </div>
-                <span class="game-kachel-badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">Demnächst</span>
+                <span class="game-kachel-badge">1–8 Spieler</span>
             </div>
         </div>
 
@@ -73,14 +73,15 @@ require_once __DIR__ . '/../bootstrap.php';
         </footer>
     </div>
 
-    <!-- Modal: Qwixx Raum erstellen -->
-    <div id="modal-qwixx-create" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
+    <!-- Modal: Raum erstellen -->
+    <div id="modal-create-room" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
         <div class="hub-modal">
             <div class="hub-modal-header">
-                <h3 class="hub-modal-title">Neues Qwixx-Spiel erstellen</h3>
+                <h3 class="hub-modal-title" id="create-modal-title">Neues Spiel erstellen</h3>
                 <button type="button" class="hub-modal-close js-close-modal">&times;</button>
             </div>
             <form id="form-create-room">
+                <input type="hidden" id="create-game-type" value="qwixx">
                 <div class="form-group">
                     <label>Spielmodus:</label>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">

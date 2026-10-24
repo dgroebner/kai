@@ -16,11 +16,28 @@
             nameInput.value = savedName;
         }
 
+        const modal = document.getElementById('modal-create-room');
+        const modalTitle = document.getElementById('create-modal-title');
+        const gameTypeInput = document.getElementById('create-game-type');
+
         // Kachel-Klick auf Qwixx
         const qwixxCard = document.getElementById('card-qwixx');
-        const modal = document.getElementById('modal-qwixx-create');
         if (qwixxCard && modal) {
             qwixxCard.addEventListener('click', () => {
+                if (gameTypeInput) gameTypeInput.value = 'qwixx';
+                if (modalTitle) modalTitle.textContent = 'Neues Qwixx-Spiel erstellen';
+                modal.classList.remove('hidden');
+                const pinInput = document.getElementById('create-room-pin');
+                if (pinInput) pinInput.focus();
+            });
+        }
+
+        // Kachel-Klick auf Kniffel
+        const kniffelCard = document.getElementById('card-kniffel');
+        if (kniffelCard && modal) {
+            kniffelCard.addEventListener('click', () => {
+                if (gameTypeInput) gameTypeInput.value = 'kniffel';
+                if (modalTitle) modalTitle.textContent = 'Neues Kniffel-Spiel erstellen';
                 modal.classList.remove('hidden');
                 const pinInput = document.getElementById('create-room-pin');
                 if (pinInput) pinInput.focus();
@@ -39,6 +56,7 @@
         if (formCreate) {
             formCreate.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                const gameType = gameTypeInput?.value || 'qwixx';
                 const pin = document.getElementById('create-room-pin')?.value.trim();
                 const name = nameInput?.value.trim() || 'Host';
                 const mode = document.querySelector('input[name="game_mode"]:checked')?.value || 'digital_dice';
@@ -48,7 +66,7 @@
 
                 localStorage.setItem('kai_gh_player_name', name);
 
-                const res = await HubHttp.postJson('./qwixx/api.php?action=create', {
+                const res = await HubHttp.postJson(`./${gameType}/api.php?action=create`, {
                     pin: pin,
                     player_name: name,
                     game_mode: mode
@@ -58,7 +76,7 @@
                     if (res.data.player_token) {
                         localStorage.setItem('kai_gh_player_token', res.data.player_token);
                     }
-                    window.location.href = `./qwixx/index.php?room=${encodeURIComponent(res.data.room_code)}`;
+                    window.location.href = `./${gameType}/index.php?room=${encodeURIComponent(res.data.room_code)}`;
                 } else {
                     if (errBox) {
                         errBox.textContent = res.data?.message || 'Fehler beim Erstellen des Raums.';
@@ -71,14 +89,22 @@
         // Raum beitreten per Code
         const formJoin = document.getElementById('form-join-room');
         if (formJoin) {
-            formJoin.addEventListener('submit', (e) => {
+            formJoin.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const code = document.getElementById('join-room-code')?.value.trim().toUpperCase();
                 const name = nameInput?.value.trim() || 'Gast';
 
                 if (!code || code.length < 4) return;
                 localStorage.setItem('kai_gh_player_name', name);
-                window.location.href = `./qwixx/index.php?room=${encodeURIComponent(code)}`;
+
+                // Spieltyp des Raumes über API ermitteln
+                const res = await HubHttp.getJson(`./api.php?action=lookup&code=${encodeURIComponent(code)}`);
+                if (res.ok && res.data && res.data.success) {
+                    const gameType = res.data.game_type || 'qwixx';
+                    window.location.href = `./${gameType}/index.php?room=${encodeURIComponent(code)}`;
+                } else {
+                    await HubDialog.alert('Raum nicht gefunden', 'Der eingegebene Raum-Code existiert nicht. Bitte prüfe deine Eingabe.', '🔍');
+                }
             });
         }
     });

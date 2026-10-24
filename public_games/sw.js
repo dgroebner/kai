@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'gh-v11';
+const CACHE_VERSION = 'gh-v12';
 const CACHE_NAME = `kai-games-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -6,6 +6,7 @@ const PRECACHE_ASSETS = [
     './js/http-hub.js',
     './js/hub.js',
     './js/qwixx.js',
+    './js/kniffel.js',
     './android-chrome-192x192.png',
     './android-chrome-512x512.png',
     './apple-touch-icon.png',
