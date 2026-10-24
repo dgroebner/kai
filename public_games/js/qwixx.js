@@ -97,9 +97,17 @@
                 });
             }
 
-            // Fehlwurf anklicken
+            // Fehlwurf anklicken (nur im pen_paper Modus, im digitalen Modus automatisch über Weiter-Button)
             document.querySelectorAll('.js-missed-box').forEach(box => {
-                box.addEventListener('click', () => {
+                box.addEventListener('click', async () => {
+                    if (this.gameMode === 'digital_dice') {
+                        await HubDialog.alert(
+                            'Automatische Erfassung',
+                            'Im digitalen Modus werden Fehlwürfe automatisch über den Weiter-Button angerechnet, falls du in deinem Zug kein Kreuz setzt.\n\nEin manuelles Anklicken ist nicht nötig.',
+                            'ℹ️'
+                        );
+                        return;
+                    }
                     const idx = Number(box.dataset.index);
                     const currentMissed = Number(this.mySheet?.missed || 0);
                     if (idx === currentMissed + 1) {
@@ -767,6 +775,10 @@
                 force: force,
             });
             if (res.ok && res.data && res.data.success) {
+                if (res.data.sheet) {
+                    this.mySheet = res.data.sheet;
+                    this.renderSheet();
+                }
                 this.fetchState();
             } else if (res.data?.message) {
                 await HubDialog.alert('Hinweis', res.data.message, '⚠️');

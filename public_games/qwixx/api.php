@@ -175,6 +175,9 @@ try {
         $playersData = [];
         foreach ($players as $p) {
             $isMe = ((int)$p['id'] === (int)$player['id']);
+            if ($isMe) {
+                $player['sheet'] = $p['sheet'];
+            }
             $isCurActive = ((int)$p['id'] === $activePlayerId);
             $pScore = $qwixx->calculateTotalScore($p['sheet']);
 
@@ -433,9 +436,18 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 7. FEHLWURF EINGEHEN / ZUG BEENDEN
+    // 7. FEHLWURF EINGEHEN (nur im Papier/Block-Modus, im digitalen Modus über next_turn)
     // -------------------------------------------------------------------------
     if ($action === 'missed') {
+        if ($room['game_mode'] === 'digital_dice') {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Im digitalen Modus werden Fehlwürfe automatisch beim Beenden des Zuges erfasst',
+            ]);
+            exit;
+        }
+
         $sheet = $player['sheet'];
         $missed = (int)($sheet['missed'] ?? 0);
         if ($missed < 4) {
@@ -451,12 +463,8 @@ try {
         $endReason = $qwixx->checkGameEnd($closedRows, $players);
         $newStatus = null;
         if ($endReason !== null) {
-            if ($room['game_mode'] === 'digital_dice') {
-                $state['game_end_pending'] = $endReason;
-            } else {
-                $state['game_end_reason'] = $endReason;
-                $newStatus = 'finished';
-            }
+            $state['game_end_reason'] = $endReason;
+            $newStatus = 'finished';
         }
 
         $repo->updateRoomState($roomId, $state, $newStatus);
@@ -526,6 +534,8 @@ try {
             }
             $calc = $qwixx->calculateTotalScore($sheet);
             $repo->updatePlayerSheet((int)$player['id'], $sheet, $calc['total']);
+            $player['sheet'] = $sheet;
+            $player['total_score'] = $calc['total'];
         }
 
         // Spielende prüfen: War ein Spielende durch geschlossene Reihen vorgemerkt ODER tritt es durch den 4. Fehlwurf ein?
@@ -537,12 +547,17 @@ try {
             $state['game_end_reason'] = $endReason;
             unset($state['game_end_pending']);
             $repo->updateRoomState($roomId, $state, 'finished');
-            echo json_encode(['success' => true, 'game_finished' => true]);
+            echo json_encode([
+                'success' => true,
+                'game_finished' => true,
+                'sheet' => $player['sheet'],
+                'total_score' => $player['total_score'],
+            ]);
             exit;
         }
 
         // Nächster Spieler im Uhrzeigersinn anhand der Spieler-ID-Liste
-        $playerIds = array_map(fn($p) => (int)$p['id'], $players);
+        $playerIds = array_map(fn($p) => (int)$p['id'], $freshPlayers);
         $currPos = array_search($activePlayerId, $playerIds, true);
         if ($currPos === false) {
             $currPos = 0;
@@ -555,18 +570,28 @@ try {
         $state['turn_number'] = ((int)($state['turn_number'] ?? 1)) + 1;
         $state['turn_phase'] = 'roll';
 
-        // Bestätigungen & Turn-Zähler für alle zurücksetzen
-        foreach ($players as $p) {
+        // Bestätigungen & Turn-Zähler für alle zurücksetzen (Kreuze & Fehlwürfe aus freshPlayers beibehalten!)
+        $mySheetAfter = null;
+        $myScoreAfter = null;
+        foreach ($freshPlayers as $p) {
             $sheet = $p['sheet'];
             $sheet['turn_confirmed'] = false;
             $sheet['white_done'] = false;
             $sheet['color_done'] = false;
             $sheet['crossed_in_turn'] = 0;
             $repo->updatePlayerSheet((int)$p['id'], $sheet, (int)$p['total_score']);
+            if ((int)$p['id'] === (int)$player['id']) {
+                $mySheetAfter = $sheet;
+                $myScoreAfter = (int)$p['total_score'];
+            }
         }
 
         $repo->updateRoomState($roomId, $state);
-        echo json_encode(['success' => true]);
+        echo json_encode([
+            'success' => true,
+            'sheet' => $mySheetAfter,
+            'total_score' => $myScoreAfter,
+        ]);
         exit;
     }
 
