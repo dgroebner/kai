@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'gh-v12';
+const CACHE_VERSION = 'gh-v13';
 const CACHE_NAME = `kai-games-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -34,8 +34,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // API-Calls & POST immer direkt ans Netzwerk
-    if (event.request.method !== 'GET' || url.pathname.includes('/api.php') || url.pathname.includes('/api/')) {
+    // API-Calls, POST & manifest.json immer direkt ans Netzwerk
+    if (event.request.method !== 'GET' || url.pathname.includes('/api.php') || url.pathname.includes('/api/') || url.pathname.endsWith('manifest.json')) {
         return;
     }
 
