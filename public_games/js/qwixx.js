@@ -372,9 +372,13 @@
             const btnPassWhite = document.getElementById('btn-pass-white');
 
             const whiteDone = Boolean(this.mySheet?.white_done);
+            const crossedInTurn = Number(this.mySheet?.crossed_in_turn || 0);
 
             if (phase === 'action' && !whiteDone) {
                 btnPassWhite?.classList.remove('hidden');
+                if (btnPassWhite) {
+                    btnPassWhite.textContent = isMyTurn ? '⚪ Weiß auslassen' : '⚪ Zug auslassen';
+                }
             } else {
                 btnPassWhite?.classList.add('hidden');
             }
@@ -385,6 +389,13 @@
             } else if (isMyTurn && phase === 'action') {
                 btnRoll?.classList.add('hidden');
                 btnNext?.classList.remove('hidden');
+                if (btnNext) {
+                    if (crossedInTurn === 0) {
+                        btnNext.innerHTML = '⏭️ Nächster Spieler <span style="font-size:0.8rem; opacity:0.85; font-weight:normal;">(Fehlwurf ⚡)</span>';
+                    } else {
+                        btnNext.innerHTML = '⏭️ Nächster Spieler &rarr;';
+                    }
+                }
             } else {
                 btnRoll?.classList.add('hidden');
                 btnNext?.classList.add('hidden');

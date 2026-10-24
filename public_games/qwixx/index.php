@@ -76,19 +76,19 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 <div class="qwixx-dice-row" id="dice-row">
                     <!-- 6 Würfel -->
                 </div>
-                <div style="display: flex; justify-content: center; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <div class="qwixx-stage-actions" id="stage-actions">
                     <div class="qwixx-white-sum-box" id="white-sum-box">
-                        <span>⚪➕⚪ Weiße Summe:</span>
-                        <strong id="white-sum-val" style="font-size: 1.25rem; color: #fff;">-</strong>
+                        <span>⚪➕⚪ Weiß:</span>
+                        <strong id="white-sum-val" style="font-size: 1.3rem; color: #fff;">-</strong>
                     </div>
-                    <button type="button" class="btn btn-outline btn-sm js-btn-pass-white hidden" id="btn-pass-white" title="Weiße Summe nicht ankreuzen">
-                        ⚪ Auslassen
+                    <button type="button" class="btn btn-action-pass js-btn-pass-white hidden" id="btn-pass-white" title="Zug bzw. weiße Summe auslassen">
+                        ⚪ Zug auslassen
                     </button>
-                    <button type="button" class="btn btn-primary btn-sm js-btn-roll hidden" id="btn-roll-dice">
+                    <button type="button" class="btn btn-action-roll js-btn-roll hidden" id="btn-roll-dice">
                         🎲 Jetzt Würfeln
                     </button>
-                    <button type="button" class="btn btn-outline btn-sm js-btn-next-turn hidden" id="btn-next-turn">
-                        Zug abschließen &rarr;
+                    <button type="button" class="btn btn-action-next js-btn-next-turn hidden" id="btn-next-turn">
+                        ⏭️ Nächster Spieler &rarr;
                     </button>
                 </div>
 
