@@ -61,7 +61,7 @@ require_once __DIR__ . '/../bootstrap.php';
             <div class="game-kachel" style="opacity: 0.65; cursor: default;">
                 <div class="game-kachel-icon">🏆</div>
                 <div class="game-kachel-content">
-                    <h2>Kniffel / Yahtzee</h2>
+                    <h2>Kniffel</h2>
                     <p>Große &amp; kleine Straße, Full House und Kniffel. Digitaler Punktezettel.</p>
                 </div>
                 <span class="game-kachel-badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted);">Demnächst</span>
