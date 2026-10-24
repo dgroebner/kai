@@ -170,10 +170,20 @@ try {
         }
 
         // Sanierte Übersicht der Mitspieler (andere Spieler sehen nur die Kreuzzahl, nicht jedes einzelne Feld)
+        $activePlayerId = (int)($room['state']['active_player_id'] ?? 0);
+        $waitingFor = [];
         $playersData = [];
         foreach ($players as $p) {
             $isMe = ((int)$p['id'] === (int)$player['id']);
+            $isCurActive = ((int)$p['id'] === $activePlayerId);
             $pScore = $qwixx->calculateTotalScore($p['sheet']);
+
+            if (!$isCurActive && empty($p['sheet']['white_done'])) {
+                $waitingFor[] = [
+                    'id' => (int)$p['id'],
+                    'name' => $p['player_name'],
+                ];
+            }
 
             $summaryRows = [];
             foreach (QwixxService::ROWS as $col) {
@@ -187,6 +197,9 @@ try {
                 'name' => $p['player_name'],
                 'is_host' => (bool)$p['is_host'],
                 'is_me' => $isMe,
+                'is_active' => $isCurActive,
+                'white_done' => !empty($p['sheet']['white_done']),
+                'color_done' => !empty($p['sheet']['color_done']),
                 'missed' => (int)($p['sheet']['missed'] ?? 0),
                 'rows_count' => $summaryRows,
                 'total_score' => $pScore['total'],
@@ -212,6 +225,10 @@ try {
                 'sheet' => $player['sheet'],
             ],
             'players' => $playersData,
+            'turn_readiness' => [
+                'all_passive_ready' => empty($waitingFor),
+                'waiting_for' => $waitingFor,
+            ],
         ]);
         exit;
     }
@@ -462,6 +479,31 @@ try {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Nur der aktive Spieler kann seinen Zug abschließen']);
             exit;
+        }
+
+        // Prüfen, ob noch passive Spieler überlegen (Weiß-Phase)
+        $force = !empty($input['force']);
+        if ($room['game_mode'] === 'digital_dice' && !$force) {
+            $waitingFor = [];
+            foreach ($players as $p) {
+                if ((int)$p['id'] === (int)$player['id']) {
+                    continue;
+                }
+                if (empty($p['sheet']['white_done'])) {
+                    $waitingFor[] = $p['player_name'];
+                }
+            }
+            if (!empty($waitingFor)) {
+                $names = implode(', ', $waitingFor);
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => "Es überlegen noch Mitspieler (Weiß): {$names}.",
+                    'waiting_for' => $waitingFor,
+                    'can_force' => true,
+                ]);
+                exit;
+            }
         }
 
         // Qwixx-Regel: Hat der aktive Spieler weder bei weiß noch bei Farbe etwas angekreuzt?

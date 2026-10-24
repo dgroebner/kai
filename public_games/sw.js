@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'gh-v6';
+const CACHE_VERSION = 'gh-v7';
 const CACHE_NAME = `kai-games-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [

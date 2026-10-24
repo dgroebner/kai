@@ -23,6 +23,7 @@
         gameState: null,
         mySheet: null,
         players: [],
+        turnReadiness: null,
         pollTimer: null,
         isPolling: false,
         isRollingAnimation: false,
@@ -201,6 +202,7 @@
             this.mySheet = data.me.sheet;
             this.isHost = Boolean(data.me.is_host);
             this.myPlayerId = data.me.id;
+            this.turnReadiness = data.turn_readiness || { all_passive_ready: true, waiting_for: [] };
 
             const status = data.room.status;
             const mode = data.room.mode;
@@ -264,15 +266,30 @@
             const bar = document.getElementById('players-bar');
             if (!bar) return;
 
-            const { activePlayerId, activeIdx } = this.getActivePlayerInfo();
+            const { activePlayerId, activeIdx, phase } = this.getActivePlayerInfo();
 
             bar.innerHTML = this.players.map((p, idx) => {
                 const isActive = (activePlayerId > 0) ? (Number(p.id) === activePlayerId) : (idx === activeIdx);
                 const isMe = p.is_me;
                 const r = p.rows_count || { red: 0, green: 0, yellow: 0, blue: 0 };
+
+                let statusBadge = '';
+                if (phase === 'action') {
+                    if (isActive) {
+                        statusBadge = '<span class="qwixx-badge-active">🎲 dran</span>';
+                    } else if (p.white_done) {
+                        statusBadge = '<span class="qwixx-badge-ready">✅ fertig</span>';
+                    } else {
+                        statusBadge = '<span class="qwixx-badge-waiting">⏳ überlegt...</span>';
+                    }
+                }
+
                 return `
                     <div class="qwixx-player-card ${isActive ? 'is-active-turn' : ''} ${isMe ? 'is-me' : ''}">
-                        <span class="qwixx-player-name">${HubHtml.escape(p.name)} ${isActive ? '🎲' : ''}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.35rem; margin-bottom: 0.2rem;">
+                            <span class="qwixx-player-name">${HubHtml.escape(p.name)}</span>
+                            ${statusBadge}
+                        </div>
                         <div class="qwixx-player-kpis">
                             <span style="color: #f87171;">🔴${r.red}</span>
                             <span style="color: #4ade80;">🟢${r.green}</span>
@@ -383,6 +400,9 @@
                 btnPassWhite?.classList.add('hidden');
             }
 
+            const waitingList = (this.turnReadiness?.waiting_for || []).map(w => w.name);
+            const allPassiveReady = (waitingList.length === 0);
+
             if (isMyTurn && phase === 'roll') {
                 btnRoll?.classList.remove('hidden');
                 btnNext?.classList.add('hidden');
@@ -390,10 +410,18 @@
                 btnRoll?.classList.add('hidden');
                 btnNext?.classList.remove('hidden');
                 if (btnNext) {
-                    if (crossedInTurn === 0) {
-                        btnNext.innerHTML = '⏭️ Nächster Spieler <span style="font-size:0.8rem; opacity:0.85; font-weight:normal;">(Fehlwurf ⚡)</span>';
+                    if (!allPassiveReady) {
+                        btnNext.className = 'btn btn-action-waiting js-btn-next-turn';
+                        btnNext.innerHTML = `⏳ Warten auf: ${waitingList.join(', ')}`;
+                        btnNext.title = 'Klicken zum Überspringen, falls Spieler abwesend ist';
                     } else {
-                        btnNext.innerHTML = '⏭️ Nächster Spieler &rarr;';
+                        btnNext.className = 'btn btn-action-next js-btn-next-turn';
+                        btnNext.title = '';
+                        if (crossedInTurn === 0) {
+                            btnNext.innerHTML = '⏭️ Nächster Spieler <span style="font-size:0.8rem; opacity:0.85; font-weight:normal;">(Fehlwurf ⚡)</span>';
+                        } else {
+                            btnNext.innerHTML = '⏭️ Nächster Spieler &rarr;';
+                        }
                     }
                 }
             } else {
@@ -466,22 +494,29 @@
             const wSum = w1 + w2;
             const whiteDone = Boolean(this.mySheet?.white_done);
             const colorDone = Boolean(this.mySheet?.color_done);
+            const waitingList = (this.turnReadiness?.waiting_for || []).map(w => w.name);
 
             if (phase === 'roll') {
                 bar.textContent = isMyTurn ? '🎲 Du bist am Zug! Bitte würfeln.' : `⏳ ${activePlayer?.name || 'Der aktive Spieler'} würfelt gleich...`;
             } else if (isMyTurn) {
-                if (!whiteDone) {
-                    bar.textContent = `Schritt 1: Weiße Summe (${wSum}) ankreuzen oder auf „Auslassen“ tippen.`;
+                if (waitingList.length > 0) {
+                    bar.textContent = `⏳ Noch nicht bereit: ${waitingList.join(', ')} überlegt noch bei Weiß (${wSum})...`;
+                } else if (!whiteDone) {
+                    bar.textContent = `Schritt 1: Weiße Summe (${wSum}) ankreuzen oder auf „Weiß auslassen“ tippen.`;
                 } else if (!colorDone) {
                     bar.textContent = 'Schritt 2: Farbwürfel + Weiß kombinieren oder Zug abschließen.';
                 } else {
-                    bar.textContent = '✅ Deine Züge sind erledigt. Tippe auf „Zug abschließen“.';
+                    bar.textContent = '✅ Alle Mitspieler sind bereit! Tippe auf „Nächster Spieler“.';
                 }
             } else {
                 if (!whiteDone) {
-                    bar.textContent = `⚪ Weiße Summe (${wSum}) ankreuzen oder auf „Auslassen“ tippen.`;
+                    bar.textContent = `⚪ Weiße Summe (${wSum}) ankreuzen oder auf „Zug auslassen“ tippen.`;
                 } else {
-                    bar.textContent = `⏳ Du hast die weiße Summe gewählt/ausgelassen. ${activePlayer?.name || 'Der aktive Spieler'} macht seinen Farbzug...`;
+                    if (waitingList.length > 0) {
+                        bar.textContent = `✅ Du hast gewählt! Warten auf: ${waitingList.join(', ')}...`;
+                    } else {
+                        bar.textContent = `✅ Alle Mitspieler sind fertig! ${activePlayer?.name || 'Der aktive Spieler'} schließt den Zug ab...`;
+                    }
                 }
             }
         },
@@ -663,9 +698,19 @@
             }
         },
 
-        async nextTurn() {
+        async nextTurn(force = false) {
             const isDigital = (this.gameMode === 'digital_dice');
             const crossedInTurn = Number(this.mySheet?.crossed_in_turn || 0);
+            const waitingList = (this.turnReadiness?.waiting_for || []).map(w => w.name);
+
+            // Prüfen, ob noch Mitspieler überlegen
+            if (isDigital && !force && waitingList.length > 0) {
+                const proceed = confirm(`Die Mitspieler (${waitingList.join(', ')}) haben die weiße Summe noch nicht gewählt oder ausgelassen.\n\nMöchtest du die Runde trotzdem für alle beenden?`);
+                if (!proceed) {
+                    return;
+                }
+                force = true;
+            }
 
             // Qwixx-Regel: Hat der aktive Spieler kein einziges Kreuz gesetzt?
             if (isDigital && crossedInTurn === 0) {
@@ -676,9 +721,14 @@
             }
 
             const res = await HubHttp.postJson('./api.php?action=next_turn', {
-                room_code: this.roomCode
+                room_code: this.roomCode,
+                force: force,
             });
-            if (res.ok) this.fetchState();
+            if (res.ok && res.data && res.data.success) {
+                this.fetchState();
+            } else if (res.data?.message) {
+                alert(res.data.message);
+            }
         },
 
         async passWhite() {
