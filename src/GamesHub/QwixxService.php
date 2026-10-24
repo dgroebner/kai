@@ -46,6 +46,7 @@ class QwixxService
     public function getInitialState(string $gameMode = 'digital_dice'): array
     {
         return [
+            'active_player_id' => null,
             'active_player_index' => 0,
             'turn_number' => 1,
             'turn_phase' => 'roll', // 'roll' -> 'action' -> 'next'

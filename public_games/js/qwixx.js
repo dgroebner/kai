@@ -253,10 +253,11 @@
             const bar = document.getElementById('players-bar');
             if (!bar) return;
 
+            const activePlayerId = Number(this.gameState?.active_player_id || 0);
             const activeIdx = Number(this.gameState?.active_player_index || 0);
 
             bar.innerHTML = this.players.map((p, idx) => {
-                const isActive = (idx === activeIdx);
+                const isActive = (activePlayerId > 0) ? (Number(p.id) === activePlayerId) : (idx === activeIdx);
                 const isMe = p.is_me;
                 const r = p.rows_count || { red: 0, green: 0, yellow: 0, blue: 0 };
                 return `
@@ -354,8 +355,11 @@
             }
 
             // Button-Steuerung für Würfeln, Auslassen & Zug-Abschluss
+            const activePlayerId = Number(this.gameState?.active_player_id || 0);
             const activeIdx = Number(this.gameState?.active_player_index || 0);
-            const activePlayer = this.players[activeIdx];
+            const activePlayer = (activePlayerId > 0)
+                ? this.players.find(p => Number(p.id) === activePlayerId)
+                : this.players[activeIdx];
             const isMyTurn = activePlayer && activePlayer.is_me;
             const phase = this.gameState?.turn_phase || 'roll';
 
@@ -441,8 +445,11 @@
             const bar = document.getElementById('turn-instruction-bar');
             if (!bar) return;
 
+            const activePlayerId = Number(this.gameState?.active_player_id || 0);
             const activeIdx = Number(this.gameState?.active_player_index || 0);
-            const activePlayer = this.players[activeIdx];
+            const activePlayer = (activePlayerId > 0)
+                ? this.players.find(p => Number(p.id) === activePlayerId)
+                : this.players[activeIdx];
             const isMyTurn = activePlayer && activePlayer.is_me;
             const phase = this.gameState?.turn_phase || 'roll';
             const w1 = Number(this.gameState?.dice?.white1 || 1);
@@ -476,8 +483,11 @@
             const rows = this.mySheet.rows || {};
             const closedGlobal = this.gameState?.closed_rows || [];
             const isDigital = (this.gameMode === 'digital_dice');
+            const activePlayerId = Number(this.gameState?.active_player_id || 0);
             const activeIdx = Number(this.gameState?.active_player_index || 0);
-            const activePlayer = this.players[activeIdx];
+            const activePlayer = (activePlayerId > 0)
+                ? this.players.find(p => Number(p.id) === activePlayerId)
+                : this.players[activeIdx];
             const isMyTurn = activePlayer && activePlayer.is_me;
             const dice = this.gameState?.dice || {};
             const w1 = Number(dice.white1 || 1);

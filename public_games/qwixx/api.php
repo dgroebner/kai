@@ -214,12 +214,20 @@ try {
         }
 
         $players = $repo->getPlayersForRoom($roomId);
-        $playerCount = max(1, count($players));
+        $playerCount = count($players);
+        if ($playerCount === 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Keine Spieler im Raum']);
+            exit;
+        }
+
+        $chosenIdx = random_int(0, $playerCount - 1);
+        $startPlayer = $players[$chosenIdx];
 
         $state = $room['state'];
         $state['turn_phase'] = 'roll';
-        // Startspieler per Zufall ermitteln
-        $state['active_player_index'] = random_int(0, $playerCount - 1);
+        $state['active_player_index'] = $chosenIdx;
+        $state['active_player_id'] = (int)$startPlayer['id'];
 
         $repo->updateRoomState($roomId, $state, 'active');
         echo json_encode(['success' => true]);
@@ -232,10 +240,14 @@ try {
     if ($action === 'roll') {
         $players = $repo->getPlayersForRoom($roomId);
         $state = $room['state'];
-        $activeIdx = (int)($state['active_player_index'] ?? 0);
-        $activePlayer = $players[$activeIdx] ?? null;
+        $activePlayerId = (int)($state['active_player_id'] ?? 0);
 
-        if (!$activePlayer || (int)$activePlayer['id'] !== (int)$player['id']) {
+        if ($activePlayerId === 0) {
+            $activeIdx = (int)($state['active_player_index'] ?? 0);
+            $activePlayerId = (int)($players[$activeIdx]['id'] ?? 0);
+        }
+
+        if ($activePlayerId !== (int)$player['id']) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Du bist aktuell nicht mit Würfeln an der Reihe']);
             exit;
@@ -416,10 +428,14 @@ try {
     if ($action === 'next_turn') {
         $players = $repo->getPlayersForRoom($roomId);
         $state = $room['state'];
-        $activeIdx = (int)($state['active_player_index'] ?? 0);
-        $activePlayer = $players[$activeIdx] ?? null;
+        $activePlayerId = (int)($state['active_player_id'] ?? 0);
 
-        if (!$activePlayer || (int)$activePlayer['id'] !== (int)$player['id']) {
+        if ($activePlayerId === 0) {
+            $activeIdx = (int)($state['active_player_index'] ?? 0);
+            $activePlayerId = (int)($players[$activeIdx]['id'] ?? 0);
+        }
+
+        if ($activePlayerId !== (int)$player['id']) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Nur der aktive Spieler kann seinen Zug abschließen']);
             exit;
@@ -438,9 +454,17 @@ try {
             $repo->updatePlayerSheet((int)$player['id'], $sheet, $calc['total']);
         }
 
-        // Nächster Spieler im Uhrzeigersinn
-        $nextIdx = ($activeIdx + 1) % max(1, count($players));
-        $state['active_player_index'] = $nextIdx;
+        // Nächster Spieler im Uhrzeigersinn anhand der Spieler-ID-Liste
+        $playerIds = array_map(fn($p) => (int)$p['id'], $players);
+        $currPos = array_search($activePlayerId, $playerIds, true);
+        if ($currPos === false) {
+            $currPos = 0;
+        }
+        $nextPos = ($currPos + 1) % count($playerIds);
+        $nextPlayerId = $playerIds[$nextPos];
+
+        $state['active_player_index'] = $nextPos;
+        $state['active_player_id'] = $nextPlayerId;
         $state['turn_number'] = ((int)($state['turn_number'] ?? 1)) + 1;
         $state['turn_phase'] = 'roll';
 
@@ -470,10 +494,14 @@ try {
         }
 
         $players = $repo->getPlayersForRoom($roomId);
-        $playerCount = max(1, count($players));
+        $playerCount = count($players);
         $initialState = $qwixx->getInitialState($room['game_mode']);
         // Auch bei Revanche zufälligen Startspieler wählen
-        $initialState['active_player_index'] = random_int(0, $playerCount - 1);
+        if ($playerCount > 0) {
+            $chosenIdx = random_int(0, $playerCount - 1);
+            $initialState['active_player_index'] = $chosenIdx;
+            $initialState['active_player_id'] = (int)$players[$chosenIdx]['id'];
+        }
 
         foreach ($players as $p) {
             $emptySheet = $qwixx->getInitialSheet();
