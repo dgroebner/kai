@@ -81,11 +81,14 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                         <span>⚪➕⚪ Weiße Summe:</span>
                         <strong id="white-sum-val" style="font-size: 1.25rem; color: #fff;">-</strong>
                     </div>
+                    <button type="button" class="btn btn-outline btn-sm js-btn-pass-white hidden" id="btn-pass-white" title="Weiße Summe nicht ankreuzen">
+                        ⚪ Auslassen
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm js-btn-roll hidden" id="btn-roll-dice">
                         🎲 Jetzt Würfeln
                     </button>
                     <button type="button" class="btn btn-outline btn-sm js-btn-next-turn hidden" id="btn-next-turn">
-                        Nächster Spieler &rarr;
+                        Zug abschließen &rarr;
                     </button>
                 </div>
             </section>

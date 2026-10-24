@@ -34,7 +34,9 @@ class QwixxService
             ],
             'missed' => 0, // Fehlwürfe (max. 4, je -5 Punkte)
             'turn_confirmed' => false,
-            'chosen_action' => null, // 'white', 'color', 'both', 'pass'
+            'white_done' => false, // Ob der Spieler in diesem Wurf die weiße Phase erledigt hat (angekreuzt oder verzichtet)
+            'color_done' => false, // Ob der aktive Spieler die Farbphase erledigt hat
+            'crossed_in_turn' => 0, // Zähler für Kreuze in diesem Wurf (falls 0 bei Zugabschluss des aktiven Spielers -> Fehlwurf)
         ];
     }
 
@@ -99,9 +101,57 @@ class QwixxService
     }
 
     /**
+     * Ermittelt alle aktuell erlaubten Kombinationen basierend auf den Würfeln.
+     */
+    public function getValidMovesForDice(array $dice, array $closedRows, bool $isActivePlayer, string $step = 'any'): array
+    {
+        $w1 = (int)($dice['white1'] ?? 1);
+        $w2 = (int)($dice['white2'] ?? 1);
+        $whiteSum = $w1 + $w2;
+
+        $moves = [
+            'white_sum' => $whiteSum,
+            'white_moves' => [], // Für alle Reihen erlaubt
+            'color_moves' => [], // Nur für den aktiven Spieler: color + w1 oder color + w2
+        ];
+
+        // 1. Weiße Summe darf prinzipiell in jeder noch offenen Reihe gesetzt werden
+        foreach (self::ROWS as $col) {
+            if (!in_array($col, $closedRows, true)) {
+                $moves['white_moves'][$col] = $whiteSum;
+            }
+        }
+
+        // 2. Farbkombinationen (nur aktiver Spieler)
+        if ($isActivePlayer) {
+            foreach (self::ROWS as $col) {
+                if (!in_array($col, $closedRows, true)) {
+                    $cVal = (int)($dice[$col] ?? 0);
+                    if ($cVal > 0) {
+                        $sums = array_unique([$cVal + $w1, $cVal + $w2]);
+                        sort($sums);
+                        $moves['color_moves'][$col] = $sums;
+                    }
+                }
+            }
+        }
+
+        return $moves;
+    }
+
+    /**
      * Prüft, ob eine Zahl in einer Farbreihe regelkonform angekreuzt werden darf.
      */
-    public function canCrossNumber(array $sheet, string $color, int $number, array $closedRows): array
+    public function canCrossNumber(
+        array $sheet,
+        string $color,
+        int $number,
+        array $closedRows,
+        string $gameMode = 'sheet_only',
+        ?array $dice = null,
+        bool $isActivePlayer = false,
+        string $step = 'any'
+    ): array
     {
         if (!in_array($color, self::ROWS, true)) {
             return ['allowed' => false, 'reason' => 'Ungültige Reihe'];
@@ -110,6 +160,31 @@ class QwixxService
         // Ist die Reihe global bereits geschlossen?
         if (in_array($color, $closedRows, true)) {
             return ['allowed' => false, 'reason' => 'Diese Reihe ist bereits abgeschlossen / gesperrt'];
+        }
+
+        // Im Modus mit digitalen Würfeln: Wert MUSS mit den liegenden Würfeln gebildet werden können!
+        if ($gameMode === 'digital_dice' && $dice !== null) {
+            $validMoves = $this->getValidMovesForDice($dice, $closedRows, $isActivePlayer, $step);
+            $wSum = $validMoves['white_sum'];
+            $isWhiteSum = ($number === $wSum);
+            $isColorCombo = false;
+
+            if ($isActivePlayer && !empty($validMoves['color_moves'][$color])) {
+                $isColorCombo = in_array($number, $validMoves['color_moves'][$color], true);
+            }
+
+            if ($step === 'white' && !$isWhiteSum) {
+                return ['allowed' => false, 'reason' => "Schritt 1: Du darfst aktuell nur die weiße Summe ({$wSum}) ankreuzen"];
+            }
+
+            if ($step === 'color' && !$isColorCombo) {
+                $combosStr = implode(' oder ', $validMoves['color_moves'][$color] ?? []);
+                return ['allowed' => false, 'reason' => "Schritt 2: Nur Farbkombination ({$combosStr}) erlaubt"];
+            }
+
+            if ($step === 'any' && !$isWhiteSum && !$isColorCombo) {
+                return ['allowed' => false, 'reason' => "Die Zahl {$number} liegt mit den aktuellen Würfeln nicht bereit"];
+            }
         }
 
         $rowState = $sheet['rows'][$color] ?? ['crossed' => [], 'locked' => false];
@@ -158,15 +233,34 @@ class QwixxService
     /**
      * Führt das Ankreuzen auf dem Spielzettel aus.
      */
-    public function applyCross(array &$sheet, string $color, int $number, array &$closedRows): bool
+    public function applyCross(
+        array &$sheet,
+        string $color,
+        int $number,
+        array &$closedRows,
+        string $gameMode = 'sheet_only',
+        ?array $dice = null,
+        bool $isActivePlayer = false,
+        string $step = 'any'
+    ): bool
     {
-        $check = $this->canCrossNumber($sheet, $color, $number, $closedRows);
+        $check = $this->canCrossNumber($sheet, $color, $number, $closedRows, $gameMode, $dice, $isActivePlayer, $step);
         if (!$check['allowed']) {
             return false;
         }
 
         $sheet['rows'][$color]['crossed'][] = $number;
         sort($sheet['rows'][$color]['crossed']);
+        $sheet['crossed_in_turn'] = (int)($sheet['crossed_in_turn'] ?? 0) + 1;
+
+        if ($gameMode === 'digital_dice' && $dice !== null) {
+            $wSum = (int)($dice['white1'] ?? 1) + (int)($dice['white2'] ?? 1);
+            if ($number === $wSum && empty($sheet['white_done'])) {
+                $sheet['white_done'] = true;
+            } else {
+                $sheet['color_done'] = true;
+            }
+        }
 
         // Wenn die letzte Zahl (12 bzw. 2) angekreuzt wurde: Reihe abschließen & Schloss vergeben
         if (!empty($check['is_last'])) {

@@ -17,6 +17,7 @@
 
     const QwixxApp = {
         roomCode: '',
+        gameMode: 'digital_dice',
         isHost: false,
         myPlayerId: null,
         gameState: null,
@@ -66,6 +67,12 @@
             const btnNext = document.getElementById('btn-next-turn');
             if (btnNext) {
                 btnNext.addEventListener('click', () => this.nextTurn());
+            }
+
+            // Weiße Summe auslassen
+            const btnPassWhite = document.getElementById('btn-pass-white');
+            if (btnPassWhite) {
+                btnPassWhite.addEventListener('click', () => this.passWhite());
             }
 
             // Revanche (Host)
@@ -178,6 +185,7 @@
 
         handleStateUpdate(data) {
             this.gameState = data.room.state;
+            this.gameMode = data.room.mode || 'digital_dice';
             this.players = data.players || [];
             this.mySheet = data.me.sheet;
             this.isHost = Boolean(data.me.is_host);
@@ -312,7 +320,7 @@
                 whiteSumVal.textContent = String((dice.white1 || 1) + (dice.white2 || 1));
             }
 
-            // Button-Steuerung für den aktiven Spieler
+            // Button-Steuerung für Würfeln, Auslassen & Zug-Abschluss
             const activeIdx = Number(this.gameState?.active_player_index || 0);
             const activePlayer = this.players[activeIdx];
             const isMyTurn = activePlayer && activePlayer.is_me;
@@ -320,6 +328,15 @@
 
             const btnRoll = document.getElementById('btn-roll-dice');
             const btnNext = document.getElementById('btn-next-turn');
+            const btnPassWhite = document.getElementById('btn-pass-white');
+
+            const whiteDone = Boolean(this.mySheet?.white_done);
+
+            if (phase === 'action' && !whiteDone) {
+                btnPassWhite?.classList.remove('hidden');
+            } else {
+                btnPassWhite?.classList.add('hidden');
+            }
 
             if (isMyTurn && phase === 'roll') {
                 btnRoll?.classList.remove('hidden');
@@ -395,13 +412,28 @@
             const activePlayer = this.players[activeIdx];
             const isMyTurn = activePlayer && activePlayer.is_me;
             const phase = this.gameState?.turn_phase || 'roll';
+            const w1 = Number(this.gameState?.dice?.white1 || 1);
+            const w2 = Number(this.gameState?.dice?.white2 || 1);
+            const wSum = w1 + w2;
+            const whiteDone = Boolean(this.mySheet?.white_done);
+            const colorDone = Boolean(this.mySheet?.color_done);
 
             if (phase === 'roll') {
-                bar.textContent = isMyTurn ? 'Du bist am Zug! Bitte würfeln.' : `${activePlayer?.name || 'Der aktive Spieler'} würfelt gleich...`;
+                bar.textContent = isMyTurn ? '🎲 Du bist am Zug! Bitte würfeln.' : `⏳ ${activePlayer?.name || 'Der aktive Spieler'} würfelt gleich...`;
+            } else if (isMyTurn) {
+                if (!whiteDone) {
+                    bar.textContent = `Schritt 1: Weiße Summe (${wSum}) ankreuzen oder auf „Auslassen“ tippen.`;
+                } else if (!colorDone) {
+                    bar.textContent = 'Schritt 2: Farbwürfel + Weiß kombinieren oder Zug abschließen.';
+                } else {
+                    bar.textContent = '✅ Deine Züge sind erledigt. Tippe auf „Zug abschließen“.';
+                }
             } else {
-                bar.textContent = isMyTurn
-                    ? '1. Weiße Summe wählen / auslassen & 2. Farbwürfel kombinieren. Dann Zug abschließen.'
-                    : `Alle Spieler dürfen die weiße Summe (${(this.gameState?.dice?.white1 || 1) + (this.gameState?.dice?.white2 || 1)}) ankreuzen.`;
+                if (!whiteDone) {
+                    bar.textContent = `⚪ Weiße Summe (${wSum}) ankreuzen oder auf „Auslassen“ tippen.`;
+                } else {
+                    bar.textContent = `⏳ Du hast die weiße Summe gewählt/ausgelassen. ${activePlayer?.name || 'Der aktive Spieler'} macht seinen Farbzug...`;
+                }
             }
         },
 
@@ -410,6 +442,22 @@
 
             const rows = this.mySheet.rows || {};
             const closedGlobal = this.gameState?.closed_rows || [];
+            const isDigital = (this.gameMode === 'digital_dice');
+            const activeIdx = Number(this.gameState?.active_player_index || 0);
+            const activePlayer = this.players[activeIdx];
+            const isMyTurn = activePlayer && activePlayer.is_me;
+            const dice = this.gameState?.dice || {};
+            const w1 = Number(dice.white1 || 1);
+            const w2 = Number(dice.white2 || 1);
+            const whiteSum = w1 + w2;
+
+            // Hat der Spieler in diesem Wurf bereits Kreuze gesetzt?
+            const whiteDone = Boolean(this.mySheet.white_done);
+            const colorDone = Boolean(this.mySheet.color_done);
+
+            // Für passiven Spieler: Wenn er schon weiß genommen hat -> alles sperren bis zum nächsten Wurf
+            // Für aktiven Spieler: Wenn er schon Farbe genommen hat -> alles sperren bis zum nächsten Wurf
+            const isAllDoneForTurn = isDigital && (isMyTurn ? colorDone : whiteDone);
 
             ['red', 'green', 'yellow', 'blue'].forEach(color => {
                 const rowState = rows[color] || { crossed: [], locked: false };
@@ -417,6 +465,10 @@
                 const isAscending = (color === 'red' || color === 'green');
                 const isLocked = Boolean(rowState.locked);
                 const isClosedGlobal = closedGlobal.includes(color);
+
+                // Erlaubte Farbsummen für diese Reihe berechnen
+                const cVal = Number(dice[color] || 0);
+                const allowedColorSums = (cVal > 0) ? [cVal + w1, cVal + w2] : [];
 
                 // Schloss-Icon
                 const lockEl = document.getElementById(`lock-${color}`);
@@ -439,7 +491,8 @@
 
                     // Regelprüfung: darf angekreuzt werden?
                     let disabled = false;
-                    if (isLocked || isClosedGlobal) {
+
+                    if (isLocked || isClosedGlobal || isAllDoneForTurn) {
                         disabled = true;
                     } else if (rightmost !== null) {
                         if (isAscending && num <= rightmost) disabled = true;
@@ -450,6 +503,16 @@
                     const isLastNum = (isAscending && num === 12) || (!isAscending && num === 2);
                     if (isLastNum && crossed.length < 5) {
                         disabled = true;
+                    }
+
+                    // Im Digitalen Modus: Nur Zahlen aktivieren, die tatsächlich als Würfelkombination möglich sind!
+                    if (isDigital && !disabled && !isCellCrossed) {
+                        const canTakeWhite = !whiteDone && (num === whiteSum);
+                        const canTakeColor = isMyTurn && !colorDone && allowedColorSums.includes(num);
+
+                        if (!canTakeWhite && !canTakeColor) {
+                            disabled = true;
+                        }
                     }
 
                     cell.classList.toggle('is-disabled', disabled && !isCellCrossed);
@@ -547,10 +610,32 @@
         },
 
         async nextTurn() {
+            const isDigital = (this.gameMode === 'digital_dice');
+            const crossedInTurn = Number(this.mySheet?.crossed_in_turn || 0);
+
+            // Qwixx-Regel: Hat der aktive Spieler kein einziges Kreuz gesetzt?
+            if (isDigital && crossedInTurn === 0) {
+                const proceed = confirm('Du hast in diesem Zug kein Kreuz gesetzt. Gemäß Qwixx-Regeln musst du einen Fehlwurf (-5 Punkte) ankreuzen.\n\nJetzt Fehlwurf kassieren und Zug beenden?');
+                if (!proceed) {
+                    return;
+                }
+            }
+
             const res = await HubHttp.postJson('./api.php?action=next_turn', {
                 room_code: this.roomCode
             });
             if (res.ok) this.fetchState();
+        },
+
+        async passWhite() {
+            const res = await HubHttp.postJson('./api.php?action=pass_white', {
+                room_code: this.roomCode
+            });
+            if (res.ok && res.data && res.data.success) {
+                this.mySheet = res.data.sheet;
+                this.renderSheet();
+                this.renderTurnInstructions();
+            }
         },
 
         async rematch() {

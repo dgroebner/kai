@@ -249,7 +249,9 @@ try {
         foreach ($players as $p) {
             $sheet = $p['sheet'];
             $sheet['turn_confirmed'] = false;
-            $sheet['chosen_action'] = null;
+            $sheet['white_done'] = false;
+            $sheet['color_done'] = false;
+            $sheet['crossed_in_turn'] = 0;
             $repo->updatePlayerSheet((int)$p['id'], $sheet, (int)$p['total_score']);
         }
 
@@ -269,7 +271,50 @@ try {
         $closedRows = $state['closed_rows'] ?? [];
         $sheet = $player['sheet'];
 
-        $check = $qwixx->canCrossNumber($sheet, $color, $number, $closedRows);
+        $players = $repo->getPlayersForRoom($roomId);
+        $activeIdx = (int)($state['active_player_index'] ?? 0);
+        $activePlayer = $players[$activeIdx] ?? null;
+        $isActivePlayer = ($activePlayer && (int)$activePlayer['id'] === (int)$player['id']);
+
+        // Ermitteln, in welchem Schritt wir sind:
+        // Passiver Spieler: darf NUR weiße Summe ankreuzen (einmal)
+        // Aktiver Spieler:
+        // - Wenn white_done false ist, darf er zuerst die weiße Summe ankreuzen
+        // - Wenn er bereits weiß hat oder darauf verzichtet hat (white_done true), darf er nur Farbkombination ankreuzen
+        $step = 'any';
+        if ($room['game_mode'] === 'digital_dice') {
+            if (!$isActivePlayer) {
+                if (!empty($sheet['white_done'])) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'Du hast in dieser Runde bereits die weiße Summe genutzt']);
+                    exit;
+                }
+                $step = 'white';
+            } else {
+                if (!empty($sheet['color_done'])) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'Du hast deine Farbkombination in diesem Zug bereits gesetzt']);
+                    exit;
+                }
+                if (empty($sheet['white_done'])) {
+                    // Er ist aktiv und hat noch nicht weiß gemacht.
+                    // Er darf jetzt die weiße Summe ankreuzen ODER (falls er auf weiß verzichtet) direkt eine Farbe
+                    $wSum = (int)($state['dice']['white1'] ?? 1) + (int)($state['dice']['white2'] ?? 1);
+                    if ($number === $wSum) {
+                        $step = 'white';
+                    } else {
+                        // Verzichtet auf weiß und geht direkt zu Farbe
+                        $sheet['white_done'] = true;
+                        $step = 'color';
+                    }
+                } else {
+                    $step = 'color';
+                }
+            }
+        }
+
+        $dice = ($room['game_mode'] === 'digital_dice') ? ($state['dice'] ?? null) : null;
+        $check = $qwixx->canCrossNumber($sheet, $color, $number, $closedRows, $room['game_mode'], $dice, $isActivePlayer, $step);
         if (!$check['allowed']) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => $check['reason']]);
@@ -277,7 +322,7 @@ try {
         }
 
         $rowLockedBefore = !empty($sheet['rows'][$color]['locked']);
-        $applied = $qwixx->applyCross($sheet, $color, $number, $closedRows);
+        $applied = $qwixx->applyCross($sheet, $color, $number, $closedRows, $room['game_mode'], $dice, $isActivePlayer, $step);
 
         if (!$applied) {
             http_response_code(400);
@@ -313,6 +358,17 @@ try {
             'row_closed' => !empty($sheet['rows'][$color]['locked']) && !$rowLockedBefore,
             'game_finished' => $newStatus === 'finished',
         ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // 6b. VERZICHT AUF WEISSE SUMME (Passieren für passiven oder aktiven Spieler)
+    // -------------------------------------------------------------------------
+    if ($action === 'pass_white') {
+        $sheet = $player['sheet'];
+        $sheet['white_done'] = true;
+        $repo->updatePlayerSheet((int)$player['id'], $sheet, (int)$player['total_score']);
+        echo json_encode(['success' => true, 'sheet' => $sheet]);
         exit;
     }
 
@@ -357,6 +413,26 @@ try {
         $players = $repo->getPlayersForRoom($roomId);
         $state = $room['state'];
         $activeIdx = (int)($state['active_player_index'] ?? 0);
+        $activePlayer = $players[$activeIdx] ?? null;
+
+        if (!$activePlayer || (int)$activePlayer['id'] !== (int)$player['id']) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Nur der aktive Spieler kann seinen Zug abschließen']);
+            exit;
+        }
+
+        // Qwixx-Regel: Hat der aktive Spieler weder bei weiß noch bei Farbe etwas angekreuzt?
+        // -> Automatischer Fehlwurf (-5 Punkte) für den aktiven Spieler!
+        $crossedInTurn = (int)($player['sheet']['crossed_in_turn'] ?? 0);
+        if ($room['game_mode'] === 'digital_dice' && $crossedInTurn === 0) {
+            $sheet = $player['sheet'];
+            $missed = (int)($sheet['missed'] ?? 0);
+            if ($missed < 4) {
+                $sheet['missed'] = $missed + 1;
+            }
+            $calc = $qwixx->calculateTotalScore($sheet);
+            $repo->updatePlayerSheet((int)$player['id'], $sheet, $calc['total']);
+        }
 
         // Nächster Spieler im Uhrzeigersinn
         $nextIdx = ($activeIdx + 1) % max(1, count($players));
@@ -364,10 +440,13 @@ try {
         $state['turn_number'] = ((int)($state['turn_number'] ?? 1)) + 1;
         $state['turn_phase'] = 'roll';
 
-        // Bestätigungen zurücksetzen
+        // Bestätigungen & Turn-Zähler für alle zurücksetzen
         foreach ($players as $p) {
             $sheet = $p['sheet'];
             $sheet['turn_confirmed'] = false;
+            $sheet['white_done'] = false;
+            $sheet['color_done'] = false;
+            $sheet['crossed_in_turn'] = 0;
             $repo->updatePlayerSheet((int)$p['id'], $sheet, (int)$p['total_score']);
         }
 
