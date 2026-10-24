@@ -99,7 +99,6 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
             <section class="qwixx-sheet" id="qwixx-sheet" aria-label="Qwixx Spielzettel">
                 <!-- ROTE REIHE (2 bis 12) -->
                 <div class="qwixx-row qwixx-row-red" data-color="red">
-                    <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #f87171;">ROT</span>
                     <?php for ($n = 2; $n <= 12; $n++): ?>
                         <div class="qwixx-cell js-cell" data-color="red" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
                     <?php endfor; ?>
@@ -108,7 +107,6 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
                 <!-- GRÜNE REIHE (2 bis 12) -->
                 <div class="qwixx-row qwixx-row-green" data-color="green">
-                    <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #4ade80;">GRÜN</span>
                     <?php for ($n = 2; $n <= 12; $n++): ?>
                         <div class="qwixx-cell js-cell" data-color="green" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
                     <?php endfor; ?>
@@ -117,7 +115,6 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
                 <!-- GELBE REIHE (12 bis 2) -->
                 <div class="qwixx-row qwixx-row-yellow" data-color="yellow">
-                    <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #fde047;">GELB</span>
                     <?php for ($n = 12; $n >= 2; $n--): ?>
                         <div class="qwixx-cell js-cell" data-color="yellow" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
                     <?php endfor; ?>
@@ -126,7 +123,6 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
                 <!-- BLAUE REIHE (12 bis 2) -->
                 <div class="qwixx-row qwixx-row-blue" data-color="blue">
-                    <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #60a5fa;">BLAU</span>
                     <?php for ($n = 12; $n >= 2; $n--): ?>
                         <div class="qwixx-cell js-cell" data-color="blue" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
                     <?php endfor; ?>
