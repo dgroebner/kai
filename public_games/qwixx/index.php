@@ -106,15 +106,6 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                     <div class="qwixx-cell qwixx-cell-lock" id="lock-red" title="Reihe abschließen">🔒</div>
                 </div>
 
-                <!-- GELBE REIHE (12 bis 2) -->
-                <div class="qwixx-row qwixx-row-yellow" data-color="yellow">
-                    <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #fde047;">GELB</span>
-                    <?php for ($n = 12; $n >= 2; $n--): ?>
-                        <div class="qwixx-cell js-cell" data-color="yellow" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
-                    <?php endfor; ?>
-                    <div class="qwixx-cell qwixx-cell-lock" id="lock-yellow" title="Reihe abschließen">🔒</div>
-                </div>
-
                 <!-- GRÜNE REIHE (2 bis 12) -->
                 <div class="qwixx-row qwixx-row-green" data-color="green">
                     <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #4ade80;">GRÜN</span>
@@ -122,6 +113,15 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                         <div class="qwixx-cell js-cell" data-color="green" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
                     <?php endfor; ?>
                     <div class="qwixx-cell qwixx-cell-lock" id="lock-green" title="Reihe abschließen">🔒</div>
+                </div>
+
+                <!-- GELBE REIHE (12 bis 2) -->
+                <div class="qwixx-row qwixx-row-yellow" data-color="yellow">
+                    <span style="font-weight: 800; font-size: 1rem; padding: 0 0.35rem; color: #fde047;">GELB</span>
+                    <?php for ($n = 12; $n >= 2; $n--): ?>
+                        <div class="qwixx-cell js-cell" data-color="yellow" data-num="<?= $n ?>" role="button" tabindex="0"><?= $n ?></div>
+                    <?php endfor; ?>
+                    <div class="qwixx-cell qwixx-cell-lock" id="lock-yellow" title="Reihe abschließen">🔒</div>
                 </div>
 
                 <!-- BLAUE REIHE (12 bis 2) -->
@@ -148,8 +148,8 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
             <!-- Punktestand-Vorschau -->
             <div class="qwixx-score-summary">
                 <div class="qwixx-score-col-red">🔴 <span id="score-red">0</span></div>
-                <div class="qwixx-score-col-yellow">🟡 <span id="score-yellow">0</span></div>
                 <div class="qwixx-score-col-green">🟢 <span id="score-green">0</span></div>
+                <div class="qwixx-score-col-yellow">🟡 <span id="score-yellow">0</span></div>
                 <div class="qwixx-score-col-blue">🔵 <span id="score-blue">0</span></div>
                 <div class="qwixx-score-col-missed">⚡ <span id="score-missed">0</span></div>
                 <div class="qwixx-score-col-total">🏆 <span id="score-total">0</span></div>

@@ -7,11 +7,11 @@ namespace Kai\Tools\GamesHub;
 class QwixxService
 {
     public const ROW_RED = 'red';
-    public const ROW_YELLOW = 'yellow';
     public const ROW_GREEN = 'green';
+    public const ROW_YELLOW = 'yellow';
     public const ROW_BLUE = 'blue';
 
-    public const ROWS = [self::ROW_RED, self::ROW_YELLOW, self::ROW_GREEN, self::ROW_BLUE];
+    public const ROWS = [self::ROW_RED, self::ROW_GREEN, self::ROW_YELLOW, self::ROW_BLUE];
 
     // Punktetabelle nach Dreieckszahlen n*(n+1)/2:
     // 1=1, 2=3, 3=6, 4=10, 5=15, 6=21, 7=28, 8=36, 9=45, 10=55, 11=66, 12=78
@@ -28,8 +28,8 @@ class QwixxService
         return [
             'rows' => [
                 self::ROW_RED => ['crossed' => [], 'locked' => false],
-                self::ROW_YELLOW => ['crossed' => [], 'locked' => false],
                 self::ROW_GREEN => ['crossed' => [], 'locked' => false],
+                self::ROW_YELLOW => ['crossed' => [], 'locked' => false],
                 self::ROW_BLUE => ['crossed' => [], 'locked' => false],
             ],
             'missed' => 0, // Fehlwürfe (max. 4, je -5 Punkte)

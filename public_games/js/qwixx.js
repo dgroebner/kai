@@ -239,14 +239,14 @@
             bar.innerHTML = this.players.map((p, idx) => {
                 const isActive = (idx === activeIdx);
                 const isMe = p.is_me;
-                const r = p.rows_count || { red: 0, yellow: 0, green: 0, blue: 0 };
+                const r = p.rows_count || { red: 0, green: 0, yellow: 0, blue: 0 };
                 return `
                     <div class="qwixx-player-card ${isActive ? 'is-active-turn' : ''} ${isMe ? 'is-me' : ''}">
                         <span class="qwixx-player-name">${HubHtml.escape(p.name)} ${isActive ? '🎲' : ''}</span>
                         <div class="qwixx-player-kpis">
                             <span style="color: #f87171;">🔴${r.red}</span>
-                            <span style="color: #fde047;">🟡${r.yellow}</span>
                             <span style="color: #4ade80;">🟢${r.green}</span>
+                            <span style="color: #fde047;">🟡${r.yellow}</span>
                             <span style="color: #60a5fa;">🔵${r.blue}</span>
                             <span style="color: #ef4444;">⚡${p.missed}</span>
                         </div>
@@ -265,8 +265,8 @@
                 { id: 'w1', color: 'white', val: dice.white1 || 1 },
                 { id: 'w2', color: 'white', val: dice.white2 || 1 },
                 { id: 'r', color: 'red', val: dice.red || 1, closed: closedRows.includes('red') },
-                { id: 'y', color: 'yellow', val: dice.yellow || 1, closed: closedRows.includes('yellow') },
                 { id: 'g', color: 'green', val: dice.green || 1, closed: closedRows.includes('green') },
+                { id: 'y', color: 'yellow', val: dice.yellow || 1, closed: closedRows.includes('yellow') },
                 { id: 'b', color: 'blue', val: dice.blue || 1, closed: closedRows.includes('blue') },
             ];
 
@@ -326,7 +326,7 @@
             const rows = this.mySheet.rows || {};
             const closedGlobal = this.gameState?.closed_rows || [];
 
-            ['red', 'yellow', 'green', 'blue'].forEach(color => {
+            ['red', 'green', 'yellow', 'blue'].forEach(color => {
                 const rowState = rows[color] || { crossed: [], locked: false };
                 const crossed = rowState.crossed || [];
                 const isAscending = (color === 'red' || color === 'green');
@@ -386,7 +386,7 @@
             if (!this.mySheet) return;
 
             let total = 0;
-            ['red', 'yellow', 'green', 'blue'].forEach(color => {
+            ['red', 'green', 'yellow', 'blue'].forEach(color => {
                 const crossed = this.mySheet.rows?.[color]?.crossed || [];
                 let count = crossed.length;
                 if (this.mySheet.rows?.[color]?.locked) count++;
