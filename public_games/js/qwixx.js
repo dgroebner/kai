@@ -657,12 +657,22 @@
                 this.renderSheet();
                 this.fetchState();
             } else {
-                alert(res.data?.message || 'Zahl darf nicht angekreuzt werden.');
+                await HubDialog.alert('Ungültiger Zug', res.data?.message || 'Diese Zahl darf aktuell nicht angekreuzt werden.', '⚠️');
             }
         },
 
         async recordMissed() {
-            if (!confirm('Fehlwurf eintragen (-5 Punkte)?')) return;
+            const proceed = await HubDialog.confirm(
+                'Fehlwurf eintragen?',
+                'Möchtest du dir manuell einen Fehlwurf anrechnen (-5 Punkte)?',
+                {
+                    icon: '⚡',
+                    confirmText: 'Fehlwurf (-5)',
+                    cancelText: 'Abbrechen',
+                    confirmClass: 'btn-danger'
+                }
+            );
+            if (!proceed) return;
 
             const res = await HubHttp.postJson('./api.php?action=missed', {
                 room_code: this.roomCode
@@ -705,7 +715,16 @@
 
             // Prüfen, ob noch Mitspieler überlegen
             if (isDigital && !force && waitingList.length > 0) {
-                const proceed = confirm(`Die Mitspieler (${waitingList.join(', ')}) haben die weiße Summe noch nicht gewählt oder ausgelassen.\n\nMöchtest du die Runde trotzdem für alle beenden?`);
+                const proceed = await HubDialog.confirm(
+                    'Mitspieler überlegen noch',
+                    `Die Mitspieler (${waitingList.join(', ')}) haben die weiße Summe noch nicht gewählt oder ausgelassen.\n\nMöchtest du die Runde trotzdem für alle beenden?`,
+                    {
+                        icon: '⏳',
+                        confirmText: 'Trotzdem beenden',
+                        cancelText: 'Weiter warten',
+                        confirmClass: 'btn-primary'
+                    }
+                );
                 if (!proceed) {
                     return;
                 }
@@ -714,7 +733,16 @@
 
             // Qwixx-Regel: Hat der aktive Spieler kein einziges Kreuz gesetzt?
             if (isDigital && crossedInTurn === 0) {
-                const proceed = confirm('Du hast in diesem Zug kein Kreuz gesetzt. Gemäß Qwixx-Regeln musst du einen Fehlwurf (-5 Punkte) ankreuzen.\n\nJetzt Fehlwurf kassieren und Zug beenden?');
+                const proceed = await HubDialog.confirm(
+                    'Fehlwurf erhalten?',
+                    'Du hast in diesem Zug kein Kreuz gesetzt.\n\nNach offiziellen Qwixx-Regeln musst du dafür einen Fehlwurf (-5 Punkte) kassieren.\n\nJetzt Fehlwurf anrechnen und Zug beenden?',
+                    {
+                        icon: '⚡',
+                        confirmText: 'Fehlwurf & Weiter',
+                        cancelText: 'Zug fortsetzen',
+                        confirmClass: 'btn-danger'
+                    }
+                );
                 if (!proceed) {
                     return;
                 }
@@ -727,7 +755,7 @@
             if (res.ok && res.data && res.data.success) {
                 this.fetchState();
             } else if (res.data?.message) {
-                alert(res.data.message);
+                await HubDialog.alert('Hinweis', res.data.message, '⚠️');
             }
         },
 
