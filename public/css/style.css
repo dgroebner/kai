@@ -3177,6 +3177,135 @@ body {
     text-align: center;
 }
 
+/* Phase 3: Supermarkt-Angebote (Marktguru / REWE Franzosenallee 10) */
+.shopping-offer-banner {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: var(--text-main);
+}
+
+.shopping-offer-banner.shopping-offer-switch-banner {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.shopping-offer-price {
+    font-weight: 700;
+    color: var(--color-green);
+}
+
+.shopping-offer-switch-banner .shopping-offer-price {
+    color: var(--color-orange);
+}
+
+.btn-offer-switch,
+.btn-offer-variants {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-main);
+    border-radius: 4px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-offer-switch:hover,
+.btn-offer-variants:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-offer-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 0 0.2rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.btn-offer-dismiss:hover {
+    color: var(--color-red);
+}
+
+.shopping-live-offer-hint {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.3rem;
+    font-size: 0.82rem;
+    color: var(--color-green);
+    font-weight: 500;
+}
+
+.shopping-live-offer-hint.is-cross-market {
+    color: var(--color-orange);
+}
+
+.btn-live-offer-switch {
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: var(--text-main);
+    border-radius: 5px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.suggestion-offer-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    font-size: 0.82rem;
+}
+
+.suggestion-offer-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.suggestion-offer-sub {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+
+.badge-stockup-deal {
+    background: rgba(16, 185, 129, 0.16);
+    color: var(--color-green);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    font-size: 0.74rem;
+    margin-top: 0.2rem;
+    display: inline-block;
+}
+
+.offer-variant-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--bg-surface-hover);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: var(--bg-surface);
+}
+
 
 @media (max-width: 768px) {
     .shopping-add-grid {

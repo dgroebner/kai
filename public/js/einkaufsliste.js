@@ -355,6 +355,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Artikel löschen ---
     document.addEventListener('click', async (e) => {
+        if (e.target.closest('.js-switch-item-market-btn, .js-open-offer-variants-btn, .js-dismiss-offer-btn')) {
+            return;
+        }
         const editTrigger = e.target.closest('.js-edit-list-item-trigger');
         if (editTrigger) {
             const row = editTrigger.closest('.shopping-item-row');
@@ -472,27 +475,232 @@ document.addEventListener('DOMContentLoaded', () => {
         btnTriggerSync.addEventListener('click', () => syncEbonsHandler(btnTriggerSync));
     }
 
+    // --- Wochenangebote (REWE Franzosenallee 10, 04289 Leipzig) synchronisieren ---
+    const btnSyncOffers = document.getElementById('btn-sync-offers');
+    if (btnSyncOffers) {
+        btnSyncOffers.addEventListener('click', async () => {
+            btnSyncOffers.disabled = true;
+            const oldHtml = btnSyncOffers.innerHTML;
+            btnSyncOffers.innerHTML = '⏳ Prüfe Angebote...';
+
+            try {
+                const res = await KaiHttp.postJson(API_URL, {action: 'sync_offers', force: true});
+                if (res.success) {
+                    showToast(res.message || 'Angebote aktualisiert!');
+                    setTimeout(() => window.location.reload(), 900);
+                } else {
+                    showToast(res.message || 'Fehler bei der Angebotsprüfung', true);
+                    btnSyncOffers.disabled = false;
+                    btnSyncOffers.innerHTML = oldHtml;
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler bei der Angebotsprüfung', true);
+                btnSyncOffers.disabled = false;
+                btnSyncOffers.innerHTML = oldHtml;
+            }
+        });
+    }
+
+    // --- Marktwechsel-Button (1-Klick Wechsel auf Angebots-Markt), Angebots-Varianten & Ausblenden ---
+    document.addEventListener('click', async (e) => {
+        // 1. 1-Klick Marktwechsel an einem Listeneintrag (Hauptliste & Live-Modus)
+        const switchBtn = e.target.closest('.js-switch-item-market-btn');
+        if (switchBtn) {
+            e.stopPropagation();
+            const itemId = parseInt(switchBtn.dataset.id, 10);
+            const targetMarket = switchBtn.dataset.market || 'Rewe';
+            const customNote = switchBtn.dataset.note || '';
+            if (!itemId) return;
+
+            switchBtn.disabled = true;
+            try {
+                const payload = {action: 'switch_item_market', id: itemId, market: targetMarket};
+                if (customNote) {
+                    payload.note = customNote;
+                }
+                const res = await KaiHttp.postJson(API_URL, payload);
+                if (res.success) {
+                    showToast(res.message || `Markt auf ${targetMarket} gewechselt`);
+                    if (window.allShoppingItems && Array.isArray(window.allShoppingItems)) {
+                        const found = window.allShoppingItems.find(i => parseInt(i.id, 10) === itemId);
+                        if (found) {
+                            found.market = targetMarket;
+                            if (customNote) found.note = customNote;
+                        }
+                    }
+                    const variantsModal = document.getElementById('offer-variants-modal');
+                    if (variantsModal) variantsModal.classList.add('hidden');
+
+                    if (window.shoppingSync) {
+                        window.shoppingSync.currentHash = '';
+                        await window.shoppingSync.pollNow();
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    showToast(res.message || 'Fehler beim Marktwechsel', true);
+                    switchBtn.disabled = false;
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler', true);
+                switchBtn.disabled = false;
+            }
+            return;
+        }
+
+        // 2. Unpassendes Angebot ausblenden (is_dismissed = 1)
+        const dismissBtn = e.target.closest('.js-dismiss-offer-btn');
+        if (dismissBtn) {
+            e.stopPropagation();
+            const offerId = parseInt(dismissBtn.dataset.offerId, 10);
+            if (!offerId) return;
+
+            dismissBtn.disabled = true;
+            try {
+                const res = await KaiHttp.postJson(API_URL, {action: 'dismiss_offer', offer_id: offerId});
+                if (res.success) {
+                    showToast('Angebot ausgeblendet');
+                    const variantRow = dismissBtn.closest('.offer-variant-item');
+                    if (variantRow) {
+                        variantRow.remove();
+                    }
+                    const banner = dismissBtn.closest('.shopping-offer-banner, .suggestion-offer-box');
+                    if (banner) {
+                        banner.remove();
+                    }
+                    if (window.shoppingSync) {
+                        window.shoppingSync.currentHash = '';
+                        window.shoppingSync.pollNow();
+                    }
+                } else {
+                    showToast(res.message || 'Fehler beim Ausblenden', true);
+                    dismissBtn.disabled = false;
+                }
+            } catch (err) {
+                showToast('Verbindungsfehler', true);
+                dismissBtn.disabled = false;
+            }
+            return;
+        }
+
+        // 3. Angebots-Varianten-Modal öffnen (+X weitere Sorten)
+        const variantsBtn = e.target.closest('.js-open-offer-variants-btn');
+        if (variantsBtn) {
+            e.stopPropagation();
+            const productName = variantsBtn.dataset.productName || 'Artikel';
+            const listItemId = parseInt(variantsBtn.dataset.itemId || '0', 10);
+            const suggestionProductId = parseInt(variantsBtn.dataset.productId || '0', 10);
+            let offers = [];
+            try {
+                offers = JSON.parse(variantsBtn.dataset.offers || '[]');
+            } catch (err) {
+                offers = [];
+            }
+
+            const modal = document.getElementById('offer-variants-modal');
+            const titleEl = document.getElementById('offer-variants-title');
+            const listEl = document.getElementById('offer-variants-list');
+            if (!modal || !listEl) return;
+
+            if (titleEl) titleEl.textContent = productName;
+
+            if (!offers.length) {
+                listEl.innerHTML = '<p class="text-muted">Keine Varianten verfügbar.</p>';
+            } else {
+                listEl.innerHTML = offers.map(o => {
+                    const priceFormatted = parseFloat(o.price || 0).toFixed(2).replace('.', ',');
+                    const brandTitle = ((o.brand_name ? o.brand_name + ' ' : '') + (o.product_title || '')).trim();
+                    const unitStr = o.unit_size ? ` (${o.unit_size})` : '';
+                    const refStr = o.reference_price ? ` · ${o.reference_price}` : '';
+                    const validStr = o.valid_to ? `bis ${o.valid_to.substring(8, 10)}.${o.valid_to.substring(5, 7)}.` : '';
+                    const noteText = `${brandTitle}${unitStr} (${priceFormatted} € bei ${o.market || 'Rewe'})`;
+
+                    let actionHtml = '';
+                    if (listItemId > 0) {
+                        actionHtml = `
+                            <button type="button" class="btn btn-sm btn-outline js-switch-item-market-btn"
+                                    data-id="${listItemId}"
+                                    data-market="${KaiHtml.escape(o.market || 'Rewe')}"
+                                    data-note="${KaiHtml.escape(noteText)}">
+                                📌 Sorte vormerken
+                            </button>
+                        `;
+                    } else if (suggestionProductId > 0) {
+                        actionHtml = `
+                            <button type="button" class="btn btn-sm btn-primary js-accept-single-suggestion"
+                                    data-id="${suggestionProductId}"
+                                    data-market="${KaiHtml.escape(o.market || 'Rewe')}"
+                                    data-note="${KaiHtml.escape(noteText)}">
+                                + Auf Liste (${priceFormatted} €)
+                            </button>
+                        `;
+                    }
+
+                    return `
+                        <div class="offer-variant-item">
+                            <div>
+                                <div>
+                                    <strong class="shopping-offer-price">${priceFormatted} €</strong>
+                                    · <strong>${KaiHtml.escape(brandTitle + unitStr)}</strong>
+                                    ${o.is_preferred_brand ? '<span class="badge badge-info">★ Stamm-Marke</span>' : ''}
+                                </div>
+                                <div class="suggestion-offer-sub">
+                                    ${KaiHtml.escape(validStr + refStr)}
+                                    ${o.description ? ' · ' + KaiHtml.escape(o.description) : ''}
+                                </div>
+                            </div>
+                            <div class="aisle-item-actions">
+                                ${actionHtml}
+                                <button type="button" class="btn-offer-dismiss js-dismiss-offer-btn"
+                                        data-offer-id="${parseInt(o.id, 10)}"
+                                        title="Dieses Angebot passt nicht (ausblenden)">✕</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            modal.classList.remove('hidden');
+            return;
+        }
+    });
+
+    const closeOfferVariantsModal = () => {
+        const m = document.getElementById('offer-variants-modal');
+        if (m) m.classList.add('hidden');
+    };
+    const btnCloseOfferVariants = document.getElementById('btn-close-offer-variants-modal');
+    if (btnCloseOfferVariants) btnCloseOfferVariants.addEventListener('click', closeOfferVariantsModal);
+    const btnCloseOfferVariantsFooter = document.getElementById('btn-close-offer-variants-footer');
+    if (btnCloseOfferVariantsFooter) btnCloseOfferVariantsFooter.addEventListener('click', closeOfferVariantsModal);
+
     // --- Einzelnen Vorschlag übernehmen ---
     document.addEventListener('click', async (e) => {
         const acceptBtn = e.target.closest('.js-accept-single-suggestion');
         if (acceptBtn) {
             const productId = parseInt(acceptBtn.dataset.id, 10);
             const market = acceptBtn.dataset.market || 'Rewe';
+            const note = acceptBtn.dataset.note || '';
             if (!productId) return;
 
             acceptBtn.disabled = true;
 
             try {
-                const res = await KaiHttp.postJson(API_URL, {
+                const payload = {
                     action: 'accept_suggestion',
                     product_id: productId,
                     market: market
-                });
+                };
+                if (note) {
+                    payload.note = note;
+                }
+                const res = await KaiHttp.postJson(API_URL, payload);
 
                 if (res.success) {
                     acceptBtn.innerHTML = '✔️ Auf Liste';
                     acceptBtn.classList.remove('btn-primary');
                     acceptBtn.classList.add('btn-success');
+                    closeOfferVariantsModal();
                     showToast(res.message || 'Artikel hinzugefügt!');
                 } else {
                     showToast(res.message || 'Fehler beim Übernehmen', true);
@@ -828,6 +1036,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     intervalInput.value = product.avg_interval_days !== null && product.avg_interval_days !== undefined ? product.avg_interval_days : '';
                 }
 
+                const offerTermInput = document.getElementById('modal-product-offer-search-term');
+                if (offerTermInput) {
+                    offerTermInput.value = product.offer_search_term || '';
+                }
+
                 const holidayModeSelect = document.getElementById('modal-product-holiday-mode');
                 if (holidayModeSelect) {
                     const factor = parseFloat(product.holiday_factor ?? 1.0);
@@ -884,6 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const category = document.getElementById('modal-product-category').value;
             const intervalVal = document.getElementById('modal-product-interval') ? document.getElementById('modal-product-interval').value.trim() : '';
             const holidayModeVal = document.getElementById('modal-product-holiday-mode') ? document.getElementById('modal-product-holiday-mode').value : '1.00';
+            const offerSearchTerm = document.getElementById('modal-product-offer-search-term') ? document.getElementById('modal-product-offer-search-term').value.trim() : '';
 
             const payload = {
                 action: 'save_product_master',
@@ -894,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 default_category: category,
                 avg_interval_days: intervalVal !== '' ? parseFloat(intervalVal) : '',
                 holiday_factor: holidayModeVal,
+                offer_search_term: offerSearchTerm,
                 is_ignored: ignore
             };
             const res = await KaiHttp.postJson(API_URL, payload);
@@ -2050,6 +2265,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 const marketBadgeClass = market === 'Rewe' ? 'badge-rewe' : (market === 'Globus' ? 'badge-globus' : 'badge-info');
                 const rowHidden = !showCheckedInLive && isChecked;
 
+                let liveOfferHtml = '';
+                if (!isChecked && item.rewe_offer) {
+                    const ro = item.rewe_offer;
+                    const roPrice = parseFloat(ro.price || 0).toFixed(2).replace('.', ',') + ' €';
+                    const roBrand = ((ro.brand_name ? ro.brand_name + ' ' : '') + (ro.product_title || '')).trim();
+                    const roSize = ro.unit_size ? ` (${ro.unit_size})` : '';
+                    const extraCnt = Math.max(0, (item.offers ? item.offers.length : 0) - 1);
+
+                    if (currentLiveMarket === 'Globus') {
+                        liveOfferHtml = `
+                            <div class="shopping-live-offer-hint is-cross-market">
+                                <span>💡 Bei REWE im Angebot: <strong>${KaiHtml.escape(roPrice)}</strong> · ${KaiHtml.escape(roBrand + roSize)}</span>
+                                ${market !== 'Rewe' ? `
+                                    <button type="button" class="btn-live-offer-switch js-switch-item-market-btn"
+                                            data-id="${item.id}" data-market="Rewe">
+                                        ⏭️ Für REWE aufheben
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `;
+                    } else {
+                        liveOfferHtml = `
+                            <div class="shopping-live-offer-hint">
+                                <span>🏷️ REWE-Angebot: <strong>${KaiHtml.escape(roPrice)}</strong> · ${KaiHtml.escape(roBrand + roSize)}</span>
+                                ${extraCnt > 0 ? `
+                                    <button type="button" class="btn-offer-variants js-open-offer-variants-btn"
+                                            data-item-id="${item.id}"
+                                            data-product-name="${KaiHtml.escape(item.name)}"
+                                            data-offers="${KaiHtml.escape(JSON.stringify(item.offers || []))}">
+                                        +${extraCnt} Sorten ▾
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                }
+
                 html += `
                     <div class="shopping-live-item-row ${isChecked ? 'is-checked' : ''} ${rowHidden ? 'hidden' : ''}" 
                          data-id="${item.id}" 
@@ -2063,7 +2315,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ${KaiHtml.escape(item.name)}
                                     <span class="shopping-live-item-qty">${KaiHtml.escape(formattedQty)} ${KaiHtml.escape(unit)}</span>
                                 </div>
-                                ${item.note ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"><i>${KaiHtml.escape(item.note)}</i></div>` : ''}
+                                ${item.note ? `<div><small class="text-muted"><i>${KaiHtml.escape(item.note)}</i></small></div>` : ''}
+                                ${liveOfferHtml}
                             </div>
                             <div>
                                 <span class="badge badge-market ${marketBadgeClass}">${KaiHtml.escape(market)}</span>
@@ -2247,7 +2500,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Live-Modus: Artikelzeile antippen / abhaken
         const liveItemRow = e.target.closest('.shopping-live-item-row');
-        if (liveItemRow && !e.target.classList.contains('shopping-live-checkbox')) {
+        if (liveItemRow
+            && !e.target.classList.contains('shopping-live-checkbox')
+            && !e.target.closest('.js-switch-item-market-btn, .js-open-offer-variants-btn, .js-dismiss-offer-btn')) {
             const itemId = liveItemRow.dataset.id;
             toggleLiveItem(liveItemRow, itemId);
             return;
@@ -3073,6 +3328,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 badges += `<span class="badge badge-info" title="Aus automatischem Intervall vorgeschlagen">✨ Vorschlag</span>`;
             }
 
+            let offerBannerHtml = '';
+            if (item.active_market_offer) {
+                const ao = item.active_market_offer;
+                const aoPrice = parseFloat(ao.price || 0).toFixed(2).replace('.', ',');
+                const aoBrand = ((ao.brand_name ? ao.brand_name + ' ' : '') + (ao.product_title || '')).trim();
+                const aoSize = ao.unit_size ? ` (${ao.unit_size})` : '';
+                const aoValid = ao.valid_to ? ` · bis ${ao.valid_to.substring(8, 10)}.${ao.valid_to.substring(5, 7)}.` : '';
+                const extraCount = Math.max(0, (item.offers ? item.offers.length : 0) - 1);
+
+                offerBannerHtml = `
+                    <div class="shopping-offer-banner">
+                        <span>🏷️ <strong>REWE-Angebot:</strong> <span class="shopping-offer-price">${KaiHtml.escape(aoPrice)} €</span> · ${KaiHtml.escape(aoBrand + aoSize + aoValid)}</span>
+                        ${extraCount > 0 ? `
+                            <button type="button" class="btn-offer-variants js-open-offer-variants-btn"
+                                    data-item-id="${id}"
+                                    data-product-name="${KaiHtml.escape(name)}"
+                                    data-offers="${KaiHtml.escape(JSON.stringify(item.offers || []))}">
+                                +${extraCount} weitere ▾
+                            </button>
+                        ` : ''}
+                        <button type="button" class="btn-offer-dismiss js-dismiss-offer-btn"
+                                data-offer-id="${parseInt(ao.id, 10)}"
+                                title="Angebot passt nicht (ausblenden)">✕</button>
+                    </div>
+                `;
+            } else if (item.other_market_offer) {
+                const oo = item.other_market_offer;
+                const ooPrice = parseFloat(oo.price || 0).toFixed(2).replace('.', ',');
+                const ooBrand = ((oo.brand_name ? oo.brand_name + ' ' : '') + (oo.product_title || '')).trim();
+                const ooSize = oo.unit_size ? ` (${oo.unit_size})` : '';
+                const targetMkt = oo.market || 'Rewe';
+
+                offerBannerHtml = `
+                    <div class="shopping-offer-banner shopping-offer-switch-banner">
+                        <span>💡 <strong>Bei ${KaiHtml.escape(targetMkt)} im Angebot:</strong> <span class="shopping-offer-price">${KaiHtml.escape(ooPrice)} €</span> · ${KaiHtml.escape(ooBrand + ooSize)}</span>
+                        <button type="button" class="btn-offer-switch js-switch-item-market-btn"
+                                data-id="${id}"
+                                data-market="${KaiHtml.escape(targetMkt)}">
+                            🔄 Auf ${KaiHtml.escape(targetMkt)} wechseln
+                        </button>
+                        <button type="button" class="btn-offer-dismiss js-dismiss-offer-btn"
+                                data-offer-id="${parseInt(oo.id, 10)}"
+                                title="Angebot passt nicht (ausblenden)">✕</button>
+                    </div>
+                `;
+            }
+
             return `
                 <div class="shopping-item-row${newClass}"
                      data-id="${id}"
@@ -3089,7 +3391,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="shopping-item-details js-edit-list-item-trigger" style="cursor: pointer;">
                         <span class="item-name">${KaiHtml.escape(name)}</span>
                         <span class="item-quantity">${formattedQty} ${KaiHtml.escape(unit)}</span>
-                        ${note ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;"><small><i>${KaiHtml.escape(note)}</i></small></div>` : ''}
+                        ${note ? `<div><small class="text-muted"><i>${KaiHtml.escape(note)}</i></small></div>` : ''}
+                        ${offerBannerHtml}
                     </div>
                     <div class="shopping-item-meta">
                         ${badges}

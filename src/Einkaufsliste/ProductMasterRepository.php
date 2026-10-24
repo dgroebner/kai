@@ -298,6 +298,13 @@ class ProductMasterRepository
             $fields[] = "holiday_factor = :holiday_factor";
             $params[':holiday_factor'] = (float)$data['holiday_factor'];
         }
+        if (array_key_exists('offer_search_term', $data)) {
+            $term = trim((string)($data['offer_search_term'] ?? ''));
+            $fields[] = "offer_search_term = :offer_search_term";
+            $params[':offer_search_term'] = $term !== '' ? mb_substr($term, 0, 150, 'UTF-8') : null;
+            // Bei Änderung des Suchbegriffs Prüfzeitpunkt zurücksetzen, damit neu gesucht wird
+            $fields[] = "offers_checked_at = NULL";
+        }
 
         if (empty($fields)) {
             return false;

@@ -176,13 +176,19 @@ try {
         }
 
 
-        // 5b. Einkaufslisten-Lernen aus neuen eBons aktualisieren
+        // 5b. Einkaufslisten-Lernen aus neuen eBons & Wochenangebote aktualisieren
         try {
             $learningService = new \Kai\Tools\Einkaufsliste\LearningService();
             $learningStats = $learningService->learnFromReceipts();
             $logger->info("Cronjob (mail.php): Einkaufslisten-Lernen aktualisiert.", ['stats' => $learningStats]);
+
+            $offerSyncService = new \Kai\Tools\Einkaufsliste\OfferSyncService();
+            $offerStats = $offerSyncService->syncRelevantOffers(25, false);
+            if (($offerStats['checked_products'] ?? 0) > 0) {
+                $logger->info("Cronjob (mail.php): Supermarkt-Angebote (REWE 04289) aktualisiert.", ['stats' => $offerStats]);
+            }
         } catch (Throwable $le) {
-            $logger->warn("Cronjob (mail.php): Fehler beim Einkaufslisten-Lernen.", ['error' => $le->getMessage()]);
+            $logger->warn("Cronjob (mail.php): Fehler beim Einkaufslisten-Lernen / Angebots-Sync.", ['error' => $le->getMessage()]);
         }
 
     } catch (Throwable $me) {

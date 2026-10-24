@@ -441,6 +441,8 @@ CREATE TABLE IF NOT EXISTS `product_master` (
     `last_purchased_at` DATE NULL,
     `holiday_factor` DECIMAL(3, 2) NOT NULL DEFAULT 1.00,
     `is_ignored` TINYINT(1) NOT NULL DEFAULT 0,
+    `offer_search_term` VARCHAR(150) NULL DEFAULT NULL,
+    `offers_checked_at` DATETIME NULL DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_product_name` (`name`),
@@ -512,6 +514,32 @@ CREATE TABLE IF NOT EXISTS `ebon_product_mappings` (
     UNIQUE KEY `uk_ebon_name` (`ebon_name`),
     FOREIGN KEY (`product_master_id`) REFERENCES `product_master`(`id`) ON DELETE CASCADE,
     INDEX `idx_product_master_id` (`product_master_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Gecachte Supermarkt-Angebote (Marktguru API) für Master-Artikel
+CREATE TABLE IF NOT EXISTS `shopping_product_offers` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_master_id` INT NOT NULL,
+    `external_offer_id` VARCHAR(64) NOT NULL COMMENT 'Eindeutige Angebots-ID von Marktguru',
+    `leaflet_flight_id` VARCHAR(64) NULL COMMENT 'Prospekt-Ausgabe-ID zur Filial-Verifikation',
+    `market` ENUM('Rewe', 'Globus') NOT NULL DEFAULT 'Rewe' COMMENT 'Normalisierter Markt',
+    `brand_name` VARCHAR(150) NULL COMMENT 'Marke aus brand.name (z.B. Meggle)',
+    `product_title` VARCHAR(255) NOT NULL COMMENT 'Produktname aus product.name',
+    `description` VARCHAR(500) NULL COMMENT 'Mengen/Sorten-Details aus description',
+    `unit_size` VARCHAR(60) NULL COMMENT 'Extrahierte Packungsgröße (z.B. 250 g)',
+    `price` DECIMAL(8, 2) NOT NULL COMMENT 'Aktueller Angebotspreis',
+    `old_price` DECIMAL(8, 2) NULL COMMENT 'Streichpreis / UVP falls vorhanden',
+    `reference_price` VARCHAR(100) NULL COMMENT 'Grundpreis (z.B. 1 kg = 7,16 €)',
+    `normalized_ref_price` DECIMAL(8, 2) NULL COMMENT 'Numerischer Grundpreis zum Vergleich',
+    `is_preferred_brand` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Marke aus eBon-Historie bekannt',
+    `valid_from` DATE NULL,
+    `valid_to` DATE NOT NULL,
+    `is_dismissed` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Vom Nutzer als unpassend markiert',
+    `fetched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_product_offer_market` (`product_master_id`, `external_offer_id`, `market`),
+    FOREIGN KEY (`product_master_id`) REFERENCES `product_master`(`id`) ON DELETE CASCADE,
+    INDEX `idx_valid_to` (`valid_to`),
+    INDEX `idx_product_valid` (`product_master_id`, `is_dismissed`, `valid_to`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. Sächsische Schulferien (zur automatischen Anpassung von Bedarfs- und Mengenvorschlägen)

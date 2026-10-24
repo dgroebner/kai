@@ -5,6 +5,8 @@ use Kai\Tools\Einkaufsliste\EbonMappingRepository;
 use Kai\Tools\Einkaufsliste\HolidayService;
 use Kai\Tools\Einkaufsliste\LearningService;
 use Kai\Tools\Einkaufsliste\MarketCategoryRepository;
+use Kai\Tools\Einkaufsliste\OfferRepository;
+use Kai\Tools\Einkaufsliste\OfferSyncService;
 use Kai\Tools\Einkaufsliste\ProductMasterRepository;
 use Kai\Tools\Einkaufsliste\RecipeAiService;
 use Kai\Tools\Einkaufsliste\ReceiptSessionService;
@@ -45,8 +47,10 @@ $mappingRepo = new EbonMappingRepository();
 $sessionRepo = new ShoppingSessionRepository();
 $receiptSessionService = new ReceiptSessionService();
 $holidayService = new HolidayService();
+$offerRepo = new OfferRepository(null, $logger);
+$offerSyncService = new OfferSyncService(null, $offerRepo, null, $productRepo, $logger);
 $learningService = new LearningService($productRepo, $mappingRepo, $categoryRepo);
-$suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService, $categoryRepo);
+$suggestionService = new SuggestionService($productRepo, $listRepo, $holidayService, $categoryRepo, $offerRepo);
 
 // Prüfen auf Lese-Aktionen vs. Schreibaktionen
 $readActions = [
@@ -54,7 +58,9 @@ $readActions = [
     'get_suggestions', 'get_inbox', 'get_ebon_mappings',
     'get_session_candidates', 'get_session_analysis'
 ];
-if (!in_array($action, $readActions, true) && !Auth::hasPermission('shopping_write')) {
+if (!in_array($action, $readActions, true)
+    && !Auth::hasPermission('shopping_write')
+    && !(in_array($action, ['sync_offers', 'dismiss_offer'], true) && Auth::hasPermission('suggestions_write'))) {
     Auth::sendJsonError(403, 'Fehlende Berechtigung zum Bearbeiten der Einkaufsliste');
 }
 
@@ -189,6 +195,14 @@ try {
                 'source' => $source,
             ]);
 
+            if ($productId > 0) {
+                try {
+                    $offerSyncService->ensureFreshOffersForProductId((int)$productId);
+                } catch (\Throwable $oe) {
+                    $logger->debug('einkaufsliste/api.php: On-Add Offer-Lookup Hinweis.', ['error' => $oe->getMessage()]);
+                }
+            }
+
             $counts = $listRepo->getItemCountsByMarket();
             $syncHash = $listRepo->getSyncState()['hash'];
             echo json_encode([
@@ -237,6 +251,34 @@ try {
                 ]);
             } else {
                 Auth::sendJsonError(500, 'Fehler beim Aktualisieren');
+            }
+            break;
+
+        // --- 1.c Schneller Marktwechsel für einen Listeneintrag (z. B. wegen Angebot) ---
+        case 'switch_item_market':
+            $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+            $market = trim((string)($input['market'] ?? ''));
+            if (!$id || !in_array($market, ['Rewe', 'Globus', 'Übergreifend'], true)) {
+                Auth::sendJsonError(400, 'Ungültige Parameter für Marktwechsel');
+            }
+
+            $updateFields = ['market' => $market];
+            if (isset($input['note']) && trim((string)$input['note']) !== '') {
+                $updateFields['note'] = trim((string)$input['note']);
+            }
+
+            $success = $listRepo->updateItem($id, $updateFields);
+            if ($success) {
+                $syncHash = $listRepo->getSyncState()['hash'];
+                echo json_encode([
+                    'success' => true,
+                    'market' => $market,
+                    'message' => "Markt auf {$market} geändert",
+                    'sync_hash' => $syncHash,
+                    'counts' => $listRepo->getItemCountsByMarket(),
+                ]);
+            } else {
+                Auth::sendJsonError(500, 'Marktwechsel fehlgeschlagen');
             }
             break;
 
@@ -341,8 +383,9 @@ try {
 
             $market = isset($input['market']) ? trim((string)$input['market']) : null;
             $quantity = isset($input['quantity']) ? max(0.01, (float)$input['quantity']) : null;
+            $note = isset($input['note']) ? trim((string)$input['note']) : null;
 
-            $addedId = $suggestionService->acceptSuggestion($productId, $market, $quantity);
+            $addedId = $suggestionService->acceptSuggestion($productId, $market, $quantity, $note);
             $counts = $listRepo->getItemCountsByMarket();
 
             echo json_encode([
@@ -381,6 +424,37 @@ try {
                 'success' => true,
                 'stats' => $stats,
                 'message' => "eBon-Analyse abgeschlossen: {$stats['products_updated']} Artikel aktualisiert.",
+            ]);
+            break;
+
+        // --- 8.b Wochenangebote (REWE Franzosenallee 04289) synchronisieren ---
+        case 'sync_offers':
+            $force = !empty($input['force']);
+            $stats = $offerSyncService->syncRelevantOffers(35, $force, $listRepo);
+            if (!$stats['configured']) {
+                Auth::sendJsonError(400, 'Marktguru API-Keys nicht in .env konfiguriert');
+            }
+
+            echo json_encode([
+                'success' => true,
+                'stats' => $stats,
+                'message' => "Angebots-Prüfung abgeschlossen ({$stats['checked_products']} Artikel geprüft, {$stats['offers_found']} Angebote gefunden).",
+            ]);
+            break;
+
+        // --- 8.c Einzelnes unpassendes Angebot ausblenden (is_dismissed = 1) ---
+        case 'dismiss_offer':
+            $offerId = filter_var($input['offer_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$offerId) {
+                Auth::sendJsonError(400, 'Ungültige Angebots-ID');
+            }
+
+            $ok = $offerRepo->dismissOffer($offerId);
+            $syncHash = $listRepo->getSyncState()['hash'];
+            echo json_encode([
+                'success' => $ok,
+                'sync_hash' => $syncHash,
+                'message' => 'Angebot als unpassend ausgeblendet',
             ]);
             break;
 
@@ -448,6 +522,12 @@ try {
                 $added++;
             }
 
+            try {
+                $offerSyncService->syncRelevantOffers(8, false, $listRepo);
+            } catch (\Throwable) {
+                // Unkritisch
+            }
+
             $counts = $listRepo->getItemCountsByMarket();
             echo json_encode([
                 'success' => true,
@@ -508,9 +588,19 @@ try {
                 if (array_key_exists('is_ignored', $input)) {
                     $updateData['is_ignored'] = !empty($input['is_ignored']) ? 1 : 0;
                 }
+                if (array_key_exists('offer_search_term', $input)) {
+                    $updateData['offer_search_term'] = trim((string)$input['offer_search_term']) ?: null;
+                }
 
                 $success = $productRepo->updateMaster($id, $updateData);
                 $productId = $id;
+                if ($success && array_key_exists('offer_search_term', $input)) {
+                    try {
+                        $offerSyncService->ensureFreshOffersForProductId($productId, true);
+                    } catch (\Throwable) {
+                        // Unkritisch
+                    }
+                }
             } else {
                 if ($name === '') {
                     Auth::sendJsonError(400, 'Name darf nicht leer sein');

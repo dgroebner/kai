@@ -365,8 +365,51 @@ try {
                                                 <?= htmlspecialchars($item['unit'] ?? 'Stück', ENT_QUOTES, 'UTF-8') ?>
                                             </span>
                                             <?php if (!empty($item['note'])): ?>
-                                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                                    <small><i><?= htmlspecialchars($item['note'], ENT_QUOTES, 'UTF-8') ?></i></small>
+                                                <div>
+                                                    <small class="text-muted"><i><?= htmlspecialchars($item['note'], ENT_QUOTES, 'UTF-8') ?></i></small>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($item['active_market_offer'])): ?>
+                                                <?php
+                                                $ao = $item['active_market_offer'];
+                                                $aoPrice = number_format((float)$ao['price'], 2, ',', '.');
+                                                $aoBrand = trim(($ao['brand_name'] ? $ao['brand_name'] . ' ' : '') . ($ao['product_title'] ?? ''));
+                                                $aoSize = !empty($ao['unit_size']) ? ' (' . $ao['unit_size'] . ')' : '';
+                                                $aoValid = !empty($ao['valid_to']) ? ' · bis ' . date('d.m.', strtotime($ao['valid_to'])) : '';
+                                                $extraCount = max(0, count($item['offers'] ?? []) - 1);
+                                                ?>
+                                                <div class="shopping-offer-banner">
+                                                    <span>🏷️ <strong>REWE-Angebot:</strong> <span class="shopping-offer-price"><?= $aoPrice ?> €</span> · <?= htmlspecialchars($aoBrand . $aoSize . $aoValid, ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <?php if ($extraCount > 0): ?>
+                                                        <button type="button" class="btn-offer-variants js-open-offer-variants-btn"
+                                                                data-item-id="<?= (int)$item['id'] ?>"
+                                                                data-product-name="<?= htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                data-offers="<?= htmlspecialchars(json_encode($item['offers'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+                                                            +<?= $extraCount ?> weitere ▾
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <button type="button" class="btn-offer-dismiss js-dismiss-offer-btn"
+                                                            data-offer-id="<?= (int)$ao['id'] ?>"
+                                                            title="Angebot passt nicht (ausblenden)">✕</button>
+                                                </div>
+                                            <?php elseif (!empty($item['other_market_offer'])): ?>
+                                                <?php
+                                                $oo = $item['other_market_offer'];
+                                                $ooPrice = number_format((float)$oo['price'], 2, ',', '.');
+                                                $ooBrand = trim(($oo['brand_name'] ? $oo['brand_name'] . ' ' : '') . ($oo['product_title'] ?? ''));
+                                                $ooSize = !empty($oo['unit_size']) ? ' (' . $oo['unit_size'] . ')' : '';
+                                                $targetMkt = htmlspecialchars($oo['market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8');
+                                                ?>
+                                                <div class="shopping-offer-banner shopping-offer-switch-banner">
+                                                    <span>💡 <strong>Bei <?= $targetMkt ?> im Angebot:</strong> <span class="shopping-offer-price"><?= $ooPrice ?> €</span> · <?= htmlspecialchars($ooBrand . $ooSize, ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <button type="button" class="btn-offer-switch js-switch-item-market-btn"
+                                                            data-id="<?= (int)$item['id'] ?>"
+                                                            data-market="<?= $targetMkt ?>">
+                                                        🔄 Auf <?= $targetMkt ?> wechseln
+                                                    </button>
+                                                    <button type="button" class="btn-offer-dismiss js-dismiss-offer-btn"
+                                                            data-offer-id="<?= (int)$oo['id'] ?>"
+                                                            title="Angebot passt nicht (ausblenden)">✕</button>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -458,15 +501,12 @@ try {
                         </div>
                         <?php if (Auth::hasPermission('suggestions_write')): ?>
                             <div class="shopping-header-actions">
+                                <button type="button" id="btn-sync-offers" class="btn btn-outline" title="Wochenangebote für REWE Franzosenallee 10 (04289 Leipzig) abrufen">
+                                    🏷️ REWE-Angebote prüfen
+                                </button>
                                 <button type="button" id="btn-sync-ebons" class="btn btn-outline">
                                     🔄 Aus eBons lernen
                                 </button>
-                                <?php if (!empty($suggestions)): ?>
-                                    <button type="button" id="btn-accept-all-suggestions" class="btn btn-primary"
-                                            data-ids="<?= htmlspecialchars(json_encode(array_column($suggestions, 'product_id')), ENT_QUOTES, 'UTF-8') ?>">
-                                        Alle <?= count($suggestions) ?> übernehmen
-                                    </button>
-                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -506,9 +546,8 @@ try {
                                     <tr>
                                         <th>Artikel</th>
                                         <th>Markt</th>
-                                        <th>Kategorie</th>
-                                        <th>Letzter Kauf</th>
-                                        <th>Intervall</th>
+                                        <th>Angebot (REWE 04289)</th>
+                                        <th>Letzter Kauf &amp; Intervall</th>
                                         <th>Dringlichkeit</th>
                                         <?php if (Auth::hasPermission('suggestions_write')): ?>
                                             <th class="text-right">Aktion</th>
@@ -517,49 +556,123 @@ try {
                                     </thead>
                                     <tbody>
                                     <?php foreach ($suggestions as $sug): ?>
+                                        <?php
+                                        $bestOffer = $sug['best_offer'] ?? null;
+                                        $allSugOffers = $sug['offers'] ?? [];
+                                        $sugExtraCount = max(0, count($allSugOffers) - 1);
+                                        $avgHistPrice = $sug['avg_historical_price'] ?? null;
+                                        ?>
                                         <tr>
                                             <td data-label="Artikel">
                                                 <strong><?= htmlspecialchars($sug['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                                <div class="text-muted"><small><?= htmlspecialchars($sug['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></small></div>
+                                                <?php if (!empty($sug['is_stockup_deal'])): ?>
+                                                    <div class="badge badge-stockup-deal">💰 Vorrats-Deal (vorgezogen)</div>
+                                                <?php endif; ?>
                                                 <?php if ($sug['holiday_adapted']): ?>
-                                                    <div class="badge badge-warning" style="font-size: 0.75rem;">🏖️
-                                                        Ferienfaktor
-                                                    </div>
+                                                    <div class="badge badge-warning">🏖️ Ferienfaktor</div>
                                                 <?php endif; ?>
                                             </td>
                                             <td data-label="Markt">
-                                            <span class="badge badge-market <?= $sug['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
-                                                <?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
-                                            </span>
+                                                <span class="badge badge-market <?= $sug['preferred_market'] === 'Rewe' ? 'badge-rewe' : 'badge-globus' ?>">
+                                                    <?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
+                                                </span>
+                                                <?php if (!empty($sug['market_switched_by_offer'])): ?>
+                                                    <div class="suggestion-offer-sub">💡 Deal bei <?= htmlspecialchars($sug['recommended_market'] ?? 'Rewe', ENT_QUOTES, 'UTF-8') ?></div>
+                                                <?php endif; ?>
                                             </td>
-                                            <td data-label="Kategorie"><?= htmlspecialchars($sug['default_category'] ?? 'Sonstiges', ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td data-label="Angebot">
+                                                <?php if ($bestOffer): ?>
+                                                    <?php
+                                                    $boPrice = number_format((float)$bestOffer['price'], 2, ',', '.');
+                                                    $boBrand = trim(($bestOffer['brand_name'] ? $bestOffer['brand_name'] . ' ' : '') . ($bestOffer['product_title'] ?? ''));
+                                                    $boSize = !empty($bestOffer['unit_size']) ? ' (' . $bestOffer['unit_size'] . ')' : '';
+                                                    $boValid = !empty($bestOffer['valid_to']) ? 'bis ' . date('d.m.', strtotime($bestOffer['valid_to'])) : '';
+                                                    ?>
+                                                    <div class="suggestion-offer-box">
+                                                        <div class="suggestion-offer-header">
+                                                            <span class="shopping-offer-price">🏷️ <?= $boPrice ?> €</span>
+                                                            <?php if ($bestOffer['is_preferred_brand'] ?? false): ?>
+                                                                <span class="badge badge-info" title="Aus deinen bisherigen eBons bekannte Marke">★ Stamm-Marke</span>
+                                                            <?php endif; ?>
+                                                            <button type="button" class="btn-offer-dismiss js-dismiss-offer-btn"
+                                                                    data-offer-id="<?= (int)$bestOffer['id'] ?>"
+                                                                    title="Angebot passt nicht (ausblenden)">✕</button>
+                                                        </div>
+                                                        <div><?= htmlspecialchars($boBrand . $boSize, ENT_QUOTES, 'UTF-8') ?></div>
+                                                        <div class="suggestion-offer-sub">
+                                                            <?= htmlspecialchars($boValid, ENT_QUOTES, 'UTF-8') ?>
+                                                            <?php if (!empty($bestOffer['reference_price'])): ?>
+                                                                · <?= htmlspecialchars($bestOffer['reference_price'], ENT_QUOTES, 'UTF-8') ?>
+                                                            <?php endif; ?>
+                                                            <?php if ($avgHistPrice !== null && $avgHistPrice > (float)$bestOffer['price']): ?>
+                                                                · <span>Ø sonst <?= number_format((float)$avgHistPrice, 2, ',', '.') ?> €</span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if ($sugExtraCount > 0): ?>
+                                                            <div>
+                                                                <button type="button" class="btn-offer-variants js-open-offer-variants-btn"
+                                                                        data-product-id="<?= (int)$sug['product_id'] ?>"
+                                                                        data-product-name="<?= htmlspecialchars($sug['name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                        data-offers="<?= htmlspecialchars(json_encode($allSugOffers), ENT_QUOTES, 'UTF-8') ?>">
+                                                                    +<?= $sugExtraCount ?> weitere Sorten ▾
+                                                                </button>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td data-label="Letzter Kauf">
-                                                vor <?= (int)$sug['days_since_last'] ?> Tagen
-                                                <div class="text-muted"
-                                                     style="font-size: 0.8rem;"><?= date('d.m.Y', strtotime($sug['last_purchased_at'])) ?></div>
-                                            </td>
-                                            <td data-label="Intervall">
-                                                ca.
-                                                alle <?= number_format((float)$sug['effective_interval'], 1, ',', '') ?>
-                                                Tage
+                                                vor <?= (int)$sug['days_since_last'] ?> Tagen (<?= date('d.m.', strtotime($sug['last_purchased_at'])) ?>)
+                                                <div class="suggestion-offer-sub">
+                                                    Zyklus: ca. alle <?= number_format((float)$sug['effective_interval'], 1, ',', '') ?> Tage
+                                                </div>
                                             </td>
                                             <td data-label="Dringlichkeit">
                                                 <div class="urgency-bar-container">
                                                     <div class="urgency-bar <?= $sug['is_overdue'] ? 'urgency-overdue' : '' ?>"
                                                          style="width: <?= min(100, $sug['urgency_percent']) ?>%;"></div>
                                                 </div>
-                                                <span class="text-muted" style="font-size: 0.8rem;">
-                                                    <?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : ($sug['days_until_due'] === 0 ? '🎯 Heute fällig' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)') ?>
+                                                <span class="text-muted">
+                                                    <small><?= $sug['is_overdue'] ? '⚠️ Fällig seit ' . abs($sug['days_until_due']) . ' Tag(en)' : ($sug['days_until_due'] === 0 ? '🎯 Heute fällig' : 'Fällig in ' . $sug['days_until_due'] . ' Tag(en)') ?></small>
                                                 </span>
                                             </td>
                                             <?php if (Auth::hasPermission('suggestions_write')): ?>
-                                                <td data-label="Aktion" class="text-right" style="white-space:nowrap;">
-                                                    <button type="button"
-                                                            class="btn btn-sm btn-primary js-accept-single-suggestion"
-                                                            data-id="<?= (int)$sug['product_id'] ?>"
-                                                            data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>"
-                                                            title="Zur Einkaufsliste hinzufügen">
-                                                        + Übernehmen
-                                                    </button>
+                                                <td data-label="Aktion" class="text-right">
+                                                    <?php if (!empty($sug['market_switched_by_offer']) && $bestOffer): ?>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-primary js-accept-single-suggestion"
+                                                                data-id="<?= (int)$sug['product_id'] ?>"
+                                                                data-market="<?= htmlspecialchars($sug['recommended_market'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                title="Wegen Angebot einmalig für <?= htmlspecialchars($sug['recommended_market'], ENT_QUOTES, 'UTF-8') ?> auf die Liste setzen">
+                                                            + Zu <?= htmlspecialchars($sug['recommended_market'], ENT_QUOTES, 'UTF-8') ?> (<?= number_format((float)$bestOffer['price'], 2, ',', '.') ?> €)
+                                                        </button>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline js-accept-single-suggestion"
+                                                                data-id="<?= (int)$sug['product_id'] ?>"
+                                                                data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                title="Wie gewohnt für <?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?> übernehmen">
+                                                            + <?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>
+                                                        </button>
+                                                    <?php elseif (!empty($sug['is_stockup_deal']) && $bestOffer): ?>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-primary js-accept-single-suggestion"
+                                                                data-id="<?= (int)$sug['product_id'] ?>"
+                                                                data-market="<?= htmlspecialchars($sug['recommended_market'] ?? $sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                title="Als Vorrats-Deal für diesen Wocheneinkauf vorziehen">
+                                                            + Vorziehen (<?= number_format((float)$bestOffer['price'], 2, ',', '.') ?> €)
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-primary js-accept-single-suggestion"
+                                                                data-id="<?= (int)$sug['product_id'] ?>"
+                                                                data-market="<?= htmlspecialchars($sug['preferred_market'], ENT_QUOTES, 'UTF-8') ?>"
+                                                                title="Zur Einkaufsliste hinzufügen">
+                                                            + Übernehmen<?= $bestOffer ? ' (' . number_format((float)$bestOffer['price'], 2, ',', '.') . ' €)' : '' ?>
+                                                        </button>
+                                                    <?php endif; ?>
                                                     <button type="button"
                                                             class="btn-icon js-ignore-suggestion-btn"
                                                             data-id="<?= (int)$sug['product_id'] ?>"
@@ -1336,12 +1449,36 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                 </select>
             </div>
             <div class="form-group">
+                <label for="modal-product-offer-search-term">Abweichender Angebots-Suchbegriff (optional)</label>
+                <input type="text" id="modal-product-offer-search-term" class="form-control"
+                       placeholder="z. B. Hackfleisch statt Rinderhack 500g">
+            </div>
+            <div class="form-group">
                 <label><input type="checkbox" id="modal-ignore-checkbox"> Ignorieren</label>
             </div>
         </div>
         <div class="rule-modal-footer">
             <button type="button" class="btn btn-outline" id="btn-cancel-product">Abbrechen</button>
             <button type="button" class="btn btn-primary" id="btn-save-product">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<!-- Angebots-Sorten & Varianten Modal -->
+<div id="offer-variants-modal" class="rule-modal-overlay hidden">
+    <div class="rule-modal-card">
+        <div class="rule-modal-header">
+            <h3>🏷️ Aktuelle Angebote: <span id="offer-variants-title"></span></h3>
+            <button type="button" class="rule-modal-close" id="btn-close-offer-variants-modal">&times;</button>
+        </div>
+        <div class="rule-modal-body">
+            <p class="text-muted">
+                Gültig in deiner Filiale <strong>REWE Franzosenallee 10 (04289 Leipzig)</strong>. Du kannst eine Sorte als Notiz vormerken oder unpassende Treffer mit ✕ ausblenden:
+            </p>
+            <div id="offer-variants-list"></div>
+        </div>
+        <div class="rule-modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-close-offer-variants-footer">Schließen</button>
         </div>
     </div>
 </div>

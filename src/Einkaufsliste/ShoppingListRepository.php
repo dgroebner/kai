@@ -76,7 +76,18 @@ class ShoppingListRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($rows)) {
+            return [];
+        }
+
+        try {
+            $offerSync = new OfferSyncService(null, null, null, null, $this->logger);
+            return $offerSync->enrichShoppingItemsWithOffers($rows);
+        } catch (\Throwable $e) {
+            $this->logger->warn('ShoppingListRepository::getItems: Angebots-Anreicherung fehlgeschlagen.', ['error' => $e->getMessage()]);
+            return $rows;
+        }
     }
 
     /**
@@ -379,6 +390,20 @@ class ShoppingListRepository
         ");
         $sessionState = $sessionStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
+        $offerState = ['offer_count' => 0, 'max_fetched' => ''];
+        try {
+            $offerStmt = $this->pdo->query("
+                SELECT COUNT(*) AS offer_count, COALESCE(MAX(fetched_at), '') AS max_fetched
+                FROM shopping_product_offers
+                WHERE is_dismissed = 0 AND valid_to >= CURDATE()
+            ");
+            if ($offerStmt) {
+                $offerState = $offerStmt->fetch(PDO::FETCH_ASSOC) ?: $offerState;
+            }
+        } catch (\Throwable) {
+            // Ignorieren falls Tabelle noch nicht initialisiert
+        }
+
         $raw = implode('|', [
             $itemsState['item_count'] ?? 0,
             $itemsState['max_updated'] ?? '',
@@ -386,7 +411,9 @@ class ShoppingListRepository
             $itemsState['max_id'] ?? 0,
             $sessionState['id'] ?? 'none',
             $sessionState['status'] ?? 'none',
-            $sessionState['updated_at'] ?? ''
+            $sessionState['updated_at'] ?? '',
+            $offerState['offer_count'] ?? 0,
+            $offerState['max_fetched'] ?? '',
         ]);
 
         return [

@@ -391,6 +391,7 @@ Dieses Projekt verarbeitet ausschließlich **eigene personenbezogene Daten** des
 | Iternio / ABRP Planning API | Optionale Routen- und Ladebedarfsberechnung v2 | Start- und Zielkoordinaten, ID.Buzz Fahrzeug-Typcode, Ziel-SoC; keine personenbezogenen Daten |
 | OpenStreetMap Nominatim | Geocodierung von Adressangaben und Ortsnamen in Koordinaten | Adresssuchbegriff; keine personenbezogenen Daten |
 | OpenStreetMap Overpass API | Abruf von Ladestations-Stammdaten (Betreiber, Lademodus, Name) anhand von Koordinaten | GPS-Koordinaten; keine personenbezogenen Daten |
+| Marktguru API (`api.marktguru.de`) | Abruf wöchentlicher regionaler Supermarkt-Angebote für die Einkaufsliste | Generischer Artikel-Suchbegriff, Postleitzahl (`04289`) und Filial-Koordinaten; keine personenbezogenen Daten |
 
 > **Neue Drittanbieter** müssen in dieser Tabelle dokumentiert werden, bevor sie
 > in den Code integriert werden.
