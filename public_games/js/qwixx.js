@@ -402,6 +402,7 @@
 
             const waitingList = (this.turnReadiness?.waiting_for || []).map(w => w.name);
             const allPassiveReady = (waitingList.length === 0);
+            const isGameEndPending = Boolean(this.gameState?.game_end_pending);
 
             if (isMyTurn && phase === 'roll') {
                 btnRoll?.classList.remove('hidden');
@@ -414,6 +415,10 @@
                         btnNext.className = 'btn btn-action-waiting js-btn-next-turn';
                         btnNext.innerHTML = `⏳ Warten auf: ${waitingList.join(', ')}`;
                         btnNext.title = 'Klicken zum Überspringen, falls Spieler abwesend ist';
+                    } else if (isGameEndPending) {
+                        btnNext.className = 'btn btn-action-finish js-btn-next-turn';
+                        btnNext.innerHTML = '🏁 Spiel beenden & Siegerehrung 🏆';
+                        btnNext.title = 'Spielende erreicht – Jetzt Zettel auswerten';
                     } else {
                         btnNext.className = 'btn btn-action-next js-btn-next-turn';
                         btnNext.title = '';
@@ -495,12 +500,17 @@
             const whiteDone = Boolean(this.mySheet?.white_done);
             const colorDone = Boolean(this.mySheet?.color_done);
             const waitingList = (this.turnReadiness?.waiting_for || []).map(w => w.name);
+            const isGameEndPending = Boolean(this.gameState?.game_end_pending);
 
             if (phase === 'roll') {
                 bar.textContent = isMyTurn ? '🎲 Du bist am Zug! Bitte würfeln.' : `⏳ ${activePlayer?.name || 'Der aktive Spieler'} würfelt gleich...`;
             } else if (isMyTurn) {
                 if (waitingList.length > 0) {
-                    bar.textContent = `⏳ Noch nicht bereit: ${waitingList.join(', ')} überlegt noch bei Weiß (${wSum})...`;
+                    bar.textContent = isGameEndPending
+                        ? `🏁 Letzter Wurf! Noch nicht bereit: ${waitingList.join(', ')} überlegt noch bei Weiß (${wSum})...`
+                        : `⏳ Noch nicht bereit: ${waitingList.join(', ')} überlegt noch bei Weiß (${wSum})...`;
+                } else if (isGameEndPending) {
+                    bar.textContent = '🏁 Letzter Wurf! Alle Mitspieler sind fertig. Tippe auf „Spiel beenden & Siegerehrung“.';
                 } else if (!whiteDone) {
                     bar.textContent = `Schritt 1: Weiße Summe (${wSum}) ankreuzen oder auf „Weiß auslassen“ tippen.`;
                 } else if (!colorDone) {
@@ -510,10 +520,14 @@
                 }
             } else {
                 if (!whiteDone) {
-                    bar.textContent = `⚪ Weiße Summe (${wSum}) ankreuzen oder auf „Zug auslassen“ tippen.`;
+                    bar.textContent = isGameEndPending
+                        ? `🏁 Letzter Wurf (Spielende eingeleitet)! Weiße Summe (${wSum}) ankreuzen oder auf „Zug auslassen“ tippen.`
+                        : `⚪ Weiße Summe (${wSum}) ankreuzen oder auf „Zug auslassen“ tippen.`;
                 } else {
                     if (waitingList.length > 0) {
                         bar.textContent = `✅ Du hast gewählt! Warten auf: ${waitingList.join(', ')}...`;
+                    } else if (isGameEndPending) {
+                        bar.textContent = `🏁 Alle Mitspieler haben gewählt! ${activePlayer?.name || 'Der aktive Spieler'} beendet das Spiel...`;
                     } else {
                         bar.textContent = `✅ Alle Mitspieler sind fertig! ${activePlayer?.name || 'Der aktive Spieler'} schließt den Zug ab...`;
                     }

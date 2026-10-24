@@ -400,8 +400,13 @@ try {
         $endReason = $qwixx->checkGameEnd($closedRows, $players);
         $newStatus = null;
         if ($endReason !== null) {
-            $state['game_end_reason'] = $endReason;
-            $newStatus = 'finished';
+            if ($room['game_mode'] === 'digital_dice') {
+                // Im Digital-Modus: Nicht sofort abbrechen! Alle beenden noch die Runde.
+                $state['game_end_pending'] = $endReason;
+            } else {
+                $state['game_end_reason'] = $endReason;
+                $newStatus = 'finished';
+            }
         }
 
         $repo->updateRoomState($roomId, $state, $newStatus);
@@ -446,8 +451,12 @@ try {
         $endReason = $qwixx->checkGameEnd($closedRows, $players);
         $newStatus = null;
         if ($endReason !== null) {
-            $state['game_end_reason'] = $endReason;
-            $newStatus = 'finished';
+            if ($room['game_mode'] === 'digital_dice') {
+                $state['game_end_pending'] = $endReason;
+            } else {
+                $state['game_end_reason'] = $endReason;
+                $newStatus = 'finished';
+            }
         }
 
         $repo->updateRoomState($roomId, $state, $newStatus);
@@ -519,6 +528,19 @@ try {
             $repo->updatePlayerSheet((int)$player['id'], $sheet, $calc['total']);
         }
 
+        // Spielende prüfen: War ein Spielende durch geschlossene Reihen vorgemerkt ODER tritt es durch den 4. Fehlwurf ein?
+        $closedRows = $state['closed_rows'] ?? [];
+        $freshPlayers = $repo->getPlayersForRoom($roomId);
+        $endReason = $state['game_end_pending'] ?? $qwixx->checkGameEnd($closedRows, $freshPlayers);
+
+        if ($endReason !== null) {
+            $state['game_end_reason'] = $endReason;
+            unset($state['game_end_pending']);
+            $repo->updateRoomState($roomId, $state, 'finished');
+            echo json_encode(['success' => true, 'game_finished' => true]);
+            exit;
+        }
+
         // Nächster Spieler im Uhrzeigersinn anhand der Spieler-ID-Liste
         $playerIds = array_map(fn($p) => (int)$p['id'], $players);
         $currPos = array_search($activePlayerId, $playerIds, true);
@@ -561,6 +583,7 @@ try {
         $players = $repo->getPlayersForRoom($roomId);
         $playerCount = count($players);
         $initialState = $qwixx->getInitialState($room['game_mode']);
+        unset($initialState['game_end_pending']);
         // Auch bei Revanche zufälligen Startspieler wählen
         if ($playerCount > 0) {
             $chosenIdx = random_int(0, $playerCount - 1);

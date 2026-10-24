@@ -541,6 +541,28 @@ body.games-hub-body {
     box-shadow: 0 6px 20px rgba(37, 99, 235, 0.65);
 }
 
+.btn-action-finish {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 800;
+    padding: 0.65rem 1.4rem;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.55);
+    cursor: pointer;
+    animation: pulse-finish 1.6s infinite ease-in-out;
+}
+.btn-action-finish:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.75);
+}
+
+@keyframes pulse-finish {
+    0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5); }
+    50% { transform: scale(1.04); box-shadow: 0 6px 24px rgba(245, 158, 11, 0.75); }
+}
+
 .btn-action-pass {
     background: rgba(245, 158, 11, 0.2);
     border: 1.5px solid #f59e0b;
