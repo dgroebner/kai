@@ -133,13 +133,26 @@
     };
 
     // =========================================================================
-    // 2. UNIVERSELLER WÜRFELBECHER (1 bis 6 Würfel)
+    // 2. UNIVERSELLER WÜRFELBECHER (1 bis 6 Würfel, Farbkonfiguration & Qwixx)
     // =========================================================================
     const DiceTool = {
         activeDiceCount: 1,
+        activePreset: 'classic', // 'classic', 'qwixx', 'kniffel', 'custom'
         isRolling: false,
+        colorConfigOpen: false,
         diceValues: [1],
+        diceColors: ['white', 'white', 'white', 'white', 'white', 'white'],
         lockedIndices: new Set(),
+
+        AVAILABLE_COLORS: [
+            { id: 'white', label: 'Weiß' },
+            { id: 'red', label: 'Rot' },
+            { id: 'yellow', label: 'Gelb' },
+            { id: 'green', label: 'Grün' },
+            { id: 'blue', label: 'Blau' },
+            { id: 'purple', label: 'Lila' },
+            { id: 'black', label: 'Schwarz' }
+        ],
 
         // SVG-Würfelaugen oder DOM-Pips für 1 bis 6
         pipsMap: {
@@ -155,36 +168,186 @@
             this.gridEl = document.getElementById('games-dice-grid');
             this.sumDisplayEl = document.getElementById('games-dice-sum-display');
             this.sumValEl = document.getElementById('games-dice-sum-val');
+            this.qwixxHelperEl = document.getElementById('games-dice-qwixx-helper');
             this.unfixBtn = document.getElementById('btn-dice-unfix-all');
+            this.colorConfigEl = document.getElementById('games-dice-color-config');
+            this.colorSlotsEl = document.getElementById('games-dice-color-slots');
+            this.toggleColorsBtn = document.getElementById('btn-dice-toggle-colors');
 
-            // Zuletzt gewählte Anzahl wiederherstellen falls vorhanden
+            // Zuletzt gewählte Einstellungen wiederherstellen falls vorhanden
             try {
                 const savedCount = Number(sessionStorage.getItem('kai_games_dice_count'));
                 if (savedCount >= 1 && savedCount <= 6) {
                     this.activeDiceCount = savedCount;
                 }
+                const savedPreset = sessionStorage.getItem('kai_games_dice_preset');
+                if (savedPreset && ['classic', 'qwixx', 'kniffel', 'custom'].includes(savedPreset)) {
+                    this.activePreset = savedPreset;
+                }
+                const savedColors = sessionStorage.getItem('kai_games_dice_colors');
+                if (savedColors) {
+                    const parsed = JSON.parse(savedColors);
+                    if (Array.isArray(parsed) && parsed.length === 6) {
+                        const validIds = this.AVAILABLE_COLORS.map(c => c.id);
+                        this.diceColors = parsed.map(c => validIds.includes(c) ? c : 'white');
+                    }
+                }
             } catch (_) {}
 
             this.updateSelectorButtonsUI();
+            this.renderColorSlots();
             this.roll(false); // Initiale Würfel anzeigen (ohne Animation)
+        },
+
+        saveSettings() {
+            try {
+                sessionStorage.setItem('kai_games_dice_count', String(this.activeDiceCount));
+                sessionStorage.setItem('kai_games_dice_preset', this.activePreset);
+                sessionStorage.setItem('kai_games_dice_colors', JSON.stringify(this.diceColors));
+            } catch (_) {}
+        },
+
+        applyPreset(preset) {
+            this.lockedIndices.clear();
+            if (preset === 'qwixx') {
+                this.activePreset = 'qwixx';
+                this.activeDiceCount = 6;
+                this.diceColors = ['white', 'white', 'red', 'yellow', 'green', 'blue'];
+            } else if (preset === 'kniffel') {
+                this.activePreset = 'kniffel';
+                this.activeDiceCount = 5;
+                this.diceColors = ['white', 'white', 'white', 'white', 'white', 'white'];
+            } else {
+                this.activePreset = 'classic';
+                this.diceColors = ['white', 'white', 'white', 'white', 'white', 'white'];
+            }
+
+            this.saveSettings();
+            this.updateSelectorButtonsUI();
+            this.renderColorSlots();
+            this.roll(false);
+            triggerVibration([20]);
         },
 
         setDiceCount(count) {
             if (count < 1 || count > 6) return;
             this.activeDiceCount = count;
             this.lockedIndices.clear(); // Beim Ändern der Würfelanzahl Fixierungen zurücksetzen
-            try {
-                sessionStorage.setItem('kai_games_dice_count', String(count));
-            } catch (_) {}
+
+            // Wenn Qwixx oder Kniffel aktiv war und die Anzahl geändert wird, auf custom/classic wechseln
+            if (this.activePreset === 'qwixx' && count !== 6) {
+                this.activePreset = this.diceColors.slice(0, count).every(c => c === 'white') ? 'classic' : 'custom';
+            } else if (this.activePreset === 'kniffel' && count !== 5) {
+                this.activePreset = 'classic';
+            }
+
+            this.saveSettings();
             this.updateSelectorButtonsUI();
+            this.renderColorSlots();
             this.roll(false);
             triggerVibration([20]);
+        },
+
+        toggleColorConfig() {
+            this.colorConfigOpen = !this.colorConfigOpen;
+            if (this.colorConfigEl) {
+                this.colorConfigEl.classList.toggle('hidden', !this.colorConfigOpen);
+            }
+            if (this.toggleColorsBtn) {
+                this.toggleColorsBtn.setAttribute('aria-expanded', this.colorConfigOpen ? 'true' : 'false');
+                this.toggleColorsBtn.classList.toggle('active', this.colorConfigOpen);
+                this.toggleColorsBtn.classList.toggle('btn-outline', !this.colorConfigOpen);
+            }
+            if (this.colorConfigOpen) {
+                this.renderColorSlots();
+            }
+            triggerVibration([15]);
+        },
+
+        setDieColor(index, colorId) {
+            if (index < 0 || index >= 6) return;
+            if (!this.AVAILABLE_COLORS.some(c => c.id === colorId)) return;
+
+            this.diceColors[index] = colorId;
+
+            // Prüfen, ob die aktuelle Farbkombination einem Preset entspricht
+            const activeSlice = this.diceColors.slice(0, this.activeDiceCount);
+            const isQwixx = this.activeDiceCount === 6 &&
+                activeSlice[0] === 'white' && activeSlice[1] === 'white' &&
+                activeSlice[2] === 'red' && activeSlice[3] === 'yellow' &&
+                activeSlice[4] === 'green' && activeSlice[5] === 'blue';
+            const isAllWhite = activeSlice.every(c => c === 'white');
+
+            if (isQwixx) {
+                this.activePreset = 'qwixx';
+            } else if (isAllWhite && this.activeDiceCount === 5) {
+                this.activePreset = 'kniffel';
+            } else if (isAllWhite) {
+                this.activePreset = 'classic';
+            } else {
+                this.activePreset = 'custom';
+            }
+
+            this.saveSettings();
+            this.updateSelectorButtonsUI();
+            this.renderColorSlots();
+            this.renderDice();
+            this.updateSum();
+            triggerVibration([15]);
+        },
+
+        renderColorSlots() {
+            if (!this.colorSlotsEl) return;
+            this.colorSlotsEl.innerHTML = '';
+
+            for (let i = 0; i < this.activeDiceCount; i++) {
+                const currentColor = this.diceColors[i] || 'white';
+                const row = document.createElement('div');
+                row.className = 'games-dice-color-slot-row';
+
+                const label = document.createElement('span');
+                label.className = 'games-dice-slot-label';
+                label.textContent = `Würfel ${i + 1}:`;
+                row.appendChild(label);
+
+                const swatches = document.createElement('div');
+                swatches.className = 'games-dice-swatches';
+                swatches.setAttribute('role', 'group');
+                swatches.setAttribute('aria-label', `Farbe für Würfel ${i + 1}`);
+
+                this.AVAILABLE_COLORS.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    const isSelected = (c.id === currentColor);
+                    btn.className = `games-die-swatch swatch-${c.id} js-die-color-swatch ${isSelected ? 'is-selected' : ''}`;
+                    btn.dataset.index = String(i);
+                    btn.dataset.color = c.id;
+                    btn.setAttribute('title', c.label);
+                    btn.setAttribute('aria-label', `${c.label}${isSelected ? ' (aktiv)' : ''}`);
+                    btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                    swatches.appendChild(btn);
+                });
+
+                row.appendChild(swatches);
+                this.colorSlotsEl.appendChild(row);
+            }
         },
 
         updateSelectorButtonsUI() {
             document.querySelectorAll('.js-dice-count-btn').forEach(btn => {
                 const c = Number(btn.dataset.count);
                 if (c === this.activeDiceCount) {
+                    btn.classList.add('active');
+                    btn.classList.remove('btn-outline');
+                } else {
+                    btn.classList.remove('active');
+                    btn.classList.add('btn-outline');
+                }
+            });
+
+            document.querySelectorAll('.js-dice-preset-btn').forEach(btn => {
+                const p = btn.dataset.preset;
+                if (p === this.activePreset) {
                     btn.classList.add('active');
                     btn.classList.remove('btn-outline');
                 } else {
@@ -207,6 +370,7 @@
             }
 
             this.renderDice();
+            this.updateSum();
             this.updateUnfixButton();
         },
 
@@ -214,6 +378,7 @@
             if (this.isRolling || this.lockedIndices.size === 0) return;
             this.lockedIndices.clear();
             this.renderDice();
+            this.updateSum();
             this.updateUnfixButton();
             triggerVibration([20]);
         },
@@ -292,18 +457,26 @@
             triggerVibration([50]); // Schlusseinschlag
         },
 
+        getColorLabel(colorId) {
+            const found = this.AVAILABLE_COLORS.find(c => c.id === colorId);
+            return found ? found.label : 'Weiß';
+        },
+
         renderDice() {
             if (!this.gridEl) return;
             this.gridEl.innerHTML = '';
 
             this.diceValues.forEach((val, idx) => {
                 const isLocked = this.lockedIndices.has(idx);
+                const colorId = this.diceColors[idx] || 'white';
+                const colorLabel = this.getColorLabel(colorId);
+
                 const die = document.createElement('div');
-                die.className = `games-die die-val-${val} js-die-item ${isLocked ? 'is-locked' : ''}`;
+                die.className = `games-die die-val-${val} die-color-${colorId} js-die-item ${isLocked ? 'is-locked' : ''}`;
                 die.dataset.index = String(idx);
                 die.setAttribute('role', 'button');
                 die.setAttribute('tabindex', '0');
-                die.setAttribute('aria-label', `Würfel ${idx + 1}: ${val} Augen${isLocked ? ' (fixiert)' : ''}`);
+                die.setAttribute('aria-label', `Würfel ${idx + 1} (${colorLabel}): ${val} Augen${isLocked ? ' (fixiert)' : ''}`);
                 die.setAttribute('aria-pressed', isLocked ? 'true' : 'false');
 
                 // Badge / Icon für Fixierung
@@ -332,8 +505,72 @@
                 this.sumValEl.textContent = String(sum);
             }
             if (this.sumDisplayEl) {
-                // Bei 1 Würfel kann die Summe ausgeblendet oder kompakt angezeigt werden
-                this.sumDisplayEl.style.display = this.activeDiceCount > 1 ? 'block' : 'none';
+                // Bei 1 Würfel kann die Summe ausgeblendet werden, bei Qwixx übernimmt der Qwixx-Helper
+                this.sumDisplayEl.style.display = (this.activeDiceCount > 1 && this.activePreset !== 'qwixx') ? 'block' : 'none';
+            }
+            this.renderQwixxHelper();
+        },
+
+        renderQwixxHelper() {
+            if (!this.qwixxHelperEl) return;
+
+            // Prüfen, ob wir mindestens 2 weiße Würfel und mindestens 1 farbigen Würfel haben (Qwixx-Modus oder ähnliches Setup)
+            const whiteDice = [];
+            const coloredDice = [];
+            for (let i = 0; i < this.activeDiceCount; i++) {
+                const c = this.diceColors[i] || 'white';
+                const val = this.diceValues[i];
+                const locked = this.lockedIndices.has(i);
+                if (c === 'white') {
+                    whiteDice.push({ index: i, val, locked });
+                } else {
+                    coloredDice.push({ index: i, color: c, val, locked });
+                }
+            }
+
+            if (this.activePreset !== 'qwixx' && !(whiteDice.length === 2 && coloredDice.length >= 1)) {
+                this.qwixxHelperEl.classList.add('hidden');
+                this.qwixxHelperEl.innerHTML = '';
+                return;
+            }
+
+            this.qwixxHelperEl.classList.remove('hidden');
+            this.qwixxHelperEl.innerHTML = '';
+
+            // 1. Summe der weißen Würfel (für alle Spieler nutzbar)
+            if (whiteDice.length === 2) {
+                const whiteSum = whiteDice[0].val + whiteDice[1].val;
+                const whiteRow = document.createElement('div');
+                whiteRow.className = 'qwixx-white-sum-badge';
+                whiteRow.innerHTML = `<span class="qwixx-white-label">⚪➕⚪ Weiße Summe:</span> <strong class="qwixx-white-val">${KaiHtml.escape(String(whiteSum))}</strong>`;
+                this.qwixxHelperEl.appendChild(whiteRow);
+
+                // 2. Farb-Kombinationen (jeweils Farb-Würfel + Weiß 1 bzw. Weiß 2)
+                const combosGrid = document.createElement('div');
+                combosGrid.className = 'qwixx-combos-grid';
+
+                coloredDice.forEach(cd => {
+                    const pill = document.createElement('div');
+                    pill.className = `qwixx-combo-pill qwixx-pill-${cd.color} ${cd.locked ? 'is-locked' : ''}`;
+
+                    const sum1 = cd.val + whiteDice[0].val;
+                    const sum2 = cd.val + whiteDice[1].val;
+                    const sumsText = (sum1 === sum2) ? `${sum1}` : `${ Math.min(sum1, sum2) } / ${ Math.max(sum1, sum2) }`;
+
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'qwixx-combo-color-name';
+                    labelSpan.textContent = this.getColorLabel(cd.color);
+
+                    const valSpan = document.createElement('strong');
+                    valSpan.className = 'qwixx-combo-sums';
+                    valSpan.textContent = cd.locked ? '🔒 raus' : sumsText;
+
+                    pill.appendChild(labelSpan);
+                    pill.appendChild(valSpan);
+                    combosGrid.appendChild(pill);
+                });
+
+                this.qwixxHelperEl.appendChild(combosGrid);
             }
         }
     };
@@ -730,10 +967,31 @@
                 DiceTool.unfixAll();
                 return;
             }
+            const dicePresetBtn = e.target.closest('.js-dice-preset-btn');
+            if (dicePresetBtn) {
+                const preset = dicePresetBtn.dataset.preset;
+                if (preset) {
+                    DiceTool.applyPreset(preset);
+                }
+                return;
+            }
             const diceCountBtn = e.target.closest('.js-dice-count-btn');
             if (diceCountBtn) {
                 const count = Number(diceCountBtn.dataset.count);
                 DiceTool.setDiceCount(count);
+                return;
+            }
+            if (e.target.closest('.js-dice-toggle-colors-btn')) {
+                DiceTool.toggleColorConfig();
+                return;
+            }
+            const colorSwatchBtn = e.target.closest('.js-die-color-swatch');
+            if (colorSwatchBtn) {
+                const idx = Number(colorSwatchBtn.dataset.index);
+                const colorId = colorSwatchBtn.dataset.color;
+                if (colorId) {
+                    DiceTool.setDieColor(idx, colorId);
+                }
                 return;
             }
             if (e.target.closest('.js-dice-roll-btn') || e.target.closest('.js-dice-roll-trigger')) {

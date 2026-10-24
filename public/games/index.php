@@ -106,28 +106,52 @@ $userFirstName = (!empty($parts[0])) ? $parts[0] : '';
         <section id="tool-pane-dice" class="card games-tool-pane hidden" aria-labelledby="tab-btn-dice">
             <div class="games-tool-header">
                 <h2>Universeller Würfelbecher</h2>
-                <p class="text-muted">Ersatz für physische Spielwürfel unterwegs (Kniffel, Mensch ärgere dich nicht, Brettspiele).</p>
+                <p class="text-muted">Ersatz für physische Spielwürfel unterwegs (Kniffel, Qwixx, Mensch ärgere dich nicht, Brettspiele).</p>
             </div>
 
-            <div class="games-dice-controls">
-                <label class="games-control-label" id="dice-count-label">Anzahl Würfel:</label>
-                <div class="games-dice-count-selector" role="group" aria-labelledby="dice-count-label">
-                    <button type="button" class="btn btn-sm js-dice-count-btn active" data-count="1">1</button>
-                    <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="2">2</button>
-                    <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="3">3</button>
-                    <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="4">4</button>
-                    <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="5">5</button>
-                    <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="6">6</button>
+            <div class="games-dice-controls-wrap">
+                <div class="games-dice-controls">
+                    <label class="games-control-label" id="dice-preset-label">Vorlage:</label>
+                    <div class="games-dice-preset-selector" role="group" aria-labelledby="dice-preset-label">
+                        <button type="button" class="btn btn-sm js-dice-preset-btn active" data-preset="classic">⚪ Klassisch</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-preset-btn" data-preset="qwixx" title="2 weiße + Rot, Gelb, Grün, Blau">🎨 Qwixx (6 Würfel)</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-preset-btn" data-preset="kniffel" title="5 weiße Würfel">🎲 Kniffel (5)</button>
+                    </div>
+                </div>
+
+                <div class="games-dice-controls">
+                    <label class="games-control-label" id="dice-count-label">Anzahl Würfel:</label>
+                    <div class="games-dice-count-selector" role="group" aria-labelledby="dice-count-label">
+                        <button type="button" class="btn btn-sm js-dice-count-btn active" data-count="1">1</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="2">2</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="3">3</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="4">4</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="5">5</button>
+                        <button type="button" class="btn btn-sm btn-outline js-dice-count-btn" data-count="6">6</button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline js-dice-toggle-colors-btn" id="btn-dice-toggle-colors" aria-expanded="false">
+                        🎨 Farben anpassen
+                    </button>
+                </div>
+
+                <div class="games-dice-color-config hidden" id="games-dice-color-config" aria-label="Würfelfarben konfigurieren">
+                    <div class="games-dice-color-config-hint text-muted">Wähle für jeden Würfel individuell eine Farbe aus:</div>
+                    <div class="games-dice-color-slots" id="games-dice-color-slots">
+                        <!-- Dynamisch generierte Farbauswahl pro Würfel -->
+                    </div>
                 </div>
             </div>
 
             <div class="games-dice-stage js-dice-stage" aria-label="Würfelbereich">
-                <div class="games-dice-hint">Tippe auf einen Würfel, um ihn für die nächste Runde zu fixieren (Kniffel).</div>
+                <div class="games-dice-hint">Tippe auf einen Würfel, um ihn für die nächste Runde zu fixieren (z. B. Kniffel) oder im Qwixx-Modus aus dem Spiel zu nehmen.</div>
                 <div class="games-dice-grid" id="games-dice-grid">
                     <!-- Würfel werden dynamisch generiert -->
                 </div>
                 <div class="games-dice-sum-display" id="games-dice-sum-display">
                     Augensumme: <strong id="games-dice-sum-val">6</strong>
+                </div>
+                <div class="games-dice-qwixx-helper hidden" id="games-dice-qwixx-helper" aria-live="polite">
+                    <!-- Qwixx Summen-Hilfe (Weiße Summe + Farb-Kombinationen) -->
                 </div>
             </div>
 

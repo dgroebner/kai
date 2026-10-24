@@ -9630,11 +9630,19 @@ body.wisdom-modal-open {
 }
 
 /* --- 2. WÜRFELBECHER STYLING --- */
+.games-dice-controls-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
 .games-dice-controls {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
-    margin-bottom: 2rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
     justify-content: center;
 }
@@ -9645,9 +9653,12 @@ body.wisdom-modal-open {
     font-weight: 500;
 }
 
+.games-dice-preset-selector,
 .games-dice-count-selector {
     display: flex;
     gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .games-dice-count-selector .btn {
@@ -9655,11 +9666,86 @@ body.wisdom-modal-open {
     font-weight: 700;
 }
 
-.games-dice-count-selector .btn.active {
+.games-dice-preset-selector .btn.active,
+.games-dice-count-selector .btn.active,
+.js-dice-toggle-colors-btn.active {
     background-color: var(--accent);
     color: #fff;
     border-color: var(--accent);
 }
+
+.games-dice-color-config {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    width: 100%;
+    max-width: 520px;
+    margin-top: 0.25rem;
+}
+
+.games-dice-color-config-hint {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    text-align: center;
+}
+
+.games-dice-color-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.games-dice-color-slot-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 8px;
+}
+
+.games-dice-slot-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    min-width: 70px;
+}
+
+.games-dice-swatches {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.games-die-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    padding: 0;
+}
+
+.games-die-swatch:hover {
+    transform: scale(1.12);
+}
+
+.games-die-swatch.is-selected {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(0, 0, 0, 0.5);
+    transform: scale(1.15);
+}
+
+.swatch-white { background: #f8fafc; }
+.swatch-red { background: #dc2626; }
+.swatch-yellow { background: #facc15; }
+.swatch-green { background: #16a34a; }
+.swatch-blue { background: #2563eb; }
+.swatch-purple { background: #9333ea; }
+.swatch-black { background: #1e293b; }
 
 .games-dice-stage {
     padding: 1.5rem;
@@ -9731,12 +9817,76 @@ body.wisdom-modal-open {
     transform: translateY(0) scale(0.97);
 }
 
-/* Fixierter Würfel (Kniffel) */
+.games-die.die-color-white {
+    background: #f8fafc;
+}
+.games-die.die-color-white .die-pip {
+    background-color: #0f172a;
+}
+
+.games-die.die-color-red {
+    background: linear-gradient(145deg, #ef4444, #dc2626);
+    box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35), inset 0 -3px 0 rgba(127, 29, 29, 0.4);
+}
+.games-die.die-color-red .die-pip {
+    background-color: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.games-die.die-color-yellow {
+    background: linear-gradient(145deg, #fde047, #eab308);
+    box-shadow: 0 6px 16px rgba(234, 179, 8, 0.35), inset 0 -3px 0 rgba(161, 98, 7, 0.35);
+}
+.games-die.die-color-yellow .die-pip {
+    background-color: #0f172a;
+}
+
+.games-die.die-color-green {
+    background: linear-gradient(145deg, #22c55e, #16a34a);
+    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35), inset 0 -3px 0 rgba(20, 83, 45, 0.4);
+}
+.games-die.die-color-green .die-pip {
+    background-color: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.games-die.die-color-blue {
+    background: linear-gradient(145deg, #3b82f6, #2563eb);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35), inset 0 -3px 0 rgba(30, 58, 138, 0.4);
+}
+.games-die.die-color-blue .die-pip {
+    background-color: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.games-die.die-color-purple {
+    background: linear-gradient(145deg, #a855f7, #9333ea);
+    box-shadow: 0 6px 16px rgba(147, 51, 234, 0.35), inset 0 -3px 0 rgba(88, 28, 135, 0.4);
+}
+.games-die.die-color-purple .die-pip {
+    background-color: #ffffff;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.games-die.die-color-black {
+    background: linear-gradient(145deg, #334155, #0f172a);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), inset 0 -3px 0 rgba(0, 0, 0, 0.5);
+}
+.games-die.die-color-black .die-pip {
+    background-color: #f8fafc;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 .games-die.is-locked {
-    background: #fef08a; /* Helles warmes Gelb für fixierte Würfel */
-    border: 2px solid #ca8a04;
-    box-shadow: 0 0 16px rgba(234, 179, 8, 0.5), inset 0 -3px 0 rgba(161, 98, 7, 0.2);
-    transform: translateY(-4px);
+    border: 2.5px solid #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.45), 0 8px 18px rgba(0, 0, 0, 0.45);
+    transform: translateY(-5px);
+}
+
+.games-die.die-color-white.is-locked {
+    background: #fef08a;
+    border-color: #ca8a04;
 }
 
 .die-lock-badge {
@@ -9781,6 +9931,7 @@ body.wisdom-modal-open {
     font-size: 1.2rem;
     font-weight: 500;
     color: var(--text-muted);
+    text-align: center;
 }
 
 .games-dice-sum-display strong {
@@ -9788,6 +9939,73 @@ body.wisdom-modal-open {
     font-size: 1.45rem;
     font-weight: 700;
     margin-left: 0.25rem;
+}
+
+/* Qwixx Summen-Hilfe */
+.games-dice-qwixx-helper {
+    margin-top: 1.35rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+}
+
+.qwixx-white-sum-badge {
+    background: rgba(248, 250, 252, 0.12);
+    border: 1px solid rgba(248, 250, 252, 0.28);
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.qwixx-white-val {
+    font-size: 1.25rem;
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.qwixx-combos-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.55rem;
+    width: 100%;
+    max-width: 380px;
+}
+
+.qwixx-combo-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.qwixx-combo-pill.is-locked {
+    opacity: 0.45;
+    text-decoration: line-through;
+}
+
+.qwixx-pill-red { background: rgba(220, 38, 38, 0.75); }
+.qwixx-pill-yellow { background: rgba(234, 179, 8, 0.85); color: #0f172a; }
+.qwixx-pill-green { background: rgba(22, 163, 74, 0.75); }
+.qwixx-pill-blue { background: rgba(37, 99, 235, 0.75); }
+.qwixx-pill-purple { background: rgba(147, 51, 234, 0.75); }
+.qwixx-pill-black { background: rgba(30, 41, 59, 0.9); }
+
+.qwixx-combo-sums {
+    font-size: 1.05rem;
+    font-weight: 800;
 }
 
 /* --- 3. STADT-LAND-FLUSS STYLING --- */
