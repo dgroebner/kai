@@ -497,10 +497,12 @@
             // Hat der Spieler in diesem Wurf bereits Kreuze gesetzt?
             const whiteDone = Boolean(this.mySheet.white_done);
             const colorDone = Boolean(this.mySheet.color_done);
+            const phase = this.gameState?.turn_phase || 'roll';
 
+            // Im Modus digitale Würfel: Solange phase === 'roll', darf NIEMAND ankreuzen!
             // Für passiven Spieler: Wenn er schon weiß genommen hat -> alles sperren bis zum nächsten Wurf
             // Für aktiven Spieler: Wenn er schon Farbe genommen hat -> alles sperren bis zum nächsten Wurf
-            const isAllDoneForTurn = isDigital && (isMyTurn ? colorDone : whiteDone);
+            const isAllDoneForTurn = isDigital && (phase === 'roll' || (isMyTurn ? colorDone : whiteDone));
 
             ['red', 'green', 'yellow', 'blue'].forEach(color => {
                 const rowState = rows[color] || { crossed: [], locked: false };

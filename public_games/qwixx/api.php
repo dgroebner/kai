@@ -299,6 +299,14 @@ try {
         // - Wenn er bereits weiß hat oder darauf verzichtet hat (white_done true), darf er nur Farbkombination ankreuzen
         $step = 'any';
         if ($room['game_mode'] === 'digital_dice') {
+            // Im digitalen Modus MUSS zuerst gewürfelt worden sein!
+            $phase = $state['turn_phase'] ?? 'roll';
+            if ($phase === 'roll') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Es muss zuerst gewürfelt werden, bevor angekreuzt werden darf']);
+                exit;
+            }
+
             if (!$isActivePlayer) {
                 if (!empty($sheet['white_done'])) {
                     http_response_code(400);
