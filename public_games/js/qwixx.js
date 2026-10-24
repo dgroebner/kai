@@ -320,6 +320,39 @@
                 whiteSumVal.textContent = String((dice.white1 || 1) + (dice.white2 || 1));
             }
 
+            // Farbkombinationen-Hilfe für den aktiven Spieler (Rot, Grün, Gelb, Blau)
+            const combosGrid = document.getElementById('active-combos-grid');
+            if (combosGrid) {
+                if (isMyTurn && phase === 'action') {
+                    combosGrid.classList.remove('hidden');
+                    const w1 = Number(dice.white1 || 1);
+                    const w2 = Number(dice.white2 || 1);
+                    const colors = [
+                        { id: 'red', label: 'Rot', val: Number(dice.red || 0), closed: closedRows.includes('red') },
+                        { id: 'green', label: 'Grün', val: Number(dice.green || 0), closed: closedRows.includes('green') },
+                        { id: 'yellow', label: 'Gelb', val: Number(dice.yellow || 0), closed: closedRows.includes('yellow') },
+                        { id: 'blue', label: 'Blau', val: Number(dice.blue || 0), closed: closedRows.includes('blue') },
+                    ];
+
+                    combosGrid.innerHTML = colors.map(c => {
+                        let text = '🔒 zu';
+                        if (!c.closed && c.val > 0) {
+                            const s1 = c.val + w1;
+                            const s2 = c.val + w2;
+                            text = (s1 === s2) ? `${s1}` : `${Math.min(s1, s2)} / ${Math.max(s1, s2)}`;
+                        }
+                        return `
+                            <div class="qwixx-combo-pill pill-${c.id} ${c.closed ? 'is-locked' : ''}">
+                                <span>${c.label}</span>
+                                <strong class="qwixx-combo-sums">${text}</strong>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    combosGrid.classList.add('hidden');
+                }
+            }
+
             // Button-Steuerung für Würfeln, Auslassen & Zug-Abschluss
             const activeIdx = Number(this.gameState?.active_player_index || 0);
             const activePlayer = this.players[activeIdx];

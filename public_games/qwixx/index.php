@@ -91,6 +91,11 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                         Zug abschließen &rarr;
                     </button>
                 </div>
+
+                <!-- Hilfsanzeige für Farbkombinationen des aktiven Spielers -->
+                <div class="qwixx-combos-grid hidden" id="active-combos-grid" style="margin-top: 0.85rem;" aria-label="Mögliche Farbkombinationen">
+                    <!-- Dynamisch generierte Farbkombinationen -->
+                </div>
             </section>
 
             <!-- Status-Banner (Wer ist am Zug / Hinweise) -->

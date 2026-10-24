@@ -213,9 +213,13 @@ try {
             exit;
         }
 
+        $players = $repo->getPlayersForRoom($roomId);
+        $playerCount = max(1, count($players));
+
         $state = $room['state'];
         $state['turn_phase'] = 'roll';
-        $state['active_player_index'] = 0;
+        // Startspieler per Zufall ermitteln
+        $state['active_player_index'] = random_int(0, $playerCount - 1);
 
         $repo->updateRoomState($roomId, $state, 'active');
         echo json_encode(['success' => true]);
@@ -466,7 +470,10 @@ try {
         }
 
         $players = $repo->getPlayersForRoom($roomId);
+        $playerCount = max(1, count($players));
         $initialState = $qwixx->getInitialState($room['game_mode']);
+        // Auch bei Revanche zufälligen Startspieler wählen
+        $initialState['active_player_index'] = random_int(0, $playerCount - 1);
 
         foreach ($players as $p) {
             $emptySheet = $qwixx->getInitialSheet();
