@@ -1,7 +1,7 @@
 {
-  "name": "Kai Games Hub",
-  "short_name": "Games",
-  "description": "Multiplayer-Würfel- und Gesellschaftsspiele online und am Spieltisch",
+  "name": "Quarxl",
+  "short_name": "Quarxl",
+  "description": "Quarxl - Multiplayer-Würfel- und Gesellschaftsspiele online und am Spieltisch",
   "start_url": "./index.php",
   "scope": "./",
   "display": "standalone",
