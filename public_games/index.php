@@ -24,7 +24,7 @@ require_once __DIR__ . '/../bootstrap.php';
         <div class="card-box" style="margin-bottom: 1.75rem;">
             <div class="form-group" style="margin-bottom: 1rem;">
                 <label for="hub-player-name">Dein Spielername:</label>
-                <input type="text" id="hub-player-name" class="form-control" placeholder="z. B. Danny, Lisa..." maxlength="25">
+                <input type="text" id="hub-player-name" class="form-control" placeholder="z. B. Danny, Anja..." maxlength="25">
             </div>
 
             <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1rem;">
