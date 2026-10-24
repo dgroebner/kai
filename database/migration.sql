@@ -77,3 +77,52 @@ CREATE TABLE IF NOT EXISTS `shopping_product_offers` (
     INDEX `idx_valid_to` (`valid_to`),
     INDEX `idx_product_valid` (`product_master_id`, `is_dismissed`, `valid_to`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================================================
+-- DOMAIN: GAMES HUB (games.agent-smith.de & Qwixx Multiplayer)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `games_hub_rooms` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `room_code` VARCHAR(8) NOT NULL,
+    `game_type` VARCHAR(32) NOT NULL DEFAULT 'qwixx',
+    `game_mode` VARCHAR(32) NOT NULL DEFAULT 'digital_dice',
+    `status` ENUM('lobby', 'active', 'finished') NOT NULL DEFAULT 'lobby',
+    `host_token_hash` CHAR(64) NOT NULL,
+    `state_json` LONGTEXT NULL,
+    `state_version` INT UNSIGNED NOT NULL DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_room_code` (`room_code`),
+    INDEX `idx_room_status_updated` (`status`, `updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `games_hub_players` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `room_id` INT UNSIGNED NOT NULL,
+    `player_token_hash` CHAR(64) NOT NULL,
+    `player_name` VARCHAR(40) NOT NULL,
+    `seat_order` INT NOT NULL DEFAULT 0,
+    `is_host` TINYINT(1) NOT NULL DEFAULT 0,
+    `is_connected` TINYINT(1) NOT NULL DEFAULT 1,
+    `sheet_json` LONGTEXT NULL,
+    `total_score` INT NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_room_player_token` (`room_id`, `player_token_hash`),
+    INDEX `idx_player_room_order` (`room_id`, `seat_order`),
+    CONSTRAINT `fk_gh_players_room` FOREIGN KEY (`room_id`) REFERENCES `games_hub_rooms`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `games_hub_rate_limits` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `action_key` VARCHAR(64) NOT NULL,
+    `ip_hash` CHAR(64) NOT NULL,
+    `failed_attempts` INT UNSIGNED NOT NULL DEFAULT 1,
+    `locked_until` DATETIME NULL DEFAULT NULL,
+    `first_attempt_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `last_attempt_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_rate_action_ip` (`action_key`, `ip_hash`),
+    INDEX `idx_rate_locked` (`locked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
