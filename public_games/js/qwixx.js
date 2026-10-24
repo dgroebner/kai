@@ -6,6 +6,15 @@
 
     const SCORE_TABLE = [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78];
 
+    const PIPS_MAP = {
+        1: ['pip-center'],
+        2: ['pip-top-left', 'pip-bottom-right'],
+        3: ['pip-top-left', 'pip-center', 'pip-bottom-right'],
+        4: ['pip-top-left', 'pip-top-right', 'pip-bottom-left', 'pip-bottom-right'],
+        5: ['pip-top-left', 'pip-top-right', 'pip-center', 'pip-bottom-left', 'pip-bottom-right'],
+        6: ['pip-top-left', 'pip-top-right', 'pip-mid-left', 'pip-mid-right', 'pip-bottom-left', 'pip-bottom-right']
+    };
+
     const QwixxApp = {
         roomCode: '',
         isHost: false,
@@ -15,6 +24,8 @@
         players: [],
         pollTimer: null,
         isPolling: false,
+        isRollingAnimation: false,
+        lastKnownRollTime: null,
 
         init() {
             this.roomCode = document.body.dataset.room || '';
@@ -256,10 +267,21 @@
         },
 
         renderDiceStage() {
+            if (this.isRollingAnimation) return;
+
             const dice = this.gameState?.dice || {};
             const closedRows = this.gameState?.closed_rows || [];
             const diceRow = document.getElementById('dice-row');
             if (!diceRow) return;
+
+            // Prüfen, ob ein neuer Wurf von einem Mitspieler über das Polling eingetroffen ist
+            const rollTime = this.gameState?.last_roll_time;
+            if (rollTime && this.lastKnownRollTime && rollTime > this.lastKnownRollTime) {
+                this.lastKnownRollTime = rollTime;
+                this.playDiceRollAnimation(dice, closedRows);
+                return;
+            }
+            this.lastKnownRollTime = rollTime || this.lastKnownRollTime;
 
             const diceList = [
                 { id: 'w1', color: 'white', val: dice.white1 || 1 },
@@ -270,11 +292,20 @@
                 { id: 'b', color: 'blue', val: dice.blue || 1, closed: closedRows.includes('blue') },
             ];
 
-            diceRow.innerHTML = diceList.map(d => `
-                <div class="qwixx-die die-${d.color} ${d.closed ? 'is-closed' : ''}">
-                    ${d.closed ? '🔒' : d.val}
-                </div>
-            `).join('');
+            diceRow.innerHTML = '';
+            diceList.forEach(d => {
+                const dieEl = document.createElement('div');
+                dieEl.className = `qwixx-die die-${d.color} ${d.closed ? 'is-closed' : ''}`;
+                if (!d.closed) {
+                    const pips = PIPS_MAP[d.val] || [];
+                    pips.forEach(pos => {
+                        const pip = document.createElement('span');
+                        pip.className = `die-pip ${pos}`;
+                        dieEl.appendChild(pip);
+                    });
+                }
+                diceRow.appendChild(dieEl);
+            });
 
             const whiteSumVal = document.getElementById('white-sum-val');
             if (whiteSumVal) {
@@ -300,6 +331,60 @@
                 btnRoll?.classList.add('hidden');
                 btnNext?.classList.add('hidden');
             }
+        },
+
+        playDiceRollAnimation(targetDice, closedRows) {
+            const diceRow = document.getElementById('dice-row');
+            if (!diceRow) return;
+
+            this.isRollingAnimation = true;
+            diceRow.classList.add('is-rolling');
+
+            // Haptik-Impuls
+            if ('vibrate' in navigator) {
+                try { navigator.vibrate([30, 40, 30]); } catch (_) {}
+            }
+
+            let ticks = 0;
+            const maxTicks = 6;
+            const interval = setInterval(() => {
+                ticks++;
+                diceRow.innerHTML = '';
+                const colors = [
+                    { c: 'white', closed: false },
+                    { c: 'white', closed: false },
+                    { c: 'red', closed: closedRows.includes('red') },
+                    { c: 'green', closed: closedRows.includes('green') },
+                    { c: 'yellow', closed: closedRows.includes('yellow') },
+                    { c: 'blue', closed: closedRows.includes('blue') },
+                ];
+
+                colors.forEach(col => {
+                    const rnd = Math.floor(Math.random() * 6) + 1;
+                    const dieEl = document.createElement('div');
+                    dieEl.className = `qwixx-die die-${col.c} ${col.closed ? 'is-closed' : ''}`;
+                    if (!col.closed) {
+                        const pips = PIPS_MAP[rnd] || [];
+                        pips.forEach(pos => {
+                            const pip = document.createElement('span');
+                            pip.className = `die-pip ${pos}`;
+                            dieEl.appendChild(pip);
+                        });
+                    }
+                    diceRow.appendChild(dieEl);
+                });
+
+                if (ticks >= maxTicks) {
+                    clearInterval(interval);
+                    diceRow.classList.remove('is-rolling');
+                    this.isRollingAnimation = false;
+                    this.renderDiceStage();
+
+                    if ('vibrate' in navigator) {
+                        try { navigator.vibrate([50]); } catch (_) {}
+                    }
+                }
+            }, 80);
         },
 
         renderTurnInstructions() {
@@ -446,10 +531,19 @@
         },
 
         async rollDice() {
+            const btnRoll = document.getElementById('btn-roll-dice');
+            if (btnRoll) btnRoll.disabled = true;
+
             const res = await HubHttp.postJson('./api.php?action=roll', {
                 room_code: this.roomCode
             });
-            if (res.ok) this.fetchState();
+            if (btnRoll) btnRoll.disabled = false;
+
+            if (res.ok && res.data && res.data.success) {
+                const closedRows = this.gameState?.closed_rows || [];
+                this.playDiceRollAnimation(res.data.dice, closedRows);
+                this.fetchState();
+            }
         },
 
         async nextTurn() {
