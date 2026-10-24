@@ -156,6 +156,19 @@ try {
     if ($action === 'state') {
         $players = $repo->getPlayersForRoom($roomId);
 
+        // Falls aktiver Raum noch keine active_player_id hat (z. B. aus älterem Stand), reparieren
+        if ($room['status'] === 'active' && !empty($players)) {
+            $state = $room['state'];
+            $activePlayerId = (int)($state['active_player_id'] ?? 0);
+            if ($activePlayerId === 0) {
+                $activeIdx = (int)($state['active_player_index'] ?? 0);
+                $chosen = $players[$activeIdx] ?? $players[0];
+                $state['active_player_id'] = (int)$chosen['id'];
+                $repo->updateRoomState($roomId, $state);
+                $room['state'] = $state;
+            }
+        }
+
         // Sanierte Übersicht der Mitspieler (andere Spieler sehen nur die Kreuzzahl, nicht jedes einzelne Feld)
         $playersData = [];
         foreach ($players as $p) {
@@ -244,7 +257,8 @@ try {
 
         if ($activePlayerId === 0) {
             $activeIdx = (int)($state['active_player_index'] ?? 0);
-            $activePlayerId = (int)($players[$activeIdx]['id'] ?? 0);
+            $activePlayerId = (int)($players[$activeIdx]['id'] ?? ($players[0]['id'] ?? 0));
+            $state['active_player_id'] = $activePlayerId;
         }
 
         if ($activePlayerId !== (int)$player['id']) {
@@ -440,7 +454,8 @@ try {
 
         if ($activePlayerId === 0) {
             $activeIdx = (int)($state['active_player_index'] ?? 0);
-            $activePlayerId = (int)($players[$activeIdx]['id'] ?? 0);
+            $activePlayerId = (int)($players[$activeIdx]['id'] ?? ($players[0]['id'] ?? 0));
+            $state['active_player_id'] = $activePlayerId;
         }
 
         if ($activePlayerId !== (int)$player['id']) {

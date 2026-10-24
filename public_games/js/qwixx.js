@@ -171,6 +171,17 @@
             this.pollTimer = setInterval(() => this.fetchState(), 1600);
         },
 
+        getActivePlayerInfo() {
+            const activePlayerId = Number(this.gameState?.active_player_id || 0);
+            const activeIdx = Number(this.gameState?.active_player_index || 0);
+            const activePlayer = (activePlayerId > 0)
+                ? (this.players.find(p => Number(p.id) === activePlayerId) || this.players[activeIdx] || this.players[0])
+                : (this.players[activeIdx] || this.players[0]);
+            const isMyTurn = Boolean(activePlayer && activePlayer.is_me);
+            const phase = this.gameState?.turn_phase || 'roll';
+            return { activePlayerId, activeIdx, activePlayer, isMyTurn, phase };
+        },
+
         async fetchState() {
             if (this.isPolling) return;
             this.isPolling = true;
@@ -253,8 +264,7 @@
             const bar = document.getElementById('players-bar');
             if (!bar) return;
 
-            const activePlayerId = Number(this.gameState?.active_player_id || 0);
-            const activeIdx = Number(this.gameState?.active_player_index || 0);
+            const { activePlayerId, activeIdx } = this.getActivePlayerInfo();
 
             bar.innerHTML = this.players.map((p, idx) => {
                 const isActive = (activePlayerId > 0) ? (Number(p.id) === activePlayerId) : (idx === activeIdx);
@@ -321,6 +331,8 @@
                 whiteSumVal.textContent = String((dice.white1 || 1) + (dice.white2 || 1));
             }
 
+            const { isMyTurn, phase } = this.getActivePlayerInfo();
+
             // Farbkombinationen-Hilfe für den aktiven Spieler (Rot, Grün, Gelb, Blau)
             const combosGrid = document.getElementById('active-combos-grid');
             if (combosGrid) {
@@ -355,14 +367,6 @@
             }
 
             // Button-Steuerung für Würfeln, Auslassen & Zug-Abschluss
-            const activePlayerId = Number(this.gameState?.active_player_id || 0);
-            const activeIdx = Number(this.gameState?.active_player_index || 0);
-            const activePlayer = (activePlayerId > 0)
-                ? this.players.find(p => Number(p.id) === activePlayerId)
-                : this.players[activeIdx];
-            const isMyTurn = activePlayer && activePlayer.is_me;
-            const phase = this.gameState?.turn_phase || 'roll';
-
             const btnRoll = document.getElementById('btn-roll-dice');
             const btnNext = document.getElementById('btn-next-turn');
             const btnPassWhite = document.getElementById('btn-pass-white');
@@ -445,13 +449,7 @@
             const bar = document.getElementById('turn-instruction-bar');
             if (!bar) return;
 
-            const activePlayerId = Number(this.gameState?.active_player_id || 0);
-            const activeIdx = Number(this.gameState?.active_player_index || 0);
-            const activePlayer = (activePlayerId > 0)
-                ? this.players.find(p => Number(p.id) === activePlayerId)
-                : this.players[activeIdx];
-            const isMyTurn = activePlayer && activePlayer.is_me;
-            const phase = this.gameState?.turn_phase || 'roll';
+            const { activePlayer, isMyTurn, phase } = this.getActivePlayerInfo();
             const w1 = Number(this.gameState?.dice?.white1 || 1);
             const w2 = Number(this.gameState?.dice?.white2 || 1);
             const wSum = w1 + w2;
@@ -483,12 +481,7 @@
             const rows = this.mySheet.rows || {};
             const closedGlobal = this.gameState?.closed_rows || [];
             const isDigital = (this.gameMode === 'digital_dice');
-            const activePlayerId = Number(this.gameState?.active_player_id || 0);
-            const activeIdx = Number(this.gameState?.active_player_index || 0);
-            const activePlayer = (activePlayerId > 0)
-                ? this.players.find(p => Number(p.id) === activePlayerId)
-                : this.players[activeIdx];
-            const isMyTurn = activePlayer && activePlayer.is_me;
+            const { isMyTurn, phase } = this.getActivePlayerInfo();
             const dice = this.gameState?.dice || {};
             const w1 = Number(dice.white1 || 1);
             const w2 = Number(dice.white2 || 1);
@@ -497,7 +490,6 @@
             // Hat der Spieler in diesem Wurf bereits Kreuze gesetzt?
             const whiteDone = Boolean(this.mySheet.white_done);
             const colorDone = Boolean(this.mySheet.color_done);
-            const phase = this.gameState?.turn_phase || 'roll';
 
             // Im Modus digitale Würfel: Solange phase === 'roll', darf NIEMAND ankreuzen!
             // Für passiven Spieler: Wenn er schon weiß genommen hat -> alles sperren bis zum nächsten Wurf
