@@ -151,9 +151,9 @@
 
         // Name ändern
         document.querySelectorAll('.js-btn-edit-name').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const cur = localStorage.getItem('kai_gh_player_name') || 'Spieler';
-                const next = prompt('Dein Spielername:', cur);
+                const next = await HubDialog.prompt('Spielername anpassen', 'Wie möchtest du am Klappbrett heißen?', cur);
                 if (next && next.trim() !== '') {
                     localStorage.setItem('kai_gh_player_name', next.trim());
                     updateMyNameDisplays(next.trim());
@@ -173,12 +173,12 @@
 
     async function checkJoinAndStart() {
         if (!roomCode) {
-            alert('Kein Raum-Code angegeben.');
+            await HubDialog.alert('Hinweis', 'Kein Raum-Code angegeben.', '⚠️');
             window.location.href = '../index.php';
             return;
         }
 
-        const token = HubAuth.getPlayerToken();
+        const token = localStorage.getItem('kai_gh_player_token');
         if (!token) {
             openJoinModal();
             return;
@@ -203,7 +203,16 @@
         modal.classList.remove('hidden');
 
         const savedName = localStorage.getItem('kai_gh_player_name') || '';
-        if (nameInput && savedName) nameInput.value = savedName;
+        if (nameInput) {
+            if (savedName) nameInput.value = savedName;
+            nameInput.focus();
+            nameInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmBtn?.click();
+                }
+            };
+        }
 
         if (confirmBtn) {
             confirmBtn.onclick = async () => {
@@ -216,7 +225,7 @@
                 });
 
                 if (res.ok && res.data && res.data.player_token) {
-                    HubAuth.setPlayerToken(res.data.player_token);
+                    localStorage.setItem('kai_gh_player_token', res.data.player_token);
                     localStorage.setItem('kai_gh_player_name', name);
                     updateMyNameDisplays(name);
                     modal.classList.add('hidden');
@@ -241,6 +250,10 @@
 
     async function fetchState(isInitial = false) {
         const res = await HubHttp.getJson(`./api.php?action=state&room=${encodeURIComponent(roomCode)}`);
+        if (res.status === 401) {
+            openJoinModal();
+            return false;
+        }
         if (!res.ok || !res.data || !res.data.success) {
             if (isInitial) return false;
             return false;
@@ -552,7 +565,7 @@
             selectedFlaps.clear();
             fetchState(true);
         } else {
-            alert(res.data?.message || 'Fehler beim Würfeln.');
+            HubDialog.alert('Würfeln', res.data?.message || 'Fehler beim Würfeln.', '🎲');
         }
     }
 
@@ -572,12 +585,17 @@
             selectedFlaps.clear();
             fetchState(true);
         } else {
-            alert(res.data?.message || 'Ungültige Klappen.');
+            HubDialog.alert('Klappen umlegen', res.data?.message || 'Ungültige Klappen.', '⚠️');
         }
     }
 
     async function handleRequestAbort() {
-        if (!confirm('Möchtest du einen vorzeitigen Spielabbruch beantragen? Alle Mitspieler müssen zustimmen. Das Spiel wird nach den bisherigen Runden gewertet.')) {
+        const confirmed = await HubDialog.confirm(
+            'Spiel vorzeitig beenden?',
+            'Möchtest du einen vorzeitigen Spielabbruch beantragen? Alle Mitspieler müssen zustimmen. Das Spiel wird nach den bisherigen Runden gewertet.',
+            { icon: '⏹️', confirmText: 'Abbruch beantragen', confirmClass: 'btn-danger' }
+        );
+        if (!confirmed) {
             return;
         }
 
@@ -585,7 +603,7 @@
         if (res.ok && res.data && res.data.success) {
             fetchState(true);
         } else {
-            alert(res.data?.message || 'Konnte Abbruch nicht beantragen.');
+            HubDialog.alert('Spielabbruch', res.data?.message || 'Konnte Abbruch nicht beantragen.', '⚠️');
         }
     }
 
@@ -682,7 +700,7 @@
         if (res.ok && res.data && res.data.success) {
             fetchState(true);
         } else {
-            alert(res.data?.message || 'Spiel konnte nicht gestartet werden.');
+            HubDialog.alert('Spiel starten', res.data?.message || 'Spiel konnte nicht gestartet werden.', '⚠️');
         }
     }
 
@@ -691,7 +709,7 @@
         if (res.ok && res.data && res.data.success) {
             fetchState(true);
         } else {
-            alert(res.data?.message || 'Konnte Bot nicht hinzufügen.');
+            HubDialog.alert('Bot hinzufügen', res.data?.message || 'Konnte Bot nicht hinzufügen.', '🤖');
         }
     }
 
@@ -700,7 +718,7 @@
         if (res.ok && res.data && res.data.success) {
             fetchState(true);
         } else {
-            alert(res.data?.message || 'Konnte Revanche nicht starten.');
+            HubDialog.alert('Revanche', res.data?.message || 'Konnte Revanche nicht starten.', '🔄');
         }
     }
 
