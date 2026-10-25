@@ -1,0 +1,532 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kai\Tools\GamesHub\Loch6;
+
+use Kai\Tools\GamesHub\RoomRepository;
+
+class Loch6Service
+{
+    public const DEFAULT_STONES = 6;
+    public const MINERAL_TYPES = ['amethyst', 'smaragd', 'pyrit', 'rosenquarz', 'lapislazuli', 'obsidian'];
+
+    private RoomRepository $repo;
+
+    public function __construct(?RoomRepository $repo = null)
+    {
+        $this->repo = $repo ?? new RoomRepository();
+    }
+
+    /**
+     * Erzeugt das initiale Spielblatt für einen Spieler mit prozeduralen Mineral-Steinen.
+     */
+    public function getInitialSheet(int $stoneCount = self::DEFAULT_STONES, bool $isBot = false): array
+    {
+        $stones = [];
+        $typesCount = count(self::MINERAL_TYPES);
+        for ($i = 0; $i < $stoneCount; $i++) {
+            $type = self::MINERAL_TYPES[$i % $typesCount];
+            $stones[] = [
+                'id' => bin2hex(random_bytes(4)),
+                'type' => $type,
+                'seed' => random_int(100, 999),
+            ];
+        }
+
+        return [
+            'stones' => $stones,
+            'is_bot' => $isBot,
+            'initial_count' => $stoneCount,
+            'bust_count' => 0,
+            'hole6_count' => 0,
+        ];
+    }
+
+    /**
+     * Erzeugt den Anfangszustand eines Loch-6-Spiels.
+     */
+    public function getInitialState(int $stoneCount = self::DEFAULT_STONES): array
+    {
+        return [
+            'starting_stones' => $stoneCount,
+            'round_number' => 1,
+            'active_player_id' => null,
+            'active_player_index' => 0,
+            'rolls_in_turn' => 0,
+            'can_pass' => false,
+            'dice' => [1],
+            'has_rolled' => false,
+            'roll_seq' => 0,
+            'board' => [
+                1 => null,
+                2 => null,
+                3 => null,
+                4 => null,
+                5 => null,
+            ],
+            'hole6_count' => 0,
+            'last_event' => [
+                'type' => 'lobby_created',
+                'message' => 'Lobby für Loch 6 erstellt. Warte auf Mitspieler...',
+                'time' => time(),
+            ],
+            'winner_id' => null,
+            'winner_name' => null,
+        ];
+    }
+
+    /**
+     * Startet das Spiel aus der Lobby.
+     */
+    public function startGame(int $roomId, int $stoneCount = self::DEFAULT_STONES): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'lobby') {
+            return ['success' => false, 'message' => 'Spiel kann nicht gestartet werden'];
+        }
+
+        $players = $this->repo->getPlayersForRoom($roomId);
+        if (count($players) < 1) {
+            return ['success' => false, 'message' => 'Mindestens 1 Spieler erforderlich'];
+        }
+
+        $state = $this->getInitialState($stoneCount);
+        $startPlayer = $players[0];
+        $state['active_player_id'] = (int)$startPlayer['id'];
+        $state['active_player_index'] = 0;
+        $state['last_event'] = [
+            'type' => 'game_started',
+            'message' => "Runde 1 (Pflichtwurf) gestartet! {$startPlayer['player_name']} beginnt.",
+            'time' => time(),
+        ];
+
+        // Alle Spieler initialisieren
+        foreach ($players as $p) {
+            $isBot = !empty($p['sheet']['is_bot']);
+            $sheet = $this->getInitialSheet($stoneCount, $isBot);
+            $this->repo->updatePlayerSheet((int)$p['id'], $sheet, count($sheet['stones']));
+        }
+
+        $this->repo->updateRoomState($roomId, $state, 'active');
+
+        // Falls Startspieler ein Bot ist: Zug ausführen
+        $this->triggerBotMovesIfNeeded($roomId, $state, $players);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Führt einen Wurf für den aktiven Spieler aus.
+     */
+    public function rollDice(int $roomId, int $playerId): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'active') {
+            return ['success' => false, 'message' => 'Spiel ist nicht aktiv'];
+        }
+
+        $state = $room['state'];
+        if ((int)$state['active_player_id'] !== $playerId) {
+            return ['success' => false, 'message' => 'Du bist nicht am Zug'];
+        }
+
+        $players = $this->repo->getPlayersForRoom($roomId);
+        $playerIdx = -1;
+        $player = null;
+        foreach ($players as $idx => $p) {
+            if ((int)$p['id'] === $playerId) {
+                $playerIdx = $idx;
+                $player = $p;
+                break;
+            }
+        }
+
+        if ($playerIdx === -1 || !$player) {
+            return ['success' => false, 'message' => 'Spieler nicht gefunden'];
+        }
+
+        $stones = $player['sheet']['stones'] ?? [];
+        if (empty($stones)) {
+            return ['success' => false, 'message' => 'Keine Steine mehr vorhanden'];
+        }
+
+        // 1 W6 würfeln
+        $die = random_int(1, 6);
+        $state['dice'] = [$die];
+        $state['has_rolled'] = true;
+        $state['roll_seq'] = ((int)($state['roll_seq'] ?? 0)) + 1;
+        $state['rolls_in_turn'] = ((int)($state['rolls_in_turn'] ?? 0)) + 1;
+
+        $currentRound = (int)($state['round_number'] ?? 1);
+
+        // 1 Stein aus dem Vorrat entnehmen
+        $placedStone = array_pop($stones);
+        $player['sheet']['stones'] = $stones;
+
+        // --- FALL 1: WÜRFEL 6 (Der Schlund / Mittenloch) ---
+        if ($die === 6) {
+            $state['hole6_count'] = ((int)($state['hole6_count'] ?? 0)) + 1;
+            $player['sheet']['hole6_count'] = ((int)($player['sheet']['hole6_count'] ?? 0)) + 1;
+            $this->repo->updatePlayerSheet($playerId, $player['sheet'], count($stones));
+
+            // Siegprüfung: Hat der Spieler seinen letzten Stein versenkt?
+            if (empty($stones)) {
+                $state['winner_id'] = $playerId;
+                $state['winner_name'] = $player['player_name'];
+                $state['last_event'] = [
+                    'type' => 'game_won',
+                    'message' => "🏆 SIEG! {$player['player_name']} hat den letzten Stein in Loch 6 versenkt!",
+                    'time' => time(),
+                ];
+                $this->repo->updateRoomState($roomId, $state, 'finished');
+                return [
+                    'success' => true,
+                    'die' => 6,
+                    'outcome' => 'hole6_win',
+                    'remaining_stones' => 0,
+                    'game_over' => true,
+                ];
+            }
+
+            // Wenn noch nicht gewonnen:
+            if ($currentRound === 1) {
+                // In Runde 1: Genau 1 Pflichtwurf -> Zug endet sofort
+                $state['last_event'] = [
+                    'type' => 'hole6_placed',
+                    'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein verschwindet im Schlund. Pflichtwurf beendet.",
+                    'time' => time(),
+                ];
+                $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
+                return [
+                    'success' => true,
+                    'die' => 6,
+                    'outcome' => 'hole6',
+                    'remaining_stones' => count($stones),
+                    'turn_ended' => true,
+                ];
+            }
+
+            // Ab Runde 2: Weitergabe erlaubt, oder weiterwürfeln
+            $state['can_pass'] = true;
+            $state['last_event'] = [
+                'type' => 'hole6_placed',
+                'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein fällt in den Schlund. Weiterwürfeln oder sichern?",
+                'time' => time(),
+            ];
+            $this->repo->updateRoomState($roomId, $state);
+
+            return [
+                'success' => true,
+                'die' => 6,
+                'outcome' => 'hole6',
+                'remaining_stones' => count($stones),
+                'can_pass' => true,
+                'turn_ended' => false,
+            ];
+        }
+
+        // --- FALL 2: WÜRFEL 1 BIS 5 ---
+        $pit = $die;
+        $isOccupied = !empty($state['board'][$pit]);
+
+        if (!$isOccupied) {
+            // Mulde ist FREI -> Stein wird abgelegt
+            $state['board'][$pit] = $placedStone;
+            $this->repo->updatePlayerSheet($playerId, $player['sheet'], count($stones));
+
+            // Siegprüfung: Letzter Stein abgelegt?
+            if (empty($stones)) {
+                $state['winner_id'] = $playerId;
+                $state['winner_name'] = $player['player_name'];
+                $state['last_event'] = [
+                    'type' => 'game_won',
+                    'message' => "🏆 SIEG! {$player['player_name']} hat den letzten Stein in Mulde {$pit} abgelegt!",
+                    'time' => time(),
+                ];
+                $this->repo->updateRoomState($roomId, $state, 'finished');
+                return [
+                    'success' => true,
+                    'die' => $die,
+                    'pit' => $pit,
+                    'outcome' => 'placed_win',
+                    'remaining_stones' => 0,
+                    'game_over' => true,
+                ];
+            }
+
+            if ($currentRound === 1) {
+                // In Runde 1: Genau 1 Pflichtwurf -> Zug endet sofort
+                $state['last_event'] = [
+                    'type' => 'stone_placed',
+                    'message' => "💎 {$player['player_name']} legte einen Stein in Mulde {$pit}. Pflichtwurf beendet.",
+                    'time' => time(),
+                ];
+                $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
+                return [
+                    'success' => true,
+                    'die' => $die,
+                    'pit' => $pit,
+                    'outcome' => 'placed',
+                    'remaining_stones' => count($stones),
+                    'turn_ended' => true,
+                ];
+            }
+
+            // Ab Runde 2: Weitergabe erlaubt, oder weiterwürfeln
+            $state['can_pass'] = true;
+            $state['last_event'] = [
+                'type' => 'stone_placed',
+                'message' => "💎 {$player['player_name']} legte einen Stein in Mulde {$pit}. Weiterwürfeln oder sichern?",
+                'time' => time(),
+            ];
+            $this->repo->updateRoomState($roomId, $state);
+
+            return [
+                'success' => true,
+                'die' => $die,
+                'pit' => $pit,
+                'outcome' => 'placed',
+                'remaining_stones' => count($stones),
+                'can_pass' => true,
+                'turn_ended' => false,
+            ];
+        }
+
+        // --- FALL 3: MULDE WAR BESETZT („Kleben geblieben“) ---
+        // Der Spieler muss alle Steine, die aktuell in den Mulden 1 bis 5 liegen,
+        // plus den gerade entnommenen Stein in seinen Vorrat aufnehmen!
+        $collectedStones = [];
+        $collectedStones[] = $placedStone; // Der soeben gewürfelte Stein
+
+        for ($pNum = 1; $pNum <= 5; $pNum++) {
+            if (!empty($state['board'][$pNum])) {
+                $collectedStones[] = $state['board'][$pNum];
+                $state['board'][$pNum] = null;
+            }
+        }
+
+        // Steine zurück in den Vorrat des Spielers
+        foreach ($collectedStones as $s) {
+            $stones[] = $s;
+        }
+        $player['sheet']['stones'] = $stones;
+        $player['sheet']['bust_count'] = ((int)($player['sheet']['bust_count'] ?? 0)) + 1;
+        $this->repo->updatePlayerSheet($playerId, $player['sheet'], count($stones));
+
+        $countPicked = count($collectedStones);
+        $state['last_event'] = [
+            'type' => 'bust',
+            'message' => "💥 KLEBEN GEBLIEBEN! Mulde {$pit} war belegt! {$player['player_name']} muss {$countPicked} Steine aufnehmen.",
+            'time' => time(),
+        ];
+
+        // Zug endet sofort & wird weitergegeben
+        $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
+
+        return [
+            'success' => true,
+            'die' => $die,
+            'pit' => $pit,
+            'outcome' => 'bust',
+            'collected_count' => $countPicked,
+            'remaining_stones' => count($stones),
+            'turn_ended' => true,
+        ];
+    }
+
+    /**
+     * Aktiver Spieler sichert seinen Zug und gibt freiwillig an den nächsten Spieler weiter.
+     * (Nur ab Runde 2 und nach mindestens 1 erfolgreichem Wurf erlaubt).
+     */
+    public function passTurn(int $roomId, int $playerId): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'active') {
+            return ['success' => false, 'message' => 'Spiel ist nicht aktiv'];
+        }
+
+        $state = $room['state'];
+        if ((int)$state['active_player_id'] !== $playerId) {
+            return ['success' => false, 'message' => 'Du bist nicht am Zug'];
+        }
+
+        if (empty($state['can_pass'])) {
+            return ['success' => false, 'message' => 'Weitergeben ist jetzt nicht erlaubt'];
+        }
+
+        $players = $this->repo->getPlayersForRoom($roomId);
+        $playerIdx = -1;
+        $player = null;
+        foreach ($players as $idx => $p) {
+            if ((int)$p['id'] === $playerId) {
+                $playerIdx = $idx;
+                $player = $p;
+                break;
+            }
+        }
+
+        if ($playerIdx === -1 || !$player) {
+            return ['success' => false, 'message' => 'Spieler nicht gefunden'];
+        }
+
+        $state['last_event'] = [
+            'type' => 'pass',
+            'message' => "🛑 {$player['player_name']} sichert und gibt den Würfel weiter.",
+            'time' => time(),
+        ];
+
+        $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Übergibt den Zug an den nächsten Spieler und inkrementiert ggf. die Rundenanzahl.
+     */
+    private function advanceTurnAfterRoll(int $roomId, array &$state, array &$players, int $currentPlayerIdx): void
+    {
+        $state['has_rolled'] = false;
+        $state['can_pass'] = false;
+        $state['rolls_in_turn'] = 0;
+
+        $playerCount = count($players);
+        $nextIdx = ($currentPlayerIdx + 1) % $playerCount;
+
+        // Wenn die Runde vollendet ist (Startspieler wieder am Zug)
+        if ($nextIdx === 0) {
+            $state['round_number'] = ((int)($state['round_number'] ?? 1)) + 1;
+        }
+
+        $nextPlayer = $players[$nextIdx];
+        $state['active_player_index'] = $nextIdx;
+        $state['active_player_id'] = (int)$nextPlayer['id'];
+
+        $this->repo->updateRoomState($roomId, $state);
+
+        // Falls Folgespieler ein Bot ist: Züge ausführen
+        $this->triggerBotMovesIfNeeded($roomId, $state, $players);
+    }
+
+    /**
+     * Fügt einen Bot zum Raum hinzu.
+     */
+    public function addBot(int $roomId, string $botName = 'Bot'): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'lobby') {
+            return ['success' => false, 'message' => 'Bots können nur in der Lobby hinzugefügt werden'];
+        }
+
+        $players = $this->repo->getPlayersForRoom($roomId);
+        if (count($players) >= 6) {
+            return ['success' => false, 'message' => 'Maximal 6 Spieler erlaubt'];
+        }
+
+        $stoneCount = (int)($room['state']['starting_stones'] ?? self::DEFAULT_STONES);
+        $botTokenHash = hash('sha256', bin2hex(random_bytes(16)));
+        $sheet = $this->getInitialSheet($stoneCount, true);
+
+        $player = $this->repo->joinPlayer($roomId, $botTokenHash, $botName, false, $sheet);
+        return ['success' => true, 'bot_id' => $player['id'], 'bot_name' => $botName];
+    }
+
+    /**
+     * Führt Bot-Züge automatisch mit Zeitverzögerung / Schritten aus.
+     */
+    public function triggerBotMovesIfNeeded(int $roomId, array &$roomState, array &$players, int $maxSteps = 15): void
+    {
+        if (($roomState['status'] ?? '') === 'finished' || empty($players) || $maxSteps <= 0) {
+            return;
+        }
+
+        $activePlayerId = (int)($roomState['active_player_id'] ?? 0);
+        $activePlayer = null;
+        foreach ($players as $p) {
+            if ((int)$p['id'] === $activePlayerId) {
+                $activePlayer = $p;
+                break;
+            }
+        }
+
+        if (!$activePlayer || empty($activePlayer['sheet']['is_bot'])) {
+            return;
+        }
+
+        $currentRound = (int)($roomState['round_number'] ?? 1);
+        $rollsInTurn = (int)($roomState['rolls_in_turn'] ?? 0);
+        $board = $roomState['board'] ?? [];
+        $occupiedCount = count(array_filter($board, fn($slot) => $slot !== null));
+        $stonesLeft = count($activePlayer['sheet']['stones'] ?? []);
+
+        // 1. Wenn der Bot in diesem Zug noch nicht gewürfelt hat: Er MUSS würfeln
+        if ($rollsInTurn === 0) {
+            $this->rollDice($roomId, $activePlayerId);
+            $refreshedRoom = $this->repo->getRoomById($roomId);
+            $refreshedPlayers = $this->repo->getPlayersForRoom($roomId);
+            $this->triggerBotMovesIfNeeded($roomId, $refreshedRoom['state'], $refreshedPlayers, $maxSteps - 1);
+            return;
+        }
+
+        // 2. Ab Runde 2 und nach erfolgreichem Wurf: Entscheidung Weiterspielen vs. Sichern
+        if (!empty($roomState['can_pass']) && $currentRound >= 2) {
+            $shouldRollAgain = Loch6BotService::shouldRollAgain($occupiedCount, $stonesLeft, $rollsInTurn);
+            if ($shouldRollAgain) {
+                $this->rollDice($roomId, $activePlayerId);
+            } else {
+                $this->passTurn($roomId, $activePlayerId);
+            }
+
+            $refreshedRoom = $this->repo->getRoomById($roomId);
+            $refreshedPlayers = $this->repo->getPlayersForRoom($roomId);
+            $this->triggerBotMovesIfNeeded($roomId, $refreshedRoom['state'], $refreshedPlayers, $maxSteps - 1);
+        }
+    }
+
+    /**
+     * Erstellt die öffentliche Ansicht für einen Client.
+     */
+    public function getPublicStateForPlayer(array $room, array $myPlayer, array $players): array
+    {
+        $state = $room['state'];
+        $activePlayerId = (int)($state['active_player_id'] ?? 0);
+
+        $publicPlayers = [];
+        foreach ($players as $p) {
+            $isMe = ((int)$p['id'] === (int)$myPlayer['id']);
+            $sheet = $p['sheet'] ?? [];
+            $stones = $sheet['stones'] ?? [];
+
+            $publicPlayers[] = [
+                'id' => (int)$p['id'],
+                'name' => $p['player_name'],
+                'seat_order' => (int)$p['seat_order'],
+                'is_me' => $isMe,
+                'is_host' => (bool)$p['is_host'],
+                'is_bot' => (bool)($sheet['is_bot'] ?? false),
+                'is_active' => ((int)$p['id'] === $activePlayerId),
+                'stone_count' => count($stones),
+                // Der aktive Spieler sieht die exakten Mineralien-Details seiner Steine; Mitspieler die Anzahl
+                'stones' => $isMe ? $stones : array_map(fn($s) => ['type' => $s['type'] ?? 'amethyst', 'seed' => $s['seed'] ?? 1], $stones),
+            ];
+        }
+
+        return [
+            'room_code' => $room['room_code'],
+            'status' => $room['status'],
+            'round_number' => (int)($state['round_number'] ?? 1),
+            'active_player_id' => $activePlayerId,
+            'rolls_in_turn' => (int)($state['rolls_in_turn'] ?? 0),
+            'can_pass' => (bool)($state['can_pass'] ?? false),
+            'dice' => $state['dice'] ?? [1],
+            'has_rolled' => (bool)($state['has_rolled'] ?? false),
+            'roll_seq' => (int)($state['roll_seq'] ?? 0),
+            'board' => $state['board'] ?? [1 => null, 2 => null, 3 => null, 4 => null, 5 => null],
+            'hole6_count' => (int)($state['hole6_count'] ?? 0),
+            'winner_id' => $state['winner_id'] ?? null,
+            'winner_name' => $state['winner_name'] ?? null,
+            'last_event' => $state['last_event'] ?? null,
+            'players' => $publicPlayers,
+        ];
+    }
+}

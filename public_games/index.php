@@ -86,6 +86,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">1–4 Spieler</span>
             </div>
+
+            <!-- Loch 6 Kachel -->
+            <div class="game-kachel" id="card-loch6" role="button" tabindex="0">
+                <div class="game-kachel-icon">🕳️</div>
+                <div class="game-kachel-content">
+                    <h2>Loch 6</h2>
+                    <p>Push-Your-Luck Würfelspiel mit funkelnden Mineral-Steinen. Werde alle Steine los und meide besetzte Mulden!</p>
+                </div>
+                <span class="game-kachel-badge">1–6 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
@@ -133,6 +143,25 @@ require_once __DIR__ . '/../bootstrap.php';
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                             <input type="radio" name="card_game_mode" value="mau_mau">
                             <span><strong>Mau-Mau:</strong> 32 Karten französisches Blatt mit 7 (2 Ziehen), Bube (Farbwahl) &amp; Ass (Aussetzen)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Loch 6 Optionen -->
+                <div class="form-group hidden" id="group-loch6-modes">
+                    <label>Mineral-Steine pro Spieler:</label>
+                    <div style="display: flex; gap: 0.75rem; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="loch6_stones" value="5">
+                            <span>5 Steine</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="loch6_stones" value="6" checked>
+                            <span>6 Steine (Standard)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="loch6_stones" value="8">
+                            <span>8 Steine</span>
                         </label>
                     </div>
                 </div>

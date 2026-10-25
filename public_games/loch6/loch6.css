@@ -1,0 +1,589 @@
+/* ==========================================================================
+   LOCH 6 - CSS STYLESHEET (Push-Your-Luck Würfelspiel)
+   ========================================================================== */
+
+.loch6-viewport {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
+/* TOP-BAR */
+.loch6-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.85rem;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.loch6-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+}
+
+.loch6-room-badge {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #38bdf8;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+}
+
+.loch6-round-pill {
+    background: #065f46;
+    color: #a7f3d0;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+/* LOBBY */
+.loch6-lobby-box {
+    max-width: 440px;
+    margin: 1.5rem auto;
+    padding: 1.5rem 1.25rem;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    text-align: center;
+}
+
+.loch6-lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin: 1rem 0;
+}
+
+.lobby-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0.8rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+/* SPIELARENA */
+.loch6-game-arena {
+    display: flex;
+    flex-direction: column;
+    max-width: 520px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0.4rem 0.6rem 1.5rem;
+    gap: 0.65rem;
+    box-sizing: border-box;
+}
+
+/* EVENT-TICKER */
+.loch6-event-ticker {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+    color: #e2e8f0;
+    text-align: center;
+    min-height: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.loch6-event-ticker.highlight-bust {
+    background: rgba(220, 38, 38, 0.25);
+    border-color: rgba(248, 113, 113, 0.4);
+    color: #fca5a5;
+}
+
+.loch6-event-ticker.highlight-hole6 {
+    background: rgba(14, 165, 233, 0.25);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #bae6fd;
+}
+
+/* MITSSPIELER-LEISTE */
+.loch6-opponents-bar {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.25rem 0.1rem;
+    scrollbar-width: thin;
+}
+
+.loch6-opponent-chip {
+    flex: 0 0 auto;
+    min-width: 110px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.45rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.loch6-opponent-chip.is-active {
+    border-color: #38bdf8;
+    background: rgba(14, 165, 233, 0.15);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.loch6-opponent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.loch6-opponent-name {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.loch6-opponent-stones-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+/* HOLZBRETT */
+.loch6-board-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.loch6-wood-board {
+    position: relative;
+    width: 290px;
+    height: 290px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #854d0e 0%, #713f12 35%, #451a03 75%, #270f03 100%);
+    box-shadow: 
+        inset 0 4px 10px rgba(255, 255, 255, 0.25),
+        inset 0 -6px 14px rgba(0, 0, 0, 0.7),
+        0 12px 32px rgba(0, 0, 0, 0.7);
+    border: 5px solid #270f03;
+    user-select: none;
+}
+
+@media (min-width: 480px) {
+    .loch6-wood-board {
+        width: 320px;
+        height: 320px;
+    }
+}
+
+/* DIE 5 MULDEN (KREISFÖRMIG) */
+.loch6-pit {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #1f0b02 0%, #170701 50%, #0d0400 100%);
+    box-shadow: 
+        inset 0 4px 8px rgba(0, 0, 0, 0.85),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.08),
+        0 1px 3px rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pit-pos-1 { top: 16%; left: 50%; }
+.pit-pos-2 { top: 38%; left: 82%; }
+.pit-pos-3 { top: 76%; left: 70%; }
+.pit-pos-4 { top: 76%; left: 30%; }
+.pit-pos-5 { top: 38%; left: 18%; }
+
+.pit-label {
+    position: absolute;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: rgba(251, 191, 36, 0.28);
+    text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.pit-crystal-slot {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+/* DAS MITTENLOCH 6 / DER SCHLUND */
+.loch6-abyss {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 74px;
+    height: 74px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, #000000 0%, #020617 45%, #0f172a 80%, #1e110a 100%);
+    box-shadow: 
+        inset 0 6px 14px rgba(0, 0, 0, 0.95),
+        0 0 15px rgba(0, 0, 0, 0.9),
+        0 1px 2px rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+}
+
+.abyss-depth {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.abyss-number {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: rgba(56, 189, 248, 0.35);
+    line-height: 1;
+}
+
+.abyss-counter-badge {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #38bdf8;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 10px;
+    margin-top: 0.15rem;
+}
+
+/* WÜRFEL-BÜHNE (Quarxl-Standard) */
+.loch6-dice-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 0.75rem 0.5rem;
+    gap: 0.45rem;
+}
+
+.loch6-dice-stage .qwixx-dice-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+}
+
+.dice-status-line {
+    font-size: 0.92rem;
+    color: #e2e8f0;
+}
+
+.dice-status-line strong {
+    color: #38bdf8;
+}
+
+/* WÜRFEL ANIMATION (ANALOG ZU QUIXX / SHUT THE BOX) */
+.dice-wrapper.is-rolling .qwixx-die {
+    animation: loch6-die-roll 0.16s infinite alternate ease-in-out;
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.7), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.qwixx-die.landing {
+    animation: loch6-die-land 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes loch6-die-roll {
+    0% { transform: translate(-4px, -5px) rotate(-14deg) scale(1.06); }
+    100% { transform: translate(5px, 4px) rotate(12deg) scale(0.94); }
+}
+
+@keyframes loch6-die-land {
+    0% { transform: scale(1.35) rotate(15deg); }
+    60% { transform: scale(0.9) rotate(-4deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+/* AKTIONSTASTEN */
+.loch6-action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 380px;
+    justify-content: center;
+}
+
+.btn-loch6-roll {
+    flex: 1;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+    transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.btn-loch6-roll:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-loch6-roll:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn-loch6-roll:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-loch6-pass {
+    flex: 1;
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+    transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.btn-loch6-pass:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-loch6-pass:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn-loch6-pass:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.turn-prompt-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* EIGENE MINERALIEN-ABLAGESCHALE (UNTEN) */
+.loch6-player-tray {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 0.65rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tray-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tray-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.tray-count-badge {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    font-size: 0.74rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.tray-stats {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.tray-crystals-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.25rem;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 8px;
+    border: 1px inset rgba(0, 0, 0, 0.3);
+}
+
+/* ==========================================================================
+   PROZEDURALE MINERALIEN-KRISTALLE (FACETTIERTE GEOMETRIEN & FARBEN)
+   ========================================================================== */
+
+.crystal-gem {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    user-select: none;
+}
+
+/* Schräger Glanz-Facetteneffekt */
+.crystal-gem::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 55%);
+    pointer-events: none;
+}
+
+/* Tiefenkante */
+.crystal-gem::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    clip-path: inherit;
+    background: inherit;
+    filter: brightness(0.85);
+    z-index: 1;
+}
+
+/* In Pit: Leicht größer */
+.pit-crystal-slot .crystal-gem {
+    width: 44px;
+    height: 44px;
+    animation: crystal-placed-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes crystal-placed-pop {
+    0% { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+    80% { transform: scale(1.15) rotate(5deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* Fall in Loch 6 Animation */
+.crystal-falling-hole6 {
+    animation: crystal-abyss-fall 0.7s forwards ease-in !important;
+}
+
+@keyframes crystal-abyss-fall {
+    0% { transform: scale(1) rotate(0deg); opacity: 1; }
+    50% { transform: scale(0.6) rotate(180deg); opacity: 0.8; filter: brightness(0.6); }
+    100% { transform: scale(0.05) rotate(360deg); opacity: 0; filter: brightness(0); }
+}
+
+/* 1. Amethyst (Tiefviolett mit hellen Schnittkanten) */
+.crystal-amethyst {
+    background: linear-gradient(135deg, #c084fc 0%, #9333ea 45%, #581c87 100%);
+    box-shadow: 0 4px 10px rgba(147, 51, 234, 0.35);
+}
+
+/* 2. Smaragd (Kräftiges Flaschengrün) */
+.crystal-smaragd {
+    background: linear-gradient(135deg, #6ee7b7 0%, #10b981 45%, #064e3b 100%);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+/* 3. Pyrit (Metallisches Gold / Messing) */
+.crystal-pyrit {
+    background: linear-gradient(135deg, #fef08a 0%, #eab308 40%, #854d0e 100%);
+    box-shadow: 0 4px 10px rgba(234, 179, 8, 0.35);
+}
+
+/* 4. Rosenquarz (Zartrosa mit milchiger Lichtbrechung) */
+.crystal-rosenquarz {
+    background: linear-gradient(135deg, #fce7f3 0%, #f472b6 45%, #be185d 100%);
+    box-shadow: 0 4px 10px rgba(244, 114, 182, 0.35);
+}
+
+/* 5. Lapislazuli (Dunkles Ultramarinblau) */
+.crystal-lapislazuli {
+    background: linear-gradient(135deg, #93c5fd 0%, #2563eb 45%, #1e3a8a 100%);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+/* 6. Obsidian (Vulkanglas-Schwarz mit scharfen Glanzkanten) */
+.crystal-obsidian {
+    background: linear-gradient(135deg, #64748b 0%, #1e293b 45%, #020617 100%);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* Mini Crystal Icon in Gegnertableau */
+.mini-crystal-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+/* FINISHED STATS */
+.loch6-finished-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: left;
+}
+
+.finished-stat-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

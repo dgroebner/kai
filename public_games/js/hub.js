@@ -21,6 +21,7 @@
         const gameTypeInput = document.getElementById('create-game-type');
         const diceGroup = document.getElementById('group-dice-modes');
         const cardGroup = document.getElementById('group-card-modes');
+        const loch6Group = document.getElementById('group-loch6-modes');
         const pinInput = document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
@@ -51,11 +52,12 @@
 
         updateSavedPinField();
 
-        function openCreateModal(gameType, title, showDice, showCards) {
+        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false) {
             if (gameTypeInput) gameTypeInput.value = gameType;
             if (modalTitle) modalTitle.textContent = title;
             if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
             if (cardGroup) cardGroup.classList.toggle('hidden', !showCards);
+            if (loch6Group) loch6Group.classList.toggle('hidden', !showLoch6);
             updateSavedPinField();
             modal.classList.remove('hidden');
             if (pinInput && !pinInput.value) {
@@ -67,7 +69,7 @@
         const qwixxCard = document.getElementById('card-qwixx');
         if (qwixxCard && modal) {
             qwixxCard.addEventListener('click', () => {
-                openCreateModal('qwixx', 'Neues Qwixx-Spiel erstellen', true, false);
+                openCreateModal('qwixx', 'Neues Qwixx-Spiel erstellen', true, false, false);
             });
         }
 
@@ -75,7 +77,7 @@
         const kniffelCard = document.getElementById('card-kniffel');
         if (kniffelCard && modal) {
             kniffelCard.addEventListener('click', () => {
-                openCreateModal('kniffel', 'Neues Kniffel-Spiel erstellen', true, false);
+                openCreateModal('kniffel', 'Neues Kniffel-Spiel erstellen', true, false, false);
             });
         }
 
@@ -83,7 +85,7 @@
         const cardsCard = document.getElementById('card-cards');
         if (cardsCard && modal) {
             cardsCard.addEventListener('click', () => {
-                openCreateModal('cards', 'Neues Mau-Mau / Uno Spiel erstellen', false, true);
+                openCreateModal('cards', 'Neues Mau-Mau / Uno Spiel erstellen', false, true, false);
             });
         }
 
@@ -91,7 +93,15 @@
         const stbCard = document.getElementById('card-shut-the-box');
         if (stbCard && modal) {
             stbCard.addEventListener('click', () => {
-                openCreateModal('shut_the_box', 'Neues Shut the Box Spiel erstellen', false, false);
+                openCreateModal('shut_the_box', 'Neues Shut the Box Spiel erstellen', false, false, false);
+            });
+        }
+
+        // Kachel-Klick auf Loch 6
+        const loch6Card = document.getElementById('card-loch6');
+        if (loch6Card && modal) {
+            loch6Card.addEventListener('click', () => {
+                openCreateModal('loch6', 'Neues Loch 6 Spiel erstellen', false, false, true);
             });
         }
 
@@ -111,13 +121,24 @@
                 const pin = document.getElementById('create-room-pin')?.value.trim();
                 const name = nameInput?.value.trim() || 'Host';
                 let mode = 'digital_dice';
+                const payload = {
+                    pin: pin,
+                    player_name: name
+                };
 
                 if (gameType === 'cards') {
                     mode = document.querySelector('input[name="card_game_mode"]:checked')?.value || 'uno';
+                    payload.game_mode = mode;
                 } else if (gameType === 'shut_the_box') {
                     mode = '4_player';
+                    payload.game_mode = mode;
+                } else if (gameType === 'loch6') {
+                    const stones = parseInt(document.querySelector('input[name="loch6_stones"]:checked')?.value || '6', 10);
+                    payload.stones = stones;
+                    payload.game_mode = `${stones}_stones`;
                 } else {
                     mode = document.querySelector('input[name="game_mode"]:checked')?.value || 'digital_dice';
+                    payload.game_mode = mode;
                 }
 
                 const errBox = document.getElementById('create-room-error');
@@ -126,11 +147,7 @@
 
                 localStorage.setItem('kai_gh_player_name', name);
 
-                const res = await HubHttp.postJson(`./${gameType}/api.php?action=create`, {
-                    pin: pin,
-                    player_name: name,
-                    game_mode: mode
-                });
+                const res = await HubHttp.postJson(`./${gameType}/api.php?action=create`, payload);
 
                 if (res.ok && res.data && res.data.success) {
                     if (pin) {
