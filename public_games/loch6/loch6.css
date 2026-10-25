@@ -172,66 +172,59 @@
     font-weight: 700;
 }
 
-/* HOLZBRETT */
+/* HOLZBRETT (QUADRATISCH NACH ORIGINAL-FOTO MIT 15 MULDEN + LOCH 6) */
 .loch6-board-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 0.4rem 0;
 }
 
 .loch6-wood-board {
     position: relative;
-    width: 290px;
-    height: 290px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #854d0e 0%, #713f12 35%, #451a03 75%, #270f03 100%);
+    width: 320px;
+    height: 320px;
+    max-width: 94vw;
+    aspect-ratio: 1 / 1;
+    border-radius: 18px;
+    background: 
+        linear-gradient(90deg, 
+            #623412 0%, #7e4418 8%, #6d3a14 18%, 
+            #8a4d1d 28%, #784017 40%, #945322 52%, 
+            #7d4418 64%, #8c4e1e 76%, #6e3913 88%, #5a2e0e 100%);
     box-shadow: 
-        inset 0 4px 10px rgba(255, 255, 255, 0.25),
-        inset 0 -6px 14px rgba(0, 0, 0, 0.7),
-        0 12px 32px rgba(0, 0, 0, 0.7);
-    border: 5px solid #270f03;
+        inset 0 0 0 6px #451f05,
+        inset 0 2px 6px rgba(255, 255, 255, 0.22),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.7),
+        0 14px 34px rgba(0, 0, 0, 0.75);
+    border: 4px solid #2f1402;
     user-select: none;
+    box-sizing: border-box;
 }
 
 @media (min-width: 480px) {
     .loch6-wood-board {
-        width: 320px;
-        height: 320px;
+        width: 350px;
+        height: 350px;
     }
 }
 
-/* DIE 5 MULDEN (KREISFÖRMIG) */
+/* DIE 15 MULDEN (34px) */
 .loch6-pit {
     position: absolute;
-    width: 58px;
-    height: 58px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    background: radial-gradient(circle at 40% 40%, #1f0b02 0%, #170701 50%, #0d0400 100%);
+    background: radial-gradient(circle at 45% 45%, #180902 0%, #0d0400 65%, #050100 100%);
     box-shadow: 
-        inset 0 4px 8px rgba(0, 0, 0, 0.85),
-        inset 0 -2px 4px rgba(255, 255, 255, 0.08),
-        0 1px 3px rgba(255, 255, 255, 0.15);
+        inset 0 3px 6px rgba(0, 0, 0, 0.95),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.12),
+        0 1px 1px rgba(255, 255, 255, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
     transform: translate(-50%, -50%);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.pit-pos-1 { top: 16%; left: 50%; }
-.pit-pos-2 { top: 38%; left: 82%; }
-.pit-pos-3 { top: 76%; left: 70%; }
-.pit-pos-4 { top: 76%; left: 30%; }
-.pit-pos-5 { top: 38%; left: 18%; }
-
-.pit-label {
-    position: absolute;
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: rgba(251, 191, 36, 0.28);
-    text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.8);
-    pointer-events: none;
+    box-sizing: border-box;
 }
 
 .pit-crystal-slot {
@@ -244,10 +237,69 @@
     z-index: 2;
 }
 
+/* GRAVIERTE WEISSE ZIFFERN UM DAS MITTENLOCH (WIE IM FOTO) */
+.sector-label {
+    position: absolute;
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 4;
+}
+
+.sector-lbl-4 { top: 40%; left: 40%; }
+.sector-lbl-3 { top: 40%; left: 60%; }
+.sector-lbl-5 { top: 60%; left: 40%; }
+.sector-lbl-1 { top: 57%; left: 58%; }
+.sector-lbl-2 { top: 68%; left: 69%; }
+
+/* KOORDINATEN DER 15 MULDEN */
+/* Sektor 4 (Oben-Links: 2x2 Raster) */
+.pit-pos-4-0 { top: 15%; left: 15%; }
+.pit-pos-4-1 { top: 15%; left: 34%; }
+.pit-pos-4-2 { top: 34%; left: 15%; }
+.pit-pos-4-3 { top: 34%; left: 34%; }
+
+/* Sektor 3 (Oben-Rechts: Diagonale 3er-Linie) */
+.pit-pos-3-0 { top: 34%; left: 66%; }
+.pit-pos-3-1 { top: 23%; left: 77%; }
+.pit-pos-3-2 { top: 12%; left: 88%; }
+
+/* Sektor 5 (Unten-Links: Würfel-5 Anordnung) */
+.pit-pos-5-0 { top: 64%; left: 15%; }
+.pit-pos-5-1 { top: 64%; left: 35%; }
+.pit-pos-5-2 { top: 75%; left: 25%; }
+.pit-pos-5-3 { top: 86%; left: 15%; }
+.pit-pos-5-4 { top: 86%; left: 35%; }
+
+/* Sektor 1 (Unten-Rechts innen: 1 Mulde) */
+.pit-pos-1-0 { top: 64%; left: 66%; }
+
+/* Sektor 2 (Unten-Rechts außen: 2 Mulden) */
+.pit-pos-2-0 { top: 76%; left: 78%; }
+.pit-pos-2-1 { top: 87%; left: 89%; }
+
 /* DAS MITTENLOCH 6 / DER SCHLUND */
 .loch6-abyss {
     position: absolute;
     top: 50%;
+    left: 50%;
+    width: 66px;
+    height: 66px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, #000000 0%, #020617 45%, #0f172a 80%, #1e110a 100%);
+    box-shadow: 
+        inset 0 6px 14px rgba(0, 0, 0, 0.95),
+        0 0 15px rgba(0, 0, 0, 0.9),
+        0 1px 2px rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+}
     left: 50%;
     width: 74px;
     height: 74px;
@@ -516,16 +568,51 @@
     z-index: 4;
 }
 
-/* In Pit: Passgenau und prächtig in der Mulde */
+/* In Pit: Passgenau in den 34px Mulden */
 .pit-crystal-slot .crystal-gem {
-    width: 50px;
-    height: 42px;
+    width: 29px;
+    height: 25px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.pit-crystal-slot .crystal-gem.just-placed {
     animation: crystal-placed-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Auswahl des Wunsch-Steins in der Ablageschale */
+.tray-crystals-grid .crystal-gem {
+    cursor: pointer;
 }
 
 .tray-crystals-grid .crystal-gem:hover {
     transform: translateY(-2px) scale(1.08) !important;
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7), 0 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+.tray-crystals-grid .crystal-gem.is-selected {
+    outline: 3px solid #fbbf24;
+    outline-offset: 2px;
+    transform: translateY(-5px) scale(1.18) !important;
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.85), 0 8px 16px rgba(0, 0, 0, 0.6) !important;
+    z-index: 10;
+}
+
+/* FLIEGENDE STEINE ANIMATION (ABLAGEN IN MULDE & BUST AUFNEHMEN) */
+.flying-stone-clone {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+}
+
+.stone-bust-flying {
+    animation: bust-fly-to-hand 0.45s forwards ease-in;
+}
+
+@keyframes bust-fly-to-hand {
+    0% { transform: scale(1); opacity: 1; }
+    40% { transform: translateY(40px) scale(1.15); opacity: 0.95; }
+    100% { transform: translateY(160px) scale(0.3); opacity: 0; }
 }
 
 @keyframes crystal-placed-pop {

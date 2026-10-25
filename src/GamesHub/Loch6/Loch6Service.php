@@ -59,11 +59,11 @@ class Loch6Service
             'has_rolled' => false,
             'roll_seq' => 0,
             'board' => [
-                1 => null,
-                2 => null,
-                3 => null,
-                4 => null,
-                5 => null,
+                1 => [null],
+                2 => [null, null],
+                3 => [null, null, null],
+                4 => [null, null, null, null],
+                5 => [null, null, null, null, null],
             ],
             'hole6_count' => 0,
             'last_event' => [
@@ -119,7 +119,7 @@ class Loch6Service
     /**
      * Führt einen Wurf für den aktiven Spieler aus.
      */
-    public function rollDice(int $roomId, int $playerId): array
+    public function rollDice(int $roomId, int $playerId, ?string $selectedStoneId = null): array
     {
         $room = $this->repo->getRoomById($roomId);
         if (!$room || $room['status'] !== 'active') {
@@ -160,8 +160,20 @@ class Loch6Service
 
         $currentRound = (int)($state['round_number'] ?? 1);
 
-        // 1 Stein aus dem Vorrat entnehmen
-        $placedStone = array_pop($stones);
+        // 1 Stein aus dem Vorrat entnehmen (Wunschstein oder letzter Stein)
+        $placedStone = null;
+        if ($selectedStoneId !== null && $selectedStoneId !== '') {
+            foreach ($stones as $k => $s) {
+                if (($s['id'] ?? '') === $selectedStoneId) {
+                    $placedStone = $s;
+                    array_splice($stones, $k, 1);
+                    break;
+                }
+            }
+        }
+        if ($placedStone === null) {
+            $placedStone = array_pop($stones);
+        }
         $player['sheet']['stones'] = $stones;
 
         // --- FALL 1: WÜRFEL 6 (Der Schlund / Mittenloch) ---
@@ -184,6 +196,7 @@ class Loch6Service
                     'success' => true,
                     'die' => 6,
                     'outcome' => 'hole6_win',
+                    'placed_stone' => $placedStone,
                     'remaining_stones' => 0,
                     'game_over' => true,
                 ];
@@ -202,6 +215,7 @@ class Loch6Service
                     'success' => true,
                     'die' => 6,
                     'outcome' => 'hole6',
+                    'placed_stone' => $placedStone,
                     'remaining_stones' => count($stones),
                     'turn_ended' => true,
                 ];
@@ -220,6 +234,7 @@ class Loch6Service
                 'success' => true,
                 'die' => 6,
                 'outcome' => 'hole6',
+                'placed_stone' => $placedStone,
                 'remaining_stones' => count($stones),
                 'can_pass' => true,
                 'turn_ended' => false,
@@ -228,11 +243,20 @@ class Loch6Service
 
         // --- FALL 2: WÜRFEL 1 BIS 5 ---
         $pit = $die;
-        $isOccupied = !empty($state['board'][$pit]);
+        $slots = $state['board'][$pit] ?? [];
+        $freeSlotIdx = null;
+        if (is_array($slots)) {
+            foreach ($slots as $idx => $slot) {
+                if ($slot === null) {
+                    $freeSlotIdx = $idx;
+                    break;
+                }
+            }
+        }
 
-        if (!$isOccupied) {
-            // Mulde ist FREI -> Stein wird abgelegt
-            $state['board'][$pit] = $placedStone;
+        if ($freeSlotIdx !== null) {
+            // Es ist noch mindestens eine Mulde frei!
+            $state['board'][$pit][$freeSlotIdx] = $placedStone;
             $this->repo->updatePlayerSheet($playerId, $player['sheet'], count($stones));
 
             // Siegprüfung: Letzter Stein abgelegt?
@@ -241,7 +265,7 @@ class Loch6Service
                 $state['winner_name'] = $player['player_name'];
                 $state['last_event'] = [
                     'type' => 'game_won',
-                    'message' => "🏆 SIEG! {$player['player_name']} hat den letzten Stein in Mulde {$pit} abgelegt!",
+                    'message' => "🏆 SIEG! {$player['player_name']} hat den letzten Stein in Feld {$pit} abgelegt!",
                     'time' => time(),
                 ];
                 $this->repo->updateRoomState($roomId, $state, 'finished');
@@ -249,6 +273,8 @@ class Loch6Service
                     'success' => true,
                     'die' => $die,
                     'pit' => $pit,
+                    'slot' => $freeSlotIdx,
+                    'placed_stone' => $placedStone,
                     'outcome' => 'placed_win',
                     'remaining_stones' => 0,
                     'game_over' => true,
@@ -259,7 +285,7 @@ class Loch6Service
                 // In Runde 1: Genau 1 Pflichtwurf -> Zug endet sofort
                 $state['last_event'] = [
                     'type' => 'stone_placed',
-                    'message' => "💎 {$player['player_name']} legte einen Stein in Mulde {$pit}. Pflichtwurf beendet.",
+                    'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. Pflichtwurf beendet.",
                     'time' => time(),
                 ];
                 $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
@@ -267,6 +293,8 @@ class Loch6Service
                     'success' => true,
                     'die' => $die,
                     'pit' => $pit,
+                    'slot' => $freeSlotIdx,
+                    'placed_stone' => $placedStone,
                     'outcome' => 'placed',
                     'remaining_stones' => count($stones),
                     'turn_ended' => true,
@@ -277,7 +305,7 @@ class Loch6Service
             $state['can_pass'] = true;
             $state['last_event'] = [
                 'type' => 'stone_placed',
-                'message' => "💎 {$player['player_name']} legte einen Stein in Mulde {$pit}. Weiterwürfeln oder sichern?",
+                'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. Weiterwürfeln oder sichern?",
                 'time' => time(),
             ];
             $this->repo->updateRoomState($roomId, $state);
@@ -286,6 +314,8 @@ class Loch6Service
                 'success' => true,
                 'die' => $die,
                 'pit' => $pit,
+                'slot' => $freeSlotIdx,
+                'placed_stone' => $placedStone,
                 'outcome' => 'placed',
                 'remaining_stones' => count($stones),
                 'can_pass' => true,
@@ -293,16 +323,20 @@ class Loch6Service
             ];
         }
 
-        // --- FALL 3: MULDE WAR BESETZT („Kleben geblieben“) ---
-        // Der Spieler muss alle Steine, die aktuell in den Mulden 1 bis 5 liegen,
+        // --- FALL 3: ALLE MULDEN DIESER ZAHL BESETZT („Kleben geblieben“) ---
+        // Der Spieler muss alle Steine, die aktuell in den Mulden 1 bis 5 auf dem gesamten Brett liegen,
         // plus den gerade entnommenen Stein in seinen Vorrat aufnehmen!
         $collectedStones = [];
         $collectedStones[] = $placedStone; // Der soeben gewürfelte Stein
 
         for ($pNum = 1; $pNum <= 5; $pNum++) {
-            if (!empty($state['board'][$pNum])) {
-                $collectedStones[] = $state['board'][$pNum];
-                $state['board'][$pNum] = null;
+            if (!empty($state['board'][$pNum]) && is_array($state['board'][$pNum])) {
+                foreach ($state['board'][$pNum] as $idx => $stoneInSlot) {
+                    if ($stoneInSlot !== null) {
+                        $collectedStones[] = $stoneInSlot;
+                        $state['board'][$pNum][$idx] = null;
+                    }
+                }
             }
         }
 
@@ -317,7 +351,7 @@ class Loch6Service
         $countPicked = count($collectedStones);
         $state['last_event'] = [
             'type' => 'bust',
-            'message' => "💥 KLEBEN GEBLIEBEN! Mulde {$pit} war belegt! {$player['player_name']} muss {$countPicked} Steine aufnehmen.",
+            'message' => "💥 KLEBEN GEBLIEBEN! Alle Mulden von {$pit} waren belegt! {$player['player_name']} muss {$countPicked} Steine aufnehmen.",
             'time' => time(),
         ];
 
@@ -456,7 +490,15 @@ class Loch6Service
         $currentRound = (int)($roomState['round_number'] ?? 1);
         $rollsInTurn = (int)($roomState['rolls_in_turn'] ?? 0);
         $board = $roomState['board'] ?? [];
-        $occupiedCount = count(array_filter($board, fn($slot) => $slot !== null));
+
+        // Anzahl der vollständig belegten Zahlen (1 bis 5) ermitteln
+        $fullNumbersCount = 0;
+        for ($pNum = 1; $pNum <= 5; $pNum++) {
+            $slots = $board[$pNum] ?? [];
+            if (is_array($slots) && !empty($slots) && !in_array(null, $slots, true)) {
+                $fullNumbersCount++;
+            }
+        }
         $stonesLeft = count($activePlayer['sheet']['stones'] ?? []);
 
         // 1. Wenn der Bot in diesem Zug noch nicht gewürfelt hat: Er MUSS würfeln
@@ -470,7 +512,7 @@ class Loch6Service
 
         // 2. Ab Runde 2 und nach erfolgreichem Wurf: Entscheidung Weiterspielen vs. Sichern
         if (!empty($roomState['can_pass']) && $currentRound >= 2) {
-            $shouldRollAgain = Loch6BotService::shouldRollAgain($occupiedCount, $stonesLeft, $rollsInTurn);
+            $shouldRollAgain = Loch6BotService::shouldRollAgain($fullNumbersCount, $stonesLeft, $rollsInTurn);
             if ($shouldRollAgain) {
                 $this->rollDice($roomId, $activePlayerId);
             } else {
@@ -521,7 +563,7 @@ class Loch6Service
             'dice' => $state['dice'] ?? [1],
             'has_rolled' => (bool)($state['has_rolled'] ?? false),
             'roll_seq' => (int)($state['roll_seq'] ?? 0),
-            'board' => $state['board'] ?? [1 => null, 2 => null, 3 => null, 4 => null, 5 => null],
+            'board' => $state['board'] ?? [1 => [null], 2 => [null, null], 3 => [null, null, null], 4 => [null, null, null, null], 5 => [null, null, null, null, null]],
             'hole6_count' => (int)($state['hole6_count'] ?? 0),
             'winner_id' => $state['winner_id'] ?? null,
             'winner_name' => $state['winner_name'] ?? null,

@@ -10,6 +10,7 @@
 
     // State Caches
     let myPlayerId = null;
+    let selectedStoneId = null;
     let isRollingAnimation = false;
     let lastKnownRollSeq = 0;
     let pollTimer = null;
@@ -241,6 +242,70 @@
         return el;
     }
 
+    // Flug-Animation eines Steins aus der Hand in die Mulde
+    function playStoneFlightToSlot(targetSlotEl, stone, onComplete) {
+        if (!targetSlotEl) {
+            AudioEngine.playStonePlaced();
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
+
+        const grid = document.getElementById('my-crystals-grid');
+        const sourceStoneEl = grid ? (grid.querySelector(`.crystal-gem[data-stone-id="${stone?.id}"]`) || grid.querySelector('.crystal-gem')) : null;
+
+        const toRect = targetSlotEl.getBoundingClientRect();
+        const fromRect = sourceStoneEl ? sourceStoneEl.getBoundingClientRect() : {
+            left: window.innerWidth / 2 - 20,
+            top: window.innerHeight - 80,
+            width: 40,
+            height: 33
+        };
+
+        const clone = createCrystalElement(stone || { type: 'amethyst', seed: 100 }, false);
+        clone.className = `crystal-gem crystal-${stone?.type || 'amethyst'} flying-stone-clone`;
+        clone.style.left = `${fromRect.left}px`;
+        clone.style.top = `${fromRect.top}px`;
+        clone.style.width = `${fromRect.width}px`;
+        clone.style.height = `${fromRect.height}px`;
+        document.body.appendChild(clone);
+
+        requestAnimationFrame(() => {
+            const dx = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2);
+            const dy = (toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2);
+            const scale = (toRect.width * 0.85) / fromRect.width;
+            clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
+
+            setTimeout(() => {
+                if (clone.parentNode) clone.parentNode.removeChild(clone);
+                AudioEngine.playStonePlaced();
+                if (typeof onComplete === 'function') onComplete();
+            }, 380);
+        });
+    }
+
+    // Bust-Animation: Alle Steine vom Brett fliegen nach unten in die Hand
+    function playBustFlyAnimation(onComplete) {
+        const boardStones = document.querySelectorAll('.pit-crystal-slot .crystal-gem');
+        if (boardStones.length === 0) {
+            AudioEngine.playBust();
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
+
+        AudioEngine.playBust();
+        boardStones.forEach((stoneEl, idx) => {
+            stoneEl.style.animationDelay = `${idx * 0.04}s`;
+            stoneEl.classList.add('stone-bust-flying');
+        });
+
+        setTimeout(() => {
+            boardStones.forEach(el => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            });
+            if (typeof onComplete === 'function') onComplete();
+        }, 480);
+    }
+
     // Initialisierung beim Laden
     document.addEventListener('DOMContentLoaded', () => {
         initEvents();
@@ -457,15 +522,20 @@
         const rollBtn = document.getElementById('btn-roll-dice');
         if (rollBtn) rollBtn.disabled = true;
 
+        const sentStoneId = selectedStoneId;
+
         try {
             const res = await HubHttp.postJson(`${API_URL}?action=roll`, {
-                room: roomCode
+                room: roomCode,
+                stone_id: sentStoneId
             });
 
             if (!res.ok || !res.data || !res.data.success) {
                 await HubDialog.alert('Hinweis', res.data?.message || 'Wurf nicht möglich.', 'ℹ️');
                 return;
             }
+
+            selectedStoneId = null; // Nach dem Wurf Auswahl zurücksetzen
 
             const outcomeData = res.data;
             const dieVal = outcomeData.die || 1;
@@ -474,17 +544,20 @@
             playDiceRollAnimation(dieVal, () => {
                 if (outcomeData.outcome === 'hole6' || outcomeData.outcome === 'hole6_win') {
                     AudioEngine.playHole6Abyss();
+                    if (outcomeData.game_over) AudioEngine.playVictory();
+                    fetchState();
                 } else if (outcomeData.outcome === 'bust') {
-                    AudioEngine.playBust();
+                    playBustFlyAnimation(() => {
+                        fetchState();
+                    });
                 } else {
-                    AudioEngine.playStonePlaced();
+                    // Stein erfolgreich in Mulde abgelegt -> Fluganimation
+                    const targetSlot = document.getElementById(`slot-${outcomeData.die}-${outcomeData.slot ?? 0}`);
+                    playStoneFlightToSlot(targetSlot, outcomeData.placed_stone || null, () => {
+                        if (outcomeData.game_over) AudioEngine.playVictory();
+                        fetchState();
+                    });
                 }
-
-                if (outcomeData.game_over) {
-                    AudioEngine.playVictory();
-                }
-
-                fetchState();
             });
         } catch (e) {
             console.error('Loch6 roll error:', e);
@@ -584,6 +657,33 @@
         }
     }
 
+    function renderBoardSlots(board) {
+        for (let pit = 1; pit <= 5; pit++) {
+            const slots = (board && board[pit]) ? board[pit] : [];
+            for (let idx = 0; idx < pit; idx++) {
+                const slotEl = document.getElementById(`slot-${pit}-${idx}`);
+                if (!slotEl) continue;
+
+                const stone = slots[idx] || null;
+                if (!stone) {
+                    if (slotEl.hasChildNodes()) {
+                        slotEl.innerHTML = '';
+                        delete slotEl.dataset.currentStoneId;
+                    }
+                } else {
+                    const stoneId = stone.id || `${stone.type}-${stone.seed}`;
+                    // Nur neu einsetzen wenn sich der Stein geändert hat (verhindert jegliches Blinken!)
+                    if (slotEl.dataset.currentStoneId !== stoneId) {
+                        slotEl.innerHTML = '';
+                        const gemEl = createCrystalElement(stone, false);
+                        slotEl.appendChild(gemEl);
+                        slotEl.dataset.currentStoneId = stoneId;
+                    }
+                }
+            }
+        }
+    }
+
     function renderGame(data, myPlayer) {
         // Runden-Pill
         const roundBadge = document.getElementById('round-indicator-badge');
@@ -637,18 +737,8 @@
             oppBar.innerHTML = oppHtml;
         }
 
-        // Board: Mulden 1 bis 5 rendern
-        const board = data.board || {};
-        for (let pit = 1; pit <= 5; pit++) {
-            const slot = document.getElementById(`pit-crystal-${pit}`);
-            if (slot) {
-                slot.innerHTML = '';
-                const stone = board[pit];
-                if (stone) {
-                    slot.appendChild(createCrystalElement(stone, false));
-                }
-            }
-        }
+        // Board: Die 15 Mulden stabil und ohne Blinken rendern
+        renderBoardSlots(data.board);
 
         // Board: Loch 6 / Schlund Zähler
         const abyssCounter = document.getElementById('abyss-counter');
@@ -680,21 +770,29 @@
             }
         }
 
-        // Aktions-Buttons
+        // Aktions-Buttons & Vorbereitung der manuellen Steinauswahl
         const isMyTurn = myPlayer ? myPlayer.is_active : false;
         const rollBtn = document.getElementById('btn-roll-dice');
         const passBtn = document.getElementById('btn-pass-turn');
         const turnPrompt = document.getElementById('turn-prompt-text');
 
+        let selectedStoneName = '';
+        if (selectedStoneId && myPlayer) {
+            const found = (myPlayer.stones || []).find(s => s.id === selectedStoneId);
+            if (found) {
+                selectedStoneName = ` (${found.type.toUpperCase()})`;
+            }
+        }
+
         if (rollBtn) {
             if (isMyTurn) {
                 rollBtn.disabled = isRollingAnimation;
                 if (data.round_number === 1) {
-                    rollBtn.innerHTML = '🎲 Pflichtwurf';
+                    rollBtn.innerHTML = `🎲 Pflichtwurf${selectedStoneName}`;
                 } else if (data.can_pass) {
-                    rollBtn.innerHTML = '🎲 Nochmal Würfeln';
+                    rollBtn.innerHTML = `🎲 Nochmal Würfeln${selectedStoneName}`;
                 } else {
-                    rollBtn.innerHTML = '🎲 WÜRFELN';
+                    rollBtn.innerHTML = `🎲 WÜRFELN${selectedStoneName}`;
                 }
             } else {
                 rollBtn.disabled = true;
@@ -716,11 +814,11 @@
         if (turnPrompt) {
             if (isMyTurn) {
                 if (data.round_number === 1) {
-                    turnPrompt.textContent = 'Runde 1: Jeder Spieler hat genau 1 Pflichtwurf!';
+                    turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf ausführen.' : 'Runde 1: Pflichtwurf! (Tippe optional einen Stein an zum Wählen)';
                 } else if (data.can_pass) {
                     turnPrompt.textContent = 'Guter Wurf! Weiterzocken oder Sichern & Weitergeben?';
                 } else {
-                    turnPrompt.textContent = 'Du bist am Zug! Würfel rollen lassen.';
+                    turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt würfeln.' : 'Du bist am Zug! Tippe optional einen Wunsch-Stein an.';
                 }
             } else {
                 const activeP = (data.players || []).find(p => p.is_active);
@@ -743,7 +841,23 @@
                     grid.innerHTML = '<span class="text-muted" style="font-size: 0.85rem; padding: 0.5rem;">Keine Steine mehr – Du gewinnst! 🎉</span>';
                 } else {
                     myStones.forEach(stone => {
-                        grid.appendChild(createCrystalElement(stone, true));
+                        const gemEl = createCrystalElement(stone, true);
+                        if (stone.id === selectedStoneId) {
+                            gemEl.classList.add('is-selected');
+                        }
+
+                        // Klick zum Auswählen / Abwählen
+                        gemEl.addEventListener('click', () => {
+                            if (!isMyTurn) return;
+                            if (selectedStoneId === stone.id) {
+                                selectedStoneId = null;
+                            } else {
+                                selectedStoneId = stone.id;
+                            }
+                            renderGame(currentGameState, myPlayer);
+                        });
+
+                        grid.appendChild(gemEl);
                     });
                 }
             }

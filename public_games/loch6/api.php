@@ -250,7 +250,8 @@ try {
             exit;
         }
 
-        $res = $service->rollDice($roomId, (int)$player['id']);
+        $stoneId = trim((string)($input['stone_id'] ?? ''));
+        $res = $service->rollDice($roomId, (int)$player['id'], $stoneId ?: null);
         echo json_encode($res);
         exit;
     }
