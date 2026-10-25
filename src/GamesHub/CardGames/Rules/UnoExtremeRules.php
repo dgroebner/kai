@@ -10,9 +10,9 @@ class UnoExtremeRules implements RuleEngineInterface
 {
     public function canPlay(array $card, array $topCard, ?string $activeColor, int $pendingDraws, array $playerHand): bool
     {
-        // Wenn Launcher-Hits ausstehen, kann man mit Hit 2 kontern
+        // Wenn Launcher-Hits ausstehen, kann man mit Hit 2 oder Extreme Hit (Farbwünscher mit Buttondrückpflicht) kontern
         if ($pendingDraws > 0) {
-            if ($card['type'] === 'hit2') {
+            if ($card['type'] === 'hit2' || $card['type'] === 'extreme_hit') {
                 return true;
             }
             return false;

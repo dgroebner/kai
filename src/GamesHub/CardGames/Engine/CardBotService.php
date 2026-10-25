@@ -37,10 +37,25 @@ class CardBotService
         // 1. Wenn Konter gegen Strafkarten nötig ist: Sofort kontern
         if ($pendingDraws > 0) {
             $chosen = $playable[0];
+            $chosenColor = null;
+            if ($ruleEngine->allowsColorChoice($chosen)) {
+                $validColors = $ruleEngine->getValidColors();
+                $colorCounts = self::countColors($botHand);
+                $bestColor = $validColors[0];
+                $maxCount = -1;
+                foreach ($validColors as $col) {
+                    $cnt = $colorCounts[$col] ?? 0;
+                    if ($cnt > $maxCount) {
+                        $maxCount = $cnt;
+                        $bestColor = $col;
+                    }
+                }
+                $chosenColor = $bestColor;
+            }
             return [
                 'action' => 'play',
                 'card_id' => $chosen['id'],
-                'chosen_color' => null,
+                'chosen_color' => $chosenColor,
             ];
         }
 
