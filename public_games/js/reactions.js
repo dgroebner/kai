@@ -17,9 +17,11 @@
 
     const COOLDOWN_SECONDS = 3.5;
 
-    // Web Audio Synthesizer für Reaktions-Sounds (keine externen Audio-Dateien)
+    // Organischer Web Audio Akustik-Synthesizer (Keine billigen Beeps, sondern warme, physikalisch modellierte Klänge)
     const ReactionAudio = {
         ctx: null,
+        noiseBuf: null,
+
         isMuted() {
             return localStorage.getItem('kai_quarxl_reactions_mute') === '1';
         },
@@ -36,6 +38,18 @@
                 this.ctx.resume().catch(() => {});
             }
         },
+        getNoiseBuffer() {
+            if (this.noiseBuf) return this.noiseBuf;
+            if (!this.ctx) return null;
+            const length = Math.floor(this.ctx.sampleRate * 0.35);
+            const buf = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < length; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.12));
+            }
+            this.noiseBuf = buf;
+            return buf;
+        },
         play(emoji) {
             if (this.isMuted()) return;
             try {
@@ -44,107 +58,266 @@
                 const now = this.ctx.currentTime;
 
                 if (emoji === '😂') {
-                    // Lachen: Fröhliches aufsteigendes Staccato-Gekicher
-                    const notes = [440, 554, 659, 880];
-                    notes.forEach((freq, idx) => {
+                    // Lachen: Fröhliche, weiche Wasser-Bläschen / Marimba-Drops (warm & verspielt)
+                    const pops = [520, 640, 780, 940];
+                    pops.forEach((f, idx) => {
+                        const t = now + idx * 0.075;
                         const osc = this.ctx.createOscillator();
                         const gain = this.ctx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
-                        gain.gain.setValueAtTime(0.14, now + idx * 0.06);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + (idx + 1) * 0.06);
-                        osc.connect(gain);
-                        gain.connect(this.ctx.destination);
-                        osc.start(now + idx * 0.06);
-                        osc.stop(now + (idx + 1) * 0.06);
-                    });
-                } else if (emoji === '😢') {
-                    // Weinen: Trauriges, abfallendes Seufzen
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(480, now);
-                    osc.frequency.exponentialRampToValueAtTime(220, now + 0.35);
-                    gain.gain.setValueAtTime(0.18, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.36);
-                } else if (emoji === '⏳') {
-                    // Ungeduldig warten: Scharfes Uhrenticken (Tick-Tack-Tick-Tack)
-                    [0, 0.12, 0.24, 0.36].forEach((timeOffset, idx) => {
-                        const osc = this.ctx.createOscillator();
-                        const gain = this.ctx.createGain();
+                        const filter = this.ctx.createBiquadFilter();
+
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(2400, t);
+
                         osc.type = 'sine';
-                        osc.frequency.setValueAtTime(idx % 2 === 0 ? 1200 : 900, now + timeOffset);
-                        gain.gain.setValueAtTime(0.2, now + timeOffset);
-                        gain.gain.exponentialRampToValueAtTime(0.005, now + timeOffset + 0.04);
-                        osc.connect(gain);
+                        osc.frequency.setValueAtTime(f * 0.85, t);
+                        osc.frequency.exponentialRampToValueAtTime(f * 1.25, t + 0.045);
+                        osc.frequency.exponentialRampToValueAtTime(f * 0.95, t + 0.08);
+
+                        gain.gain.setValueAtTime(0.001, t);
+                        gain.gain.linearRampToValueAtTime(0.12, t + 0.015);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+                        osc.connect(filter);
+                        filter.connect(gain);
                         gain.connect(this.ctx.destination);
-                        osc.start(now + timeOffset);
-                        osc.stop(now + timeOffset + 0.05);
+
+                        osc.start(t);
+                        osc.stop(t + 0.1);
                     });
-                } else if (emoji === '👏') {
-                    // Applaus: Perkussiver Doppelklatscher
-                    [0, 0.1].forEach((offset) => {
-                        const osc = this.ctx.createOscillator();
-                        const gain = this.ctx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(350, now + offset);
-                        osc.frequency.exponentialRampToValueAtTime(100, now + offset + 0.07);
-                        gain.gain.setValueAtTime(0.2, now + offset);
-                        gain.gain.linearRampToValueAtTime(0.01, now + offset + 0.07);
-                        osc.connect(gain);
-                        gain.connect(this.ctx.destination);
-                        osc.start(now + offset);
-                        osc.stop(now + offset + 0.08);
-                    });
-                } else if (emoji === '😱') {
-                    // Schock: Dissonanter Schreck-Ton
+
+                } else if (emoji === '😢') {
+                    // Weinen: Sanfter, melancholischer Cello/Flöten-Seufzer (warm detuned mit weichem Attack)
                     const osc1 = this.ctx.createOscillator();
                     const osc2 = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
-                    osc1.type = 'sawtooth';
-                    osc2.type = 'sawtooth';
-                    osc1.frequency.setValueAtTime(740, now);
-                    osc2.frequency.setValueAtTime(784, now); // Halbton-Dissonanz
-                    gain.gain.setValueAtTime(0.12, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-                    osc1.connect(gain);
-                    osc2.connect(gain);
+                    const filter = this.ctx.createBiquadFilter();
+
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(650, now);
+                    filter.frequency.exponentialRampToValueAtTime(260, now + 0.45);
+
+                    osc1.type = 'sine';
+                    osc2.type = 'triangle';
+
+                    // Sanfter Abwärtsschwung mit natürlichem Schwebungs-Chorus
+                    osc1.frequency.setValueAtTime(360, now);
+                    osc1.frequency.exponentialRampToValueAtTime(210, now + 0.42);
+                    osc2.frequency.setValueAtTime(363, now); // +3Hz Detune
+                    osc2.frequency.exponentialRampToValueAtTime(212, now + 0.42);
+
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(0.13, now + 0.06);
+                    gain.gain.linearRampToValueAtTime(0.08, now + 0.25);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
+
+                    osc1.connect(filter);
+                    osc2.connect(filter);
+                    filter.connect(gain);
                     gain.connect(this.ctx.destination);
+
                     osc1.start(now);
                     osc2.start(now);
-                    osc1.stop(now + 0.26);
-                    osc2.stop(now + 0.26);
-                } else if (emoji === '🥳' || emoji === '🔥') {
-                    // Feiern / Feuer: Strahlender Sieges-Akkord
-                    const chord = [523.25, 659.25, 783.99, 1046.50];
-                    chord.forEach((freq) => {
+                    osc1.stop(now + 0.48);
+                    osc2.stop(now + 0.48);
+
+                } else if (emoji === '⏳') {
+                    // Ungeduldig: Akustisches Holz-Uhrwerk (echtes mechanisches Tick-Tack-Tick-Tack)
+                    const ticks = [
+                        { f: 1650, q: 12, vol: 0.15 },
+                        { f: 1100, q: 10, vol: 0.12 },
+                        { f: 1650, q: 12, vol: 0.15 },
+                        { f: 1100, q: 10, vol: 0.12 }
+                    ];
+
+                    ticks.forEach((tick, idx) => {
+                        const t = now + idx * 0.14;
+
+                        // Resonanter Holzkörper-Bandpass
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'bandpass';
+                        filter.frequency.setValueAtTime(tick.f, t);
+                        filter.Q.setValueAtTime(tick.q, t);
+
+                        const gain = this.ctx.createGain();
+                        gain.gain.setValueAtTime(tick.vol, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+                        // Impuls aus Rauschbuffer für echten akustischen Schlag
+                        const noise = this.ctx.createBufferSource();
+                        const buf = this.getNoiseBuffer();
+                        if (buf) {
+                            noise.buffer = buf;
+                            noise.connect(filter);
+                            filter.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            noise.start(t);
+                            noise.stop(t + 0.045);
+                        }
+
+                        // Holzkorpus-Resonanz
+                        const wood = this.ctx.createOscillator();
+                        const woodGain = this.ctx.createGain();
+                        wood.type = 'triangle';
+                        wood.frequency.setValueAtTime(tick.f * 0.4, t);
+                        woodGain.gain.setValueAtTime(tick.vol * 0.4, t);
+                        woodGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+                        wood.connect(woodGain);
+                        woodGain.connect(this.ctx.destination);
+                        wood.start(t);
+                        wood.stop(t + 0.03);
+                    });
+
+                } else if (emoji === '👏') {
+                    // Applaus: Natürliches Händeklatschen (4 gefilterte, gestaffelte Rausch-Impulse)
+                    const claps = [0, 0.075, 0.145, 0.22];
+                    claps.forEach((offset, idx) => {
+                        const t = now + offset;
+                        const buf = this.getNoiseBuffer();
+                        if (!buf) return;
+
+                        const src = this.ctx.createBufferSource();
+                        src.buffer = buf;
+
+                        const bp = this.ctx.createBiquadFilter();
+                        bp.type = 'bandpass';
+                        bp.frequency.setValueAtTime(1150 + (idx % 2 === 0 ? 80 : -60), t);
+                        bp.Q.setValueAtTime(1.8, t);
+
+                        const lp = this.ctx.createBiquadFilter();
+                        lp.type = 'lowpass';
+                        lp.frequency.setValueAtTime(3600, t);
+
+                        const gain = this.ctx.createGain();
+                        gain.gain.setValueAtTime(0.001, t);
+                        gain.gain.linearRampToValueAtTime(0.16 + (idx === 3 ? 0.04 : 0), t + 0.004);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+
+                        src.connect(bp);
+                        bp.connect(lp);
+                        lp.connect(gain);
+                        gain.connect(this.ctx.destination);
+
+                        src.start(t);
+                        src.stop(t + 0.06);
+                    });
+
+                } else if (emoji === '🥳') {
+                    // Feiern: Strahlendes Celesta / Musikdosen-Glockenspiel (aufsteigender Dur-Dreiklang mit Glockenobertönen)
+                    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                    notes.forEach((freq, idx) => {
+                        const t = now + idx * 0.07;
+
+                        // Grundton
                         const osc = this.ctx.createOscillator();
                         const gain = this.ctx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, now);
-                        gain.gain.setValueAtTime(0.12, now);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-                        osc.connect(gain);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, t);
+
+                        // Harmonischer Glocken-Oberton (2.76x)
+                        const bellOsc = this.ctx.createOscillator();
+                        const bellGain = this.ctx.createGain();
+                        bellOsc.type = 'sine';
+                        bellOsc.frequency.setValueAtTime(freq * 2.756, t);
+
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(3200, t);
+
+                        gain.gain.setValueAtTime(0.001, t);
+                        gain.gain.linearRampToValueAtTime(0.13, t + 0.008);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+
+                        bellGain.gain.setValueAtTime(0.001, t);
+                        bellGain.gain.linearRampToValueAtTime(0.04, t + 0.005);
+                        bellGain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+
+                        osc.connect(filter);
+                        bellOsc.connect(filter);
+                        filter.connect(gain);
                         gain.connect(this.ctx.destination);
-                        osc.start(now);
-                        osc.stop(now + 0.36);
+
+                        osc.start(t);
+                        bellOsc.start(t);
+                        osc.stop(t + 0.35);
+                        bellOsc.stop(t + 0.35);
                     });
-                } else {
-                    // Standard / Grübeln: Sanfter Pling
+
+                } else if (emoji === '😱') {
+                    // Schock: Weicher, cineastischer Tiefschlag (Sub-Thud + dezenter Shimmer)
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
+                    const filter = this.ctx.createBiquadFilter();
+
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(220, now);
+
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(587.33, now);
-                    gain.gain.setValueAtTime(0.15, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                    osc.connect(gain);
+                    osc.frequency.setValueAtTime(95, now);
+                    osc.frequency.exponentialRampToValueAtTime(38, now + 0.35);
+
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(0.2, now + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
                     gain.connect(this.ctx.destination);
+
                     osc.start(now);
-                    osc.stop(now + 0.21);
+                    osc.stop(now + 0.4);
+
+                } else if (emoji === '🤔') {
+                    // Grübeln: Natürlicher Wassertropfen ("Bloop" / warmer Drop-Sound)
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const filter = this.ctx.createBiquadFilter();
+
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(2200, now);
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(620, now);
+                    osc.frequency.exponentialRampToValueAtTime(1380, now + 0.065);
+                    osc.frequency.exponentialRampToValueAtTime(1050, now + 0.11);
+
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(0.15, now + 0.012);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+
+                } else if (emoji === '🔥') {
+                    // Feuer: Warmer Flammen-Whoosh (gefilterter Rausch-Schwung)
+                    const buf = this.getNoiseBuffer();
+                    if (!buf) return;
+
+                    const src = this.ctx.createBufferSource();
+                    src.buffer = buf;
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(220, now);
+                    filter.frequency.linearRampToValueAtTime(680, now + 0.12);
+                    filter.frequency.exponentialRampToValueAtTime(180, now + 0.32);
+                    filter.Q.setValueAtTime(2.0, now);
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(0.18, now + 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+
+                    src.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    src.start(now);
+                    src.stop(now + 0.35);
                 }
             } catch (_) {}
         }
