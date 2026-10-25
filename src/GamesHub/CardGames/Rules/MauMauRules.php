@@ -15,15 +15,14 @@ class MauMauRules implements RuleEngineInterface
             return $card['value'] === 7;
         }
 
-        // Farbwunsch durch Bube aktiv?
-        if (!empty($activeColor)) {
-            // Auf Farbwunsch darf nur die gewünschte Farbe gelegt werden (Bube auf Bube nicht erlaubt)
-            return $card['color'] === $activeColor && $card['type'] !== 'jack';
+        // Bube (Jack) darf IMMER gelegt werden (auch auf Farbwünsche oder auf einen anderen Buben!)
+        if ($card['type'] === 'jack') {
+            return true;
         }
 
-        // Bube (Jack) darf auf fast alles gelegt werden (außer Bube auf Bube)
-        if ($card['type'] === 'jack') {
-            return $topCard['type'] !== 'jack';
+        // Farbwunsch durch vorherigen Buben aktiv?
+        if (!empty($activeColor)) {
+            return $card['color'] === $activeColor;
         }
 
         // Gleiche Farbe
