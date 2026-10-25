@@ -122,7 +122,7 @@ require_once __DIR__ . '/../bootstrap.php';
                         </label>
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                             <input type="radio" name="card_game_mode" value="mau_mau">
-                            <span><strong>Mau-Mau:</strong> 32 Karten Skatblatt mit 7 (2 Ziehen), 8 (Aussetzen), Bube &amp; Ass</span>
+                            <span><strong>Mau-Mau:</strong> 32 Karten französisches Blatt mit 7 (2 Ziehen), Bube (Farbwahl) &amp; Ass (Aussetzen)</span>
                         </label>
                     </div>
                 </div>

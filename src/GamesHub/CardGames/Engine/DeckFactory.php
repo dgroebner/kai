@@ -166,13 +166,13 @@ class DeckFactory
 
         $values = [
             ['val' => 7,  'rank' => '7', 'type' => 'draw2',  'title' => '7',     'score' => 7],
-            ['val' => 8,  'rank' => '8', 'type' => 'skip',   'title' => '8',     'score' => 8],
+            ['val' => 8,  'rank' => '8', 'type' => 'number', 'title' => '8',     'score' => 8],
             ['val' => 9,  'rank' => '9', 'type' => 'number', 'title' => '9',     'score' => 9],
             ['val' => 10, 'rank' => '10','type' => 'number', 'title' => '10',    'score' => 10],
             ['val' => 11, 'rank' => 'B', 'type' => 'jack',   'title' => 'Bube',  'score' => 20],
             ['val' => 12, 'rank' => 'D', 'type' => 'number', 'title' => 'Dame',  'score' => 10],
             ['val' => 13, 'rank' => 'K', 'type' => 'number', 'title' => 'König', 'score' => 10],
-            ['val' => 14, 'rank' => 'A', 'type' => 'ace',    'title' => 'Ass',   'score' => 11],
+            ['val' => 14, 'rank' => 'A', 'type' => 'skip',   'title' => 'Ass',   'score' => 11],
         ];
 
         foreach (self::COLORS_MAUMAU as $color) {

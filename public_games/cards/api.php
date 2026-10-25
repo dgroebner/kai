@@ -281,6 +281,27 @@ try {
     }
 
     // -------------------------------------------------------------------------
+    // 9. "ERWISCHT!" - MITSPELER OHNE MAU/UNO BESTRAFEN
+    // -------------------------------------------------------------------------
+    if ($action === 'catch_uno') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Nur POST erlaubt']);
+            exit;
+        }
+
+        $res = $cardService->catchUnoMiss($roomId, (int)$player['id']);
+        if (!$res['success']) {
+            http_response_code(400);
+            echo json_encode($res);
+            exit;
+        }
+
+        echo json_encode($res);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
     // 9. REVANCHE / NEUE RUNDE IM SELBEN RAUM (Host only)
     // -------------------------------------------------------------------------
     if ($action === 'rematch') {

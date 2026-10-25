@@ -401,6 +401,65 @@ class CardGameService
     }
 
     /**
+     * Ein Spieler erwischt einen Mitspieler, der nur noch 1 Karte hat und nicht MAU/UNO gesagt hat.
+     */
+    public function catchUnoMiss(int $roomId, int $callerId): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'active') {
+            return ['success' => false, 'message' => 'Spiel ist nicht aktiv'];
+        }
+
+        $players = $this->repo->getPlayersForRoom($roomId);
+        $caller = null;
+        foreach ($players as $p) {
+            if ((int)$p['id'] === $callerId) {
+                $caller = $p;
+                break;
+            }
+        }
+
+        $state = $room['state'];
+        $drawPile = &$state['draw_pile'];
+        $discardPile = &$state['discard_pile'];
+        $callWord = ($room['game_mode'] === 'mau_mau') ? 'MAU' : 'UNO';
+
+        // Suchen nach einem Mitspieler mit 1 Karte, der nicht gerufen hat
+        foreach ($players as $target) {
+            if ((int)$target['id'] === $callerId) {
+                continue;
+            }
+
+            $hand = $target['sheet']['cards'] ?? [];
+            $hasCalled = !empty($target['sheet']['has_called_uno']);
+
+            if (count($hand) === 1 && !$hasCalled) {
+                $penaltyCards = ExtremeLauncherEngine::drawCards(2, $drawPile, $discardPile);
+                $target['sheet']['cards'] = array_merge($hand, $penaltyCards);
+                $target['sheet']['has_called_uno'] = true;
+
+                $this->repo->updatePlayerSheet((int)$target['id'], $target['sheet'], 0);
+
+                $callerName = $caller ? $caller['player_name'] : 'Ein Mitspieler';
+                $state['last_event'] = [
+                    'type' => 'uno_caught',
+                    'message' => "🚨 Erwischt! {$callerName} hat bemerkt, dass {$target['player_name']} kein {$callWord} gerufen hat! (+2 Strafkarten)",
+                    'time' => time(),
+                ];
+                $this->repo->updateRoomState($roomId, $state);
+
+                return [
+                    'success' => true,
+                    'caught' => true,
+                    'target_name' => $target['player_name'],
+                ];
+            }
+        }
+
+        return ['success' => false, 'message' => "Niemand hat vergessen {$callWord} zu rufen."];
+    }
+
+    /**
      * Fügt einen KI-Bot zum Raum hinzu.
      */
     public function addBot(int $roomId, string $botName = 'Bot'): array

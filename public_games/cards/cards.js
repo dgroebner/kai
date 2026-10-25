@@ -168,14 +168,26 @@
             });
         }
 
-        // Uno-Ruf Button
+        // Uno/Mau-Ruf oder "Erwischt!" Button
         const unoBtn = document.getElementById('btn-uno-shout');
         if (unoBtn) {
             unoBtn.addEventListener('click', async () => {
-                unoCalledLocally = true;
-                unoBtn.classList.add('uno-active');
-                AudioEngine.playUnoSound();
-                await HubHttp.postJson(`./api.php?action=call_uno&room=${encodeURIComponent(roomCode)}`);
+                if (unoBtn.classList.contains('btn-catch-uno')) {
+                    // Einen Mitspieler ohne Mau/Uno erwischen!
+                    const res = await HubHttp.postJson(`./api.php?action=catch_uno&room=${encodeURIComponent(roomCode)}`);
+                    if (res.ok && res.data && res.data.success) {
+                        AudioEngine.playLauncherSound(2);
+                        fetchState(true);
+                    } else {
+                        HubDialog.alert('Hinweis', res.data?.message || 'Aktion nicht möglich.', '⚠️');
+                    }
+                } else {
+                    // Selbst MAU/UNO ansagen
+                    unoCalledLocally = true;
+                    unoBtn.classList.add('uno-active');
+                    AudioEngine.playUnoSound();
+                    await HubHttp.postJson(`./api.php?action=call_uno&room=${encodeURIComponent(roomCode)}`);
+                }
             });
         }
 
@@ -440,23 +452,66 @@
             }
         }
 
-        // Uno-Button Pulsieren wenn 1 oder 2 Karten
+        // Uno / Mau / Erwischt Button-Status
         const unoBtn = document.getElementById('btn-uno-shout');
         if (unoBtn && myPlayer) {
             const handCount = myPlayer.card_count || 0;
-            if (handCount <= 2 && !myPlayer.has_called_uno && !unoCalledLocally) {
-                unoBtn.style.animation = 'bounce 0.8s infinite';
+            const callWord = (data.game_mode === 'mau_mau') ? 'MAU!' : 'UNO!';
+
+            // Prüfen, ob ein Mitspieler genau 1 Karte hat und NICHT gerufen hat
+            const missedOpponent = data.players.find(p => !p.is_me && p.card_count === 1 && !p.has_called_uno);
+
+            if (missedOpponent) {
+                // Ein Mitspieler hat es vergessen -> Erwischt-Modus!
+                unoBtn.textContent = '🚨 ERWISCHT!';
+                unoBtn.classList.add('btn-catch-uno');
+                unoBtn.classList.remove('uno-active');
+                unoBtn.title = `${missedOpponent.name} hat vergessen ${callWord} zu rufen! Klicke um 2 Strafkarten zu verhängen!`;
+                unoBtn.style.animation = 'bounce 0.6s infinite';
+            } else if (handCount <= 2) {
+                // Eigener Ruf-Bereich
+                unoBtn.textContent = callWord;
+                unoBtn.classList.remove('btn-catch-uno');
+                unoBtn.title = `Rufe ${callWord} vor deiner letzten Karte!`;
+
+                if (myPlayer.has_called_uno || unoCalledLocally) {
+                    unoBtn.classList.add('uno-active');
+                    unoBtn.style.animation = 'none';
+                } else {
+                    unoBtn.classList.remove('uno-active');
+                    unoBtn.style.animation = 'bounce 0.8s infinite';
+                }
             } else {
+                // Normaler Zustand (> 2 Karten und kein Gegner säumig)
+                unoBtn.textContent = callWord;
+                unoBtn.classList.remove('btn-catch-uno', 'uno-active');
                 unoBtn.style.animation = 'none';
+                unoBtn.title = `${callWord} kann gerufen werden, wenn du nur noch 1-2 Karten hast.`;
+                unoCalledLocally = false;
             }
         }
 
         // Eigene Handkarten rendern
         const fannedCont = document.getElementById('player-hand-fanned');
         if (fannedCont && myPlayer && Array.isArray(myPlayer.cards)) {
+            const count = myPlayer.cards.length;
+            let overlap = 6;
+            if (count <= 4) {
+                overlap = 8;
+            } else if (count <= 7) {
+                overlap = -22;
+            } else if (count <= 10) {
+                overlap = -36;
+            } else if (count <= 14) {
+                overlap = -46;
+            } else {
+                overlap = -54; // Sehr kompakte Fächerung bei vielen Karten
+            }
+            fannedCont.style.setProperty('--card-overlap', `${overlap}px`);
+
             let cardsHtml = '';
-            myPlayer.cards.forEach(c => {
-                cardsHtml += renderCardHtml(c, c.can_play, false);
+            myPlayer.cards.forEach((c, idx) => {
+                cardsHtml += renderCardHtml(c, c.can_play, false, idx + 1);
             });
             fannedCont.innerHTML = cardsHtml;
 
@@ -474,10 +529,11 @@
         }
     }
 
-    function renderCardHtml(card, canPlay, isTopDiscard) {
+    function renderCardHtml(card, canPlay, isTopDiscard, zIndex = 1) {
         const canPlayClass = canPlay ? 'can-play' : '';
         const topClass = isTopDiscard ? 'top-discard-card' : '';
         const colorClass = `card-${card.color}`;
+        const zIndexStyle = isTopDiscard ? '' : `style="z-index: ${zIndex};"`;
 
         const isFrench = ['hearts', 'diamonds', 'spades', 'clubs'].includes(card.color);
 
@@ -486,12 +542,11 @@
             const suit = card.suit || suitSymbols[card.color] || '♠';
             const rank = card.rank || (card.value ? String(card.value) : '7');
 
-            // Regelhinweis-Badge (dezent in der Ecke)
+            // Regelhinweis-Badge (dezent in der Ecke): 7 = +2, Bube = Farbwahl ★, Ass = Aussetzen ⊘
             let badge = '';
             if (card.value === 7) badge = '<span class="card-rule-badge">+2</span>';
-            else if (card.value === 8) badge = '<span class="card-rule-badge">⊘</span>';
             else if (card.type === 'jack') badge = '<span class="card-rule-badge">★</span>';
-            else if (card.type === 'ace') badge = '<span class="card-rule-badge">↺</span>';
+            else if (card.value === 14 || card.type === 'skip') badge = '<span class="card-rule-badge">⊘</span>';
 
             let centerContent = '';
             if (['K', 'D', 'B', 'A'].includes(rank)) {
@@ -512,6 +567,7 @@
 
             return `
                 <div class="game-card card-french ${colorClass} ${canPlayClass} ${topClass}" 
+                     ${zIndexStyle}
                      data-card-id="${card.id}" 
                      data-card-type="${card.type}"
                      data-card-color="${card.color}">
@@ -530,15 +586,21 @@
         }
 
         // Uno / Uno Extreme
-        const label = HubHtml.escape(card.label || card.rank);
+        const rank = HubHtml.escape(card.rank || card.label);
+        const center = HubHtml.escape(card.label || card.rank);
         return `
             <div class="game-card ${colorClass} ${canPlayClass} ${topClass}" 
+                 ${zIndexStyle}
                  data-card-id="${card.id}" 
                  data-card-type="${card.type}"
                  data-card-color="${card.color}">
-                <div class="card-corner-top">${label}</div>
-                <div class="card-center-symbol">${label}</div>
-                <div class="card-corner-bottom">${label}</div>
+                <div class="card-corner-top">
+                    <span class="corner-rank">${rank}</span>
+                </div>
+                <div class="card-center-symbol">${center}</div>
+                <div class="card-corner-bottom">
+                    <span class="corner-rank">${rank}</span>
+                </div>
             </div>
         `;
     }

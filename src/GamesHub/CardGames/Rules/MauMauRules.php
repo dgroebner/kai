@@ -59,10 +59,10 @@ class MauMauRules implements RuleEngineInterface
             $roomState['pending_draws'] = ((int)($roomState['pending_draws'] ?? 0)) + 2;
             $text = "7 gelegt! Der nächste Spieler muss 2 Karten ziehen oder mit einer 7 kontern.";
         }
-        // 8 = Aussetzen
-        elseif ($card['value'] === 8) {
+        // Ass = Aussetzen
+        elseif ($card['value'] === 14 || $card['type'] === 'skip') {
             $skipCount = 2;
-            $text = "8 gelegt! Nächster Spieler muss aussetzen.";
+            $text = "Ass gelegt! Der nächste Spieler muss aussetzen.";
         }
         // Bube = Farbwunsch
         elseif ($card['type'] === 'jack') {
@@ -78,19 +78,10 @@ class MauMauRules implements RuleEngineInterface
                 $text = "Bube gelegt! Farbwunsch: {$name}.";
             }
         }
-        // Ass = Nochmal legen
-        elseif ($card['type'] === 'ace') {
-            $repeatTurn = true;
-            $text = "Ass gelegt! Du darfst noch einmal legen oder musst ziehen.";
-        }
 
-        if ($repeatTurn) {
-            $nextIndex = $activePlayerIndex;
-        } else {
-            $nextIndex = ($activePlayerIndex + ($direction * $skipCount)) % $playerCount;
-            if ($nextIndex < 0) {
-                $nextIndex += $playerCount;
-            }
+        $nextIndex = ($activePlayerIndex + ($direction * $skipCount)) % $playerCount;
+        if ($nextIndex < 0) {
+            $nextIndex += $playerCount;
         }
 
         return [

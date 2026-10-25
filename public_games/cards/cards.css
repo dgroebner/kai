@@ -401,14 +401,33 @@
     margin-top: 1px;
 }
 
-.card-corner-top, .card-corner-bottom {
-    font-size: 0.85rem;
+.card-corner-top {
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     line-height: 1;
+    font-size: 0.95rem;
+    font-weight: 900;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .card-corner-bottom {
-    align-self: flex-end;
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    font-size: 0.95rem;
+    font-weight: 900;
     transform: rotate(180deg);
+    pointer-events: none;
+    z-index: 2;
 }
 
 .card-center-symbol {
@@ -474,33 +493,48 @@
 .player-hand-fanned {
     display: flex;
     justify-content: center;
-    gap: 0.4rem;
+    align-items: flex-end;
     overflow-x: auto;
-    padding: 0.75rem 0.5rem 0.25rem 0.5rem;
+    overflow-y: visible;
+    padding: 1.5rem 1rem 0.5rem 1rem;
     max-width: 100%;
-    min-height: 140px;
+    min-height: 165px;
     -webkit-overflow-scrolling: touch;
 }
 
-/* Karten auf der Hand */
+/* Karten auf der Hand mit dynamischer Überlappung */
 .player-hand-fanned .game-card {
+    position: relative;
+    margin-left: var(--card-overlap, -28px);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease;
     cursor: not-allowed;
-    opacity: 0.55;
-    filter: grayscale(20%);
+    opacity: 0.65;
+    filter: brightness(0.85);
 }
 
+.player-hand-fanned .game-card:first-child {
+    margin-left: 0 !important;
+}
+
+/* Spielbare Karten ragen leicht empor */
 .player-hand-fanned .game-card.can-play {
     cursor: pointer;
     opacity: 1;
     filter: none;
-    transform: translateY(-8px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(99, 102, 241, 0.8);
+    transform: translateY(-12px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6), 0 0 14px rgba(99, 102, 241, 0.85);
     border-color: #818cf8;
 }
 
-.player-hand-fanned .game-card.can-play:hover {
-    transform: translateY(-16px) scale(1.05);
-    z-index: 10;
+/* Hover, Touch & Active: Karte hebt sich weit nach oben und überdeckt alle Nachbarn */
+.player-hand-fanned .game-card:hover,
+.player-hand-fanned .game-card:active,
+.player-hand-fanned .game-card:focus-visible {
+    transform: translateY(-26px) scale(1.08) !important;
+    z-index: 100 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.8), 0 0 22px rgba(99, 102, 241, 1);
 }
 
 /* Uno-Ruf Button */
@@ -526,6 +560,13 @@
     background: #22c55e;
     border-color: #86efac;
     box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
+}
+
+.btn-uno-shout.btn-catch-uno {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #fcd34d;
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.8);
+    animation: bounce 0.6s infinite;
 }
 
 /* Farbwahl-Modal */
