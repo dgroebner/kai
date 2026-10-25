@@ -50,12 +50,12 @@
             });
         }
 
-        // Kachel-Klick auf Kartenspiele
+        // Kachel-Klick auf Mau-Mau / Uno
         const cardsCard = document.getElementById('card-cards');
         if (cardsCard && modal) {
             cardsCard.addEventListener('click', () => {
                 if (gameTypeInput) gameTypeInput.value = 'cards';
-                if (modalTitle) modalTitle.textContent = 'Neues Kartenspiel erstellen';
+                if (modalTitle) modalTitle.textContent = 'Neues Mau-Mau / Uno Spiel erstellen';
                 if (diceGroup) diceGroup.classList.add('hidden');
                 if (cardGroup) cardGroup.classList.remove('hidden');
                 modal.classList.remove('hidden');

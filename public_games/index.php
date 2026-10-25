@@ -67,11 +67,11 @@ require_once __DIR__ . '/../bootstrap.php';
                 <span class="game-kachel-badge">1–8 Spieler</span>
             </div>
 
-            <!-- Kartenspiele Kachel -->
+            <!-- Mau-Mau / Uno Kachel -->
             <div class="game-kachel" id="card-cards" role="button" tabindex="0">
                 <div class="game-kachel-icon">🃏</div>
                 <div class="game-kachel-content">
-                    <h2>Kartenspiele</h2>
+                    <h2>Mau-Mau / Uno</h2>
                     <p>Uno Klassik, Uno Extreme (mit animiertem Launcher) &amp; Mau-Mau. Live mit Freunden oder gegen Bots.</p>
                 </div>
                 <span class="game-kachel-badge">2–8 Spieler</span>

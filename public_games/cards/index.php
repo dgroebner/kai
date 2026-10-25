@@ -7,7 +7,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Kartenspiele - Quarxl</title>
+    <title>Mau-Mau / Uno - Quarxl</title>
     <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="../android-chrome-192x192.png">
     <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -38,7 +38,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <div id="join-modal" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
         <div class="hub-modal text-center">
             <div style="font-size: 2.75rem; margin-bottom: 0.5rem;">🃏</div>
-            <h3 class="hub-modal-title">Kartenspiel beitreten</h3>
+            <h3 class="hub-modal-title">Mau-Mau / Uno beitreten</h3>
             <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 1rem;">
                 Raum: <strong><?= $roomCode ?></strong>
             </p>
@@ -65,7 +65,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
     <!-- 1. LOBBY-ANSICHT -->
     <div id="pane-lobby" class="cards-lobby-box hidden">
-        <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;" id="lobby-title">Kartenspiel Wartezimmer</h2>
+        <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;" id="lobby-title">Mau-Mau / Uno Wartezimmer</h2>
         <p class="text-muted" style="font-size: 0.85rem;">Teile den Code oder lade Mitspieler per WhatsApp ein.</p>
         
         <div class="cards-lobby-players" id="lobby-players-list">

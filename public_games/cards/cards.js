@@ -119,7 +119,7 @@
         document.querySelectorAll('.js-share-whatsapp').forEach(btn => {
             btn.addEventListener('click', () => {
                 const url = window.location.href;
-                const text = `Komm an den Kartentisch in Quarxl! 🃏 Raumcode: ${roomCode}\n${url}`;
+                const text = `Komm an den Tisch für Mau-Mau / Uno in Quarxl! 🃏 Raumcode: ${roomCode}\n${url}`;
                 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
             });
         });
@@ -260,7 +260,7 @@
         const modeBadge = document.getElementById('game-mode-badge');
         if (modeBadge) {
             const modeNames = { 'uno': 'Uno Klassik', 'uno_extreme': 'Uno Extreme', 'mau_mau': 'Mau-Mau' };
-            modeBadge.textContent = modeNames[data.game_mode] || 'Kartenspiel';
+            modeBadge.textContent = modeNames[data.game_mode] || 'Mau-Mau / Uno';
         }
 
         // Uno-Button Label anpassen
