@@ -210,7 +210,7 @@ class Loch6Service
         $state['has_rolled'] = true;
         $state['roll_seq'] = ((int)($state['roll_seq'] ?? 0)) + 1;
         $state['rolls_in_turn'] = ((int)($state['rolls_in_turn'] ?? 0)) + 1;
-
+        $rollsInTurn = (int)$state['rolls_in_turn'];
         $currentRound = (int)($state['round_number'] ?? 1);
 
         // 1 Stein aus dem Vorrat entnehmen (Wunschstein oder letzter Stein)
