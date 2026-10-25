@@ -1304,3 +1304,16 @@ CREATE TABLE IF NOT EXISTS `games_hub_rate_limits` (
     UNIQUE KEY `uk_rate_action_ip` (`action_key`, `ip_hash`),
     INDEX `idx_rate_locked` (`locked_until`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `games_hub_reactions` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `room_id` INT UNSIGNED NOT NULL,
+    `player_id` INT UNSIGNED NOT NULL,
+    `player_name` VARCHAR(40) NOT NULL,
+    `emoji` VARCHAR(32) NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_gh_reactions_room_id` (`room_id`, `id`),
+    INDEX `idx_gh_reactions_player_time` (`room_id`, `player_id`, `created_at`),
+    CONSTRAINT `fk_gh_reactions_room` FOREIGN KEY (`room_id`) REFERENCES `games_hub_rooms`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

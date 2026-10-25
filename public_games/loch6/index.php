@@ -25,6 +25,9 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
             <span id="round-indicator-badge" class="loch6-round-pill">Runde 1 (Pflichtwurf)</span>
         </div>
         <div style="display: flex; gap: 0.4rem; align-items: center;">
+            <button type="button" class="btn btn-sm btn-outline js-btn-reactions" title="Reaktion senden" style="display: flex; align-items: center; gap: 0.25rem;">
+                😀 <span class="quarxl-react-btn-label">Reagieren</span>
+            </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-edit-name" title="Spielername ändern" style="display: flex; align-items: center; gap: 0.25rem;">
                 ✏️ <span class="js-my-name-display" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ich</span>
             </button>
@@ -191,6 +194,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     </div>
 
     <script src="../js/http-hub.js?v=<?= APP_VERSION ?>"></script>
+    <script src="../js/reactions.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="./loch6.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>

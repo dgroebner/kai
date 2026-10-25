@@ -596,6 +596,10 @@
                 return;
             }
 
+            if (window.QuarxlReactions && res.data.data && res.data.data.recent_reactions) {
+                window.QuarxlReactions.handleIncoming(res.data.data.recent_reactions);
+            }
+
             renderAll(res.data.data);
             return true;
         } catch (e) {

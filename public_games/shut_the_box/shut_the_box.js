@@ -290,6 +290,11 @@
         }
 
         const data = res.data.data;
+
+        if (window.QuarxlReactions && data.recent_reactions) {
+            window.QuarxlReactions.handleIncoming(data.recent_reactions);
+        }
+
         currentRoomData = data;
         renderGameState(data);
         return true;

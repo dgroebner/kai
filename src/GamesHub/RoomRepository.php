@@ -247,6 +247,158 @@ class RoomRepository
     }
 
     /**
+     * Erlaubte Emojis für Quarxl-Reaktionen samt Beschriftung.
+     */
+    public const ALLOWED_REACTIONS = [
+        '😂' => 'Lachen',
+        '😢' => 'Weinen',
+        '⏳' => 'Ungeduldig warten',
+        '👏' => 'Applaus',
+        '😱' => 'Schock',
+        '🔥' => 'Stark!',
+        '🤔' => 'Grübeln',
+    ];
+
+    /**
+     * Erstellt die Reaktionstabelle dynamisch, falls noch nicht vorhanden.
+     */
+    public function ensureReactionsTable(): void
+    {
+        try {
+            $this->pdo->exec('
+                CREATE TABLE IF NOT EXISTS `games_hub_reactions` (
+                    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    `room_id` INT UNSIGNED NOT NULL,
+                    `player_id` INT UNSIGNED NOT NULL,
+                    `player_name` VARCHAR(40) NOT NULL,
+                    `emoji` VARCHAR(32) NOT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX `idx_gh_reactions_room_id` (`room_id`, `id`),
+                    INDEX `idx_gh_reactions_player_time` (`room_id`, `player_id`, `created_at`),
+                    CONSTRAINT `fk_gh_reactions_room` FOREIGN KEY (`room_id`) REFERENCES `games_hub_rooms`(`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ');
+        } catch (\Throwable) {
+            // Non-blocking bei Restriktionen
+        }
+    }
+
+    /**
+     * Fügt eine Reaktion für einen Raum hinzu mit Cooldown-Spamschutz (3 Sekunden).
+     */
+    public function addReaction(int $roomId, int $playerId, string $playerName, string $emoji): array
+    {
+        $this->ensureReactionsTable();
+
+        if (!array_key_exists($emoji, self::ALLOWED_REACTIONS)) {
+            return [
+                'success' => false,
+                'error' => 'invalid_emoji',
+                'message' => 'Ungültiges Emoji.',
+            ];
+        }
+
+        $playerName = mb_substr(trim($playerName), 0, 30);
+        if ($playerName === '') {
+            $playerName = 'Spieler';
+        }
+
+        // Spam-Schutz: Wurde in den letzten 3 Sekunden bereits eine Reaktion von diesem Spieler im Raum gesendet?
+        $checkStmt = $this->pdo->prepare('
+            SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) AS diff_sec
+            FROM games_hub_reactions
+            WHERE room_id = :room_id AND player_id = :player_id
+            ORDER BY id DESC
+            LIMIT 1
+        ');
+        $checkStmt->execute([
+            ':room_id' => $roomId,
+            ':player_id' => $playerId,
+        ]);
+        $row = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && $row['diff_sec'] !== null && (int)$row['diff_sec'] < 3) {
+            $remaining = 3 - (int)$row['diff_sec'];
+            return [
+                'success' => false,
+                'error' => 'spam_cooldown',
+                'remaining' => $remaining,
+                'message' => "Bitte warte noch {$remaining}s vor der nächsten Reaktion.",
+            ];
+        }
+
+        $insertStmt = $this->pdo->prepare('
+            INSERT INTO games_hub_reactions (room_id, player_id, player_name, emoji, created_at)
+            VALUES (:room_id, :player_id, :player_name, :emoji, NOW())
+        ');
+        $insertStmt->execute([
+            ':room_id' => $roomId,
+            ':player_id' => $playerId,
+            ':player_name' => $playerName,
+            ':emoji' => $emoji,
+        ]);
+
+        $newId = (int)$this->pdo->lastInsertId();
+
+        // Gelegentliches Cleanup alter Reaktionen (älter als 10 Minuten)
+        if (random_int(1, 15) === 1) {
+            try {
+                $this->pdo->exec('
+                    DELETE FROM games_hub_reactions
+                    WHERE created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+                ');
+            } catch (\Throwable) {
+                // Ignore
+            }
+        }
+
+        return [
+            'success' => true,
+            'reaction' => [
+                'id' => $newId,
+                'player_id' => $playerId,
+                'player_name' => $playerName,
+                'emoji' => $emoji,
+                'label' => self::ALLOWED_REACTIONS[$emoji],
+                'created_at' => date('Y-m-d H:i:s'),
+                'created_ts' => time(),
+            ],
+        ];
+    }
+
+    /**
+     * Holt die aktuellen Reaktionen eines Raums (z. B. der letzten 30 Sekunden bzw. ab einer ID).
+     */
+    public function getRecentReactions(int $roomId, int $sinceId = 0, int $limit = 20): array
+    {
+        $this->ensureReactionsTable();
+
+        try {
+            $stmt = $this->pdo->prepare('
+                SELECT id, player_id, player_name, emoji, UNIX_TIMESTAMP(created_at) AS created_ts
+                FROM games_hub_reactions
+                WHERE room_id = :room_id AND id > :since_id AND created_at >= DATE_SUB(NOW(), INTERVAL 30 SECOND)
+                ORDER BY id ASC
+                LIMIT ' . (int)$limit . '
+            ');
+            $stmt->execute([
+                ':room_id' => $roomId,
+                ':since_id' => $sinceId,
+            ]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['player_id'] = (int)$r['player_id'];
+                $r['created_ts'] = (int)$r['created_ts'];
+                $r['label'] = self::ALLOWED_REACTIONS[$r['emoji']] ?? '';
+            }
+            return $rows;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
      * Bereinigt veraltete Räume, die älter als 48 Stunden sind.
      */
     public function cleanupOldRooms(): void
@@ -257,6 +409,11 @@ class RoomRepository
                 WHERE updated_at < DATE_SUB(NOW(), INTERVAL 48 HOUR)
             ');
             $stmt->execute();
+
+            $this->pdo->exec('
+                DELETE FROM games_hub_reactions
+                WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            ');
         } catch (\Throwable) {
             // Silent catch bei Cleanup
         }

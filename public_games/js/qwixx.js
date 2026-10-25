@@ -213,6 +213,10 @@
         },
 
         handleStateUpdate(data) {
+            if (window.QuarxlReactions && data.recent_reactions) {
+                window.QuarxlReactions.handleIncoming(data.recent_reactions);
+            }
+
             this.gameState = data.room.state;
             this.gameMode = data.room.mode || 'digital_dice';
             this.players = data.players || [];

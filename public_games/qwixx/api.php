@@ -233,7 +233,27 @@ try {
                 'all_passive_ready' => empty($waitingFor),
                 'waiting_for' => $waitingFor,
             ],
+            'recent_reactions' => $repo->getRecentReactions($roomId),
         ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // REAKTION SENDEN (Quarxl Reaktions-Smilies)
+    // -------------------------------------------------------------------------
+    if ($action === 'react') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Nur POST erlaubt']);
+            exit;
+        }
+
+        $emoji = trim((string)($input['emoji'] ?? ''));
+        $res = $repo->addReaction($roomId, (int)$player['id'], (string)$player['player_name'], $emoji);
+        if (empty($res['success'])) {
+            http_response_code(($res['error'] ?? '') === 'spam_cooldown' ? 429 : 400);
+        }
+        echo json_encode($res, JSON_UNESCAPED_UNICODE);
         exit;
     }
 
