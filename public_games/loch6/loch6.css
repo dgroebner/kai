@@ -209,7 +209,7 @@
     }
 }
 
-/* DIE 15 MULDEN (34px) - FARBLICH HINTERLEGT NACH ORIGINAL-FOTO */
+/* DIE 15 MULDEN (34px) - DEZENTE FARBLICHE HINTERLEGUNG NACH ORIGINAL-FOTO */
 .loch6-pit {
     position: absolute;
     width: 34px;
@@ -219,7 +219,7 @@
     box-shadow: 
         inset 0 3px 6px rgba(0, 0, 0, 0.95),
         inset 0 -1px 2px rgba(255, 255, 255, 0.12),
-        0 1px 1px rgba(255, 255, 255, 0.12);
+        0 1px 2px rgba(0, 0, 0, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -228,66 +228,61 @@
     overflow: hidden;
 }
 
-/* 1: Weiß (Elfenbein / Glanz-Weiß) */
+/* 1: Weiß (Dezenter Elfenbein-Ring & sanfter Schein im tiefen Muldenbett) */
 .loch6-pit.pit-color-1 {
-    background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f1f5f9 45%, #cbd5e1 80%, #94a3b8 100%);
+    background: radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.18) 0%, rgba(203, 213, 225, 0.10) 45%, #150903 80%, #070301 100%);
+    border: 2px solid rgba(248, 250, 252, 0.65);
     box-shadow: 
-        inset 0 3px 6px rgba(0, 0, 0, 0.45),
-        inset 0 -1px 3px rgba(255, 255, 255, 0.9),
-        0 2px 5px rgba(0, 0, 0, 0.5);
-    border: 1.5px solid rgba(0, 0, 0, 0.25);
+        inset 0 3px 6px rgba(0, 0, 0, 0.92),
+        0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* 2: Grün (Smaragd / Waldgrün) */
+/* 2: Grün (Dezentes Waldgrün & sanfter Muldenhintergrund) */
 .loch6-pit.pit-color-2 {
-    background: radial-gradient(circle at 35% 35%, #4ade80 0%, #22c55e 35%, #16a34a 70%, #14532d 100%);
+    background: radial-gradient(circle at 40% 40%, rgba(34, 197, 94, 0.22) 0%, rgba(22, 101, 52, 0.12) 45%, #150903 80%, #070301 100%);
+    border: 2px solid rgba(34, 197, 94, 0.7);
     box-shadow: 
-        inset 0 3px 6px rgba(0, 0, 0, 0.6),
-        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
-        0 2px 5px rgba(0, 0, 0, 0.5);
-    border: 1.5px solid rgba(0, 0, 0, 0.35);
+        inset 0 3px 6px rgba(0, 0, 0, 0.92),
+        0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* 3: Orange (Bernstein / Warmes Orange) */
+/* 3: Orange (Dezenter warmer Bernstein-Schimmer) */
 .loch6-pit.pit-color-3 {
-    background: radial-gradient(circle at 35% 35%, #fde047 0%, #fb923c 35%, #ea580c 70%, #9a3412 100%);
+    background: radial-gradient(circle at 40% 40%, rgba(249, 115, 22, 0.24) 0%, rgba(194, 65, 12, 0.12) 45%, #150903 80%, #070301 100%);
+    border: 2px solid rgba(249, 115, 22, 0.7);
     box-shadow: 
-        inset 0 3px 6px rgba(0, 0, 0, 0.6),
-        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
-        0 2px 5px rgba(0, 0, 0, 0.5);
-    border: 1.5px solid rgba(0, 0, 0, 0.35);
+        inset 0 3px 6px rgba(0, 0, 0, 0.92),
+        0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* 4: Blau (Kräftiges Kobaltblau) */
+/* 4: Blau (Dezenter Kobaltblau-Schimmer) */
 .loch6-pit.pit-color-4 {
-    background: radial-gradient(circle at 35% 35%, #60a5fa 0%, #3b82f6 35%, #1d4ed8 70%, #0f172a 100%);
+    background: radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.24) 0%, rgba(29, 78, 216, 0.12) 45%, #150903 80%, #070301 100%);
+    border: 2px solid rgba(59, 130, 246, 0.7);
     box-shadow: 
-        inset 0 3px 6px rgba(0, 0, 0, 0.6),
-        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
-        0 2px 5px rgba(0, 0, 0, 0.5);
-    border: 1.5px solid rgba(0, 0, 0, 0.35);
+        inset 0 3px 6px rgba(0, 0, 0, 0.92),
+        0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* 5: Rot (Kräftiges Rubinrot) */
+/* 5: Rot (Dezenter Rubinrot-Schimmer) */
 .loch6-pit.pit-color-5 {
-    background: radial-gradient(circle at 35% 35%, #f87171 0%, #ef4444 35%, #b91c1c 70%, #450a0a 100%);
+    background: radial-gradient(circle at 40% 40%, rgba(239, 68, 68, 0.24) 0%, rgba(185, 28, 28, 0.12) 45%, #150903 80%, #070301 100%);
+    border: 2px solid rgba(239, 68, 68, 0.7);
     box-shadow: 
-        inset 0 3px 6px rgba(0, 0, 0, 0.6),
-        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
-        0 2px 5px rgba(0, 0, 0, 0.5);
-    border: 1.5px solid rgba(0, 0, 0, 0.35);
+        inset 0 3px 6px rgba(0, 0, 0, 0.92),
+        0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
-/* Glanzreflexion auf den lackierten Mulden (wie im Foto) */
+/* Subtiler, weicher Lichtreflex im Muldenrand */
 .loch6-pit::after {
     content: '';
     position: absolute;
-    top: 3px;
-    left: 5px;
-    width: 14px;
-    height: 7px;
+    top: 2px;
+    left: 4px;
+    width: 10px;
+    height: 5px;
     border-radius: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 100%);
     pointer-events: none;
     transform: rotate(-25deg);
     z-index: 1;
