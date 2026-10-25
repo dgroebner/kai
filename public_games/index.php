@@ -179,10 +179,23 @@ require_once __DIR__ . '/../bootstrap.php';
 
                 <div class="form-group" style="margin-top: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <label for="create-room-pin" style="margin-bottom: 0;">Tisch-PIN (Host-Schutz):</label>
+                        <label for="quarxl-table-access-code" style="margin-bottom: 0;">Tisch-PIN (Host-Schutz):</label>
                         <span id="pin-saved-badge" class="hidden" style="font-size: 0.75rem; color: #22c55e; font-weight: 700;">✓ PIN gespeichert</span>
                     </div>
-                    <input type="password" id="create-room-pin" class="form-control" placeholder="PIN aus der Konfiguration" required autocomplete="current-password" style="margin-top: 0.25rem;">
+                    <input type="text"
+                           id="quarxl-table-access-code"
+                           name="quarxl_table_access_code"
+                           class="form-control"
+                           placeholder="PIN aus der Konfiguration"
+                           required
+                           autocomplete="off"
+                           autocapitalize="off"
+                           autocorrect="off"
+                           spellcheck="false"
+                           data-lpignore="true"
+                           data-1p-ignore="true"
+                           data-form-type="other"
+                           style="margin-top: 0.25rem; -webkit-text-security: disc; text-security: disc;">
                     <small class="text-muted">Wird nach der ersten erfolgreichen Eingabe lokal im Browser gespeichert.</small>
                 </div>
 

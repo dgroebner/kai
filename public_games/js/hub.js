@@ -22,7 +22,7 @@
         const diceGroup = document.getElementById('group-dice-modes');
         const cardGroup = document.getElementById('group-card-modes');
         const loch6Group = document.getElementById('group-loch6-modes');
-        const pinInput = document.getElementById('create-room-pin');
+        const pinInput = document.getElementById('quarxl-table-access-code') || document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
         function updateSavedPinField() {
@@ -118,7 +118,7 @@
             formCreate.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const gameType = gameTypeInput?.value || 'qwixx';
-                const pin = document.getElementById('create-room-pin')?.value.trim();
+                const pin = pinInput?.value.trim() || '';
                 const name = nameInput?.value.trim() || 'Host';
                 let mode = 'digital_dice';
                 const payload = {
