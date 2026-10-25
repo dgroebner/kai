@@ -552,11 +552,61 @@
     font-weight: 900;
 }
 
-/* Tisch-Mitte: Letzte gelegte Karte */
+/* Tisch-Mitte: Ablagestapel mit physischem Kartenstapel */
+.discard-pile-stack {
+    position: relative;
+    width: 85px;
+    height: 125px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.discard-pile-stack .game-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
+}
+
+/* Älteste sichtbare Karte (Position -2) */
+.discard-stack-deep {
+    transform: rotate(var(--rot-deep, -7deg)) translate(-4px, 3px);
+    opacity: 0.65;
+    filter: brightness(0.72);
+    z-index: 1;
+}
+
+/* Vorherige Karte (Position -1) */
+.discard-stack-mid {
+    transform: rotate(var(--rot-mid, 6deg)) translate(3px, -2px);
+    opacity: 0.85;
+    filter: brightness(0.88);
+    z-index: 2;
+}
+
+/* Aktive oberste Karte */
+.discard-stack-top {
+    transform: rotate(var(--rot-top, -1.5deg)) scale(1.04);
+    z-index: 3;
+    opacity: 1;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+}
+
+/* Fliegende Karten-Animation (Hardware-beschleunigt) */
+.flying-card-clone {
+    position: fixed !important;
+    z-index: 99999 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.36s ease, opacity 0.36s ease !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.8), 0 0 20px rgba(99, 102, 241, 0.75) !important;
+}
+
 .top-discard-card {
     pointer-events: none;
-    transform: scale(1.05);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
 }
 
 /* Wunschfarben-Indikator */

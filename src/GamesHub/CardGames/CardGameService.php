@@ -232,7 +232,14 @@ class CardGameService
         $state['discard_pile'][] = $playedCard;
         $state['top_card'] = $playedCard;
 
-        // Hat der Spieler gewonnen?
+        // Karteneffekte anwenden (z.B. Discard All modifiziert $players[$playerIdx]['sheet']['cards'])
+        $result = $ruleEngine->applyCard($playedCard, $state, $players, $playerIdx, $chosenColor);
+
+        // Nach Anwendung der Karteneffekte: aktuellen Spieler und Hand aktualisieren
+        $player = $players[$playerIdx];
+        $hand = $player['sheet']['cards'] ?? [];
+
+        // Hat der Spieler gewonnen (alle Karten abgelegt, auch durch Discard All)?
         if (count($hand) === 0) {
             $state['winner_id'] = $playerId;
             $state['last_event'] = [
@@ -244,9 +251,6 @@ class CardGameService
             $this->repo->updateRoomState($roomId, $state, 'finished');
             return ['success' => true, 'game_finished' => true];
         }
-
-        // Karteneffekte anwenden
-        $result = $ruleEngine->applyCard($playedCard, $state, $players, $playerIdx, $chosenColor);
 
         // Nächsten Spieler setzen
         $nextPlayerIdx = $result['next_player_index'];
@@ -261,7 +265,7 @@ class CardGameService
             'time' => time(),
         ];
 
-        // Hand aktualisieren
+        // Hand in DB aktualisieren
         $this->repo->updatePlayerSheet($playerId, $player['sheet'], 0);
         $this->repo->updateRoomState($roomId, $state);
 
@@ -624,6 +628,7 @@ class CardGameService
             'status' => $room['status'],
             'state_version' => (int)$room['state_version'],
             'top_card' => $topCard,
+            'recent_discard' => array_values(array_slice($roomState['discard_pile'] ?? [], -3)),
             'active_color' => $activeColor,
             'direction' => (int)($roomState['direction'] ?? 1),
             'active_player_id' => $activePlayerId,

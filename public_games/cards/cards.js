@@ -13,6 +13,7 @@
     let currentRoomData = null;
     let unoCountdownTimer = null;
     let unoAnimFrame = null;
+    let lastRenderedTopCardId = null;
 
     // Web Audio Synthesizer (Keine externen MP3-Dateien nötig)
     const AudioEngine = {
@@ -384,10 +385,35 @@
             oppBar.innerHTML = oppHtml;
         }
 
-        // Tischmitte: Ablagestapel (Oberste Karte)
+        // Tischmitte: Ablagestapel (mit physisch versetzten letzten bis zu 3 Karten)
         const discardCont = document.getElementById('discard-pile-container');
         if (discardCont && data.top_card) {
-            discardCont.innerHTML = renderCardHtml(data.top_card, false, true);
+            renderDiscardPileStack(discardCont, data);
+
+            // Gegner-Kartenwurf animieren, falls ein Mitspieler gelegt hat
+            if (lastRenderedTopCardId && data.top_card.id !== lastRenderedTopCardId) {
+                const lastEvent = data.last_event;
+                const myName = myPlayer ? myPlayer.name : '';
+                const wasMe = lastEvent && lastEvent.message && lastEvent.message.startsWith(myName);
+
+                if (!wasMe) {
+                    let sourceSlot = null;
+                    const oppSlots = document.querySelectorAll('.opponent-slot');
+                    oppSlots.forEach(slot => {
+                        const nameEl = slot.querySelector('.opponent-name');
+                        if (nameEl && lastEvent && lastEvent.message && lastEvent.message.includes(nameEl.textContent.trim())) {
+                            sourceSlot = slot;
+                        }
+                    });
+                    if (!sourceSlot && oppSlots.length > 0) {
+                        sourceSlot = oppSlots[0];
+                    }
+                    if (sourceSlot) {
+                        animateOpponentCardFly(sourceSlot, discardCont, data.top_card);
+                    }
+                }
+            }
+            lastRenderedTopCardId = data.top_card.id;
         }
 
         // Tischmitte: Nachziehstapel / Launcher
@@ -601,11 +627,64 @@
         return copy;
     }
 
-    function renderCardHtml(card, canPlay, isTopDiscard, zIndex = 1) {
+    function getCardRotation(cardId, seedOffset) {
+        let hash = 0;
+        const str = String(cardId || '') + seedOffset;
+        for (let i = 0; i < str.length; i++) {
+            hash = (hash * 31 + str.charCodeAt(i)) & 0xff;
+        }
+        const angle = ((hash % 15) - 7); // -7° bis +7°
+        return angle === 0 ? (seedOffset < 0 ? -4 : 3) : angle;
+    }
+
+    function renderDiscardPileStack(container, data) {
+        const recent = (Array.isArray(data.recent_discard) && data.recent_discard.length > 0)
+            ? data.recent_discard
+            : (data.top_card ? [data.top_card] : []);
+
+        if (recent.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let stackHtml = '<div class="discard-pile-stack">';
+        const total = recent.length;
+
+        recent.forEach((card, idx) => {
+            const isTop = (idx === total - 1);
+            let stackClass = 'discard-stack-top';
+            let rotVar = `--rot-top: ${getCardRotation(card.id, 0)}deg`;
+
+            if (total === 3) {
+                if (idx === 0) {
+                    stackClass = 'discard-stack-deep';
+                    rotVar = `--rot-deep: ${getCardRotation(card.id, -2)}deg`;
+                } else if (idx === 1) {
+                    stackClass = 'discard-stack-mid';
+                    rotVar = `--rot-mid: ${getCardRotation(card.id, -1)}deg`;
+                }
+            } else if (total === 2 && idx === 0) {
+                stackClass = 'discard-stack-mid';
+                rotVar = `--rot-mid: ${getCardRotation(card.id, -1)}deg`;
+            }
+
+            stackHtml += renderCardHtml(card, false, isTop, idx + 1, stackClass, rotVar);
+        });
+
+        stackHtml += '</div>';
+        container.innerHTML = stackHtml;
+    }
+
+    function renderCardHtml(card, canPlay, isTopDiscard, zIndex = 1, extraClass = '', extraStyle = '') {
         const canPlayClass = canPlay ? 'can-play' : '';
         const topClass = isTopDiscard ? 'top-discard-card' : '';
         const colorClass = `card-${card.color}`;
-        const zIndexStyle = isTopDiscard ? '' : `style="z-index: ${zIndex};"`;
+        const finalClass = [canPlayClass, topClass, extraClass].filter(Boolean).join(' ');
+
+        const styleParts = [];
+        if (!isTopDiscard) styleParts.push(`z-index: ${zIndex}`);
+        if (extraStyle) styleParts.push(extraStyle);
+        const styleAttr = styleParts.length > 0 ? `style="${styleParts.join('; ')}"` : '';
 
         const isFrench = ['hearts', 'diamonds', 'spades', 'clubs'].includes(card.color);
 
@@ -638,8 +717,8 @@
             }
 
             return `
-                <div class="game-card card-french ${colorClass} ${canPlayClass} ${topClass}" 
-                     ${zIndexStyle}
+                <div class="game-card card-french ${colorClass} ${finalClass}" 
+                     ${styleAttr}
                      data-card-id="${card.id}" 
                      data-card-type="${card.type}"
                      data-card-color="${card.color}">
@@ -691,8 +770,8 @@
 
         const cornerDisplay = HubHtml.escape(card.label || card.rank || '');
         return `
-            <div class="game-card card-uno ${colorClass} ${canPlayClass} ${topClass}" 
-                 ${zIndexStyle}
+            <div class="game-card card-uno ${colorClass} ${finalClass}" 
+                 ${styleAttr}
                  data-card-id="${card.id}" 
                  data-card-type="${card.type}"
                  data-card-color="${card.color}">
@@ -705,6 +784,84 @@
                 </div>
             </div>
         `;
+    }
+
+    function animateCardFly(sourceEl, targetEl, onArrival) {
+        if (!sourceEl || !targetEl) {
+            if (onArrival) onArrival();
+            return;
+        }
+
+        const fromRect = sourceEl.getBoundingClientRect();
+        const toRect = targetEl.getBoundingClientRect();
+
+        const clone = sourceEl.cloneNode(true);
+        clone.classList.remove('can-play', 'top-discard-card', 'discard-stack-top', 'discard-stack-mid', 'discard-stack-deep');
+        clone.classList.add('flying-card-clone');
+
+        clone.style.top = `${fromRect.top}px`;
+        clone.style.left = `${fromRect.left}px`;
+        clone.style.width = `${fromRect.width}px`;
+        clone.style.height = `${fromRect.height}px`;
+        clone.style.transform = 'translate3d(0, 0, 0) scale(1) rotate(0deg)';
+        document.body.appendChild(clone);
+
+        sourceEl.style.opacity = '0';
+
+        const cardId = sourceEl.dataset.cardId || '';
+        const targetRot = getCardRotation(cardId, 0);
+
+        const deltaX = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2);
+        const deltaY = (toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2);
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                clone.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.04) rotate(${targetRot}deg)`;
+            });
+        });
+
+        setTimeout(() => {
+            AudioEngine.playCardSound();
+            clone.remove();
+            if (onArrival) onArrival();
+        }, 360);
+    }
+
+    function animateOpponentCardFly(opponentSlot, targetEl, playedCard) {
+        if (!opponentSlot || !targetEl || !playedCard) return;
+
+        const fromRect = opponentSlot.getBoundingClientRect();
+        const toRect = targetEl.getBoundingClientRect();
+
+        const tempCont = document.createElement('div');
+        tempCont.innerHTML = renderCardHtml(playedCard, false, false);
+        const cardNode = tempCont.firstElementChild;
+        if (!cardNode) return;
+
+        cardNode.classList.remove('can-play', 'top-discard-card');
+        cardNode.classList.add('flying-card-clone');
+
+        cardNode.style.top = `${fromRect.top + fromRect.height / 4}px`;
+        cardNode.style.left = `${fromRect.left + fromRect.width / 4}px`;
+        cardNode.style.transform = 'translate3d(0, 0, 0) scale(0.35) rotate(0deg)';
+        cardNode.style.opacity = '0.9';
+        document.body.appendChild(cardNode);
+
+        const targetRot = getCardRotation(playedCard.id, 0);
+        const deltaX = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 4 + 30);
+        const deltaY = (toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 4 + 40);
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                cardNode.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.04) rotate(${targetRot}deg)`;
+                cardNode.style.opacity = '1';
+            });
+        });
+
+        setTimeout(() => {
+            AudioEngine.playCardSound();
+            cardNode.remove();
+        }, 360);
     }
 
     function onCardClicked(card, data) {
@@ -860,7 +1017,14 @@
         if (isSubmitting) return;
         isSubmitting = true;
 
-        AudioEngine.playCardSound();
+        // Fluganimation der Karte von der Hand auf den Ablagestapel
+        const cardEl = document.querySelector(`.game-card[data-card-id="${cardId}"]`);
+        const targetEl = document.getElementById('discard-pile-container');
+        if (cardEl && targetEl) {
+            animateCardFly(cardEl, targetEl);
+        } else {
+            AudioEngine.playCardSound();
+        }
 
         const res = await HubHttp.postJson(`./api.php?action=play_card&room=${encodeURIComponent(roomCode)}`, {
             card_id: cardId,
