@@ -211,17 +211,29 @@
         }, 65);
     }
 
-    // Hilfsfunktion: Mineral-Kristall HTML erzeugen
+    // Hilfsfunktion: Mineral-Kristall HTML erzeugen (Echte Trommelsteine / polierte Cabochons)
     function createCrystalElement(stone, inTray = false) {
         const type = stone.type || 'amethyst';
         const seed = parseInt(stone.seed || 100, 10);
         // Kleine Asymmetrie und Streuung basierend auf Seed
-        const rot = (seed % 30) - 15;
-        const scale = 0.92 + ((seed % 16) / 100);
+        const rot = (seed % 28) - 14;
+        const scale = 0.94 + ((seed % 14) / 100);
+
+        // Organische ovale Trommelstein-Kontur berechnen
+        const r1 = 46 + (seed % 9);
+        const r2 = 100 - r1;
+        const r3 = 48 + ((seed * 3) % 8);
+        const r4 = 100 - r3;
+        const r5 = 54 + ((seed * 7) % 8);
+        const r6 = 100 - r5;
+        const r7 = 48 + ((seed * 5) % 8);
+        const r8 = 100 - r7;
+        const borderRadius = `${r1}% ${r2}% ${r3}% ${r4}% / ${r5}% ${r6}% ${r7}% ${r8}%`;
 
         const el = document.createElement('div');
         el.className = `crystal-gem crystal-${type}`;
         el.style.transform = `scale(${scale}) rotate(${rot}deg)`;
+        el.style.borderRadius = borderRadius;
         el.title = `${type.toUpperCase()} (#${seed})`;
         if (inTray) {
             el.dataset.stoneId = stone.id || '';
@@ -601,6 +613,12 @@
                 const activeTag = p.is_active ? '<span style="color: #38bdf8;">Am Zug</span>' : '';
                 const botTag = p.is_bot ? '🤖 ' : '';
 
+                let miniStonesHtml = '';
+                (p.stones || []).forEach(s => {
+                    const st = s.type || 'amethyst';
+                    miniStonesHtml += `<span class="mini-crystal-icon crystal-${st}" title="${st}"></span>`;
+                });
+
                 oppHtml += `
                     <div class="loch6-opponent-chip ${activeClass}">
                         <div class="loch6-opponent-header">
@@ -608,7 +626,10 @@
                             ${activeTag}
                         </div>
                         <div class="loch6-opponent-stones-badge">
-                            💎 <span>${p.stone_count}</span> Steine
+                            <span>${p.stone_count} Steine</span>
+                        </div>
+                        <div class="loch6-opponent-mini-stones" style="display: flex; gap: 2px; flex-wrap: wrap; margin-top: 2px;">
+                            ${miniStonesHtml}
                         </div>
                     </div>
                 `;
