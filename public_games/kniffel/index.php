@@ -177,7 +177,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 </div>
 
                 <!-- UNTERER TEIL -->
-                <div class="kniffel-section card-box" style="margin-top: 1rem;">
+                <div class="kniffel-section card-box">
                     <div class="kniffel-section-header">
                         <h4>Unterer Teil (Kombinationen)</h4>
                         <span class="text-muted" style="font-size: 0.78rem;">Punkte oder Streichen</span>

@@ -955,6 +955,8 @@ body.games-hub-body {
     margin-bottom: 0.85rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     padding-bottom: 0.5rem;
+    min-height: 36px;
+    box-sizing: border-box;
 }
 
 .kniffel-section-header h4 {
