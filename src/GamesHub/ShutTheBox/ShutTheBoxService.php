@@ -43,6 +43,7 @@ class ShutTheBoxService
             'active_player_index' => 0,
             'dice' => [1, 1],
             'has_rolled' => false,
+            'roll_seq' => 0,
             'abort_vote' => null, // ['initiator_id' => ..., 'initiator_name' => ..., 'votes' => [id => true/false]]
             'last_event' => [
                 'type' => 'lobby_created',
@@ -134,12 +135,13 @@ class ShutTheBoxService
         $sum = $d1 + $d2;
         $state['dice'] = [$d1, $d2];
         $state['has_rolled'] = true;
+        $state['roll_seq'] = ((int)($state['roll_seq'] ?? 0)) + 1;
 
-        // Prüfen, welche Kombinationen noch möglich sind
+        // Prüfen, welche Kombinationen noch möglich sind (Addition, Subtraktion, beide einzeln, einzelner Würfel)
         $flaps = $player['sheet']['current_flaps'] ?? [];
-        $validCombos = self::findCombinationsForSum($flaps, $sum);
+        $validMoves = self::getValidMovesForDice($flaps, $d1, $d2);
 
-        if (empty($validCombos)) {
+        if (empty($validMoves)) {
             // Keine Kombination mehr möglich -> Spieler scheidet für diese Runde aus!
             $penalty = self::calculateOpenFlapsSum($flaps);
             $roundIdx = (int)($state['round_number'] ?? 1) - 1;
@@ -152,7 +154,7 @@ class ShutTheBoxService
 
             $state['last_event'] = [
                 'type' => 'player_locked_out',
-                'message' => "❌ {$player['player_name']} würfelte {$sum} ({$d1}+{$d2}) – keine Klappen möglich! {$penalty} Strafpunkte eingetragen.",
+                'message' => "❌ {$player['player_name']} würfelte {$d1} und {$d2} – keine Klappen möglich! {$penalty} Strafpunkte eingetragen.",
                 'time' => time(),
             ];
 
@@ -170,7 +172,7 @@ class ShutTheBoxService
 
         $state['last_event'] = [
             'type' => 'dice_rolled',
-            'message' => "🎲 {$player['player_name']} würfelte {$sum} ({$d1}+{$d2}). Wähle Klappen zum Umlegen.",
+            'message' => "🎲 {$player['player_name']} würfelte {$d1} und {$d2}. Wähle Klappen.",
             'time' => time(),
         ];
         $this->repo->updateRoomState($roomId, $state);
@@ -180,7 +182,7 @@ class ShutTheBoxService
             'dice' => [$d1, $d2],
             'sum' => $sum,
             'locked_out' => false,
-            'valid_combos' => $validCombos,
+            'valid_combos' => $validMoves,
         ];
     }
 
@@ -220,25 +222,33 @@ class ShutTheBoxService
             return ['success' => false, 'message' => 'Spieler nicht gefunden'];
         }
 
-        // Validierung der gewählten Klappen
-        $sum = array_sum($state['dice']);
-        if (array_sum($chosenFlaps) !== $sum) {
-            return ['success' => false, 'message' => "Die Summe der Klappen muss genau {$sum} betragen"];
+        // Validierung der gewählten Klappen anhand der Spielregeln:
+        // Addition, Subtraktion, beide Würfel einzeln oder ein einzelner Würfel
+        $d1 = (int)($state['dice'][0] ?? 1);
+        $d2 = (int)($state['dice'][1] ?? 1);
+        $currentFlaps = $player['sheet']['current_flaps'] ?? [];
+        $validMoves = self::getValidMovesForDice($currentFlaps, $d1, $d2);
+
+        $sortedChosen = array_map('intval', $chosenFlaps);
+        sort($sortedChosen);
+
+        $matchedMove = null;
+        foreach ($validMoves as $vm) {
+            if ($vm['flaps'] === $sortedChosen) {
+                $matchedMove = $vm;
+                break;
+            }
         }
 
-        $currentFlaps = $player['sheet']['current_flaps'] ?? [];
-        foreach ($chosenFlaps as $f) {
-            $f = (int)$f;
-            if ($f < 1 || $f > self::FLAPS_COUNT) {
-                return ['success' => false, 'message' => 'Ungültige Klappe'];
-            }
-            if (empty($currentFlaps[$f])) {
-                return ['success' => false, 'message' => "Klappe {$f} ist bereits umgelegt"];
-            }
+        if (!$matchedMove) {
+            return [
+                'success' => false,
+                'message' => 'Ungültige Klappen-Kombination. Erlaubt sind Addition, Subtraktion, beide Würfel einzeln oder ein einzelner Würfel.',
+            ];
         }
 
         // Klappen umlegen
-        foreach ($chosenFlaps as $f) {
+        foreach ($sortedChosen as $f) {
             $currentFlaps[(int)$f] = false;
         }
         $player['sheet']['current_flaps'] = $currentFlaps;
@@ -259,7 +269,7 @@ class ShutTheBoxService
         } else {
             $state['last_event'] = [
                 'type' => 'flaps_flipped',
-                'message' => "{$player['player_name']} legte Klappen [" . implode(', ', $chosenFlaps) . "] um.",
+                'message' => "{$player['player_name']} wählte {$matchedMove['label']}.",
                 'time' => time(),
             ];
         }
@@ -334,6 +344,28 @@ class ShutTheBoxService
 
         // Nächste Spielrunde vorbereiten
         $nextRound = $currentRound + 1;
+
+        // Runden-Zusammenfassung für den Übergang erfassen
+        $roundIdx = $currentRound - 1;
+        $summaryScores = [];
+        foreach ($players as $p) {
+            $rScore = $p['sheet']['scores'][$roundIdx] ?? 0;
+            $totScore = self::calculateTotalScore($p['sheet']['scores'] ?? []);
+            $summaryScores[] = [
+                'player_id' => (int)$p['id'],
+                'player_name' => $p['player_name'],
+                'round_score' => $rScore,
+                'total_score' => $totScore,
+                'is_bot' => !empty($p['sheet']['is_bot']),
+            ];
+        }
+        $state['round_summary'] = [
+            'round_number' => $currentRound,
+            'next_round' => $nextRound,
+            'scores' => $summaryScores,
+            'time' => time(),
+        ];
+
         $state['round_number'] = $nextRound;
         $state['has_rolled'] = false;
 
@@ -582,10 +614,11 @@ class ShutTheBoxService
                 return;
             }
 
-            // 2. Taktische Klappenauswahl durch BotService
+            // 2. Taktische Klappenauswahl durch BotService (Addition, Subtraktion, beide einzeln oder einzelner Würfel)
             $flaps = $activePlayer['sheet']['current_flaps'] ?? [];
-            $sum = (int)($rollRes['sum'] ?? 0);
-            $chosenCombo = ShutTheBoxBotService::pickBestCombination($flaps, $sum);
+            $d1 = (int)($rollRes['dice'][0] ?? 1);
+            $d2 = (int)($rollRes['dice'][1] ?? 1);
+            $chosenCombo = ShutTheBoxBotService::pickBestMove($flaps, $d1, $d2);
 
             if (!empty($chosenCombo)) {
                 $this->flipFlaps($roomId, $activePlayerId, $chosenCombo);
@@ -628,11 +661,13 @@ class ShutTheBoxService
         }
 
         // Mögliche Kombinationen für den aktiven Spieler berechnen (falls gewürfelt)
+        // Erlaubt: Addition, Subtraktion, beide Würfel einzeln oder ein einzelner Würfel
         $validCombos = [];
         if (!empty($state['has_rolled']) && (int)$myPlayer['id'] === $activePlayerId) {
             $myFlaps = $myPlayer['sheet']['current_flaps'] ?? [];
-            $sum = array_sum($state['dice'] ?? [0, 0]);
-            $validCombos = self::findCombinationsForSum($myFlaps, $sum);
+            $d1 = (int)($state['dice'][0] ?? 1);
+            $d2 = (int)($state['dice'][1] ?? 1);
+            $validCombos = self::getValidMovesForDice($myFlaps, $d1, $d2);
         }
 
         return [
@@ -643,14 +678,83 @@ class ShutTheBoxService
             'active_player_id' => $activePlayerId,
             'dice' => $state['dice'] ?? [1, 1],
             'has_rolled' => (bool)($state['has_rolled'] ?? false),
+            'roll_seq' => (int)($state['roll_seq'] ?? 0),
             'abort_vote' => $state['abort_vote'] ?? null,
             'winner_id' => $state['winner_id'] ?? null,
             'winner_name' => $state['winner_name'] ?? null,
             'winner_score' => $state['winner_score'] ?? null,
             'last_event' => $state['last_event'] ?? null,
+            'round_summary' => $state['round_summary'] ?? null,
             'players' => $publicPlayers,
             'valid_combos' => $validCombos,
         ];
+    }
+
+    /**
+     * Ermittelt alle gültigen Klappen-Kombinationen für zwei gewürfelte Augen:
+     * - Addition beider Würfel: [d1 + d2]
+     * - Subtraktion beider Würfel: [|d1 - d2|]
+     * - Beide Würfel einzeln: [d1, d2]
+     * - Einzelner Würfel: [d1] oder [d2]
+     *
+     * @param array<int, bool> $flaps Offene/geschlossene Klappen (1..10)
+     * @param int $d1 Erster Würfel (1..6)
+     * @param int $d2 Zweiter Würfel (1..6)
+     * @return array<array{type: string, label: string, flaps: int[]}>
+     */
+    public static function getValidMovesForDice(array $flaps, int $d1, int $d2): array
+    {
+        $moves = [];
+        $seenFlapKeys = [];
+
+        $addMove = function (string $type, string $label, array $chosen) use (&$moves, &$seenFlapKeys) {
+            $chosen = array_map('intval', $chosen);
+            sort($chosen);
+            $key = implode('-', $chosen);
+            if (!isset($seenFlapKeys[$key])) {
+                $seenFlapKeys[$key] = true;
+                $moves[] = [
+                    'type' => $type,
+                    'label' => $label,
+                    'flaps' => $chosen,
+                ];
+            }
+        };
+
+        // 1. Addition beider Würfel: [d1 + d2]
+        $addSum = $d1 + $d2;
+        if ($addSum <= self::FLAPS_COUNT && !empty($flaps[$addSum])) {
+            $addMove('addition', "{$addSum} (Addition: {$d1}+{$d2})", [$addSum]);
+        }
+
+        // 2. Subtraktion beider Würfel: [|d1 - d2|]
+        $subDiff = abs($d1 - $d2);
+        if ($subDiff >= 1 && $subDiff <= self::FLAPS_COUNT && !empty($flaps[$subDiff])) {
+            $high = max($d1, $d2);
+            $low = min($d1, $d2);
+            $addMove('subtraction', "{$subDiff} (Subtraktion: {$high}-{$low})", [$subDiff]);
+        }
+
+        // 3. Beide Würfel einzeln: [d1, d2]
+        if ($d1 !== $d2) {
+            $f1 = min($d1, $d2);
+            $f2 = max($d1, $d2);
+            if (!empty($flaps[$f1]) && !empty($flaps[$f2])) {
+                $addMove('both', "{$f1} + {$f2} (Beide einzeln)", [$f1, $f2]);
+            }
+        }
+
+        // 4. Einzelner Würfel d1: [d1]
+        if (!empty($flaps[$d1])) {
+            $addMove('single', "{$d1} (Einzeln)", [$d1]);
+        }
+
+        // 5. Einzelner Würfel d2: [d2]
+        if ($d2 !== $d1 && !empty($flaps[$d2])) {
+            $addMove('single', "{$d2} (Einzeln)", [$d2]);
+        }
+
+        return $moves;
     }
 
     /**

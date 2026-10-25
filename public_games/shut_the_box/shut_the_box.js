@@ -10,6 +10,10 @@
     let selectedFlaps = new Set();
     let currentRoomData = null;
     let lastEventTime = 0;
+    let isRollingAnimation = false;
+    let lastKnownRollSeq = 0;
+    let lastShownSummaryRound = 0;
+    let roundSummaryTimer = null;
 
     // Web Audio Synthesizer (Holzbrett & Würfel Soundeffekte)
     const AudioEngine = {
@@ -38,6 +42,23 @@
                 osc.start(t);
                 osc.stop(t + 0.06);
             }
+        },
+        playDiceLand() {
+            this.init();
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            // Gedämpftes Aufschlagen im Samt-Teller
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(45, now + 0.08);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.09);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.1);
         },
         playFlapClick() {
             this.init();
@@ -122,6 +143,15 @@
         document.querySelectorAll('.js-close-scorecard').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (scoreModal) scoreModal.classList.add('hidden');
+            });
+        });
+
+        // Runden-Zusammenfassung schließen
+        document.querySelectorAll('.js-close-round-summary').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modal = document.getElementById('modal-round-summary');
+                if (modal) modal.classList.add('hidden');
+                if (roundSummaryTimer) clearTimeout(roundSummaryTimer);
             });
         });
 
@@ -289,6 +319,9 @@
         // Abbruch-Abstimmung prüfen
         renderAbortModal(data, myPlayer);
 
+        // Runden-Zusammenfassung bei Rundenübergang anzeigen
+        renderRoundSummaryModal(data);
+
         const paneLobby = document.getElementById('pane-lobby');
         const paneGame = document.getElementById('pane-game');
         const paneFinished = document.getElementById('pane-finished');
@@ -394,17 +427,28 @@
             oppCont.innerHTML = oppHtml;
         }
 
-        // Würfel rendern
-        const [d1, d2] = data.dice || [1, 1];
-        renderDie('die-1', d1);
-        renderDie('die-2', d2);
+        // Neuer Wurf (z. B. durch Mitspieler oder Bot) über Polling eingetroffen?
+        const currentRollSeq = Number(data.roll_seq || 0);
+        if (currentRollSeq > 0 && lastKnownRollSeq > 0 && currentRollSeq > lastKnownRollSeq && !isRollingAnimation) {
+            lastKnownRollSeq = currentRollSeq;
+            playDiceRollAnimation(data.dice || [1, 1], () => {
+                renderGame(data, myPlayer);
+            });
+            return;
+        }
+        lastKnownRollSeq = Math.max(lastKnownRollSeq, currentRollSeq);
 
-        const sumDisplay = document.getElementById('dice-sum-display');
-        const sum = d1 + d2;
-        if (sumDisplay) {
-            sumDisplay.innerHTML = data.has_rolled 
-                ? `Augensumme: <strong>${sum}</strong> (${d1} + ${d2})`
-                : 'Augensumme: <strong>-</strong>';
+        const [d1, d2] = data.dice || [1, 1];
+        if (!isRollingAnimation) {
+            renderDie('die-1', d1);
+            renderDie('die-2', d2);
+
+            const sumDisplay = document.getElementById('dice-sum-display');
+            if (sumDisplay) {
+                sumDisplay.innerHTML = data.has_rolled 
+                    ? `Augen: <strong>${d1}</strong> &amp; <strong>${d2}</strong>`
+                    : 'Augen: <strong>-</strong>';
+            }
         }
 
         // Zug-Status & Würfeln-Button
@@ -421,9 +465,9 @@
             } else if (isMyTurn) {
                 if (data.has_rolled) {
                     rollBtn.disabled = true;
-                    turnStatus.innerHTML = `<span style="color: #facc15;">👉 Wähle Klappen für Summe ${sum}!</span>`;
+                    turnStatus.innerHTML = `<span style="color: #facc15;">👉 Wähle: Addition, Subtraktion oder einzeln!</span>`;
                 } else {
-                    rollBtn.disabled = false;
+                    rollBtn.disabled = isRollingAnimation;
                     turnStatus.innerHTML = '<span style="color: #22c55e;">👉 Du bist am Zug! Würfle jetzt.</span>';
                 }
             } else {
@@ -441,9 +485,10 @@
             if (isMyTurn && data.has_rolled && Array.isArray(data.valid_combos) && data.valid_combos.length > 0) {
                 combosShelf.classList.remove('hidden');
                 let pillsHtml = '';
-                data.valid_combos.forEach(combo => {
-                    const label = combo.join(' + ');
-                    pillsHtml += `<button type="button" class="combo-pill-btn js-btn-combo" data-combo="${combo.join(',')}">${label}</button>`;
+                data.valid_combos.forEach(comboObj => {
+                    const label = comboObj.label || comboObj.flaps.join(' + ');
+                    const flapsStr = comboObj.flaps.join(',');
+                    pillsHtml += `<button type="button" class="combo-pill-btn js-btn-combo" data-combo="${flapsStr}">👉 ${HubHtml.escape(label)}</button>`;
                 });
                 combosCont.innerHTML = pillsHtml;
 
@@ -451,7 +496,7 @@
                     btn.addEventListener('click', () => {
                         const combo = btn.dataset.combo.split(',').map(Number);
                         selectedFlaps = new Set(combo);
-                        renderMyFlaps(myPlayer, data.has_rolled, sum);
+                        renderMyFlaps(myPlayer, data.has_rolled, data.valid_combos);
                         handleConfirmFlip();
                     });
                 });
@@ -462,11 +507,11 @@
 
         // Eigene Klappen rendern
         if (myPlayer) {
-            renderMyFlaps(myPlayer, data.has_rolled, sum);
+            renderMyFlaps(myPlayer, data.has_rolled, data.valid_combos || []);
         }
     }
 
-    function renderMyFlaps(myPlayer, hasRolled, targetSum) {
+    function renderMyFlaps(myPlayer, hasRolled, validCombos = []) {
         const flapsRow = document.getElementById('my-flaps-row');
         const penaltyBadge = document.getElementById('my-open-penalty-badge');
         const confirmBtn = document.getElementById('btn-confirm-flip');
@@ -509,15 +554,18 @@
                     selectedFlaps.add(flapNum);
                 }
                 AudioEngine.playFlapClick();
-                renderMyFlaps(myPlayer, hasRolled, targetSum);
+                renderMyFlaps(myPlayer, hasRolled, validCombos);
             });
         });
 
-        // "Umlegen"-Button prüfen
+        // "Umlegen"-Button prüfen (Auswahl muss exakt einer der gültigen Züge entsprechen)
         if (confirmBtn) {
-            const selectedSum = Array.from(selectedFlaps).reduce((a, b) => a + b, 0);
-            const isValid = (myPlayer.is_active && hasRolled && selectedSum === targetSum && selectedFlaps.size > 0);
-            confirmBtn.disabled = !isValid;
+            const selectedArr = Array.from(selectedFlaps).sort((a, b) => a - b);
+            const matchesAnyCombo = (validCombos || []).some(comboObj => {
+                const cf = (comboObj.flaps || []).slice().sort((a, b) => a - b);
+                return cf.length === selectedArr.length && cf.every((val, idx) => val === selectedArr[idx]);
+            });
+            confirmBtn.disabled = !(myPlayer.is_active && hasRolled && matchesAnyCombo);
         }
     }
 
@@ -544,28 +592,141 @@
         el.innerHTML = dotsHtml;
     }
 
-    async function handleRollDice() {
-        if (isSubmitting) return;
-        isSubmitting = true;
+    function playDiceRollAnimation(targetDice, onComplete) {
+        if (isRollingAnimation) return;
+        isRollingAnimation = true;
 
         const die1 = document.getElementById('die-1');
         const die2 = document.getElementById('die-2');
-        if (die1) die1.classList.add('rolling');
-        if (die2) die2.classList.add('rolling');
+        const sumDisplay = document.getElementById('dice-sum-display');
+
+        if (die1) {
+            die1.classList.remove('landing');
+            die1.classList.add('rolling');
+        }
+        if (die2) {
+            die2.classList.remove('landing');
+            die2.classList.add('rolling');
+        }
+
+        if (sumDisplay) {
+            sumDisplay.innerHTML = 'Augen: <strong>🎲 ...</strong>';
+        }
 
         AudioEngine.playDiceRoll();
+
+        if ('vibrate' in navigator) {
+            try { navigator.vibrate([25, 35, 25]); } catch (_) {}
+        }
+
+        let ticks = 0;
+        const maxTicks = 7;
+        const interval = setInterval(() => {
+            ticks++;
+            const rnd1 = Math.floor(Math.random() * 6) + 1;
+            const rnd2 = Math.floor(Math.random() * 6) + 1;
+            renderDie('die-1', rnd1);
+            renderDie('die-2', rnd2);
+
+            if (ticks >= maxTicks) {
+                clearInterval(interval);
+                if (die1) die1.classList.remove('rolling');
+                if (die2) die2.classList.remove('rolling');
+
+                const [finalD1, finalD2] = targetDice || [1, 1];
+                renderDie('die-1', finalD1);
+                renderDie('die-2', finalD2);
+
+                if (die1) die1.classList.add('landing');
+                if (die2) die2.classList.add('landing');
+                setTimeout(() => {
+                    if (die1) die1.classList.remove('landing');
+                    if (die2) die2.classList.remove('landing');
+                }, 400);
+
+                if (sumDisplay) {
+                    sumDisplay.innerHTML = `Augen: <strong>${finalD1}</strong> &amp; <strong>${finalD2}</strong>`;
+                }
+
+                AudioEngine.playDiceLand();
+
+                if ('vibrate' in navigator) {
+                    try { navigator.vibrate([40]); } catch (_) {}
+                }
+
+                isRollingAnimation = false;
+                if (typeof onComplete === 'function') {
+                    onComplete();
+                }
+            }
+        }, 75);
+    }
+
+    function renderRoundSummaryModal(data) {
+        const modal = document.getElementById('modal-round-summary');
+        const titleEl = document.getElementById('round-summary-title');
+        const listEl = document.getElementById('round-summary-scores');
+        const contBtn = document.getElementById('btn-next-round-continue');
+        if (!modal || !titleEl || !listEl || !data.round_summary) return;
+
+        const summary = data.round_summary;
+        if (summary.round_number === lastShownSummaryRound) {
+            return;
+        }
+
+        lastShownSummaryRound = summary.round_number;
+
+        titleEl.textContent = `🔔 Runde ${summary.round_number} beendet!`;
+        if (contBtn) {
+            contBtn.textContent = `Weiter zu Runde ${summary.next_round} →`;
+        }
+
+        let scoresHtml = '';
+        (summary.scores || []).forEach(sc => {
+            const isShut = (sc.round_score === 0);
+            const badgeClass = isShut ? 'shut' : 'penalty';
+            const badgeText = isShut ? '0 🏆 SHUT!' : `+${sc.round_score} P.`;
+            scoresHtml += `
+                <div class="round-summary-row">
+                    <div class="round-summary-player">
+                        <span>${sc.is_bot ? '🤖 ' : '👤 '}${HubHtml.escape(sc.player_name)}</span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="round-summary-badge ${badgeClass}">${badgeText}</span>
+                        <span style="color: #94a3b8; font-size: 0.8rem;">(Gesamt: ${sc.total_score} P.)</span>
+                    </div>
+                </div>
+            `;
+        });
+        listEl.innerHTML = scoresHtml;
+        modal.classList.remove('hidden');
+
+        // Automatisches Ausblenden nach 6 Sekunden oder bei Klick auf "Weiter"
+        if (roundSummaryTimer) clearTimeout(roundSummaryTimer);
+        roundSummaryTimer = setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 6000);
+    }
+
+    async function handleRollDice() {
+        if (isSubmitting || isRollingAnimation) return;
+        isSubmitting = true;
+
+        const rollBtn = document.getElementById('btn-roll-dice');
+        if (rollBtn) rollBtn.disabled = true;
 
         const res = await HubHttp.postJson(`./api.php?action=roll&room=${encodeURIComponent(roomCode)}`);
         isSubmitting = false;
 
-        if (die1) die1.classList.remove('rolling');
-        if (die2) die2.classList.remove('rolling');
-
         if (res.ok && res.data && res.data.success) {
             selectedFlaps.clear();
-            fetchState(true);
+            const targetDice = res.data.dice || [1, 1];
+            playDiceRollAnimation(targetDice, () => {
+                fetchState(true);
+            });
         } else {
             HubDialog.alert('Würfeln', res.data?.message || 'Fehler beim Würfeln.', '🎲');
+            if (rollBtn) rollBtn.disabled = false;
         }
     }
 

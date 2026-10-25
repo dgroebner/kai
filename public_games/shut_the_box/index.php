@@ -72,6 +72,25 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
     </div>
 
+    <!-- RUNDEN-ZUSAMMENFASSUNG (ÜBERGANG ZWISCHEN DEN RUNDEN) -->
+    <div id="modal-round-summary" class="hub-modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 115;">
+        <div class="hub-modal text-center" style="max-width: 420px; width: 95%;">
+            <div style="font-size: 2.8rem; margin-bottom: 0.25rem;">🔔</div>
+            <h3 class="hub-modal-title" id="round-summary-title">Runde beendet!</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1rem;" id="round-summary-subtitle">
+                Ergebnisse der vergangenen Spielrunde:
+            </p>
+            <div class="round-summary-list" id="round-summary-scores" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; text-align: left;">
+                <!-- Dynamisch befüllt -->
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+                <button type="button" class="btn btn-primary btn-lg js-close-round-summary" id="btn-next-round-continue" style="flex: 1;">
+                    Weiter &rarr;
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- SPIELZETTEL-MODAL (10 RUNDEN SCORECARD) -->
     <div id="modal-scorecard" class="hub-modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 110;">
         <div class="hub-modal" style="max-width: 520px; width: 95%;">
