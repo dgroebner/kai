@@ -63,6 +63,23 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
     </div>
 
+    <!-- UNO/MAU 2-SEKUNDEN COUNTDOWN PROMPT -->
+    <div id="modal-uno-countdown" class="hub-modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 100;">
+        <div class="hub-modal text-center" style="max-width: 330px;">
+            <div style="font-size: 3rem; margin-bottom: 0.25rem;">📢</div>
+            <h3 class="hub-modal-title" id="uno-countdown-title">Vorletzte Karte!</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.25rem;">
+                Tippe schnell, um deine letzte Karte anzusagen:
+            </p>
+            <button type="button" class="btn btn-primary btn-lg js-btn-trigger-uno-countdown" id="btn-trigger-uno-countdown" style="width: 100%; font-size: 1.25rem; font-weight: 900; padding: 0.85rem; background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 0 20px rgba(239, 68, 68, 0.7); animation: bounce 0.5s infinite;">
+                MAU! RUFEN
+            </button>
+            <div class="uno-timer-bar-wrap" style="height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; margin-top: 1.25rem; overflow: hidden;">
+                <div id="uno-timer-bar" style="height: 100%; width: 100%; background: #ef4444;"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- 1. LOBBY-ANSICHT -->
     <div id="pane-lobby" class="cards-lobby-box hidden">
         <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;" id="lobby-title">Mau-Mau / Uno Wartezimmer</h2>

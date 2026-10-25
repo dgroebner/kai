@@ -514,6 +514,25 @@ class CardGameService
 
         $gameMode = $roomState['game_mode'] ?? 'uno';
         $ruleEngine = $this->getRuleEngine($gameMode);
+
+        // Prüfen, ob ein Mitspieler ohne Mau/Uno erwischt werden kann (75% Chance)
+        foreach ($players as $target) {
+            if ((int)$target['id'] !== $activePlayerId) {
+                $tHand = $target['sheet']['cards'] ?? [];
+                if (count($tHand) === 1 && empty($target['sheet']['has_called_uno'])) {
+                    if (random_int(1, 100) <= 75) {
+                        $this->catchUnoMiss($roomId, $activePlayerId);
+                        $room = $this->repo->getRoomById($roomId);
+                        if ($room) {
+                            $roomState = $room['state'];
+                            $players = $this->repo->getPlayersForRoom($roomId);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         $botHand = $activePlayer['sheet']['cards'] ?? [];
 
         $decision = CardBotService::decideMove(

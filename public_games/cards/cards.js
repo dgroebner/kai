@@ -10,6 +10,9 @@
     let isSubmitting = false;
     let pendingCardPlay = null; // Zwischenspeicher für Karte vor Farbwahl
     let unoCalledLocally = false;
+    let currentRoomData = null;
+    let unoCountdownTimer = null;
+    let unoAnimFrame = null;
 
     // Web Audio Synthesizer (Keine externen MP3-Dateien nötig)
     const AudioEngine = {
@@ -274,6 +277,7 @@
     }
 
     function renderState(data) {
+        currentRoomData = data;
         // Modus-Badge
         const modeBadge = document.getElementById('game-mode-badge');
         if (modeBadge) {
@@ -606,15 +610,90 @@
     }
 
     function onCardClicked(card, data) {
-        // Benötigt die Karte eine Farbwahl?
+        currentRoomData = data;
         const needsColor = (card.type === 'wild' || card.type === 'wild_draw4' || card.type === 'extreme_hit' || card.type === 'jack');
 
         if (needsColor) {
             pendingCardPlay = card;
             openColorChoiceModal(data.game_mode);
         } else {
-            executePlayCard(card.id, null);
+            handleCardPlayWithUnoCheck(card.id, null, data);
         }
+    }
+
+    function handleCardPlayWithUnoCheck(cardId, chosenColor, data) {
+        const myPlayer = data?.players?.find(p => p.is_me);
+        const handCount = myPlayer ? (myPlayer.cards?.length || 0) : 0;
+
+        // Wenn der Spieler genau 2 Karten hat und vor dem Klick noch nicht gerufen hat:
+        if (handCount === 2 && !unoCalledLocally && !(myPlayer?.has_called_uno)) {
+            promptUnoCountdown(cardId, chosenColor, data?.game_mode || 'mau_mau');
+        } else {
+            executePlayCard(cardId, chosenColor);
+        }
+    }
+
+    function promptUnoCountdown(cardId, chosenColor, gameMode) {
+        const modal = document.getElementById('modal-uno-countdown');
+        const btn = document.getElementById('btn-trigger-uno-countdown');
+        const timerBar = document.getElementById('uno-timer-bar');
+        const titleEl = document.getElementById('uno-countdown-title');
+        const callWord = (gameMode === 'mau_mau') ? 'MAU!' : 'UNO!';
+
+        if (!modal || !btn) {
+            executePlayCard(cardId, chosenColor);
+            return;
+        }
+
+        if (titleEl) titleEl.textContent = 'Vorletzte Karte!';
+        btn.textContent = `📢 ${callWord} RUFEN!`;
+        modal.classList.remove('hidden');
+
+        const startTime = Date.now();
+        const duration = 2000;
+
+        if (timerBar) {
+            timerBar.style.width = '100%';
+        }
+
+        const updateBar = () => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 1 - (elapsed / duration));
+            if (timerBar) {
+                timerBar.style.width = `${remaining * 100}%`;
+            }
+            if (elapsed < duration) {
+                unoAnimFrame = requestAnimationFrame(updateBar);
+            }
+        };
+        unoAnimFrame = requestAnimationFrame(updateBar);
+
+        let resolved = false;
+        const cleanup = () => {
+            if (unoCountdownTimer) clearTimeout(unoCountdownTimer);
+            if (unoAnimFrame) cancelAnimationFrame(unoAnimFrame);
+            modal.classList.add('hidden');
+            btn.onclick = null;
+        };
+
+        // Klick auf den großen Button: Spieler ruft rechtzeitig!
+        btn.onclick = () => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
+            unoCalledLocally = true;
+            AudioEngine.playUnoSound();
+            executePlayCard(cardId, chosenColor);
+        };
+
+        // Nach 2 Sekunden: Verpasst! Spieler hat vergessen zu rufen!
+        unoCountdownTimer = setTimeout(() => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
+            unoCalledLocally = false; // Nicht gerufen
+            executePlayCard(cardId, chosenColor);
+        }, duration);
     }
 
     function openColorChoiceModal(gameMode) {
@@ -669,8 +748,9 @@
                 const chosen = btn.dataset.color;
                 modal.classList.add('hidden');
                 if (pendingCardPlay) {
-                    executePlayCard(pendingCardPlay.id, chosen);
+                    const card = pendingCardPlay;
                     pendingCardPlay = null;
+                    handleCardPlayWithUnoCheck(card.id, chosen, currentRoomData);
                 }
             });
         });
