@@ -65,7 +65,7 @@ try {
 
         $stonesInput = $input['stones'] ?? 'auto';
         $isFixed = false;
-        $stoneCount = 12;
+        $stoneCount = Loch6Service::DEFAULT_STONES;
 
         if (is_numeric($stonesInput)) {
             $val = (int)$stonesInput;
@@ -154,7 +154,7 @@ try {
 
         $newCount = count($currentPlayers) + 1;
         $isFixed = !empty($room['state']['starting_stones_fixed']);
-        $stoneCount = $isFixed ? (int)($room['state']['starting_stones'] ?? 12) : Loch6Service::getRecommendedStones($newCount);
+        $stoneCount = $isFixed ? (int)($room['state']['starting_stones'] ?? Loch6Service::DEFAULT_STONES) : Loch6Service::getRecommendedStones($newCount);
         $initialSheet = $service->getInitialSheet($stoneCount, false);
 
         $player = $repo->joinPlayer((int)$room['id'], $currentHash, $playerName, $isHost, $initialSheet);

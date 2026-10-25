@@ -89,35 +89,30 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <!-- Zentrales Holzbrett mit 15 Mulden (1 bis 5) + Mittenloch 6 -->
         <div class="loch6-board-container">
             <div class="loch6-wood-board" id="loch6-board">
-                <!-- Sektor 4 (Oben-Links: 4 Mulden im 2x2 Raster) -->
-                <span class="sector-label sector-lbl-4">4</span>
-                <div class="loch6-pit pit-pos-4-0"><div class="pit-crystal-slot" id="slot-4-0"></div></div>
-                <div class="loch6-pit pit-pos-4-1"><div class="pit-crystal-slot" id="slot-4-1"></div></div>
-                <div class="loch6-pit pit-pos-4-2"><div class="pit-crystal-slot" id="slot-4-2"></div></div>
-                <div class="loch6-pit pit-pos-4-3"><div class="pit-crystal-slot" id="slot-4-3"></div></div>
+                <!-- Sektor 4 (Oben-Links: 4 Mulden im 2x2 Raster - Blau) -->
+                <div class="loch6-pit pit-color-4 pit-pos-4-0"><div class="pit-crystal-slot" id="slot-4-0"></div></div>
+                <div class="loch6-pit pit-color-4 pit-pos-4-1"><div class="pit-crystal-slot" id="slot-4-1"></div></div>
+                <div class="loch6-pit pit-color-4 pit-pos-4-2"><div class="pit-crystal-slot" id="slot-4-2"></div></div>
+                <div class="loch6-pit pit-color-4 pit-pos-4-3"><div class="pit-crystal-slot" id="slot-4-3"></div></div>
 
-                <!-- Sektor 3 (Oben-Rechts: 3 Mulden in diagonaler Reihe) -->
-                <span class="sector-label sector-lbl-3">3</span>
-                <div class="loch6-pit pit-pos-3-0"><div class="pit-crystal-slot" id="slot-3-0"></div></div>
-                <div class="loch6-pit pit-pos-3-1"><div class="pit-crystal-slot" id="slot-3-1"></div></div>
-                <div class="loch6-pit pit-pos-3-2"><div class="pit-crystal-slot" id="slot-3-2"></div></div>
+                <!-- Sektor 3 (Oben-Rechts: 3 Mulden in diagonaler Reihe - Orange) -->
+                <div class="loch6-pit pit-color-3 pit-pos-3-0"><div class="pit-crystal-slot" id="slot-3-0"></div></div>
+                <div class="loch6-pit pit-color-3 pit-pos-3-1"><div class="pit-crystal-slot" id="slot-3-1"></div></div>
+                <div class="loch6-pit pit-color-3 pit-pos-3-2"><div class="pit-crystal-slot" id="slot-3-2"></div></div>
 
-                <!-- Sektor 5 (Unten-Links: 5 Mulden wie die 5 auf dem Würfel) -->
-                <span class="sector-label sector-lbl-5">5</span>
-                <div class="loch6-pit pit-pos-5-0"><div class="pit-crystal-slot" id="slot-5-0"></div></div>
-                <div class="loch6-pit pit-pos-5-1"><div class="pit-crystal-slot" id="slot-5-1"></div></div>
-                <div class="loch6-pit pit-pos-5-2"><div class="pit-crystal-slot" id="slot-5-2"></div></div>
-                <div class="loch6-pit pit-pos-5-3"><div class="pit-crystal-slot" id="slot-5-3"></div></div>
-                <div class="loch6-pit pit-pos-5-4"><div class="pit-crystal-slot" id="slot-5-4"></div></div>
+                <!-- Sektor 5 (Unten-Links: 5 Mulden wie die 5 auf dem Würfel - Rot) -->
+                <div class="loch6-pit pit-color-5 pit-pos-5-0"><div class="pit-crystal-slot" id="slot-5-0"></div></div>
+                <div class="loch6-pit pit-color-5 pit-pos-5-1"><div class="pit-crystal-slot" id="slot-5-1"></div></div>
+                <div class="loch6-pit pit-color-5 pit-pos-5-2"><div class="pit-crystal-slot" id="slot-5-2"></div></div>
+                <div class="loch6-pit pit-color-5 pit-pos-5-3"><div class="pit-crystal-slot" id="slot-5-3"></div></div>
+                <div class="loch6-pit pit-color-5 pit-pos-5-4"><div class="pit-crystal-slot" id="slot-5-4"></div></div>
 
-                <!-- Sektor 1 (Unten-Rechts innen: 1 Mulde) -->
-                <span class="sector-label sector-lbl-1">1</span>
-                <div class="loch6-pit pit-pos-1-0"><div class="pit-crystal-slot" id="slot-1-0"></div></div>
+                <!-- Sektor 1 (Unten-Rechts innen: 1 Mulde - Weiß) -->
+                <div class="loch6-pit pit-color-1 pit-pos-1-0"><div class="pit-crystal-slot" id="slot-1-0"></div></div>
 
-                <!-- Sektor 2 (Unten-Rechts außen: 2 Mulden in Linie) -->
-                <span class="sector-label sector-lbl-2">2</span>
-                <div class="loch6-pit pit-pos-2-0"><div class="pit-crystal-slot" id="slot-2-0"></div></div>
-                <div class="loch6-pit pit-pos-2-1"><div class="pit-crystal-slot" id="slot-2-1"></div></div>
+                <!-- Sektor 2 (Unten-Rechts außen: 2 Mulden in Linie - Grün) -->
+                <div class="loch6-pit pit-color-2 pit-pos-2-0"><div class="pit-crystal-slot" id="slot-2-0"></div></div>
+                <div class="loch6-pit pit-color-2 pit-pos-2-1"><div class="pit-crystal-slot" id="slot-2-1"></div></div>
 
                 <!-- Der Schlund / Loch 6 im Zentrum -->
                 <div class="loch6-abyss" id="pit-6">

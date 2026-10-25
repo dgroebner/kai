@@ -209,7 +209,7 @@
     }
 }
 
-/* DIE 15 MULDEN (34px) */
+/* DIE 15 MULDEN (34px) - FARBLICH HINTERLEGT NACH ORIGINAL-FOTO */
 .loch6-pit {
     position: absolute;
     width: 34px;
@@ -225,6 +225,72 @@
     justify-content: center;
     transform: translate(-50%, -50%);
     box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 1: Weiß (Elfenbein / Glanz-Weiß) */
+.loch6-pit.pit-color-1 {
+    background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f1f5f9 45%, #cbd5e1 80%, #94a3b8 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.45),
+        inset 0 -1px 3px rgba(255, 255, 255, 0.9),
+        0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 1.5px solid rgba(0, 0, 0, 0.25);
+}
+
+/* 2: Grün (Smaragd / Waldgrün) */
+.loch6-pit.pit-color-2 {
+    background: radial-gradient(circle at 35% 35%, #4ade80 0%, #22c55e 35%, #16a34a 70%, #14532d 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
+        0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 1.5px solid rgba(0, 0, 0, 0.35);
+}
+
+/* 3: Orange (Bernstein / Warmes Orange) */
+.loch6-pit.pit-color-3 {
+    background: radial-gradient(circle at 35% 35%, #fde047 0%, #fb923c 35%, #ea580c 70%, #9a3412 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
+        0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 1.5px solid rgba(0, 0, 0, 0.35);
+}
+
+/* 4: Blau (Kräftiges Kobaltblau) */
+.loch6-pit.pit-color-4 {
+    background: radial-gradient(circle at 35% 35%, #60a5fa 0%, #3b82f6 35%, #1d4ed8 70%, #0f172a 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
+        0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 1.5px solid rgba(0, 0, 0, 0.35);
+}
+
+/* 5: Rot (Kräftiges Rubinrot) */
+.loch6-pit.pit-color-5 {
+    background: radial-gradient(circle at 35% 35%, #f87171 0%, #ef4444 35%, #b91c1c 70%, #450a0a 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 3px rgba(255, 255, 255, 0.45),
+        0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 1.5px solid rgba(0, 0, 0, 0.35);
+}
+
+/* Glanzreflexion auf den lackierten Mulden (wie im Foto) */
+.loch6-pit::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    width: 14px;
+    height: 7px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+    transform: rotate(-25deg);
+    z-index: 1;
 }
 
 .pit-crystal-slot {
@@ -237,16 +303,9 @@
     z-index: 2;
 }
 
-/* GRAVIERTE WEISSE ZIFFERN UM DAS MITTENLOCH (WIE IM FOTO) */
+/* Ziffern auf dem Spielbrett ausgeblendet (Mulden sind farblich unterscheidbar) */
 .sector-label {
-    position: absolute;
-    font-size: 1.05rem;
-    font-weight: 900;
-    color: #ffffff;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 4;
+    display: none;
 }
 
 .sector-lbl-4 { top: 40%; left: 40%; }

@@ -153,10 +153,14 @@ require_once __DIR__ . '/../bootstrap.php';
                     <div style="display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.25rem;">
                         <label style="display: flex; align-items: center; gap: 0.45rem; font-weight: normal; cursor: pointer;">
                             <input type="radio" name="loch6_stones" value="auto" checked>
-                            <span><strong>Dynamisch (Empfohlen):</strong> Passt sich der Spielerzahl an (2 Sp: 12, 3 Sp: 9, 4 Sp: 7, 5 Sp: 6, 6 Sp: 5)</span>
+                            <span><strong>Dynamisch (Empfohlen):</strong> Passt sich der Spielerzahl an (2 Sp: 15, 3 Sp: 10, 4 Sp: 8, 5 Sp: 6, 6 Sp: 5)</span>
                         </label>
                         <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.15rem; flex-wrap: wrap;">
                             <span style="font-size: 0.82rem; color: var(--text-muted);">Oder feste Anzahl:</span>
+                            <label style="display: flex; align-items: center; gap: 0.25rem; font-weight: normal; cursor: pointer; font-size: 0.85rem;">
+                                <input type="radio" name="loch6_stones" value="15">
+                                <span>15</span>
+                            </label>
                             <label style="display: flex; align-items: center; gap: 0.25rem; font-weight: normal; cursor: pointer; font-size: 0.85rem;">
                                 <input type="radio" name="loch6_stones" value="12">
                                 <span>12</span>

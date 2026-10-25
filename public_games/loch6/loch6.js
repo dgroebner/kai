@@ -719,7 +719,13 @@
         // Runden-Pill
         const roundBadge = document.getElementById('round-indicator-badge');
         if (roundBadge) {
-            roundBadge.textContent = data.round_number === 1 ? 'Runde 1 (Pflichtwurf)' : `Runde ${data.round_number}`;
+            if (data.round_number === 1) {
+                roundBadge.textContent = 'Runde 1 (1 Pflichtwurf)';
+            } else if (data.round_number === 2) {
+                roundBadge.textContent = 'Runde 2 (2 Pflichtwürfe)';
+            } else {
+                roundBadge.textContent = `Runde ${data.round_number} (Zockerphase)`;
+            }
         }
 
         // Event-Ticker
@@ -821,9 +827,18 @@
             if (isMyTurn) {
                 rollBtn.disabled = isRollingAnimation;
                 if (data.round_number === 1) {
-                    rollBtn.innerHTML = `🎲 Pflichtwurf${selectedStoneName}`;
+                    rollBtn.innerHTML = `🎲 Pflichtwurf (1/1)${selectedStoneName}`;
+                } else if (data.round_number === 2) {
+                    const rolls = Number(data.rolls_in_turn || 0);
+                    if (rolls === 0) {
+                        rollBtn.innerHTML = `🎲 Pflichtwurf 1 von 2${selectedStoneName}`;
+                    } else if (data.can_pass) {
+                        rollBtn.innerHTML = `🎲 Nochmal Würfeln${selectedStoneName}`;
+                    } else {
+                        rollBtn.innerHTML = `🎲 Pflichtwurf 2 von 2${selectedStoneName}`;
+                    }
                 } else if (data.can_pass) {
-                    rollBtn.innerHTML = `🎲 Nochmal Würfeln${selectedStoneName}`;
+                    rollBtn.innerHTML = `🎲 Weiterzocken${selectedStoneName}`;
                 } else {
                     rollBtn.innerHTML = `🎲 WÜRFELN${selectedStoneName}`;
                 }
@@ -836,7 +851,7 @@
         }
 
         if (passBtn) {
-            if (isMyTurn && data.can_pass && data.round_number >= 2) {
+            if (isMyTurn && data.can_pass) {
                 passBtn.classList.remove('hidden');
                 passBtn.disabled = isRollingAnimation;
             } else {
@@ -847,7 +862,16 @@
         if (turnPrompt) {
             if (isMyTurn) {
                 if (data.round_number === 1) {
-                    turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf ausführen.' : 'Runde 1: Pflichtwurf! (Tippe optional einen Stein an zum Wählen)';
+                    turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf ausführen.' : 'Runde 1: Genau 1 Pflichtwurf (Vorbelegung des Bretts)';
+                } else if (data.round_number === 2) {
+                    const rolls = Number(data.rolls_in_turn || 0);
+                    if (rolls === 0) {
+                        turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf 1 von 2 ausführen.' : 'Runde 2: 2 Pflichtwürfe! Jetzt Wurf 1 ausführen.';
+                    } else if (data.can_pass) {
+                        turnPrompt.textContent = '2 Pflichtwürfe geschafft! Weiterzocken oder Sichern & Weitergeben?';
+                    } else {
+                        turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf 2 von 2 ausführen.' : 'Runde 2: Pflichtwurf 1 geschafft! Jetzt Wurf 2 ausführen.';
+                    }
                 } else if (data.can_pass) {
                     turnPrompt.textContent = 'Guter Wurf! Weiterzocken oder Sichern & Weitergeben?';
                 } else {

@@ -8,7 +8,7 @@ use Kai\Tools\GamesHub\RoomRepository;
 
 class Loch6Service
 {
-    public const DEFAULT_STONES = 12;
+    public const DEFAULT_STONES = 15;
     public const MINERAL_TYPES = ['amethyst', 'smaragd', 'pyrit', 'rosenquarz', 'lapislazuli', 'obsidian'];
 
     private RoomRepository $repo;
@@ -25,9 +25,9 @@ class Loch6Service
     public static function getRecommendedStones(int $playerCount): int
     {
         return match (true) {
-            $playerCount <= 2 => 12, // 2 Spieler: 12 Steine (24 im Spiel -> perfekte Spannung)
-            $playerCount === 3 => 9,  // 3 Spieler: 9 Steine (27 im Spiel)
-            $playerCount === 4 => 7,  // 4 Spieler: 7 Steine (28 im Spiel)
+            $playerCount <= 2 => 15, // 2 Spieler: 15 Steine laut Original-Regel (30 im Spiel)
+            $playerCount === 3 => 10, // 3 Spieler: 10 Steine (30 im Spiel)
+            $playerCount === 4 => 8,  // 4 Spieler: 8 Steine (32 im Spiel)
             $playerCount === 5 => 6,  // 5 Spieler: 6 Steine (30 im Spiel)
             default => 5,             // 6 oder mehr Spieler: 5 Steine (30 im Spiel)
         };
@@ -260,7 +260,7 @@ class Loch6Service
                 // In Runde 1: Genau 1 Pflichtwurf -> Zug endet sofort
                 $state['last_event'] = [
                     'type' => 'hole6_placed',
-                    'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein verschwindet im Schlund. Pflichtwurf beendet.",
+                    'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein verschwindet im Schlund. Pflichtwurf (1/1) beendet.",
                     'time' => time(),
                 ];
                 $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
@@ -271,10 +271,51 @@ class Loch6Service
                     'placed_stone' => $placedStone,
                     'remaining_stones' => count($stones),
                     'turn_ended' => true,
+                    'can_pass' => false,
                 ];
             }
 
-            // Ab Runde 2: Weitergabe erlaubt, oder weiterwürfeln
+            if ($currentRound === 2) {
+                // In Runde 2: Genau 2 Pflichtwürfe!
+                if ($rollsInTurn < 2) {
+                    $state['can_pass'] = false;
+                    $state['last_event'] = [
+                        'type' => 'hole6_placed',
+                        'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein fällt in den Schlund. Pflichtwurf 1 von 2 erledigt – noch 1 Wurf!",
+                        'time' => time(),
+                    ];
+                    $this->repo->updateRoomState($roomId, $state);
+                    return [
+                        'success' => true,
+                        'die' => 6,
+                        'outcome' => 'hole6',
+                        'placed_stone' => $placedStone,
+                        'remaining_stones' => count($stones),
+                        'can_pass' => false,
+                        'turn_ended' => false,
+                    ];
+                }
+
+                // Ab dem 2. Wurf in Runde 2: Weitergabe erlaubt
+                $state['can_pass'] = true;
+                $state['last_event'] = [
+                    'type' => 'hole6_placed',
+                    'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein fällt in den Schlund. 2 Pflichtwürfe erfüllt – weiterwürfeln oder sichern?",
+                    'time' => time(),
+                ];
+                $this->repo->updateRoomState($roomId, $state);
+                return [
+                    'success' => true,
+                    'die' => 6,
+                    'outcome' => 'hole6',
+                    'placed_stone' => $placedStone,
+                    'remaining_stones' => count($stones),
+                    'can_pass' => true,
+                    'turn_ended' => false,
+                ];
+            }
+
+            // Ab Runde 3: Nur noch 1 Pflichtwurf, Weitergabe sofort erlaubt
             $state['can_pass'] = true;
             $state['last_event'] = [
                 'type' => 'hole6_placed',
@@ -338,7 +379,7 @@ class Loch6Service
                 // In Runde 1: Genau 1 Pflichtwurf -> Zug endet sofort
                 $state['last_event'] = [
                     'type' => 'stone_placed',
-                    'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. Pflichtwurf beendet.",
+                    'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. Pflichtwurf (1/1) beendet.",
                     'time' => time(),
                 ];
                 $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
@@ -351,10 +392,55 @@ class Loch6Service
                     'outcome' => 'placed',
                     'remaining_stones' => count($stones),
                     'turn_ended' => true,
+                    'can_pass' => false,
                 ];
             }
 
-            // Ab Runde 2: Weitergabe erlaubt, oder weiterwürfeln
+            if ($currentRound === 2) {
+                // In Runde 2: Genau 2 Pflichtwürfe!
+                if ($rollsInTurn < 2) {
+                    $state['can_pass'] = false;
+                    $state['last_event'] = [
+                        'type' => 'stone_placed',
+                        'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. Pflichtwurf 1 von 2 erledigt – noch 1 Wurf!",
+                        'time' => time(),
+                    ];
+                    $this->repo->updateRoomState($roomId, $state);
+                    return [
+                        'success' => true,
+                        'die' => $die,
+                        'pit' => $pit,
+                        'slot' => $freeSlotIdx,
+                        'placed_stone' => $placedStone,
+                        'outcome' => 'placed',
+                        'remaining_stones' => count($stones),
+                        'can_pass' => false,
+                        'turn_ended' => false,
+                    ];
+                }
+
+                // Ab dem 2. Wurf in Runde 2: Weitergabe erlaubt
+                $state['can_pass'] = true;
+                $state['last_event'] = [
+                    'type' => 'stone_placed',
+                    'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. 2 Pflichtwürfe erfüllt – weiterwürfeln oder sichern?",
+                    'time' => time(),
+                ];
+                $this->repo->updateRoomState($roomId, $state);
+                return [
+                    'success' => true,
+                    'die' => $die,
+                    'pit' => $pit,
+                    'slot' => $freeSlotIdx,
+                    'placed_stone' => $placedStone,
+                    'outcome' => 'placed',
+                    'remaining_stones' => count($stones),
+                    'can_pass' => true,
+                    'turn_ended' => false,
+                ];
+            }
+
+            // Ab Runde 3: Nur noch 1 Pflichtwurf, Weitergabe sofort erlaubt
             $state['can_pass'] = true;
             $state['last_event'] = [
                 'type' => 'stone_placed',
@@ -558,8 +644,14 @@ class Loch6Service
         }
         $stonesLeft = count($activePlayer['sheet']['stones'] ?? []);
 
-        // 1. Wenn der Bot in diesem Zug noch nicht gewürfelt hat: Er MUSS würfeln
-        if ($rollsInTurn === 0) {
+        $minRolls = match (true) {
+            $currentRound === 1 => 1,
+            $currentRound === 2 => 2,
+            default => 1,
+        };
+
+        // 1. Wenn der Bot seine Pflichtwürfe in diesem Zug noch nicht erfüllt hat: Er MUSS würfeln
+        if ($rollsInTurn < $minRolls) {
             $this->rollDice($roomId, $activePlayerId);
             $refreshedRoom = $this->repo->getRoomById($roomId);
             $refreshedPlayers = $this->repo->getPlayersForRoom($roomId);
@@ -567,8 +659,8 @@ class Loch6Service
             return;
         }
 
-        // 2. Ab Runde 2 und nach erfolgreichem Wurf: Entscheidung Weiterspielen vs. Sichern
-        if (!empty($roomState['can_pass']) && $currentRound >= 2) {
+        // 2. Sobald Weitergabe erlaubt ist: Entscheidung Weiterspielen vs. Sichern
+        if (!empty($roomState['can_pass'])) {
             $shouldRollAgain = Loch6BotService::shouldRollAgain($fullNumbersCount, $stonesLeft, $rollsInTurn);
             if ($shouldRollAgain) {
                 $this->rollDice($roomId, $activePlayerId);
