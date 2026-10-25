@@ -19,6 +19,8 @@
         const modal = document.getElementById('modal-create-room');
         const modalTitle = document.getElementById('create-modal-title');
         const gameTypeInput = document.getElementById('create-game-type');
+        const diceGroup = document.getElementById('group-dice-modes');
+        const cardGroup = document.getElementById('group-card-modes');
 
         // Kachel-Klick auf Qwixx
         const qwixxCard = document.getElementById('card-qwixx');
@@ -26,6 +28,8 @@
             qwixxCard.addEventListener('click', () => {
                 if (gameTypeInput) gameTypeInput.value = 'qwixx';
                 if (modalTitle) modalTitle.textContent = 'Neues Qwixx-Spiel erstellen';
+                if (diceGroup) diceGroup.classList.remove('hidden');
+                if (cardGroup) cardGroup.classList.add('hidden');
                 modal.classList.remove('hidden');
                 const pinInput = document.getElementById('create-room-pin');
                 if (pinInput) pinInput.focus();
@@ -38,6 +42,22 @@
             kniffelCard.addEventListener('click', () => {
                 if (gameTypeInput) gameTypeInput.value = 'kniffel';
                 if (modalTitle) modalTitle.textContent = 'Neues Kniffel-Spiel erstellen';
+                if (diceGroup) diceGroup.classList.remove('hidden');
+                if (cardGroup) cardGroup.classList.add('hidden');
+                modal.classList.remove('hidden');
+                const pinInput = document.getElementById('create-room-pin');
+                if (pinInput) pinInput.focus();
+            });
+        }
+
+        // Kachel-Klick auf Kartenspiele
+        const cardsCard = document.getElementById('card-cards');
+        if (cardsCard && modal) {
+            cardsCard.addEventListener('click', () => {
+                if (gameTypeInput) gameTypeInput.value = 'cards';
+                if (modalTitle) modalTitle.textContent = 'Neues Kartenspiel erstellen';
+                if (diceGroup) diceGroup.classList.add('hidden');
+                if (cardGroup) cardGroup.classList.remove('hidden');
                 modal.classList.remove('hidden');
                 const pinInput = document.getElementById('create-room-pin');
                 if (pinInput) pinInput.focus();
@@ -59,7 +79,14 @@
                 const gameType = gameTypeInput?.value || 'qwixx';
                 const pin = document.getElementById('create-room-pin')?.value.trim();
                 const name = nameInput?.value.trim() || 'Host';
-                const mode = document.querySelector('input[name="game_mode"]:checked')?.value || 'digital_dice';
+                let mode = 'digital_dice';
+
+                if (gameType === 'cards') {
+                    mode = document.querySelector('input[name="card_game_mode"]:checked')?.value || 'uno';
+                } else {
+                    mode = document.querySelector('input[name="game_mode"]:checked')?.value || 'digital_dice';
+                }
+
                 const errBox = document.getElementById('create-room-error');
 
                 if (errBox) errBox.classList.add('hidden');

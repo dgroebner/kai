@@ -66,6 +66,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">1–8 Spieler</span>
             </div>
+
+            <!-- Kartenspiele Kachel -->
+            <div class="game-kachel" id="card-cards" role="button" tabindex="0">
+                <div class="game-kachel-icon">🃏</div>
+                <div class="game-kachel-content">
+                    <h2>Kartenspiele</h2>
+                    <p>Uno Klassik, Uno Extreme (mit animiertem Launcher) &amp; Mau-Mau. Live mit Freunden oder gegen Bots.</p>
+                </div>
+                <span class="game-kachel-badge">2–8 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
@@ -82,7 +92,9 @@ require_once __DIR__ . '/../bootstrap.php';
             </div>
             <form id="form-create-room">
                 <input type="hidden" id="create-game-type" value="qwixx">
-                <div class="form-group">
+                
+                <!-- Würfel-Optionen (für Qwixx & Kniffel) -->
+                <div class="form-group" id="group-dice-modes">
                     <label>Spielmodus:</label>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
@@ -92,6 +104,25 @@ require_once __DIR__ . '/../bootstrap.php';
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                             <input type="radio" name="game_mode" value="sheet_only">
                             <span><strong>Digitaler Spielblock:</strong> Für echte Würfel am Tisch</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Kartenspiel-Optionen (für Cards) -->
+                <div class="form-group hidden" id="group-card-modes">
+                    <label>Regelwerk &amp; Variante:</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="card_game_mode" value="uno" checked>
+                            <span><strong>Uno Klassik:</strong> 108 Karten mit +2, +4 Farbwahl, Richtungswechsel &amp; Aussetzen</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="card_game_mode" value="uno_extreme">
+                            <span><strong>Uno Extreme:</strong> Mit mechanischem Launcher, Hit 2, Extreme Hit &amp; Discard All</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="card_game_mode" value="mau_mau">
+                            <span><strong>Mau-Mau:</strong> 32 Karten Skatblatt mit 7 (2 Ziehen), 8 (Aussetzen), Bube &amp; Ass</span>
                         </label>
                     </div>
                 </div>

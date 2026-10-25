@@ -126,3 +126,9 @@ CREATE TABLE IF NOT EXISTS `games_hub_rate_limits` (
     INDEX `idx_rate_locked` (`locked_until`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- --------------------------------------------------------------------------
+-- Ergänzung v1.31.0: games_hub_rooms und games_hub_players unterstützen nun
+-- polymorph auch Kartenspiele (game_type = 'cards', game_mode in ('uno', 'uno_extreme', 'mau_mau')).
+-- Bestehende Schema-Definitionen sind vollkommen kompatibel (keine DDL-Änderung erforderlich).
+-- --------------------------------------------------------------------------
