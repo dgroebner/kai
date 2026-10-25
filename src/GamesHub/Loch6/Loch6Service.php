@@ -296,22 +296,22 @@ class Loch6Service
                     ];
                 }
 
-                // Ab dem 2. Wurf in Runde 2: Weitergabe erlaubt
-                $state['can_pass'] = true;
+                // In Runde 2 ist die maximale Wurfanzahl 2 (beide Pflichtwürfe erledigt, mehr sind nicht erlaubt) -> Zug endet!
+                $state['can_pass'] = false;
                 $state['last_event'] = [
                     'type' => 'hole6_placed',
-                    'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein fällt in den Schlund. 2 Pflichtwürfe erfüllt – weiterwürfeln oder sichern?",
+                    'message' => "🕳️ {$player['player_name']} würfelte eine 6! Stein fällt in den Schlund. 2 Pflichtwürfe (2/2) beendet.",
                     'time' => time(),
                 ];
-                $this->repo->updateRoomState($roomId, $state);
+                $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
                 return [
                     'success' => true,
                     'die' => 6,
                     'outcome' => 'hole6',
                     'placed_stone' => $placedStone,
                     'remaining_stones' => count($stones),
-                    'can_pass' => true,
-                    'turn_ended' => false,
+                    'can_pass' => false,
+                    'turn_ended' => true,
                 ];
             }
 
@@ -419,14 +419,14 @@ class Loch6Service
                     ];
                 }
 
-                // Ab dem 2. Wurf in Runde 2: Weitergabe erlaubt
-                $state['can_pass'] = true;
+                // In Runde 2 ist die maximale Wurfanzahl 2 (beide Pflichtwürfe erledigt, mehr sind nicht erlaubt) -> Zug endet!
+                $state['can_pass'] = false;
                 $state['last_event'] = [
                     'type' => 'stone_placed',
-                    'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. 2 Pflichtwürfe erfüllt – weiterwürfeln oder sichern?",
+                    'message' => "💎 {$player['player_name']} legte einen Stein in Feld {$pit} ab. 2 Pflichtwürfe (2/2) beendet.",
                     'time' => time(),
                 ];
-                $this->repo->updateRoomState($roomId, $state);
+                $this->advanceTurnAfterRoll($roomId, $state, $players, $playerIdx);
                 return [
                     'success' => true,
                     'die' => $die,
@@ -435,8 +435,8 @@ class Loch6Service
                     'placed_stone' => $placedStone,
                     'outcome' => 'placed',
                     'remaining_stones' => count($stones),
-                    'can_pass' => true,
-                    'turn_ended' => false,
+                    'can_pass' => false,
+                    'turn_ended' => true,
                 ];
             }
 

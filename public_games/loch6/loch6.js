@@ -899,8 +899,6 @@
                     const rolls = Number(data.rolls_in_turn || 0);
                     if (rolls === 0) {
                         rollBtn.innerHTML = `🎲 Pflichtwurf 1 von 2${selectedStoneName}`;
-                    } else if (data.can_pass) {
-                        rollBtn.innerHTML = `🎲 Nochmal Würfeln${selectedStoneName}`;
                     } else {
                         rollBtn.innerHTML = `🎲 Pflichtwurf 2 von 2${selectedStoneName}`;
                     }
@@ -933,11 +931,9 @@
                 } else if (data.round_number === 2) {
                     const rolls = Number(data.rolls_in_turn || 0);
                     if (rolls === 0) {
-                        turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf 1 von 2 ausführen.' : 'Runde 2: 2 Pflichtwürfe! Jetzt Wurf 1 ausführen.';
-                    } else if (data.can_pass) {
-                        turnPrompt.textContent = '2 Pflichtwürfe geschafft! Weiterzocken oder Sichern & Weitergeben?';
+                        turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf 1 von 2 ausführen.' : 'Runde 2: Genau 2 Pflichtwürfe! Jetzt Wurf 1 ausführen.';
                     } else {
-                        turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf 2 von 2 ausführen.' : 'Runde 2: Pflichtwurf 1 geschafft! Jetzt Wurf 2 ausführen.';
+                        turnPrompt.textContent = selectedStoneId ? 'Wunsch-Stein gewählt! Jetzt Pflichtwurf 2 von 2 ausführen.' : 'Runde 2: Pflichtwurf 1 erledigt! Jetzt Wurf 2 ausführen (Zug endet danach).';
                     }
                 } else if (data.can_pass) {
                     turnPrompt.textContent = 'Guter Wurf! Weiterzocken oder Sichern & Weitergeben?';
