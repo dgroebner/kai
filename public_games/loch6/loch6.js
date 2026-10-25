@@ -302,6 +302,68 @@
         });
     }
 
+    // Flug- & Fall-Animation eines Steins in das Mittenloch (Loch 6)
+    function playStoneFlightToHole6(stone, onComplete) {
+        const hole6El = document.getElementById('pit-6');
+        if (!hole6El) {
+            AudioEngine.playHole6Abyss();
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
+
+        const grid = document.getElementById('my-crystals-grid');
+        const sourceStoneEl = grid ? (grid.querySelector(`.crystal-gem[data-stone-id="${stone?.id}"]`) || grid.querySelector('.crystal-gem')) : null;
+
+        if (sourceStoneEl) {
+            sourceStoneEl.style.opacity = '0';
+        }
+
+        const toRect = hole6El.getBoundingClientRect();
+        const fromRect = sourceStoneEl ? sourceStoneEl.getBoundingClientRect() : {
+            left: window.innerWidth / 2 - 20,
+            top: window.innerHeight - 80,
+            width: 40,
+            height: 33
+        };
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.left = `${fromRect.left}px`;
+        wrapper.style.top = `${fromRect.top}px`;
+        wrapper.style.width = `${fromRect.width}px`;
+        wrapper.style.height = `${fromRect.height}px`;
+        wrapper.style.zIndex = '9999';
+        wrapper.style.pointerEvents = 'none';
+        wrapper.style.transition = 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)';
+
+        const clone = createCrystalElement(stone || { type: 'amethyst', seed: 100 }, false);
+        clone.className = `crystal-gem crystal-${stone?.type || 'amethyst'}`;
+        clone.style.width = '100%';
+        clone.style.height = '100%';
+        clone.style.transformOrigin = 'center center';
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+
+        requestAnimationFrame(() => {
+            const dx = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2);
+            const dy = (toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2);
+            const scale = (toRect.width * 0.7) / fromRect.width;
+            wrapper.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
+
+            // Sobald der Stein über dem Schlund schwebt: Fall ins Bodenlose!
+            setTimeout(() => {
+                AudioEngine.playHole6Abyss();
+                clone.classList.add('crystal-falling-hole6');
+
+                // Nach Abschluss des Falls: Wrapper entfernen & Callback aufrufen
+                setTimeout(() => {
+                    if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+                    if (typeof onComplete === 'function') onComplete();
+                }, 650);
+            }, 420);
+        });
+    }
+
     // Bust-Animation: Alle Steine vom Brett fliegen nach unten in die Hand
     function playBustFlyAnimation(onComplete) {
         const boardStones = document.querySelectorAll('.pit-crystal-slot .crystal-gem');
@@ -570,10 +632,11 @@
 
             playDiceRollAnimation(dieVal, () => {
                 if (outcomeData.outcome === 'hole6' || outcomeData.outcome === 'hole6_win') {
-                    AudioEngine.playHole6Abyss();
-                    if (outcomeData.game_over) AudioEngine.playVictory();
-                    isAnimatingMove = false;
-                    fetchState();
+                    playStoneFlightToHole6(outcomeData.placed_stone || null, () => {
+                        if (outcomeData.game_over) AudioEngine.playVictory();
+                        isAnimatingMove = false;
+                        fetchState();
+                    });
                 } else if (outcomeData.outcome === 'bust') {
                     playBustFlyAnimation(() => {
                         isAnimatingMove = false;

@@ -125,7 +125,7 @@ class Loch6Service
     public function startGame(int $roomId): array
     {
         $room = $this->repo->getRoomById($roomId);
-        if (!$room || $room['status'] !== 'lobby') {
+        if (!$room || ($room['status'] !== 'lobby' && $room['status'] !== 'finished')) {
             return ['success' => false, 'message' => 'Spiel kann nicht gestartet werden'];
         }
 
