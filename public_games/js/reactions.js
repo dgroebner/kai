@@ -7,11 +7,12 @@
     const REACTION_EMOJIS = [
         { emoji: '😂', label: 'Lachen', text: 'Haha!' },
         { emoji: '😢', label: 'Weinen', text: 'Och nöö...' },
-        { emoji: '⏳', label: 'Ungeduldig warten', text: 'Wann geht\'s weiter? 😉' },
+        { emoji: '⏳', label: 'Ungeduldig', text: 'Wann geht\'s weiter? 😉' },
         { emoji: '👏', label: 'Applaus', text: 'Stark gespielt!' },
+        { emoji: '🥳', label: 'Feiern', text: 'Party! Jaaa!' },
         { emoji: '😱', label: 'Schock', text: 'Oh je, das tut weh!' },
-        { emoji: '🔥', label: 'Feiern', text: 'Richtig stark!' },
-        { emoji: '🤔', label: 'Grübeln', text: 'Muss kurz nachdenken...' }
+        { emoji: '🤔', label: 'Grübeln', text: 'Muss kurz überlegen...' },
+        { emoji: '🔥', label: 'Feuer', text: 'On fire!' }
     ];
 
     const COOLDOWN_SECONDS = 3.5;
@@ -117,8 +118,8 @@
                     osc2.start(now);
                     osc1.stop(now + 0.26);
                     osc2.stop(now + 0.26);
-                } else if (emoji === '🔥') {
-                    // Feiern: Strahlender Sieges-Akkord
+                } else if (emoji === '🥳' || emoji === '🔥') {
+                    // Feiern / Feuer: Strahlender Sieges-Akkord
                     const chord = [523.25, 659.25, 783.99, 1046.50];
                     chord.forEach((freq) => {
                         const osc = this.ctx.createOscillator();

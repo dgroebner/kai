@@ -252,11 +252,15 @@ class RoomRepository
     public const ALLOWED_REACTIONS = [
         '😂' => 'Lachen',
         '😢' => 'Weinen',
-        '⏳' => 'Ungeduldig warten',
+        '⏳' => 'Ungeduldig',
         '👏' => 'Applaus',
+        '🥳' => 'Feiern',
         '😱' => 'Schock',
-        '🔥' => 'Stark!',
         '🤔' => 'Grübeln',
+        '🔥' => 'Feuer',
+        // Rückwärtskompatibilität für ältere Payloads
+        'Ungeduldig warten' => 'Ungeduldig',
+        'Stark!' => 'Feuer',
     ];
 
     /**
