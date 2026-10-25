@@ -568,7 +568,8 @@ class CardGameService
             } else {
                 $remainingCount = max(0, count($botHand) - 1);
             }
-            $callUno = ($remainingCount === 1);
+            // Bot vergisst in ca. 20% der Fälle menschlich/fehlerhaft, UNO/MAU zu rufen
+            $callUno = ($remainingCount === 1) && (random_int(1, 100) > 20);
             $this->playCard($roomId, $activePlayerId, $decision['card_id'], $decision['chosen_color'], $callUno);
         } else {
             $this->drawOrLaunch($roomId, $activePlayerId);

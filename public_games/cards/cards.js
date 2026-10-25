@@ -15,6 +15,7 @@
     let unoAnimFrame = null;
     let lastRenderedTopCardId = null;
     let lastProcessedDrawEventTime = 0;
+    let lastProcessedUnoEventKey = '';
 
     // Web Audio Synthesizer (Keine externen MP3-Dateien nötig)
     const AudioEngine = {
@@ -388,11 +389,20 @@
             let oppHtml = '';
             opponents.forEach(op => {
                 const turnClass = op.is_active ? 'active-turn' : '';
-                const unoAlarm = (op.card_count === 1) ? `<span class="opponent-uno-alarm">${data.game_mode === 'mau_mau' ? 'MAU!' : 'UNO!'}</span>` : '';
+                const hasOneCardClass = (op.card_count === 1) ? 'has-one-card' : '';
+                const callWord = (data.game_mode === 'mau_mau') ? 'MAU' : 'UNO';
+                let unoBubbleHtml = '';
+                if (op.card_count === 1) {
+                    if (op.has_called_uno) {
+                        unoBubbleHtml = `<div class="opponent-uno-bubble bubble-called" title="${HubHtml.escape(op.name)} hat rechtzeitig ${callWord}! gerufen"><span class="bubble-icon">📢</span> ${callWord}!</div>`;
+                    } else {
+                        unoBubbleHtml = `<div class="opponent-uno-bubble bubble-missed" title="${HubHtml.escape(op.name)} hat NICHT ${callWord}! gerufen - Erwischen möglich!"><span class="bubble-icon">🚨</span> 1 KARTE!</div>`;
+                    }
+                }
                 const avatar = op.is_bot ? '🤖' : '👤';
                 oppHtml += `
-                    <div class="opponent-slot ${turnClass}">
-                        ${unoAlarm}
+                    <div class="opponent-slot ${turnClass} ${hasOneCardClass}">
+                        ${unoBubbleHtml}
                         <div class="opponent-avatar">${avatar}</div>
                         <div class="opponent-name" title="${HubHtml.escape(op.name)}">${HubHtml.escape(op.name)}</div>
                         <div class="opponent-cards-badge">🃏 ${op.card_count}</div>
@@ -461,6 +471,35 @@
                         animateDrawFlight(drawCount, sourceEl, oppSlot, data.game_mode);
                     }
                 }
+            }
+        }
+
+        // Uno/Mau-Ruf Event überwachen -> Akustischer Ruf & auffälliges Tisch-Overlay
+        const lastEvt = data.last_event;
+        if (lastEvt) {
+            const isUnoCall = (lastEvt.type === 'uno_called') || (lastEvt.type === 'card_played' && (lastEvt.message?.includes('und ruft UNO') || lastEvt.message?.includes('und ruft MAU')));
+            const evtKey = `${lastEvt.time || 0}_${lastEvt.type}_${lastEvt.message || ''}`;
+            if (isUnoCall && evtKey !== lastProcessedUnoEventKey) {
+                lastProcessedUnoEventKey = evtKey;
+                const myName = myPlayer ? myPlayer.name : '';
+                const wasMe = Boolean(lastEvt.message && lastEvt.message.startsWith(myName));
+                const callWord = (data.game_mode === 'mau_mau') ? 'MAU' : 'UNO';
+
+                if (!wasMe) {
+                    AudioEngine.playUnoSound();
+                }
+
+                let callerName = '';
+                if (lastEvt.type === 'uno_called') {
+                    const m = lastEvt.message.match(/📢\s*(.*?)\s*ruft/);
+                    callerName = m ? m[1].trim() : '';
+                } else if (lastEvt.type === 'card_played') {
+                    const m = lastEvt.message.match(/^(.*?)\s*legte/);
+                    callerName = m ? m[1].trim() : '';
+                }
+                if (!callerName && wasMe) callerName = myName;
+
+                triggerUnoShoutOverlay(callerName || 'Spieler', callWord, wasMe);
             }
         }
 
@@ -975,6 +1014,35 @@
                 }, 380);
             }, i * staggerDelay);
         }
+    }
+
+    function triggerUnoShoutOverlay(callerName, callWord, wasMe) {
+        let overlay = document.getElementById('uno-shout-banner-popup');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'uno-shout-banner-popup';
+            overlay.className = 'uno-shout-banner-popup';
+            const arena = document.querySelector('.cards-table-arena') || document.body;
+            arena.appendChild(overlay);
+        }
+
+        const titleText = wasMe ? 'Du rufst' : `${HubHtml.escape(callerName)} ruft`;
+        overlay.innerHTML = `
+            <div class="uno-shout-banner-box ${wasMe ? 'shout-box-me' : 'shout-box-other'}">
+                <div class="uno-shout-banner-caller">📢 ${titleText}</div>
+                <div class="uno-shout-banner-word">${callWord}!</div>
+            </div>
+        `;
+
+        // Animation neu starten
+        overlay.classList.remove('show');
+        void overlay.offsetWidth; // Reflow erzwingen
+        overlay.classList.add('show');
+
+        if (overlay._hideTimeout) clearTimeout(overlay._hideTimeout);
+        overlay._hideTimeout = setTimeout(() => {
+            overlay.classList.remove('show');
+        }, 1800);
     }
 
     function onCardClicked(card, data) {
