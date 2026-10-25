@@ -539,6 +539,13 @@
             // Prüfen, ob ein Mitspieler genau 1 Karte hat und NICHT gerufen hat
             const missedOpponent = data.players.find(p => !p.is_me && p.card_count === 1 && !p.has_called_uno);
 
+            // Prüfen, ob durch eine spielbare Discard-All-Karte genau 1 Karte übrig bleiben würde
+            const hasPlayableDiscardAllToUno = Array.isArray(myPlayer.cards) && myPlayer.cards.some(c => {
+                if (c.type !== 'discard_all' || !c.can_play) return false;
+                const rem = myPlayer.cards.filter(other => other.id !== c.id && other.color !== c.color);
+                return rem.length === 1;
+            });
+
             if (missedOpponent) {
                 // Ein Mitspieler hat es vergessen -> Erwischt-Modus!
                 unoBtn.textContent = '🚨 ERWISCHT!';
@@ -546,7 +553,7 @@
                 unoBtn.classList.remove('uno-active');
                 unoBtn.title = `${missedOpponent.name} hat vergessen ${callWord} zu rufen! Klicke um 2 Strafkarten zu verhängen!`;
                 unoBtn.style.animation = 'bounce 0.6s infinite';
-            } else if (handCount <= 2) {
+            } else if (handCount <= 2 || hasPlayableDiscardAllToUno) {
                 // Eigener Ruf-Bereich
                 unoBtn.textContent = callWord;
                 unoBtn.classList.remove('btn-catch-uno');
@@ -978,16 +985,26 @@
             pendingCardPlay = card;
             openColorChoiceModal(data.game_mode);
         } else {
-            handleCardPlayWithUnoCheck(card.id, null, data);
+            handleCardPlayWithUnoCheck(card.id, null, data, card);
         }
     }
 
-    function handleCardPlayWithUnoCheck(cardId, chosenColor, data) {
+    function handleCardPlayWithUnoCheck(cardId, chosenColor, data, cardObj = null) {
         const myPlayer = data?.players?.find(p => p.is_me);
-        const handCount = myPlayer ? (myPlayer.cards?.length || 0) : 0;
+        const hand = myPlayer?.cards || [];
+        const playedCard = cardObj || hand.find(c => c.id === cardId);
 
-        // Wenn der Spieler genau 2 Karten hat und vor dem Klick noch nicht gerufen hat:
-        if (handCount === 2 && !unoCalledLocally && !(myPlayer?.has_called_uno)) {
+        let remainingCount = 0;
+        if (playedCard && playedCard.type === 'discard_all') {
+            // Discard All wirft diese Karte sowie alle weiteren Handkarten derselben Farbe ab
+            const remainingCards = hand.filter(c => c.id !== cardId && c.color !== playedCard.color);
+            remainingCount = remainingCards.length;
+        } else {
+            remainingCount = Math.max(0, hand.length - 1);
+        }
+
+        // Wenn nach dem Legen genau 1 Karte übrig bleibt und vor dem Klick noch nicht gerufen wurde:
+        if (remainingCount === 1 && !unoCalledLocally && !(myPlayer?.has_called_uno)) {
             promptUnoCountdown(cardId, chosenColor, data?.game_mode || 'mau_mau');
         } else {
             executePlayCard(cardId, chosenColor);
@@ -1111,7 +1128,7 @@
                 if (pendingCardPlay) {
                     const card = pendingCardPlay;
                     pendingCardPlay = null;
-                    handleCardPlayWithUnoCheck(card.id, chosen, currentRoomData);
+                    handleCardPlayWithUnoCheck(card.id, chosen, currentRoomData, card);
                 }
             });
         });

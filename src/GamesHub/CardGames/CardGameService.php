@@ -219,15 +219,6 @@ class CardGameService
         $player['sheet']['cards'] = $hand;
         $players[$playerIdx]['sheet']['cards'] = $hand;
 
-        // Uno-Ansage vermerken
-        if (count($hand) === 1 && $calledUno) {
-            $player['sheet']['has_called_uno'] = true;
-            $players[$playerIdx]['sheet']['has_called_uno'] = true;
-        } else {
-            $player['sheet']['has_called_uno'] = false;
-            $players[$playerIdx]['sheet']['has_called_uno'] = false;
-        }
-
         // Karte auf den Ablagestapel legen
         $state['discard_pile'][] = $playedCard;
         $state['top_card'] = $playedCard;
@@ -252,13 +243,26 @@ class CardGameService
             return ['success' => true, 'game_finished' => true];
         }
 
+        // Uno-Ansage vermerken (nach Anwendung eventueller Discard-All-Effekte auf die verbleibende Hand)
+        $hadCalledUno = !empty($player['sheet']['has_called_uno']);
+        $isUnoCallValid = ($calledUno || $hadCalledUno);
+
+        if (count($hand) === 1 && $isUnoCallValid) {
+            $player['sheet']['has_called_uno'] = true;
+            $players[$playerIdx]['sheet']['has_called_uno'] = true;
+        } else {
+            $player['sheet']['has_called_uno'] = false;
+            $players[$playerIdx]['sheet']['has_called_uno'] = false;
+        }
+
         // Nächsten Spieler setzen
         $nextPlayerIdx = $result['next_player_index'];
         $nextPlayer = $players[$nextPlayerIdx];
         $state['active_player_index'] = $nextPlayerIdx;
         $state['active_player_id'] = (int)$nextPlayer['id'];
 
-        $unoNotice = (count($hand) === 1 && $calledUno) ? ' und ruft UNO!' : '';
+        $callWord = (($room['game_mode'] ?? 'uno') === 'mau_mau') ? 'MAU!' : 'UNO!';
+        $unoNotice = (count($hand) === 1 && $isUnoCallValid) ? " und ruft {$callWord}" : '';
         $state['last_event'] = [
             'type' => 'card_played',
             'message' => "{$player['player_name']} legte {$playedCard['label']}{$unoNotice}. {$result['message']}",
@@ -548,7 +552,23 @@ class CardGameService
         );
 
         if ($decision['action'] === 'play') {
-            $callUno = (count($botHand) === 2); // Wenn er gleich nur noch 1 Karte hat
+            $chosenCardId = $decision['card_id'];
+            $chosenCard = null;
+            foreach ($botHand as $bc) {
+                if ($bc['id'] === $chosenCardId) {
+                    $chosenCard = $bc;
+                    break;
+                }
+            }
+            $remainingCount = 0;
+            if ($chosenCard && ($chosenCard['type'] ?? '') === 'discard_all') {
+                $cColor = $chosenCard['color'] ?? '';
+                $remaining = array_filter($botHand, fn($bc) => $bc['id'] !== $chosenCardId && ($bc['color'] ?? '') !== $cColor);
+                $remainingCount = count($remaining);
+            } else {
+                $remainingCount = max(0, count($botHand) - 1);
+            }
+            $callUno = ($remainingCount === 1);
             $this->playCard($roomId, $activePlayerId, $decision['card_id'], $decision['chosen_color'], $callUno);
         } else {
             $this->drawOrLaunch($roomId, $activePlayerId);
