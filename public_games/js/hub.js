@@ -133,9 +133,9 @@
                     mode = '4_player';
                     payload.game_mode = mode;
                 } else if (gameType === 'loch6') {
-                    const stones = parseInt(document.querySelector('input[name="loch6_stones"]:checked')?.value || '6', 10);
-                    payload.stones = stones;
-                    payload.game_mode = `${stones}_stones`;
+                    const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';
+                    payload.stones = stonesVal === 'auto' ? 'auto' : parseInt(stonesVal, 10);
+                    payload.game_mode = stonesVal === 'auto' ? 'dynamic_stones' : `${stonesVal}_stones`;
                 } else {
                     mode = document.querySelector('input[name="game_mode"]:checked')?.value || 'digital_dice';
                     payload.game_mode = mode;

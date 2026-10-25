@@ -63,17 +63,26 @@ try {
         if ($playerName === '') $playerName = 'Host';
         $playerName = mb_substr($playerName, 0, 30);
 
-        $stoneCount = (int)($input['stones'] ?? 6);
-        if ($stoneCount < 4 || $stoneCount > 10) {
-            $stoneCount = 6;
+        $stonesInput = $input['stones'] ?? 'auto';
+        $isFixed = false;
+        $stoneCount = 12;
+
+        if (is_numeric($stonesInput)) {
+            $val = (int)$stonesInput;
+            if ($val >= 4 && $val <= 20) {
+                $stoneCount = $val;
+                $isFixed = true;
+            }
         }
 
-        $gameMode = "{$stoneCount}_stones";
+        $gameMode = $isFixed ? "{$stoneCount}_stones" : "dynamic_stones";
 
         $newPlayerToken = bin2hex(random_bytes(16));
         $newHostHash = hash('sha256', $newPlayerToken);
 
         $initialState = $service->getInitialState($stoneCount);
+        $initialState['starting_stones_fixed'] = $isFixed;
+        $initialState['starting_stones_mode'] = $isFixed ? 'fixed' : 'auto';
         $room = $repo->createRoom('loch6', $gameMode, $newHostHash, $initialState);
 
         if (!$room) {
@@ -143,7 +152,13 @@ try {
             exit;
         }
 
+        $newCount = count($currentPlayers) + 1;
+        $isFixed = !empty($room['state']['starting_stones_fixed']);
+        $stoneCount = $isFixed ? (int)($room['state']['starting_stones'] ?? 12) : Loch6Service::getRecommendedStones($newCount);
+        $initialSheet = $service->getInitialSheet($stoneCount, false);
+
         $player = $repo->joinPlayer((int)$room['id'], $currentHash, $playerName, $isHost, $initialSheet);
+        $service->syncLobbyPlayerStones((int)$room['id']);
 
         echo json_encode([
             'success' => true,
@@ -208,8 +223,7 @@ try {
             exit;
         }
 
-        $stoneCount = (int)($room['state']['starting_stones'] ?? 6);
-        $res = $service->startGame($roomId, $stoneCount);
+        $res = $service->startGame($roomId);
         echo json_encode($res);
         exit;
     }
@@ -287,8 +301,7 @@ try {
             exit;
         }
 
-        $stoneCount = (int)($room['state']['starting_stones'] ?? 6);
-        $res = $service->startGame($roomId, $stoneCount);
+        $res = $service->startGame($roomId);
         echo json_encode($res);
         exit;
     }

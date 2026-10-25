@@ -12,6 +12,7 @@
     let myPlayerId = null;
     let selectedStoneId = null;
     let isRollingAnimation = false;
+    let isAnimatingMove = false;
     let lastKnownRollSeq = 0;
     let pollTimer = null;
     let currentGameState = null;
@@ -250,8 +251,16 @@
             return;
         }
 
+        // Sicherstellen, dass die Zielmulde vor und während des Flugs absolut leer ist!
+        targetSlotEl.innerHTML = '';
+        delete targetSlotEl.dataset.currentStoneId;
+
         const grid = document.getElementById('my-crystals-grid');
         const sourceStoneEl = grid ? (grid.querySelector(`.crystal-gem[data-stone-id="${stone?.id}"]`) || grid.querySelector('.crystal-gem')) : null;
+
+        if (sourceStoneEl) {
+            sourceStoneEl.style.opacity = '0';
+        }
 
         const toRect = targetSlotEl.getBoundingClientRect();
         const fromRect = sourceStoneEl ? sourceStoneEl.getBoundingClientRect() : {
@@ -278,8 +287,18 @@
             setTimeout(() => {
                 if (clone.parentNode) clone.parentNode.removeChild(clone);
                 AudioEngine.playStonePlaced();
+
+                // ERST JETZT wird der echte Stein in die Mulde gelegt!
+                if (stone) {
+                    targetSlotEl.innerHTML = '';
+                    const gemEl = createCrystalElement(stone, false);
+                    gemEl.classList.add('just-placed');
+                    targetSlotEl.appendChild(gemEl);
+                    targetSlotEl.dataset.currentStoneId = stone.id || `${stone.type}-${stone.seed}`;
+                }
+
                 if (typeof onComplete === 'function') onComplete();
-            }, 380);
+            }, 390);
         });
     }
 
@@ -503,6 +522,11 @@
     }
 
     async function fetchState(initial = false) {
+        if (isAnimatingMove && !initial) {
+            // Während der Würfel- und Fluganimation nicht vorzeitig den Brett-Zustand überschreiben!
+            return true;
+        }
+
         try {
             const res = await HubHttp.getJson(`${API_URL}?action=state&room=${encodeURIComponent(roomCode)}`);
             if (!res.ok || !res.data || !res.data.success) {
@@ -519,10 +543,12 @@
     }
 
     async function handleRollClick() {
+        if (isAnimatingMove) return;
         const rollBtn = document.getElementById('btn-roll-dice');
         if (rollBtn) rollBtn.disabled = true;
 
         const sentStoneId = selectedStoneId;
+        isAnimatingMove = true; // Sperrt Polling-Updates auf dem Brett während Wurf & Flug!
 
         try {
             const res = await HubHttp.postJson(`${API_URL}?action=roll`, {
@@ -531,6 +557,7 @@
             });
 
             if (!res.ok || !res.data || !res.data.success) {
+                isAnimatingMove = false;
                 await HubDialog.alert('Hinweis', res.data?.message || 'Wurf nicht möglich.', 'ℹ️');
                 return;
             }
@@ -545,9 +572,11 @@
                 if (outcomeData.outcome === 'hole6' || outcomeData.outcome === 'hole6_win') {
                     AudioEngine.playHole6Abyss();
                     if (outcomeData.game_over) AudioEngine.playVictory();
+                    isAnimatingMove = false;
                     fetchState();
                 } else if (outcomeData.outcome === 'bust') {
                     playBustFlyAnimation(() => {
+                        isAnimatingMove = false;
                         fetchState();
                     });
                 } else {
@@ -555,12 +584,14 @@
                     const targetSlot = document.getElementById(`slot-${outcomeData.die}-${outcomeData.slot ?? 0}`);
                     playStoneFlightToSlot(targetSlot, outcomeData.placed_stone || null, () => {
                         if (outcomeData.game_over) AudioEngine.playVictory();
+                        isAnimatingMove = false;
                         fetchState();
                     });
                 }
             });
         } catch (e) {
             console.error('Loch6 roll error:', e);
+            isAnimatingMove = false;
         } finally {
             if (rollBtn) rollBtn.disabled = false;
         }
@@ -748,10 +779,12 @@
 
         // Würfel & Animation synchronisieren (z. B. wenn Bot oder anderer Spieler gewürfelt hat)
         const currentRollSeq = Number(data.roll_seq || 0);
-        if (currentRollSeq > 0 && lastKnownRollSeq > 0 && currentRollSeq > lastKnownRollSeq && !isRollingAnimation) {
+        if (currentRollSeq > 0 && lastKnownRollSeq > 0 && currentRollSeq > lastKnownRollSeq && !isRollingAnimation && !isAnimatingMove) {
             lastKnownRollSeq = currentRollSeq;
+            isAnimatingMove = true;
             const targetVal = (data.dice && data.dice[0]) ? data.dice[0] : 1;
             playDiceRollAnimation(targetVal, () => {
+                isAnimatingMove = false;
                 renderGame(data, myPlayer);
             });
             return;

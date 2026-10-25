@@ -8,7 +8,7 @@ use Kai\Tools\GamesHub\RoomRepository;
 
 class Loch6Service
 {
-    public const DEFAULT_STONES = 6;
+    public const DEFAULT_STONES = 12;
     public const MINERAL_TYPES = ['amethyst', 'smaragd', 'pyrit', 'rosenquarz', 'lapislazuli', 'obsidian'];
 
     private RoomRepository $repo;
@@ -16,6 +16,49 @@ class Loch6Service
     public function __construct(?RoomRepository $repo = null)
     {
         $this->repo = $repo ?? new RoomRepository();
+    }
+
+    /**
+     * Ermittelt die optimale Anzahl an Startsteinen anhand der Teilnehmerzahl am Tisch.
+     * Sorgt für ideale Spieldauer und maximale Push-Your-Luck Spannung auf dem 15-Mulden-Brett.
+     */
+    public static function getRecommendedStones(int $playerCount): int
+    {
+        return match (true) {
+            $playerCount <= 2 => 12, // 2 Spieler: 12 Steine (24 im Spiel -> perfekte Spannung)
+            $playerCount === 3 => 9,  // 3 Spieler: 9 Steine (27 im Spiel)
+            $playerCount === 4 => 7,  // 4 Spieler: 7 Steine (28 im Spiel)
+            $playerCount === 5 => 6,  // 5 Spieler: 6 Steine (30 im Spiel)
+            default => 5,             // 6 oder mehr Spieler: 5 Steine (30 im Spiel)
+        };
+    }
+
+    /**
+     * Synchronisiert die Steine aller Spieler in der Lobby, falls dynamischer Modus aktiv ist.
+     */
+    public function syncLobbyPlayerStones(int $roomId): void
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'lobby') {
+            return;
+        }
+
+        if (!empty($room['state']['starting_stones_fixed'])) {
+            return;
+        }
+
+        $players = $this->repo->getPlayersForRoom($roomId);
+        $playerCount = count($players);
+        $stones = self::getRecommendedStones($playerCount);
+
+        foreach ($players as $p) {
+            $isBot = !empty($p['sheet']['is_bot']);
+            $newSheet = $this->getInitialSheet($stones, $isBot);
+            $this->repo->updatePlayerSheet((int)$p['id'], $newSheet, $stones);
+        }
+
+        $room['state']['starting_stones'] = $stones;
+        $this->repo->updateRoomState($roomId, $room['state']);
     }
 
     /**
@@ -79,7 +122,7 @@ class Loch6Service
     /**
      * Startet das Spiel aus der Lobby.
      */
-    public function startGame(int $roomId, int $stoneCount = self::DEFAULT_STONES): array
+    public function startGame(int $roomId): array
     {
         $room = $this->repo->getRoomById($roomId);
         if (!$room || $room['status'] !== 'lobby') {
@@ -87,24 +130,34 @@ class Loch6Service
         }
 
         $players = $this->repo->getPlayersForRoom($roomId);
-        if (count($players) < 1) {
+        $playerCount = count($players);
+        if ($playerCount < 1) {
             return ['success' => false, 'message' => 'Mindestens 1 Spieler erforderlich'];
         }
 
-        $state = $this->getInitialState($stoneCount);
+        $isFixed = !empty($room['state']['starting_stones_fixed']);
+        if ($isFixed && is_numeric($room['state']['starting_stones'])) {
+            $finalStones = (int)$room['state']['starting_stones'];
+        } else {
+            $finalStones = self::getRecommendedStones($playerCount);
+        }
+
+        $state = $this->getInitialState($finalStones);
+        $state['starting_stones_fixed'] = $isFixed;
+        $state['starting_stones_mode'] = $isFixed ? 'fixed' : 'auto';
         $startPlayer = $players[0];
         $state['active_player_id'] = (int)$startPlayer['id'];
         $state['active_player_index'] = 0;
         $state['last_event'] = [
             'type' => 'game_started',
-            'message' => "Runde 1 (Pflichtwurf) gestartet! {$startPlayer['player_name']} beginnt.",
+            'message' => "Runde 1 (Pflichtwurf) mit {$finalStones} Steinen gestartet! {$startPlayer['player_name']} beginnt.",
             'time' => time(),
         ];
 
         // Alle Spieler initialisieren
         foreach ($players as $p) {
             $isBot = !empty($p['sheet']['is_bot']);
-            $sheet = $this->getInitialSheet($stoneCount, $isBot);
+            $sheet = $this->getInitialSheet($finalStones, $isBot);
             $this->repo->updatePlayerSheet((int)$p['id'], $sheet, count($sheet['stones']));
         }
 
@@ -457,11 +510,15 @@ class Loch6Service
             return ['success' => false, 'message' => 'Maximal 6 Spieler erlaubt'];
         }
 
-        $stoneCount = (int)($room['state']['starting_stones'] ?? self::DEFAULT_STONES);
+        $newCount = count($players) + 1;
+        $isFixed = !empty($room['state']['starting_stones_fixed']);
+        $stoneCount = $isFixed ? (int)($room['state']['starting_stones'] ?? self::DEFAULT_STONES) : self::getRecommendedStones($newCount);
+
         $botTokenHash = hash('sha256', bin2hex(random_bytes(16)));
         $sheet = $this->getInitialSheet($stoneCount, true);
 
         $player = $this->repo->joinPlayer($roomId, $botTokenHash, $botName, false, $sheet);
+        $this->syncLobbyPlayerStones($roomId);
         return ['success' => true, 'bot_id' => $player['id'], 'bot_name' => $botName];
     }
 
@@ -556,6 +613,7 @@ class Loch6Service
         return [
             'room_code' => $room['room_code'],
             'status' => $room['status'],
+            'starting_stones' => (int)($state['starting_stones'] ?? self::DEFAULT_STONES),
             'round_number' => (int)($state['round_number'] ?? 1),
             'active_player_id' => $activePlayerId,
             'rolls_in_turn' => (int)($state['rolls_in_turn'] ?? 0),
