@@ -150,12 +150,12 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <!-- Zentrales Würfelfeld (Grüner Samt-Teller im Holzrahmen) -->
         <div class="center-rolling-tray">
             <div class="felt-mat">
-                <div class="dice-wrapper" id="dice-container">
-                    <div class="stb-die" id="die-1" data-val="1">
-                        <span class="die-dot dot-center"></span>
+                <div class="qwixx-dice-row dice-wrapper" id="dice-container">
+                    <div class="qwixx-die die-white stb-die" id="die-1" data-val="1">
+                        <span class="die-pip pip-center"></span>
                     </div>
-                    <div class="stb-die" id="die-2" data-val="1">
-                        <span class="die-dot dot-center"></span>
+                    <div class="qwixx-die die-white stb-die" id="die-2" data-val="1">
+                        <span class="die-pip pip-center"></span>
                     </div>
                 </div>
 

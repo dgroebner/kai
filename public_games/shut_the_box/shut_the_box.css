@@ -234,34 +234,32 @@
     margin-top: 0.25rem;
 }
 
-.stb-die {
-    width: 62px;
-    height: 62px;
-    background: linear-gradient(145deg, #ffffff, #e2e8f0);
-    border-radius: 14px;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.8);
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-    padding: 6px;
-    position: relative;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
-    user-select: none;
+/* 2 Würfel wie in Qwixx & Kniffel */
+.dice-wrapper {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    margin: 0.35rem 0;
 }
 
-.stb-die.rolling {
-    box-shadow: 0 18px 32px rgba(0, 0, 0, 0.75), 0 0 14px rgba(251, 191, 36, 0.35);
+.dice-wrapper .qwixx-die {
+    cursor: default;
 }
 
-#die-1.rolling {
+.dice-wrapper.is-rolling .qwixx-die {
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.7), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dice-wrapper.is-rolling #die-1 {
     animation: die-roll-1 0.16s infinite alternate ease-in-out;
 }
 
-#die-2.rolling {
+.dice-wrapper.is-rolling #die-2 {
     animation: die-roll-2 0.16s infinite alternate ease-in-out;
 }
 
-.stb-die.landing {
+.qwixx-die.landing {
     animation: die-land 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -293,15 +291,6 @@
     100% {
         transform: scale(1, 1);
     }
-}
-
-.die-dot {
-    width: 10px;
-    height: 10px;
-    background: #0f172a;
-    border-radius: 50%;
-    margin: auto;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .dice-sum-display {
@@ -603,17 +592,6 @@
 
 /* Mobile Optimierung */
 @media (max-width: 480px) {
-    .stb-die {
-        width: 52px;
-        height: 52px;
-        padding: 4px;
-    }
-
-    .die-dot {
-        width: 8px;
-        height: 8px;
-    }
-
     .felt-mat {
         height: 190px;
         padding: 0.5rem;

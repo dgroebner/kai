@@ -569,45 +569,40 @@
         }
     }
 
+    const PIPS_MAP = {
+        1: ['pip-center'],
+        2: ['pip-top-left', 'pip-bottom-right'],
+        3: ['pip-top-left', 'pip-center', 'pip-bottom-right'],
+        4: ['pip-top-left', 'pip-top-right', 'pip-bottom-left', 'pip-bottom-right'],
+        5: ['pip-top-left', 'pip-top-right', 'pip-center', 'pip-bottom-left', 'pip-bottom-right'],
+        6: ['pip-top-left', 'pip-top-right', 'pip-mid-left', 'pip-mid-right', 'pip-bottom-left', 'pip-bottom-right']
+    };
+
     function renderDie(dieId, val) {
         const el = document.getElementById(dieId);
         if (!el) return;
         el.dataset.val = val;
 
-        // Positionierung der Augen im 3x3 Raster
-        const dotPositions = {
-            1: ['dot-center'],
-            2: ['dot-top-left', 'dot-bottom-right'],
-            3: ['dot-top-left', 'dot-center', 'dot-bottom-right'],
-            4: ['dot-top-left', 'dot-top-right', 'dot-bottom-left', 'dot-bottom-right'],
-            5: ['dot-top-left', 'dot-top-right', 'dot-center', 'dot-bottom-left', 'dot-bottom-right'],
-            6: ['dot-top-left', 'dot-top-right', 'dot-mid-left', 'dot-mid-right', 'dot-bottom-left', 'dot-bottom-right']
-        };
-
-        const dots = dotPositions[val] || ['dot-center'];
-        let dotsHtml = '';
-        dots.forEach(pos => {
-            dotsHtml += `<span class="die-dot ${pos}"></span>`;
+        const pips = PIPS_MAP[val] || ['pip-center'];
+        let pipsHtml = '';
+        pips.forEach(pos => {
+            pipsHtml += `<span class="die-pip ${pos}"></span>`;
         });
-        el.innerHTML = dotsHtml;
+        el.innerHTML = pipsHtml;
     }
 
     function playDiceRollAnimation(targetDice, onComplete) {
         if (isRollingAnimation) return;
         isRollingAnimation = true;
 
+        const diceContainer = document.getElementById('dice-container');
         const die1 = document.getElementById('die-1');
         const die2 = document.getElementById('die-2');
         const sumDisplay = document.getElementById('dice-sum-display');
 
-        if (die1) {
-            die1.classList.remove('landing');
-            die1.classList.add('rolling');
-        }
-        if (die2) {
-            die2.classList.remove('landing');
-            die2.classList.add('rolling');
-        }
+        if (diceContainer) diceContainer.classList.add('is-rolling');
+        if (die1) die1.classList.remove('landing');
+        if (die2) die2.classList.remove('landing');
 
         if (sumDisplay) {
             sumDisplay.innerHTML = 'Augen: <strong>🎲 ...</strong>';
@@ -630,8 +625,7 @@
 
             if (ticks >= maxTicks) {
                 clearInterval(interval);
-                if (die1) die1.classList.remove('rolling');
-                if (die2) die2.classList.remove('rolling');
+                if (diceContainer) diceContainer.classList.remove('is-rolling');
 
                 const [finalD1, finalD2] = targetDice || [1, 1];
                 renderDie('die-1', finalD1);

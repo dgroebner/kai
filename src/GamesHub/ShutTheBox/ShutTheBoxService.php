@@ -724,7 +724,7 @@ class ShutTheBoxService
         // 1. Addition beider Würfel: [d1 + d2]
         $addSum = $d1 + $d2;
         if ($addSum <= self::FLAPS_COUNT && !empty($flaps[$addSum])) {
-            $addMove('addition', "{$addSum} (Addition: {$d1}+{$d2})", [$addSum]);
+            $addMove('addition', "{$addSum} ({$d1}+{$d2})", [$addSum]);
         }
 
         // 2. Subtraktion beider Würfel: [|d1 - d2|]
@@ -732,7 +732,7 @@ class ShutTheBoxService
         if ($subDiff >= 1 && $subDiff <= self::FLAPS_COUNT && !empty($flaps[$subDiff])) {
             $high = max($d1, $d2);
             $low = min($d1, $d2);
-            $addMove('subtraction', "{$subDiff} (Subtraktion: {$high}-{$low})", [$subDiff]);
+            $addMove('subtraction', "{$subDiff} ({$high}-{$low})", [$subDiff]);
         }
 
         // 3. Beide Würfel einzeln: [d1, d2]
@@ -740,18 +740,18 @@ class ShutTheBoxService
             $f1 = min($d1, $d2);
             $f2 = max($d1, $d2);
             if (!empty($flaps[$f1]) && !empty($flaps[$f2])) {
-                $addMove('both', "{$f1} + {$f2} (Beide einzeln)", [$f1, $f2]);
+                $addMove('both', "{$f1} & {$f2}", [$f1, $f2]);
             }
         }
 
         // 4. Einzelner Würfel d1: [d1]
         if (!empty($flaps[$d1])) {
-            $addMove('single', "{$d1} (Einzeln)", [$d1]);
+            $addMove('single', "Nur {$d1}", [$d1]);
         }
 
         // 5. Einzelner Würfel d2: [d2]
         if ($d2 !== $d1 && !empty($flaps[$d2])) {
-            $addMove('single', "{$d2} (Einzeln)", [$d2]);
+            $addMove('single', "Nur {$d2}", [$d2]);
         }
 
         return $moves;
