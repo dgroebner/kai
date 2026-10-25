@@ -14,6 +14,7 @@
     let unoCountdownTimer = null;
     let unoAnimFrame = null;
     let lastRenderedTopCardId = null;
+    let lastProcessedDrawEventTime = 0;
 
     // Web Audio Synthesizer (Keine externen MP3-Dateien nötig)
     const AudioEngine = {
@@ -37,6 +38,22 @@
             gain.connect(this.ctx.destination);
             osc.start();
             osc.stop(this.ctx.currentTime + 0.09);
+        },
+        playDrawSound() {
+            this.init();
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(460, now + 0.08);
+            gain.gain.setValueAtTime(0.22, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.09);
         },
         playUnoSound() {
             this.init();
@@ -414,6 +431,37 @@
                 }
             }
             lastRenderedTopCardId = data.top_card.id;
+        }
+
+        // Gegner zieht Karte(n) -> Fluganimation vom Ziehstapel / Launcher zum Gegner
+        if (data.last_event?.type === 'cards_drawn' && data.last_event.time && data.last_event.time !== lastProcessedDrawEventTime) {
+            lastProcessedDrawEventTime = data.last_event.time;
+            const myName = myPlayer ? myPlayer.name : '';
+            const wasMe = data.last_event.message && data.last_event.message.includes(myName);
+
+            if (!wasMe) {
+                let oppSlot = null;
+                document.querySelectorAll('.opponent-slot').forEach(slot => {
+                    const n = slot.querySelector('.opponent-name')?.textContent?.trim();
+                    if (n && data.last_event.message.includes(n)) {
+                        oppSlot = slot;
+                    }
+                });
+
+                if (oppSlot) {
+                    const m = data.last_event.message.match(/(\d+)\s*(Karten|Strafkarten)/i);
+                    const drawCount = m ? parseInt(m[1], 10) : (data.last_event.message.includes('1 Karte') ? 1 : 0);
+                    const sourceEl = document.getElementById('extreme-launcher-btn') || document.getElementById('deck-draw-btn');
+                    if (drawCount > 0 && sourceEl) {
+                        if (data.game_mode === 'uno_extreme') {
+                            AudioEngine.playLauncherSound(drawCount);
+                        } else {
+                            AudioEngine.playDrawSound();
+                        }
+                        animateDrawFlight(drawCount, sourceEl, oppSlot, data.game_mode);
+                    }
+                }
+            }
         }
 
         // Tischmitte: Nachziehstapel / Launcher
@@ -864,6 +912,64 @@
         }, 360);
     }
 
+    function animateDrawFlight(count, sourceEl, targetEl, gameMode, onComplete) {
+        if (!sourceEl || !targetEl || count <= 0) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const fromRect = sourceEl.getBoundingClientRect();
+        const toRect = targetEl.getBoundingClientRect();
+        const isFrench = (gameMode === 'mau_mau');
+        const cardBackContent = isFrench ? '🂠' : 'UNO';
+        const cardBackClass = isFrench ? 'card-back-french' : 'card-back-uno';
+
+        // Bis zu 8 Karten animieren
+        const animCount = Math.min(count, 8);
+        const staggerDelay = (gameMode === 'uno_extreme') ? 85 : 110;
+
+        let completed = 0;
+
+        for (let i = 0; i < animCount; i++) {
+            setTimeout(() => {
+                const flyCard = document.createElement('div');
+                flyCard.className = `flying-draw-card ${cardBackClass}`;
+                flyCard.innerHTML = `<span class="draw-fly-logo">${cardBackContent}</span>`;
+
+                const startLeft = fromRect.left + (fromRect.width / 2) - 36;
+                const startTop = fromRect.top + (fromRect.height / 2) - 53;
+                flyCard.style.left = `${startLeft}px`;
+                flyCard.style.top = `${startTop}px`;
+                flyCard.style.transform = 'translate3d(0, 0, 0) scale(0.6) rotate(0deg)';
+                flyCard.style.opacity = '0.9';
+                document.body.appendChild(flyCard);
+
+                const spreadOffset = (animCount > 1) ? ((i - (animCount - 1) / 2) * 16) : 0;
+                const destX = (toRect.left + toRect.width / 2 + spreadOffset) - (startLeft + 36);
+                const destY = (toRect.top + toRect.height / 2) - (startTop + 53);
+                const destRot = (i % 2 === 0 ? 1 : -1) * (4 + (i * 2));
+
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        flyCard.style.transform = `translate3d(${destX}px, ${destY}px, 0) scale(1) rotate(${destRot}deg)`;
+                        flyCard.style.opacity = '1';
+                    });
+                });
+
+                setTimeout(() => {
+                    flyCard.style.opacity = '0';
+                    flyCard.style.transform += ' scale(0.85)';
+                    setTimeout(() => flyCard.remove(), 150);
+
+                    completed++;
+                    if (completed >= animCount && onComplete) {
+                        onComplete();
+                    }
+                }, 380);
+            }, i * staggerDelay);
+        }
+    }
+
     function onCardClicked(card, data) {
         currentRoomData = data;
         const needsColor = (card.type === 'wild' || card.type === 'wild_draw4' || card.type === 'extreme_hit' || card.type === 'jack');
@@ -1052,9 +1158,26 @@
 
         if (res.ok && res.data && res.data.success) {
             const count = res.data.drawn_count || 0;
-            AudioEngine.playLauncherSound(count);
-            unoCalledLocally = false;
-            fetchState(true);
+            const isExtreme = (currentRoomData?.game_mode === 'uno_extreme');
+
+            if (isExtreme) {
+                AudioEngine.playLauncherSound(count);
+            } else {
+                AudioEngine.playDrawSound();
+            }
+
+            const sourceEl = document.getElementById('extreme-launcher-btn') || document.getElementById('deck-draw-btn');
+            const targetEl = document.getElementById('player-hand-fanned');
+
+            if (count > 0 && sourceEl && targetEl) {
+                animateDrawFlight(count, sourceEl, targetEl, currentRoomData?.game_mode, () => {
+                    unoCalledLocally = false;
+                    fetchState(true);
+                });
+            } else {
+                unoCalledLocally = false;
+                fetchState(true);
+            }
         } else {
             HubDialog.alert('Hinweis', res.data?.message || 'Aktion nicht möglich.', '⚠️');
         }
