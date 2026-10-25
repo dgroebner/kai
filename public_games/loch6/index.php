@@ -65,6 +65,10 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.25rem;">
+            <div id="lobby-min-players-alert" class="hidden" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; border-radius: 10px; padding: 0.65rem 0.85rem; font-size: 0.85rem; line-height: 1.4; text-align: center;">
+                👥 <strong>Mindestens 2 Spieler erforderlich!</strong><br>
+                Lade Freunde per WhatsApp ein oder füge einen KI-Bot hinzu.
+            </div>
             <button type="button" class="btn btn-outline js-btn-add-bot hidden" id="btn-add-bot">
                 🤖 KI-Bot hinzufügen (+1)
             </button>

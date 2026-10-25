@@ -442,6 +442,14 @@
         const startBtn = document.getElementById('btn-start-game');
         if (startBtn) {
             startBtn.addEventListener('click', async () => {
+                if (currentGameState && (currentGameState.players || []).length < 2) {
+                    await HubDialog.alert(
+                        'Mindestens 2 Spieler',
+                        'Loch 6 benötigt mindestens 2 Spieler (oder Bots).\n\nLade Freunde per Einladungs-Link ein oder klicke auf "🤖 KI-Bot hinzufügen", um direkt loszulegen!',
+                        '👥'
+                    );
+                    return;
+                }
                 startBtn.disabled = true;
                 try {
                     const res = await HubHttp.postJson(`${API_URL}?action=start`, {
@@ -740,18 +748,33 @@
         const addBotBtn = document.getElementById('btn-add-bot');
         const startBtn = document.getElementById('btn-start-game');
         const waitNotice = document.getElementById('lobby-waiting-notice');
+        const minAlert = document.getElementById('lobby-min-players-alert');
+        const playerCount = (data.players || []).length;
+
+        if (minAlert) {
+            minAlert.classList.toggle('hidden', playerCount >= 2);
+        }
 
         if (isHost) {
             if (addBotBtn) {
                 addBotBtn.classList.remove('hidden');
-                addBotBtn.disabled = (data.players.length >= 6);
+                addBotBtn.disabled = (playerCount >= 6);
             }
-            if (startBtn) startBtn.classList.remove('hidden');
+            if (startBtn) {
+                startBtn.classList.remove('hidden');
+                startBtn.disabled = (playerCount < 2);
+                startBtn.title = (playerCount < 2) ? 'Mindestens 2 Spieler (oder Bots) erforderlich' : 'Spiel starten';
+            }
             if (waitNotice) waitNotice.classList.add('hidden');
         } else {
             if (addBotBtn) addBotBtn.classList.add('hidden');
             if (startBtn) startBtn.classList.add('hidden');
-            if (waitNotice) waitNotice.classList.remove('hidden');
+            if (waitNotice) {
+                waitNotice.classList.remove('hidden');
+                waitNotice.textContent = (playerCount < 2)
+                    ? 'Warte auf mindestens einen weiteren Spieler...'
+                    : 'Warte auf den Host zum Starten...';
+            }
         }
     }
 

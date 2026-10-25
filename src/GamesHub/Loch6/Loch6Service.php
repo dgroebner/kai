@@ -131,8 +131,8 @@ class Loch6Service
 
         $players = $this->repo->getPlayersForRoom($roomId);
         $playerCount = count($players);
-        if ($playerCount < 1) {
-            return ['success' => false, 'message' => 'Mindestens 1 Spieler erforderlich'];
+        if ($playerCount < 2) {
+            return ['success' => false, 'message' => 'Mindestens 2 Spieler (oder Bots) erforderlich'];
         }
 
         $isFixed = !empty($room['state']['starting_stones_fixed']);

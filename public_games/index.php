@@ -94,7 +94,7 @@ require_once __DIR__ . '/../bootstrap.php';
                     <h2>Loch 6</h2>
                     <p>Push-Your-Luck Würfelspiel mit funkelnden Mineral-Steinen. Werde alle Steine los und meide besetzte Mulden!</p>
                 </div>
-                <span class="game-kachel-badge">1–6 Spieler</span>
+                <span class="game-kachel-badge">2–6 Spieler</span>
             </div>
         </div>
 
