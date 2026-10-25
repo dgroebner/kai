@@ -11,6 +11,13 @@ class DeckFactory
     public const COLORS_UNO = ['red', 'yellow', 'green', 'blue'];
     public const COLORS_MAUMAU = ['hearts', 'diamonds', 'spades', 'clubs'];
 
+    public const SUITS_MAUMAU = [
+        'hearts' => '♥',
+        'diamonds' => '♦',
+        'spades' => '♠',
+        'clubs' => '♣',
+    ];
+
     /**
      * Erstellt ein gemischtes Deck für den jeweiligen Spielmodus.
      *
@@ -39,45 +46,45 @@ class DeckFactory
 
         foreach (self::COLORS_UNO as $color) {
             // 1x 0 pro Farbe
-            $cards[] = new Card("{$color}_0_{$seq}", $color, 'number', 0, '0', 0);
+            $cards[] = new Card("{$color}_0_{$seq}", $color, 'number', 0, '0', 0, '0');
             $seq++;
 
             // 2x 1..9 pro Farbe
             for ($num = 1; $num <= 9; $num++) {
-                $cards[] = new Card("{$color}_{$num}_a_{$seq}", $color, 'number', $num, (string)$num, $num);
+                $cards[] = new Card("{$color}_{$num}_a_{$seq}", $color, 'number', $num, (string)$num, $num, (string)$num);
                 $seq++;
-                $cards[] = new Card("{$color}_{$num}_b_{$seq}", $color, 'number', $num, (string)$num, $num);
+                $cards[] = new Card("{$color}_{$num}_b_{$seq}", $color, 'number', $num, (string)$num, $num, (string)$num);
                 $seq++;
             }
 
             // 2x Draw 2 (+2)
-            $cards[] = new Card("{$color}_draw2_a_{$seq}", $color, 'draw2', null, '+2', 20);
+            $cards[] = new Card("{$color}_draw2_a_{$seq}", $color, 'draw2', null, '+2', 20, '+2');
             $seq++;
-            $cards[] = new Card("{$color}_draw2_b_{$seq}", $color, 'draw2', null, '+2', 20);
+            $cards[] = new Card("{$color}_draw2_b_{$seq}", $color, 'draw2', null, '+2', 20, '+2');
             $seq++;
 
             // 2x Reverse
-            $cards[] = new Card("{$color}_reverse_a_{$seq}", $color, 'reverse', null, '⇄', 20);
+            $cards[] = new Card("{$color}_reverse_a_{$seq}", $color, 'reverse', null, '⇄', 20, '⇄');
             $seq++;
-            $cards[] = new Card("{$color}_reverse_b_{$seq}", $color, 'reverse', null, '⇄', 20);
+            $cards[] = new Card("{$color}_reverse_b_{$seq}", $color, 'reverse', null, '⇄', 20, '⇄');
             $seq++;
 
             // 2x Skip
-            $cards[] = new Card("{$color}_skip_a_{$seq}", $color, 'skip', null, '⊘', 20);
+            $cards[] = new Card("{$color}_skip_a_{$seq}", $color, 'skip', null, '⊘', 20, '⊘');
             $seq++;
-            $cards[] = new Card("{$color}_skip_b_{$seq}", $color, 'skip', null, '⊘', 20);
+            $cards[] = new Card("{$color}_skip_b_{$seq}", $color, 'skip', null, '⊘', 20, '⊘');
             $seq++;
         }
 
         // 4x Wild (Farbwahl)
         for ($i = 1; $i <= 4; $i++) {
-            $cards[] = new Card("wild_{$i}_{$seq}", 'wild', 'wild', null, '★', 50);
+            $cards[] = new Card("wild_{$i}_{$seq}", 'wild', 'wild', null, '★', 50, '★');
             $seq++;
         }
 
         // 4x Wild Draw 4 (+4 Farbwahl)
         for ($i = 1; $i <= 4; $i++) {
-            $cards[] = new Card("wild_draw4_{$i}_{$seq}", 'wild', 'wild_draw4', null, '+4', 50);
+            $cards[] = new Card("wild_draw4_{$i}_{$seq}", 'wild', 'wild_draw4', null, '+4', 50, '+4');
             $seq++;
         }
 
@@ -96,49 +103,49 @@ class DeckFactory
 
         foreach (self::COLORS_UNO as $color) {
             // 1x 0
-            $cards[] = new Card("{$color}_0_{$seq}", $color, 'number', 0, '0', 0);
+            $cards[] = new Card("{$color}_0_{$seq}", $color, 'number', 0, '0', 0, '0');
             $seq++;
 
             // 2x 1..9
             for ($num = 1; $num <= 9; $num++) {
-                $cards[] = new Card("{$color}_{$num}_a_{$seq}", $color, 'number', $num, (string)$num, $num);
+                $cards[] = new Card("{$color}_{$num}_a_{$seq}", $color, 'number', $num, (string)$num, $num, (string)$num);
                 $seq++;
-                $cards[] = new Card("{$color}_{$num}_b_{$seq}", $color, 'number', $num, (string)$num, $num);
+                $cards[] = new Card("{$color}_{$num}_b_{$seq}", $color, 'number', $num, (string)$num, $num, (string)$num);
                 $seq++;
             }
 
             // 2x Reverse
-            $cards[] = new Card("{$color}_reverse_a_{$seq}", $color, 'reverse', null, '⇄', 20);
+            $cards[] = new Card("{$color}_reverse_a_{$seq}", $color, 'reverse', null, '⇄', 20, '⇄');
             $seq++;
-            $cards[] = new Card("{$color}_reverse_b_{$seq}", $color, 'reverse', null, '⇄', 20);
+            $cards[] = new Card("{$color}_reverse_b_{$seq}", $color, 'reverse', null, '⇄', 20, '⇄');
             $seq++;
 
             // 2x Skip
-            $cards[] = new Card("{$color}_skip_a_{$seq}", $color, 'skip', null, '⊘', 20);
+            $cards[] = new Card("{$color}_skip_a_{$seq}", $color, 'skip', null, '⊘', 20, '⊘');
             $seq++;
-            $cards[] = new Card("{$color}_skip_b_{$seq}", $color, 'skip', null, '⊘', 20);
+            $cards[] = new Card("{$color}_skip_b_{$seq}", $color, 'skip', null, '⊘', 20, '⊘');
             $seq++;
 
             // 2x Hit 2 (Extreme Launcher 2x betätigen)
-            $cards[] = new Card("{$color}_hit2_a_{$seq}", $color, 'hit2', null, '⚡2', 20);
+            $cards[] = new Card("{$color}_hit2_a_{$seq}", $color, 'hit2', null, '⚡2', 20, '⚡2');
             $seq++;
-            $cards[] = new Card("{$color}_hit2_b_{$seq}", $color, 'hit2', null, '⚡2', 20);
+            $cards[] = new Card("{$color}_hit2_b_{$seq}", $color, 'hit2', null, '⚡2', 20, '⚡2');
             $seq++;
 
             // 1x Discard All (Alle Handkarten dieser Farbe abwerfen)
-            $cards[] = new Card("{$color}_discard_all_{$seq}", $color, 'discard_all', null, '🗂️', 30);
+            $cards[] = new Card("{$color}_discard_all_{$seq}", $color, 'discard_all', null, '🗂️', 30, '🗂️');
             $seq++;
         }
 
         // 4x Wild
         for ($i = 1; $i <= 4; $i++) {
-            $cards[] = new Card("wild_{$i}_{$seq}", 'wild', 'wild', null, '★', 50);
+            $cards[] = new Card("wild_{$i}_{$seq}", 'wild', 'wild', null, '★', 50, '★');
             $seq++;
         }
 
-        // 4x Extreme Hit (Wild Extreme: Nächster Spieler muss Launcher drücken, bis Karten fliegen)
+        // 4x Extreme Hit
         for ($i = 1; $i <= 4; $i++) {
-            $cards[] = new Card("extreme_hit_{$i}_{$seq}", 'wild', 'extreme_hit', null, '⚡★', 50);
+            $cards[] = new Card("extreme_hit_{$i}_{$seq}", 'wild', 'extreme_hit', null, '⚡★', 50, '⚡★');
             $seq++;
         }
 
@@ -146,7 +153,9 @@ class DeckFactory
     }
 
     /**
-     * Mau-Mau Skat-Deck (32 Karten)
+     * Französisches Spielblatt für Mau-Mau (32 Karten)
+     * Farben: Herz ♥ (Rot), Karo ♦ (Rot), Pik ♠ (Schwarz), Kreuz ♣ (Schwarz)
+     * Werte: 7, 8, 9, 10, Bube (B), Dame (D), König (K), Ass (A)
      *
      * @return Card[]
      */
@@ -156,25 +165,29 @@ class DeckFactory
         $seq = 0;
 
         $values = [
-            ['val' => 7, 'type' => 'draw2', 'label' => '7 (+2)', 'score' => 7],
-            ['val' => 8, 'type' => 'skip', 'label' => '8 (⊘)', 'score' => 8],
-            ['val' => 9, 'type' => 'number', 'label' => '9', 'score' => 9],
-            ['val' => 10, 'type' => 'number', 'label' => '10', 'score' => 10],
-            ['val' => 11, 'type' => 'jack', 'label' => 'Bube (★)', 'score' => 20], // Bube = Farbwunsch
-            ['val' => 12, 'type' => 'number', 'label' => 'Dame', 'score' => 10],
-            ['val' => 13, 'type' => 'number', 'label' => 'König', 'score' => 10],
-            ['val' => 14, 'type' => 'ace', 'label' => 'Ass (↺)', 'score' => 11], // Ass = Nochmal legen
+            ['val' => 7,  'rank' => '7', 'type' => 'draw2',  'title' => '7',     'score' => 7],
+            ['val' => 8,  'rank' => '8', 'type' => 'skip',   'title' => '8',     'score' => 8],
+            ['val' => 9,  'rank' => '9', 'type' => 'number', 'title' => '9',     'score' => 9],
+            ['val' => 10, 'rank' => '10','type' => 'number', 'title' => '10',    'score' => 10],
+            ['val' => 11, 'rank' => 'B', 'type' => 'jack',   'title' => 'Bube',  'score' => 20],
+            ['val' => 12, 'rank' => 'D', 'type' => 'number', 'title' => 'Dame',  'score' => 10],
+            ['val' => 13, 'rank' => 'K', 'type' => 'number', 'title' => 'König', 'score' => 10],
+            ['val' => 14, 'rank' => 'A', 'type' => 'ace',    'title' => 'Ass',   'score' => 11],
         ];
 
         foreach (self::COLORS_MAUMAU as $color) {
+            $suit = self::SUITS_MAUMAU[$color] ?? '♠';
             foreach ($values as $item) {
+                $label = "{$item['title']} {$suit}";
                 $cards[] = new Card(
-                    "{$color}_{$item['val']}_{$seq}",
-                    $color,
-                    $item['type'],
-                    $item['val'],
-                    $item['label'],
-                    $item['score']
+                    id: "{$color}_{$item['val']}_{$seq}",
+                    color: $color,
+                    type: $item['type'],
+                    value: $item['val'],
+                    label: $label,
+                    scoreValue: $item['score'],
+                    rank: $item['rank'],
+                    suit: $suit
                 );
                 $seq++;
             }

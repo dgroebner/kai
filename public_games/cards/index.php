@@ -15,7 +15,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <link rel="stylesheet" href="../css/games-hub.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="./cards.css?v=<?= APP_VERSION ?>">
 </head>
-<body class="cards-viewport" data-room="<?= $roomCode ?>">
+<body class="games-hub-body cards-viewport" data-room="<?= $roomCode ?>">
 
     <!-- TOP-BAR -->
     <header class="cards-header">

@@ -472,8 +472,59 @@
         const canPlayClass = canPlay ? 'can-play' : '';
         const topClass = isTopDiscard ? 'top-discard-card' : '';
         const colorClass = `card-${card.color}`;
-        const label = HubHtml.escape(card.label);
 
+        const isFrench = ['hearts', 'diamonds', 'spades', 'clubs'].includes(card.color);
+
+        if (isFrench) {
+            const suitSymbols = { 'hearts': '♥', 'diamonds': '♦', 'spades': '♠', 'clubs': '♣' };
+            const suit = card.suit || suitSymbols[card.color] || '♠';
+            const rank = card.rank || (card.value ? String(card.value) : '7');
+
+            // Regelhinweis-Badge (dezent in der Ecke)
+            let badge = '';
+            if (card.value === 7) badge = '<span class="card-rule-badge">+2</span>';
+            else if (card.value === 8) badge = '<span class="card-rule-badge">⊘</span>';
+            else if (card.type === 'jack') badge = '<span class="card-rule-badge">★</span>';
+            else if (card.type === 'ace') badge = '<span class="card-rule-badge">↺</span>';
+
+            let centerContent = '';
+            if (['K', 'D', 'B', 'A'].includes(rank)) {
+                centerContent = `
+                    <div class="french-face-card">
+                        <span class="french-face-rank">${rank}</span>
+                        <span class="french-face-suit">${suit}</span>
+                    </div>
+                `;
+            } else {
+                centerContent = `
+                    <div class="french-number-card">
+                        <span class="french-number-val">${rank}</span>
+                        <span class="french-number-suit">${suit}</span>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="game-card card-french ${colorClass} ${canPlayClass} ${topClass}" 
+                     data-card-id="${card.id}" 
+                     data-card-type="${card.type}"
+                     data-card-color="${card.color}">
+                    <div class="card-corner-top">
+                        <span class="corner-rank">${rank}</span>
+                        <span class="corner-suit">${suit}</span>
+                        ${badge}
+                    </div>
+                    <div class="card-center-symbol">${centerContent}</div>
+                    <div class="card-corner-bottom">
+                        <span class="corner-rank">${rank}</span>
+                        <span class="corner-suit">${suit}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Uno / Uno Extreme
+        const label = HubHtml.escape(card.label || card.rank);
         return `
             <div class="game-card ${colorClass} ${canPlayClass} ${topClass}" 
                  data-card-id="${card.id}" 
