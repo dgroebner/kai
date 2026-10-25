@@ -572,7 +572,7 @@ class CardGameService
             $isMe = ((int)$p['id'] === (int)$myPlayer['id']);
             $hand = $p['sheet']['cards'] ?? [];
 
-            // Nur für mich selbst annotieren wir die Karten mit "can_play"
+            // Nur für mich selbst annotieren wir die Karten mit "can_play" und sortieren sie nach Farbe & Wert
             $annotatedCards = null;
             if ($isMe) {
                 $annotatedCards = [];
@@ -582,6 +582,25 @@ class CardGameService
                     $canPlay = $isMyTurn && $topCard && $ruleEngine->canPlay($card, $topCard, $activeColor, $pendingDraws, $hand);
                     $annotatedCards[] = array_merge($card, ['can_play' => $canPlay]);
                 }
+
+                // Automatische Farbsortierung
+                usort($annotatedCards, function ($a, $b) use ($gameMode) {
+                    if ($gameMode === 'mau_mau') {
+                        $suitOrder = ['hearts' => 1, 'diamonds' => 2, 'spades' => 3, 'clubs' => 4];
+                        $sa = $suitOrder[$a['color'] ?? ''] ?? 99;
+                        $sb = $suitOrder[$b['color'] ?? ''] ?? 99;
+                        if ($sa !== $sb) return $sa <=> $sb;
+                        return ((int)($a['value'] ?? 0)) <=> ((int)($b['value'] ?? 0));
+                    }
+                    $colorOrder = ['red' => 1, 'yellow' => 2, 'green' => 3, 'blue' => 4, 'wild' => 5];
+                    $ca = $colorOrder[$a['color'] ?? ''] ?? 99;
+                    $cb = $colorOrder[$b['color'] ?? ''] ?? 99;
+                    if ($ca !== $cb) return $ca <=> $cb;
+                    $va = isset($a['value']) && $a['value'] !== null ? (int)$a['value'] : 99;
+                    $vb = isset($b['value']) && $b['value'] !== null ? (int)$b['value'] : 99;
+                    if ($va !== $vb) return $va <=> $vb;
+                    return strcmp($a['type'] ?? '', $b['type'] ?? '');
+                });
             }
 
             $publicPlayers[] = [

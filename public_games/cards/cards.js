@@ -495,42 +495,110 @@
             }
         }
 
-        // Eigene Handkarten rendern
+        // Eigene Handkarten rendern (mit automatischer Farbsortierung & 2-Reihen-System)
         const fannedCont = document.getElementById('player-hand-fanned');
         if (fannedCont && myPlayer && Array.isArray(myPlayer.cards)) {
-            const count = myPlayer.cards.length;
-            let overlap = 6;
-            if (count <= 4) {
-                overlap = 8;
-            } else if (count <= 7) {
-                overlap = -22;
-            } else if (count <= 10) {
-                overlap = -36;
-            } else if (count <= 14) {
-                overlap = -46;
-            } else {
-                overlap = -54; // Sehr kompakte Fächerung bei vielen Karten
-            }
-            fannedCont.style.setProperty('--card-overlap', `${overlap}px`);
+            const sortedCards = sortHandCards(myPlayer.cards, data.game_mode);
+            const count = sortedCards.length;
 
-            let cardsHtml = '';
-            myPlayer.cards.forEach((c, idx) => {
-                cardsHtml += renderCardHtml(c, c.can_play, false, idx + 1);
-            });
-            fannedCont.innerHTML = cardsHtml;
+            if (count >= 8) {
+                // 2-Reihen-Layout bei vielen Handkarten (Mobile & Desktop)
+                fannedCont.classList.add('two-rows');
+                const mid = Math.ceil(count / 2);
+                const topCards = sortedCards.slice(0, mid);
+                const bottomCards = sortedCards.slice(mid);
+
+                const rowOverlap = getOverlapForCount(mid);
+                fannedCont.style.setProperty('--card-overlap', `${rowOverlap}px`);
+
+                let topHtml = '';
+                topCards.forEach((c, idx) => {
+                    topHtml += renderCardHtml(c, c.can_play, false, idx + 1);
+                });
+
+                let bottomHtml = '';
+                bottomCards.forEach((c, idx) => {
+                    bottomHtml += renderCardHtml(c, c.can_play, false, mid + idx + 1);
+                });
+
+                fannedCont.innerHTML = `
+                    <div class="hand-row hand-row-top">${topHtml}</div>
+                    <div class="hand-row hand-row-bottom">${bottomHtml}</div>
+                `;
+            } else {
+                // 1-reihig bei 1 bis 7 Karten
+                fannedCont.classList.remove('two-rows');
+                const rowOverlap = getOverlapForCount(count);
+                fannedCont.style.setProperty('--card-overlap', `${rowOverlap}px`);
+
+                let cardsHtml = '';
+                sortedCards.forEach((c, idx) => {
+                    cardsHtml += renderCardHtml(c, c.can_play, false, idx + 1);
+                });
+                fannedCont.innerHTML = `<div class="hand-row single-row">${cardsHtml}</div>`;
+            }
 
             // Klick-Events an spielbare Karten binden
             fannedCont.querySelectorAll('.game-card.can-play').forEach(cardEl => {
                 cardEl.addEventListener('click', () => {
                     const cardId = cardEl.dataset.cardId;
-                    const cardType = cardEl.dataset.cardType;
-                    const card = myPlayer.cards.find(x => x.id === cardId);
+                    const card = sortedCards.find(x => x.id === cardId);
                     if (card) {
                         onCardClicked(card, data);
                     }
                 });
             });
         }
+    }
+
+    function getOverlapForCount(n) {
+        if (n <= 3) return 8;
+        if (n <= 5) return -12;
+        if (n <= 7) return -26;
+        if (n <= 9) return -36;
+        if (n <= 12) return -44;
+        return -50;
+    }
+
+    function sortHandCards(cards, gameMode) {
+        if (!Array.isArray(cards)) return [];
+        const copy = [...cards];
+        if (gameMode === 'mau_mau') {
+            const suitOrder = { 'hearts': 1, 'diamonds': 2, 'spades': 3, 'clubs': 4 };
+            copy.sort((a, b) => {
+                const sa = suitOrder[a.color] || 99;
+                const sb = suitOrder[b.color] || 99;
+                if (sa !== sb) return sa - sb;
+                const va = Number(a.value) || 0;
+                const vb = Number(b.value) || 0;
+                return va - vb;
+            });
+        } else {
+            const colorOrder = { 'red': 1, 'yellow': 2, 'green': 3, 'blue': 4, 'wild': 5 };
+            const typeOrder = {
+                'number': 1,
+                'draw2': 2,
+                'reverse': 3,
+                'skip': 4,
+                'hit2': 5,
+                'discard_all': 6,
+                'wild': 7,
+                'wild_draw4': 8,
+                'extreme_hit': 9
+            };
+            copy.sort((a, b) => {
+                const ca = colorOrder[a.color] || 99;
+                const cb = colorOrder[b.color] || 99;
+                if (ca !== cb) return ca - cb;
+                const va = (a.value !== null && a.value !== undefined) ? Number(a.value) : 99;
+                const vb = (b.value !== null && b.value !== undefined) ? Number(b.value) : 99;
+                if (va !== vb) return va - vb;
+                const ta = typeOrder[a.type] || 99;
+                const tb = typeOrder[b.type] || 99;
+                return ta - tb;
+            });
+        }
+        return copy;
     }
 
     function renderCardHtml(card, canPlay, isTopDiscard, zIndex = 1) {
@@ -590,20 +658,50 @@
         }
 
         // Uno / Uno Extreme
-        const rank = HubHtml.escape(card.rank || card.label);
-        const center = HubHtml.escape(card.label || card.rank);
+        const isWild = (card.color === 'wild');
+        let centerInnerHtml = '';
+
+        if (isWild) {
+            let wildSymbol = '★';
+            if (card.type === 'wild_draw4') {
+                wildSymbol = '<span class="uno-wild-plus4">+4</span>';
+            } else if (card.type === 'extreme_hit') {
+                wildSymbol = '⚡★';
+            }
+            centerInnerHtml = `
+                <div class="uno-wild-oval">
+                    <div class="uno-center-text">${wildSymbol}</div>
+                </div>
+            `;
+        } else {
+            let symbolHtml = HubHtml.escape(card.label || card.rank || '');
+            if (card.type === 'reverse') {
+                symbolHtml = '<span class="uno-reverse-arrows">⇄</span>';
+            } else if (card.type === 'skip') {
+                symbolHtml = '<span class="uno-skip-symbol">⊘</span>';
+            } else if (card.type === 'draw2') {
+                symbolHtml = '<span class="uno-draw2-symbol">+2</span>';
+            }
+            centerInnerHtml = `
+                <div class="uno-center-oval">
+                    <div class="uno-center-text uno-text-${card.color}">${symbolHtml}</div>
+                </div>
+            `;
+        }
+
+        const cornerDisplay = HubHtml.escape(card.label || card.rank || '');
         return `
-            <div class="game-card ${colorClass} ${canPlayClass} ${topClass}" 
+            <div class="game-card card-uno ${colorClass} ${canPlayClass} ${topClass}" 
                  ${zIndexStyle}
                  data-card-id="${card.id}" 
                  data-card-type="${card.type}"
                  data-card-color="${card.color}">
                 <div class="card-corner-top">
-                    <span class="corner-rank">${rank}</span>
+                    <span class="corner-uno-val">${cornerDisplay}</span>
                 </div>
-                <div class="card-center-symbol">${center}</div>
+                <div class="card-center-uno">${centerInnerHtml}</div>
                 <div class="card-corner-bottom">
-                    <span class="corner-rank">${rank}</span>
+                    <span class="corner-uno-val">${cornerDisplay}</span>
                 </div>
             </div>
         `;
