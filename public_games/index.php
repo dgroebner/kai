@@ -138,9 +138,12 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
 
                 <div class="form-group" style="margin-top: 1rem;">
-                    <label for="create-room-pin">Tisch-PIN (Host-Schutz):</label>
-                    <input type="password" id="create-room-pin" class="form-control" placeholder="PIN aus der Konfiguration" required autocomplete="current-password">
-                    <small class="text-muted">Gäste, die per WhatsApp-Link beitreten, benötigen keinen PIN.</small>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label for="create-room-pin" style="margin-bottom: 0;">Tisch-PIN (Host-Schutz):</label>
+                        <span id="pin-saved-badge" class="hidden" style="font-size: 0.75rem; color: #22c55e; font-weight: 700;">✓ PIN gespeichert</span>
+                    </div>
+                    <input type="password" id="create-room-pin" class="form-control" placeholder="PIN aus der Konfiguration" required autocomplete="current-password" style="margin-top: 0.25rem;">
+                    <small class="text-muted">Wird nach der ersten erfolgreichen Eingabe lokal im Browser gespeichert.</small>
                 </div>
 
                 <div id="create-room-error" class="hidden" style="color: var(--color-red); font-size: 0.88rem; margin-top: 0.5rem;"></div>

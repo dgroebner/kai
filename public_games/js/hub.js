@@ -21,18 +21,53 @@
         const gameTypeInput = document.getElementById('create-game-type');
         const diceGroup = document.getElementById('group-dice-modes');
         const cardGroup = document.getElementById('group-card-modes');
+        const pinInput = document.getElementById('create-room-pin');
+        const pinBadge = document.getElementById('pin-saved-badge');
+
+        function updateSavedPinField() {
+            const savedPin = localStorage.getItem('kai_gh_host_pin') || '';
+            if (pinInput) {
+                if (savedPin) {
+                    pinInput.value = savedPin;
+                    if (pinBadge) pinBadge.classList.remove('hidden');
+                } else {
+                    if (pinBadge) pinBadge.classList.add('hidden');
+                }
+            }
+        }
+
+        if (pinInput) {
+            pinInput.addEventListener('input', () => {
+                const savedPin = localStorage.getItem('kai_gh_host_pin') || '';
+                if (pinBadge) {
+                    if (pinInput.value && pinInput.value === savedPin) {
+                        pinBadge.classList.remove('hidden');
+                    } else {
+                        pinBadge.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        updateSavedPinField();
+
+        function openCreateModal(gameType, title, showDice, showCards) {
+            if (gameTypeInput) gameTypeInput.value = gameType;
+            if (modalTitle) modalTitle.textContent = title;
+            if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
+            if (cardGroup) cardGroup.classList.toggle('hidden', !showCards);
+            updateSavedPinField();
+            modal.classList.remove('hidden');
+            if (pinInput && !pinInput.value) {
+                pinInput.focus();
+            }
+        }
 
         // Kachel-Klick auf Qwixx
         const qwixxCard = document.getElementById('card-qwixx');
         if (qwixxCard && modal) {
             qwixxCard.addEventListener('click', () => {
-                if (gameTypeInput) gameTypeInput.value = 'qwixx';
-                if (modalTitle) modalTitle.textContent = 'Neues Qwixx-Spiel erstellen';
-                if (diceGroup) diceGroup.classList.remove('hidden');
-                if (cardGroup) cardGroup.classList.add('hidden');
-                modal.classList.remove('hidden');
-                const pinInput = document.getElementById('create-room-pin');
-                if (pinInput) pinInput.focus();
+                openCreateModal('qwixx', 'Neues Qwixx-Spiel erstellen', true, false);
             });
         }
 
@@ -40,13 +75,7 @@
         const kniffelCard = document.getElementById('card-kniffel');
         if (kniffelCard && modal) {
             kniffelCard.addEventListener('click', () => {
-                if (gameTypeInput) gameTypeInput.value = 'kniffel';
-                if (modalTitle) modalTitle.textContent = 'Neues Kniffel-Spiel erstellen';
-                if (diceGroup) diceGroup.classList.remove('hidden');
-                if (cardGroup) cardGroup.classList.add('hidden');
-                modal.classList.remove('hidden');
-                const pinInput = document.getElementById('create-room-pin');
-                if (pinInput) pinInput.focus();
+                openCreateModal('kniffel', 'Neues Kniffel-Spiel erstellen', true, false);
             });
         }
 
@@ -54,13 +83,7 @@
         const cardsCard = document.getElementById('card-cards');
         if (cardsCard && modal) {
             cardsCard.addEventListener('click', () => {
-                if (gameTypeInput) gameTypeInput.value = 'cards';
-                if (modalTitle) modalTitle.textContent = 'Neues Mau-Mau / Uno Spiel erstellen';
-                if (diceGroup) diceGroup.classList.add('hidden');
-                if (cardGroup) cardGroup.classList.remove('hidden');
-                modal.classList.remove('hidden');
-                const pinInput = document.getElementById('create-room-pin');
-                if (pinInput) pinInput.focus();
+                openCreateModal('cards', 'Neues Mau-Mau / Uno Spiel erstellen', false, true);
             });
         }
 
@@ -68,13 +91,7 @@
         const stbCard = document.getElementById('card-shut-the-box');
         if (stbCard && modal) {
             stbCard.addEventListener('click', () => {
-                if (gameTypeInput) gameTypeInput.value = 'shut_the_box';
-                if (modalTitle) modalTitle.textContent = 'Neues Shut the Box Spiel erstellen';
-                if (diceGroup) diceGroup.classList.add('hidden');
-                if (cardGroup) cardGroup.classList.add('hidden');
-                modal.classList.remove('hidden');
-                const pinInput = document.getElementById('create-room-pin');
-                if (pinInput) pinInput.focus();
+                openCreateModal('shut_the_box', 'Neues Shut the Box Spiel erstellen', false, false);
             });
         }
 
@@ -116,11 +133,18 @@
                 });
 
                 if (res.ok && res.data && res.data.success) {
+                    if (pin) {
+                        localStorage.setItem('kai_gh_host_pin', pin);
+                    }
                     if (res.data.player_token) {
                         localStorage.setItem('kai_gh_player_token', res.data.player_token);
                     }
                     window.location.href = `./${gameType}/index.php?room=${encodeURIComponent(res.data.room_code)}`;
                 } else {
+                    if (res.status === 403) {
+                        localStorage.removeItem('kai_gh_host_pin');
+                        updateSavedPinField();
+                    }
                     if (errBox) {
                         errBox.textContent = res.data?.message || 'Fehler beim Erstellen des Raums.';
                         errBox.classList.remove('hidden');
