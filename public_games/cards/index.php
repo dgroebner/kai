@@ -140,9 +140,10 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <div style="font-size: 4rem; margin-bottom: 0.5rem;">🏆</div>
         <h2 style="font-size: 1.6rem; color: #fbbf24; margin-bottom: 0.5rem;" id="winner-name-display">Gewonnen!</h2>
         <p class="text-muted" style="margin-bottom: 1.5rem;" id="winner-desc">Alle Karten wurden erfolgreich abgelegt.</p>
-        <button type="button" class="btn btn-primary btn-lg js-btn-play-again" style="width: 100%;">
-            🔄 Nochmal spielen (Zur Lobby)
-        </button>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <a href="../index.php" class="btn btn-outline" style="flex: 1; text-align: center; text-decoration: none;">Zur Lobby</a>
+            <button type="button" class="btn btn-primary js-btn-rematch hidden" id="btn-rematch" style="flex: 1;">🔄 Revanche</button>
+        </div>
     </div>
 
     <!-- Scripts -->

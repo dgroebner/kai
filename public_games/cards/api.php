@@ -280,6 +280,33 @@ try {
         exit;
     }
 
+    // -------------------------------------------------------------------------
+    // 9. REVANCHE / NEUE RUNDE IM SELBEN RAUM (Host only)
+    // -------------------------------------------------------------------------
+    if ($action === 'rematch') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Nur POST erlaubt']);
+            exit;
+        }
+
+        if (empty($player['is_host'])) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Nur der Host kann eine Revanche starten']);
+            exit;
+        }
+
+        $res = $cardService->startGame($roomId);
+        if (!$res['success']) {
+            http_response_code(400);
+            echo json_encode($res);
+            exit;
+        }
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Ungültige Aktion']);
 } catch (\Throwable $e) {

@@ -179,12 +179,18 @@
             });
         }
 
-        // Nochmal spielen
-        document.querySelectorAll('.js-btn-play-again').forEach(btn => {
-            btn.addEventListener('click', () => {
-                window.location.reload();
+        // Revanche (Host only)
+        const rematchBtn = document.getElementById('btn-rematch');
+        if (rematchBtn) {
+            rematchBtn.addEventListener('click', async () => {
+                const res = await HubHttp.postJson(`./api.php?action=rematch&room=${encodeURIComponent(roomCode)}`);
+                if (res.ok && res.data && res.data.success) {
+                    fetchState(true);
+                } else {
+                    HubDialog.alert('Hinweis', res.data?.message || 'Konnte Revanche nicht starten.', '⚠️');
+                }
             });
-        });
+        }
     }
 
     async function handleJoin() {
@@ -294,7 +300,7 @@
             if (paneLobby) paneLobby.classList.add('hidden');
             if (paneGame) paneGame.classList.add('hidden');
             if (paneFinished) paneFinished.classList.remove('hidden');
-            renderFinished(data);
+            renderFinished(data, myPlayer);
         }
     }
 
@@ -635,7 +641,7 @@
         }
     }
 
-    function renderFinished(data) {
+    function renderFinished(data, myPlayer) {
         const winner = data.players.find(p => p.id === data.winner_id);
         const nameEl = document.getElementById('winner-name-display');
         const descEl = document.getElementById('winner-desc');
@@ -645,6 +651,16 @@
         }
         if (descEl) {
             descEl.textContent = 'Herzlichen Glückwunsch! Alle Karten wurden meisterhaft abgelegt.';
+        }
+
+        const isHost = myPlayer ? myPlayer.is_host : false;
+        const rematchBtn = document.getElementById('btn-rematch');
+        if (rematchBtn) {
+            if (isHost) {
+                rematchBtn.classList.remove('hidden');
+            } else {
+                rematchBtn.classList.add('hidden');
+            }
         }
 
         AudioEngine.playVictorySound();
