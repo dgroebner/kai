@@ -620,36 +620,51 @@
     function openColorChoiceModal(gameMode) {
         const modal = document.getElementById('modal-color-choice');
         const grid = document.getElementById('color-choice-container');
+        const iconEl = document.getElementById('color-choice-modal-icon');
         if (!modal || !grid) return;
 
-        let colors = [];
         if (gameMode === 'mau_mau') {
-            colors = [
-                { id: 'hearts', label: 'Herz ♥', bg: '#ef4444' },
-                { id: 'diamonds', label: 'Karo ♦', bg: '#f97316' },
-                { id: 'spades', label: 'Pik ♠', bg: '#334155' },
-                { id: 'clubs', label: 'Kreuz ♣', bg: '#0f172a' },
+            if (iconEl) iconEl.textContent = '♠ ♥ ♦ ♣';
+
+            const frenchColors = [
+                { id: 'hearts', label: 'Herz', symbol: '♥', colorClass: 'french-red' },
+                { id: 'diamonds', label: 'Karo', symbol: '♦', colorClass: 'french-red' },
+                { id: 'spades', label: 'Pik', symbol: '♠', colorClass: 'french-black' },
+                { id: 'clubs', label: 'Kreuz', symbol: '♣', colorClass: 'french-black' },
             ];
+
+            let html = '';
+            frenchColors.forEach(c => {
+                html += `
+                    <button type="button" class="color-choice-french-btn ${c.colorClass}" data-color="${c.id}" title="${c.label}">
+                        <span class="french-btn-symbol">${c.symbol}</span>
+                        <span class="french-btn-label">${c.label}</span>
+                    </button>
+                `;
+            });
+            grid.innerHTML = html;
         } else {
-            colors = [
+            if (iconEl) iconEl.textContent = '🌈';
+
+            const unoColors = [
                 { id: 'red', label: 'Rot', bg: '#ef4444' },
                 { id: 'yellow', label: 'Gelb', bg: '#ca8a04' },
                 { id: 'green', label: 'Grün', bg: '#22c55e' },
                 { id: 'blue', label: 'Blau', bg: '#3b82f6' },
             ];
+
+            let html = '';
+            unoColors.forEach(c => {
+                html += `
+                    <button type="button" class="color-choice-btn" data-color="${c.id}" style="background: ${c.bg};">
+                        ${c.label}
+                    </button>
+                `;
+            });
+            grid.innerHTML = html;
         }
 
-        let html = '';
-        colors.forEach(c => {
-            html += `
-                <button type="button" class="color-choice-btn" data-color="${c.id}" style="background: ${c.bg};">
-                    ${c.label}
-                </button>
-            `;
-        });
-        grid.innerHTML = html;
-
-        grid.querySelectorAll('.color-choice-btn').forEach(btn => {
+        grid.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', () => {
                 const chosen = btn.dataset.color;
                 modal.classList.add('hidden');

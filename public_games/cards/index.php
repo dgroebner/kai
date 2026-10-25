@@ -54,7 +54,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <!-- FARBWAHL-MODAL -->
     <div id="modal-color-choice" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
         <div class="hub-modal text-center" style="max-width: 360px;">
-            <div style="font-size: 2.5rem; margin-bottom: 0.25rem;">🌈</div>
+            <div id="color-choice-modal-icon" style="font-size: 2.3rem; margin-bottom: 0.25rem;">🌈</div>
             <h3 class="hub-modal-title">Farbe wünschen</h3>
             <p class="text-muted" style="font-size: 0.85rem;">Wähle die nächste Spielfarbe:</p>
             <div class="color-choice-grid" id="color-choice-container">
