@@ -64,6 +64,20 @@
             });
         }
 
+        // Kachel-Klick auf Shut the Box
+        const stbCard = document.getElementById('card-shut-the-box');
+        if (stbCard && modal) {
+            stbCard.addEventListener('click', () => {
+                if (gameTypeInput) gameTypeInput.value = 'shut_the_box';
+                if (modalTitle) modalTitle.textContent = 'Neues Shut the Box Spiel erstellen';
+                if (diceGroup) diceGroup.classList.add('hidden');
+                if (cardGroup) cardGroup.classList.add('hidden');
+                modal.classList.remove('hidden');
+                const pinInput = document.getElementById('create-room-pin');
+                if (pinInput) pinInput.focus();
+            });
+        }
+
         // Modal schließen
         document.querySelectorAll('.js-close-modal').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -83,6 +97,8 @@
 
                 if (gameType === 'cards') {
                     mode = document.querySelector('input[name="card_game_mode"]:checked')?.value || 'uno';
+                } else if (gameType === 'shut_the_box') {
+                    mode = '4_player';
                 } else {
                     mode = document.querySelector('input[name="game_mode"]:checked')?.value || 'digital_dice';
                 }

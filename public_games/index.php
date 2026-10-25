@@ -76,6 +76,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–8 Spieler</span>
             </div>
+
+            <!-- Shut the Box Kachel -->
+            <div class="game-kachel" id="card-shut-the-box" role="button" tabindex="0">
+                <div class="game-kachel-icon">📦</div>
+                <div class="game-kachel-content">
+                    <h2>Shut the Box</h2>
+                    <p>Das 4-Spieler Klappbrett. Klappe 1 bis 10 um und erreiche die geringste Strafpunkte-Zahl über 10 Runden.</p>
+                </div>
+                <span class="game-kachel-badge">1–4 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">

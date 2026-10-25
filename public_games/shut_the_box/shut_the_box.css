@@ -1,0 +1,554 @@
+/* ==========================================================================
+   Quarxl - Shut the Box (4-Spieler Klappbrett) CSS
+   ========================================================================== */
+
+.stb-viewport {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 25%, #1e293b 0%, #090d16 100%);
+    color: #f8fafc;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Header & Status */
+.stb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.stb-header-title {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stb-room-badge {
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.stb-round-pill {
+    background: #047857;
+    color: #a7f3d0;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 0 10px rgba(4, 120, 87, 0.4);
+}
+
+/* Lobby Box */
+.stb-lobby-box {
+    max-width: 520px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    text-align: center;
+}
+
+.stb-lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.25rem 0;
+    text-align: left;
+}
+
+.lobby-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+/* Spiel-Arena */
+.stb-game-arena {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 0.5rem;
+    max-width: 850px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Event Ticker */
+.stb-event-ticker {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    min-height: 1.4rem;
+    margin: 0.2rem 0;
+    padding: 0 0.5rem;
+}
+
+/* Mitspieler-Leisten (Kompakte Ansicht der Mitspieler) */
+.opponents-flaps-container {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.opponent-box-side {
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.4rem 0.6rem;
+    flex: 1;
+    min-width: 140px;
+    max-width: 250px;
+    transition: all 0.25s ease;
+}
+
+.opponent-box-side.active-turn {
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.4);
+}
+
+.opponent-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+}
+
+.opponent-box-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+}
+
+.opponent-status-tag {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: #0f172a;
+    color: #94a3b8;
+}
+
+.opponent-status-tag.locked-out {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+.opponent-status-tag.active {
+    background: #065f46;
+    color: #6ee7b7;
+}
+
+.opponent-mini-flaps {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+}
+
+.mini-flap {
+    height: 18px;
+    background: #b45309;
+    color: #fff;
+    border-radius: 2px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.mini-flap.closed {
+    background: #1e293b;
+    color: #475569;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+    opacity: 0.4;
+}
+
+/* Zentrales Würfelfeld (Grüner Samt-Teller im Holzrahmen) */
+.center-rolling-tray {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    margin: 0.5rem 0;
+}
+
+.felt-mat {
+    width: 100%;
+    max-width: 480px;
+    height: 210px;
+    background: radial-gradient(circle at center, #15803d 0%, #064e3b 85%, #022c22 100%);
+    border: 8px solid #78350f;
+    outline: 2px solid #b45309;
+    border-radius: 24px;
+    box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.7), 0 12px 30px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0.75rem 1rem;
+    position: relative;
+}
+
+/* 2 Große Würfel */
+.dice-wrapper {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.25rem;
+}
+
+.stb-die {
+    width: 62px;
+    height: 62px;
+    background: linear-gradient(145deg, #ffffff, #e2e8f0);
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 6px;
+    position: relative;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stb-die.rolling {
+    animation: die-shake 0.4s ease infinite;
+}
+
+.die-dot {
+    width: 10px;
+    height: 10px;
+    background: #0f172a;
+    border-radius: 50%;
+    margin: auto;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.dice-sum-display {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fef08a;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 0.2rem 0.85rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(254, 240, 138, 0.2);
+}
+
+.turn-action-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-stb-roll {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+    font-weight: 900;
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    padding: 0.55rem 1.75rem;
+    border-radius: 9999px;
+    border: 2px solid #fde68a;
+    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.6);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.btn-stb-roll:hover:not(:disabled) {
+    transform: scale(1.06);
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.85);
+}
+
+.btn-stb-roll:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}
+
+.turn-status-text {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Schnellauswahl für Kombinationen */
+.valid-combos-shelf {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.shelf-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+}
+
+.combo-pills-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.combo-pill-btn {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1.5px solid #6366f1;
+    color: #c7d2fe;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.combo-pill-btn:hover {
+    background: #6366f1;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+}
+
+/* Eigene Klappenleiste (Daumenzone unten) */
+.player-flaps-shelf {
+    background: rgba(15, 23, 42, 0.94);
+    border-top: 2px solid #b45309;
+    border-radius: 16px 16px 0 0;
+    padding: 0.75rem 0.5rem 1rem 0.5rem;
+    box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.5);
+}
+
+.shelf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    padding: 0 0.4rem;
+}
+
+.shelf-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.shelf-penalty-badge {
+    background: #7f1d1d;
+    color: #fca5a5;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+}
+
+.btn-flip-confirm {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    font-weight: 900;
+    font-size: 0.85rem;
+    padding: 0.35rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #86efac;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(34, 197, 94, 0.4);
+    transition: all 0.15s ease;
+}
+
+.btn-flip-confirm:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
+    filter: grayscale(0.8);
+}
+
+/* Die 10 Klappen */
+.flaps-row {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+    perspective: 600px;
+    padding: 0.25rem 0.1rem;
+}
+
+.flap-box {
+    position: relative;
+    height: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.2rem;
+    border-radius: 8px;
+    font-family: "Arial Black", "Impact", -apple-system, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.25s ease;
+    transform-origin: top center;
+    transform-style: preserve-3d;
+}
+
+/* Klappe offen (aufgerichtet) */
+.flap-box.flap-open {
+    background: linear-gradient(145deg, #d97706, #92400e);
+    border: 2px solid #fde68a;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.4);
+    transform: rotateX(0deg);
+}
+
+/* Klappe zum Umlegen ausgewählt */
+.flap-box.flap-selected {
+    background: linear-gradient(145deg, #4f46e5, #3730a3) !important;
+    border-color: #a5b4fc !important;
+    transform: translateY(-8px) scale(1.04) !important;
+    box-shadow: 0 14px 22px rgba(0, 0, 0, 0.7), 0 0 16px rgba(99, 102, 241, 0.9) !important;
+}
+
+/* Klappe umgelegt (geschlossen / flach umgekippt) */
+.flap-box.flap-closed {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border: 1px solid #334155;
+    color: #475569;
+    text-shadow: none;
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.9);
+    transform: rotateX(68deg) scale(0.92);
+    opacity: 0.38;
+    cursor: not-allowed;
+    filter: brightness(0.7);
+}
+
+.flap-hinge {
+    width: 65%;
+    height: 4px;
+    background: linear-gradient(to right, #475569, #94a3b8, #475569);
+    border-radius: 2px;
+    margin-top: 2px;
+}
+
+/* Scorecard Tabelle */
+.scorecard-table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stb-score-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.stb-score-table th,
+.stb-score-table td {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stb-score-table th {
+    background: rgba(15, 23, 42, 0.85);
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.stb-score-table tr.active-round-row {
+    background: rgba(99, 102, 241, 0.15);
+    font-weight: 800;
+}
+
+.stb-score-table tr.total-score-row {
+    background: rgba(15, 23, 42, 0.9);
+    font-weight: 900;
+    color: #fbbf24;
+    font-size: 0.95rem;
+}
+
+/* Würfel-Animation */
+@keyframes die-shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    25% { transform: translate(-3px, -2px) rotate(-8deg); }
+    50% { transform: translate(3px, 1px) rotate(8deg); }
+    75% { transform: translate(-1px, 2px) rotate(-4deg); }
+    100% { transform: translate(1px, -1px) rotate(0deg); }
+}
+
+/* Mobile Optimierung */
+@media (max-width: 480px) {
+    .stb-die {
+        width: 52px;
+        height: 52px;
+        padding: 4px;
+    }
+
+    .die-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .felt-mat {
+        height: 190px;
+        padding: 0.5rem;
+    }
+
+    .flaps-row {
+        gap: 3px;
+    }
+
+    .flap-box {
+        height: 74px;
+        font-size: 1.15rem;
+        padding: 0.25rem 0.1rem;
+    }
+
+    .flap-box.flap-closed {
+        transform: rotateX(62deg) scale(0.9);
+    }
+}
