@@ -450,6 +450,148 @@ body {
 }
 
 /* -------------------------------------------------------------
+ * WOCHENANSICHT (KW) KALENDER
+ * ------------------------------------------------------------- */
+.proj-week-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--proj-border);
+    border-radius: var(--proj-radius);
+    background: var(--proj-card-bg);
+}
+
+.proj-week-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+    min-width: 600px;
+}
+
+.proj-week-table th,
+.proj-week-table td {
+    border: 1px solid var(--proj-border);
+    padding: 6px;
+    vertical-align: top;
+}
+
+.proj-week-table th {
+    background: var(--proj-bg);
+    color: var(--proj-text-muted);
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 4px;
+}
+
+.proj-kw-col {
+    width: 58px;
+    font-weight: 800;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    vertical-align: middle !important;
+    font-size: 12px;
+}
+
+.proj-week-total-col {
+    width: 72px;
+    font-weight: 800;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    vertical-align: middle !important;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+}
+
+.proj-day-cell {
+    height: 75px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    background: var(--proj-card-bg);
+    position: relative;
+    user-select: none;
+}
+
+.proj-day-cell:hover:not(.is-other-month) {
+    background: var(--proj-primary-light);
+}
+
+.proj-day-cell.is-other-month {
+    opacity: 0.3;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: default;
+}
+
+.proj-day-cell.is-weekend {
+    background: rgba(148, 163, 184, 0.05);
+}
+
+.proj-day-cell.is-holiday {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.proj-day-cell.is-today {
+    box-shadow: inset 0 0 0 2px var(--proj-primary);
+}
+
+.proj-day-cell.is-selected {
+    background: rgba(2, 132, 199, 0.18) !important;
+    box-shadow: inset 0 0 0 2px var(--proj-primary);
+}
+
+.proj-day-num {
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--proj-text-muted);
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.proj-day-entry-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+/* Projekt Zusammenfassung Cards */
+.proj-summary-card {
+    background: var(--proj-card-bg);
+    border: 1px solid var(--proj-border);
+    border-radius: var(--proj-radius);
+    padding: 10px 14px;
+}
+
+.proj-summary-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.proj-summary-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.proj-view-btn.active {
+    background: var(--proj-card-bg) !important;
+    color: var(--proj-primary) !important;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* -------------------------------------------------------------
  * MODAL
  * ------------------------------------------------------------- */
 .proj-modal-backdrop {

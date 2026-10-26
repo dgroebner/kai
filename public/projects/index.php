@@ -123,34 +123,70 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
             </div>
         </section>
 
-        <!-- MONATSMATRIX -->
+        <!-- MONATSMATRIX / WOCHENANSICHT -->
         <section class="proj-card">
-            <div class="proj-card-header">
+            <div class="proj-card-header" style="flex-wrap: wrap; gap: 12px;">
                 <div>
-                    <h2 class="proj-card-title">Monatsmatrix</h2>
+                    <h2 class="proj-card-title">Monatsübersicht</h2>
                     <div id="matrix-summary" style="font-size: 13px; color: var(--proj-text-muted); margin-top: 2px;">
                         Lade Matrix...
                     </div>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <button type="button" id="matrix-prev-month" class="proj-btn proj-btn-secondary proj-btn-sm">◀ Vorheriger</button>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <!-- Ansichts-Umschalter -->
+                    <div style="display: inline-flex; background: rgba(0,0,0,0.25); padding: 2px; border-radius: 6px; border: 1px solid var(--proj-border);">
+                        <button type="button" id="btn-view-week" class="proj-btn proj-btn-sm proj-view-btn active" style="border: none; padding: 4px 10px; font-size: 12px;">
+                            📅 Wochen
+                        </button>
+                        <button type="button" id="btn-view-matrix" class="proj-btn proj-btn-sm proj-view-btn" style="border: none; padding: 4px 10px; font-size: 12px; background: transparent; color: var(--proj-text-muted);">
+                            📊 31-Tage
+                        </button>
+                    </div>
+
+                    <button type="button" id="matrix-prev-month" class="proj-btn proj-btn-secondary proj-btn-sm">◀</button>
                     <span id="matrix-title" style="font-weight: 700; font-size: 14px; min-width: 120px; text-align: center;"></span>
-                    <button type="button" id="matrix-next-month" class="proj-btn proj-btn-secondary proj-btn-sm">Nächster ▶</button>
+                    <button type="button" id="matrix-next-month" class="proj-btn proj-btn-secondary proj-btn-sm">▶</button>
                     <button type="button" class="proj-btn proj-btn-primary proj-btn-sm" data-open-modal="modal-new-project">
                         + Projekt
                     </button>
                 </div>
             </div>
 
-            <div class="proj-matrix-wrapper">
-                <table id="matrix-table" class="proj-matrix-table">
-                    <!-- Wird vollständig via JS gerendert -->
-                </table>
+            <!-- CONTAINER 1: WOCHENANSICHT (KOMPAKT) -->
+            <div id="view-week-container">
+                <div class="proj-week-wrapper">
+                    <table id="week-table" class="proj-week-table">
+                        <!-- Wird via JS gerendert -->
+                    </table>
+                </div>
+
+                <!-- Projekt-Aufteilung des Monats -->
+                <div style="margin-top: 16px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--proj-text-muted); margin-bottom: 8px;">
+                        Projektverteilung im Monat:
+                    </div>
+                    <div id="project-summary-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
+                        <!-- Wird via JS gerendert -->
+                    </div>
+                </div>
+
+                <div style="font-size: 12px; color: var(--proj-text-muted); margin-top: 12px;">
+                    💡 <em>Klicke auf einen Tag im Kalender, um diesen oben als Tagesbuchung zu öffnen.</em>
+                </div>
             </div>
-            
-            <div style="font-size: 12px; color: var(--proj-text-muted); margin-top: 10px;">
-                💡 <em>Klicke auf eine Zelle, um den exakten Stundenwert in die Zwischenablage zu kopieren.</em>
+
+            <!-- CONTAINER 2: 31-TAGE MATRIX -->
+            <div id="view-matrix-container" style="display: none;">
+                <div class="proj-matrix-wrapper">
+                    <table id="matrix-table" class="proj-matrix-table">
+                        <!-- Wird vollständig via JS gerendert -->
+                    </table>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--proj-text-muted); margin-top: 10px;">
+                    💡 <em>Klicke auf eine Zelle, um den exakten Stundenwert in die Zwischenablage zu kopieren.</em>
+                </div>
             </div>
         </section>
     </main>

@@ -270,6 +270,39 @@ class ProjectsEngine
             $dailyTotals[$day] = $daySum;
             $totalActualHours += $daySum;
 
+            $dayEntries = [];
+            if ($absenceHours > 0 && isset($absenceRows[$aType])) {
+                $dayEntries[] = [
+                    'type' => 'absence',
+                    'name' => $absenceRows[$aType]['name'],
+                    'short_code' => $absenceRows[$aType]['short_code'],
+                    'hours' => $absenceHours,
+                    'color' => $absenceRows[$aType]['color'],
+                ];
+            }
+            if (isset($exceptionsByDay[$day])) {
+                foreach ($exceptionsByDay[$day] as $pid => $hrs) {
+                    if ($hrs > 0 && isset($projectRows[$pid])) {
+                        $dayEntries[] = [
+                            'type' => 'exception',
+                            'name' => $projectRows[$pid]['name'],
+                            'short_code' => $projectRows[$pid]['short_code'],
+                            'hours' => $hrs,
+                            'color' => $projectRows[$pid]['color'],
+                        ];
+                    }
+                }
+            }
+            if ($defaultHours > 0 && $defaultProject && isset($projectRows[$defPid])) {
+                $dayEntries[] = [
+                    'type' => 'default',
+                    'name' => $projectRows[$defPid]['name'],
+                    'short_code' => $projectRows[$defPid]['short_code'],
+                    'hours' => $defaultHours,
+                    'color' => $projectRows[$defPid]['color'],
+                ];
+            }
+
             $days[$day] = [
                 'day' => $day,
                 'date' => $curDate,
@@ -280,6 +313,7 @@ class ProjectsEngine
                 'holiday_name' => $holidayName,
                 'target_hours' => $targetHours,
                 'actual_hours' => $daySum,
+                'entries' => $dayEntries,
             ];
         }
 
@@ -294,6 +328,87 @@ class ProjectsEngine
 
         $finalRows = array_merge(array_values($activeProjectRows), array_values($activeAbsenceRows));
 
+        // Wochen-Array für die kompakte Kalenderansicht (KW als Zeile)
+        $weeks = [];
+        $firstDOW = $days[1]['day_of_week']; // 1 = Mo, 7 = So
+        $lastDOW = $days[$daysInMonth]['day_of_week'];
+
+        $gridStart = (new DateTimeImmutable($startDateStr))->modify('-' . ($firstDOW - 1) . ' days');
+        $gridEnd = (new DateTimeImmutable(sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth)))->modify('+' . (7 - $lastDOW) . ' days');
+
+        $cur = $gridStart;
+        while ($cur <= $gridEnd) {
+            $kw = (int)$cur->format('W');
+            $weekDays = [];
+            $weekTarget = 0.0;
+            $weekActual = 0.0;
+
+            for ($i = 0; $i < 7; $i++) {
+                $dDate = $cur->format('Y-m-d');
+                $dMonth = (int)$cur->format('n');
+                $dDay = (int)$cur->format('j');
+                $isCurrentMonth = ($dMonth === $month);
+
+                if ($isCurrentMonth && isset($days[$dDay])) {
+                    $dayData = $days[$dDay];
+                    $weekTarget += $dayData['target_hours'];
+                    $weekActual += $dayData['actual_hours'];
+                    $weekDays[] = [
+                        'date' => $dDate,
+                        'day' => $dDay,
+                        'is_current_month' => true,
+                        'is_today' => ($dDate === date('Y-m-d')),
+                        'is_weekend' => $dayData['is_weekend'],
+                        'is_holiday' => $dayData['is_holiday'],
+                        'holiday_name' => $dayData['holiday_name'],
+                        'target_hours' => $dayData['target_hours'],
+                        'actual_hours' => $dayData['actual_hours'],
+                        'entries' => $dayData['entries'],
+                    ];
+                } else {
+                    $dDOW = (int)$cur->format('N');
+                    $dHoliday = $this->holidayService->getPublicHoliday($dDate, $stateCode);
+                    $weekDays[] = [
+                        'date' => $dDate,
+                        'day' => $dDay,
+                        'is_current_month' => false,
+                        'is_today' => ($dDate === date('Y-m-d')),
+                        'is_weekend' => ($dDOW >= 6),
+                        'is_holiday' => ($dHoliday !== null),
+                        'holiday_name' => $dHoliday,
+                        'target_hours' => 0.0,
+                        'actual_hours' => 0.0,
+                        'entries' => [],
+                    ];
+                }
+
+                $cur = $cur->modify('+1 day');
+            }
+
+            $weeks[] = [
+                'kw' => $kw,
+                'target_hours' => round($weekTarget, 1),
+                'actual_hours' => round($weekActual, 1),
+                'days' => $weekDays,
+            ];
+        }
+
+        // Projekt-Zusammenfassung des Monats mit prozentualer Verteilung
+        $projectSummary = [];
+        foreach ($finalRows as $r) {
+            if ($r['total_hours'] > 0) {
+                $pct = ($totalActualHours > 0) ? round(($r['total_hours'] / $totalActualHours) * 100, 1) : 0.0;
+                $projectSummary[] = [
+                    'name' => $r['name'],
+                    'short_code' => $r['short_code'] ?? '',
+                    'color' => $r['color'],
+                    'type' => $r['type'],
+                    'total_hours' => round($r['total_hours'], 1),
+                    'percentage' => $pct,
+                ];
+            }
+        }
+
         return [
             'year' => $year,
             'month' => $month,
@@ -305,6 +420,8 @@ class ProjectsEngine
             'days' => $days,
             'rows' => $finalRows,
             'daily_totals' => $dailyTotals,
+            'weeks' => $weeks,
+            'project_summary' => $projectSummary,
         ];
     }
 }

@@ -10,11 +10,58 @@
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth() + 1;
     let selectedDate = new Date().toISOString().split('T')[0];
+    let currentViewMode = localStorage.getItem('proj_view_mode') || 'week';
 
     async function init() {
         bindEvents();
+        applyViewMode();
         await loadDayDetails(selectedDate);
         await loadMonthMatrix(currentYear, currentMonth);
+    }
+
+    function switchViewMode(mode) {
+        currentViewMode = mode;
+        try {
+            localStorage.setItem('proj_view_mode', mode);
+        } catch (e) {
+            // LocalStorage might be disabled
+        }
+        applyViewMode();
+    }
+
+    function applyViewMode() {
+        const btnWeek = document.getElementById('btn-view-week');
+        const btnMatrix = document.getElementById('btn-view-matrix');
+        const contWeek = document.getElementById('view-week-container');
+        const contMatrix = document.getElementById('view-matrix-container');
+
+        if (currentViewMode === 'week') {
+            if (btnWeek) {
+                btnWeek.classList.add('active');
+                btnWeek.style.background = '';
+                btnWeek.style.color = '';
+            }
+            if (btnMatrix) {
+                btnMatrix.classList.remove('active');
+                btnMatrix.style.background = 'transparent';
+                btnMatrix.style.color = 'var(--proj-text-muted)';
+            }
+            if (contWeek) contWeek.style.display = 'block';
+            if (contMatrix) contMatrix.style.display = 'none';
+        } else {
+            if (btnMatrix) {
+                btnMatrix.classList.add('active');
+                btnMatrix.style.background = '';
+                btnMatrix.style.color = '';
+            }
+            if (btnWeek) {
+                btnWeek.classList.remove('active');
+                btnWeek.style.background = 'transparent';
+                btnWeek.style.color = 'var(--proj-text-muted)';
+            }
+            if (contWeek) contWeek.style.display = 'none';
+            if (contMatrix) contMatrix.style.display = 'block';
+        }
     }
 
     function bindEvents() {
@@ -42,6 +89,28 @@
             dateInput.addEventListener('change', (e) => {
                 selectedDate = e.target.value;
                 loadDayDetails(selectedDate);
+                document.querySelectorAll('.proj-day-cell').forEach((c) => {
+                    if (c.getAttribute('data-date') === selectedDate) {
+                        c.classList.add('is-selected');
+                    } else {
+                        c.classList.remove('is-selected');
+                    }
+                });
+            });
+        }
+
+        // Umschalter Wochenansicht / 31-Tage Matrix
+        const btnViewWeek = document.getElementById('btn-view-week');
+        if (btnViewWeek) {
+            btnViewWeek.addEventListener('click', () => {
+                switchViewMode('week');
+            });
+        }
+
+        const btnViewMatrix = document.getElementById('btn-view-matrix');
+        if (btnViewMatrix) {
+            btnViewMatrix.addEventListener('click', () => {
+                switchViewMode('matrix');
             });
         }
 
@@ -94,6 +163,24 @@
             if (delExBtn) {
                 const exId = delExBtn.getAttribute('data-delete-exception');
                 deleteException(exId);
+                return;
+            }
+
+            // Klick auf Tag in Wochenansicht (Kalenderzelle)
+            const dayCell = e.target.closest('.proj-day-cell[data-date]');
+            if (dayCell) {
+                const targetDate = dayCell.getAttribute('data-date');
+                if (targetDate) {
+                    selectedDate = targetDate;
+                    const picker = document.getElementById('selected-date-picker');
+                    if (picker) picker.value = targetDate;
+
+                    document.querySelectorAll('.proj-day-cell').forEach((c) => c.classList.remove('is-selected'));
+                    dayCell.classList.add('is-selected');
+
+                    loadDayDetails(selectedDate);
+                    document.querySelector('.proj-hero')?.scrollIntoView({ behavior: 'smooth' });
+                }
                 return;
             }
 
@@ -374,6 +461,113 @@
             summaryEl.textContent = `Soll: ${m.total_target_hours.toFixed(1).replace('.', ',')}h | Ist: ${m.total_actual_hours.toFixed(1).replace('.', ',')}h`;
         }
 
+        renderWeekView(m);
+        render31DayTable(m);
+        applyViewMode();
+    }
+
+    function renderWeekView(m) {
+        const table = document.getElementById('week-table');
+        if (!table) return;
+
+        if (!m.weeks || m.weeks.length === 0) {
+            table.innerHTML = '<tbody><tr><td style="padding: 20px; text-align: center; color: var(--proj-text-muted);">Keine Daten für diesen Monat.</td></tr></tbody>';
+            return;
+        }
+
+        let html = '<thead><tr>';
+        html += '<th class="proj-kw-col">KW</th>';
+        const dows = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+        dows.forEach((d) => {
+            html += `<th>${d}</th>`;
+        });
+        html += '<th class="proj-week-total-col">Woche</th></tr></thead>';
+
+        html += '<tbody>';
+        m.weeks.forEach((w) => {
+            html += '<tr>';
+            html += `<td class="proj-kw-col">KW ${w.kw}</td>`;
+
+            w.days.forEach((d) => {
+                let cellCls = 'proj-day-cell';
+                if (!d.is_current_month) cellCls += ' is-other-month';
+                if (d.is_weekend) cellCls += ' is-weekend';
+                if (d.is_holiday) cellCls += ' is-holiday';
+                if (d.is_today) cellCls += ' is-today';
+                if (d.date === selectedDate) cellCls += ' is-selected';
+
+                const clickableAttr = d.is_current_month ? `data-date="${d.date}"` : '';
+                const titleAttr = d.holiday_name ? `title="${KaiHtml.escape(d.holiday_name)}"` : `title="${d.date}"`;
+
+                html += `<td class="${cellCls}" ${clickableAttr} ${titleAttr}>`;
+                html += `<div class="proj-day-num">`;
+                html += `<span>${d.day}</span>`;
+                if (d.is_current_month && d.actual_hours > 0) {
+                    html += `<span style="color: var(--proj-text); font-variant-numeric: tabular-nums;">${d.actual_hours.toFixed(1).replace('.', ',')}h</span>`;
+                }
+                html += `</div>`;
+
+                if (d.is_current_month && d.entries && d.entries.length > 0) {
+                    d.entries.forEach((e) => {
+                        const col = e.color || '#0284c7';
+                        html += `
+                            <div class="proj-day-entry-badge" style="background: ${KaiHtml.escape(col)}22; border: 1px solid ${KaiHtml.escape(col)}88; color: ${KaiHtml.escape(col)};" title="${KaiHtml.escape(e.name)}: ${e.hours.toFixed(1)}h">
+                                <span>${KaiHtml.escape(e.short_code || e.name.substring(0, 4))}</span>
+                                <span>${e.hours.toFixed(1).replace('.', ',')}h</span>
+                            </div>
+                        `;
+                    });
+                } else if (d.is_current_month && d.is_holiday) {
+                    html += `
+                        <div class="proj-day-entry-badge" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #f59e0b;" title="${KaiHtml.escape(d.holiday_name)}">
+                            <span>Feiertag</span>
+                        </div>
+                    `;
+                }
+
+                html += '</td>';
+            });
+
+            html += `<td class="proj-week-total-col" title="Soll: ${w.target_hours.toFixed(1)}h">${w.actual_hours.toFixed(1).replace('.', ',')}h</td>`;
+            html += '</tr>';
+        });
+        html += '</tbody>';
+        table.innerHTML = html;
+
+        // Render project summary cards
+        const summaryCont = document.getElementById('project-summary-container');
+        if (summaryCont) {
+            if (!m.project_summary || m.project_summary.length === 0) {
+                summaryCont.innerHTML = '<div style="color: var(--proj-text-muted); font-size: 13px;">Noch keine gebuchten Stunden in diesem Monat.</div>';
+            } else {
+                let sHtml = '';
+                m.project_summary.forEach((p) => {
+                    const col = p.color || '#0284c7';
+                    sHtml += `
+                        <div class="proj-summary-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; max-width: 150px;">
+                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: ${KaiHtml.escape(col)}; flex-shrink: 0;"></span>
+                                    <strong style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px;" title="${KaiHtml.escape(p.name)}">${KaiHtml.escape(p.name)}</strong>
+                                </div>
+                                <span style="font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; flex-shrink: 0;">${p.total_hours.toFixed(1).replace('.', ',')}h</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--proj-text-muted);">
+                                <span>${KaiHtml.escape(p.short_code)}</span>
+                                <span>${p.percentage.toFixed(1).replace('.', ',')}%</span>
+                            </div>
+                            <div class="proj-summary-bar">
+                                <div class="proj-summary-bar-fill" style="width: ${Math.min(p.percentage, 100)}%; background: ${KaiHtml.escape(col)};"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+                summaryCont.innerHTML = sHtml;
+            }
+        }
+    }
+
+    function render31DayTable(m) {
         const table = document.getElementById('matrix-table');
         if (!table) return;
 
