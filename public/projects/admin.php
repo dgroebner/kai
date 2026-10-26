@@ -84,12 +84,21 @@ $appUrl = ProjectsAuth::getAppUrl();
                                         <?= date('d.m.Y H:i', strtotime($u['created_at'])) ?>
                                     </td>
                                     <td style="padding: 10px; text-align: right;">
-                                        <button type="button" class="proj-btn proj-btn-ghost proj-btn-sm" data-toggle-status="<?= $u['id'] ?>" data-new-status="<?= ($u['status'] === 'disabled') ? 'active' : 'disabled' ?>">
-                                            <?= ($u['status'] === 'disabled') ? 'Aktivieren' : 'Deaktivieren' ?>
-                                        </button>
-                                        <button type="button" class="proj-btn proj-btn-danger proj-btn-sm" data-delete-user="<?= $u['id'] ?>" style="margin-left: 4px;">
-                                            Löschen
-                                        </button>
+                                        <?php 
+                                        $currentProjUserId = ProjectsAuth::getUserId();
+                                        $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
+                                        $isSelf = ((int)$u['id'] === $currentProjUserId) || (strtolower($u['email']) === $adminEmail);
+                                        ?>
+                                        <?php if ($isSelf): ?>
+                                            <span style="font-size: 12px; color: var(--proj-text-muted, #94a3b8); font-style: italic; padding: 4px 8px;">(Eigenes Admin-Konto)</span>
+                                        <?php else: ?>
+                                            <button type="button" class="proj-btn proj-btn-ghost proj-btn-sm" data-toggle-status="<?= $u['id'] ?>" data-new-status="<?= ($u['status'] === 'disabled') ? 'active' : 'disabled' ?>">
+                                                <?= ($u['status'] === 'disabled') ? 'Aktivieren' : 'Deaktivieren' ?>
+                                            </button>
+                                            <button type="button" class="proj-btn proj-btn-danger proj-btn-sm" data-delete-user="<?= $u['id'] ?>" style="margin-left: 4px;">
+                                                Löschen
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

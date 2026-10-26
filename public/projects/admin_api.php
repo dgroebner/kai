@@ -60,6 +60,10 @@ if ($action === 'update_status') {
         ProjectsAuth::sendJsonError(400, 'Ungültige Parameter');
     }
 
+    if ($userId === ProjectsAuth::getUserId()) {
+        ProjectsAuth::sendJsonError(400, 'Du kannst dein eigenes Administratorkonto nicht deaktivieren.');
+    }
+
     $adminRepo->updateStatus($userId, $status);
     echo json_encode(['success' => true, 'message' => 'Status aktualisiert.']);
     exit;
@@ -69,6 +73,10 @@ if ($action === 'delete_user') {
     $userId = filter_var($input['user_id'] ?? null, FILTER_VALIDATE_INT);
     if (!$userId) {
         ProjectsAuth::sendJsonError(400, 'Ungültige User-ID');
+    }
+
+    if ($userId === ProjectsAuth::getUserId()) {
+        ProjectsAuth::sendJsonError(400, 'Du kannst dein eigenes Administratorkonto nicht löschen.');
     }
 
     $adminRepo->deleteUser($userId);
