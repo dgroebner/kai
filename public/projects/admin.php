@@ -23,6 +23,14 @@ $appUrl = ProjectsAuth::getAppUrl();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= ProjectsAuth::csrfToken() ?>">
     <title>Projects Administration</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0284c7">
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
     <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
     <script src="http.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="admin.js?v=<?= APP_VERSION ?>" defer></script>

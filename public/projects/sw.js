@@ -1,13 +1,15 @@
 // Service Worker für Projects (PWA)
-const CACHE_VERSION = 'proj-v2';
+const CACHE_VERSION = 'proj-v3';
 const CACHE_NAME = `projects-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
-    '/projects/styles.css',
-    '/projects/http.js',
-    '/projects/projects.js',
-    '/android-chrome-192x192.png',
-    '/android-chrome-512x512.png',
+    'styles.css',
+    'http.js',
+    'projects.js',
+    'favicon.svg',
+    'icon-192.png',
+    'icon-512.png',
+    'manifest.json',
 ];
 
 self.addEventListener('install', (event) => {
@@ -49,13 +51,13 @@ self.addEventListener('fetch', (event) => {
 
     // HTML: Network-First
     event.respondWith(
-        fetch(request).catch(() => caches.match('/offline.html'))
+        fetch(request).catch(() => caches.match('index.php'))
     );
 });
 
 // Push-Notifications
 self.addEventListener('push', (event) => {
-    let data = { title: 'Projects', body: 'Feierabend-Check', url: '/projects/index.php' };
+    let data = { title: 'Projects', body: 'Feierabend-Check', url: 'index.php' };
     if (event.data) {
         try {
             data = { ...data, ...JSON.parse(event.data.text()) };
@@ -67,8 +69,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.title, {
             body: data.body,
-            icon: '/android-chrome-192x192.png',
-            badge: '/android-chrome-192x192.png',
+            icon: 'icon-192.png',
+            badge: 'icon-192.png',
             data: { url: data.url },
         })
     );
@@ -76,11 +78,11 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const url = event.notification.data?.url || '/projects/index.php';
+    const url = event.notification.data?.url || 'index.php';
     event.waitUntil(
         clients.matchAll({ type: 'window' }).then((windowClients) => {
             for (const client of windowClients) {
-                if (client.url.includes('/projects/')) {
+                if (client.url.includes('projects') || client.url.includes('index.php')) {
                     return client.focus();
                 }
             }

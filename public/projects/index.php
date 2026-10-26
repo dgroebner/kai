@@ -30,6 +30,17 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0284c7">
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Projects">
+
     <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
 
     <script src="http.js?v=<?= APP_VERSION ?>" defer></script>

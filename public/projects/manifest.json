@@ -2,21 +2,30 @@
   "name": "Projects — Projektzeiterfassung",
   "short_name": "Projects",
   "description": "Leichtgewichtige persönliche Projektzeiterfassung",
-  "start_url": "/projects/index.php",
-  "scope": "/projects/",
+  "start_url": "index.php",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0284c7",
+  "orientation": "any",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
