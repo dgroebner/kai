@@ -120,6 +120,7 @@ $appUrl = ProjectsAuth::getAppUrl();
                 <button type="button" class="proj-modal-close" data-close-modal>✕</button>
             </div>
             <form id="form-invite-user">
+                <input type="hidden" name="csrf_token" value="<?= ProjectsAuth::csrfToken() ?>">
                 <div class="proj-form-group">
                     <label for="inv-email">E-Mail-Adresse</label>
                     <input type="email" id="inv-email" name="email" required placeholder="kollege@firma.de">

@@ -8,7 +8,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-const APP_VERSION = '1.33.10';
+const APP_VERSION = '1.33.11';
 define('APP_URL', rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/'));
 
 // Verhindert, dass JavaScript auf das Session-Cookie zugreifen kann (Schutz vor XSS)
@@ -30,10 +30,11 @@ ini_set('session.use_strict_mode', 1);
 // Session-IDs ausschließlich über Cookies transportieren (keine URL-Parameter)
 ini_set('session.use_only_cookies', 1);
 
-// Cookie-Domain für alle *.agent-smith.de Subdomains freigeben (Cross-Subdomain SSO)
-$host = $_SERVER['HTTP_HOST'] ?? '';
-if (str_ends_with($host, 'agent-smith.de')) {
-    ini_set('session.cookie_domain', '.agent-smith.de');
+// Dedizierter Session-Name für Projects, um jede Cookie-Kollision mit Kai auszuschließen
+$isProjects = str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'projects.')
+    || str_contains($_SERVER['SCRIPT_NAME'] ?? '', '/projects/');
+if ($isProjects) {
+    session_name('PROJSESSID');
 }
 
 // Interne Fehler dürfen im Produktivbetrieb niemals an den Browser gelangen

@@ -123,18 +123,18 @@ final class ProjectsAuth
             $token = $payload['csrf_token'] ?? null;
         }
 
-        if (!is_string($token) || $token === '') {
-            self::sendJsonError(403, 'Ungültiger CSRF-Token');
-        }
-
-        $valid = false;
-        if (!empty($_SESSION['proj_csrf_token']) && hash_equals($_SESSION['proj_csrf_token'], $token)) {
-            $valid = true;
-        } elseif (!empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token)) {
-            $valid = true;
-        }
+        $sessionToken = $_SESSION['proj_csrf_token'] ?? $_SESSION['csrf_token'] ?? '';
+        $valid = (is_string($token) && $token !== '' && $sessionToken !== '' && hash_equals($sessionToken, $token));
 
         if (!$valid) {
+            (new Logger(14))->error('Projects CSRF-Mismatch', [
+                'endpoint' => $_SERVER['SCRIPT_NAME'] ?? 'unknown',
+                'token_received' => is_string($token) ? substr($token, 0, 8) . '...' : 'NULL',
+                'session_token' => $sessionToken !== '' ? substr($sessionToken, 0, 8) . '...' : 'EMPTY',
+                'session_id' => session_id(),
+                'session_name' => session_name(),
+                'cookie_names' => array_keys($_COOKIE),
+            ]);
             self::sendJsonError(403, 'Ungültiger CSRF-Token');
         }
     }
@@ -150,6 +150,12 @@ final class ProjectsAuth
         $_SESSION['proj_user_email'] = (string)$user['email'];
         $_SESSION['proj_user_name'] = (string)($user['name'] ?? '');
         $_SESSION['proj_user_state'] = (string)($user['state_code'] ?? 'SN');
+        if (empty($_SESSION['proj_csrf_token'])) {
+            $_SESSION['proj_csrf_token'] = bin2hex(random_bytes(32));
+        }
+        if (empty($_SESSION['proj_csrf_token'])) {
+            $_SESSION['proj_csrf_token'] = bin2hex(random_bytes(32));
+        }
 
         if ($setRememberCookie) {
             self::createRememberToken((int)$user['id']);
@@ -168,7 +174,7 @@ final class ProjectsAuth
                 'path' => '/',
                 'secure' => true,
                 'httponly' => true,
-                'samesite' => 'Strict',
+                'samesite' => 'Lax',
             ]);
         }
 
@@ -461,7 +467,7 @@ final class ProjectsAuth
             'path' => '/',
             'secure' => true,
             'httponly' => true,
-            'samesite' => 'Strict',
+            'samesite' => 'Lax',
         ]);
     }
 
@@ -501,6 +507,12 @@ final class ProjectsAuth
                 $_SESSION['proj_user_email'] = (string)$row['email'];
                 $_SESSION['proj_user_name'] = (string)($row['name'] ?? '');
                 $_SESSION['proj_user_state'] = (string)($row['state_code'] ?? 'SN');
+                if (empty($_SESSION['proj_csrf_token'])) {
+                    $_SESSION['proj_csrf_token'] = bin2hex(random_bytes(32));
+                }
+                if (empty($_SESSION['proj_csrf_token'])) {
+                    $_SESSION['proj_csrf_token'] = bin2hex(random_bytes(32));
+                }
             } else {
                 // Ungültiges Cookie verwerfen
                 setcookie(self::COOKIE_NAME, '', [
@@ -508,7 +520,7 @@ final class ProjectsAuth
                     'path' => '/',
                     'secure' => true,
                     'httponly' => true,
-                    'samesite' => 'Strict',
+                    'samesite' => 'Lax',
                 ]);
             }
         } catch (Throwable) {
