@@ -675,8 +675,8 @@ input[type="color"].proj-color-input::-moz-color-swatch {
 
     /* 4. Tages-Kacheln kompakt & touch-freundlich */
     .proj-day-cell {
-        height: 56px !important;
-        padding: 3px 2px !important;
+        height: 58px !important;
+        padding: 4px 3px !important;
     }
 
     .proj-day-num {
@@ -704,7 +704,7 @@ input[type="color"].proj-color-input::-moz-color-swatch {
         line-height: 1.1;
     }
 
-    /* 5. Umschaltung: Desktop-Badges aus, Mobile-Pill an */
+    /* 5. Umschaltung: Desktop-Badges aus, Mobile-Farbbalken an */
     .proj-desktop-badges {
         display: none !important;
     }
@@ -714,37 +714,43 @@ input[type="color"].proj-color-input::-moz-color-swatch {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
+        gap: 3px;
         margin-top: 2px;
-    }
-
-    .proj-mob-pill {
-        font-size: 10px;
-        font-weight: 800;
-        padding: 2px 4px;
-        border-radius: 4px;
-        line-height: 1.2;
-        white-space: nowrap;
-        text-align: center;
         width: 100%;
-        max-width: 44px;
+    }
+
+    .proj-mob-hours {
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1.1;
+        color: var(--proj-text);
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+    }
+
+    .proj-mob-bar-track {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 3px;
         overflow: hidden;
-        text-overflow: ellipsis;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
-    .proj-mob-dots {
+    .proj-mob-bar-fill {
+        height: 100%;
         display: flex;
-        gap: 2px;
-        justify-content: center;
-        align-items: center;
+        border-radius: 3px;
+        overflow: hidden;
     }
 
-    .proj-mob-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        display: inline-block;
+    .proj-mob-bar-seg {
+        height: 100%;
+        display: block;
+        transition: width 0.2s ease;
+    }
+
+    .proj-mob-bar-seg:not(:last-child) {
+        border-right: 1px solid rgba(15, 23, 42, 0.6);
     }
 
     .proj-mob-icon {

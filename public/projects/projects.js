@@ -641,25 +641,28 @@
                 }
                 desktopBadges += '</div>';
 
-                // 2. Mobile Badges (Kompakt für Smartphone-Display ohne horizontales Scrollen)
+                // 2. Mobile Badges (Segmentierter Farb-Balken wie in Tagesansicht)
                 let mobileBadges = '<div class="proj-mobile-badges">';
                 if (d.is_current_month) {
                     if (d.actual_hours > 0) {
-                        const primaryColor = (d.entries && d.entries[0] && d.entries[0].color) ? d.entries[0].color : '#0284c7';
-                        const isMultiple = d.entries && d.entries.length > 1;
-                        mobileBadges += `
-                            <div class="proj-mob-pill" style="background: ${KaiHtml.escape(primaryColor)}; color: #fff;">
-                                ${d.actual_hours.toFixed(1).replace('.', ',')}h
-                            </div>
-                        `;
-                        if (isMultiple) {
-                            mobileBadges += '<div class="proj-mob-dots">';
+                        const totalDayHrs = Math.max(d.actual_hours, 0.1);
+                        const fillPct = Math.min(100, Math.round((d.actual_hours / 8.0) * 100));
+
+                        mobileBadges += `<div class="proj-mob-hours">${d.actual_hours.toFixed(1).replace('.', ',')}h</div>`;
+                        mobileBadges += '<div class="proj-mob-bar-track">';
+                        mobileBadges += `<div class="proj-mob-bar-fill" style="width: ${fillPct}%;">`;
+
+                        if (d.entries && d.entries.length > 0) {
                             d.entries.forEach((e) => {
-                                const c = e.color || '#0284c7';
-                                mobileBadges += `<span class="proj-mob-dot" style="background: ${KaiHtml.escape(c)};"></span>`;
+                                const segPct = (e.hours / totalDayHrs) * 100;
+                                const segCol = e.color || '#0284c7';
+                                mobileBadges += `<span class="proj-mob-bar-seg" style="width: ${segPct}%; background: ${KaiHtml.escape(segCol)};" title="${KaiHtml.escape(e.name)}: ${e.hours.toFixed(1)}h"></span>`;
                             });
-                            mobileBadges += '</div>';
+                        } else {
+                            mobileBadges += '<span class="proj-mob-bar-seg" style="width: 100%; background: #0284c7;"></span>';
                         }
+
+                        mobileBadges += '</div></div>';
                     } else if (d.is_holiday) {
                         mobileBadges += '<span class="proj-mob-icon" title="Feiertag">🎉</span>';
                     }
