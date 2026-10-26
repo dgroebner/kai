@@ -56,6 +56,12 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                 ⚙️ <?= htmlspecialchars($userName ?: explode('@', $userEmail)[0]) ?>
             </button>
 
+            <?php if (ProjectsAuth::isSuperAdmin()): ?>
+                <a href="admin.php" class="proj-btn proj-btn-ghost proj-btn-sm" title="Administration">
+                    🛠️ Admin
+                </a>
+            <?php endif; ?>
+
             <!-- Logout Button -->
             <button type="button" id="btn-logout" class="proj-btn proj-btn-ghost proj-btn-sm" title="Abmelden">
                 🚪

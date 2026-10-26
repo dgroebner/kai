@@ -6,7 +6,7 @@ use Kai\Tools\Projects\ProjectsAdminRepository;
 use Kai\Tools\Projects\Security\ProjectsAuth;
 use Kai\Tools\Shared\Security\Auth;
 
-// Nur für Kai-Super-Admin zugänglich (Google OAuth)
+// Nur für Super-Admin zugänglich
 ProjectsAuth::requireSuperAdminPage();
 
 $adminRepo = new ProjectsAdminRepository();
@@ -18,8 +18,8 @@ $appUrl = ProjectsAuth::getAppUrl();
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
-    <title>Projects Administration — Kai</title>
+    <meta name="csrf-token" content="<?= ProjectsAuth::csrfToken() ?>">
+    <title>Projects Administration</title>
     <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
     <script src="http.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="admin.js?v=<?= APP_VERSION ?>" defer></script>

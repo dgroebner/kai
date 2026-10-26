@@ -9,7 +9,7 @@ use Kai\Tools\Shared\Security\Auth;
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Nur für Kai-Super-Admin (Google OAuth Session)
+// Nur für Super-Admin (Projects-Session oder Kai-Session)
 ProjectsAuth::requireSuperAdminApi();
 Auth::requireMethod('POST');
 
@@ -17,7 +17,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
     ProjectsAuth::sendJsonError(400, 'Ungültige Nutzdaten');
 }
-Auth::requireCsrfToken($input);
+ProjectsAuth::requireCsrfToken($input);
 
 $adminRepo = new ProjectsAdminRepository();
 $action = $input['action'] ?? '';

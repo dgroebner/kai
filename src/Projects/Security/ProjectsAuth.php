@@ -166,12 +166,14 @@ final class ProjectsAuth
     }
 
     /**
-     * Prüft, ob der angemeldete Kai-Nutzer der Super-Admin ist (für /projects/admin.php).
+     * Prüft, ob der angemeldete Nutzer der Super-Admin ist (für /projects/admin.php).
+     * Unterstützt sowohl die eigenständige Projects-OTP-Session (proj_user_email)
+     * als auch die übergeordnete Kai-OAuth-Session (user_email).
      */
     public static function isSuperAdmin(): bool
     {
         $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
-        $currentUser = strtolower(trim((string)($_SESSION['user_email'] ?? '')));
+        $currentUser = strtolower(trim((string)($_SESSION['proj_user_email'] ?? $_SESSION['user_email'] ?? '')));
 
         if ($adminEmail !== '' && $currentUser !== '' && hash_equals($adminEmail, $currentUser)) {
             return true;
@@ -183,12 +185,14 @@ final class ProjectsAuth
     }
 
     /**
-     * Schützt Super-Admin-Endpunkte (Prüft Kai-Session gegen ADMIN_EMAIL).
+     * Schützt Super-Admin-Endpunkte (Prüft Projects- oder Kai-Session gegen ADMIN_EMAIL).
      */
     public static function requireSuperAdminPage(): void
     {
-        if (empty($_SESSION['user_email'])) {
-            header('Location: ' . rtrim($_ENV['APP_URL'] ?? '', '/') . '/login.php');
+        self::tryRestoreSessionFromCookie();
+
+        if (empty($_SESSION['proj_user_email']) && empty($_SESSION['user_email'])) {
+            header('Location: login.php');
             exit;
         }
 
@@ -204,8 +208,10 @@ final class ProjectsAuth
      */
     public static function requireSuperAdminApi(): void
     {
-        if (empty($_SESSION['user_email'])) {
-            self::sendJsonError(401, 'Nicht angemeldet am Hauptportal');
+        self::tryRestoreSessionFromCookie();
+
+        if (empty($_SESSION['proj_user_email']) && empty($_SESSION['user_email'])) {
+            self::sendJsonError(401, 'Nicht angemeldet');
         }
 
         if (!self::isSuperAdmin()) {
