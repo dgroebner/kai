@@ -110,6 +110,10 @@ $appUrl = ProjectsAuth::getAppUrl();
                 </table>
             </div>
         </div>
+
+        <footer style="text-align: center; padding: 24px 0 16px; font-size: 11px; color: var(--proj-text-muted, #94a3b8);">
+            Projects Administration v<?= APP_VERSION ?>
+        </footer>
     </div>
 
     <!-- Modal: Nutzer einladen -->

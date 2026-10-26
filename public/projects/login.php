@@ -234,6 +234,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </form>
         <?php endif; ?>
+        <footer style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--proj-text-muted, #94a3b8);">
+            Projects v<?= APP_VERSION ?>
+        </footer>
     </div>
 </body>
 </html>
