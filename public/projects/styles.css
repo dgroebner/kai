@@ -639,6 +639,127 @@ input[type="color"].proj-color-input::-moz-color-swatch {
     transition: width 0.3s ease;
 }
 
+/* -------------------------------------------------------------
+ * RESPONSIVES 7-TAGE KALENDERBLATT (MOBILE OPTIMIERUNG)
+ * ------------------------------------------------------------- */
+.proj-kw-mobile-tag {
+    display: none;
+}
+
+.proj-desktop-badges {
+    display: block;
+}
+
+.proj-mobile-badges {
+    display: none;
+}
+
+@media (max-width: 680px) {
+    /* 1. Entferne 600px Mindestbreite für die Tabelle */
+    .proj-week-table {
+        min-width: 0 !important;
+        font-size: 11px;
+    }
+
+    /* 2. Blende KW- und Total-Spalten auf Mobile aus -> genau 7 Spalten (Mo-So) */
+    .proj-kw-col,
+    .proj-week-total-col {
+        display: none !important;
+    }
+
+    /* 3. Wochentags-Header kompakt */
+    .proj-week-table th {
+        padding: 5px 1px !important;
+        font-size: 11px !important;
+    }
+
+    /* 4. Tages-Kacheln kompakt & touch-freundlich */
+    .proj-day-cell {
+        height: 56px !important;
+        padding: 3px 2px !important;
+    }
+
+    .proj-day-num {
+        font-size: 11px;
+        margin-bottom: 2px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        line-height: 1;
+    }
+
+    .proj-day-hours-desktop {
+        display: none !important;
+    }
+
+    /* Mini-Tag für KW am Montag */
+    .proj-kw-mobile-tag {
+        display: inline-block;
+        font-size: 8px;
+        font-weight: 800;
+        color: var(--proj-text-muted);
+        background: rgba(255, 255, 255, 0.08);
+        padding: 1px 3px;
+        border-radius: 3px;
+        line-height: 1.1;
+    }
+
+    /* 5. Umschaltung: Desktop-Badges aus, Mobile-Pill an */
+    .proj-desktop-badges {
+        display: none !important;
+    }
+
+    .proj-mobile-badges {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        margin-top: 2px;
+    }
+
+    .proj-mob-pill {
+        font-size: 10px;
+        font-weight: 800;
+        padding: 2px 4px;
+        border-radius: 4px;
+        line-height: 1.2;
+        white-space: nowrap;
+        text-align: center;
+        width: 100%;
+        max-width: 44px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .proj-mob-dots {
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .proj-mob-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .proj-mob-icon {
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    /* Card Header auf Smartphone anpassen */
+    .proj-card-header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+}
+
 .proj-view-btn.active,
 .proj-pt-btn.active {
     background: var(--proj-card-bg) !important;

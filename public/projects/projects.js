@@ -589,7 +589,7 @@
             html += '<tr>';
             html += `<td class="proj-kw-col">KW ${w.kw}</td>`;
 
-            w.days.forEach((d) => {
+            w.days.forEach((d, dayIdx) => {
                 let cellCls = 'proj-day-cell';
                 if (!d.is_current_month) cellCls += ' is-other-month';
                 if (d.is_weekend) cellCls += ' is-weekend';
@@ -603,15 +603,20 @@
                 html += `<td class="${cellCls}" ${clickableAttr} ${titleAttr}>`;
                 html += `<div class="proj-day-num">`;
                 html += `<span>${d.day}</span>`;
+                if (dayIdx === 0) {
+                    html += `<span class="proj-kw-mobile-tag">KW${w.kw}</span>`;
+                }
                 if (d.is_current_month && d.actual_hours > 0) {
-                    html += `<span style="color: var(--proj-text); font-variant-numeric: tabular-nums;">${d.actual_hours.toFixed(1).replace('.', ',')}h</span>`;
+                    html += `<span class="proj-day-hours-desktop" style="color: var(--proj-text); font-variant-numeric: tabular-nums;">${d.actual_hours.toFixed(1).replace('.', ',')}h</span>`;
                 }
                 html += `</div>`;
 
+                // 1. Desktop Badges (Short Code + Stunden)
+                let desktopBadges = '<div class="proj-desktop-badges">';
                 if (d.is_current_month && d.entries && d.entries.length > 0) {
                     d.entries.forEach((e) => {
                         const col = e.color || '#0284c7';
-                        html += `
+                        desktopBadges += `
                             <div class="proj-day-entry-badge" style="background: ${KaiHtml.escape(col)}22; border: 1px solid ${KaiHtml.escape(col)}88; color: ${KaiHtml.escape(col)};" title="${KaiHtml.escape(e.name)}: ${e.hours.toFixed(1)}h">
                                 <span>${KaiHtml.escape(e.short_code || e.name.substring(0, 4))}</span>
                                 <span>${e.hours.toFixed(1).replace('.', ',')}h</span>
@@ -619,13 +624,40 @@
                         `;
                     });
                 } else if (d.is_current_month && d.is_holiday) {
-                    html += `
+                    desktopBadges += `
                         <div class="proj-day-entry-badge" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #f59e0b;" title="${KaiHtml.escape(d.holiday_name)}">
                             <span>Feiertag</span>
                         </div>
                     `;
                 }
+                desktopBadges += '</div>';
 
+                // 2. Mobile Badges (Kompakt für Smartphone-Display ohne horizontales Scrollen)
+                let mobileBadges = '<div class="proj-mobile-badges">';
+                if (d.is_current_month) {
+                    if (d.actual_hours > 0) {
+                        const primaryColor = (d.entries && d.entries[0] && d.entries[0].color) ? d.entries[0].color : '#0284c7';
+                        const isMultiple = d.entries && d.entries.length > 1;
+                        mobileBadges += `
+                            <div class="proj-mob-pill" style="background: ${KaiHtml.escape(primaryColor)}; color: #fff;">
+                                ${d.actual_hours.toFixed(1).replace('.', ',')}h
+                            </div>
+                        `;
+                        if (isMultiple) {
+                            mobileBadges += '<div class="proj-mob-dots">';
+                            d.entries.forEach((e) => {
+                                const c = e.color || '#0284c7';
+                                mobileBadges += `<span class="proj-mob-dot" style="background: ${KaiHtml.escape(c)};"></span>`;
+                            });
+                            mobileBadges += '</div>';
+                        }
+                    } else if (d.is_holiday) {
+                        mobileBadges += '<span class="proj-mob-icon" title="Feiertag">🎉</span>';
+                    }
+                }
+                mobileBadges += '</div>';
+
+                html += desktopBadges + mobileBadges;
                 html += '</td>';
             });
 
