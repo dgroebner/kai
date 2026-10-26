@@ -12,6 +12,46 @@ $infoMsg = null;
 $step = 'email'; // 'email' oder 'otp'
 $emailValue = '';
 
+// 1. SSO-Token verarbeiten (von kai.agent-smith.de)
+if (!empty($_GET['sso_token'])) {
+    $verifiedEmail = ProjectsAuth::verifySsoToken((string)$_GET['sso_token']);
+    if ($verifiedEmail !== null) {
+        try {
+            $db = ProjectsDatabase::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT id, email, name, status, state_code FROM proj_users WHERE email = :email LIMIT 1");
+            $stmt->execute([':email' => $verifiedEmail]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                $ins = $db->prepare("INSERT INTO proj_users (email, name, status, state_code) VALUES (:email, 'Administrator', 'active', 'SN')");
+                $ins->execute([':email' => $verifiedEmail]);
+                $user = [
+                    'id' => (int)$db->lastInsertId(),
+                    'email' => $verifiedEmail,
+                    'name' => 'Administrator',
+                    'status' => 'active',
+                    'state_code' => 'SN',
+                ];
+            }
+
+            // Nativ in Projects-Session einloggen + 30-Tage Remember-Cookie
+            ProjectsAuth::loginUser($user, true);
+
+            $target = $_GET['return'] ?? 'admin.php';
+            if ($target !== 'admin.php' && $target !== 'index.php') {
+                $target = 'admin.php';
+            }
+            header('Location: ' . $target);
+            exit;
+        } catch (Throwable $e) {
+            $logger->error('Projects SSO-Login fehlgeschlagen', ['error' => $e->getMessage()]);
+            $errorMsg = 'Automatischer Google-Login fehlgeschlagen.';
+        }
+    } else {
+        $errorMsg = 'Der Anmelde-Link ist abgelaufen oder ungültig. Bitte versuche es erneut.';
+    }
+}
+
 // Falls bereits eingeloggt, direkt zur Hauptseite weiterleiten
 if (ProjectsAuth::isAuthenticated()) {
     header('Location: index.php');
@@ -167,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div style="flex: 1; border-bottom: 1px solid var(--proj-border, #334155);"></div>
             </div>
 
-            <a href="<?= rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/') ?>/login.php?redirect=https://projects.agent-smith.de/<?= htmlspecialchars($_GET['return'] ?? 'admin.php') ?>"
+            <a href="<?= rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/') ?>/login.php?action=sso_projects&return=<?= htmlspecialchars($_GET['return'] ?? 'admin.php') ?>"
                class="proj-btn proj-btn-secondary proj-btn-block" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <span>🔑</span>
                 <span>Mit Google anmelden (Admin)</span>

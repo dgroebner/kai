@@ -31,6 +31,31 @@ if (isset($_GET['redirect'])) {
     }
 }
 
+// SSO-Handoff zu projects.agent-smith.de
+if (isset($_GET['action']) && $_GET['action'] === 'sso_projects') {
+    $return = $_GET['return'] ?? 'admin.php';
+    if ($return !== 'admin.php' && $return !== 'index.php') {
+        $return = 'admin.php';
+    }
+
+    if (Auth::isAuthenticated()) {
+        $email = (string)($_SESSION['user_email'] ?? '');
+        $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
+        $allowed = array_map('trim', explode(',', strtolower((string)($_ENV['ALLOWED_USERS'] ?? ''))));
+
+        if (($adminEmail !== '' && hash_equals($adminEmail, strtolower($email))) || (!empty($allowed) && $allowed[0] === strtolower($email))) {
+            $ssoToken = \Kai\Tools\Projects\Security\ProjectsAuth::createSsoToken($email);
+            header('Location: https://projects.agent-smith.de/login.php?sso_token=' . urlencode($ssoToken) . '&return=' . urlencode($return));
+            exit;
+        } else {
+            http_response_code(403);
+            exit('Zugriff verweigert: Nur der Plattform-Administrator hat Zugriff auf die Projekterfassung.');
+        }
+    } else {
+        $_SESSION['sso_projects_pending'] = $return;
+    }
+}
+
 if (isset($_GET['code'])) {
     // State-Parameter prüfen (Schutz vor Login-CSRF / Authorization-Code-Injection)
     $expectedState = $_SESSION['oauth_state'] ?? '';
@@ -83,6 +108,21 @@ if (isset($_GET['code'])) {
             // Frischen CSRF-Token für die neue Session erzeugen
             unset($_SESSION['csrf_token']);
             Auth::csrfToken();
+
+            // Falls ein SSO-Request für Projects ausstand
+            if (!empty($_SESSION['sso_projects_pending'])) {
+                $return = $_SESSION['sso_projects_pending'];
+                unset($_SESSION['sso_projects_pending']);
+
+                $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
+                $allowed = array_map('trim', explode(',', strtolower((string)($_ENV['ALLOWED_USERS'] ?? ''))));
+
+                if (($adminEmail !== '' && hash_equals($adminEmail, strtolower($email))) || (!empty($allowed) && $allowed[0] === strtolower($email))) {
+                    $ssoToken = \Kai\Tools\Projects\Security\ProjectsAuth::createSsoToken($email);
+                    header('Location: https://projects.agent-smith.de/login.php?sso_token=' . urlencode($ssoToken) . '&return=' . urlencode($return));
+                    exit;
+                }
+            }
 
             $targetUrl = $_SESSION['oauth_redirect'] ?? (APP_URL . '/index.php');
             unset($_SESSION['oauth_redirect']);

@@ -210,6 +210,72 @@ final class ProjectsAuth
         }
     }
 
+        /**
+     * Erzeugt einen kurzlebigen (60s) kryptografisch signierten SSO-Token
+     * für den nahtlosen Übergang von kai.agent-smith.de zu projects.agent-smith.de.
+     */
+    public static function createSsoToken(string $email): string
+    {
+        $secret = (string)($_ENV['PROJECTS_OTP_PEPPER'] ?? $_ENV['CRON_TOKEN'] ?? 'projects-sso-salt-2026');
+        $payload = json_encode([
+            'email' => strtolower(trim($email)),
+            'time' => time(),
+            'nonce' => bin2hex(random_bytes(8)),
+        ], JSON_THROW_ON_ERROR);
+
+        $sig = hash_hmac('sha256', $payload, $secret);
+        return rtrim(strtr(base64_encode($payload . ':::' . $sig), '+/', '-_'), '=');
+    }
+
+    /**
+     * Verifiziert einen SSO-Token und liefert die E-Mail-Adresse zurück,
+     * sofern Signatur gültig, maximal 60 Sekunden alt und Admin-berechtigt.
+     */
+    public static function verifySsoToken(string $token): ?string
+    {
+        $secret = (string)($_ENV['PROJECTS_OTP_PEPPER'] ?? $_ENV['CRON_TOKEN'] ?? 'projects-sso-salt-2026');
+        $decoded = base64_decode(strtr($token, '-_', '+/'), true);
+        if ($decoded === false || !str_contains($decoded, ':::')) {
+            return null;
+        }
+
+        [$payload, $sig] = explode(':::' , $decoded, 2);
+        $expectedSig = hash_hmac('sha256', $payload, $secret);
+
+        if (!hash_equals($expectedSig, $sig)) {
+            return null;
+        }
+
+        try {
+            $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (!is_array($data)) {
+            return null;
+        }
+
+        $time = (int)($data['time'] ?? 0);
+        if (abs(time() - $time) > 60) {
+            return null;
+        }
+
+        $email = strtolower(trim((string)($data['email'] ?? '')));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
+        $allowed = array_map('trim', explode(',', strtolower((string)($_ENV['ALLOWED_USERS'] ?? ''))));
+
+        if (($adminEmail !== '' && hash_equals($adminEmail, $email)) || (!empty($allowed) && $allowed[0] === $email)) {
+            return $email;
+        }
+
+        return null;
+    }
+
     public static function isSuperAdmin(): bool
     {
         $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
