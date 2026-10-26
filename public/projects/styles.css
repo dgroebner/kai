@@ -519,7 +519,6 @@ input[type="color"].proj-color-input::-moz-color-swatch {
     border-collapse: collapse;
     font-size: 13px;
     table-layout: fixed;
-    min-width: 600px;
 }
 
 .proj-week-table th,
@@ -557,12 +556,15 @@ input[type="color"].proj-color-input::-moz-color-swatch {
 }
 
 .proj-day-cell {
-    height: 75px;
+    height: 52px;
+    padding: 6px;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
     background: var(--proj-card-bg);
     position: relative;
     user-select: none;
+    vertical-align: top;
+    box-sizing: border-box;
 }
 
 .proj-day-cell:hover:not(.is-other-month) {
@@ -596,25 +598,52 @@ input[type="color"].proj-color-input::-moz-color-swatch {
     font-weight: 700;
     font-size: 12px;
     color: var(--proj-text-muted);
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    line-height: 1.2;
 }
 
-.proj-day-entry-badge {
+/* Einheitliche segmentierte Farbbalken für Tageskacheln */
+.proj-day-bar-container {
+    width: 100%;
+    margin-top: 5px;
+}
+
+.proj-day-bar-track {
+    width: 100%;
+    height: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.proj-day-bar-fill {
+    height: 100%;
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.proj-day-bar-seg {
+    height: 100%;
+    display: block;
+    transition: width 0.2s ease;
+}
+
+.proj-day-bar-seg:not(:last-child) {
+    border-right: 1px solid rgba(15, 23, 42, 0.7);
+}
+
+.proj-day-status-badge {
+    font-size: 11px;
+    line-height: 1.2;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 5px;
-    border-radius: 4px;
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.2;
+    gap: 4px;
+    color: var(--proj-text-muted);
+    margin-top: 4px;
 }
 
 /* Projekt Zusammenfassung Cards */
@@ -646,50 +675,29 @@ input[type="color"].proj-color-input::-moz-color-swatch {
     display: none;
 }
 
-.proj-desktop-badges {
-    display: block;
-}
-
-.proj-mobile-badges {
-    display: none;
-}
-
 @media (max-width: 680px) {
-    /* 1. Entferne 600px Mindestbreite für die Tabelle */
-    .proj-week-table {
-        min-width: 0 !important;
-        font-size: 11px;
-    }
-
-    /* 2. Blende KW- und Total-Spalten auf Mobile aus -> genau 7 Spalten (Mo-So) */
+    /* Blende KW- und Total-Spalten auf Mobile aus -> genau 7 Spalten (Mo-So) */
     .proj-kw-col,
     .proj-week-total-col {
         display: none !important;
     }
 
-    /* 3. Wochentags-Header kompakt */
+    /* Wochentags-Header kompakt */
     .proj-week-table th {
         padding: 5px 1px !important;
         font-size: 11px !important;
     }
 
-    /* 4. Tages-Kacheln kompakt & touch-freundlich */
+    /* Tages-Kacheln kompakt & touch-freundlich */
     .proj-day-cell {
-        height: 58px !important;
-        padding: 4px 3px !important;
+        height: 48px !important;
+        padding: 3px 2px !important;
     }
 
     .proj-day-num {
         font-size: 11px;
-        margin-bottom: 2px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        margin-bottom: 1px;
         line-height: 1;
-    }
-
-    .proj-day-hours-desktop {
-        display: none !important;
     }
 
     /* Mini-Tag für KW am Montag */
@@ -704,58 +712,12 @@ input[type="color"].proj-color-input::-moz-color-swatch {
         line-height: 1.1;
     }
 
-    /* 5. Umschaltung: Desktop-Badges aus, Mobile-Farbbalken an */
-    .proj-desktop-badges {
-        display: none !important;
+    .proj-status-text {
+        display: none;
     }
 
-    .proj-mobile-badges {
-        display: flex !important;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 3px;
-        margin-top: 2px;
-        width: 100%;
-    }
-
-    .proj-mob-hours {
-        font-size: 11px;
-        font-weight: 800;
-        line-height: 1.1;
-        color: var(--proj-text);
-        font-variant-numeric: tabular-nums;
-        text-align: center;
-    }
-
-    .proj-mob-bar-track {
-        width: 100%;
-        height: 6px;
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 3px;
-        overflow: hidden;
-    }
-
-    .proj-mob-bar-fill {
-        height: 100%;
-        display: flex;
-        border-radius: 3px;
-        overflow: hidden;
-    }
-
-    .proj-mob-bar-seg {
-        height: 100%;
-        display: block;
-        transition: width 0.2s ease;
-    }
-
-    .proj-mob-bar-seg:not(:last-child) {
-        border-right: 1px solid rgba(15, 23, 42, 0.6);
-    }
-
-    .proj-mob-icon {
-        font-size: 13px;
-        line-height: 1.2;
+    .proj-day-bar-track {
+        height: 5px;
     }
 
     /* Card Header auf Smartphone anpassen */

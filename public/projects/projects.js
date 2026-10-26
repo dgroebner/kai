@@ -607,7 +607,18 @@
                 if (d.date === selectedDate) cellCls += ' is-selected';
 
                 const clickableAttr = d.is_current_month ? `data-date="${d.date}"` : '';
-                const titleAttr = d.holiday_name ? `title="${KaiHtml.escape(d.holiday_name)}"` : `title="${d.date}"`;
+                let title = d.date;
+                if (d.holiday_name) {
+                    title += ` (${d.holiday_name})`;
+                }
+                if (d.is_current_month && d.actual_hours > 0) {
+                    title += `: ${d.actual_hours.toFixed(1).replace('.', ',')}h`;
+                    if (d.entries && d.entries.length > 0) {
+                        const entriesDesc = d.entries.map((e) => `${e.hours.toFixed(1).replace('.', ',')}h ${e.short_code || e.name}`).join(', ');
+                        title += ` (${entriesDesc})`;
+                    }
+                }
+                const titleAttr = `title="${KaiHtml.escape(title)}"`;
 
                 html += `<td class="${cellCls}" ${clickableAttr} ${titleAttr}>`;
                 html += `<div class="proj-day-num">`;
@@ -616,60 +627,36 @@
                     html += `<span class="proj-kw-mobile-tag">KW${w.kw}</span>`;
                 }
                 if (d.is_current_month && d.actual_hours > 0) {
-                    html += `<span class="proj-day-hours-desktop" style="color: var(--proj-text); font-variant-numeric: tabular-nums;">${d.actual_hours.toFixed(1).replace('.', ',')}h</span>`;
+                    html += `<span style="color: var(--proj-text); font-variant-numeric: tabular-nums; font-weight: 700;">${d.actual_hours.toFixed(1).replace('.', ',')}h</span>`;
                 }
                 html += `</div>`;
 
-                // 1. Desktop Badges (Short Code + Stunden)
-                let desktopBadges = '<div class="proj-desktop-badges">';
-                if (d.is_current_month && d.entries && d.entries.length > 0) {
-                    d.entries.forEach((e) => {
-                        const col = e.color || '#0284c7';
-                        desktopBadges += `
-                            <div class="proj-day-entry-badge" style="background: ${KaiHtml.escape(col)}22; border: 1px solid ${KaiHtml.escape(col)}88; color: ${KaiHtml.escape(col)};" title="${KaiHtml.escape(e.name)}: ${e.hours.toFixed(1)}h">
-                                <span>${KaiHtml.escape(e.short_code || e.name.substring(0, 4))}</span>
-                                <span>${e.hours.toFixed(1).replace('.', ',')}h</span>
-                            </div>
-                        `;
-                    });
-                } else if (d.is_current_month && d.is_holiday) {
-                    desktopBadges += `
-                        <div class="proj-day-entry-badge" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #f59e0b;" title="${KaiHtml.escape(d.holiday_name)}">
-                            <span>Feiertag</span>
-                        </div>
-                    `;
-                }
-                desktopBadges += '</div>';
-
-                // 2. Mobile Badges (Segmentierter Farb-Balken wie in Tagesansicht)
-                let mobileBadges = '<div class="proj-mobile-badges">';
                 if (d.is_current_month) {
                     if (d.actual_hours > 0) {
                         const totalDayHrs = Math.max(d.actual_hours, 0.1);
                         const fillPct = Math.min(100, Math.round((d.actual_hours / 8.0) * 100));
 
-                        mobileBadges += `<div class="proj-mob-hours">${d.actual_hours.toFixed(1).replace('.', ',')}h</div>`;
-                        mobileBadges += '<div class="proj-mob-bar-track">';
-                        mobileBadges += `<div class="proj-mob-bar-fill" style="width: ${fillPct}%;">`;
+                        html += '<div class="proj-day-bar-container">';
+                        html += '<div class="proj-day-bar-track">';
+                        html += `<div class="proj-day-bar-fill" style="width: ${fillPct}%;">`;
 
                         if (d.entries && d.entries.length > 0) {
                             d.entries.forEach((e) => {
                                 const segPct = (e.hours / totalDayHrs) * 100;
                                 const segCol = e.color || '#0284c7';
-                                mobileBadges += `<span class="proj-mob-bar-seg" style="width: ${segPct}%; background: ${KaiHtml.escape(segCol)};" title="${KaiHtml.escape(e.name)}: ${e.hours.toFixed(1)}h"></span>`;
+                                html += `<span class="proj-day-bar-seg" style="width: ${segPct}%; background: ${KaiHtml.escape(segCol)};" title="${KaiHtml.escape(e.name)}: ${e.hours.toFixed(1).replace('.', ',')}h"></span>`;
                             });
                         } else {
-                            mobileBadges += '<span class="proj-mob-bar-seg" style="width: 100%; background: #0284c7;"></span>';
+                            html += '<span class="proj-day-bar-seg" style="width: 100%; background: #0284c7;"></span>';
                         }
 
-                        mobileBadges += '</div></div>';
+                        html += '</div></div></div>';
                     } else if (d.is_holiday) {
-                        mobileBadges += '<span class="proj-mob-icon" title="Feiertag">🎉</span>';
+                        const holName = d.holiday_name || 'Feiertag';
+                        html += `<div class="proj-day-status-badge" title="${KaiHtml.escape(holName)}"><span>🎉</span><span class="proj-status-text">${KaiHtml.escape(holName)}</span></div>`;
                     }
                 }
-                mobileBadges += '</div>';
 
-                html += desktopBadges + mobileBadges;
                 html += '</td>';
             });
 
