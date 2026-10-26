@@ -393,7 +393,7 @@ class ProjectsEngine
             ];
         }
 
-        // Projekt-Zusammenfassung des Monats mit prozentualer Verteilung
+        // Projekt-Zusammenfassung des Monats mit prozentualer Verteilung & Personentagen (PT = Stunden / 8)
         $projectSummary = [];
         foreach ($finalRows as $r) {
             if ($r['total_hours'] > 0) {
@@ -404,6 +404,7 @@ class ProjectsEngine
                     'color' => $r['color'],
                     'type' => $r['type'],
                     'total_hours' => round($r['total_hours'], 1),
+                    'total_pt' => round($r['total_hours'] / 8.0, 2),
                     'percentage' => $pct,
                 ];
             }

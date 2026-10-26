@@ -169,10 +169,10 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                     </table>
                 </div>
 
-                <!-- Projekt-Aufteilung des Monats -->
+                <!-- Projekt-Aufteilung des Monats (Personentage) -->
                 <div style="margin-top: 16px;">
                     <div style="font-size: 13px; font-weight: 700; color: var(--proj-text-muted); margin-bottom: 8px;">
-                        Projektverteilung im Monat:
+                        Projektverteilung im Monat (in Personentagen PT, 1 PT = 8,0h):
                     </div>
                     <div id="project-summary-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
                         <!-- Wird via JS gerendert -->
@@ -180,7 +180,7 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                 </div>
 
                 <div style="font-size: 12px; color: var(--proj-text-muted); margin-top: 12px;">
-                    💡 <em>Klicke auf einen Tag im Kalender, um diesen oben als Tagesbuchung zu öffnen.</em>
+                    💡 <em>Klicke auf einen Tag im Kalender zum Bearbeiten oder auf eine Projekt-Karte zum Kopieren des PT-Werts.</em>
                 </div>
             </div>
 

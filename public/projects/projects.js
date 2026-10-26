@@ -529,7 +529,9 @@
 
         const summaryEl = document.getElementById('matrix-summary');
         if (summaryEl) {
-            summaryEl.textContent = `Soll: ${m.total_target_hours.toFixed(1).replace('.', ',')}h | Ist: ${m.total_actual_hours.toFixed(1).replace('.', ',')}h`;
+            const targetPt = (m.total_target_hours / 8.0).toFixed(2).replace('.', ',');
+            const actualPt = (m.total_actual_hours / 8.0).toFixed(2).replace('.', ',');
+            summaryEl.textContent = `Soll: ${targetPt} PT (${m.total_target_hours.toFixed(1).replace('.', ',')}h) | Ist: ${actualPt} PT (${m.total_actual_hours.toFixed(1).replace('.', ',')}h)`;
         }
 
         renderWeekView(m);
@@ -605,7 +607,7 @@
         html += '</tbody>';
         table.innerHTML = html;
 
-        // Render project summary cards
+        // Render project summary cards (Personentage PT im Fokus)
         const summaryCont = document.getElementById('project-summary-container');
         if (summaryCont) {
             if (!m.project_summary || m.project_summary.length === 0) {
@@ -614,18 +616,23 @@
                 let sHtml = '';
                 m.project_summary.forEach((p) => {
                     const col = p.color || '#0284c7';
+                    const pt = p.total_pt !== undefined ? p.total_pt : (p.total_hours / 8.0);
+                    const ptStr = pt.toFixed(2).replace('.', ',');
+                    const hoursStr = p.total_hours.toFixed(1).replace('.', ',');
                     sHtml += `
-                        <div class="proj-summary-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <div class="proj-summary-card" data-copy-val="${pt.toFixed(2)}" title="${KaiHtml.escape(p.name)}: ${ptStr} PT (${hoursStr}h) — Klicke zum Kopieren des PT-Werts" style="cursor: pointer;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
                                 <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; max-width: 150px;">
                                     <span style="width: 10px; height: 10px; border-radius: 3px; background: ${KaiHtml.escape(col)}; flex-shrink: 0;"></span>
                                     <strong style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px;" title="${KaiHtml.escape(p.name)}">${KaiHtml.escape(p.name)}</strong>
                                 </div>
-                                <span style="font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; flex-shrink: 0;">${p.total_hours.toFixed(1).replace('.', ',')}h</span>
+                                <span style="font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; flex-shrink: 0; color: var(--proj-text);">
+                                    ${ptStr} <span style="font-size: 11px; font-weight: 700; color: var(--proj-text-muted);">PT</span>
+                                </span>
                             </div>
                             <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--proj-text-muted);">
                                 <span>${KaiHtml.escape(p.short_code)}</span>
-                                <span>${p.percentage.toFixed(1).replace('.', ',')}%</span>
+                                <span>${hoursStr}h (${p.percentage.toFixed(1).replace('.', ',')}%)</span>
                             </div>
                             <div class="proj-summary-bar">
                                 <div class="proj-summary-bar-fill" style="width: ${Math.min(p.percentage, 100)}%; background: ${KaiHtml.escape(col)};"></div>
