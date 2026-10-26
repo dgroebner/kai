@@ -279,15 +279,31 @@ final class ProjectsAuth
     public static function isSuperAdmin(): bool
     {
         $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
-        $currentUser = strtolower(trim((string)($_SESSION['proj_user_email'] ?? $_SESSION['user_email'] ?? '')));
+        $projUser = strtolower(trim((string)($_SESSION['proj_user_email'] ?? '')));
+        $kaiUser = strtolower(trim((string)($_SESSION['user_email'] ?? '')));
 
-        if ($adminEmail !== '' && $currentUser !== '' && hash_equals($adminEmail, $currentUser)) {
-            return true;
+        if ($adminEmail !== '') {
+            if ($projUser !== '' && hash_equals($adminEmail, $projUser)) {
+                return true;
+            }
+            if ($kaiUser !== '' && hash_equals($adminEmail, $kaiUser)) {
+                return true;
+            }
         }
 
         // Fallback: Ist in ALLOWED_USERS an erster Stelle
         $allowed = array_map('trim', explode(',', strtolower((string)($_ENV['ALLOWED_USERS'] ?? ''))));
-        return !empty($allowed) && !empty($currentUser) && $allowed[0] === $currentUser;
+        $firstAllowed = $allowed[0] ?? '';
+        if ($firstAllowed !== '') {
+            if ($projUser !== '' && $firstAllowed === $projUser) {
+                return true;
+            }
+            if ($kaiUser !== '' && $firstAllowed === $kaiUser) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
