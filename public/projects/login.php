@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Anmelden — Projects (Planisware Companion)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0284c7">
-    <link rel="stylesheet" href="../css/projects.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
 </head>
 <body class="proj-login-body">
     <div class="proj-login-card">

@@ -27,10 +27,10 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0284c7">
-    <link rel="stylesheet" href="../css/projects.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
 
-    <script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
-    <script src="../js/projects.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="http.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="projects.js?v=<?= APP_VERSION ?>" defer></script>
 </head>
 <body>
     <!-- App Header -->

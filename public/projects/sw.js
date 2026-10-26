@@ -3,9 +3,9 @@ const CACHE_VERSION = 'proj-v1';
 const CACHE_NAME = `projects-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
-    '/css/projects.css',
-    '/js/http.js',
-    '/js/projects.js',
+    '/projects/styles.css',
+    '/projects/http.js',
+    '/projects/projects.js',
     '/android-chrome-192x192.png',
     '/android-chrome-512x512.png',
 ];

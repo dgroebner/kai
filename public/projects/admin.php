@@ -21,7 +21,7 @@ $appUrl = ProjectsAuth::getAppUrl();
     <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
     <title>Projects Administration — Kai</title>
     <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
-    <link rel="stylesheet" href="../css/projects.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
     <script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
 </head>
 <body style="background: var(--bg, #0f172a); color: #f8fafc; padding: 24px;">
