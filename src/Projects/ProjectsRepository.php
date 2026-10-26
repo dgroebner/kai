@@ -136,7 +136,7 @@ class ProjectsRepository
         }
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO proj_projects (user_id, name, short_code, planisware_code as external_code, color, is_archived, created_at)
+            INSERT INTO proj_projects (user_id, name, short_code, planisware_code, color, is_archived, created_at)
             VALUES (:uid, :name, :code, :pcode, :color, 0, NOW())
         ");
         $stmt->execute([
