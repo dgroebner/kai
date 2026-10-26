@@ -7,6 +7,9 @@ use Kai\Tools\Projects\Security\ProjectsAuth;
 // Authentifizierung erzwingen (leitet bei Fehlen nach login.php um)
 ProjectsAuth::requirePage();
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 $userId = ProjectsAuth::getUserId();
 $userEmail = ProjectsAuth::getUserEmail();
 $userName = $_SESSION['proj_user_name'] ?? '';

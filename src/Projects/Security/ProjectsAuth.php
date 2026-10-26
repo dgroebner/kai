@@ -98,6 +98,8 @@ final class ProjectsAuth
         if (empty($_SESSION['proj_csrf_token'])) {
             $_SESSION['proj_csrf_token'] = bin2hex(random_bytes(32));
         }
+        // Mit Kai-Hauptsession synchronisieren für nahtlose Kompatibilität
+        $_SESSION['csrf_token'] = $_SESSION['proj_csrf_token'];
         return $_SESSION['proj_csrf_token'];
     }
 
@@ -121,8 +123,18 @@ final class ProjectsAuth
             $token = $payload['csrf_token'] ?? null;
         }
 
-        $sessionToken = $_SESSION['proj_csrf_token'] ?? '';
-        if (!is_string($token) || $token === '' || $sessionToken === '' || !hash_equals($sessionToken, $token)) {
+        if (!is_string($token) || $token === '') {
+            self::sendJsonError(403, 'Ungültiger CSRF-Token');
+        }
+
+        $valid = false;
+        if (!empty($_SESSION['proj_csrf_token']) && hash_equals($_SESSION['proj_csrf_token'], $token)) {
+            $valid = true;
+        } elseif (!empty($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token)) {
+            $valid = true;
+        }
+
+        if (!$valid) {
             self::sendJsonError(403, 'Ungültiger CSRF-Token');
         }
     }

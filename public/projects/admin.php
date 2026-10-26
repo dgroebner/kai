@@ -9,6 +9,9 @@ use Kai\Tools\Shared\Security\Auth;
 // Nur für Super-Admin zugänglich
 ProjectsAuth::requireSuperAdminPage();
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 $adminRepo = new ProjectsAdminRepository();
 $users = $adminRepo->getAllUsers();
 $appUrl = ProjectsAuth::getAppUrl();

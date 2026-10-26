@@ -1,5 +1,5 @@
 // Service Worker für Projects (PWA)
-const CACHE_VERSION = 'proj-v1';
+const CACHE_VERSION = 'proj-v2';
 const CACHE_NAME = `projects-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -34,8 +34,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API-Aufrufe direkt ans Netzwerk
-    if (url.pathname.includes('/api.php') || url.pathname.includes('/admin_api.php') || url.pathname.includes('/cron.php')) {
+    // API-Aufrufe und dynamische PHP-Seiten immer direkt ans Netzwerk (kein HTML/CSRF-Stale-Cache)
+    if (url.pathname.includes('/api.php') || url.pathname.includes('/admin_api.php') || url.pathname.includes('/cron.php') || url.pathname.endsWith('.php')) {
         return;
     }
 

@@ -58,14 +58,20 @@
      * @returns {Promise<object>} Antwort des Servers als Objekt
      */
     async function postJson(url, data) {
+        const token = getCsrfToken();
+        const payloadData = (typeof data === 'object' && data !== null) ? { ...data } : {};
+        if (!('csrf_token' in payloadData)) {
+            payloadData.csrf_token = token;
+        }
+
         const response = await fetch(url, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Token': getCsrfToken()
+                'X-CSRF-Token': token
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payloadData)
         });
 
         let payload;
