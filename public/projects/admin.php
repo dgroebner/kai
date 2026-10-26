@@ -20,18 +20,17 @@ $appUrl = ProjectsAuth::getAppUrl();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
     <title>Projects Administration — Kai</title>
-    <link rel="stylesheet" href="../css/style.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
-    <script src="../js/http.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="http.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="admin.js?v=<?= APP_VERSION ?>" defer></script>
 </head>
-<body style="background: var(--bg, #0f172a); color: #f8fafc; padding: 24px;">
+<body style="background: var(--proj-bg, #0f172a); color: var(--proj-text, #f8fafc); padding: 24px;">
     <div style="max-width: 1000px; margin: 0 auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
             <div>
-                <a href="../system/index.php" style="color: #94a3b8; text-decoration: none; font-size: 13px;">← Zurück zum Hauptportal</a>
+                <a href="index.php" style="color: var(--proj-text-muted, #94a3b8); text-decoration: none; font-size: 13px;">← Zurück zur Zeiterfassung</a>
                 <h1 style="font-size: 24px; font-weight: 800; margin-top: 4px;">⏱️ Projects Administration</h1>
-                <p style="color: #94a3b8; font-size: 13px;">Nutzerverwaltung & Isolation für die Projektzeiterfassung</p>
+                <p style="color: var(--proj-text-muted, #94a3b8); font-size: 13px;">Nutzerverwaltung & Isolation für die Projektzeiterfassung</p>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" id="btn-purge-mailbox" class="proj-btn proj-btn-secondary proj-btn-sm" title="Eingehende E-Mails im Postfach projects@agent-smith.de jetzt restlos löschen">
