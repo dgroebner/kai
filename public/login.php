@@ -21,6 +21,16 @@ if (isset($_GET['logout'])) {
 }
 
 // Callback von Google verarbeiten
+// Redirect-Ziel merken (nur für vertrauenswürdige agent-smith.de Domains)
+if (isset($_GET['redirect'])) {
+    $redirectUrl = filter_var($_GET['redirect'], FILTER_SANITIZE_URL);
+    $parsed = parse_url($redirectUrl);
+    $host = $parsed['host'] ?? '';
+    if (str_ends_with($host, 'agent-smith.de') || $host === 'localhost') {
+        $_SESSION['oauth_redirect'] = $redirectUrl;
+    }
+}
+
 if (isset($_GET['code'])) {
     // State-Parameter prüfen (Schutz vor Login-CSRF / Authorization-Code-Injection)
     $expectedState = $_SESSION['oauth_state'] ?? '';
@@ -74,7 +84,9 @@ if (isset($_GET['code'])) {
             unset($_SESSION['csrf_token']);
             Auth::csrfToken();
 
-            header('Location: ' . APP_URL . '/index.php');
+            $targetUrl = $_SESSION['oauth_redirect'] ?? (APP_URL . '/index.php');
+            unset($_SESSION['oauth_redirect']);
+            header('Location: ' . $targetUrl);
             exit;
         }
 
@@ -90,7 +102,9 @@ if (isset($_GET['code'])) {
 
 // Bereits angemeldet? Direkt zum Dashboard
 if (Auth::isAuthenticated()) {
-    header('Location: ' . APP_URL . '/index.php');
+    $targetUrl = $_SESSION['oauth_redirect'] ?? (APP_URL . '/index.php');
+    unset($_SESSION['oauth_redirect']);
+    header('Location: ' . $targetUrl);
     exit;
 }
 

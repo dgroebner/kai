@@ -32,6 +32,10 @@ final class ProjectsAuth
     {
         self::tryRestoreSessionFromCookie();
 
+        if (!self::isAuthenticated() && self::isSuperAdmin()) {
+            self::ensureSuperAdminProjectsSession();
+        }
+
         if (!self::isAuthenticated()) {
             $redirectUrl = self::getAppUrl() . '/login.php';
             header('Location: ' . $redirectUrl);
@@ -170,6 +174,42 @@ final class ProjectsAuth
      * Unterstützt sowohl die eigenständige Projects-OTP-Session (proj_user_email)
      * als auch die übergeordnete Kai-OAuth-Session (user_email).
      */
+    /**
+     * Stellt sicher, dass für einen über Google OAuth angemeldeten Plattform-Administrator
+     * automatisch ein Datensatz in proj_users existiert und die Projects-Session gesetzt ist.
+     */
+    public static function ensureSuperAdminProjectsSession(): void
+    {
+        $adminEmail = strtolower(trim((string)($_SESSION['user_email'] ?? '')));
+        if ($adminEmail === '') {
+            return;
+        }
+
+        try {
+            $db = ProjectsDatabase::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT id, email, name, status, state_code FROM proj_users WHERE email = :email LIMIT 1");
+            $stmt->execute([':email' => $adminEmail]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                $name = (string)($_SESSION['user_name'] ?? 'Administrator');
+                $ins = $db->prepare("INSERT INTO proj_users (email, name, status, state_code) VALUES (:email, :name, 'active', 'SN')");
+                $ins->execute([':email' => $adminEmail, ':name' => $name]);
+                $user = [
+                    'id' => (int)$db->lastInsertId(),
+                    'email' => $adminEmail,
+                    'name' => $name,
+                    'status' => 'active',
+                    'state_code' => 'SN',
+                ];
+            }
+
+            self::loginUser($user, false);
+        } catch (Throwable) {
+            // Leise ignorieren
+        }
+    }
+
     public static function isSuperAdmin(): bool
     {
         $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
@@ -192,7 +232,7 @@ final class ProjectsAuth
         self::tryRestoreSessionFromCookie();
 
         if (empty($_SESSION['proj_user_email']) && empty($_SESSION['user_email'])) {
-            header('Location: login.php');
+            header('Location: login.php?return=admin.php');
             exit;
         }
 

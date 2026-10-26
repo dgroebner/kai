@@ -18,6 +18,16 @@ if (ProjectsAuth::isAuthenticated()) {
     exit;
 }
 
+// Falls der Plattform-Admin via Google OAuth eingeloggt ist, direkt weiterleiten
+if (ProjectsAuth::isSuperAdmin()) {
+    $return = $_GET['return'] ?? 'admin.php';
+    if ($return !== 'admin.php' && $return !== 'index.php') {
+        $return = 'admin.php';
+    }
+    header('Location: ' . $return);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -33,6 +43,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("SELECT id, name, status FROM proj_users WHERE email = :email LIMIT 1");
                 $stmt->execute([':email' => $email]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$user) {
+                    $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
+                    $allowed = array_map('trim', explode(',', strtolower((string)($_ENV['ALLOWED_USERS'] ?? ''))));
+                    $firstAllowed = !empty($allowed) ? $allowed[0] : '';
+
+                    if (($adminEmail !== '' && hash_equals($adminEmail, $email)) || ($firstAllowed !== '' && hash_equals($firstAllowed, $email))) {
+                        $ins = $db->prepare("INSERT INTO proj_users (email, name, status, state_code) VALUES (:email, 'Administrator', 'active', 'SN')");
+                        $ins->execute([':email' => $email]);
+                        $newId = (int)$db->lastInsertId();
+                        $user = ['id' => $newId, 'name' => 'Administrator', 'status' => 'active'];
+                    }
+                }
 
                 if (!$user) {
                     // Privacy: Keine Auskunft darüber, ob die E-Mail existiert
@@ -137,6 +160,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     Anmeldecode anfordern
                 </button>
             </form>
+
+            <div style="margin: 24px 0 16px; display: flex; align-items: center; text-align: center; color: var(--proj-text-muted);">
+                <div style="flex: 1; border-bottom: 1px solid var(--proj-border, #334155);"></div>
+                <span style="padding: 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Portal-Administrator</span>
+                <div style="flex: 1; border-bottom: 1px solid var(--proj-border, #334155);"></div>
+            </div>
+
+            <a href="<?= rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/') ?>/login.php?redirect=https://projects.agent-smith.de/<?= htmlspecialchars($_GET['return'] ?? 'admin.php') ?>"
+               class="proj-btn proj-btn-secondary proj-btn-block" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>🔑</span>
+                <span>Mit Google anmelden (Admin)</span>
+            </a>
         <?php else: ?>
             <form method="POST" action="login.php" class="proj-form">
                 <input type="hidden" name="action" value="verify_otp">
