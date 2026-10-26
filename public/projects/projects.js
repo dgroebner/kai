@@ -11,6 +11,7 @@
     let currentMonth = new Date().getMonth() + 1;
     let selectedDate = new Date().toISOString().split('T')[0];
     let currentViewMode = localStorage.getItem('proj_view_mode') || 'week';
+    let currentPtMode = localStorage.getItem('proj_pt_mode') || 'rounded';
     let cachedProjects = [];
 
     async function init() {
@@ -28,6 +29,18 @@
             // LocalStorage might be disabled
         }
         applyViewMode();
+    }
+
+    function switchPtMode(mode) {
+        currentPtMode = mode;
+        try {
+            localStorage.setItem('proj_pt_mode', mode);
+        } catch (e) {
+            // LocalStorage might be disabled
+        }
+        if (currentMatrixData) {
+            renderProjectSummary(currentMatrixData);
+        }
     }
 
     function applyViewMode() {
@@ -112,6 +125,21 @@
         if (btnViewMatrix) {
             btnViewMatrix.addEventListener('click', () => {
                 switchViewMode('matrix');
+            });
+        }
+
+        // Umschalter 0,5 PT (Eintragung) vs. Exakt
+        const btnPtRounded = document.getElementById('btn-pt-rounded');
+        if (btnPtRounded) {
+            btnPtRounded.addEventListener('click', () => {
+                switchPtMode('rounded');
+            });
+        }
+
+        const btnPtExact = document.getElementById('btn-pt-exact');
+        if (btnPtExact) {
+            btnPtExact.addEventListener('click', () => {
+                switchPtMode('exact');
             });
         }
 
@@ -607,42 +635,96 @@
         html += '</tbody>';
         table.innerHTML = html;
 
-        // Render project summary cards (Personentage PT im Fokus)
-        const summaryCont = document.getElementById('project-summary-container');
-        if (summaryCont) {
-            if (!m.project_summary || m.project_summary.length === 0) {
-                summaryCont.innerHTML = '<div style="color: var(--proj-text-muted); font-size: 13px;">Noch keine gebuchten Stunden in diesem Monat.</div>';
-            } else {
-                let sHtml = '';
-                m.project_summary.forEach((p) => {
-                    const col = p.color || '#0284c7';
-                    const pt = p.total_pt !== undefined ? p.total_pt : (p.total_hours / 8.0);
-                    const ptStr = pt.toFixed(2).replace('.', ',');
-                    const hoursStr = p.total_hours.toFixed(1).replace('.', ',');
-                    sHtml += `
-                        <div class="proj-summary-card" data-copy-val="${pt.toFixed(2)}" title="${KaiHtml.escape(p.name)}: ${ptStr} PT (${hoursStr}h) — Klicke zum Kopieren des PT-Werts" style="cursor: pointer;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; max-width: 150px;">
-                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: ${KaiHtml.escape(col)}; flex-shrink: 0;"></span>
-                                    <strong style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px;" title="${KaiHtml.escape(p.name)}">${KaiHtml.escape(p.name)}</strong>
-                                </div>
-                                <span style="font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; flex-shrink: 0; color: var(--proj-text);">
-                                    ${ptStr} <span style="font-size: 11px; font-weight: 700; color: var(--proj-text-muted);">PT</span>
-                                </span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--proj-text-muted);">
-                                <span>${KaiHtml.escape(p.short_code)}</span>
-                                <span>${hoursStr}h (${p.percentage.toFixed(1).replace('.', ',')}%)</span>
-                            </div>
-                            <div class="proj-summary-bar">
-                                <div class="proj-summary-bar-fill" style="width: ${Math.min(p.percentage, 100)}%; background: ${KaiHtml.escape(col)};"></div>
-                            </div>
-                        </div>
-                    `;
-                });
-                summaryCont.innerHTML = sHtml;
+        renderProjectSummary(m);
+    }
+
+    function renderProjectSummary(m) {
+        const btnRounded = document.getElementById('btn-pt-rounded');
+        const btnExact = document.getElementById('btn-pt-exact');
+        const hintEl = document.getElementById('pt-mode-hint');
+
+        if (currentPtMode === 'rounded') {
+            if (btnRounded) {
+                btnRounded.classList.add('active');
+                btnRounded.style.background = '';
+                btnRounded.style.color = '';
+            }
+            if (btnExact) {
+                btnExact.classList.remove('active');
+                btnExact.style.background = 'transparent';
+                btnExact.style.color = 'var(--proj-text-muted)';
+            }
+            if (hintEl) {
+                const totalRounded = m.total_actual_rounded_pt !== undefined ? m.total_actual_rounded_pt.toFixed(1).replace('.', ',') : (Math.round((m.total_actual_hours / 8) * 2) / 2).toFixed(1).replace('.', ',');
+                hintEl.textContent = `0,5 PT-Modus: Exakte Hare-Niemeyer-Verteilung auf halbe Tage ohne Rundungsverlust (Monatssumme: ${totalRounded} PT). Klicke eine Karte zum Kopieren.`;
+            }
+        } else {
+            if (btnExact) {
+                btnExact.classList.add('active');
+                btnExact.style.background = '';
+                btnExact.style.color = '';
+            }
+            if (btnRounded) {
+                btnRounded.classList.remove('active');
+                btnRounded.style.background = 'transparent';
+                btnRounded.style.color = 'var(--proj-text-muted)';
+            }
+            if (hintEl) {
+                const totalExact = m.total_actual_pt !== undefined ? m.total_actual_pt.toFixed(2).replace('.', ',') : (m.total_actual_hours / 8.0).toFixed(2).replace('.', ',');
+                hintEl.textContent = `Exakt-Modus: Exakte Umrechnung der gebuchten Stunden (Monatssumme: ${totalExact} PT = ${m.total_actual_hours.toFixed(1).replace('.', ',')}h). Klicke eine Karte zum Kopieren.`;
             }
         }
+
+        const summaryCont = document.getElementById('project-summary-container');
+        if (!summaryCont) return;
+
+        if (!m.project_summary || m.project_summary.length === 0) {
+            summaryCont.innerHTML = '<div style="color: var(--proj-text-muted); font-size: 13px;">Noch keine gebuchten Stunden in diesem Monat.</div>';
+            return;
+        }
+
+        let sHtml = '';
+        m.project_summary.forEach((p) => {
+            const col = p.color || '#0284c7';
+            const isRounded = (currentPtMode === 'rounded');
+
+            const exactPt = (p.exact_pt !== undefined) ? p.exact_pt : (p.total_hours / 8.0);
+            const roundedPt = (p.rounded_pt !== undefined) ? p.rounded_pt : (Math.round(exactPt * 2) / 2);
+
+            const displayPt = isRounded ? roundedPt.toFixed(1).replace('.', ',') : exactPt.toFixed(2).replace('.', ',');
+            const copyVal = isRounded ? roundedPt.toFixed(1) : exactPt.toFixed(2);
+            const hoursStr = p.total_hours.toFixed(1).replace('.', ',');
+
+            const subline = isRounded
+                ? `Exakt: ${exactPt.toFixed(2).replace('.', ',')} PT • ${hoursStr}h`
+                : `${hoursStr}h (${p.percentage.toFixed(1).replace('.', ',')}%)`;
+
+            const tooltip = isRounded
+                ? `${p.name}: ${displayPt} PT gerundet (exakt ${exactPt.toFixed(2).replace('.', ',')} PT / ${hoursStr}h) — Klicke zum Kopieren von ${displayPt} PT`
+                : `${p.name}: ${displayPt} PT exakt (${hoursStr}h • ${p.percentage.toFixed(1)}%) — Klicke zum Kopieren`;
+
+            sHtml += `
+                <div class="proj-summary-card" data-copy-val="${copyVal}" title="${KaiHtml.escape(tooltip)}" style="cursor: pointer;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                        <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; max-width: 150px;">
+                            <span style="width: 10px; height: 10px; border-radius: 3px; background: ${KaiHtml.escape(col)}; flex-shrink: 0;"></span>
+                            <strong style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px;" title="${KaiHtml.escape(p.name)}">${KaiHtml.escape(p.name)}</strong>
+                        </div>
+                        <span style="font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; flex-shrink: 0; color: var(--proj-text);">
+                            ${displayPt} <span style="font-size: 11px; font-weight: 700; color: var(--proj-text-muted);">PT</span>
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--proj-text-muted);">
+                        <span>${KaiHtml.escape(p.short_code)}</span>
+                        <span>${subline}</span>
+                    </div>
+                    <div class="proj-summary-bar">
+                        <div class="proj-summary-bar-fill" style="width: ${Math.min(p.percentage, 100)}%; background: ${KaiHtml.escape(col)};"></div>
+                    </div>
+                </div>
+            `;
+        });
+        summaryCont.innerHTML = sHtml;
     }
 
     function render31DayTable(m) {

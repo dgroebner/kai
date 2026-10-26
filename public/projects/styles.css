@@ -639,7 +639,8 @@ input[type="color"].proj-color-input::-moz-color-swatch {
     transition: width 0.3s ease;
 }
 
-.proj-view-btn.active {
+.proj-view-btn.active,
+.proj-pt-btn.active {
     background: var(--proj-card-bg) !important;
     color: var(--proj-primary) !important;
     font-weight: 700;

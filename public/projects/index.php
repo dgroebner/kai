@@ -171,8 +171,18 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
 
                 <!-- Projekt-Aufteilung des Monats (Personentage) -->
                 <div style="margin-top: 16px;">
-                    <div style="font-size: 13px; font-weight: 700; color: var(--proj-text-muted); margin-bottom: 8px;">
-                        Projektverteilung im Monat (in Personentagen PT, 1 PT = 8,0h):
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                        <div style="font-size: 13px; font-weight: 700; color: var(--proj-text-muted);">
+                            Projektverteilung im Monat (1 PT = 8,0h):
+                        </div>
+                        <div style="display: inline-flex; background: rgba(0,0,0,0.25); padding: 2px; border-radius: 6px; border: 1px solid var(--proj-border);">
+                            <button type="button" id="btn-pt-rounded" class="proj-btn proj-btn-sm proj-pt-btn active" style="border: none; padding: 3px 8px; font-size: 11px;">
+                                🎯 0,5 PT (Eintragung)
+                            </button>
+                            <button type="button" id="btn-pt-exact" class="proj-btn proj-btn-sm proj-pt-btn" style="border: none; padding: 3px 8px; font-size: 11px; background: transparent; color: var(--proj-text-muted);">
+                                ⏱️ Exakt
+                            </button>
+                        </div>
                     </div>
                     <div id="project-summary-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
                         <!-- Wird via JS gerendert -->
@@ -180,7 +190,7 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                 </div>
 
                 <div style="font-size: 12px; color: var(--proj-text-muted); margin-top: 12px;">
-                    💡 <em>Klicke auf einen Tag im Kalender zum Bearbeiten oder auf eine Projekt-Karte zum Kopieren des PT-Werts.</em>
+                    💡 <span id="pt-mode-hint">0,5 PT-Modus: Automatische Hare-Niemeyer-Verteilung auf halbe Tage ohne Rundungsverlust. Klicke eine Karte zum Kopieren.</span>
                 </div>
             </div>
 

@@ -404,11 +404,17 @@ class ProjectsEngine
                     'color' => $r['color'],
                     'type' => $r['type'],
                     'total_hours' => round($r['total_hours'], 1),
-                    'total_pt' => round($r['total_hours'] / 8.0, 2),
+                    'exact_pt' => round($r['total_hours'] / 8.0, 2),
+                    'rounded_pt' => round($r['total_hours'] / 8.0, 2),
                     'percentage' => $pct,
                 ];
             }
         }
+
+        // Hare-Niemeyer / Größte-Reste-Verfahren für verlustfreie 0,5 PT-Verteilung
+        $projectSummary = $this->allocateHalfDayPT($projectSummary, $totalActualHours);
+
+        $targetTotalRoundedPT = round(($totalActualHours / 8.0) * 2) / 2.0;
 
         return [
             'year' => $year,
@@ -418,11 +424,82 @@ class ProjectsEngine
             'state_code' => $stateCode,
             'total_target_hours' => round($totalTargetHours, 1),
             'total_actual_hours' => round($totalActualHours, 1),
+            'total_target_pt' => round($totalTargetHours / 8.0, 2),
+            'total_actual_pt' => round($totalActualHours / 8.0, 2),
+            'total_actual_rounded_pt' => $targetTotalRoundedPT,
             'days' => $days,
             'rows' => $finalRows,
             'daily_totals' => $dailyTotals,
             'weeks' => $weeks,
             'project_summary' => $projectSummary,
         ];
+    }
+
+    /**
+     * Verteilt die Monatsstunden verlustfrei auf 0,5 PT-Schritte (Hare-Niemeyer / Größte-Reste-Verfahren).
+     * Garantiert, dass die Summe aller gerundeten Projekt-PT exakt der Gesamtsumme der Monats-PT entspricht.
+     */
+    private function allocateHalfDayPT(array $projectSummary, float $totalActualHours): array
+    {
+        if (empty($projectSummary) || $totalActualHours <= 0.0) {
+            return $projectSummary;
+        }
+
+        // Ziel-Gesamtsumme in 0,5 PT-Schritten (1 Einheit = 0,5 PT)
+        $targetTotalPT = round(($totalActualHours / 8.0) * 2) / 2.0;
+        $targetUnits = (int)round($targetTotalPT * 2);
+
+        $allocated = [];
+        $baseSumUnits = 0;
+
+        foreach ($projectSummary as $idx => $p) {
+            $exactPT = $p['total_hours'] / 8.0;
+            $k = $exactPT * 2.0; // Einheiten à 0,5 PT
+            $baseUnits = (int)floor($k);
+            $remainder = $k - $baseUnits;
+
+            $allocated[$idx] = [
+                'base_units' => $baseUnits,
+                'remainder' => $remainder,
+                'exact_pt' => round($exactPT, 2),
+                'hours' => $p['total_hours'],
+            ];
+            $baseSumUnits += $baseUnits;
+        }
+
+        $deficit = $targetUnits - $baseSumUnits;
+
+        // Sortiere nach absteigendem Rest, bei Gleichstand nach Gesamtstunden
+        $indices = array_keys($allocated);
+        usort($indices, function ($a, $b) use ($allocated) {
+            $cmp = $allocated[$b]['remainder'] <=> $allocated[$a]['remainder'];
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return $allocated[$b]['hours'] <=> $allocated[$a]['hours'];
+        });
+
+        if ($deficit > 0) {
+            for ($i = 0; $i < $deficit && $i < count($indices); $i++) {
+                $allocated[$indices[$i]]['base_units'] += 1;
+            }
+        } elseif ($deficit < 0) {
+            $surplus = abs($deficit);
+            $revIndices = array_reverse($indices);
+            for ($i = 0; $i < $surplus && $i < count($revIndices); $i++) {
+                if ($allocated[$revIndices[$i]]['base_units'] > 0) {
+                    $allocated[$revIndices[$i]]['base_units'] -= 1;
+                }
+            }
+        }
+
+        foreach ($projectSummary as $idx => &$p) {
+            $p['exact_pt'] = $allocated[$idx]['exact_pt'];
+            $p['rounded_pt'] = round($allocated[$idx]['base_units'] * 0.5, 1);
+            $p['total_pt'] = $p['rounded_pt'];
+        }
+        unset($p);
+
+        return $projectSummary;
     }
 }
