@@ -206,6 +206,61 @@ body {
     border-color: var(--proj-primary);
 }
 
+.proj-form-group input[type="color"],
+input[type="color"].proj-color-input {
+    height: 42px;
+    padding: 3px 5px;
+    cursor: pointer;
+    background: var(--proj-bg);
+    border: 1px solid var(--proj-border);
+    border-radius: var(--proj-radius);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+}
+
+.proj-form-group input[type="color"]::-webkit-color-swatch-wrapper,
+input[type="color"].proj-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 4px;
+}
+
+.proj-form-group input[type="color"]::-webkit-color-swatch,
+input[type="color"].proj-color-input::-webkit-color-swatch {
+    border: 1px solid var(--proj-border);
+    border-radius: 4px;
+}
+
+.proj-form-group input[type="color"]::-moz-color-swatch,
+input[type="color"].proj-color-input::-moz-color-swatch {
+    border: 1px solid var(--proj-border);
+    border-radius: 4px;
+}
+
+.proj-manage-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--proj-bg);
+    border: 1px solid var(--proj-border);
+    border-radius: var(--proj-radius);
+    gap: 12px;
+}
+
+.proj-manage-card.is-archived {
+    opacity: 0.6;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.proj-manage-color-badge {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
 .proj-alert {
     padding: 12px 16px;
     border-radius: var(--proj-radius);

@@ -54,6 +54,11 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                 <span>▾</span>
             </button>
 
+            <!-- Projekte verwalten Button -->
+            <button type="button" class="proj-btn proj-btn-ghost proj-btn-sm" id="btn-header-manage-projects" data-open-modal="modal-manage-projects" title="Projekte verwalten & bearbeiten">
+                📁 Projekte
+            </button>
+
             <!-- Profil Modal Button -->
             <button type="button" class="proj-btn proj-btn-ghost proj-btn-sm" data-open-modal="modal-profile" title="Profil & Bundesland">
                 ⚙️ <?= htmlspecialchars($userName ?: explode('@', $userEmail)[0]) ?>
@@ -147,7 +152,10 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                     <button type="button" id="matrix-prev-month" class="proj-btn proj-btn-secondary proj-btn-sm">◀</button>
                     <span id="matrix-title" style="font-weight: 700; font-size: 14px; min-width: 120px; text-align: center;"></span>
                     <button type="button" id="matrix-next-month" class="proj-btn proj-btn-secondary proj-btn-sm">▶</button>
-                    <button type="button" class="proj-btn proj-btn-primary proj-btn-sm" data-open-modal="modal-new-project">
+                    <button type="button" class="proj-btn proj-btn-secondary proj-btn-sm" data-open-modal="modal-manage-projects" title="Projekte bearbeiten & archivieren">
+                        📁 Projekte
+                    </button>
+                    <button type="button" class="proj-btn proj-btn-primary proj-btn-sm" id="btn-open-create-project" data-open-modal="modal-project-form">
                         + Projekt
                     </button>
                 </div>
@@ -340,39 +348,95 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
     </div>
 
     <!-- -------------------------------------------------------------
-     * MODAL: NEUES PROJEKT ANLEGEN
+     * MODAL: PROJEKTE VERWALTEN (BEARBEITEN, ARCHIVIEREN)
      * ------------------------------------------------------------- -->
-    <div id="modal-new-project" class="proj-modal-backdrop" style="display: none;">
-        <div class="proj-modal-card">
+    <div id="modal-manage-projects" class="proj-modal-backdrop" style="display: none;">
+        <div class="proj-modal-card" style="max-width: 680px;">
             <div class="proj-modal-header">
-                <h3 class="proj-modal-title">Neues Projekt anlegen</h3>
+                <div>
+                    <h3 class="proj-modal-title">📁 Projektverwaltung</h3>
+                    <div style="font-size: 13px; color: var(--proj-text-muted); margin-top: 2px;">
+                        Bestehende Projekte anpassen oder archivieren
+                    </div>
+                </div>
                 <button type="button" class="proj-modal-close" data-close-modal>✕</button>
             </div>
-            <form id="form-new-project">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--proj-text-muted); user-select: none;">
+                    <input type="checkbox" id="manage-show-archived" style="width: auto;">
+                    <span>Archivierte Projekte anzeigen</span>
+                </label>
+                <button type="button" class="proj-btn proj-btn-primary proj-btn-sm" id="btn-manage-add-project">
+                    + Neues Projekt anlegen
+                </button>
+            </div>
+
+            <div id="manage-projects-list" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Wird via JS gerendert -->
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
+                <button type="button" class="proj-btn proj-btn-secondary" data-close-modal>Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- -------------------------------------------------------------
+     * MODAL: PROJEKT ANLEGEN / BEARBEITEN
+     * ------------------------------------------------------------- -->
+    <div id="modal-project-form" class="proj-modal-backdrop" style="display: none;">
+        <div class="proj-modal-card">
+            <div class="proj-modal-header">
+                <h3 class="proj-modal-title" id="project-form-title">Neues Projekt anlegen</h3>
+                <button type="button" class="proj-modal-close" data-close-modal>✕</button>
+            </div>
+            <form id="form-project">
+                <input type="hidden" id="p-id" name="id" value="">
+
                 <div class="proj-form-group">
-                    <label for="new-p-name">Projektname</label>
-                    <input type="text" id="new-p-name" name="name" required placeholder="z. B. Core Architecture">
+                    <label for="p-name">Projektname</label>
+                    <input type="text" id="p-name" name="name" required placeholder="z. B. SU / WE Leasman Toolbox">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div class="proj-form-group">
-                        <label for="new-p-short">Kürzel (Quick-Command)</label>
-                        <input type="text" id="new-p-short" name="short_code" required maxlength="12" placeholder="z. B. CORE">
+                        <label for="p-short">Kürzel (Quick-Command)</label>
+                        <input type="text" id="p-short" name="short_code" required maxlength="12" placeholder="z. B. LM">
                     </div>
                     <div class="proj-form-group">
-                        <label for="new-p-color">Farbe</label>
-                        <input type="color" id="new-p-color" name="color" value="#0284c7">
+                        <label for="p-color">Farbe</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="color" id="p-color" name="color" value="#0284c7" class="proj-color-input" style="width: 50px; flex-shrink: 0;">
+                            <input type="text" id="p-color-hex" value="#0284c7" maxlength="7" style="font-family: monospace; text-transform: uppercase;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schnellauswahl beliebter Projektfarben -->
+                <div style="margin-top: -6px; margin-bottom: 14px;">
+                    <div style="font-size: 11px; color: var(--proj-text-muted); margin-bottom: 6px;">Farbpalette:</div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="proj-color-preset" data-color="#0284c7" style="background:#0284c7; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Blau"></button>
+                        <button type="button" class="proj-color-preset" data-color="#10b981" style="background:#10b981; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Grün"></button>
+                        <button type="button" class="proj-color-preset" data-color="#f59e0b" style="background:#f59e0b; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Orange"></button>
+                        <button type="button" class="proj-color-preset" data-color="#ef4444" style="background:#ef4444; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Rot"></button>
+                        <button type="button" class="proj-color-preset" data-color="#8b5cf6" style="background:#8b5cf6; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Lila"></button>
+                        <button type="button" class="proj-color-preset" data-color="#ec4899" style="background:#ec4899; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Pink"></button>
+                        <button type="button" class="proj-color-preset" data-color="#06b6d4" style="background:#06b6d4; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Türkis"></button>
+                        <button type="button" class="proj-color-preset" data-color="#eab308" style="background:#eab308; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Gelb"></button>
+                        <button type="button" class="proj-color-preset" data-color="#64748b" style="background:#64748b; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;" title="Schiefer"></button>
                     </div>
                 </div>
 
                 <div class="proj-form-group">
-                    <label for="new-p-planisware">Projekt- / PSP-Code (optional)</label>
-                    <input type="text" id="new-p-code" name="external_code" placeholder="z. B. PRJ-2026-004">
+                    <label for="p-code">Projekt- / PSP-Code (optional)</label>
+                    <input type="text" id="p-code" name="external_code" placeholder="z. B. PRJ-2026-004">
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                     <button type="button" class="proj-btn proj-btn-secondary" data-close-modal>Abbrechen</button>
-                    <button type="submit" class="proj-btn proj-btn-primary">Anlegen</button>
+                    <button type="submit" class="proj-btn proj-btn-primary" id="project-form-submit">Speichern</button>
                 </div>
             </form>
         </div>

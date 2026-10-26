@@ -11,6 +11,7 @@
     let currentMonth = new Date().getMonth() + 1;
     let selectedDate = new Date().toISOString().split('T')[0];
     let currentViewMode = localStorage.getItem('proj_view_mode') || 'week';
+    let cachedProjects = [];
 
     async function init() {
         bindEvents();
@@ -145,6 +146,13 @@
             const modalTrigger = e.target.closest('[data-open-modal]');
             if (modalTrigger) {
                 const modalId = modalTrigger.getAttribute('data-open-modal');
+                if (modalId === 'modal-manage-projects') {
+                    loadManageProjectsList();
+                } else if (modalId === 'modal-project-form') {
+                    if (modalTrigger.id === 'btn-open-create-project' || modalTrigger.id === 'btn-manage-add-project') {
+                        resetProjectForm();
+                    }
+                }
                 const modal = document.getElementById(modalId);
                 if (modal) modal.style.display = 'flex';
                 return;
@@ -155,6 +163,34 @@
             if (modalClose) {
                 const modal = modalClose.closest('.proj-modal-backdrop');
                 if (modal) modal.style.display = 'none';
+                return;
+            }
+
+            // Projekt bearbeiten
+            const editBtn = e.target.closest('[data-edit-project]');
+            if (editBtn) {
+                const pid = editBtn.getAttribute('data-edit-project');
+                editProject(pid);
+                return;
+            }
+
+            // Projekt archivieren / wiederherstellen
+            const archBtn = e.target.closest('[data-toggle-archive]');
+            if (archBtn) {
+                const pid = archBtn.getAttribute('data-toggle-archive');
+                const archiveVal = archBtn.getAttribute('data-archive-val') === '1';
+                toggleArchiveProject(pid, archiveVal);
+                return;
+            }
+
+            // Farbauswahl Preset geklickt
+            const colorPreset = e.target.closest('[data-color]');
+            if (colorPreset) {
+                const cVal = colorPreset.getAttribute('data-color');
+                const picker = document.getElementById('p-color');
+                const hexInput = document.getElementById('p-color-hex');
+                if (picker) picker.value = cVal;
+                if (hexInput) hexInput.value = cVal.toUpperCase();
                 return;
             }
 
@@ -277,14 +313,48 @@
             });
         }
 
-        // Neues Projekt anlegen
-        const newProjForm = document.getElementById('form-new-project');
-        if (newProjForm) {
-            newProjForm.addEventListener('submit', async (e) => {
+        // Farb-Input & Hex-Feld Synchronisation
+        const colorPicker = document.getElementById('p-color');
+        const colorHex = document.getElementById('p-color-hex');
+        if (colorPicker && colorHex) {
+            colorPicker.addEventListener('input', (e) => {
+                colorHex.value = e.target.value.toUpperCase();
+            });
+            colorHex.addEventListener('input', (e) => {
+                let val = e.target.value.trim();
+                if (val && !val.startsWith('#')) val = '#' + val;
+                if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                    colorPicker.value = val;
+                }
+            });
+        }
+
+        // Projektverwaltung: Archivierte umschalten
+        const showArchivedBox = document.getElementById('manage-show-archived');
+        if (showArchivedBox) {
+            showArchivedBox.addEventListener('change', renderManageProjectsList);
+        }
+
+        // Projektverwaltung: Button "+ Neues Projekt anlegen"
+        const btnManageAdd = document.getElementById('btn-manage-add-project');
+        if (btnManageAdd) {
+            btnManageAdd.addEventListener('click', () => {
+                resetProjectForm();
+                const formModal = document.getElementById('modal-project-form');
+                if (formModal) formModal.style.display = 'flex';
+            });
+        }
+
+        // Projekt anlegen / bearbeiten
+        const projForm = document.getElementById('form-project');
+        if (projForm) {
+            projForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const fd = new FormData(newProjForm);
+                const fd = new FormData(projForm);
+                const projectId = fd.get('id') || null;
                 const payload = {
                     action: 'save_project',
+                    id: projectId,
                     name: fd.get('name'),
                     short_code: fd.get('short_code'),
                     external_code: fd.get('external_code'),
@@ -292,12 +362,13 @@
                 };
                 const res = await KaiHttp.postJson('api.php', payload);
                 if (res.success) {
-                    showToast('Projekt gespeichert.');
-                    newProjForm.reset();
-                    document.getElementById('modal-new-project').style.display = 'none';
+                    showToast(projectId ? 'Projekt aktualisiert.' : 'Projekt angelegt.');
+                    projForm.reset();
+                    document.getElementById('modal-project-form').style.display = 'none';
+                    await loadManageProjectsList();
                     location.reload();
                 } else {
-                    alert(res.message || 'Fehler');
+                    alert(res.message || 'Fehler beim Speichern');
                 }
             });
         }
@@ -620,6 +691,122 @@
         tfoot += `<td class="proj-total-col">${m.total_actual_hours.toFixed(1).replace('.', ',')}h</td></tr></tfoot>`;
 
         table.innerHTML = thead + tbody + tfoot;
+    }
+
+    async function loadManageProjectsList() {
+        const listEl = document.getElementById('manage-projects-list');
+        if (!listEl) return;
+        listEl.innerHTML = '<div style="color: var(--proj-text-muted); font-size: 13px; padding: 12px; text-align: center;">Lade Projekte...</div>';
+
+        try {
+            const res = await fetch('api.php?action=projects&all=1');
+            const json = await res.json();
+            if (json.success) {
+                cachedProjects = json.data;
+                renderManageProjectsList();
+            }
+        } catch (e) {
+            listEl.innerHTML = '<div style="color: var(--proj-danger); font-size: 13px;">Fehler beim Laden der Projekte.</div>';
+        }
+    }
+
+    function renderManageProjectsList() {
+        const listEl = document.getElementById('manage-projects-list');
+        if (!listEl) return;
+
+        const showArchived = document.getElementById('manage-show-archived')?.checked ?? false;
+        const visible = cachedProjects.filter((p) => showArchived || Number(p.is_archived) === 0);
+
+        if (visible.length === 0) {
+            listEl.innerHTML = '<div style="color: var(--proj-text-muted); font-size: 13px; padding: 20px; text-align: center;">Keine Projekte vorhanden.</div>';
+            return;
+        }
+
+        let html = '';
+        visible.forEach((p) => {
+            const isArchived = Boolean(Number(p.is_archived));
+            const color = p.color || '#0284c7';
+            html += `
+                <div class="proj-manage-card ${isArchived ? 'is-archived' : ''}">
+                    <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0;">
+                        <span class="proj-manage-color-badge" style="background: ${KaiHtml.escape(color)};"></span>
+                        <div style="overflow: hidden;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <strong style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${KaiHtml.escape(p.name)}</strong>
+                                <span style="font-weight: 700; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,0.08);">${KaiHtml.escape(p.short_code)}</span>
+                                ${isArchived ? '<span style="font-size: 10px; color: #f59e0b; border: 1px solid #f59e0b; padding: 0 4px; border-radius: 3px;">Archiviert</span>' : ''}
+                            </div>
+                            ${p.external_code ? `<div style="font-size: 11px; color: var(--proj-text-muted); margin-top: 2px;">PSP: ${KaiHtml.escape(p.external_code)}</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                        <button type="button" class="proj-btn proj-btn-secondary proj-btn-sm" data-edit-project="${p.id}" title="Projekt bearbeiten">
+                            ✏️ Bearbeiten
+                        </button>
+                        ${isArchived ? `
+                            <button type="button" class="proj-btn proj-btn-ghost proj-btn-sm" data-toggle-archive="${p.id}" data-archive-val="0" title="Projekt wiederherstellen">
+                                ♻️ Aktivieren
+                            </button>
+                        ` : `
+                            <button type="button" class="proj-btn proj-btn-ghost proj-btn-sm" data-toggle-archive="${p.id}" data-archive-val="1" title="Projekt archivieren">
+                                📦 Archivieren
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        });
+        listEl.innerHTML = html;
+    }
+
+    function resetProjectForm() {
+        const form = document.getElementById('form-project');
+        if (!form) return;
+        form.reset();
+        document.getElementById('p-id').value = '';
+        document.getElementById('p-color').value = '#0284c7';
+        document.getElementById('p-color-hex').value = '#0284c7';
+        document.getElementById('project-form-title').textContent = 'Neues Projekt anlegen';
+        document.getElementById('project-form-submit').textContent = 'Anlegen';
+    }
+
+    function editProject(id) {
+        const p = cachedProjects.find((item) => Number(item.id) === Number(id));
+        if (!p) return;
+
+        document.getElementById('p-id').value = p.id;
+        document.getElementById('p-name').value = p.name;
+        document.getElementById('p-short').value = p.short_code;
+        const color = p.color || '#0284c7';
+        document.getElementById('p-color').value = color;
+        document.getElementById('p-color-hex').value = color.toUpperCase();
+        document.getElementById('p-code').value = p.external_code || '';
+
+        document.getElementById('project-form-title').textContent = 'Projekt bearbeiten';
+        document.getElementById('project-form-submit').textContent = 'Speichern';
+
+        const formModal = document.getElementById('modal-project-form');
+        if (formModal) formModal.style.display = 'flex';
+    }
+
+    async function toggleArchiveProject(id, archive) {
+        const confirmMsg = archive ? 'Projekt wirklich archivieren?' : 'Projekt wieder aktivieren?';
+        if (!confirm(confirmMsg)) return;
+
+        const res = await KaiHttp.postJson('api.php', {
+            action: 'archive_project',
+            id: id,
+            archive: archive,
+        });
+
+        if (res.success) {
+            showToast(res.message || (archive ? 'Projekt archiviert.' : 'Projekt wiederhergestellt.'));
+            await loadManageProjectsList();
+            await loadDayDetails(selectedDate);
+            await loadMonthMatrix(currentYear, currentMonth);
+        } else {
+            alert(res.message || 'Fehler beim Archivieren');
+        }
     }
 
     async function deleteException(id) {

@@ -213,6 +213,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // 6b. Projekt archivieren / wiederherstellen
+    if ($postAction === 'archive_project') {
+        $projectId = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+        $archive = !empty($input['archive']);
+        if (!$projectId) {
+            ProjectsAuth::sendJsonError(400, 'Ungültige Projekt-ID');
+        }
+        $repo->archiveProject($userId, $projectId, $archive);
+        $all = $repo->getProjects($userId, true);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $all,
+            'message' => $archive ? 'Projekt archiviert.' : 'Projekt wiederhergestellt.',
+        ]);
+        exit;
+    }
+
     // 7. Profil aktualisieren (Bundesland SN/HH, Name, Reminder)
     if ($postAction === 'save_profile') {
         $name = trim((string)($input['name'] ?? ''));
