@@ -1,0 +1,415 @@
+<?php
+
+namespace Kai\Tools\Projects\Security;
+
+use JetBrains\PhpStorm\NoReturn;
+use Kai\Tools\Projects\Db\ProjectsDatabase;
+use Kai\Tools\Shared\Log\Logger;
+use PDO;
+use Throwable;
+
+/**
+ * Isolierte Authentifizierung und Session-Verwaltung für das Projects-Modul.
+ *
+ * Garantiert strikte Trennung:
+ * - Projects-Nutzer haben KEINEN Zugriff auf Kai-Kern-Domains.
+ * - Nutzt $_SESSION['proj_user_id'] und $_SESSION['proj_user_email'].
+ * - Unterstützt 30-Tage gehärtete Remember-Cookies (proj_remember).
+ */
+final class ProjectsAuth
+{
+    private const string COOKIE_NAME = 'proj_remember';
+
+    private function __construct()
+    {
+    }
+
+    /**
+     * Schützt HTML-Seiten des Projects-Moduls.
+     * Leitet nicht angemeldete Besucher zum Projects-Login um.
+     */
+    public static function requirePage(): void
+    {
+        self::tryRestoreSessionFromCookie();
+
+        if (!self::isAuthenticated()) {
+            $redirectUrl = self::getAppUrl() . '/login.php';
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+    }
+
+    /**
+     * Schützt JSON-Endpunkte des Projects-Moduls (antwortet mit 401).
+     */
+    public static function requireApi(): void
+    {
+        self::tryRestoreSessionFromCookie();
+
+        if (!self::isAuthenticated()) {
+            self::sendJsonError(401, 'Nicht angemeldet bei Projects');
+        }
+    }
+
+    /**
+     * Prüft, ob eine aktive Projects-Session vorliegt.
+     */
+    public static function isAuthenticated(): bool
+    {
+        return !empty($_SESSION['proj_user_id']) && !empty($_SESSION['proj_user_email']);
+    }
+
+    /**
+     * Gibt die ID des aktuell angemeldeten Projects-Nutzers zurück.
+     */
+    public static function getUserId(): int
+    {
+        return (int)($_SESSION['proj_user_id'] ?? 0);
+    }
+
+    /**
+     * Gibt die E-Mail-Adresse des aktuell angemeldeten Projects-Nutzers zurück.
+     */
+    public static function getUserEmail(): string
+    {
+        return (string)($_SESSION['proj_user_email'] ?? '');
+    }
+
+    /**
+     * Erzwingt eine bestimmte HTTP-Methode.
+     */
+    public static function requireMethod(string $method): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== strtoupper($method)) {
+            header('Allow: ' . strtoupper($method));
+            self::sendJsonError(405, 'Method Not Allowed');
+        }
+    }
+
+    /**
+     * CSRF-Token für Formulare & Meta-Tag.
+     */
+    public static function csrfToken(): string
+    {
+        if (empty($_SESSION['proj_csrf_token'])) {
+            $_SESSION['proj_csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['proj_csrf_token'];
+    }
+
+    /**
+     * Prüft das CSRF-Token.
+     */
+    public static function requireCsrfToken(?array $payload = null): void
+    {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+
+        if ($token === null && function_exists('getallheaders')) {
+            foreach ((array)getallheaders() as $name => $value) {
+                if (strtolower((string)$name) === 'x-csrf-token' && is_string($value) && $value !== '') {
+                    $token = $value;
+                    break;
+                }
+            }
+        }
+
+        if ($token === null && is_array($payload)) {
+            $token = $payload['csrf_token'] ?? null;
+        }
+
+        $sessionToken = $_SESSION['proj_csrf_token'] ?? '';
+        if (!is_string($token) || $token === '' || $sessionToken === '' || !hash_equals($sessionToken, $token)) {
+            self::sendJsonError(403, 'Ungültiger CSRF-Token');
+        }
+    }
+
+    /**
+     * Setzt die Session nach erfolgreicher Authentifizierung.
+     */
+    public static function loginUser(array $user, bool $setRememberCookie = true): void
+    {
+        session_regenerate_id(true);
+
+        $_SESSION['proj_user_id'] = (int)$user['id'];
+        $_SESSION['proj_user_email'] = (string)$user['email'];
+        $_SESSION['proj_user_name'] = (string)($user['name'] ?? '');
+        $_SESSION['proj_user_state'] = (string)($user['state_code'] ?? 'SN');
+
+        if ($setRememberCookie) {
+            self::createRememberToken((int)$user['id']);
+        }
+    }
+
+    /**
+     * Beendet die Projects-Session und löscht das Remember-Cookie.
+     */
+    public static function logout(): void
+    {
+        if (!empty($_COOKIE[self::COOKIE_NAME])) {
+            self::deleteRememberToken($_COOKIE[self::COOKIE_NAME]);
+            setcookie(self::COOKIE_NAME, '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Strict',
+            ]);
+        }
+
+        unset(
+            $_SESSION['proj_user_id'],
+            $_SESSION['proj_user_email'],
+            $_SESSION['proj_user_name'],
+            $_SESSION['proj_user_state'],
+            $_SESSION['proj_csrf_token']
+        );
+    }
+
+    /**
+     * Prüft, ob der angemeldete Kai-Nutzer der Super-Admin ist (für /projects/admin.php).
+     */
+    public static function isSuperAdmin(): bool
+    {
+        $adminEmail = strtolower(trim((string)($_ENV['ADMIN_EMAIL'] ?? '')));
+        $currentUser = strtolower(trim((string)($_SESSION['user_email'] ?? '')));
+
+        if ($adminEmail !== '' && $currentUser !== '' && hash_equals($adminEmail, $currentUser)) {
+            return true;
+        }
+
+        // Fallback: Ist in ALLOWED_USERS an erster Stelle
+        $allowed = array_map('trim', explode(',', strtolower((string)($_ENV['ALLOWED_USERS'] ?? ''))));
+        return !empty($allowed) && !empty($currentUser) && $allowed[0] === $currentUser;
+    }
+
+    /**
+     * Schützt Super-Admin-Endpunkte (Prüft Kai-Session gegen ADMIN_EMAIL).
+     */
+    public static function requireSuperAdminPage(): void
+    {
+        if (empty($_SESSION['user_email'])) {
+            header('Location: ' . rtrim($_ENV['APP_URL'] ?? '', '/') . '/login.php');
+            exit;
+        }
+
+        if (!self::isSuperAdmin()) {
+            http_response_code(403);
+            echo "Zugriff verweigert: Diese Seite ist ausschließlich für den Plattform-Administrator reserviert.";
+            exit;
+        }
+    }
+
+    /**
+     * Schützt Super-Admin-API-Endpunkte.
+     */
+    public static function requireSuperAdminApi(): void
+    {
+        if (empty($_SESSION['user_email'])) {
+            self::sendJsonError(401, 'Nicht angemeldet am Hauptportal');
+        }
+
+        if (!self::isSuperAdmin()) {
+            self::sendJsonError(403, 'Ausschließlich für den Administrator zugänglich');
+        }
+    }
+
+    /**
+     * Erstellt einen gehashten OTP-Code und speichert ihn in proj_auth_tokens.
+     */
+    public static function createOtp(int $userId): string
+    {
+        $db = ProjectsDatabase::getInstance()->getConnection();
+
+        // 6-stelligen numerischen Code generieren
+        $code = sprintf('%06d', random_int(100000, 999999));
+        $hash = self::hashOtp($code);
+
+        // Vorherige ungenutzte OTPs dieses Users entwerten
+        $delStmt = $db->prepare("DELETE FROM proj_auth_tokens WHERE user_id = :uid AND token_type = 'otp'");
+        $delStmt->execute([':uid' => $userId]);
+
+        $insStmt = $db->prepare("
+            INSERT INTO proj_auth_tokens (user_id, token_type, token_hash, attempts, expires_at, created_at)
+            VALUES (:uid, 'otp', :hash, 0, DATE_ADD(NOW(), INTERVAL 10 MINUTE), NOW())
+        ");
+        $insStmt->execute([
+            ':uid' => $userId,
+            ':hash' => $hash,
+        ]);
+
+        return $code;
+    }
+
+    /**
+     * Verifiziert einen eingegebenen 6-stelligen Code.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public static function verifyOtp(int $userId, string $enteredCode): array
+    {
+        $cleanCode = preg_replace('/\D/', '', $enteredCode);
+        if (strlen($cleanCode) !== 6) {
+            return ['success' => false, 'message' => 'Bitte gib einen 6-stelligen Zahlencode ein.'];
+        }
+
+        $db = ProjectsDatabase::getInstance()->getConnection();
+
+        $stmt = $db->prepare("
+            SELECT id, token_hash, attempts, expires_at
+            FROM proj_auth_tokens
+            WHERE user_id = :uid AND token_type = 'otp'
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([':uid' => $userId]);
+        $tokenRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$tokenRow) {
+            return ['success' => false, 'message' => 'Kein aktiver Anmeldecode gefunden. Bitte fordere einen neuen an.'];
+        }
+
+        if (strtotime($tokenRow['expires_at']) < time()) {
+            $delStmt = $db->prepare("DELETE FROM proj_auth_tokens WHERE id = :id");
+            $delStmt->execute([':id' => $tokenRow['id']]);
+            return ['success' => false, 'message' => 'Der Anmeldecode ist abgelaufen. Bitte fordere einen neuen an.'];
+        }
+
+        if ((int)$tokenRow['attempts'] >= 5) {
+            $delStmt = $db->prepare("DELETE FROM proj_auth_tokens WHERE id = :id");
+            $delStmt->execute([':id' => $tokenRow['id']]);
+            return ['success' => false, 'message' => 'Zu viele Fehlversuche. Der Code wurde gesperrt. Bitte fordere einen neuen an.'];
+        }
+
+        $expectedHash = $tokenRow['token_hash'];
+        $actualHash = self::hashOtp($cleanCode);
+
+        if (!hash_equals($expectedHash, $actualHash)) {
+            // Fehlversuch hochzählen
+            $upStmt = $db->prepare("UPDATE proj_auth_tokens SET attempts = attempts + 1 WHERE id = :id");
+            $upStmt->execute([':id' => $tokenRow['id']]);
+            return ['success' => false, 'message' => 'Ungültiger Anmeldecode. Bitte überprüfe deine Eingabe.'];
+        }
+
+        // Code erfolgreich eingelöst -> Token löschen
+        $delStmt = $db->prepare("DELETE FROM proj_auth_tokens WHERE id = :id");
+        $delStmt->execute([':id' => $tokenRow['id']]);
+
+        return ['success' => true, 'message' => 'Code erfolgreich verifiziert.'];
+    }
+
+    /**
+     * Erstellt ein langlebiges Remember-Token (30 Tage) und setzt das Cookie.
+     */
+    private static function createRememberToken(int $userId): void
+    {
+        $rawToken = bin2hex(random_bytes(32));
+        $hash = hash('sha256', $rawToken);
+
+        $db = ProjectsDatabase::getInstance()->getConnection();
+        $stmt = $db->prepare("
+            INSERT INTO proj_auth_tokens (user_id, token_type, token_hash, attempts, expires_at, created_at)
+            VALUES (:uid, 'session', :hash, 0, DATE_ADD(NOW(), INTERVAL 30 DAY), NOW())
+        ");
+        $stmt->execute([
+            ':uid' => $userId,
+            ':hash' => $hash,
+        ]);
+
+        $cookieLifetime = 30 * 86400;
+        setcookie(self::COOKIE_NAME, $rawToken, [
+            'expires' => time() + $cookieLifetime,
+            'path' => '/',
+            'secure' => true,
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+    }
+
+    /**
+     * Stellt die Session aus dem Remember-Cookie wieder her, falls vorhanden.
+     */
+    private static function tryRestoreSessionFromCookie(): void
+    {
+        if (self::isAuthenticated() || empty($_COOKIE[self::COOKIE_NAME])) {
+            return;
+        }
+
+        $rawToken = (string)$_COOKIE[self::COOKIE_NAME];
+        if (strlen($rawToken) < 32) {
+            return;
+        }
+
+        $hash = hash('sha256', $rawToken);
+
+        try {
+            $db = ProjectsDatabase::getInstance()->getConnection();
+            $stmt = $db->prepare("
+                SELECT t.id, t.user_id, u.email, u.name, u.status, u.state_code
+                FROM proj_auth_tokens t
+                JOIN proj_users u ON u.id = t.user_id
+                WHERE t.token_type = 'session'
+                  AND t.token_hash = :hash
+                  AND t.expires_at > NOW()
+                  AND u.status = 'active'
+                LIMIT 1
+            ");
+            $stmt->execute([':hash' => $hash]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                $_SESSION['proj_user_id'] = (int)$row['user_id'];
+                $_SESSION['proj_user_email'] = (string)$row['email'];
+                $_SESSION['proj_user_name'] = (string)($row['name'] ?? '');
+                $_SESSION['proj_user_state'] = (string)($row['state_code'] ?? 'SN');
+            } else {
+                // Ungültiges Cookie verwerfen
+                setcookie(self::COOKIE_NAME, '', [
+                    'expires' => time() - 3600,
+                    'path' => '/',
+                    'secure' => true,
+                    'httponly' => true,
+                    'samesite' => 'Strict',
+                ]);
+            }
+        } catch (Throwable) {
+            // Bei DB-Ausfall leise fehlschlagen
+        }
+    }
+
+    private static function deleteRememberToken(string $rawToken): void
+    {
+        try {
+            $hash = hash('sha256', $rawToken);
+            $db = ProjectsDatabase::getInstance()->getConnection();
+            $stmt = $db->prepare("DELETE FROM proj_auth_tokens WHERE token_type = 'session' AND token_hash = :hash");
+            $stmt->execute([':hash' => $hash]);
+        } catch (Throwable) {}
+    }
+
+    private static function hashOtp(string $code): string
+    {
+        $pepper = (string)($_ENV['PROJECTS_OTP_PEPPER'] ?? 'projects-default-salt-pepper-2026');
+        return hash_hmac('sha256', $code, $pepper);
+    }
+
+    public static function getAppUrl(): string
+    {
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if (str_starts_with($host, 'projects.')) {
+            $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            return "{$proto}://{$host}";
+        }
+        return rtrim($_ENV['APP_URL'] ?? 'https://kai.agent-smith.de', '/') . '/projects';
+    }
+
+    #[NoReturn]
+    public static function sendJsonError(int $status, string $message): void
+    {
+        if (!headers_sent()) {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['success' => false, 'message' => $message, 'error' => $message]);
+        exit;
+    }
+}

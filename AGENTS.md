@@ -202,6 +202,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | Transit | `Kai\Tools\Transit\` | `src/Transit/` | `public/transit/` |
 | Games | — (Client-Only) | — | `public/games/` |
 | Weather | `Kai\Tools\Weather\` | `src/Weather/` | `public/weather/` |
+| Projects | `Kai\Tools\Projects\` | `src/Projects/` | `public/projects/` |
 
 ### Neue Domain anlegen
 

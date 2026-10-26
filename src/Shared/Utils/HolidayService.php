@@ -299,7 +299,7 @@ class HolidayService
     /**
      * Prüft, ob ein gegebenes Datum ein gesetzlicher Feiertag im Freistaat Sachsen ist.
      */
-    public function getPublicHoliday(string $dateStr): ?string
+    public function getPublicHoliday(string $dateStr, string $stateCode = 'SN'): ?string
     {
         $dt = new DateTimeImmutable($dateStr);
         $year = (int)$dt->format('Y');
@@ -333,7 +333,7 @@ class HolidayService
         // Buß- und Bettag: Letzter Mittwoch vor dem 23. November (nur in Sachsen gesetzlicher Feiertag)
         $nov23 = new DateTimeImmutable(sprintf('%04d-11-23', $year));
         $bussUndBettag = $nov23->modify('previous wednesday')->format('Y-m-d');
-        if ($dateStr === $bussUndBettag) {
+        if (strtoupper($stateCode) === 'SN' && $dateStr === $bussUndBettag) {
             return 'Buß- und Bettag';
         }
 
