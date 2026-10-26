@@ -66,7 +66,7 @@ class ProjectsRepository
 
     public function getProjects(int $userId, bool $includeArchived = false): array
     {
-        $sql = "SELECT id, name, short_code, planisware_code, color, is_archived, created_at
+        $sql = "SELECT id, name, short_code, planisware_code as external_code, color, is_archived, created_at
                 FROM proj_projects
                 WHERE user_id = :uid";
         if (!$includeArchived) {
@@ -82,7 +82,7 @@ class ProjectsRepository
     public function getProjectById(int $userId, int $projectId): ?array
     {
         $stmt = $this->pdo->prepare("
-            SELECT id, name, short_code, planisware_code, color, is_archived, created_at
+            SELECT id, name, short_code, planisware_code as external_code, color, is_archived, created_at
             FROM proj_projects
             WHERE id = :pid AND user_id = :uid
             LIMIT 1
@@ -95,7 +95,7 @@ class ProjectsRepository
     public function findProjectByShortCode(int $userId, string $shortCode): ?array
     {
         $stmt = $this->pdo->prepare("
-            SELECT id, name, short_code, planisware_code, color, is_archived, created_at
+            SELECT id, name, short_code, planisware_code as external_code, color, is_archived, created_at
             FROM proj_projects
             WHERE user_id = :uid AND UPPER(short_code) = UPPER(:code)
             LIMIT 1
@@ -108,12 +108,12 @@ class ProjectsRepository
         return $row ?: null;
     }
 
-    public function saveProject(int $userId, string $name, string $shortCode, ?string $planiswareCode = null, ?string $color = null, ?int $projectId = null): int
+    public function saveProject(int $userId, string $name, string $shortCode, ?string $externalCode = null, ?string $color = null, ?int $projectId = null): int
     {
         $cleanColor = Sanitizer::hexColor($color ?? '#0284c7');
         $cleanShort = strtoupper(trim($shortCode));
         $cleanName = trim($name);
-        $cleanPlanisware = !empty($planiswareCode) ? trim($planiswareCode) : null;
+        $cleanExternal = !empty($externalCode) ? trim($externalCode) : null;
 
         if ($projectId !== null && $projectId > 0) {
             $stmt = $this->pdo->prepare("
@@ -127,7 +127,7 @@ class ProjectsRepository
             $stmt->execute([
                 ':name' => $cleanName,
                 ':code' => $cleanShort,
-                ':pcode' => $cleanPlanisware,
+                ':pcode' => $cleanExternal,
                 ':color' => $cleanColor,
                 ':id' => $projectId,
                 ':uid' => $userId,
@@ -136,14 +136,14 @@ class ProjectsRepository
         }
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO proj_projects (user_id, name, short_code, planisware_code, color, is_archived, created_at)
+            INSERT INTO proj_projects (user_id, name, short_code, planisware_code as external_code, color, is_archived, created_at)
             VALUES (:uid, :name, :code, :pcode, :color, 0, NOW())
         ");
         $stmt->execute([
             ':uid' => $userId,
             ':name' => $cleanName,
             ':code' => $cleanShort,
-            ':pcode' => $cleanPlanisware,
+            ':pcode' => $cleanExternal,
             ':color' => $cleanColor,
         ]);
 
@@ -176,7 +176,7 @@ class ProjectsRepository
     {
         // 1. Priorität: Temporäre Überschreibung, die das Datum abdeckt
         $stmt = $this->pdo->prepare("
-            SELECT d.id, d.project_id, d.valid_from, d.valid_to, p.name, p.short_code, p.planisware_code, p.color
+            SELECT d.id, d.project_id, d.valid_from, d.valid_to, p.name, p.short_code, p.planisware_code as external_code, p.color
             FROM proj_project_defaults d
             JOIN proj_projects p ON p.id = d.project_id
             WHERE d.user_id = :uid
@@ -194,7 +194,7 @@ class ProjectsRepository
 
         // 2. Priorität: Offener Dauer-Eintrag (valid_to IS NULL) mit valid_from <= $date
         $stmt2 = $this->pdo->prepare("
-            SELECT d.id, d.project_id, d.valid_from, d.valid_to, p.name, p.short_code, p.planisware_code, p.color
+            SELECT d.id, d.project_id, d.valid_from, d.valid_to, p.name, p.short_code, p.planisware_code as external_code, p.color
             FROM proj_project_defaults d
             JOIN proj_projects p ON p.id = d.project_id
             WHERE d.user_id = :uid
@@ -212,7 +212,7 @@ class ProjectsRepository
 
         // Fallback: Ältestes oder erstes nicht archiviertes Projekt
         $stmt3 = $this->pdo->prepare("
-            SELECT id as project_id, name, short_code, planisware_code, color
+            SELECT id as project_id, name, short_code, planisware_code as external_code, color
             FROM proj_projects
             WHERE user_id = :uid AND is_archived = 0
             ORDER BY id ASC

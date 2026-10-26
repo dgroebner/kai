@@ -81,7 +81,7 @@ class ProjectsMailer
         $subject = "Du wurdest zu Projects eingeladen";
 
         $textBody = "{$salutation}\n\n"
-            . "Du wurdest zur Zeiterfassung in Projects (Planisware Companion) freigeschaltet.\n\n"
+            . "Du wurdest zur Projektzeiterfassung in Projects freigeschaltet.\n\n"
             . "Du kannst dich ab sofort passwortlos mit deiner E-Mail-Adresse anmelden unter:\n"
             . "{$appUrl}\n\n"
             . "Beim Login erhältst du jeweils einen sicheren 6-stelligen Bestätigungscode per E-Mail.\n\n"

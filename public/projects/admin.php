@@ -31,7 +31,7 @@ $appUrl = ProjectsAuth::getAppUrl();
             <div>
                 <a href="../system/index.php" style="color: #94a3b8; text-decoration: none; font-size: 13px;">← Zurück zum Hauptportal</a>
                 <h1 style="font-size: 24px; font-weight: 800; margin-top: 4px;">⏱️ Projects Administration</h1>
-                <p style="color: #94a3b8; font-size: 13px;">Nutzerverwaltung & Isolation für den Planisware Companion</p>
+                <p style="color: #94a3b8; font-size: 13px;">Nutzerverwaltung & Isolation für die Projektzeiterfassung</p>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" id="btn-purge-mailbox" class="proj-btn proj-btn-secondary proj-btn-sm" title="Eingehende E-Mails im Postfach projects@agent-smith.de jetzt restlos löschen">

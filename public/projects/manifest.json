@@ -1,7 +1,7 @@
 {
-  "name": "Projects — Planisware Companion",
+  "name": "Projects — Projektzeiterfassung",
   "short_name": "Projects",
-  "description": "Leichtgewichtiger persönlicher Zeiterfassungsbegleiter für Planisware",
+  "description": "Leichtgewichtige persönliche Projektzeiterfassung",
   "start_url": "/projects/index.php",
   "scope": "/projects/",
   "display": "standalone",

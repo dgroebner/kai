@@ -193,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $projectId = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT) ?: null;
         $name = trim((string)($input['name'] ?? ''));
         $shortCode = strtoupper(trim((string)($input['short_code'] ?? '')));
-        $planiswareCode = trim((string)($input['planisware_code'] ?? ''));
+        $externalCode = trim((string)($input['external_code'] ?? ($input['planisware_code'] ?? '')));
         $color = $input['color'] ?? '#0284c7';
 
         if (empty($name) || empty($shortCode)) {
@@ -206,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ProjectsAuth::sendJsonError(400, "Das Kürzel '{$shortCode}' wird bereits verwendet.");
         }
 
-        $savedId = $repo->saveProject($userId, $name, $shortCode, $planiswareCode, $color, $projectId);
+        $savedId = $repo->saveProject($userId, $name, $shortCode, $externalCode, $color, $projectId);
         $all = $repo->getProjects($userId, true);
 
         echo json_encode(['success' => true, 'data' => $all, 'saved_id' => $savedId, 'message' => 'Projekt gespeichert.']);

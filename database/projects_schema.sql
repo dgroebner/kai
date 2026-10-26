@@ -1,5 +1,5 @@
 -- =====================================================================
--- Projects — Planisware Companion Schema (Dedizierte zweite Datenbank)
+-- Projects — Projektzeiterfassung Schema (Dedizierte zweite Datenbank)
 -- Alle Tabellen isoliert mit Präfix proj_
 -- =====================================================================
 

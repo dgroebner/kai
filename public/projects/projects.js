@@ -97,7 +97,7 @@
                 return;
             }
 
-            // Clipboard Kopie (Planisware Matrix Spalte oder Zeile)
+            // Clipboard Kopie (Matrix Spalte oder Zeile)
             const copyCell = e.target.closest('[data-copy-val]');
             if (copyCell) {
                 const val = copyCell.getAttribute('data-copy-val');
@@ -200,7 +200,7 @@
                     action: 'save_project',
                     name: fd.get('name'),
                     short_code: fd.get('short_code'),
-                    planisware_code: fd.get('planisware_code'),
+                    external_code: fd.get('external_code'),
                     color: fd.get('color'),
                 };
                 const res = await KaiHttp.postJson('api.php', payload);
@@ -374,7 +374,7 @@
             summaryEl.textContent = `Soll: ${m.total_target_hours.toFixed(1).replace('.', ',')}h | Ist: ${m.total_actual_hours.toFixed(1).replace('.', ',')}h`;
         }
 
-        const table = document.getElementById('planisware-matrix-table');
+        const table = document.getElementById('matrix-table');
         if (!table) return;
 
         // THEAD
@@ -400,7 +400,7 @@
                 <td class="proj-td-project">
                     <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${KaiHtml.escape(row.color)}"></span>
                     <span>${KaiHtml.escape(row.short_code || row.name)}</span>
-                    <span style="font-size: 10px; color: var(--proj-text-muted);">${KaiHtml.escape(row.planisware_code || '')}</span>
+                    <span style="font-size: 10px; color: var(--proj-text-muted);">${KaiHtml.escape(row.external_code || '')}</span>
                 </td>`;
 
             for (let d = 1; d <= m.days_in_month; d++) {

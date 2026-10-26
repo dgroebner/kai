@@ -23,7 +23,7 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="<?= ProjectsAuth::csrfToken() ?>">
-    <title>Projects — Planisware Companion</title>
+    <title>Projects — Projektzeiterfassung</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0284c7">
@@ -114,11 +114,11 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
             </div>
         </section>
 
-        <!-- MONATSMATRIX (PLANISWARE VIEW) -->
+        <!-- MONATSMATRIX -->
         <section class="proj-card">
             <div class="proj-card-header">
                 <div>
-                    <h2 class="proj-card-title">Planisware-Monatsmatrix</h2>
+                    <h2 class="proj-card-title">Monatsmatrix</h2>
                     <div id="matrix-summary" style="font-size: 13px; color: var(--proj-text-muted); margin-top: 2px;">
                         Lade Matrix...
                     </div>
@@ -135,13 +135,13 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
             </div>
 
             <div class="proj-matrix-wrapper">
-                <table id="planisware-matrix-table" class="proj-matrix-table">
+                <table id="matrix-table" class="proj-matrix-table">
                     <!-- Wird vollständig via JS gerendert -->
                 </table>
             </div>
             
             <div style="font-size: 12px; color: var(--proj-text-muted); margin-top: 10px;">
-                💡 <em>Klicke auf eine Zelle, um den exakten Stundenwert in die Zwischenablage für Planisware zu kopieren.</em>
+                💡 <em>Klicke auf eine Zelle, um den exakten Stundenwert in die Zwischenablage zu kopieren.</em>
             </div>
         </section>
     </main>
@@ -317,8 +317,8 @@ $defaultProject = $repo->getDefaultProjectForDate($userId, $currentDate);
                 </div>
 
                 <div class="proj-form-group">
-                    <label for="new-p-planisware">Planisware WBS / PSP-Code (optional)</label>
-                    <input type="text" id="new-p-planisware" name="planisware_code" placeholder="z. B. PRJ-2026-004">
+                    <label for="new-p-planisware">Projekt- / PSP-Code (optional)</label>
+                    <input type="text" id="new-p-code" name="external_code" placeholder="z. B. PRJ-2026-004">
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">

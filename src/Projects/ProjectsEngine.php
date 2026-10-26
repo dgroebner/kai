@@ -107,7 +107,7 @@ class ProjectsEngine
     }
 
     /**
-     * Erstellt die vollständige Planisware-Monatsmatrix.
+     * Erstellt die vollständige Monatsmatrix.
      *
      * @return array{
      *     year: int,
@@ -123,7 +123,7 @@ class ProjectsEngine
      *         project_id: ?int,
      *         name: string,
      *         short_code: ?string,
-     *         planisware_code: ?string,
+     *         external_code: ?string,
      *         color: string,
      *         daily_hours: array<int, float>,
      *         total_hours: float
@@ -178,7 +178,7 @@ class ProjectsEngine
                 'project_id' => $pid,
                 'name' => $p['name'],
                 'short_code' => $p['short_code'],
-                'planisware_code' => $p['planisware_code'] ?? '',
+                'external_code' => $p['external_code'] ?? '',
                 'color' => $p['color'] ?? '#0284c7',
                 'daily_hours' => array_fill(1, $daysInMonth, 0.0),
                 'total_hours' => 0.0,
@@ -191,7 +191,7 @@ class ProjectsEngine
                 'project_id' => null,
                 'name' => 'Urlaub',
                 'short_code' => 'URL',
-                'planisware_code' => 'URLAUB',
+                'external_code' => 'URLAUB',
                 'color' => '#10b981',
                 'daily_hours' => array_fill(1, $daysInMonth, 0.0),
                 'total_hours' => 0.0,
@@ -201,7 +201,7 @@ class ProjectsEngine
                 'project_id' => null,
                 'name' => 'Krankheit',
                 'short_code' => 'KRK',
-                'planisware_code' => 'KRANK',
+                'external_code' => 'KRANK',
                 'color' => '#ef4444',
                 'daily_hours' => array_fill(1, $daysInMonth, 0.0),
                 'total_hours' => 0.0,
@@ -211,7 +211,7 @@ class ProjectsEngine
                 'project_id' => null,
                 'name' => 'Sonderurlaub',
                 'short_code' => 'SON',
-                'planisware_code' => 'SONDERURLAUB',
+                'external_code' => 'SONDERURLAUB',
                 'color' => '#8b5cf6',
                 'daily_hours' => array_fill(1, $daysInMonth, 0.0),
                 'total_hours' => 0.0,

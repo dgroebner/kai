@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Anmelden — Projects (Planisware Companion)</title>
+    <title>Anmelden — Projects (Projektzeiterfassung)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0284c7">
     <link rel="stylesheet" href="styles.css?v=<?= APP_VERSION ?>">
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="proj-login-header">
             <div class="proj-logo-badge">⏱️</div>
             <h1>Projects</h1>
-            <p class="proj-subtitle">Planisware Companion PWA</p>
+            <p class="proj-subtitle">Projektzeiterfassung</p>
         </div>
 
         <?php if ($errorMsg): ?>
