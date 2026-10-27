@@ -22,6 +22,9 @@ class AbrpDeepLinkBuilder
      * @param int $targetSoc Gewünschter Ankunfts-SoC in % (Standard: 10)
      * @param int|null $departureSoc Optionaler fixer Abfahrts-SoC in % (null = Live-Telemetrie aus Tronity)
      * @param string $vehicleModel Fahrzeug-Modellcode in ABRP
+     * @param string|null $destAddress Zieladresse im Klartext
+     * @param string|null $destName Name/Titel des Zielorts
+     * @param string|null $startAddress Startadresse im Klartext
      * @return string Vollständige Deep-Link-URL
      */
     public static function buildDeepLink(
@@ -31,12 +34,40 @@ class AbrpDeepLinkBuilder
         float $destLon,
         int $targetSoc = 10,
         ?int $departureSoc = null,
-        string $vehicleModel = self::DEFAULT_VEHICLE_MODEL
+        string $vehicleModel = self::DEFAULT_VEHICLE_MODEL,
+        ?string $destAddress = null,
+        ?string $destName = null,
+        ?string $startAddress = null
     ): string {
-        $destinations = [
-            ['lat' => round($startLat, 6), 'lon' => round($startLon, 6)],
-            ['lat' => round($destLat, 6), 'lon' => round($destLon, 6)],
-        ];
+        $start = [];
+        if ($startLat != 0.0 && $startLon != 0.0) {
+            $start['lat'] = round($startLat, 6);
+            $start['lon'] = round($startLon, 6);
+        }
+        if (!empty($startAddress) && strtolower(trim($startAddress)) !== 'zuhause') {
+            $start['address'] = trim($startAddress);
+        } elseif (!empty($startAddress)) {
+            $start['name'] = trim($startAddress);
+        }
+
+        $dest = [];
+        if ($destLat != 0.0 && $destLon != 0.0) {
+            $dest['lat'] = round($destLat, 6);
+            $dest['lon'] = round($destLon, 6);
+        }
+        if (!empty($destName)) {
+            $dest['name'] = trim($destName);
+        }
+        if (!empty($destAddress)) {
+            $dest['address'] = trim($destAddress);
+        }
+
+        // Fallback für den unwahrscheinlichen Fall, dass weder Coords noch Adressdaten vorliegen
+        if (empty($dest)) {
+            $dest = ['lat' => 0.0, 'lon' => 0.0];
+        }
+
+        $destinations = [$start, $dest];
 
         $params = [
             'destinations' => json_encode($destinations),

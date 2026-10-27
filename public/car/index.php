@@ -1235,11 +1235,25 @@ if ($tab === 'trips') {
                                         <button type="button" class="btn btn-primary btn-sm js-btn-view-trip" data-trip-id="<?= (int)$t['id'] ?>">
                                             🔍 Details &amp; Abrechnung
                                         </button>
-                                        <?php if (!empty($t['abrp_deep_link'])): ?>
-                                            <a href="<?= htmlspecialchars($t['abrp_deep_link']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="In ABRP App öffnen">
-                                                ⚡ ABRP
-                                            </a>
-                                        <?php endif; ?>
+                                        <?php 
+                                            $abrpLink = (!empty($t['abrp_deep_link']) && str_contains((string)$t['abrp_deep_link'], 'address'))
+                                                ? $t['abrp_deep_link']
+                                                : \Kai\Tools\Car\AbrpDeepLinkBuilder::buildDeepLink(
+                                                    (float)($t['start_lat'] ?? 0.0),
+                                                    (float)($t['start_lon'] ?? 0.0),
+                                                    (float)($t['destination_lat'] ?? 0.0),
+                                                    (float)($t['destination_lon'] ?? 0.0),
+                                                    (int)($t['target_arrival_soc'] ?? 10),
+                                                    null,
+                                                    \Kai\Tools\Car\AbrpDeepLinkBuilder::DEFAULT_VEHICLE_MODEL,
+                                                    $t['destination_address'] ?? null,
+                                                    $t['title'] ?? null,
+                                                    $t['start_address'] ?? null
+                                                );
+                                        ?>
+                                        <a href="<?= htmlspecialchars($abrpLink) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="In ABRP App öffnen">
+                                            ⚡ ABRP
+                                        </a>
                                         <?php 
                                             $destAddr = trim((string)($t['destination_address'] ?? ''));
                                             $isHomeDest = in_array(strtolower($destAddr), ['zuhause', 'home', 'heimat', 'daheim', 'heim'], true);

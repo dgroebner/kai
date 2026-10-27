@@ -36,26 +36,40 @@ class AbrpPlanner implements RoutePlannerInterface
         float $destLat,
         float $destLon,
         int $targetSoc = 10,
-        int $departureSoc = 80
+        int $departureSoc = 80,
+        ?string $destAddress = null,
+        ?string $destTitle = null,
+        ?string $startAddress = null
     ): RoutePlanResult {
         if (empty($this->apiKey)) {
             $this->logger->info("AbrpPlanner: Kein ABRP_API_KEY vorhanden, delegiere an Heuristik-Planner.");
-            return $this->fallbackPlanner->planRoute($startLat, $startLon, $destLat, $destLon, $targetSoc, $departureSoc);
+            return $this->fallbackPlanner->planRoute($startLat, $startLon, $destLat, $destLon, $targetSoc, $departureSoc, $destAddress, $destTitle, $startAddress);
         }
 
         try {
             $effectiveDepartureSoc = ($departureSoc > 0) ? $departureSoc : 80;
             $requestBody = [
-                'origin' => [
-                    'lat' => $startLat,
-                    'lon' => $startLon,
-                ],
-                'destination' => [
-                    'lat' => $destLat,
-                    'lon' => $destLon,
+                'destinations' => [
+                    [
+                        'location' => [
+                            'type' => 'COORDINATES',
+                            'lat' => $startLat,
+                            'long' => $startLon,
+                        ],
+                    ],
+                    [
+                        'location' => [
+                            'type' => 'COORDINATES',
+                            'lat' => $destLat,
+                            'long' => $destLon,
+                        ],
+                    ],
                 ],
                 'vehicle' => [
-                    'typecode' => AbrpDeepLinkBuilder::DEFAULT_VEHICLE_MODEL,
+                    'identifier' => [
+                        'type' => 'TYPECODE',
+                        'value' => AbrpDeepLinkBuilder::DEFAULT_VEHICLE_MODEL,
+                    ],
                 ],
                 'departure_soc' => round($effectiveDepartureSoc / 100.0, 2),
                 'arrival_soc' => round($targetSoc / 100.0, 2),
@@ -88,7 +102,10 @@ class AbrpPlanner implements RoutePlannerInterface
                     $destLat,
                     $destLon,
                     $targetSoc,
-                    $departureSoc
+                    $departureSoc,
+                    $destAddress,
+                    $destTitle,
+                    $startAddress
                 );
             }
 
@@ -99,7 +116,7 @@ class AbrpPlanner implements RoutePlannerInterface
             $this->logger->warn("AbrpPlanner: Ausnahmefehler bei API-Aufruf: " . $e->getMessage());
         }
 
-        return $this->fallbackPlanner->planRoute($startLat, $startLon, $destLat, $destLon, $targetSoc, $departureSoc);
+        return $this->fallbackPlanner->planRoute($startLat, $startLon, $destLat, $destLon, $targetSoc, $departureSoc, $destAddress, $destTitle, $startAddress);
     }
 
     /**
@@ -112,7 +129,10 @@ class AbrpPlanner implements RoutePlannerInterface
         float $destLat,
         float $destLon,
         int $targetSoc,
-        int $departureSoc
+        int $departureSoc,
+        ?string $destAddress = null,
+        ?string $destTitle = null,
+        ?string $startAddress = null
     ): RoutePlanResult {
         $totalDistanceKm = (float)($data['total_distance_km'] ?? ($data['distance_km'] ?? 0.0));
         $consumptionKwh = (float)($data['consumption_kwh'] ?? ($data['total_consumption_kwh'] ?? 0.0));
@@ -136,7 +156,18 @@ class AbrpPlanner implements RoutePlannerInterface
         }
 
         $recommendedDepartureSoc = ($consumptionKwh <= 54.0 && $totalDistanceKm < 200.0) ? 80 : 100;
-        $deepLink = AbrpDeepLinkBuilder::buildDeepLink($startLat, $startLon, $destLat, $destLon, $targetSoc);
+        $deepLink = AbrpDeepLinkBuilder::buildDeepLink(
+            $startLat,
+            $startLon,
+            $destLat,
+            $destLon,
+            $targetSoc,
+            null,
+            AbrpDeepLinkBuilder::DEFAULT_VEHICLE_MODEL,
+            $destAddress,
+            $destTitle,
+            $startAddress
+        );
 
         return new RoutePlanResult(
             totalDistanceKm: round($totalDistanceKm, 2),

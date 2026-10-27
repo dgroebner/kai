@@ -16,6 +16,9 @@ interface RoutePlannerInterface
      * @param float $destLon Zielkoordinate Längengrad
      * @param int $targetSoc Gewünschter Mindest-SoC bei Ankunft am Ziel (Standard: 10%)
      * @param int $departureSoc Geplanter Start-SoC (Standard: 80%)
+     * @param string|null $destAddress Zieladresse im Klartext
+     * @param string|null $destTitle Titel/Name des Reiseziels
+     * @param string|null $startAddress Startadresse im Klartext
      * @return RoutePlanResult
      */
     public function planRoute(
@@ -24,6 +27,9 @@ interface RoutePlannerInterface
         float $destLat,
         float $destLon,
         int $targetSoc = 10,
-        int $departureSoc = 80
+        int $departureSoc = 80,
+        ?string $destAddress = null,
+        ?string $destTitle = null,
+        ?string $startAddress = null
     ): RoutePlanResult;
 }

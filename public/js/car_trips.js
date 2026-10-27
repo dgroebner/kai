@@ -409,11 +409,48 @@
                     </div>
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    ${trip.abrp_deep_link ? `
-                        <a href="${KaiHtml.escape(trip.abrp_deep_link)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" title="In ABRP App / CarPlay öffnen">
-                            ⚡ In ABRP öffnen
-                        </a>
-                    ` : ''}
+                    ${(() => {
+                        let abrpUrl = trip.abrp_deep_link || '';
+                        if (!abrpUrl || !abrpUrl.includes('address')) {
+                            const startLat = parseFloat(trip.start_lat || 0);
+                            const startLon = parseFloat(trip.start_lon || 0);
+                            const destLat = parseFloat(trip.destination_lat || 0);
+                            const destLon = parseFloat(trip.destination_lon || 0);
+                            const destinations = [
+                                {
+                                    lat: startLat !== 0 ? Math.round(startLat * 1000000) / 1000000 : undefined,
+                                    lon: startLon !== 0 ? Math.round(startLon * 1000000) / 1000000 : undefined,
+                                    name: (trip.start_address && trip.start_address.toLowerCase() === 'zuhause') ? 'Zuhause' : undefined,
+                                    address: (trip.start_address && trip.start_address.toLowerCase() !== 'zuhause') ? trip.start_address : undefined,
+                                },
+                                {
+                                    lat: destLat !== 0 ? Math.round(destLat * 1000000) / 1000000 : undefined,
+                                    lon: destLon !== 0 ? Math.round(destLon * 1000000) / 1000000 : undefined,
+                                    name: trip.title || undefined,
+                                    address: trip.destination_address || undefined,
+                                }
+                            ];
+                            const cleanDest = destinations.map(d => {
+                                const obj = {};
+                                if (d.lat !== undefined) obj.lat = d.lat;
+                                if (d.lon !== undefined) obj.lon = d.lon;
+                                if (d.name) obj.name = d.name;
+                                if (d.address) obj.address = d.address;
+                                return obj;
+                            });
+                            const params = new URLSearchParams({
+                                destinations: JSON.stringify(cleanDest),
+                                car_model: 'volkswagen:id.buzz:22:77:rwd',
+                                arrival_soc: trip.target_arrival_soc || 10
+                            });
+                            abrpUrl = `https://abetterrouteplanner.com/?${params.toString()}`;
+                        }
+                        return `
+                            <a href="${KaiHtml.escape(abrpUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" title="In ABRP App / CarPlay öffnen">
+                                ⚡ In ABRP öffnen
+                            </a>
+                        `;
+                    })()}
                     ${(() => {
                         const destAddr = (trip.destination_address || '').trim();
                         const isHomeDest = ['zuhause', 'home', 'heimat', 'daheim', 'heim'].includes(destAddr.toLowerCase());

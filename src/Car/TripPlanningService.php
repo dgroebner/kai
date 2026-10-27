@@ -150,7 +150,10 @@ class TripPlanningService
             $destLat,
             $destLon,
             $targetArrivalSoc,
-            $plannedDepartureSoc ?? 0
+            $plannedDepartureSoc ?? 0,
+            $destAddress,
+            $title,
+            $startAddress
         );
 
         $totalDistanceKm = $routeResult->totalDistanceKm;
@@ -284,7 +287,10 @@ class TripPlanningService
             $destLat,
             $destLon,
             $targetArrivalSoc,
-            $currentPlannedSoc
+            $currentPlannedSoc,
+            $trip['destination_address'] ?? null,
+            $trip['title'] ?? null,
+            $trip['start_address'] ?? null
         );
 
         $totalDistanceKm = $routeResult->totalDistanceKm;
