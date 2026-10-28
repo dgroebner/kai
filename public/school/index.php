@@ -524,11 +524,27 @@ $nextLabel = ($nextSchoolDay === $today)
                                 <?php endif; ?>
                             </div>
                             <?php if ($canEditStudent): ?>
-                                <button type="button"
-                                        class="btn btn-outline btn-sm school-config-toggle js-school-config-toggle"
-                                        data-target="school-config-<?= $stId ?>">
-                                    ⚙️ Fächer anpassen
-                                </button>
+                                <div class="school-config-trigger-group">
+                                    <button type="button"
+                                            class="btn btn-outline btn-sm school-config-toggle js-school-config-toggle"
+                                            data-target="school-config-<?= $stId ?>">
+                                        ⚙️ Fächer anpassen
+                                    </button>
+                                    <?php if (!empty($currentExcluded)): ?>
+                                        <button type="button"
+                                                class="school-badge-excluded-count js-school-config-toggle"
+                                                data-target="school-config-<?= $stId ?>"
+                                                title="Nicht belegte Fächer (<?= count($currentExcluded) ?>): <?= htmlspecialchars(implode(', ', $currentExcluded), ENT_QUOTES, 'UTF-8') ?>"
+                                                aria-label="<?= count($currentExcluded) ?> nicht belegte Fächer anpassen">
+                                            <?= count($currentExcluded) ?>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif (!empty($currentExcluded)): ?>
+                                <span class="school-badge-excluded-count"
+                                      title="Nicht belegte Fächer (<?= count($currentExcluded) ?>): <?= htmlspecialchars(implode(', ', $currentExcluded), ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= count($currentExcluded) ?>
+                                </span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -602,14 +618,6 @@ $nextLabel = ($nextSchoolDay === $today)
                         </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($currentExcluded)): ?>
-                        <div class="school-excluded-notice">
-                            <span class="text-muted">Nicht belegte Fächer:</span>
-                            <?php foreach ($currentExcluded as $ex): ?>
-                                <span class="badge badge-outline school-badge-excluded"><?= htmlspecialchars($ex, ENT_QUOTES, 'UTF-8') ?></span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
 
                     <?php if ($sched['has_plan']): ?>
                         <div class="table-responsive">

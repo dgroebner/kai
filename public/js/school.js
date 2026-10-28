@@ -35,7 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (panel) {
                     const isHidden = panel.style.display === 'none' || getComputedStyle(panel).display === 'none';
                     panel.style.display = isHidden ? 'block' : 'none';
-                    toggleBtn.textContent = isHidden ? '✖️ Schließen' : '⚙️ Fächer anpassen';
+                    const parentCard = panel.closest('.school-plan-card') || toggleBtn.closest('.school-plan-card');
+                    if (parentCard) {
+                        const toggle = parentCard.querySelector('button.school-config-toggle');
+                        if (toggle) {
+                            toggle.textContent = isHidden ? '✖️ Schließen' : '⚙️ Fächer anpassen';
+                        }
+                    }
                 }
             }
             return;
@@ -49,9 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const panel = document.getElementById(targetId);
                 if (panel) {
                     panel.style.display = 'none';
-                    const parentCard = panel.closest('.school-plan-card');
+                    const parentCard = panel.closest('.school-plan-card') || closeBtn.closest('.school-plan-card');
                     if (parentCard) {
-                        const toggle = parentCard.querySelector('.js-school-config-toggle');
+                        const toggle = parentCard.querySelector('button.school-config-toggle');
                         if (toggle) {
                             toggle.textContent = '⚙️ Fächer anpassen';
                         }
