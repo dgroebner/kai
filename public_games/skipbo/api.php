@@ -295,8 +295,8 @@ try {
         }
 
         $source = trim((string)($input['source'] ?? ''));
-        $sourceIndex = $input['source_index'] ?? null;
-        $targetPile = (int)($input['target_pile'] ?? 0);
+        $sourceIndex = $input['source_index'] ?? $input['sourceIndex'] ?? null;
+        $targetPile = (int)($input['target_pile'] ?? $input['targetPile'] ?? 0);
 
         $res = $skipBoService->playCard($roomId, (int)$player['id'], $source, $sourceIndex, $targetPile);
         if (!$res['success']) {

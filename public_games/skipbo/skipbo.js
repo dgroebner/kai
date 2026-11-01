@@ -735,11 +735,18 @@
             return;
         }
 
+        // Auto-Play Komfort: Wenn nur genau ein Baustapel in Frage kommt, direkt dorthin legen!
+        const canPlayTo = card.can_play_to || [];
+        if (canPlayTo.length === 1) {
+            executePlayCard('hand', card.id, canPlayTo[0]);
+            return;
+        }
+
         state.selectedCard = {
             source: 'hand',
             sourceIndex: card.id,
             card: card,
-            playableTo: card.can_play_to || [],
+            playableTo: canPlayTo,
         };
 
         SoundFx.playCard();
@@ -847,6 +854,7 @@
         const res = await HubHttp.postJson('./api.php?action=play_card', {
             room_code: state.roomCode,
             source: source,
+            source_index: sourceIndex,
             sourceIndex: sourceIndex,
             target_pile: targetPile,
         });
