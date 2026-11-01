@@ -29,7 +29,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 ❓ <span class="skipbo-btn-label">Regeln</span>
             </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-reactions" title="Reaktion senden">
-                😀 <span class="quarxl-react-btn-label">Reagieren</span>
+                😀
             </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-edit-name" title="Spielername ändern">
                 ✏️ <span class="js-my-name-display">Ich</span>

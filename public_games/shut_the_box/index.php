@@ -26,7 +26,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
         <div style="display: flex; gap: 0.4rem; align-items: center;">
             <button type="button" class="btn btn-sm btn-outline js-btn-reactions" title="Reaktion senden" style="display: flex; align-items: center; gap: 0.25rem;">
-                😀 <span class="quarxl-react-btn-label">Reagieren</span>
+                😀
             </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-scorecard" title="Spielblatt öffnen" id="btn-toggle-scorecard">
                 📋 Zettel

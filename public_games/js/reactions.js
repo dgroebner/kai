@@ -367,7 +367,7 @@
                     btn.type = 'button';
                     btn.className = 'btn btn-sm btn-outline js-btn-reactions quarxl-btn-react';
                     btn.title = 'Reaktion senden';
-                    btn.innerHTML = '😀 <span class="quarxl-react-btn-label">Reagieren</span>';
+                    btn.innerHTML = '😀';
                     headerActions.insertBefore(btn, headerActions.firstChild);
                     existingBtn = btn;
                 }
