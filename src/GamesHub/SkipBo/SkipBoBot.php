@@ -193,8 +193,12 @@ class SkipBoBot
     /**
      * Wählt die taktisch beste Handkarte zum Abwerfen auf einen der 4 Hilfsstapel.
      */
-    private static function chooseBestCardToDiscard(array $hand, array $discardPiles): array
+    public static function chooseBestCardToDiscard(array $hand, array $discardPiles): array
     {
+        if (empty($hand)) {
+            return ['card_id' => '', 'target_index' => 0];
+        }
+
         // 1. Vermeide Skip-Bo Joker abzuwerfen
         $candidates = array_filter($hand, fn($c) => ($c['type'] ?? '') !== SkipBoCard::TYPE_SKIPBO);
         if (empty($candidates)) {
@@ -206,6 +210,10 @@ class SkipBoBot
         $bestCard = reset($candidates);
         $bestTargetPile = 0;
         $bestScore = -9999;
+
+        if (!$bestCard || !is_array($bestCard)) {
+            $bestCard = $hand[0];
+        }
 
         foreach ($candidates as $card) {
             $val = (int)($card['value'] ?? 1);

@@ -183,9 +183,17 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <!-- MEINE SPIELERZONE (UNTEN) -->
         <section class="skipbo-my-zone" id="my-player-zone">
 
-            <!-- INTERAKTIONS-HINWEIS -->
+            <!-- INTERAKTIONS-HINWEIS & ZUG-STEUERUNG -->
             <div class="skipbo-turn-guide" id="turn-guide-bar">
-                <span id="turn-guide-text">Warte auf deinen Zug...</span>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <span id="turn-status-badge" class="skipbo-turn-badge">⏳ Warte</span>
+                    <span id="turn-guide-text">Warte auf deinen Zug...</span>
+                </div>
+                <div id="turn-actions-row" class="hidden" style="margin-top: 0.45rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-warning btn-sm js-btn-end-turn" id="btn-end-turn" style="font-weight: 700;">
+                        ⏭️ Handkarte abwerfen &amp; Zug beenden
+                    </button>
+                </div>
             </div>
 
             <!-- MEIN ZIELSTAPEL & MEINE 4 HILFSSTAPEL -->

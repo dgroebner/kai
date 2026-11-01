@@ -591,13 +591,46 @@
 
 .skipbo-turn-guide {
     text-align: center;
-    padding: 0.35rem 0.75rem;
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
     font-size: 0.85rem;
     font-weight: 600;
     color: #38bdf8;
+    transition: all 0.25s ease;
+}
+
+.skipbo-turn-badge {
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+}
+
+.skipbo-turn-badge.is-my-turn {
+    background: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+    animation: bounceTurn 1s infinite alternate ease-in-out;
+}
+
+.skipbo-turn-badge.is-bot-turn {
+    background: #6366f1;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+}
+
+@keyframes bounceTurn {
+    0% { transform: scale(0.97); }
+    100% { transform: scale(1.03); }
 }
 
 .skipbo-my-stacks-row {

@@ -246,6 +246,29 @@
             });
         }
 
+        // Button: Handkarte abwerfen & Zug beenden
+        const btnEndTurn = document.getElementById('btn-end-turn');
+        if (btnEndTurn) {
+            btnEndTurn.addEventListener('click', () => {
+                if (!state.lastServerState || !state.lastServerState.is_my_turn) return;
+                const myPlayer = state.lastServerState.players.find(p => p.is_me);
+                if (!myPlayer) return;
+                const hand = myPlayer.hand || [];
+                if (hand.length === 0) return;
+
+                // Wenn bereits eine Handkarte gewählt ist: diese abwerfen (bevorzugt auf Hilfsstapel 0 oder gewählt)
+                if (state.selectedCard && state.selectedCard.source === 'hand') {
+                    executeDiscardCard(state.selectedCard.card.id, 0);
+                    return;
+                }
+
+                // Automatisch eine günstige Handkarte wählen (möglichst keine Skip-Bo Wildcard)
+                const nonWild = hand.filter(c => c.type !== 'skipbo');
+                const cardToDiscard = nonWild.length > 0 ? nonWild[nonWild.length - 1] : hand[0];
+                executeDiscardCard(cardToDiscard.id, 0);
+            });
+        }
+
         // Initialisierung starten
         initRoom();
     });
@@ -284,9 +307,19 @@
         }
     }
 
-    function startPolling() {
+    let currentPollIntervalMs = 1500;
+
+    function startPolling(intervalMs = 1500) {
         if (state.pollTimer) clearInterval(state.pollTimer);
-        state.pollTimer = setInterval(pollState, 1500);
+        currentPollIntervalMs = intervalMs;
+        state.pollTimer = setInterval(pollState, intervalMs);
+    }
+
+    function adjustPollSpeed(faster = false) {
+        const targetMs = faster ? 1000 : 1500;
+        if (targetMs !== currentPollIntervalMs) {
+            startPolling(targetMs);
+        }
     }
 
     async function pollState() {
@@ -317,6 +350,10 @@
     function renderGame(data) {
         state.lastServerState = data;
         state.gameStatus = data.status;
+
+        // Wenn ein Bot am Zug ist, schneller pollen (1000ms), damit man seine Züge live mitverfolgt
+        const isBotTurn = data.status === 'active' && !data.is_my_turn && (data.players || []).some(p => p.is_active && p.is_bot);
+        adjustPollSpeed(isBotTurn);
 
         // Spielmodus-Badge
         const modeDesc = data.stock_size === 10 ? 'Schnell (10 Zielkarten)' : (data.stock_size === 30 ? 'Klassisch (30 Zielkarten)' : 'Standard (20 Zielkarten)');
@@ -400,29 +437,73 @@
     function renderTable(data, myPlayer) {
         const isMyTurn = !!data.is_my_turn;
 
-        // 1. Zug-Leitfaden Text
+        // 1. Zug-Leitfaden & Status Badge
         const guideText = document.getElementById('turn-guide-text');
         const guideBar = document.getElementById('turn-guide-bar');
-        if (guideText && guideBar) {
-            if (isMyTurn) {
+        const statusBadge = document.getElementById('turn-status-badge');
+        const actionsRow = document.getElementById('turn-actions-row');
+        const btnEndTurn = document.getElementById('btn-end-turn');
+
+        // Prüfen, ob wir mindestens eine spielbare Karte haben
+        const hasPlayableCards = myPlayer && (
+            (myPlayer.hand || []).some(c => (c.can_play_to || []).length > 0) ||
+            (myPlayer.stock_top_card && (myPlayer.stock_top_card.can_play_to || []).length > 0) ||
+            (myPlayer.discard_piles || []).some(dp => dp.top_card && (dp.top_card.can_play_to || []).length > 0)
+        );
+
+        if (isMyTurn) {
+            if (guideBar) {
                 guideBar.style.borderColor = '#10b981';
                 guideBar.style.color = '#34d399';
+            }
+            if (statusBadge) {
+                statusBadge.className = 'skipbo-turn-badge is-my-turn';
+                statusBadge.textContent = '🟢 DU BIST AM ZUG';
+            }
+            if (actionsRow) actionsRow.classList.remove('hidden');
+
+            if (btnEndTurn) {
+                if (state.selectedCard && state.selectedCard.source === 'hand') {
+                    btnEndTurn.textContent = '⬇️ Gewählte Handkarte abwerfen (Zug beenden)';
+                } else {
+                    btnEndTurn.textContent = '⏭️ Handkarte abwerfen & Zug beenden';
+                }
+            }
+
+            if (guideText) {
                 if (!state.selectedCard) {
-                    guideText.textContent = '🌟 Du bist am Zug! Wähle eine grün leuchtende Karte zum Legen, oder wähle eine Handkarte zum Abwerfen.';
+                    if (hasPlayableCards) {
+                        guideText.textContent = 'Tippe auf eine grün leuchtende Karte zum Legen, oder beende deinen Zug mit Abwerfen.';
+                    } else {
+                        guideText.textContent = 'Keine Karte passt auf die Baustapel. Wirf eine Handkarte ab (Button unten), um an deinen Gegner zu übergeben.';
+                    }
                 } else {
                     if (state.selectedCard.source === 'hand') {
-                        guideText.textContent = '🎯 Lege die Karte auf einen passenden Baustapel – ODER wirf sie auf einen Hilfsstapel ab, um deinen Zug zu beenden.';
+                        guideText.textContent = '🎯 Lege die Karte auf einen Baustapel – ODER klicke "Zug beenden" / tippe auf einen Hilfsstapel.';
                     } else {
                         guideText.textContent = '🎯 Wähle einen leuchtenden Baustapel, um die Karte anzulegen.';
                     }
                 }
-            } else {
+            }
+        } else {
+            const activePlayer = data.players.find(p => p.is_active);
+            const isBot = activePlayer ? activePlayer.is_bot : false;
+
+            if (guideBar) {
                 guideBar.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                 guideBar.style.color = '#94a3b8';
-                const activePlayer = data.players.find(p => p.is_active);
-                guideText.textContent = `Warte auf ${activePlayer ? activePlayer.player_name : 'Gegner'}...`;
-                state.selectedCard = null; // Auswahl zurücksetzen
             }
+            if (statusBadge) {
+                statusBadge.className = 'skipbo-turn-badge is-bot-turn';
+                statusBadge.textContent = isBot ? '🤖 BOT AM ZUG' : '⏳ GEGNER AM ZUG';
+            }
+            if (actionsRow) actionsRow.classList.add('hidden');
+
+            if (guideText) {
+                const name = activePlayer ? activePlayer.player_name : 'Gegner';
+                guideText.textContent = `${name} überlegt und führt den Zug aus...`;
+            }
+            state.selectedCard = null; // Auswahl zurücksetzen
         }
 
         // 2. Gegner-Leiste (Opponents Bar)

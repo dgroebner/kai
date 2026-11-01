@@ -192,10 +192,16 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 3. STATE ABRUFEN (Zero-Knowledge)
+    // 3. STATE ABRUFEN (Zero-Knowledge) & AUTOMATISCHER BOT-ZUG
     // -------------------------------------------------------------------------
-    if ($action === 'state') {
+    if ($action === 'state' || $action === 'bot_step') {
+        // Falls ein Bot an der Reihe ist: Bot-Schritt ausführen!
+        $skipBoService->triggerBotTurnIfNeeded($roomId);
+
+        // Frisch aus DB laden für exakten aktuellen Stand
+        $room = $repo->getRoomById($roomId);
         $players = $repo->getPlayersForRoom($roomId);
+
         $publicState = $skipBoService->getPublicStateForPlayer($room, $player, $players);
         $publicState['recent_reactions'] = $repo->getRecentReactions($roomId);
 

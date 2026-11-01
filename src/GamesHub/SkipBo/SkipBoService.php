@@ -320,11 +320,6 @@ class SkipBoService
         $this->repo->updatePlayerSheet($playerId, $sheet, 0);
         $this->repo->updateRoomState($roomId, $state);
 
-        // Falls aktiver Spieler ein Bot ist: nächsten Bot-Schritt anstoßen
-        if (!empty($sheet['is_bot'])) {
-            $this->triggerBotMovesIfNeeded($roomId, $state, $players);
-        }
-
         return ['success' => true];
     }
 
@@ -474,19 +469,18 @@ class SkipBoService
     }
 
     /**
-     * Führt Bot-Züge autonom und sicher aus.
+     * Prüft, ob der aktive Spieler ein Bot ist, und führt dessen Züge autonom aus.
      */
-    private function triggerBotMovesIfNeeded(int $roomId, array &$roomState, array &$players, int $depth = 0): void
+    public function triggerBotTurnIfNeeded(int $roomId): bool
     {
-        if ($depth > 25) {
-            return; // Schutz vor Endlosschleifen
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || ($room['status'] ?? '') !== 'active') {
+            return false;
         }
 
-        if (($roomState['status'] ?? '') !== 'active') {
-            return;
-        }
-
-        $activeId = (int)($roomState['active_player_id'] ?? 0);
+        $state = $room['state'] ?? [];
+        $activeId = (int)($state['active_player_id'] ?? 0);
+        $players = $this->repo->getPlayersForRoom($roomId);
         $activePlayer = null;
         $activeIdx = -1;
 
@@ -499,15 +493,27 @@ class SkipBoService
         }
 
         if (!$activePlayer || empty($activePlayer['sheet']['is_bot'])) {
-            return; // Menschlicher Spieler am Zug
+            return false; // Menschlicher Spieler am Zug
         }
 
-        $sheet = $activePlayer['sheet'];
+        // Sicherstellen, dass der Bot seine Handkarten auf 5 aufgefüllt hat
+        $sheet = $activePlayer['sheet'] ?? [];
         $hand = $sheet['hand'] ?? [];
+        if (count($hand) < 5) {
+            $needed = 5 - count($hand);
+            $drawn = $this->drawCardsFromDeck($state, $needed);
+            $hand = array_merge($hand, $drawn);
+            $sheet['hand'] = $hand;
+            $activePlayer['sheet'] = $sheet;
+            $players[$activeIdx]['sheet'] = $sheet;
+            $this->repo->updatePlayerSheet($activeId, $sheet, 0);
+            $this->repo->updateRoomState($roomId, $state);
+        }
+
         $stock = $sheet['stock_pile'] ?? [];
         $stockTop = !empty($stock) ? end($stock) : null;
         $discardPiles = $sheet['discard_piles'] ?? [[], [], [], []];
-        $buildingPiles = $roomState['building_piles'] ?? [];
+        $buildingPiles = $state['building_piles'] ?? [];
 
         // Bot Entscheidung anfordern
         $decision = SkipBoBot::decideNextMove($hand, $stockTop, $discardPiles, $buildingPiles);
@@ -518,20 +524,36 @@ class SkipBoService
                 ? ($hand[$decision['source_index']]['id'] ?? $decision['source_index'])
                 : $decision['source_index'];
 
-            $res = $this->playCard($roomId, $activeId, $src, $srcIdx, (int)$decision['target_pile']);
-
-            if (!empty($res['success']) && empty($res['game_finished'])) {
-                // Frisch laden für nächsten Schritt
-                $room = $this->repo->getRoomById($roomId);
-                if ($room) {
-                    $roomState = $room['state'];
-                    $players = $this->repo->getPlayersForRoom($roomId);
-                    $this->triggerBotMovesIfNeeded($roomId, $roomState, $players, $depth + 1);
-                }
-            }
-        } elseif ($decision['action'] === 'discard') {
-            $this->discardCard($roomId, $activeId, (string)$decision['card_id'], (int)$decision['target_discard_index']);
+            $this->playCard($roomId, $activeId, $src, $srcIdx, (int)$decision['target_pile']);
+            return true;
         }
+
+        if ($decision['action'] === 'discard') {
+            $this->discardCard($roomId, $activeId, (string)$decision['card_id'], (int)$decision['target_discard_index']);
+            return true;
+        }
+
+        // Falls Bot weder spielen noch abwerfen kann (z.B. Hand leer):
+        if (empty($hand)) {
+            $refill = $this->drawCardsFromDeck($state, 5);
+            $sheet['hand'] = $refill;
+            $this->repo->updatePlayerSheet($activeId, $sheet, 0);
+            $this->repo->updateRoomState($roomId, $state);
+            return true;
+        }
+
+        // Notfall-Abwurf der ersten Handkarte
+        $firstCard = $hand[0];
+        $this->discardCard($roomId, $activeId, (string)$firstCard['id'], 0);
+        return true;
+    }
+
+    /**
+     * Führt Bot-Züge autonom und sicher aus.
+     */
+    private function triggerBotMovesIfNeeded(int $roomId, array &$roomState, array &$players, int $depth = 0): void
+    {
+        $this->triggerBotTurnIfNeeded($roomId);
     }
 
     /**
