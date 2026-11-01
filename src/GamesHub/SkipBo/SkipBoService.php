@@ -200,7 +200,7 @@ class SkipBoService
         } elseif ($source === 'hand') {
             $cardFoundIdx = -1;
             foreach ($hand as $hIdx => $hc) {
-                if ($hc['id'] === (string)$sourceIndex || $hIdx === (int)$sourceIndex) {
+                if (($hc['id'] ?? '') === (string)$sourceIndex || (is_numeric($sourceIndex) && $hIdx === (int)$sourceIndex)) {
                     $cardFoundIdx = $hIdx;
                     $cardToPlay = $hc;
                     break;
@@ -496,13 +496,12 @@ class SkipBoService
             return false; // Menschlicher Spieler am Zug
         }
 
-        // Sicherstellen, dass der Bot seine Handkarten auf 5 aufgefüllt hat
+        // Falls Hand komplett leer ist (z.B. alle 5 Karten gelegt): 5 neue Karten nachziehen
         $sheet = $activePlayer['sheet'] ?? [];
         $hand = $sheet['hand'] ?? [];
-        if (count($hand) < 5) {
-            $needed = 5 - count($hand);
-            $drawn = $this->drawCardsFromDeck($state, $needed);
-            $hand = array_merge($hand, $drawn);
+        if (empty($hand)) {
+            $drawn = $this->drawCardsFromDeck($state, 5);
+            $hand = $drawn;
             $sheet['hand'] = $hand;
             $activePlayer['sheet'] = $sheet;
             $players[$activeIdx]['sheet'] = $sheet;
@@ -524,7 +523,15 @@ class SkipBoService
                 ? ($hand[$decision['source_index']]['id'] ?? $decision['source_index'])
                 : $decision['source_index'];
 
-            $this->playCard($roomId, $activeId, $src, $srcIdx, (int)$decision['target_pile']);
+            $playRes = $this->playCard($roomId, $activeId, $src, $srcIdx, (int)$decision['target_pile']);
+            if (empty($playRes['success'])) {
+                // Notfall-Schutz: Falls der geplante Spielzug fehlschlagen sollte,
+                // Handkarte abwerfen, damit der Bot niemals im Zug hängenbleibt.
+                if (!empty($hand)) {
+                    $firstCard = $hand[0];
+                    $this->discardCard($roomId, $activeId, (string)$firstCard['id'], 0);
+                }
+            }
             return true;
         }
 
