@@ -285,6 +285,13 @@ class SkipBoService
             $state['winner_name'] = $player['player_name'];
             $state['last_event'] = [
                 'type' => 'game_won',
+                'event_id' => 'sb_evt_' . microtime(true) . '_' . bin2hex(random_bytes(3)),
+                'player_id' => $playerId,
+                'player_name' => $player['player_name'],
+                'source' => $source,
+                'target_type' => 'building',
+                'target_index' => $targetPileIndex,
+                'card' => $playedCardData,
                 'message' => "🏆 {$player['player_name']} hat den Zielstapel komplett geleert und gewinnt Skip-Bo!",
                 'time' => time(),
             ];
@@ -312,6 +319,14 @@ class SkipBoService
         $cardLabel = $isSkipBo ? "Skip-Bo (als {$needed})" : (string)$cardToPlay['value'];
         $state['last_event'] = [
             'type' => 'card_played',
+            'event_id' => 'sb_evt_' . microtime(true) . '_' . bin2hex(random_bytes(3)),
+            'player_id' => $playerId,
+            'player_name' => $player['player_name'],
+            'source' => $source,
+            'source_index' => $source === 'discard' ? (int)$sourceIndex : 0,
+            'target_type' => 'building',
+            'target_index' => $targetPileIndex,
+            'card' => $playedCardData,
             'message' => "{$player['player_name']} legte {$cardLabel} {$sourceDesc} auf Baustapel " . ($targetPileIndex + 1) . ".{$clearedNotice}{$bonusDrawnNotice}",
             'time' => time(),
         ];
@@ -417,6 +432,14 @@ class SkipBoService
         $state['active_player_index'] = $nextIdx;
         $state['last_event'] = [
             'type' => 'turn_ended',
+            'event_id' => 'sb_evt_' . microtime(true) . '_' . bin2hex(random_bytes(3)),
+            'player_id' => $playerId,
+            'player_name' => $player['player_name'],
+            'source' => 'hand',
+            'source_index' => 0,
+            'target_type' => 'discard',
+            'target_index' => $targetDiscardIndex,
+            'card' => $cardToDiscard,
             'message' => "{$player['player_name']} warf {$cardLabel} auf Hilfsstapel " . ($targetDiscardIndex + 1) . " ab. {$nextPlayer['player_name']} ist jetzt am Zug.",
             'time' => time(),
         ];

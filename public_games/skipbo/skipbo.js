@@ -87,6 +87,22 @@
             gain.connect(this.ctx.destination);
             osc.start(now);
             osc.stop(now + 0.15);
+        },
+        cardWhoosh() {
+            this.init();
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(440, now + 0.12);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.15);
         }
     };
 
@@ -103,6 +119,8 @@
         lastServerState: null,
         pollTimer: null,
         isPolling: false,
+        lastAnimatedEventId: null,
+        isAnimatingFlight: false,
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -323,7 +341,7 @@
     }
 
     async function pollState() {
-        if (state.isPolling || !state.roomCode || !state.playerToken) return false;
+        if (state.isPolling || !state.roomCode || !state.playerToken || state.isAnimatingFlight) return false;
         state.isPolling = true;
 
         try {
@@ -382,9 +400,24 @@
             paneLobby.classList.remove('hidden');
             paneGame.classList.add('hidden');
             renderLobby(data);
+            return;
+        }
+
+        paneLobby.classList.add('hidden');
+        paneGame.classList.remove('hidden');
+
+        // PRÜFEN, OB EINE KARTENFLUG-ANIMATION STATTFINDEN SOLL
+        const evt = data.last_event;
+        const canAnimate = evt && evt.event_id && evt.card && evt.event_id !== state.lastAnimatedEventId &&
+            (evt.type === 'card_played' || evt.type === 'turn_ended' || evt.type === 'game_won');
+
+        if (canAnimate && !state.isAnimatingFlight) {
+            state.lastAnimatedEventId = evt.event_id;
+            triggerFlyingCardAnimation(evt, data, myPlayer);
         } else {
-            paneLobby.classList.add('hidden');
-            paneGame.classList.remove('hidden');
+            if (evt && evt.event_id) {
+                state.lastAnimatedEventId = evt.event_id;
+            }
             renderTable(data, myPlayer);
         }
 
@@ -398,6 +431,114 @@
             }
             winModal.classList.remove('hidden');
         }
+    }
+
+    /**
+     * Führt eine flüssige Kartenflug-Animation von der Quelle zum Ziel durch.
+     */
+    function triggerFlyingCardAnimation(evt, data, myPlayer) {
+        state.isAnimatingFlight = true;
+
+        const isMe = (evt.player_id === state.myPlayerId);
+        let startEl = null;
+        let targetEl = null;
+
+        // 1. Start-Element lokalisieren
+        if (isMe) {
+            if (evt.source === 'hand') {
+                startEl = document.getElementById('my-hand-cards-rack');
+            } else if (evt.source === 'stock') {
+                startEl = document.getElementById('my-stockpile-box');
+            } else if (evt.source === 'discard') {
+                startEl = document.getElementById(`my-discard-slot-${evt.source_index}`);
+            }
+        } else {
+            const oppSlot = document.getElementById(`opponent-slot-${evt.player_id}`);
+            if (oppSlot) {
+                if (evt.source === 'hand') {
+                    startEl = oppSlot.querySelector('.js-opp-hand') || oppSlot;
+                } else if (evt.source === 'stock') {
+                    startEl = oppSlot.querySelector('.js-opp-stock') || oppSlot;
+                } else if (evt.source === 'discard') {
+                    startEl = oppSlot.querySelector(`.js-opp-discard[data-discard="${evt.source_index}"]`) || oppSlot;
+                }
+            }
+        }
+
+        // 2. Ziel-Element lokalisieren
+        if (evt.target_type === 'building') {
+            targetEl = document.getElementById(`building-pile-${evt.target_index}`);
+        } else if (evt.target_type === 'discard') {
+            if (isMe) {
+                targetEl = document.getElementById(`my-discard-slot-${evt.target_index}`);
+            } else {
+                const oppSlot = document.getElementById(`opponent-slot-${evt.player_id}`);
+                if (oppSlot) {
+                    targetEl = oppSlot.querySelector(`.js-opp-discard[data-discard="${evt.target_index}"]`) || oppSlot;
+                }
+            }
+        }
+
+        if (!startEl || !targetEl) {
+            state.isAnimatingFlight = false;
+            renderTable(data, myPlayer);
+            return;
+        }
+
+        // Ticker & Guide Bar sofort mit der Aktionstextmeldung aktualisieren
+        const guideText = document.getElementById('turn-guide-text');
+        if (guideText && evt.message) {
+            guideText.textContent = evt.message;
+        }
+
+        SoundFx.cardWhoosh();
+
+        const flightEl = document.createElement('div');
+        flightEl.className = 'skipbo-flying-card';
+        flightEl.innerHTML = renderCardHtml(evt.card);
+        document.body.appendChild(flightEl);
+
+        const startRect = startEl.getBoundingClientRect();
+        const targetRect = targetEl.getBoundingClientRect();
+
+        const cardW = targetRect.width > 30 ? targetRect.width : 78;
+        const cardH = targetRect.height > 40 ? targetRect.height : 116;
+
+        flightEl.style.width = `${cardW}px`;
+        flightEl.style.height = `${cardH}px`;
+        flightEl.style.left = `${startRect.left + (startRect.width - cardW) / 2}px`;
+        flightEl.style.top = `${startRect.top + (startRect.height - cardH) / 2}px`;
+        flightEl.style.transform = 'scale(0.85) rotate(-6deg)';
+        flightEl.style.opacity = '0.92';
+
+        // Reflow erzwingen
+        void flightEl.offsetHeight;
+
+        // Flug animieren
+        requestAnimationFrame(() => {
+            flightEl.style.left = `${targetRect.left + (targetRect.width - cardW) / 2}px`;
+            flightEl.style.top = `${targetRect.top + (targetRect.height - cardH) / 2}px`;
+            flightEl.style.transform = 'scale(1.04) rotate(0deg)';
+            flightEl.style.opacity = '1';
+        });
+
+        setTimeout(() => {
+            SoundFx.playCard();
+            flightEl.remove();
+
+            // Lande-Impuls auf Zielstapel
+            targetEl.classList.remove('card-land-pulse');
+            void targetEl.offsetWidth;
+            targetEl.classList.add('card-land-pulse');
+
+            // Sound für vollendeten 12er-Stapel
+            if (evt.target_type === 'building' && (evt.card.value === 12 || evt.card.played_as === 12)) {
+                SoundFx.pileCompleted();
+            }
+
+            state.isAnimatingFlight = false;
+            renderTable(data, myPlayer);
+        }, 480);
     }
 
     function renderLobby(data) {
@@ -535,6 +676,8 @@
         opponents.forEach(opp => {
             const slot = document.createElement('div');
             slot.className = `opponent-slot ${opp.is_active ? 'active-turn' : ''}`;
+            slot.id = `opponent-slot-${opp.id}`;
+            slot.dataset.playerId = opp.id;
 
             // Miniatur-Zielstapel
             let stockHtml = '';
@@ -546,21 +689,21 @@
 
             // Miniatur-Hilfsstapel
             let discardHtml = '';
-            (opp.discard_piles || []).forEach(dp => {
+            (opp.discard_piles || []).forEach((dp, dIdx) => {
                 if (dp.top_card) {
-                    discardHtml += `<div style="display:inline-block;margin:0 1px;">${renderCardHtml(dp.top_card, { mini: true })}</div>`;
+                    discardHtml += `<div class="js-opp-discard" data-discard="${dIdx}" style="display:inline-block;margin:0 1px;">${renderCardHtml(dp.top_card, { mini: true })}</div>`;
                 } else {
-                    discardHtml += `<div style="display:inline-block;width:34px;height:50px;border:1px dashed rgba(255,255,255,0.2);border-radius:6px;margin:0 1px;"></div>`;
+                    discardHtml += `<div class="js-opp-discard" data-discard="${dIdx}" style="display:inline-block;width:34px;height:50px;border:1px dashed rgba(255,255,255,0.2);border-radius:6px;margin:0 1px;"></div>`;
                 }
             });
 
             slot.innerHTML = `
-                <div class="opponent-info">
+                <div class="opponent-info js-opp-hand">
                     <span class="opponent-name">${opp.is_bot ? '🤖 ' : ''}${escapeHtml(opp.player_name)}</span>
                     <span class="opponent-hand-badge">🃏 Hand: ${opp.hand_count}</span>
                     <span style="font-size:0.75rem;color:#fbbf24;font-weight:800;margin-top:2px;">🎯 Ziel: ${opp.stock_count}</span>
                 </div>
-                <div class="opponent-mini-card-wrap">
+                <div class="opponent-mini-card-wrap js-opp-stock">
                     ${stockHtml}
                 </div>
                 <div style="display:flex;align-items:center;">
