@@ -1,0 +1,827 @@
+/* ==========================================================================
+   Quarxl - Skip-Bo Spielfeld & Originalkarten CSS
+   ========================================================================== */
+
+:root {
+    --skipbo-green-felt: radial-gradient(ellipse at 50% 35%, #065f46 0%, #064e3b 55%, #022c22 100%);
+    --card-width: 78px;
+    --card-height: 116px;
+    --card-radius: 12px;
+    --color-skipbo-blue: #0284c7;
+    --color-skipbo-green: #10b981;
+    --color-skipbo-orange: #f97316;
+    --color-skipbo-wild: #dc2626;
+    --gold-trim: rgba(245, 158, 11, 0.45);
+}
+
+.skipbo-viewport {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #090d16;
+    color: #f8fafc;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Header & Status-Bar */
+.skipbo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.skipbo-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.skipbo-back-link {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.skipbo-back-link:hover {
+    color: #f8fafc;
+}
+
+.skipbo-room-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.skipbo-mode-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    padding: 0.2rem 0.45rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.skipbo-header-actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.skipbo-btn-label {
+    display: inline;
+}
+
+@media (max-width: 600px) {
+    .skipbo-btn-label {
+        display: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   LOBBY-ANSICHT
+   -------------------------------------------------------------------------- */
+.skipbo-lobby-box {
+    max-width: 480px;
+    margin: 2rem auto;
+    padding: 1.75rem;
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    text-align: center;
+}
+
+.skipbo-card-logo-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #ea580c, #dc2626);
+    color: #ffffff;
+    font-family: "Arial Black", Impact, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    padding: 0.3rem 1.25rem;
+    border-radius: 30px;
+    border: 3px solid #fbbf24;
+    box-shadow: 0 4px 15px rgba(234, 88, 12, 0.5);
+    margin-bottom: 0.5rem;
+}
+
+.skipbo-lobby-title {
+    font-size: 1.35rem;
+    margin-bottom: 0.25rem;
+}
+
+.skipbo-lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.lobby-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.skipbo-lobby-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   ORIGINAL SKIP-BO KARTEN-STYLING (Vorder- und Rückseite)
+   -------------------------------------------------------------------------- */
+.skipbo-card {
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    border: 3.5px solid #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.35rem 0.45rem;
+    font-family: "Arial Black", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-weight: 900;
+    position: relative;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, filter 0.2s ease;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    cursor: default;
+    background-clip: padding-box;
+}
+
+/* Kartenfarben nach Original-Farbband */
+.card-color-blue {
+    background: linear-gradient(145deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+}
+
+.card-color-green {
+    background: linear-gradient(145deg, #10b981 0%, #047857 100%);
+    color: #ffffff;
+}
+
+.card-color-orange {
+    background: linear-gradient(145deg, #f97316 0%, #c2410c 100%);
+    color: #ffffff;
+}
+
+/* DER LEGENDÄRE SKIP-BO JOKER */
+.card-color-wild {
+    background: linear-gradient(140deg, #ea580c 0%, #dc2626 50%, #991b1b 100%);
+    border-color: #fbbf24;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.55), inset 0 0 10px rgba(251, 191, 36, 0.3);
+    color: #ffffff;
+}
+
+/* Ecken-Zahlen (Index oben links & unten rechts) */
+.card-corner {
+    font-size: 0.95rem;
+    line-height: 1;
+    font-weight: 900;
+    user-select: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.card-corner-top-left {
+    align-self: flex-start;
+}
+
+.card-corner-bottom-right {
+    align-self: flex-end;
+    transform: rotate(180deg);
+}
+
+.card-corner-wild-text {
+    font-size: 0.65rem;
+    letter-spacing: -0.02em;
+    font-weight: 900;
+    color: #fef08a;
+}
+
+/* Das zentrale Medaillon der Zahlenkarten (Weißer Kreis mit fetter Farbzahl) */
+.card-center-medallion {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    background: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+}
+
+.medallion-num {
+    font-size: 1.9rem;
+    font-weight: 900;
+    line-height: 1;
+    font-family: "Arial Black", Impact, sans-serif;
+}
+
+.text-color-blue { color: #0284c7; }
+.text-color-green { color: #059669; }
+.text-color-orange { color: #ea580c; }
+
+/* Das zentrale Skip-Bo Banner auf Jokern */
+.card-center-skipbo-banner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    background: linear-gradient(135deg, #fbbf24, #d97706);
+    color: #7f1d1d;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    border: 2px solid #ffffff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    pointer-events: none;
+}
+
+.skipbo-logo-text {
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    color: #ffffff;
+    text-shadow: -1px -1px 0 #991b1b, 1px -1px 0 #991b1b, -1px 1px 0 #991b1b, 1px 1px 0 #991b1b, 0 2px 4px rgba(0,0,0,0.5);
+    white-space: nowrap;
+}
+
+.skipbo-star-icon {
+    font-size: 0.75rem;
+    color: #fef08a;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+/* SKIP-BO KARTENRÜCKSEITE */
+.skipbo-deck-back {
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%);
+    border: 3.5px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.skipbo-deck-back::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.skipbo-deck-logo {
+    background: linear-gradient(135deg, #f97316, #dc2626);
+    color: #ffffff;
+    font-family: "Arial Black", Impact, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    border: 2px solid #fbbf24;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transform: rotate(-18deg);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   INTERAKTIVE STATUS DER KARTEN (Klickbar, Wählbar, Spielbar)
+   -------------------------------------------------------------------------- */
+.skipbo-card.is-playable {
+    cursor: pointer;
+    border-color: #34d399 !important;
+    box-shadow: 0 0 14px rgba(52, 211, 153, 0.75), 0 6px 16px rgba(0, 0, 0, 0.45);
+    animation: pulsePlayable 1.8s infinite alternate ease-in-out;
+}
+
+.skipbo-card.is-playable:hover {
+    transform: translateY(-8px) scale(1.04);
+}
+
+.skipbo-card.is-selected {
+    transform: translateY(-12px) scale(1.08) !important;
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 22px rgba(251, 191, 36, 0.95), 0 12px 24px rgba(0, 0, 0, 0.6) !important;
+    z-index: 20;
+}
+
+@keyframes pulsePlayable {
+    0% {
+        box-shadow: 0 0 8px rgba(52, 211, 153, 0.5), 0 6px 16px rgba(0, 0, 0, 0.45);
+    }
+    100% {
+        box-shadow: 0 0 18px rgba(52, 211, 153, 0.9), 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   SPIELTISCH-ARENA (Board Mat & Zones)
+   -------------------------------------------------------------------------- */
+.skipbo-table-arena {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 0.5rem;
+    max-width: 1050px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Mitspieler-Leiste (Gegner oben) */
+.skipbo-opponents-bar {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.25rem;
+    overflow-x: auto;
+    min-height: 110px;
+}
+
+.opponent-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.5rem 0.75rem;
+    min-width: 160px;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.opponent-slot.active-turn {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+}
+
+.opponent-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.82rem;
+}
+
+.opponent-name {
+    font-weight: 700;
+    white-space: nowrap;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opponent-hand-badge {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* Mini-Kartenansicht für Gegner-Ziel- und Hilfsstapel */
+.opponent-mini-card-wrap {
+    transform: scale(0.65);
+    transform-origin: center center;
+    margin: -18px -10px;
+}
+
+/* DIE TISCHPLATTE (DAS GRÜNE FILZBRETT) */
+.skipbo-mat {
+    background: var(--skipbo-green-felt);
+    border: 3px solid rgba(245, 158, 11, 0.4);
+    border-radius: 18px;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7), 0 10px 25px rgba(0, 0, 0, 0.6);
+    padding: 0.75rem 1rem 1rem;
+    margin: 0.5rem 0;
+    position: relative;
+}
+
+.skipbo-mat-header {
+    text-align: center;
+    margin-bottom: 0.75rem;
+}
+
+.skipbo-ticker-text {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fef08a;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.3rem 0.85rem;
+    border-radius: 20px;
+    border: 1px solid rgba(254, 240, 138, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    max-width: 90%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* DIE ZENTRALE BAUSTAPEL-ZONE */
+.skipbo-center-board {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    padding: 0.25rem 0;
+}
+
+/* Nachziehstapel-Slot */
+.skipbo-draw-deck-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.skipbo-draw-count-badge {
+    position: absolute;
+    bottom: 22px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fef08a;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.15rem 0.45rem;
+    border-radius: 10px;
+    border: 1px solid rgba(254, 240, 138, 0.3);
+}
+
+.skipbo-slot-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.4rem;
+}
+
+/* 4 Baustapel Grid */
+.skipbo-building-grid {
+    display: flex;
+    gap: 0.85rem;
+    justify-content: center;
+}
+
+.skipbo-building-slot {
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    border: 2px dashed rgba(245, 158, 11, 0.55);
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+    cursor: default;
+}
+
+.skipbo-building-slot.target-highlight {
+    cursor: pointer;
+    border: 2.5px solid #fbbf24;
+    background: rgba(251, 191, 36, 0.2);
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.75);
+    transform: scale(1.04);
+}
+
+.skipbo-slot-ring {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(245, 158, 11, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+.skipbo-slot-needed-num {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.65);
+    font-family: "Arial Black", sans-serif;
+}
+
+.skipbo-slot-card-container {
+    position: absolute;
+    inset: -2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.skipbo-slot-card-container .skipbo-card {
+    pointer-events: auto;
+}
+
+.skipbo-building-label {
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.skipbo-sequence-indicator {
+    color: #fbbf24;
+}
+
+/* --------------------------------------------------------------------------
+   MEINE SPIELERZONE (UNTERER BEREICH)
+   -------------------------------------------------------------------------- */
+.skipbo-my-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+    padding-bottom: 1rem;
+}
+
+.skipbo-turn-guide {
+    text-align: center;
+    padding: 0.35rem 0.75rem;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #38bdf8;
+}
+
+.skipbo-my-stacks-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 0.65rem 1rem;
+}
+
+/* Zielstapel (Stockpile) Box */
+.skipbo-stockpile-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.skipbo-stockpile-box {
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    border: 2.5px solid #fbbf24;
+    background: rgba(0, 0, 0, 0.3);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.25);
+    cursor: default;
+}
+
+.skipbo-stock-thickness-3d {
+    position: absolute;
+    inset: -4px -4px auto auto;
+    width: 6px;
+    height: calc(100% + 4px);
+    background: linear-gradient(to right, #78350f, #b45309);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+.skipbo-stock-top-card {
+    position: absolute;
+    inset: -2.5px;
+}
+
+.skipbo-stock-count-badge {
+    position: absolute;
+    bottom: -10px;
+    background: #fbbf24;
+    color: #78350f;
+    font-size: 0.72rem;
+    font-weight: 900;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    z-index: 5;
+}
+
+.skipbo-zone-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #fbbf24;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.85rem;
+}
+
+.skipbo-stacks-divider {
+    width: 1px;
+    height: 90px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Meine 4 Hilfsstapel Grid */
+.skipbo-discard-grid {
+    display: flex;
+    gap: 0.65rem;
+}
+
+.skipbo-discard-slot {
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    border: 2px dashed rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.25);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    cursor: default;
+    transition: all 0.2s ease;
+}
+
+.skipbo-discard-slot.discard-target-active {
+    cursor: pointer;
+    border: 2px solid #38bdf8;
+    background: rgba(56, 189, 248, 0.15);
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+}
+
+.skipbo-discard-card-target {
+    position: absolute;
+    inset: -2px;
+}
+
+.skipbo-discard-counter-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.1rem 0.35rem;
+    border-radius: 6px;
+    z-index: 4;
+}
+
+.skipbo-discard-label {
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Meine Handkarten (Rack) */
+.skipbo-hand-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 0.65rem 1rem 0.85rem;
+}
+
+.skipbo-hand-label {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 480px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.skipbo-hand-count-pill {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding: 0.1rem 0.45rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+}
+
+.skipbo-hand-cards {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0.5rem 0.25rem;
+    min-height: 125px;
+    max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE OPTIMIERUNGEN (Smartphones & Tablets)
+   -------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    :root {
+        --card-width: 62px;
+        --card-height: 94px;
+        --card-radius: 9px;
+    }
+
+    .medallion-num {
+        font-size: 1.5rem;
+    }
+
+    .card-center-medallion {
+        width: 38px;
+        height: 38px;
+    }
+
+    .card-corner {
+        font-size: 0.8rem;
+    }
+
+    .card-center-skipbo-banner {
+        width: 50px;
+        padding: 0.2rem 0.35rem;
+    }
+
+    .skipbo-logo-text {
+        font-size: 0.68rem;
+    }
+
+    .skipbo-building-grid {
+        gap: 0.45rem;
+    }
+
+    .skipbo-discard-grid {
+        gap: 0.4rem;
+    }
+
+    .skipbo-my-stacks-row {
+        gap: 0.75rem;
+        padding: 0.5rem;
+    }
+
+    .skipbo-hand-cards {
+        gap: 0.35rem;
+    }
+}

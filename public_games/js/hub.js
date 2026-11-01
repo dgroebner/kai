@@ -22,6 +22,7 @@
         const diceGroup = document.getElementById('group-dice-modes');
         const cardGroup = document.getElementById('group-card-modes');
         const loch6Group = document.getElementById('group-loch6-modes');
+        const skipboGroup = document.getElementById('group-skipbo-modes');
         const pinInput = document.getElementById('quarxl-table-access-code') || document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
@@ -52,12 +53,13 @@
 
         updateSavedPinField();
 
-        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false) {
+        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false) {
             if (gameTypeInput) gameTypeInput.value = gameType;
             if (modalTitle) modalTitle.textContent = title;
             if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
             if (cardGroup) cardGroup.classList.toggle('hidden', !showCards);
             if (loch6Group) loch6Group.classList.toggle('hidden', !showLoch6);
+            if (skipboGroup) skipboGroup.classList.toggle('hidden', !showSkipBo);
             updateSavedPinField();
             modal.classList.remove('hidden');
             if (pinInput && !pinInput.value) {
@@ -105,6 +107,14 @@
             });
         }
 
+        // Kachel-Klick auf Skip-Bo
+        const skipboCard = document.getElementById('card-skipbo');
+        if (skipboCard && modal) {
+            skipboCard.addEventListener('click', () => {
+                openCreateModal('skipbo', 'Neues Skip-Bo Spiel erstellen', false, false, false, true);
+            });
+        }
+
         // Modal schließen
         document.querySelectorAll('.js-close-modal').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -131,6 +141,9 @@
                     payload.game_mode = mode;
                 } else if (gameType === 'shut_the_box') {
                     mode = '4_player';
+                    payload.game_mode = mode;
+                } else if (gameType === 'skipbo') {
+                    mode = document.querySelector('input[name="skipbo_mode"]:checked')?.value || 'standard';
                     payload.game_mode = mode;
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';

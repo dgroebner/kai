@@ -201,6 +201,7 @@ Rückwärts- oder Zirkelbezüge sind unzulässig.
 | System | `Kai\Tools\System\` | `src/System/` | `public/system/` |
 | Transit | `Kai\Tools\Transit\` | `src/Transit/` | `public/transit/` |
 | Games | — (Client-Only) | — | `public/games/` |
+| GamesHub (Quarxl) | `Kai\Tools\GamesHub\` | `src/GamesHub/` | `public_games/` |
 | Weather | `Kai\Tools\Weather\` | `src/Weather/` | `public/weather/` |
 | Projects | `Kai\Tools\Projects\` | `src/Projects/` | `public/projects/` |
 

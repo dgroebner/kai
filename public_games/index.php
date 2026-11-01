@@ -96,6 +96,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–6 Spieler</span>
             </div>
+
+            <!-- Skip-Bo Kachel -->
+            <div class="game-kachel" id="card-skipbo" role="button" tabindex="0">
+                <div class="game-kachel-icon">🎴</div>
+                <div class="game-kachel-content">
+                    <h2>Skip-Bo</h2>
+                    <p>Der legendäre Kartenablege-Klassiker. Baue Baustapel von 1 bis 12 ab und leere als Erster deinen Zielstapel!</p>
+                </div>
+                <span class="game-kachel-badge">2–6 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
@@ -178,6 +188,25 @@ require_once __DIR__ . '/../bootstrap.php';
                                 <span>6</span>
                             </label>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Skip-Bo Optionen -->
+                <div class="form-group hidden" id="group-skipbo-modes">
+                    <label>Zielstapel-Größe (Karten pro Spieler):</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="skipbo_mode" value="standard" checked>
+                            <span><strong>Standard (20 Karten):</strong> Die ideale Mischung aus Taktik und Spieldauer</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="skipbo_mode" value="fast">
+                            <span><strong>Schnelle Runde (10 Karten):</strong> Perfekt für zwischendurch</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="radio" name="skipbo_mode" value="classic">
+                            <span><strong>Klassisch lang (30 Karten):</strong> Das originale Skip-Bo Turnier-Erlebnis</span>
+                        </label>
                     </div>
                 </div>
 
