@@ -194,6 +194,34 @@
                 return;
             }
 
+            // 8b. Ladevorgang von Reise trennen
+            if (btn.matches('.js-btn-unlink-charge')) {
+                e.preventDefault();
+                const tripId = btn.dataset.tripId;
+                const chargeId = btn.dataset.chargeId;
+
+                btn.disabled = true;
+
+                try {
+                    const res = await KaiHttp.postJson('trips_api.php', {
+                        action: 'unlink_charge',
+                        trip_id: parseInt(tripId, 10),
+                        charge_id: parseInt(chargeId, 10),
+                    });
+
+                    if (res && res.success) {
+                        await loadTripDetails(tripId);
+                    } else {
+                        alert(res?.error || 'Trennen des Ladevorgangs fehlgeschlagen');
+                    }
+                } catch (err) {
+                    alert('Fehler beim Trennen des Ladevorgangs');
+                } finally {
+                    btn.disabled = false;
+                }
+                return;
+            }
+
             // 9. Modals schließen
             if (btn.matches('.js-btn-close-modal')) {
                 e.preventDefault();
@@ -377,6 +405,7 @@
         const transactions = data.transactions || [];
         const candidates = data.candidates || [];
         const subtrips = data.subtrips || [];
+        const charges = data.charges || [];
 
         const totalCost = (parseFloat(trip.home_charge_cost || 0) + parseFloat(trip.en_route_charge_cost || 0) + parseFloat(trip.additional_cost || 0)).toFixed(2);
         const dist = parseFloat(trip.total_distance_km || 0);
@@ -531,10 +560,17 @@
                     ` : ''}
                 </div>
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Schnellladen unterwegs</div>
-                    <div style="font-size:1.4rem; font-weight:bold; color:var(--car-orange, #f59e0b);">
-                        ${parseFloat(trip.en_route_charge_kwh || 0).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">
+                        ${trip.actual_en_route_charge_kwh && parseFloat(trip.actual_en_route_charge_kwh) > 0 ? 'Schnellladen Ist' : 'Schnellladen unterwegs'}
                     </div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:var(--car-orange, #f59e0b);">
+                        ${parseFloat(trip.actual_en_route_charge_kwh || trip.en_route_charge_kwh || 0).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh
+                    </div>
+                    ${trip.actual_en_route_charge_kwh && parseFloat(trip.actual_en_route_charge_kwh) > 0 ? `
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                            Plan: ${parseFloat(trip.en_route_charge_kwh || 0) > 0 ? parseFloat(trip.en_route_charge_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) : '–'} kWh
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="card" style="padding:1rem; text-align:center; background:var(--bg-surface); border:1px solid var(--bg-surface-hover);">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.25rem;">Gesamtkosten</div>
@@ -597,6 +633,86 @@
                     <div>💰 <strong>Bilanz:</strong> <span style="font-weight:bold; color:#10b981;">${totalCost} €</span></div>
                 </div>
 
+                <!-- Geladene Ladevorgänge & Belege unterwegs -->
+                <div style="margin-bottom:1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                        <h4 style="font-size:0.95rem; margin:0;">
+                            ⚡ Geladene Ladevorgänge &amp; Belege unterwegs (${charges.length})
+                        </h4>
+                        ${charges.length > 0 ? `
+                            <span style="font-size:0.85rem; color:var(--text-muted);">
+                                Gesamt: <strong style="color:var(--car-orange, #f59e0b);">${charges.reduce((sum, c) => sum + parseFloat(c.charged_net_kwh || 0), 0).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh</strong>
+                                &bull; <strong style="color:#10b981;">${charges.reduce((sum, c) => sum + parseFloat(c.cost_eur || 0), 0).toFixed(2).replace('.', ',')} €</strong>
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    ${charges.length === 0 ? `
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Keine Ladevorgänge für diesen Reisezeitraum zugeordnet.</p>
+                    ` : `
+                        <div class="table-responsive" style="margin-bottom:1rem;">
+                            <table class="table" style="width:100%; font-size:0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Zeitpunkt</th>
+                                        <th>Ladestation</th>
+                                        <th>Geladen</th>
+                                        <th>Kosten &amp; Beleg</th>
+                                        <th style="text-align:right;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${charges.map(c => {
+                                        const startDt = new Date(c.start_time.replace(' ', 'T') + 'Z');
+                                        const dateStr = startDt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                        const timeStr = startDt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                        const isHome = c.location_type === 'HOME';
+                                        const locName = isHome ? '🏠 Zuhause (Vorabend)' : (c.station_name || c.station_operator || 'Unterwegs');
+                                        const hasCost = c.cost_eur && parseFloat(c.cost_eur) > 0;
+                                        const costFormatted = hasCost ? parseFloat(c.cost_eur).toFixed(2).replace('.', ',') + ' €' : '–';
+                                        const receiptStore = c.receipt_store || c.tariff_category || '';
+
+                                        return `
+                                            <tr>
+                                                <td>
+                                                    <strong>${dateStr}</strong>
+                                                    <div style="font-size:0.75rem; color:var(--text-muted);">${timeStr} Uhr (${c.duration_min}m)</div>
+                                                </td>
+                                                <td>
+                                                    <strong>${KaiHtml.escape(locName)}</strong>
+                                                    <div style="font-size:0.75rem; color:var(--text-muted);">${isHome ? 'AC Wallbox' : (c.charge_mode || 'DC')} &bull; SoC ${c.soc_start_pct}% &rarr; ${c.soc_end_pct}%</div>
+                                                </td>
+                                                <td>
+                                                    <strong>${parseFloat(c.charged_net_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh</strong>
+                                                    <div style="font-size:0.75rem; color:#10b981;">+${c.delta_soc_pct}%</div>
+                                                </td>
+                                                <td>
+                                                    ${isHome ? `
+                                                        <span class="badge badge-success" title="Netzstrom an der Wallbox">🏠 ${costFormatted} (Heimstrom)</span>
+                                                    ` : (c.receipt_id ? `
+                                                        <a href="../kassenbon/detail.php?id=${parseInt(c.receipt_id, 10)}" target="_blank" class="badge badge-success" style="text-decoration:none;" title="Ladebeleg im Kassenbon-Modul öffnen">
+                                                            📄 ${costFormatted} ${receiptStore ? `(${KaiHtml.escape(receiptStore)})` : ''}
+                                                        </a>
+                                                    ` : (hasCost ? `
+                                                        <span class="badge badge-neutral">⚡ ${costFormatted} (Tarif)</span>
+                                                    ` : `
+                                                        <span class="badge badge-warning" title="Noch kein Beleg oder Betrag hinterlegt">Ausstehend</span>
+                                                    `))}
+                                                </td>
+                                                <td style="text-align:right;">
+                                                    <button type="button" class="btn btn-outline btn-sm js-btn-unlink-charge" data-trip-id="${trip.id}" data-charge-id="${c.id}" title="Ladevorgang von Reise lösen">
+                                                        ✕
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+
                 <!-- Zugeordnete Buchungen -->
                 <h4 style="font-size:0.95rem; margin-bottom:0.5rem;">Zugeordnete Transaktionen (${transactions.length})</h4>
                 ${transactions.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Noch keine Bank- oder Kreditkartenbuchungen zugeordnet.</p>' : `
@@ -656,7 +772,7 @@
                                         <td><span class="badge">${c.transaction_type === 'creditcard' ? 'Visa CC' : 'Giro'}</span></td>
                                         <td>
                                             <strong>${KaiHtml.escape(c.partner_name)}</strong>
-                                            ${c.confidence === 'high' ? ' <span class="badge badge-success" style="font-size:0.7rem;">Match</span>' : ''}
+                                            ${c.already_covered ? ` <span class="badge badge-success" style="font-size:0.7rem;" title="Bereits durch Ladebeleg '${KaiHtml.escape(c.covered_by_receipt || '')}' abgedeckt">✓ Durch Ladebeleg erfasst</span>` : (c.confidence === 'high' ? ' <span class="badge badge-success" style="font-size:0.7rem;">Match</span>' : '')}
                                             <div style="font-size:0.75rem; color:var(--text-muted);">${KaiHtml.escape(c.description || '')}</div>
                                         </td>
                                         <td style="font-weight:bold;">${parseFloat(c.amount).toFixed(2)} €</td>

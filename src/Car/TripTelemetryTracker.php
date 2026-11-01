@@ -316,6 +316,13 @@ class TripTelemetryTracker
                 ':id' => $tripId,
             ]);
 
+            try {
+                $expenseService = new TripExpenseService($this->pdo, null, $this->logger);
+                $expenseService->recalculateTripCosts($tripId);
+            } catch (Throwable $ee) {
+                $this->logger->warn("TripTelemetryTracker: Kostenabgleich für Reise #{$tripId} fehlgeschlagen: " . $ee->getMessage());
+            }
+
             $this->logger->info("TripTelemetryTracker: Reise #{$tripId} '{$trip['title']}' aktualisiert: Status '{$targetStatus}', Ist-Distanz {$totalActualDistance} km, Ist-Verbrauch {$totalActualConsumption} kWh, Ankunfts-SoC {$finalArrivalSoc}%.");
             return true;
         }

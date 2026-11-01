@@ -227,6 +227,7 @@ class ChargingReceiptService
 
         if ($success) {
             $this->logger->info("ChargingReceiptService: Ladevorgang #{$chargeId} mit E-Bon #{$receiptId} (Position #" . ($receiptItemId ?: '–') . ", {$store}, {$totalEur} €) verknüpft.");
+            $this->syncTripCostsForCharge($chargeId);
         }
 
         return $success;
@@ -244,7 +245,61 @@ class ChargingReceiptService
             WHERE id = :charge_id
         ");
 
-        return $stmt->execute([':charge_id' => $chargeId]);
+        $res = $stmt->execute([':charge_id' => $chargeId]);
+        if ($res) {
+            $this->syncTripCostsForCharge($chargeId);
+        }
+        return $res;
+    }
+
+    /**
+     * Synchronisiert die Reisekosten einer verknüpften oder passenden Reise,
+     * wenn sich Kosten oder Belege eines Ladevorgangs ändern.
+     */
+    private function syncTripCostsForCharge(int $chargeId): void
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT trip_id, start_time, location_type FROM vehicle_charges WHERE id = :id");
+            $stmt->execute([':id' => $chargeId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                return;
+            }
+
+            $tripId = !empty($row['trip_id']) ? (int)$row['trip_id'] : null;
+
+            // Falls noch keine trip_id gesetzt ist: Automatisch ermitteln, ob eine Reise stattfand
+            if (!$tripId && !empty($row['start_time']) && ($row['location_type'] ?? '') !== 'HOME') {
+                $dt = new DateTime($row['start_time'], new DateTimeZone('UTC'));
+                $dt->setTimezone(new DateTimeZone('Europe/Berlin'));
+                $chargeLocal = $dt->format('Y-m-d H:i:s');
+
+                $tripStmt = $this->db->prepare("
+                    SELECT id FROM car_trips
+                    WHERE departure_time <= :t1
+                      AND (return_time >= :t2 OR (return_time IS NULL AND departure_time >= DATE_SUB(:t3, INTERVAL 1 DAY)))
+                    LIMIT 1
+                ");
+                $tripStmt->execute([
+                    ':t1' => date('Y-m-d H:i:s', strtotime($chargeLocal) + 1800),
+                    ':t2' => date('Y-m-d H:i:s', strtotime($chargeLocal) - 3600),
+                    ':t3' => $chargeLocal,
+                ]);
+                $foundId = $tripStmt->fetchColumn();
+                if ($foundId) {
+                    $tripId = (int)$foundId;
+                    $upd = $this->db->prepare("UPDATE vehicle_charges SET trip_id = :tid WHERE id = :cid");
+                    $upd->execute([':tid' => $tripId, ':cid' => $chargeId]);
+                }
+            }
+
+            if ($tripId) {
+                $expenseService = new TripExpenseService($this->db, null, $this->logger);
+                $expenseService->recalculateTripCosts($tripId);
+            }
+        } catch (Throwable $e) {
+            $this->logger->warn("ChargingReceiptService: syncTripCostsForCharge fehlgeschlagen: " . $e->getMessage());
+        }
     }
 
     /**

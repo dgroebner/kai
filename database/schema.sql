@@ -866,10 +866,12 @@ CREATE TABLE IF NOT EXISTS `vehicle_charges` (
     `cost_eur` DECIMAL(6,2) NULL,
     `receipt_id` INT NULL,
     `receipt_item_id` INT NULL,
+    `trip_id` INT UNSIGNED NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_start_time` (`start_time`),
     INDEX `idx_receipt_id` (`receipt_id`),
-    INDEX `idx_receipt_item_id` (`receipt_item_id`)
+    INDEX `idx_receipt_item_id` (`receipt_item_id`),
+    INDEX `idx_trip_id` (`trip_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `car_charging_tariffs` (
@@ -906,6 +908,7 @@ CREATE TABLE IF NOT EXISTS `car_trips` (
     `total_distance_km` DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
     `estimated_consumption_kwh` DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
     `en_route_charge_kwh` DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
+    `actual_en_route_charge_kwh` DECIMAL(8, 2) NULL,
     `actual_distance_km` DECIMAL(8, 2) NULL,
     `actual_consumption_kwh` DECIMAL(8, 2) NULL,
     `actual_arrival_soc` INT NULL,

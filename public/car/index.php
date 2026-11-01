@@ -1353,10 +1353,21 @@ if ($tab === 'trips') {
                                         <?php endif; ?>
                                     </div>
                                     <div>
-                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Unterwegs</div>
-                                        <div style="font-weight: 700; font-size: 1rem; color: var(--color-orange);">
-                                            <?= number_format((float)$t['en_route_charge_kwh'], 1, ',', '.') ?> <span style="font-size:0.75rem; font-weight:normal;">kWh</span>
+                                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                                            <?= (!empty($t['actual_en_route_charge_kwh']) && (float)$t['actual_en_route_charge_kwh'] > 0) ? 'Reales Laden' : 'Unterwegs' ?>
                                         </div>
+                                        <?php if (!empty($t['actual_en_route_charge_kwh']) && (float)$t['actual_en_route_charge_kwh'] > 0): ?>
+                                            <div style="font-weight: 700; font-size: 1rem; color: var(--color-orange);" title="Reale Schnellladung laut Ladevorgängen">
+                                                <?= number_format((float)$t['actual_en_route_charge_kwh'], 1, ',', '.') ?> <span style="font-size:0.75rem; font-weight:normal;">kWh</span>
+                                            </div>
+                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                                Plan: <?= number_format((float)$t['en_route_charge_kwh'], 1, ',', '.') ?> kWh
+                                            </div>
+                                        <?php else: ?>
+                                            <div style="font-weight: 700; font-size: 1rem; color: var(--color-orange);">
+                                                <?= number_format((float)$t['en_route_charge_kwh'], 1, ',', '.') ?> <span style="font-size:0.75rem; font-weight:normal;">kWh</span>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em;">Kostenbilanz</div>

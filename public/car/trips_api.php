@@ -54,6 +54,13 @@ try {
                 Auth::sendJsonError(400, 'Ungültige Trip-ID');
             }
 
+            // Sicherstellen, dass Ladevorgänge und Reisekosten aktuell sind
+            try {
+                $expenseService->recalculateTripCosts($id);
+            } catch (\Throwable) {
+                // Kosten-Recalculation darf Detailabruf nicht verhindern
+            }
+
             $trip = $tripRepo->getTrip($id);
             if (!$trip) {
                 Auth::sendJsonError(404, 'Reise nicht gefunden');
@@ -69,6 +76,7 @@ try {
             $transactions = $tripRepo->getTripTransactions($id);
             $subtrips = $tripRepo->getSubTrips($id);
             $candidates = $expenseService->getCandidateTransactions($id);
+            $charges = $tripRepo->getTripCharges($id);
 
             echo json_encode([
                 'success' => true,
@@ -78,6 +86,7 @@ try {
                     'transactions' => $transactions,
                     'subtrips' => $subtrips,
                     'candidates' => $candidates,
+                    'charges' => $charges,
                 ]
             ]);
             exit;
@@ -267,6 +276,48 @@ try {
             'data' => [
                 'costs' => $costs,
                 'transactions' => $tripRepo->getTripTransactions($tripId),
+            ]
+        ]);
+        exit;
+    }
+
+    if ($action === 'unlink_charge') {
+        $tripId = filter_var($input['trip_id'] ?? null, FILTER_VALIDATE_INT);
+        $chargeId = filter_var($input['charge_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$tripId || !$chargeId) {
+            Auth::sendJsonError(400, 'Ungültige Parameter für Ladevorgang');
+        }
+
+        $tripRepo->unlinkChargeFromTrip($chargeId);
+        $costs = $expenseService->recalculateTripCosts($tripId);
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'costs' => $costs,
+                'charges' => $tripRepo->getTripCharges($tripId),
+            ]
+        ]);
+        exit;
+    }
+
+    if ($action === 'link_charge') {
+        $tripId = filter_var($input['trip_id'] ?? null, FILTER_VALIDATE_INT);
+        $chargeId = filter_var($input['charge_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$tripId || !$chargeId) {
+            Auth::sendJsonError(400, 'Ungültige Parameter für Ladevorgang');
+        }
+
+        $tripRepo->linkChargeToTrip($chargeId, $tripId);
+        $costs = $expenseService->recalculateTripCosts($tripId);
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'costs' => $costs,
+                'charges' => $tripRepo->getTripCharges($tripId),
             ]
         ]);
         exit;

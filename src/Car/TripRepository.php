@@ -95,6 +95,7 @@ class TripRepository
             'departure_time', 'return_time', 'is_round_trip',
             'target_arrival_soc', 'planned_departure_soc',
             'total_distance_km', 'estimated_consumption_kwh', 'en_route_charge_kwh',
+            'actual_en_route_charge_kwh',
             'actual_distance_km', 'actual_consumption_kwh', 'actual_arrival_soc', 'telemetry_matched_at',
             'routing_provider', 'abrp_deep_link', 'status',
             'home_charge_cost', 'en_route_charge_cost', 'additional_cost'
@@ -438,5 +439,136 @@ class TripRepository
             ':add' => $additionalCost,
             ':id' => $tripId,
         ]);
+    }
+
+    // =========================================================================
+    // LADEVORGÄNGE & BELEGE (vehicle_charges)
+    // =========================================================================
+
+    /**
+     * Verknüpft automatisch alle Unterwegs-Ladevorgänge (vehicle_charges) im Reisefenster mit der Reise.
+     *
+     * @return int Anzahl verknüpfter Ladevorgänge
+     */
+    public function autoLinkChargesForTrip(int $tripId): int
+    {
+        $trip = $this->getTrip($tripId);
+        if (!$trip) {
+            return 0;
+        }
+
+        $depTime = (string)$trip['departure_time'];
+        $retTime = !empty($trip['return_time']) ? (string)$trip['return_time'] : null;
+
+        // Puffer: 30 Min vor Abfahrt bis 60 Min nach geplanter Rückkehr
+        $startWindowLocal = date('Y-m-d H:i:s', strtotime($depTime) - 1800);
+        if ($retTime !== null) {
+            $endWindowLocal = date('Y-m-d H:i:s', strtotime($retTime) + 3600);
+        } elseif ($trip['status'] === 'abgeschlossen') {
+            $endWindowLocal = date('Y-m-d H:i:s', strtotime($depTime) + 86400);
+        } else {
+            $endWindowLocal = date('Y-m-d H:i:s', time() + 3600);
+        }
+
+        $startUtc = $this->toUtcString($startWindowLocal);
+        $endUtc = $this->toUtcString($endWindowLocal);
+
+        // Alle öffentlichen/unterwegs Ladevorgänge im UTC-Fenster zuordnen
+        $stmt = $this->pdo->prepare("
+            UPDATE vehicle_charges
+            SET trip_id = :trip_id
+            WHERE (trip_id IS NULL OR trip_id = :trip_id2)
+              AND (location_type IS NULL OR location_type != 'HOME')
+              AND start_time >= :start_utc
+              AND start_time <= :end_utc
+        ");
+        $stmt->execute([
+            ':trip_id' => $tripId,
+            ':trip_id2' => $tripId,
+            ':start_utc' => $startUtc,
+            ':end_utc' => $endUtc,
+        ]);
+        $linkedCount = $stmt->rowCount();
+
+        // 2. Letzte Heimladung vor der Abfahrt (im Zeitfenster 36h vor Abfahrt) als Vorabend-Ladung verknüpfen
+        $stmtHome = $this->pdo->prepare("
+            SELECT id FROM vehicle_charges
+            WHERE (trip_id IS NULL OR trip_id = :trip_id)
+              AND location_type = 'HOME'
+              AND start_time >= DATE_SUB(:start_utc, INTERVAL 36 HOUR)
+              AND start_time <= :start_utc2
+            ORDER BY start_time DESC
+            LIMIT 1
+        ");
+        $stmtHome->execute([
+            ':trip_id' => $tripId,
+            ':start_utc' => $startUtc,
+            ':start_utc2' => $startUtc,
+        ]);
+        $homeChargeId = $stmtHome->fetchColumn();
+        if ($homeChargeId) {
+            $this->linkChargeToTrip((int)$homeChargeId, $tripId);
+            $linkedCount++;
+        }
+
+        return $linkedCount;
+    }
+
+    /**
+     * Liefert alle einer Reise zugeordneten Ladevorgänge inklusive Belegdaten.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getTripCharges(int $tripId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT vc.*,
+                   r.store AS receipt_store,
+                   r.purchase_date AS receipt_purchase_date,
+                   r.total AS receipt_total,
+                   r.file_hash AS receipt_file_hash,
+                   r.bank_cc_transaction_id,
+                   r.bank_giro_transaction_id
+            FROM vehicle_charges vc
+            LEFT JOIN kb_receipts r ON r.id = vc.receipt_id
+            WHERE vc.trip_id = :trip_id
+            ORDER BY vc.start_time ASC
+        ");
+        $stmt->execute([':trip_id' => $tripId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function linkChargeToTrip(int $chargeId, int $tripId): bool
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE vehicle_charges
+            SET trip_id = :trip_id
+            WHERE id = :charge_id
+        ");
+        return $stmt->execute([
+            ':trip_id' => $tripId,
+            ':charge_id' => $chargeId,
+        ]);
+    }
+
+    public function unlinkChargeFromTrip(int $chargeId): bool
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE vehicle_charges
+            SET trip_id = NULL
+            WHERE id = :charge_id
+        ");
+        return $stmt->execute([':charge_id' => $chargeId]);
+    }
+
+    private function toUtcString(string $localTimeStr): string
+    {
+        try {
+            $dt = new \DateTime($localTimeStr, new \DateTimeZone('Europe/Berlin'));
+            $dt->setTimezone(new \DateTimeZone('UTC'));
+            return $dt->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            return $localTimeStr;
+        }
     }
 }

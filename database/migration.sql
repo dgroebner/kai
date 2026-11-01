@@ -145,3 +145,17 @@ CREATE TABLE IF NOT EXISTS `games_hub_reactions` (
     CONSTRAINT `fk_gh_reactions_room` FOREIGN KEY (`room_id`) REFERENCES `games_hub_rooms`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ==========================================================================
+-- DOMAIN: CAR (Reise-Ladekosten & Beleg-Verknüpfung)
+-- ==========================================================================
+
+ALTER TABLE `car_trips`
+    ADD COLUMN IF NOT EXISTS `actual_en_route_charge_kwh` DECIMAL(8, 2) NULL DEFAULT NULL AFTER `en_route_charge_kwh`;
+
+ALTER TABLE `vehicle_charges`
+    ADD COLUMN IF NOT EXISTS `trip_id` INT UNSIGNED NULL DEFAULT NULL AFTER `receipt_item_id`;
+
+ALTER TABLE `vehicle_charges`
+    ADD INDEX IF NOT EXISTS `idx_vc_trip_id` (`trip_id`);
+
+
