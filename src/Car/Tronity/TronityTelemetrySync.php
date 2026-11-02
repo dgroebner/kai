@@ -146,6 +146,16 @@ class TronityTelemetrySync
                 $this->logger->info("TronityTelemetrySync: {$synced} Ladevorgänge synchronisiert.");
             }
 
+            // Bestehende Heimladungen mit korrigierten PV-/Netz-Anteilen nachberechnen
+            try {
+                $recalculated = $this->chargeAnalyzer->recalculateHomeCharges(50);
+                if ($recalculated > 0) {
+                    $this->logger->info("TronityTelemetrySync: {$recalculated} Heimladungen nachberechnet.");
+                }
+            } catch (\Throwable $re) {
+                $this->logger->warn("TronityTelemetrySync: Fehler bei Neuberechnung von Heimladungen: " . $re->getMessage());
+            }
+
             // Reisen mit Lade- und Fahrtdaten abgleichen
             try {
                 $telemetryTracker = new \Kai\Tools\Car\TripTelemetryTracker(logger: $this->logger);

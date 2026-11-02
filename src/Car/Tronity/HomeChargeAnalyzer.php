@@ -2,6 +2,8 @@
 
 namespace Kai\Tools\Car\Tronity;
 
+use DateTime;
+use DateTimeZone;
 use Kai\Tools\Shared\Db\Database;
 use Kai\Tools\System\SystemSettingsService;
 use PDO;
@@ -22,6 +24,21 @@ class HomeChargeAnalyzer
      */
     public function analyze(string $startTimeUtc, string $endTimeUtc, float $chargedNetKwh): array
     {
+        // pv_telemetry speichert last_update in lokaler Zeit (Europe/Berlin).
+        // Wir konvertieren daher die UTC-Zeitstempel in die lokale Zeitzone für die Datenbankabfrage.
+        try {
+            $startDt = new DateTime($startTimeUtc, new DateTimeZone('UTC'));
+            $startDt->setTimezone(new DateTimeZone('Europe/Berlin'));
+            $startTimeLocal = $startDt->format('Y-m-d H:i:s');
+
+            $endDt = new DateTime($endTimeUtc, new DateTimeZone('UTC'));
+            $endDt->setTimezone(new DateTimeZone('Europe/Berlin'));
+            $endTimeLocal = $endDt->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            $startTimeLocal = $startTimeUtc;
+            $endTimeLocal = $endTimeUtc;
+        }
+
         // 1. Hole alle 5-Minuten Telemetrie-Einträge für den Ladezeitraum
         // Da die Werte in pv_telemetry Leistung in W sind, rechnen wir sie in Energie (kWh) um.
         $stmt = $this->db->prepare("
@@ -35,7 +52,7 @@ class HomeChargeAnalyzer
             WHERE last_update >= :start AND last_update <= :end
             ORDER BY last_update ASC
         ");
-        $stmt->execute([':start' => $startTimeUtc, ':end' => $endTimeUtc]);
+        $stmt->execute([':start' => $startTimeLocal, ':end' => $endTimeLocal]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($rows)) {
@@ -115,5 +132,50 @@ class HomeChargeAnalyzer
             'loss_pct' => $estimatedLossPct,
             'cost_eur' => round($homeMeterKwh * $gridPrice, 2)
         ];
+    }
+
+    /**
+     * Recalculates PV/Grid breakdown and costs for existing home charges in the database.
+     */
+    public function recalculateHomeCharges(int $limit = 50): int
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, start_time, end_time, charged_net_kwh, receipt_id
+            FROM vehicle_charges 
+            WHERE location_type = 'HOME' AND charged_net_kwh > 0.1
+            ORDER BY start_time DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $updated = 0;
+        $updateStmt = $this->db->prepare("
+            UPDATE vehicle_charges SET
+                home_meter_kwh = :home_meter_kwh,
+                home_pv_kwh = :home_pv_kwh,
+                home_grid_kwh = :home_grid_kwh,
+                loss_kwh = :loss_kwh,
+                loss_pct = :loss_pct,
+                cost_eur = CASE WHEN receipt_id IS NULL THEN :cost_eur ELSE cost_eur END
+            WHERE id = :id
+        ");
+
+        foreach ($rows as $row) {
+            $analysis = $this->analyze($row['start_time'], $row['end_time'], (float)$row['charged_net_kwh']);
+            $updateStmt->execute([
+                ':id' => $row['id'],
+                ':home_meter_kwh' => $analysis['home_meter_kwh'],
+                ':home_pv_kwh' => $analysis['home_pv_kwh'],
+                ':home_grid_kwh' => $analysis['home_grid_kwh'],
+                ':loss_kwh' => $analysis['loss_kwh'],
+                ':loss_pct' => $analysis['loss_pct'],
+                ':cost_eur' => $analysis['cost_eur'],
+            ]);
+            $updated++;
+        }
+
+        return $updated;
     }
 }

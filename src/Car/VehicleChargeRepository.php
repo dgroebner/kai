@@ -45,7 +45,7 @@ class VehicleChargeRepository
                 home_meter_kwh = VALUES(home_meter_kwh), home_pv_kwh = VALUES(home_pv_kwh),
                 home_grid_kwh = VALUES(home_grid_kwh), loss_kwh = VALUES(loss_kwh),
                 loss_pct = VALUES(loss_pct),
-                cost_eur = COALESCE(cost_eur, VALUES(cost_eur)),
+                cost_eur = IF(VALUES(location_type) = 'HOME' OR receipt_id IS NULL, VALUES(cost_eur), cost_eur),
                 receipt_id = COALESCE(receipt_id, VALUES(receipt_id))
         ");
 
