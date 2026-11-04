@@ -1017,3 +1017,42 @@
 .card-land-pulse {
     animation: slotLandPulse 0.45s ease-out forwards;
 }
+
+/* Karten-Flip & Reveal Animation für aufgedeckte Karten */
+@keyframes cardFlipReveal {
+    0% {
+        transform: rotateY(90deg) scale(0.9);
+        opacity: 0.2;
+    }
+    100% {
+        transform: rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+}
+
+.card-flip-reveal {
+    animation: cardFlipReveal 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+/* Abräumen vollendeter 12er-Stapel */
+@keyframes pileCompletedSweep {
+    0% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1) drop-shadow(0 0 0px #fbbf24);
+        opacity: 1;
+    }
+    35% {
+        transform: scale(1.15) rotate(-6deg);
+        filter: brightness(1.6) drop-shadow(0 0 22px #fbbf24);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.2) rotate(220deg) translateY(-140px);
+        filter: brightness(2) drop-shadow(0 0 35px #f59e0b);
+        opacity: 0;
+    }
+}
+
+.pile-completed-sweep {
+    animation: pileCompletedSweep 0.72s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+}

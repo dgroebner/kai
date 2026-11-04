@@ -121,6 +121,9 @@
         isPolling: false,
         lastAnimatedEventId: null,
         isAnimatingFlight: false,
+        renderedHandCardIds: null,
+        lastStockTopCardId: null,
+        lastOpponentHandCounts: {},
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -399,6 +402,9 @@
         if (data.status === 'lobby') {
             paneLobby.classList.remove('hidden');
             paneGame.classList.add('hidden');
+            state.renderedHandCardIds = [];
+            state.lastStockTopCardId = null;
+            state.lastOpponentHandCounts = {};
             renderLobby(data);
             return;
         }
@@ -446,11 +452,21 @@
         // 1. Start-Element lokalisieren
         if (isMe) {
             if (evt.source === 'hand') {
-                startEl = document.getElementById('my-hand-cards-rack');
+                const specificCard = document.querySelector(`#my-hand-cards-rack [data-card-id="${evt.card.id}"]`);
+                if (specificCard) {
+                    startEl = specificCard;
+                    specificCard.style.opacity = '0';
+                } else {
+                    startEl = document.getElementById('my-hand-cards-rack');
+                }
             } else if (evt.source === 'stock') {
-                startEl = document.getElementById('my-stockpile-box');
+                startEl = document.getElementById('my-stock-card-slot') || document.getElementById('my-stockpile-box');
+                const stockCard = startEl ? startEl.querySelector('.skipbo-card') : null;
+                if (stockCard) stockCard.style.opacity = '0';
             } else if (evt.source === 'discard') {
                 startEl = document.getElementById(`my-discard-slot-${evt.source_index}`);
+                const discardCard = startEl ? startEl.querySelector('.skipbo-card') : null;
+                if (discardCard) discardCard.style.opacity = '0';
             }
         } else {
             const oppSlot = document.getElementById(`opponent-slot-${evt.player_id}`);
@@ -531,14 +547,140 @@
             void targetEl.offsetWidth;
             targetEl.classList.add('card-land-pulse');
 
-            // Sound für vollendeten 12er-Stapel
+            // Sound & Sweep für vollendeten 12er-Stapel
             if (evt.target_type === 'building' && (evt.card.value === 12 || evt.card.played_as === 12)) {
                 SoundFx.pileCompleted();
+                targetEl.classList.add('pile-completed-sweep');
+                setTimeout(() => {
+                    targetEl.classList.remove('pile-completed-sweep');
+                }, 720);
             }
 
             state.isAnimatingFlight = false;
             renderTable(data, myPlayer);
         }, 480);
+    }
+
+    /**
+     * Zieht Handkarten flüssig aus dem Nachziehstapel in das Handkarten-Rack.
+     */
+    function animateDrawnCards(newItems) {
+        if (!newItems || newItems.length === 0) return;
+
+        const drawDeckSlot = document.getElementById('draw-deck-slot') || document.body;
+        const drawRect = drawDeckSlot.getBoundingClientRect();
+
+        // 1. Zunächst alle neuen Karten im Rack unsichtbar schalten
+        newItems.forEach(item => {
+            item.el.style.opacity = '0';
+        });
+
+        state.isAnimatingFlight = true;
+
+        newItems.forEach((item, i) => {
+            const targetRect = item.el.getBoundingClientRect();
+            const w = targetRect.width > 20 ? targetRect.width : 78;
+            const h = targetRect.height > 20 ? targetRect.height : 116;
+
+            const flightEl = document.createElement('div');
+            flightEl.className = 'skipbo-flying-card';
+            flightEl.innerHTML = `
+                <div class="skipbo-deck-back" style="width:100%;height:100%;border-radius:var(--card-radius);box-sizing:border-box;">
+                    <div class="skipbo-deck-logo">SKIP-BO</div>
+                </div>
+            `;
+            document.body.appendChild(flightEl);
+
+            flightEl.style.width = `${w}px`;
+            flightEl.style.height = `${h}px`;
+            flightEl.style.left = `${drawRect.left + (drawRect.width - w) / 2}px`;
+            flightEl.style.top = `${drawRect.top + (drawRect.height - h) / 2}px`;
+            flightEl.style.transform = 'scale(0.85) rotate(14deg)';
+            flightEl.style.opacity = '0';
+
+            void flightEl.offsetHeight;
+
+            setTimeout(() => {
+                SoundFx.cardWhoosh();
+                flightEl.style.opacity = '1';
+
+                requestAnimationFrame(() => {
+                    flightEl.style.left = `${targetRect.left}px`;
+                    flightEl.style.top = `${targetRect.top}px`;
+                    flightEl.style.transform = 'scale(1.04) rotate(0deg)';
+                });
+
+                // Nach halber Flugzeit: Karte aufdecken
+                setTimeout(() => {
+                    flightEl.innerHTML = renderCardHtml(item.card);
+                }, 210);
+
+                // Landung
+                setTimeout(() => {
+                    SoundFx.playCard();
+                    flightEl.remove();
+                    item.el.style.opacity = '1';
+                    item.el.classList.remove('card-land-pulse');
+                    void item.el.offsetWidth;
+                    item.el.classList.add('card-land-pulse');
+
+                    if (i === newItems.length - 1) {
+                        state.isAnimatingFlight = false;
+                    }
+                }, 440);
+            }, i * 90);
+        });
+    }
+
+    /**
+     * Animiert das Nachziehen von Karten gegnerischer Spieler.
+     */
+    function animateOpponentDrawnCards(oppId, count) {
+        const oppSlot = document.getElementById(`opponent-slot-${oppId}`);
+        const drawDeckSlot = document.getElementById('draw-deck-slot');
+        if (!oppSlot || !drawDeckSlot) return;
+
+        const drawRect = drawDeckSlot.getBoundingClientRect();
+        const targetRect = (oppSlot.querySelector('.js-opp-hand') || oppSlot).getBoundingClientRect();
+
+        const numCards = Math.min(count, 5);
+        for (let i = 0; i < numCards; i++) {
+            const flightEl = document.createElement('div');
+            flightEl.className = 'skipbo-flying-card';
+            flightEl.innerHTML = `
+                <div class="skipbo-deck-back" style="width:46px;height:68px;border-width:2px;box-sizing:border-box;">
+                    <span style="font-size:0.6rem;font-weight:900;">SKIP-BO</span>
+                </div>
+            `;
+            document.body.appendChild(flightEl);
+
+            flightEl.style.width = '46px';
+            flightEl.style.height = '68px';
+            flightEl.style.left = `${drawRect.left + (drawRect.width - 46) / 2}px`;
+            flightEl.style.top = `${drawRect.top + (drawRect.height - 68) / 2}px`;
+            flightEl.style.transform = 'scale(0.8) rotate(12deg)';
+            flightEl.style.opacity = '0';
+
+            void flightEl.offsetHeight;
+
+            setTimeout(() => {
+                SoundFx.cardWhoosh();
+                flightEl.style.opacity = '1';
+
+                requestAnimationFrame(() => {
+                    flightEl.style.left = `${targetRect.left + (targetRect.width - 46) / 2}px`;
+                    flightEl.style.top = `${targetRect.top + (targetRect.height - 68) / 2}px`;
+                    flightEl.style.transform = 'scale(0.9) rotate(0deg)';
+                });
+
+                setTimeout(() => {
+                    flightEl.remove();
+                    oppSlot.classList.remove('card-land-pulse');
+                    void oppSlot.offsetWidth;
+                    oppSlot.classList.add('card-land-pulse');
+                }, 420);
+            }, i * 80);
+        }
     }
 
     function renderLobby(data) {
@@ -674,6 +816,14 @@
         container.innerHTML = '';
 
         opponents.forEach(opp => {
+            const prevCount = state.lastOpponentHandCounts[opp.id];
+            const currentCount = opp.hand_count;
+            state.lastOpponentHandCounts[opp.id] = currentCount;
+
+            if (typeof prevCount === 'number' && currentCount > prevCount && state.gameStatus === 'active') {
+                animateOpponentDrawnCards(opp.id, currentCount - prevCount);
+            }
+
             const slot = document.createElement('div');
             slot.className = `opponent-slot ${opp.is_active ? 'active-turn' : ''}`;
             slot.id = `opponent-slot-${opp.id}`;
@@ -768,6 +918,11 @@
 
         if (countBadge) countBadge.textContent = `Ziel: Noch ${count}`;
 
+        const prevTopId = state.lastStockTopCardId;
+        const currentTopId = topCard ? topCard.id : null;
+        const isNewTop = currentTopId && currentTopId !== prevTopId;
+        state.lastStockTopCardId = currentTopId;
+
         slot.innerHTML = '';
         if (topCard) {
             const isPlayable = isMyTurn && (topCard.can_play_to || []).length > 0;
@@ -777,6 +932,13 @@
                 playable: isPlayable,
                 selected: isSelected,
             });
+
+            if (isNewTop && prevTopId !== null) {
+                const cardEl = slot.querySelector('.skipbo-card');
+                if (cardEl) {
+                    cardEl.classList.add('card-flip-reveal');
+                }
+            }
         }
     }
 
@@ -813,8 +975,12 @@
         const countIndicator = document.getElementById('hand-count-indicator');
         if (countIndicator) countIndicator.textContent = `${handCards.length} / 5`;
 
+        const prevIds = state.renderedHandCardIds;
+        const currentIds = handCards.map(c => c.id);
+
         rack.innerHTML = '';
 
+        const cardItems = [];
         handCards.forEach((card, idx) => {
             const isPlayable = isMyTurn && (card.can_play_to || []).length > 0;
             const isSelected = state.selectedCard && state.selectedCard.source === 'hand' && state.selectedCard.card.id === card.id;
@@ -823,13 +989,22 @@
                 playable: isPlayable,
                 selected: isSelected,
             });
+            cardEl.dataset.cardId = card.id;
 
             cardEl.addEventListener('click', () => {
                 handleHandCardClick(card, idx);
             });
 
             rack.appendChild(cardEl);
+            cardItems.push({ card, el: cardEl, isNew: prevIds !== null && !prevIds.includes(card.id) });
         });
+
+        const shouldAnimate = prevIds !== null && cardItems.some(i => i.isNew) && state.gameStatus === 'active';
+        state.renderedHandCardIds = currentIds;
+
+        if (shouldAnimate) {
+            animateDrawnCards(cardItems.filter(i => i.isNew));
+        }
     }
 
     // -------------------------------------------------------------------------
