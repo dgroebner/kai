@@ -9,6 +9,8 @@
     // -------------------------------------------------------------------------
     const SoundFx = {
         ctx: null,
+        noiseBuffer: null,
+
         init() {
             if (!this.ctx) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -19,23 +21,64 @@
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume();
             }
+            if (!this.noiseBuffer && this.ctx) {
+                // 1 Sekunde Rauschen als Synthese-Basis für authentische Papier- & Kartengeräusche
+                const bufferSize = Math.floor(this.ctx.sampleRate * 1.0);
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                this.noiseBuffer = buffer;
+            }
         },
+
+        /**
+         * Echtes Karten-Klacken / Aufschlagen ("snap / tapp")
+         * Ersetzt das synthetische "Plopp" durch ein authentisches Karton-Aufschlag-Geräusch.
+         */
         playCard() {
             this.init();
-            if (!this.ctx) return;
+            if (!this.ctx || !this.noiseBuffer) return;
             const now = this.ctx.currentTime;
+
+            // 1. Karton-Klick (Bandpass-gefiltertes Rauschen mit steilem Abfall)
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.noiseBuffer;
+
+            const bandpass = this.ctx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.setValueAtTime(2800, now);
+            bandpass.Q.setValueAtTime(1.9, now);
+
+            const noiseGain = this.ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.24, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+            noise.connect(bandpass);
+            bandpass.connect(noiseGain);
+            noiseGain.connect(this.ctx.destination);
+
+            noise.start(now);
+            noise.stop(now + 0.045);
+
+            // 2. Subtiler Filztisch-Body (sehr leiser, tiefer Impuls 130Hz -> 50Hz)
             const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(420, now);
-            osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            const oscGain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(130, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.035);
+
+            oscGain.gain.setValueAtTime(0.12, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+            osc.connect(oscGain);
+            oscGain.connect(this.ctx.destination);
+
             osc.start(now);
-            osc.stop(now + 0.08);
+            osc.stop(now + 0.04);
         },
+
         pileCompleted() {
             this.init();
             if (!this.ctx) return;
@@ -55,6 +98,7 @@
                 osc.stop(start + 0.2);
             });
         },
+
         gameWon() {
             this.init();
             if (!this.ctx) return;
@@ -73,6 +117,7 @@
                 osc.stop(start + 0.4);
             });
         },
+
         error() {
             this.init();
             if (!this.ctx) return;
@@ -88,21 +133,38 @@
             osc.start(now);
             osc.stop(now + 0.15);
         },
+
+        /**
+         * Reales Kartenziehen & Gleiten ("fsscht / shhh-wip")
+         * Papier-Reibung beim Gleiten vom Nachziehstapel.
+         */
         cardWhoosh() {
             this.init();
-            if (!this.ctx) return;
+            if (!this.ctx || !this.noiseBuffer) return;
             const now = this.ctx.currentTime;
-            const osc = this.ctx.createOscillator();
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.noiseBuffer;
+
+            // Frequenzsweep für das charakteristische Reiben einer Spielkarte
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.Q.setValueAtTime(2.2, now);
+            filter.frequency.setValueAtTime(1700, now);
+            filter.frequency.exponentialRampToValueAtTime(3200, now + 0.045);
+            filter.frequency.exponentialRampToValueAtTime(1900, now + 0.12);
+
             const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(440, now + 0.12);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.connect(gain);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.22, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+
+            noise.connect(filter);
+            filter.connect(gain);
             gain.connect(this.ctx.destination);
-            osc.start(now);
-            osc.stop(now + 0.15);
+
+            noise.start(now);
+            noise.stop(now + 0.14);
         }
     };
 
