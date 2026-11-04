@@ -1021,17 +1021,21 @@
 /* Karten-Flip & Reveal Animation für aufgedeckte Karten */
 @keyframes cardFlipReveal {
     0% {
-        transform: rotateY(90deg) scale(0.9);
-        opacity: 0.2;
+        transform: scale(0.6) rotate(-6deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.08) rotate(2deg);
+        opacity: 1;
     }
     100% {
-        transform: rotateY(0deg) scale(1);
+        transform: scale(1) rotate(0deg);
         opacity: 1;
     }
 }
 
 .card-flip-reveal {
-    animation: cardFlipReveal 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+    animation: cardFlipReveal 0.38s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
 }
 
 /* Abräumen vollendeter 12er-Stapel */

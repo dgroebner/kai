@@ -642,6 +642,14 @@
             item.el.style.opacity = '0';
         });
 
+        // Sicherheits-Timeout: Verhindert, dass Karten bei Tab-Wechsel oder Reflow unsichtbar bleiben
+        setTimeout(() => {
+            newItems.forEach(item => {
+                if (item.el) item.el.style.opacity = '1';
+            });
+            state.isAnimatingFlight = false;
+        }, 1200);
+
         state.isAnimatingFlight = true;
 
         newItems.forEach((item, i) => {
@@ -935,10 +943,12 @@
         piles.forEach((pile, idx) => {
             const slot = document.getElementById(`building-pile-${idx}`);
             if (!slot) return;
+            slot.style.opacity = '1';
 
             const neededNumSpan = slot.querySelector('.skipbo-slot-needed-num');
             const targetContainer = slot.querySelector('.js-slot-card-target');
             const labelEl = slot.querySelector('.skipbo-building-label');
+            if (targetContainer) targetContainer.style.opacity = '1';
 
             const needed = pile.needed_value;
             if (neededNumSpan) {
@@ -983,6 +993,9 @@
         const countBadge = document.getElementById('my-stock-count-badge');
         const box = document.getElementById('my-stockpile-box');
 
+        if (slot) slot.style.opacity = '1';
+        if (box) box.style.opacity = '1';
+
         if (countBadge) countBadge.textContent = `Ziel: Noch ${count}`;
 
         const prevTopId = state.lastStockTopCardId;
@@ -990,20 +1003,25 @@
         const isNewTop = currentTopId && currentTopId !== prevTopId;
         state.lastStockTopCardId = currentTopId;
 
-        slot.innerHTML = '';
-        if (topCard) {
-            const isPlayable = isMyTurn && (topCard.can_play_to || []).length > 0;
-            const isSelected = state.selectedCard && state.selectedCard.source === 'stock';
+        if (slot) {
+            slot.innerHTML = '';
+            if (topCard) {
+                const isPlayable = isMyTurn && (topCard.can_play_to || []).length > 0;
+                const isSelected = state.selectedCard && state.selectedCard.source === 'stock';
 
-            slot.innerHTML = renderCardHtml(topCard, {
-                playable: isPlayable,
-                selected: isSelected,
-            });
+                slot.innerHTML = renderCardHtml(topCard, {
+                    playable: isPlayable,
+                    selected: isSelected,
+                });
 
-            if (isNewTop && prevTopId !== null) {
-                const cardEl = slot.querySelector('.skipbo-card');
-                if (cardEl) {
-                    cardEl.classList.add('card-flip-reveal');
+                if (isNewTop && prevTopId !== null) {
+                    const cardEl = slot.querySelector('.skipbo-card');
+                    if (cardEl) {
+                        cardEl.classList.add('card-flip-reveal');
+                        setTimeout(() => {
+                            if (cardEl) cardEl.classList.remove('card-flip-reveal');
+                        }, 450);
+                    }
                 }
             }
         }
@@ -1015,9 +1033,11 @@
         discardPiles.forEach((dp, idx) => {
             const slot = document.getElementById(`my-discard-slot-${idx}`);
             if (!slot) return;
+            slot.style.opacity = '1';
 
             const target = slot.querySelector('.js-discard-card-target');
             const countBadge = slot.querySelector('.js-discard-count');
+            if (target) target.style.opacity = '1';
 
             if (countBadge) countBadge.textContent = dp.count;
 
@@ -1039,6 +1059,7 @@
 
     function renderMyHand(handCards, isMyTurn) {
         const rack = document.getElementById('my-hand-cards-rack');
+        if (rack) rack.style.opacity = '1';
         const countIndicator = document.getElementById('hand-count-indicator');
         if (countIndicator) countIndicator.textContent = `${handCards.length} / 5`;
 
@@ -1269,8 +1290,13 @@
         const startRect = startEl.getBoundingClientRect();
         const targetRect = targetEl.getBoundingClientRect();
 
-        // Start-Element im Rack oder Stapel optisch abheben lassen
-        startEl.style.opacity = '0';
+        // Nur die eigentliche Karte (nie den Container-Slot!) optisch ausblenden
+        const cardToHide = startEl.classList.contains('skipbo-card')
+            ? startEl
+            : startEl.querySelector('.skipbo-card');
+        if (cardToHide) {
+            cardToHide.style.opacity = '0';
+        }
 
         const cardW = targetRect.width > 30 ? targetRect.width : 78;
         const cardH = targetRect.height > 40 ? targetRect.height : 116;
@@ -1297,6 +1323,8 @@
         });
 
         setTimeout(() => {
+            if (startEl) startEl.style.opacity = '1';
+            if (cardToHide) cardToHide.style.opacity = '1';
             SoundFx.playCard();
             flightEl.remove();
 
