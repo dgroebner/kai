@@ -186,6 +186,7 @@
         renderedHandCardIds: null,
         lastStockTopCardId: null,
         lastOpponentHandCounts: {},
+        lastLocalFlightCardId: null,
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -479,13 +480,17 @@
         const canAnimate = evt && evt.event_id && evt.card && evt.event_id !== state.lastAnimatedEventId &&
             (evt.type === 'card_played' || evt.type === 'turn_ended' || evt.type === 'game_won');
 
-        if (canAnimate && !state.isAnimatingFlight) {
+        // Wenn wir diese Aktion gerade lokal animiert haben, nicht noch einmal abspielen
+        const isMyRecentLocalFlight = (evt && evt.card && evt.player_id === state.myPlayerId && evt.card.id === state.lastLocalFlightCardId);
+
+        if (canAnimate && !isMyRecentLocalFlight && !state.isAnimatingFlight) {
             state.lastAnimatedEventId = evt.event_id;
             triggerFlyingCardAnimation(evt, data, myPlayer);
         } else {
             if (evt && evt.event_id) {
                 state.lastAnimatedEventId = evt.event_id;
             }
+            state.lastLocalFlightCardId = null;
             renderTable(data, myPlayer);
         }
 
@@ -1248,12 +1253,105 @@
         executePlayCard(state.selectedCard.source, state.selectedCard.sourceIndex, pileIdx);
     }
 
+    /**
+     * Führt eine sofortige lokale Fluganimation durch (z.B. Hand -> Hilfsstapel oder Hand/Stock/Discard -> Baustapel).
+     */
+    function animateLocalCardFlight(card, startEl, targetEl, onComplete) {
+        if (!startEl || !targetEl) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        state.isAnimatingFlight = true;
+        state.lastLocalFlightCardId = card.id;
+        SoundFx.cardWhoosh();
+
+        const startRect = startEl.getBoundingClientRect();
+        const targetRect = targetEl.getBoundingClientRect();
+
+        // Start-Element im Rack oder Stapel optisch abheben lassen
+        startEl.style.opacity = '0';
+
+        const cardW = targetRect.width > 30 ? targetRect.width : 78;
+        const cardH = targetRect.height > 40 ? targetRect.height : 116;
+
+        const flightEl = document.createElement('div');
+        flightEl.className = 'skipbo-flying-card';
+        flightEl.innerHTML = renderCardHtml(card);
+        document.body.appendChild(flightEl);
+
+        flightEl.style.width = `${cardW}px`;
+        flightEl.style.height = `${cardH}px`;
+        flightEl.style.left = `${startRect.left + (startRect.width - cardW) / 2}px`;
+        flightEl.style.top = `${startRect.top + (startRect.height - cardH) / 2}px`;
+        flightEl.style.transform = 'scale(0.88) rotate(-6deg)';
+        flightEl.style.opacity = '0.95';
+
+        void flightEl.offsetHeight;
+
+        requestAnimationFrame(() => {
+            flightEl.style.left = `${targetRect.left + (targetRect.width - cardW) / 2}px`;
+            flightEl.style.top = `${targetRect.top + (targetRect.height - cardH) / 2}px`;
+            flightEl.style.transform = 'scale(1.03) rotate(0deg)';
+            flightEl.style.opacity = '1';
+        });
+
+        setTimeout(() => {
+            SoundFx.playCard();
+            flightEl.remove();
+
+            targetEl.classList.remove('card-land-pulse');
+            void targetEl.offsetWidth;
+            targetEl.classList.add('card-land-pulse');
+
+            state.isAnimatingFlight = false;
+            if (onComplete) onComplete();
+        }, 440);
+    }
+
     // -------------------------------------------------------------------------
     // API-AKTIONEN: ZÜGE AN DEN SERVER SENDEN
     // -------------------------------------------------------------------------
     async function executePlayCard(source, sourceIndex, targetPile) {
         state.selectedCard = null; // Selektion aufheben
-        SoundFx.playCard();
+
+        const myPlayer = state.lastServerState ? state.lastServerState.players.find(p => p.is_me) : null;
+        let card = null;
+        let startEl = null;
+
+        if (myPlayer) {
+            if (source === 'hand') {
+                card = (myPlayer.hand || []).find(c => c.id === sourceIndex);
+                startEl = document.querySelector(`#my-hand-cards-rack [data-card-id="${sourceIndex}"]`);
+            } else if (source === 'stock') {
+                card = myPlayer.stock_top_card;
+                startEl = document.getElementById('my-stock-card-slot') || document.getElementById('my-stockpile-box');
+            } else if (source === 'discard') {
+                const dp = (myPlayer.discard_piles || [])[sourceIndex];
+                card = dp ? dp.top_card : null;
+                startEl = document.getElementById(`my-discard-slot-${sourceIndex}`);
+            }
+        }
+
+        const targetSlot = document.getElementById(`building-pile-${targetPile}`);
+
+        let flightFinished = false;
+        let responseReceived = false;
+
+        const checkFinish = () => {
+            if (flightFinished && responseReceived) {
+                pollState();
+            }
+        };
+
+        if (card && targetSlot) {
+            animateLocalCardFlight(card, startEl, targetSlot, () => {
+                flightFinished = true;
+                checkFinish();
+            });
+        } else {
+            flightFinished = true;
+        }
 
         const res = await HubHttp.postJson('./api.php?action=play_card', {
             room_code: state.roomCode,
@@ -1267,7 +1365,8 @@
             if (res.data.game_finished) {
                 SoundFx.gameWon();
             }
-            pollState();
+            responseReceived = true;
+            checkFinish();
         } else {
             SoundFx.error();
             alert(res.data?.message || 'Zug ungültig');
@@ -1277,7 +1376,29 @@
 
     async function executeDiscardCard(cardId, targetDiscardIndex) {
         state.selectedCard = null;
-        SoundFx.playCard();
+
+        const myPlayer = state.lastServerState ? state.lastServerState.players.find(p => p.is_me) : null;
+        const card = myPlayer && myPlayer.hand ? myPlayer.hand.find(c => c.id === cardId) : null;
+        const cardEl = document.querySelector(`#my-hand-cards-rack [data-card-id="${cardId}"]`);
+        const targetSlot = document.getElementById(`my-discard-slot-${targetDiscardIndex}`);
+
+        let flightFinished = false;
+        let responseReceived = false;
+
+        const checkFinish = () => {
+            if (flightFinished && responseReceived) {
+                pollState();
+            }
+        };
+
+        if (card && targetSlot) {
+            animateLocalCardFlight(card, cardEl || document.getElementById('my-hand-cards-rack'), targetSlot, () => {
+                flightFinished = true;
+                checkFinish();
+            });
+        } else {
+            flightFinished = true;
+        }
 
         const res = await HubHttp.postJson('./api.php?action=discard', {
             room_code: state.roomCode,
@@ -1286,7 +1407,8 @@
         });
 
         if (res.ok && res.data && res.data.success) {
-            pollState();
+            responseReceived = true;
+            checkFinish();
         } else {
             SoundFx.error();
             alert(res.data?.message || 'Abwerfen fehlgeschlagen');
