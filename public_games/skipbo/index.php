@@ -171,7 +171,12 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                             <span class="skipbo-slot-needed-num">1</span>
                         </div>
                         <div class="skipbo-slot-card-container js-slot-card-target"></div>
-                        <div class="skipbo-building-label">Stapel <?= $bp + 1 ?> <span class="skipbo-sequence-indicator">[1➔12]</span></div>
+                        <div class="skipbo-building-label">
+                            <div class="skipbo-next-pill is-start">
+                                <span class="next-pill-label">Start:</span>
+                                <span class="next-pill-val">1</span>
+                            </div>
+                        </div>
                     </div>
                     <?php endfor; ?>
                 </div>

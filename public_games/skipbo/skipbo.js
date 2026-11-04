@@ -730,9 +730,20 @@
 
             if (labelEl) {
                 if (pile.top_value > 0) {
-                    labelEl.innerHTML = `Stapel ${idx + 1} <span class="skipbo-sequence-indicator">[Nächste: ${needed > 12 ? '✓' : needed}]</span>`;
+                    const displayVal = needed > 12 ? '✓' : needed;
+                    labelEl.innerHTML = `
+                        <div class="skipbo-next-pill">
+                            <span class="next-pill-label">Nächste:</span>
+                            <span class="next-pill-val">${displayVal}</span>
+                        </div>
+                    `;
                 } else {
-                    labelEl.innerHTML = `Stapel ${idx + 1} <span class="skipbo-sequence-indicator">[Start: 1]</span>`;
+                    labelEl.innerHTML = `
+                        <div class="skipbo-next-pill is-start">
+                            <span class="next-pill-label">Start:</span>
+                            <span class="next-pill-val">1</span>
+                        </div>
+                    `;
                 }
             }
 
