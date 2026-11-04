@@ -721,16 +721,27 @@
 
             const neededNumSpan = slot.querySelector('.skipbo-slot-needed-num');
             const targetContainer = slot.querySelector('.js-slot-card-target');
+            const labelEl = slot.querySelector('.skipbo-building-label');
 
             const needed = pile.needed_value;
             if (neededNumSpan) {
                 neededNumSpan.textContent = needed > 12 ? '✓' : needed;
             }
 
+            if (labelEl) {
+                if (pile.top_value > 0) {
+                    labelEl.innerHTML = `Stapel ${idx + 1} <span class="skipbo-sequence-indicator">[Nächste: ${needed > 12 ? '✓' : needed}]</span>`;
+                } else {
+                    labelEl.innerHTML = `Stapel ${idx + 1} <span class="skipbo-sequence-indicator">[Start: 1]</span>`;
+                }
+            }
+
             // Top-Karte anzeigen
             targetContainer.innerHTML = '';
             if (pile.top_card) {
-                targetContainer.innerHTML = renderCardHtml(pile.top_card);
+                targetContainer.innerHTML = renderCardHtml(pile.top_card, {
+                    playedAs: pile.top_value || pile.top_card.played_as,
+                });
             }
 
             // Highlight für legale Zielstapel wenn Karte selektiert ist
@@ -823,18 +834,20 @@
         const scaleStyle = isMini ? 'width:46px;height:68px;border-width:2px;padding:0.15rem;' : '';
 
         if (isSkipBo) {
+            const playedAs = opts.playedAs || card.played_as || null;
             const cornerSize = isMini ? 'font-size:0.5rem;' : '';
             return `
                 <div class="skipbo-card ${colorClass} ${isPlayable ? 'is-playable' : ''} ${isSelected ? 'is-selected' : ''}" style="${scaleStyle}">
                     <div class="card-corner card-corner-top-left" style="${cornerSize}">
-                        <span class="card-corner-wild-text">SKIP</span>
+                        ${playedAs ? `<span class="card-corner-wild-val">${playedAs}</span>` : `<span class="card-corner-wild-text">SKIP</span>`}
                     </div>
-                    <div class="card-center-skipbo-banner" style="${isMini ? 'transform:translate(-50%,-50%) scale(0.65);' : ''}">
+                    <div class="card-center-skipbo-banner ${playedAs ? 'has-played-as' : ''}" style="${isMini ? 'transform:translate(-50%,-50%) scale(0.65);' : ''}">
                         <span class="skipbo-logo-text">SKIP-BO</span>
                         <span class="skipbo-star-icon">★</span>
+                        ${playedAs ? `<div class="skipbo-played-as-pill"><span class="pill-label">GILT ALS</span><span class="pill-val">${playedAs}</span></div>` : ''}
                     </div>
                     <div class="card-corner card-corner-bottom-right" style="${cornerSize}">
-                        <span class="card-corner-wild-text">BO</span>
+                        ${playedAs ? `<span class="card-corner-wild-val">${playedAs}</span>` : `<span class="card-corner-wild-text">BO</span>`}
                     </div>
                 </div>
             `;
@@ -842,7 +855,7 @@
 
         // Zahlenkarte 1 bis 12
         const textColorClass = `text-color-${card.color || 'blue'}`;
-        const val = card.played_as || card.value;
+        const val = opts.playedAs || card.played_as || card.value;
         const cornerSize = isMini ? 'font-size:0.65rem;' : '';
         const medSize = isMini ? 'transform:translate(-50%,-50%) scale(0.65);' : '';
 
