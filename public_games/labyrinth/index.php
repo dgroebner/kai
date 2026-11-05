@@ -150,6 +150,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <section class="lb-players-bar" id="players-bar" aria-label="Mitspieler"></section>
 
         <div class="lb-ticker" id="event-ticker">Willkommen im Labyrinth!</div>
+        <div class="lb-last-shift-pill hidden" id="last-shift-pill"></div>
 
         <section class="lb-table">
             <div class="lb-board-wrap">

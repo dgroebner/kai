@@ -258,15 +258,33 @@
         }
 
         const evt = data.last_event;
-        const isNewEvent = evt && evt.event_id !== state.lastEventId;
+        const lastShift = data.last_shift;
         if (evt?.type === 'shift' || evt?.type === 'move') state.spareSteps = 0;
         if (evt?.message) el('event-ticker').textContent = evt.message;
+
+        // Anzeige des letzten Einschubs im Banner
+        const shiftPill = el('last-shift-pill');
+        if (shiftPill) {
+            if (lastShift) {
+                const p = data.players.find((pl) => pl.id === lastShift.player_id);
+                const dot = p ? `<span class="lb-dot lb-dot-sm lb-c-${safeColor(p.color)}"></span>` : '';
+                const glyph = ARROW_GLYPHS[lastShift.side] || '▶';
+                shiftPill.innerHTML = `${dot}<span>Letzter Einschub: <strong>${HubHtml.escape(lastShift.player_name)}</strong> schob ${HubHtml.escape(lastShift.where)} (${glyph})</span>`;
+                shiftPill.classList.remove('hidden');
+            } else {
+                shiftPill.classList.add('hidden');
+            }
+        }
 
         renderPlayers(data);
         renderBoard(data);
         renderSide(data);
 
-        if (isNewEvent && previous && evt.type === 'shift') flashShiftedLine(evt);
+        const isNewShift = lastShift && lastShift.shift_id && lastShift.shift_id !== state.lastShiftId;
+        if (isNewShift && previous) {
+            flashShiftedLine(lastShift);
+            state.lastShiftId = lastShift.shift_id;
+        }
         state.lastEventId = evt ? evt.event_id : null;
 
         if (data.status === 'finished') renderWinner(data);
@@ -338,6 +356,8 @@
         if (tile.start) classes.push('is-start', `lb-c-${safeColor(tile.start)}`);
         if (opts.reachable) classes.push('is-reachable');
         if (opts.target) classes.push('is-target');
+        if (opts.isShiftedLine) classes.push('is-shifted-line');
+        if (opts.isNewTile) classes.push('is-new-tile');
 
         const pawnsList = opts.pawns || [];
         if (pawnsList.length > 0) classes.push('has-pawns');
@@ -363,6 +383,7 @@
         const myTurnShift = data.is_my_turn && data.phase === 'shift';
         const reachable = new Set((data.reachable || []).map(([r, c]) => `${r},${c}`));
         const targetCell = data.my_target_cell ? `${data.my_target_cell[0]},${data.my_target_cell[1]}` : '';
+        const lastShift = data.last_shift;
         const cells = [];
 
         for (let gr = 0; gr < 9; gr++) {
@@ -373,16 +394,39 @@
                     const c = gc - 1;
                     const key = `${r},${c}`;
                     const pawns = data.players.filter((p) => p.pos && p.pos[0] === r && p.pos[1] === c);
-                    cells.push(tileHtml(data.board[r][c], data, { r, c, pawns, reachable: reachable.has(key), target: key === targetCell }));
+
+                    let isShiftedLine = false;
+                    let isNewTile = false;
+                    if (lastShift) {
+                        if ((lastShift.side === 'TOP' || lastShift.side === 'BOTTOM') && c === lastShift.index) {
+                            isShiftedLine = true;
+                            if (lastShift.side === 'TOP' && r === 0) isNewTile = true;
+                            if (lastShift.side === 'BOTTOM' && r === 6) isNewTile = true;
+                        } else if ((lastShift.side === 'LEFT' || lastShift.side === 'RIGHT') && r === lastShift.index) {
+                            isShiftedLine = true;
+                            if (lastShift.side === 'LEFT' && c === 0) isNewTile = true;
+                            if (lastShift.side === 'RIGHT' && c === 6) isNewTile = true;
+                        }
+                    }
+
+                    cells.push(tileHtml(data.board[r][c], data, {
+                        r,
+                        c,
+                        pawns,
+                        reachable: reachable.has(key),
+                        target: key === targetCell,
+                        isShiftedLine,
+                        isNewTile,
+                    }));
                     continue;
                 }
-                cells.push(arrowHtml(gr, gc, data, myTurnShift));
+                cells.push(arrowHtml(gr, gc, data, myTurnShift, lastShift));
             }
         }
         el('lb-board').innerHTML = cells.join('');
     }
 
-    function arrowHtml(gr, gc, data, active) {
+    function arrowHtml(gr, gc, data, active, lastShift) {
         const evenCol = gc % 2 === 0 && gc >= 2 && gc <= 6;
         const evenRow = gr % 2 === 0 && gr >= 2 && gr <= 6;
         let side = null;
@@ -394,11 +438,18 @@
         if (!side) return '<div></div>';
 
         const forbidden = data.forbidden && data.forbidden.side === side && data.forbidden.index === index;
+        const isLastEntry = lastShift && lastShift.side === side && lastShift.index === index;
         const classes = ['lb-arrow'];
         if (forbidden) classes.push('is-forbidden');
-        else if (active) classes.push('is-active');
-        const glyph = forbidden ? '🚫' : ARROW_GLYPHS[side];
-        return `<div class="lb-arrow-slot"><button type="button" class="${classes.join(' ')}" data-side="${side}" data-index="${index}">${glyph}</button></div>`;
+        if (isLastEntry) classes.push('is-last-entry');
+        if (active && !forbidden) classes.push('is-active');
+
+        let glyph = ARROW_GLYPHS[side];
+        if (forbidden) glyph = '🚫';
+        else if (isLastEntry) glyph = `✨${ARROW_GLYPHS[side]}`;
+
+        const tip = isLastEntry ? 'Zuletzt hier eingeschoben' : (forbidden ? 'Gegenzug verboten' : 'Kachel einschieben');
+        return `<div class="lb-arrow-slot"><button type="button" class="${classes.join(' ')}" data-side="${side}" data-index="${index}" title="${tip}">${glyph}</button></div>`;
     }
 
     function renderSide(data) {
@@ -436,14 +487,24 @@
         }
     }
 
-    function flashShiftedLine(evt) {
+    function flashShiftedLine(shift) {
+        if (!shift) return;
         const cells = [];
         for (let i = 0; i < 7; i++) {
-            if (evt.side === 'TOP' || evt.side === 'BOTTOM') cells.push([i, evt.index]);
-            else cells.push([evt.index, i]);
+            if (shift.side === 'TOP') cells.push([i, shift.index]);
+            else if (shift.side === 'BOTTOM') cells.push([6 - i, shift.index]);
+            else if (shift.side === 'LEFT') cells.push([shift.index, i]);
+            else cells.push([shift.index, 6 - i]);
         }
-        cells.forEach(([r, c]) => {
-            el('lb-board').querySelector(`.lb-tile[data-r="${r}"][data-c="${c}"]`)?.classList.add('is-flash');
+        cells.forEach(([r, c], delayIdx) => {
+            const tile = el('lb-board').querySelector(`.lb-tile[data-r="${r}"][data-c="${c}"]`);
+            if (tile) {
+                setTimeout(() => {
+                    tile.classList.remove('is-flash');
+                    void tile.offsetWidth;
+                    tile.classList.add('is-flash');
+                }, delayIdx * 55);
+            }
         });
     }
 

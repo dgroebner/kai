@@ -47,6 +47,7 @@ class LabyrinthService
             'pawns' => [],
             'winner_id' => null,
             'winner_name' => null,
+            'last_shift' => null,
             'last_event' => $this->event('room_created', 'Labyrinth-Raum eröffnet. Warte auf Mitspieler...'),
         ];
     }
@@ -358,6 +359,7 @@ class LabyrinthService
             'reachable' => $reachable,
             'winner_id' => $state['winner_id'] ?? null,
             'winner_name' => $state['winner_name'] ?? null,
+            'last_shift' => $state['last_shift'] ?? null,
             'last_event' => $state['last_event'] ?? null,
         ];
     }
@@ -384,6 +386,15 @@ class LabyrinthService
             'LEFT' => 'links in Reihe ' . ($index + 1),
             default => 'rechts in Reihe ' . ($index + 1),
         };
+        $state['last_shift'] = [
+            'side' => $side,
+            'index' => $index,
+            'rotation' => $rotation,
+            'player_id' => $playerId,
+            'player_name' => $playerName,
+            'where' => $where,
+            'shift_id' => 'sh_' . microtime(true) . '_' . bin2hex(random_bytes(2)),
+        ];
         $state['last_event'] = $this->event('shift', "{$playerName} hat die Kachel {$where} eingeschoben.", [
             'player_id' => $playerId,
             'side' => $side,
