@@ -801,11 +801,24 @@
             if (res.won_by_fold) {
                 summaryEl.innerHTML = `<strong>${escapeHtml(res.winner_name || 'Ein Spieler')}</strong> gewinnt kampflos, da alle anderen gefoldet haben.`;
             } else if (res.pot_resolutions && res.pot_resolutions.length > 0) {
-                const parts = res.pot_resolutions.map(pot => {
-                    const names = (pot.winner_names || []).map(escapeHtml).join(', ');
-                    return `<strong>${names}</strong> gewinnt mit <em>${escapeHtml(pot.hand_desc)}</em> (${pot.amount.toLocaleString('de-DE')} Chips)`;
-                });
-                summaryEl.innerHTML = parts.join('<br>');
+                // Wenn alle Pots von denselben Spielern gewonnen wurden: zu einer sauberen Zeile zusammenfassen
+                const allSameWinners = res.pot_resolutions.every(pot =>
+                    JSON.stringify(pot.winner_ids) === JSON.stringify(res.pot_resolutions[0].winner_ids)
+                );
+
+                if (allSameWinners && res.pot_resolutions.length > 1) {
+                    const firstPot = res.pot_resolutions[0];
+                    const names = (firstPot.winner_names || []).map(escapeHtml).join(', ');
+                    const totalAmount = res.pot_resolutions.reduce((sum, p) => sum + (p.amount || 0), 0);
+                    summaryEl.innerHTML = `<strong>${names}</strong> gewinnt mit <em>${escapeHtml(firstPot.hand_desc)}</em> (${totalAmount.toLocaleString('de-DE')} Chips)`;
+                } else {
+                    const parts = res.pot_resolutions.map(pot => {
+                        const names = (pot.winner_names || []).map(escapeHtml).join(', ');
+                        const potLabel = res.pot_resolutions.length > 1 ? ` (${escapeHtml(pot.pot_name)})` : '';
+                        return `<strong>${names}</strong> gewinnt${potLabel} mit <em>${escapeHtml(pot.hand_desc)}</em> (${pot.amount.toLocaleString('de-DE')} Chips)`;
+                    });
+                    summaryEl.innerHTML = parts.join('<br>');
+                }
             } else {
                 summaryEl.textContent = 'Showdown ausgewertet.';
             }
@@ -828,7 +841,7 @@
                 left.style.gap = '0.2rem';
 
                 const evalInfo = res.evaluations ? res.evaluations[p.id] : null;
-                const handDesc = evalInfo ? evalInfo.label : '';
+                const handDesc = evalInfo ? (evalInfo.description || evalInfo.label || '') : '';
 
                 left.innerHTML = `
                     <div style="font-weight: 800; font-size: 0.95rem;">${escapeHtml(p.name)}</div>
