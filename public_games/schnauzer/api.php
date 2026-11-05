@@ -187,6 +187,21 @@ try {
     }
 
     $roomId = (int)$room['id'];
+
+    // -------------------------------------------------------------------------
+    // REAKTIONEN ABRUFEN (Polling via reactions.js)
+    // -------------------------------------------------------------------------
+    if ($action === 'reactions') {
+        $sinceId = (int)($_GET['since'] ?? 0);
+        $reactions = $repo->getRecentReactions($roomId, $sinceId);
+
+        echo json_encode([
+            'success' => true,
+            'reactions' => $reactions,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $myPlayer = $playerTokenHash !== '' ? $repo->getPlayerByToken($roomId, $playerTokenHash) : null;
     if (!$myPlayer) {
         http_response_code(401);
@@ -194,6 +209,25 @@ try {
         exit;
     }
     $myPlayerId = (int)$myPlayer['id'];
+
+    // -------------------------------------------------------------------------
+    // REAKTION SENDEN (Quarxl Reaktions-Smilies)
+    // -------------------------------------------------------------------------
+    if ($action === 'react') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Nur POST erlaubt']);
+            exit;
+        }
+
+        $emoji = trim((string)($input['emoji'] ?? ''));
+        $res = $repo->addReaction($roomId, $myPlayerId, (string)$myPlayer['player_name'], $emoji);
+        if (empty($res['success'])) {
+            http_response_code(($res['error'] ?? '') === 'spam_cooldown' ? 429 : 400);
+        }
+        echo json_encode($res, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
     // -------------------------------------------------------------------------
     // 3. STATUS (POLLING & BOT-TRIGGER)
@@ -204,6 +238,10 @@ try {
         }
 
         $gameState = $service->getPublicGameState($roomId, $myPlayerId);
+        if ($gameState) {
+            $gameState['recent_reactions'] = $repo->getRecentReactions($roomId);
+        }
+
         echo json_encode([
             'success' => true,
             'data' => $gameState,
