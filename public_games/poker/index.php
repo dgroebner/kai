@@ -15,7 +15,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <link rel="stylesheet" href="../css/games-hub.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="./poker.css?v=<?= APP_VERSION ?>">
     <link rel="manifest" href="../manifest.json">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#0c2316">
     <link rel="icon" type="image/png" sizes="192x192" href="../android-chrome-192x192.png">
     <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 </head>
