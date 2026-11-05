@@ -10,9 +10,10 @@ class SchnauzerScoreCalculator
      * Berechnet die Punktzahl und Kombination einer Schnauzer-Hand (3 Karten).
      *
      * @param array<int, array<string, mixed>> $cards
+     * @param bool $threeAces33 Hausregel: 3 Asse zählen 33 Punkte (Feuer), sonst 30,5
      * @return array{score: float, is_31: bool, is_feuer: bool, is_drilling: bool, best_suit: string, label: string}
      */
-    public static function calculateScore(array $cards): array
+    public static function calculateScore(array $cards, bool $threeAces33 = false): array
     {
         if (empty($cards)) {
             return [
@@ -32,15 +33,26 @@ class SchnauzerScoreCalculator
             $r2 = (string)($cards[2]['rank'] ?? '');
 
             if ($r0 !== '' && $r0 === $r1 && $r1 === $r2) {
-                // Drei Asse / Daus = 33 Punkte ("Feuer" / höchstmöglicher Schnauzer)
+                // Drei Asse / Daus: Prüfen, ob Hausregel (33 Punkte) oder Standard (30,5 Punkte) gilt
                 if ($r0 === 'A') {
+                    if ($threeAces33) {
+                        return [
+                            'score' => 33.0,
+                            'is_31' => true,
+                            'is_feuer' => true,
+                            'is_drilling' => true,
+                            'best_suit' => 'all',
+                            'label' => '33 Punkte (Drei Asse / Feuer) - SCHNAUZER!',
+                        ];
+                    }
+
                     return [
-                        'score' => 33.0,
-                        'is_31' => true,
-                        'is_feuer' => true,
+                        'score' => 30.5,
+                        'is_31' => false,
+                        'is_feuer' => false,
                         'is_drilling' => true,
                         'best_suit' => 'all',
-                        'label' => '33 Punkte (Drei Asse / Feuer) - SCHNAUZER!',
+                        'label' => '30,5 Punkte (Drilling Asse)',
                     ];
                 }
 

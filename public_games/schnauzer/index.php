@@ -85,6 +85,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <div id="pane-lobby" class="schnauzer-lobby-box hidden">
         <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;">Schnauzer (31) Wartezimmer</h2>
         <p class="text-muted" style="font-size: 0.85rem;">Teile den Code oder lade Mitspieler per WhatsApp ein.</p>
+        <div id="lobby-rules-badge" style="margin: 0.65rem 0 0.85rem 0; font-size: 0.82rem; font-weight: 700;"></div>
         
         <div class="schnauzer-lobby-players" id="lobby-players-list">
             <!-- Spielerliste -->

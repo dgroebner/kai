@@ -220,6 +220,23 @@ require_once __DIR__ . '/../bootstrap.php';
                     </div>
                 </div>
 
+                <!-- Schnauzer Optionen -->
+                <div class="form-group hidden" id="group-schnauzer-modes">
+                    <label>Hausregeln &amp; Varianten:</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                        <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                            <input type="checkbox" name="schnauzer_three_aces_33" id="schnauzer-three-aces-33" value="1" style="margin-top: 0.25rem;">
+                            <span>
+                                <strong>3 Asse zählen 33 Punkte (Feuer)</strong><br>
+                                <small class="text-muted" style="display: block; line-height: 1.35; margin-top: 2px;">
+                                    Inaktiv (Standard): 3 Asse zählen als normaler Drilling 30,5 Punkte.<br>
+                                    Aktiv: 3 Asse bilden das höchste Blatt mit 33 Punkten (sofortiger Schnauzer).
+                                </small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-top: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <label for="quarxl-table-access-code" style="margin-bottom: 0;">Tisch-PIN (Host-Schutz):</label>

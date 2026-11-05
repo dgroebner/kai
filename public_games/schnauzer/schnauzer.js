@@ -283,6 +283,16 @@
     // LOBBY
     // -------------------------------------------------------------------------
     function renderLobby(data) {
+        const rulesBadge = document.getElementById('lobby-rules-badge');
+        if (rulesBadge) {
+            const has33 = Boolean(data.rules && data.rules.three_aces_33);
+            if (has33) {
+                rulesBadge.innerHTML = '<span style="display:inline-block; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; padding:0.25rem 0.65rem; border-radius:9999px;">🔥 Hausregel aktiv: 3 Asse = 33 Punkte (Feuer)</span>';
+            } else {
+                rulesBadge.innerHTML = '<span style="display:inline-block; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; padding:0.25rem 0.65rem; border-radius:9999px;">📜 Standard-Regeln: 3 Asse = 30,5 Punkte (Drilling)</span>';
+            }
+        }
+
         const listEl = document.getElementById('lobby-players-list');
         if (!listEl) return;
 

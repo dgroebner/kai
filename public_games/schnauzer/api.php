@@ -68,7 +68,8 @@ try {
         $newPlayerToken = bin2hex(random_bytes(16));
         $newHostHash = hash('sha256', $newPlayerToken);
 
-        $initialState = $service->getInitialState();
+        $threeAces33 = !empty($input['three_aces_33']);
+        $initialState = $service->getInitialState($threeAces33);
         $room = $repo->createRoom('schnauzer', $gameMode, $newHostHash, $initialState);
 
         if (!$room) {

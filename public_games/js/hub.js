@@ -23,6 +23,7 @@
         const cardGroup = document.getElementById('group-card-modes');
         const loch6Group = document.getElementById('group-loch6-modes');
         const skipboGroup = document.getElementById('group-skipbo-modes');
+        const schnauzerGroup = document.getElementById('group-schnauzer-modes');
         const pinInput = document.getElementById('quarxl-table-access-code') || document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
@@ -53,13 +54,14 @@
 
         updateSavedPinField();
 
-        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false) {
+        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false, showSchnauzer = false) {
             if (gameTypeInput) gameTypeInput.value = gameType;
             if (modalTitle) modalTitle.textContent = title;
             if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
             if (cardGroup) cardGroup.classList.toggle('hidden', !showCards);
             if (loch6Group) loch6Group.classList.toggle('hidden', !showLoch6);
             if (skipboGroup) skipboGroup.classList.toggle('hidden', !showSkipBo);
+            if (schnauzerGroup) schnauzerGroup.classList.toggle('hidden', !showSchnauzer);
             updateSavedPinField();
             modal.classList.remove('hidden');
             if (pinInput && !pinInput.value) {
@@ -119,7 +121,7 @@
         const schnauzerCard = document.getElementById('card-schnauzer');
         if (schnauzerCard && modal) {
             schnauzerCard.addEventListener('click', () => {
-                openCreateModal('schnauzer', 'Neues Schnauzer (31) Spiel erstellen', false, false, false, false);
+                openCreateModal('schnauzer', 'Neues Schnauzer (31) Spiel erstellen', false, false, false, false, true);
             });
         }
 
@@ -156,6 +158,7 @@
                 } else if (gameType === 'schnauzer') {
                     mode = 'standard';
                     payload.game_mode = mode;
+                    payload.three_aces_33 = Boolean(document.getElementById('schnauzer-three-aces-33')?.checked);
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';
                     payload.stones = stonesVal === 'auto' ? 'auto' : parseInt(stonesVal, 10);

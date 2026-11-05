@@ -17,7 +17,7 @@ class SchnauzerService
      *
      * @return array<string, mixed>
      */
-    public function getInitialState(): array
+    public function getInitialState(bool $threeAces33 = false): array
     {
         return [
             'phase' => 'lobby', // 'lobby', 'dealing_choice', 'playing', 'showdown', 'game_over'
@@ -32,6 +32,9 @@ class SchnauzerService
             'turns_after_knock_left' => 0,
             'round_turn_count' => 0,
             'passed_players' => [],
+            'rules' => [
+                'three_aces_33' => $threeAces33,
+            ],
             'last_event' => [
                 'time' => microtime(true),
                 'type' => 'lobby_created',
@@ -150,8 +153,9 @@ class SchnauzerService
 
         // Falls Geber ein KI-Bot ist: Sofort entscheiden
         if (!empty($dealer['sheet']['is_bot'])) {
+            $threeAces33 = !empty($state['rules']['three_aces_33']);
             $dealerHand = $dealer['sheet']['hand'];
-            $botChoice = SchnauzerBot::decideDealerChoice($dealerHand, $dealerReserve);
+            $botChoice = SchnauzerBot::decideDealerChoice($dealerHand, $dealerReserve, $threeAces33);
             $this->applyDealerChoice($state, $players, $dealerId, $botChoice);
         }
 
@@ -228,8 +232,9 @@ class SchnauzerService
         ];
 
         // Sofortige Schnauzer-Prüfung: Hat jemand bereits 31 (oder 33) auf der Hand?
+        $threeAces33 = !empty($state['rules']['three_aces_33']);
         foreach ($activePlayers as $ap) {
-            $score = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand']);
+            $score = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand'], $threeAces33);
             if ($score['is_31'] || $score['is_feuer']) {
                 $this->executeShowdown($state, $players, true, (int)$ap['id']);
                 return;
@@ -299,7 +304,8 @@ class SchnauzerService
         ];
 
         // Prüfung auf 31 / 33 Schnauzer
-        $score = SchnauzerScoreCalculator::calculateScore($hand);
+        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        $score = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
         if ($score['is_31'] || $score['is_feuer']) {
             $this->executeShowdown($state, $players, true, $playerId);
             $this->repo->updateRoomState($roomId, $state);
@@ -362,7 +368,8 @@ class SchnauzerService
         ];
 
         // Prüfung auf 31 / 33 Schnauzer
-        $score = SchnauzerScoreCalculator::calculateScore($player['sheet']['hand']);
+        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        $score = SchnauzerScoreCalculator::calculateScore($player['sheet']['hand'], $threeAces33);
         if ($score['is_31'] || $score['is_feuer']) {
             $this->executeShowdown($state, $players, true, $playerId);
             $this->repo->updateRoomState($roomId, $state);
@@ -562,10 +569,11 @@ class SchnauzerService
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
         $scores = [];
         $minScore = 999.0;
+        $threeAces33 = !empty($state['rules']['three_aces_33']);
 
         foreach ($activePlayers as $ap) {
             $pid = (int)$ap['id'];
-            $res = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand']);
+            $res = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand'], $threeAces33);
             $scores[$pid] = [
                 'player_id' => $pid,
                 'player_name' => (string)$ap['player_name'],
@@ -706,7 +714,8 @@ class SchnauzerService
             $this->repo->updatePlayerSheet((int)$p['id'], $sheet, 3);
         }
 
-        $state = $this->getInitialState();
+        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        $state = $this->getInitialState($threeAces33);
         $this->repo->updateRoomState($roomId, $state, 'lobby');
         return ['success' => true];
     }
@@ -748,7 +757,8 @@ class SchnauzerService
         $roundTurnCount = (int)($state['round_turn_count'] ?? 0);
         $canKnock = !$isKnocked && ($roundTurnCount >= count($activePlayers));
 
-        $decision = SchnauzerBot::decideTurn($hand, $table, $isKnocked, $canKnock, $roundTurnCount);
+        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        $decision = SchnauzerBot::decideTurn($hand, $table, $isKnocked, $canKnock, $roundTurnCount, $threeAces33);
 
         if ($decision['action'] === 'swap_one') {
             $this->swapOne($roomId, $activePlayerId, (int)$decision['hand_index'], (int)$decision['table_index']);
@@ -846,11 +856,12 @@ class SchnauzerService
             $visibleHand = ($isMe || $isShowdownOrOver) ? $hand : array_fill(0, count($hand), ['is_hidden' => true]);
 
             $scoreInfo = null;
+            $threeAces33 = !empty($state['rules']['three_aces_33']);
             if ($isMe && !empty($hand)) {
-                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand);
+                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
                 $myScoreInfo = $scoreInfo;
             } elseif ($isShowdownOrOver && !empty($hand)) {
-                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand);
+                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
             }
 
             $publicPlayers[] = [
@@ -880,6 +891,7 @@ class SchnauzerService
             'round_number' => (int)($state['round_number'] ?? 0),
             'round_turn_count' => $roundTurnCount,
             'can_knock' => empty($state['knocked_by_player_id']) && ($roundTurnCount >= count($activePlayers)),
+            'rules' => $state['rules'] ?? ['three_aces_33' => false],
             'current_player_id' => $state['current_player_id'] ?? null,
             'dealer_id' => $state['dealer_id'] ?? null,
             'knocked_by_player_id' => $state['knocked_by_player_id'] ?? null,

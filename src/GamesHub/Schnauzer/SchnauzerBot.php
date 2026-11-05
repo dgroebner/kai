@@ -12,10 +12,10 @@ class SchnauzerBot
      * @param array<int, array<string, mixed>> $handA
      * @param array<int, array<string, mixed>> $handB
      */
-    public static function decideDealerChoice(array $handA, array $handB): string
+    public static function decideDealerChoice(array $handA, array $handB, bool $threeAces33 = false): string
     {
-        $scoreA = SchnauzerScoreCalculator::calculateScore($handA)['score'];
-        $scoreB = SchnauzerScoreCalculator::calculateScore($handB)['score'];
+        $scoreA = SchnauzerScoreCalculator::calculateScore($handA, $threeAces33)['score'];
+        $scoreB = SchnauzerScoreCalculator::calculateScore($handB, $threeAces33)['score'];
 
         return ($scoreB > $scoreA) ? 'swap' : 'keep';
     }
@@ -28,6 +28,7 @@ class SchnauzerBot
      * @param bool $isKnocked Ist die Schlussrunde bereits eingeläutet?
      * @param bool $canKnock Darf in diesem Zug geklopft werden (Umlaufschutz)?
      * @param int $roundTurnCount Anzahl der bisher absolvierten Züge in dieser Runde
+     * @param bool $threeAces33 Hausregel: 3 Asse = 33 Punkte aktiv
      * @return array{action: 'swap_one'|'swap_all'|'knock'|'pass', hand_index?: int, table_index?: int}
      */
     public static function decideTurn(
@@ -35,9 +36,10 @@ class SchnauzerBot
         array $table,
         bool $isKnocked,
         bool $canKnock = true,
-        int $roundTurnCount = 0
+        int $roundTurnCount = 0,
+        bool $threeAces33 = false
     ): array {
-        $curr = SchnauzerScoreCalculator::calculateScore($hand);
+        $curr = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
         $currScore = $curr['score'];
 
         // 1. Wenn der Bot bereits 31 oder 33 Punkte auf der Hand hat
@@ -54,7 +56,7 @@ class SchnauzerBot
             for ($t = 0; $t < count($table); $t++) {
                 $simulatedHand = $hand;
                 $simulatedHand[$h] = $table[$t];
-                $simScore = SchnauzerScoreCalculator::calculateScore($simulatedHand)['score'];
+                $simScore = SchnauzerScoreCalculator::calculateScore($simulatedHand, $threeAces33)['score'];
                 if ($simScore > $bestSingleScore) {
                     $bestSingleScore = $simScore;
                     $bestH = $h;
@@ -64,7 +66,7 @@ class SchnauzerBot
         }
 
         // 3. Tausch aller 3 Karten simulieren
-        $swapAllScore = SchnauzerScoreCalculator::calculateScore($table)['score'];
+        $swapAllScore = SchnauzerScoreCalculator::calculateScore($table, $threeAces33)['score'];
 
         // 4. Prüfen, ob Tausch aller 3 Karten besser ist als Einzeltausch und aktuelle Hand
         if ($swapAllScore > $currScore && $swapAllScore > $bestSingleScore) {
