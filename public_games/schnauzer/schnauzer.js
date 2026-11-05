@@ -509,6 +509,8 @@
                 const wName = escapeHtml(res.winner_name || 'Gewinner');
                 const loserText = res.loser_names ? `<br><span style="color:#ef4444;font-size:0.85rem;font-weight:600;">Ausgeschieden: ${escapeHtml(res.loser_names)}</span>` : '';
                 summaryEl.innerHTML = `🏆 <strong>${wName}</strong> hat das Spiel gewonnen!${loserText}`;
+            } else if (res.is_all_tied) {
+                summaryEl.innerHTML = `🤝 <strong>Gleichstand aller Spieler!</strong> (${res.min_score} Punkte)<br><span style="color:#38bdf8;font-size:0.85rem;font-weight:600;">Niemand verliert ein Leben – es wird neu gegeben.</span>`;
             } else {
                 summaryEl.textContent = res.was_instant_schnauzer
                     ? '⚡ Sofortiger Schnauzer! Ein Spieler hatte 31 Punkte.'
@@ -525,6 +527,8 @@
             let badgeHtml = '';
             if (isWinner) {
                 badgeHtml = ' <span style="color:#f59e0b;font-weight:800;">(🏆 SIEGER)</span>';
+            } else if (res.is_all_tied) {
+                badgeHtml = ' <span style="color:#38bdf8;font-weight:700;">(Gleichstand)</span>';
             } else if (isLoser) {
                 badgeHtml = isGameOver
                     ? ' <span style="color:#ef4444;">(☠️ Ausgeschieden)</span>'
@@ -549,6 +553,12 @@
                 actionsCont.innerHTML = `
                     <button type="button" class="btn btn-primary btn-lg js-btn-restart-game" id="btn-restart-game" style="width: 100%; font-weight: 800;">
                         🔄 Neues Spiel starten
+                    </button>
+                `;
+            } else if (res.is_all_tied) {
+                actionsCont.innerHTML = `
+                    <button type="button" class="btn btn-primary btn-lg js-btn-next-round" id="btn-next-round" style="width: 100%;">
+                        🔄 Neu geben
                     </button>
                 `;
             } else {

@@ -599,25 +599,34 @@ class SchnauzerService
             }
         }
 
-        // Lebensabzüge durchführen
-        foreach ($players as &$p) {
-            $pid = (int)$p['id'];
-            if (!in_array($pid, $loserIds, true)) continue;
+        // Gleichstand aller Spieler ("Niemand verliert"):
+        // Wenn am Ende der Runde wirklich alle aktiven Spieler exakt die gleiche Punktzahl halten,
+        // verliert niemand ein Leben und es wird neu gegeben.
+        $isAllTied = (count($activePlayers) >= 2 && count($loserIds) === count($activePlayers));
 
-            $sheet = &$p['sheet'];
-            if ($sheet['lives'] > 1) {
-                $sheet['lives']--;
-            } elseif ($sheet['lives'] === 1) {
-                $sheet['lives'] = 0;
-                $sheet['is_swimming'] = true; // Schwimmer / Schiebeleben
-            } elseif ($sheet['is_swimming']) {
-                $sheet['is_swimming'] = false;
-                $sheet['is_out'] = true; // Ausgeschieden / ertrunken
-                $eliminatedNames[] = (string)$p['player_name'];
+        if ($isAllTied) {
+            $loserIds = [];
+        } else {
+            // Lebensabzüge durchführen
+            foreach ($players as &$p) {
+                $pid = (int)$p['id'];
+                if (!in_array($pid, $loserIds, true)) continue;
+
+                $sheet = &$p['sheet'];
+                if ($sheet['lives'] > 1) {
+                    $sheet['lives']--;
+                } elseif ($sheet['lives'] === 1) {
+                    $sheet['lives'] = 0;
+                    $sheet['is_swimming'] = true; // Schwimmer / Schiebeleben
+                } elseif ($sheet['is_swimming']) {
+                    $sheet['is_swimming'] = false;
+                    $sheet['is_out'] = true; // Ausgeschieden / ertrunken
+                    $eliminatedNames[] = (string)$p['player_name'];
+                }
+                $this->repo->updatePlayerSheet($pid, $sheet, (int)($sheet['lives'] ?? 0));
             }
-            $this->repo->updatePlayerSheet($pid, $sheet, (int)($sheet['lives'] ?? 0));
+            unset($p);
         }
-        unset($p);
 
         // Prüfen, wie viele noch im Spiel sind
         $survivors = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
@@ -630,13 +639,14 @@ class SchnauzerService
             ? "⚡ {$scores[$schnauzerPlayerId]['player_name']} hat 31 (Schnauzer)! Sofortiges Rundenende."
             : "Runde beendet nach Klopfen.";
 
-        $isGameOver = (count($survivors) <= 1);
+        $isGameOver = !$isAllTied && (count($survivors) <= 1);
         $wName = (count($survivors) === 1) ? (string)$survivors[0]['player_name'] : null;
         $wId = (count($survivors) === 1) ? (int)$survivors[0]['id'] : null;
 
         $state['round_result'] = [
             'scores' => $scores,
             'min_score' => $minScore,
+            'is_all_tied' => $isAllTied,
             'loser_ids' => $loserIds,
             'loser_names' => implode(', ', $loserNames),
             'eliminated_names' => $eliminatedNames,
@@ -655,7 +665,9 @@ class SchnauzerService
             'type' => $isGameOver ? 'game_over' : 'round_ended',
             'message' => $isGameOver
                 ? "🏆 Spiel vorbei! {$wName} hat als letzter Überlebender gewonnen!"
-                : "{$endReason} Verliert 1 Leben: " . implode(', ', $loserNames),
+                : ($isAllTied
+                    ? "{$endReason} 🤝 Gleichstand aller Spieler ({$minScore} Punkte) – niemand verliert ein Leben!"
+                    : "{$endReason} Verliert 1 Leben: " . implode(', ', $loserNames)),
         ];
     }
 
@@ -681,9 +693,11 @@ class SchnauzerService
             return ['success' => false, 'message' => 'Nicht genug Überlebende für eine weitere Runde.'];
         }
 
-        // Nächsten Geber ermitteln (reihum unter den Überlebenden)
+        // Nächsten Geber ermitteln: Bei Gleichstand aller Spieler gibt derselbe Geber noch einmal neu,
+        // ansonsten reihum unter den Überlebenden.
         $currDealerId = (int)($state['dealer_id'] ?? $activePlayers[0]['id']);
-        $nextDealerId = $this->getNextActivePlayerId($activePlayers, $currDealerId);
+        $isAllTied = !empty($state['round_result']['is_all_tied']);
+        $nextDealerId = $isAllTied ? $currDealerId : $this->getNextActivePlayerId($activePlayers, $currDealerId);
 
         $res = $this->dealNewRound($roomId, $state, $players, $nextDealerId);
         if (!$res['success']) {
