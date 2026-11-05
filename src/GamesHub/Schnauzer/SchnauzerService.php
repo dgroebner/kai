@@ -622,34 +622,33 @@ class SchnauzerService
             ? "⚡ {$scores[$schnauzerPlayerId]['player_name']} hat 31 (Schnauzer)! Sofortiges Rundenende."
             : "Runde beendet nach Klopfen.";
 
+        $isGameOver = (count($survivors) <= 1);
+        $wName = (count($survivors) === 1) ? (string)$survivors[0]['player_name'] : null;
+        $wId = (count($survivors) === 1) ? (int)$survivors[0]['id'] : null;
+
         $state['round_result'] = [
             'scores' => $scores,
             'min_score' => $minScore,
             'loser_ids' => $loserIds,
             'loser_names' => implode(', ', $loserNames),
             'eliminated_names' => $eliminatedNames,
+            'is_game_over' => $isGameOver,
+            'winner_id' => $wId,
+            'winner_name' => $wName,
             'was_instant_schnauzer' => $wasInstantSchnauzer,
             'schnauzer_player_id' => $schnauzerPlayerId,
-            'winner_id' => (count($survivors) === 1) ? (int)$survivors[0]['id'] : null,
-            'winner_name' => (count($survivors) === 1) ? (string)$survivors[0]['player_name'] : null,
         ];
 
-        if (count($survivors) <= 1) {
-            $state['phase'] = 'game_over';
-            $wName = $survivors[0]['player_name'] ?? 'Niemand';
-            $state['last_event'] = [
-                'time' => microtime(true),
-                'type' => 'game_over',
-                'message' => "🏆 Spiel vorbei! {$wName} hat als letzter Überlebender gewonnen!",
-            ];
-        } else {
-            $state['phase'] = 'showdown';
-            $state['last_event'] = [
-                'time' => microtime(true),
-                'type' => 'round_ended',
-                'message' => "{$endReason} Verliert 1 Leben: " . implode(', ', $loserNames),
-            ];
-        }
+        // Die Runde geht IMMER in den Showdown, damit alle Spieler die Hände und Punkte
+        // des finalen Spiels sehen können.
+        $state['phase'] = 'showdown';
+        $state['last_event'] = [
+            'time' => microtime(true),
+            'type' => $isGameOver ? 'game_over' : 'round_ended',
+            'message' => $isGameOver
+                ? "🏆 Spiel vorbei! {$wName} hat als letzter Überlebender gewonnen!"
+                : "{$endReason} Verliert 1 Leben: " . implode(', ', $loserNames),
+        ];
     }
 
     /**

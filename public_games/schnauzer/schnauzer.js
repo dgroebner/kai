@@ -478,26 +478,50 @@
         const titleEl = document.getElementById('showdown-modal-title');
         const summaryEl = document.getElementById('showdown-summary-text');
         const listEl = document.getElementById('showdown-results-list');
+        const actionsCont = document.getElementById('showdown-actions-container');
         const res = data.round_result;
         if (!listEl || !res) return;
 
-        if (titleEl) titleEl.textContent = `Ergebnis Runde ${data.round_number}`;
+        const isGameOver = Boolean(res.is_game_over || res.winner_id);
+
+        if (titleEl) {
+            titleEl.textContent = isGameOver
+                ? `🏆 Finale Runde ${data.round_number} – Auswertung`
+                : `Ergebnis Runde ${data.round_number}`;
+        }
+
         if (summaryEl) {
-            summaryEl.textContent = res.was_instant_schnauzer
-                ? '⚡ Sofortiger Schnauzer! Ein Spieler hatte 31 Punkte.'
-                : `Verliert 1 Leben: ${res.loser_names}`;
+            if (isGameOver) {
+                const wName = escapeHtml(res.winner_name || 'Gewinner');
+                const loserText = res.loser_names ? `<br><span style="color:#ef4444;font-size:0.85rem;font-weight:600;">Ausgeschieden: ${escapeHtml(res.loser_names)}</span>` : '';
+                summaryEl.innerHTML = `🏆 <strong>${wName}</strong> hat das Spiel gewonnen!${loserText}`;
+            } else {
+                summaryEl.textContent = res.was_instant_schnauzer
+                    ? '⚡ Sofortiger Schnauzer! Ein Spieler hatte 31 Punkte.'
+                    : `Verliert 1 Leben: ${res.loser_names}`;
+            }
         }
 
         const scores = Object.values(res.scores || {});
         listEl.innerHTML = scores.map(s => {
+            const isWinner = isGameOver && (s.player_id === res.winner_id);
             const isLoser = (res.loser_ids || []).includes(s.player_id);
             const handHtml = (s.hand || []).map(c => window.QuarxlCards.renderCardHtml(c)).join('');
 
+            let badgeHtml = '';
+            if (isWinner) {
+                badgeHtml = ' <span style="color:#f59e0b;font-weight:800;">(🏆 SIEGER)</span>';
+            } else if (isLoser) {
+                badgeHtml = isGameOver
+                    ? ' <span style="color:#ef4444;">(☠️ Ausgeschieden)</span>'
+                    : ' <span style="color:#ef4444;">(-1 🪙)</span>';
+            }
+
             return `
-                <div class="showdown-player-card ${isLoser ? 'is-loser' : ''}">
+                <div class="showdown-player-card ${isLoser ? 'is-loser' : ''} ${isWinner ? 'is-winner' : ''}">
                     <div class="showdown-player-info">
                         <div class="showdown-player-name">
-                            ${escapeHtml(s.player_name)} ${isLoser ? '<span style="color:#ef4444;">(-1 🪙)</span>' : ''}
+                            ${escapeHtml(s.player_name)}${badgeHtml}
                         </div>
                         <div class="showdown-player-score">${escapeHtml(s.label)}</div>
                     </div>
@@ -505,6 +529,27 @@
                 </div>
             `;
         }).join('');
+
+        if (actionsCont) {
+            if (isGameOver) {
+                actionsCont.innerHTML = `
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                        <button type="button" class="btn btn-warning btn-lg js-btn-open-ceremony" id="btn-open-ceremony" style="flex: 1; font-weight:800;">
+                            🏆 Zur Siegerehrung
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-lg js-btn-restart-game" style="flex: 1;">
+                            🔄 Neues Spiel
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionsCont.innerHTML = `
+                    <button type="button" class="btn btn-primary btn-lg js-btn-next-round" id="btn-next-round" style="width: 100%;">
+                        ➡️ Nächste Runde starten
+                    </button>
+                `;
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -599,11 +644,38 @@
             pollStatus();
         });
 
-        // Nächste Runde starten
-        document.querySelector('.js-btn-next-round')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=next_round&room=${encodeURIComponent(roomCode)}`);
-            document.getElementById('modal-showdown')?.classList.add('hidden');
-            pollStatus();
+        // Nächste Runde, Siegerehrung, Kartenansicht & Neustart via Event Delegation
+        document.addEventListener('click', async (e) => {
+            const btnNext = e.target.closest('.js-btn-next-round');
+            if (btnNext) {
+                await HubHttp.postJson(`./api.php?action=next_round&room=${encodeURIComponent(roomCode)}`);
+                document.getElementById('modal-showdown')?.classList.add('hidden');
+                pollStatus();
+                return;
+            }
+
+            const btnCeremony = e.target.closest('.js-btn-open-ceremony');
+            if (btnCeremony) {
+                document.getElementById('modal-showdown')?.classList.add('hidden');
+                document.getElementById('modal-game-over')?.classList.remove('hidden');
+                return;
+            }
+
+            const btnViewCards = e.target.closest('.js-btn-view-cards');
+            if (btnViewCards) {
+                document.getElementById('modal-game-over')?.classList.add('hidden');
+                document.getElementById('modal-showdown')?.classList.remove('hidden');
+                return;
+            }
+
+            const btnRestart = e.target.closest('.js-btn-restart-game');
+            if (btnRestart) {
+                await HubHttp.postJson(`./api.php?action=restart&room=${encodeURIComponent(roomCode)}`);
+                document.getElementById('modal-game-over')?.classList.add('hidden');
+                document.getElementById('modal-showdown')?.classList.add('hidden');
+                pollStatus();
+                return;
+            }
         });
 
         // Spiel starten (Lobby)
@@ -615,13 +687,6 @@
         // KI-Bot hinzufügen
         document.getElementById('btn-add-bot')?.addEventListener('click', async () => {
             await HubHttp.postJson(`./api.php?action=add_bot&room=${encodeURIComponent(roomCode)}`);
-            pollStatus();
-        });
-
-        // Spiel neu starten (Game Over)
-        document.getElementById('btn-restart-game')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=restart&room=${encodeURIComponent(roomCode)}`);
-            document.getElementById('modal-game-over')?.classList.add('hidden');
             pollStatus();
         });
     }

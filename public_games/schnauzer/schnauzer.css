@@ -332,6 +332,12 @@
     background: rgba(239, 68, 68, 0.1);
 }
 
+.showdown-player-card.is-winner {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
 .showdown-player-info {
     flex: 1 1 auto;
     min-width: 0;
