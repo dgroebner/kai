@@ -931,29 +931,65 @@
     }
 }
 
-/* FLIEGENDE POKER-KARTEN & LANDE-IMPULS */
+/* FLIEGENDE POKER-KARTEN, VERDECKTE KARTEN & SPANNUNGS-FLIP */
+.community-cards-container .quarxl-card-back {
+    width: 54px;
+    height: 76px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.my-hole-cards .quarxl-card-back {
+    width: 60px;
+    height: 84px;
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+    .community-cards-container .quarxl-card-back {
+        width: 50px;
+        height: 70px;
+    }
+    .my-hole-cards .quarxl-card-back {
+        width: 60px;
+        height: 84px;
+    }
+}
+
+.poker-card-flipper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: center center;
+    will-change: transform, opacity;
+}
+
+.poker-card-flipper.is-flipping-in {
+    transform: scaleX(0) scaleY(1.07);
+    transition: transform 0.145s ease-in;
+}
+
+@keyframes pokerFlipRevealOut {
+    0% {
+        transform: scaleX(0) scaleY(1.07);
+    }
+    70% {
+        transform: scaleX(1.04) scaleY(1.02);
+    }
+    100% {
+        transform: scaleX(1) scaleY(1);
+    }
+}
+
+.poker-card-flipper.is-flipping-out {
+    animation: pokerFlipRevealOut 0.19s cubic-bezier(0.2, 0.85, 0.3, 1.15) forwards;
+}
+
 .poker-flying-card > .quarxl-card,
 .poker-flying-card > .quarxl-card-back {
     width: 100% !important;
     height: 100% !important;
     padding: 3px 4px;
     box-sizing: border-box;
-}
-.poker-flying-card > .quarxl-card .quarxl-card-rank {
-    font-size: 0.9rem;
-}
-.poker-flying-card > .quarxl-card .quarxl-card-mini-suit {
-    width: 11px;
-    height: 13px;
-}
-.poker-flying-card > .quarxl-card .quarxl-figure-rank-huge,
-.poker-flying-card > .quarxl-card .quarxl-number-value-big {
-    font-size: 1.3rem;
-}
-.poker-flying-card > .quarxl-card .quarxl-figure-suit-icon,
-.poker-flying-card > .quarxl-card .quarxl-number-suit-medium {
-    width: 20px;
-    height: 24px;
 }
 
 @keyframes pokerCardLandPulse {
