@@ -39,7 +39,7 @@ class AstronomyIngestService
             $eventsCount = $this->upsertEvents($payload['events']);
         }
 
-        // 3. Veraltete Ereignisse bereinigen (älter als 30 Tage)
+        // 3. Veraltete Ereignisse bereinigen (älter als 45 Tage und Enddatum abgelaufen)
         $this->cleanupOldEvents();
 
         $this->logger->info('AstronomyIngest: Daten erfolgreich verarbeitet', [
@@ -169,7 +169,8 @@ class AstronomyIngestService
         try {
             $this->pdo->exec("
                 DELETE FROM weather_astronomy_events 
-                WHERE event_date < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                WHERE event_date < DATE_SUB(CURDATE(), INTERVAL 45 DAY)
+                  AND (end_date IS NULL OR end_date < CURDATE())
             ");
         } catch (Throwable $e) {
             $this->logger->warn('AstronomyIngest: Alte Events konnten nicht bereinigt werden', ['error' => $e->getMessage()]);

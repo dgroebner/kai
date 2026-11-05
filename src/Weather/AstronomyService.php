@@ -9,6 +9,129 @@ use Throwable;
 
 class AstronomyService
 {
+    private const LEIPZIG_LAT = 51.3397;
+    private const LEIPZIG_LON = 12.3731;
+
+    /**
+     * Kanonische Definitionen bekannter Meteorschauer für Aktivitäts- und Intensitätsberechnung.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    public const KNOWN_METEOR_SHOWERS = [
+        'quadrantids' => [
+            'key' => 'quadrantids',
+            'tag' => 'quadrantid',
+            'name' => 'Quadrantiden',
+            'title' => 'Quadrantiden (Winter-Meteorschauer)',
+            'description' => 'Kurzer, aber intensiver Schauer zum Jahresbeginn mit vielen hellen Feuerkugeln.',
+            'start' => [1, 1],
+            'peak' => [1, 3],
+            'end' => [1, 10],
+            'activity_period' => '01.01. – 10.01.',
+            'peak_date' => '03.01.',
+            'zhr' => 80,
+            'radiant' => 'Bärenhüter',
+        ],
+        'lyrids' => [
+            'key' => 'lyrids',
+            'tag' => 'lyrid',
+            'name' => 'Lyriden',
+            'title' => 'Lyriden (Frühlings-Meteorschauer)',
+            'description' => 'Schnelle und helle Meteore aus dem Sternbild Leier.',
+            'start' => [4, 16],
+            'peak' => [4, 22],
+            'end' => [4, 25],
+            'activity_period' => '16.04. – 25.04.',
+            'peak_date' => '22.04.',
+            'zhr' => 18,
+            'radiant' => 'Leier',
+        ],
+        'eta_aquariids' => [
+            'key' => 'eta_aquariids',
+            'tag' => 'aquariid',
+            'name' => 'Eta-Aquariiden',
+            'title' => 'Eta-Aquariiden (Halley-Meteorschauer)',
+            'description' => 'Schnelle Meteore in den frühen Morgenstunden, abstammend vom Halleyschen Kometen.',
+            'start' => [4, 19],
+            'peak' => [5, 6],
+            'end' => [5, 28],
+            'activity_period' => '19.04. – 28.05.',
+            'peak_date' => '06.05.',
+            'zhr' => 50,
+            'radiant' => 'Wassermann',
+        ],
+        'perseids' => [
+            'key' => 'perseids',
+            'tag' => 'perseid',
+            'name' => 'Perseiden',
+            'title' => 'Perseiden (Die Laurentiustränen)',
+            'description' => 'Der beliebteste Sommer-Meteorschauer mit bis zu 100 schnellen Sternschnuppen pro Stunde bei milden Sommernächten.',
+            'start' => [7, 17],
+            'peak' => [8, 12],
+            'end' => [8, 24],
+            'activity_period' => '17.07. – 24.08.',
+            'peak_date' => '12.08.',
+            'zhr' => 100,
+            'radiant' => 'Perseus',
+        ],
+        'orionids' => [
+            'key' => 'orionids',
+            'tag' => 'orionid',
+            'name' => 'Orioniden',
+            'title' => 'Orioniden (Meteorschauer)',
+            'description' => 'Sternschnuppenstrom aus Staubspuren des Kometen Halley. Ca. 15–20 Meteore pro Stunde.',
+            'start' => [10, 2],
+            'peak' => [10, 21],
+            'end' => [11, 7],
+            'activity_period' => '02.10. – 07.11.',
+            'peak_date' => '21.10.',
+            'zhr' => 20,
+            'radiant' => 'Orion',
+        ],
+        'leonids' => [
+            'key' => 'leonids',
+            'tag' => 'leonid',
+            'name' => 'Leoniden',
+            'title' => 'Leoniden-Maximum',
+            'description' => 'Sehr schnelle Sternschnuppen mit feinen Rauchschweifen.',
+            'start' => [11, 6],
+            'peak' => [11, 17],
+            'end' => [11, 30],
+            'activity_period' => '06.11. – 30.11.',
+            'peak_date' => '17.11.',
+            'zhr' => 15,
+            'radiant' => 'Löwe',
+        ],
+        'geminids' => [
+            'key' => 'geminids',
+            'tag' => 'geminid',
+            'name' => 'Geminiden',
+            'title' => 'Geminiden (Stärkster Meteorschauer des Jahres)',
+            'description' => 'Reichster Sternschnuppenstrom des Jahres mit bis zu 120 oft bunten und hellen Sternschnuppen pro Stunde!',
+            'start' => [12, 4],
+            'peak' => [12, 14],
+            'end' => [12, 17],
+            'activity_period' => '04.12. – 17.12.',
+            'peak_date' => '14.12.',
+            'zhr' => 120,
+            'radiant' => 'Zwillinge',
+        ],
+        'ursids' => [
+            'key' => 'ursids',
+            'tag' => 'ursid',
+            'name' => 'Ursiden',
+            'title' => 'Ursiden (Weihnachts-Meteorschauer)',
+            'description' => 'Kleinerer Schauer kurz vor Weihnachten rund um den Kleinen Wagen.',
+            'start' => [12, 17],
+            'peak' => [12, 22],
+            'end' => [12, 26],
+            'activity_period' => '17.12. – 26.12.',
+            'peak_date' => '22.12.',
+            'zhr' => 10,
+            'radiant' => 'Kleiner Bär',
+        ],
+    ];
+
     private ?PDO $pdo;
     private Logger $logger;
     private ?WeatherService $weatherService;
@@ -44,22 +167,23 @@ class AstronomyService
                 $stmt = $this->pdo->query("SELECT * FROM weather_astronomy_state WHERE id = 1");
                 $row = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
 
-            if ($row) {
-                $planets = !empty($row['visible_planets_json']) ? json_decode($row['visible_planets_json'], true) : $this->getDefaultPlanets();
-                return [
-                    'kp_current' => (float)($row['kp_current'] ?? 0.0),
-                    'kp_max_next_24h' => (float)($row['kp_max_next_24h'] ?? 0.0),
-                    'kp_forecast' => !empty($row['kp_forecast_json']) ? json_decode($row['kp_forecast_json'], true) : [],
-                    'aurora_chance' => (string)($row['aurora_chance'] ?? 'none'),
-                    'visible_planets' => $this->enrichPlanetsWithVisibility($planets),
-                    'active_meteor_showers' => !empty($row['active_meteor_showers_json']) ? json_decode($row['active_meteor_showers_json'], true) : [],
-                    'moon_phase_name' => (string)($row['moon_phase_name'] ?? 'Mondphase'),
-                    'moon_illumination' => isset($row['moon_illumination']) ? (float)$row['moon_illumination'] : 0.5,
-                    'summary_text' => $row['summary_text'] ?? null,
-                    'updated_at' => $row['updated_at'] ?? null,
-                ];
-            }
-        } catch (Throwable $e) {
+                if ($row) {
+                    $planets = !empty($row['visible_planets_json']) ? json_decode($row['visible_planets_json'], true) : $this->getDefaultPlanets();
+                    $rawShowers = !empty($row['active_meteor_showers_json']) ? json_decode($row['active_meteor_showers_json'], true) : [];
+                    return [
+                        'kp_current' => (float)($row['kp_current'] ?? 0.0),
+                        'kp_max_next_24h' => (float)($row['kp_max_next_24h'] ?? 0.0),
+                        'kp_forecast' => !empty($row['kp_forecast_json']) ? json_decode($row['kp_forecast_json'], true) : [],
+                        'aurora_chance' => (string)($row['aurora_chance'] ?? 'none'),
+                        'visible_planets' => $this->enrichPlanetsWithVisibility(is_array($planets) ? $planets : $this->getDefaultPlanets()),
+                        'active_meteor_showers' => $this->enrichActiveMeteorShowers(is_array($rawShowers) ? $rawShowers : []),
+                        'moon_phase_name' => (string)($row['moon_phase_name'] ?? 'Mondphase'),
+                        'moon_illumination' => isset($row['moon_illumination']) ? (float)$row['moon_illumination'] : 0.5,
+                        'summary_text' => $row['summary_text'] ?? null,
+                        'updated_at' => $row['updated_at'] ?? null,
+                    ];
+                }
+            } catch (Throwable $e) {
                 $this->logger->warn('AstronomyService: Fehler beim Laden des Status', ['error' => $e->getMessage()]);
             }
         }
@@ -70,7 +194,7 @@ class AstronomyService
             'kp_forecast' => [],
             'aurora_chance' => 'none',
             'visible_planets' => $this->enrichPlanetsWithVisibility($this->getDefaultPlanets()),
-            'active_meteor_showers' => [],
+            'active_meteor_showers' => $this->enrichActiveMeteorShowers([]),
             'moon_phase_name' => 'Halbmond',
             'moon_illumination' => 0.5,
             'summary_text' => 'Geringe Sonnenaktivität, normale Bedingungen.',
@@ -79,7 +203,217 @@ class AstronomyService
     }
 
     /**
-     * Liefert die anstehenden astronomischen Ereignisse ab heute für Leipzig.
+     * Berechnet für einen Meteorschauer das relevante Zeitfenster (Start, Peak, Ende),
+     * dessen Ende heute oder in der Zukunft liegt, inkl. Aktivitätsstatus und Intensitätskurve.
+     *
+     * @return array{
+     *     start_ts: int,
+     *     peak_ts: int,
+     *     end_ts: int,
+     *     peak_date_iso: string,
+     *     end_date_iso: string,
+     *     end_date_formatted: string,
+     *     activity_period: string,
+     *     peak_date: string,
+     *     is_active: bool,
+     *     is_peak: bool,
+     *     is_post_peak: bool,
+     *     days_until_peak: int,
+     *     days_until_end: int,
+     *     intensity: float,
+     *     intensity_pct: int,
+     *     trend: string
+     * }
+     */
+    public function resolveShowerWindow(
+        int $startM,
+        int $startD,
+        int $peakM,
+        int $peakD,
+        int $endM,
+        int $endD,
+        ?int $todayTs = null
+    ): array {
+        $todayTs = $todayTs ?? strtotime('today');
+        $curYear = (int)date('Y', $todayTs);
+
+        $chosenStartTs = 0;
+        $chosenPeakTs = 0;
+        $chosenEndTs = 0;
+
+        foreach ([$curYear - 1, $curYear, $curYear + 1] as $y) {
+            $peakTs = strtotime(sprintf('%04d-%02d-%02d', $y, $peakM, $peakD));
+            $sYear = ($startM <= $peakM) ? $y : $y - 1;
+            $startTs = strtotime(sprintf('%04d-%02d-%02d', $sYear, $startM, $startD));
+            $eYear = ($endM >= $peakM) ? $y : $y + 1;
+            $endTs = strtotime(sprintf('%04d-%02d-%02d', $eYear, $endM, $endD));
+
+            if ($endTs >= $todayTs) {
+                $chosenStartTs = $startTs;
+                $chosenPeakTs = $peakTs;
+                $chosenEndTs = $endTs;
+                break;
+            }
+        }
+
+        $isActive = ($todayTs >= $chosenStartTs && $todayTs <= $chosenEndTs);
+        $daysUntilPeak = (int)round(($chosenPeakTs - $todayTs) / 86400);
+        $daysUntilEnd = (int)round(($chosenEndTs - $todayTs) / 86400);
+        $isPeak = ($daysUntilPeak === 0);
+        $isPostPeak = ($isActive && $daysUntilPeak < 0);
+
+        if (!$isActive) {
+            $intensity = 0.0;
+            $trend = 'rising';
+        } elseif ($isPeak) {
+            $intensity = 1.0;
+            $trend = 'peak';
+        } elseif ($todayTs < $chosenPeakTs) {
+            $riseDays = max(1, ($chosenPeakTs - $chosenStartTs) / 86400);
+            $prog = min(1.0, max(0.0, ($todayTs - $chosenStartTs) / ($riseDays * 86400)));
+            $intensity = round(0.15 + 0.85 * $prog, 2);
+            $trend = 'rising';
+        } else {
+            $fallDays = max(1, ($chosenEndTs - $chosenPeakTs) / 86400);
+            $prog = min(1.0, max(0.0, ($todayTs - $chosenPeakTs) / ($fallDays * 86400)));
+            $intensity = round(max(0.15, 1.0 - 0.85 * $prog), 2);
+            $trend = 'falling';
+        }
+
+        return [
+            'start_ts' => $chosenStartTs,
+            'peak_ts' => $chosenPeakTs,
+            'end_ts' => $chosenEndTs,
+            'peak_date_iso' => date('Y-m-d', $chosenPeakTs),
+            'end_date_iso' => date('Y-m-d', $chosenEndTs),
+            'end_date_formatted' => date('d.m.', $chosenEndTs),
+            'activity_period' => sprintf('%02d.%02d. – %02d.%02d.', $startD, $startM, $endD, $endM),
+            'peak_date' => sprintf('%02d.%02d.', $peakD, $peakM),
+            'is_active' => $isActive,
+            'is_peak' => $isPeak,
+            'is_post_peak' => $isPostPeak,
+            'days_until_peak' => $daysUntilPeak,
+            'days_until_end' => $daysUntilEnd,
+            'intensity' => $intensity,
+            'intensity_pct' => (int)round($intensity * 100),
+            'trend' => $trend,
+        ];
+    }
+
+    /**
+     * Findet die passende bekannte Meteorschauer-Definition anhand von Schlüssel oder Titel.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function matchKnownShower(string $keyOrTitle): ?array
+    {
+        $haystack = mb_strtolower($keyOrTitle, 'UTF-8');
+        foreach (self::KNOWN_METEOR_SHOWERS as $def) {
+            if (
+                str_contains($haystack, $def['key']) ||
+                str_contains($haystack, $def['tag']) ||
+                str_contains($haystack, mb_strtolower($def['name'], 'UTF-8'))
+            ) {
+                return $def;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Ergänzt und validiert die Liste der aktuell aktiven Meteorschauer (auch nach Überschreiten des Maximums bis zum Enddatum).
+     *
+     * @param array<int, array<string, mixed>> $showers
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrichActiveMeteorShowers(array $showers): array
+    {
+        $todayTs = strtotime('today');
+        $resultByKey = [];
+
+        foreach ($showers as $shower) {
+            if (!is_array($shower)) {
+                continue;
+            }
+            $sKey = (string)($shower['key'] ?? '');
+            $sName = (string)($shower['name'] ?? '');
+            $known = $this->matchKnownShower($sKey . ' ' . $sName);
+
+            if ($known !== null) {
+                $win = $this->resolveShowerWindow(
+                    $known['start'][0],
+                    $known['start'][1],
+                    $known['peak'][0],
+                    $known['peak'][1],
+                    $known['end'][0],
+                    $known['end'][1],
+                    $todayTs
+                );
+                if (!$win['is_active']) {
+                    continue;
+                }
+                $canonicalKey = $known['key'];
+                $resultByKey[$canonicalKey] = array_merge($shower, [
+                    'key' => $canonicalKey,
+                    'name' => $shower['name'] ?? $known['name'],
+                    'zhr' => $shower['zhr'] ?? $known['zhr'],
+                    'radiant' => $shower['radiant'] ?? $known['radiant'],
+                    'activity_period' => $win['activity_period'],
+                    'peak_date' => $win['peak_date'],
+                    'peak_day_formatted' => $win['peak_date'],
+                    'end_date_formatted' => $win['end_date_formatted'],
+                    'is_peak' => $win['is_peak'],
+                    'is_post_peak' => $win['is_post_peak'],
+                    'intensity' => $win['intensity'],
+                    'intensity_pct' => $win['intensity_pct'],
+                    'trend' => $win['trend'],
+                ]);
+            } else {
+                $fallbackKey = $sKey !== '' ? $sKey : mb_strtolower($sName, 'UTF-8');
+                if ($fallbackKey !== '') {
+                    $resultByKey[$fallbackKey] = $shower;
+                }
+            }
+        }
+
+        // Sicherstellen, dass alle heute aktiven bekannten Schauer enthalten sind (auch nach dem Maximum bis zum Enddatum)
+        foreach (self::KNOWN_METEOR_SHOWERS as $canonicalKey => $known) {
+            if (isset($resultByKey[$canonicalKey])) {
+                continue;
+            }
+            $win = $this->resolveShowerWindow(
+                $known['start'][0],
+                $known['start'][1],
+                $known['peak'][0],
+                $known['peak'][1],
+                $known['end'][0],
+                $known['end'][1],
+                $todayTs
+            );
+            if ($win['is_active']) {
+                $resultByKey[$canonicalKey] = [
+                    'key' => $canonicalKey,
+                    'name' => $known['name'],
+                    'zhr' => $known['zhr'],
+                    'radiant' => $known['radiant'],
+                    'activity_period' => $win['activity_period'],
+                    'peak_date' => $win['peak_date'],
+                    'peak_day_formatted' => $win['peak_date'],
+                    'end_date_formatted' => $win['end_date_formatted'],
+                    'is_peak' => $win['is_peak'],
+                    'is_post_peak' => $win['is_post_peak'],
+                    'intensity' => $win['intensity'],
+                    'intensity_pct' => $win['intensity_pct'],
+                    'trend' => $win['trend'],
+                ];
+            }
+        }
+
+        return array_values($resultByKey);
+    }
+
+    /**
+     * Liefert die anstehenden (sowie aktuell noch aktiven) astronomischen Ereignisse für Leipzig.
      *
      * @param int $limit
      * @return array<int, array<string, mixed>>
@@ -88,11 +422,12 @@ class AstronomyService
     {
         if ($this->pdo) {
             try {
-                // Abfrage mit Puffer, um nachfolgende Duplikate wiederkehrender Ereignisse filtern zu können
-                $fetchLimit = max(24, $limit * 2);
+                // Abfrage inkl. der letzten 45 Tage, damit Meteorschauer, deren Maximum überschritten ist,
+                // die aber noch bis zu ihrem Enddatum aktiv sind, nicht herausfallen.
+                $fetchLimit = max(36, $limit * 3);
                 $stmt = $this->pdo->prepare("
                     SELECT * FROM weather_astronomy_events
-                    WHERE event_date >= CURDATE()
+                    WHERE event_date >= DATE_SUB(CURDATE(), INTERVAL 45 DAY)
                     ORDER BY event_date ASC, peak_time ASC
                     LIMIT :limit
                 ");
@@ -101,51 +436,80 @@ class AstronomyService
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 if (!empty($rows)) {
+                    $todayTs = strtotime('today');
+                    $todayIso = date('Y-m-d', $todayTs);
                     $events = [];
                     $seenShowers = [];
                     $seenTitles = [];
 
-                    $showerNames = [
-                        'quadrantid', 'lyrid', 'aquariid', 'perseid',
-                        'orionid', 'leonid', 'geminid', 'ursid'
-                    ];
-
                     foreach ($rows as $r) {
                         $r['details'] = !empty($r['details_json']) ? json_decode($r['details_json'], true) : [];
+                        if (!is_array($r['details'])) {
+                            $r['details'] = [];
+                        }
                         unset($r['details_json']);
 
-                        // Basis-Schlüssel ohne Jahreszahl ermitteln (z. B. "orionids-2026" -> "orionids")
                         $eventKey = (string)($r['event_key'] ?? '');
                         $baseKey = preg_replace('/-\d{4}$/', '', $eventKey);
                         if (empty($baseKey)) {
                             $baseKey = explode('-', $eventKey)[0] ?? $eventKey;
                         }
 
-                        $rawTitle = mb_strtolower(trim((string)($r['title'] ?? '')));
-                        $normTitle = trim(preg_replace('/\b20\d{2}\b/', '', $rawTitle));
+                        $rawTitle = mb_strtolower(trim((string)($r['title'] ?? '')), 'UTF-8');
+                        $normTitle = trim((string)preg_replace('/\b20\d{2}\b/', '', $rawTitle));
                         $isMeteorShower = (($r['event_type'] ?? '') === 'meteor_shower');
 
-                        // Erkennen von Meteorschauer-Gruppen (z. B. Orioniden 2026 vs. 2027)
                         $showerTag = null;
+                        $knownShower = null;
                         if ($isMeteorShower) {
-                            $keyOrTitle = mb_strtolower($baseKey . ' ' . $rawTitle);
-                            foreach ($showerNames as $sName) {
-                                if (str_contains($keyOrTitle, $sName)) {
-                                    $showerTag = $sName;
-                                    break;
+                            $knownShower = $this->matchKnownShower($baseKey . ' ' . $rawTitle);
+                            $showerTag = $knownShower['tag'] ?? $baseKey;
+                        }
+
+                        // Für bekannte Meteorschauer das aktuelle/nächste Zeitfenster prüfen
+                        if ($isMeteorShower && $knownShower !== null) {
+                            $win = $this->resolveShowerWindow(
+                                $knownShower['start'][0],
+                                $knownShower['start'][1],
+                                $knownShower['peak'][0],
+                                $knownShower['peak'][1],
+                                $knownShower['end'][0],
+                                $knownShower['end'][1],
+                                $todayTs
+                            );
+
+                            if ($win['is_active']) {
+                                // Solange der Schauer aktiv ist (auch nach dem Maximum bis zum Enddatum!),
+                                // auf den aktuellen Zyklus normieren, damit nicht schon das Folgejahr angezeigt wird.
+                                $r['event_date'] = $win['peak_date_iso'];
+                                $r['end_date'] = $win['end_date_iso'];
+                                $r['details']['activity_period'] = $r['details']['activity_period'] ?? $win['activity_period'];
+                                $r['details']['peak_date'] = $r['details']['peak_date'] ?? $win['peak_date'];
+                                $r['details']['end_date_formatted'] = $win['end_date_formatted'];
+                                $r['details']['is_active'] = true;
+                                $r['details']['is_peak'] = $win['is_peak'];
+                                $r['details']['is_post_peak'] = $win['is_post_peak'];
+                                $r['details']['intensity'] = $win['intensity'];
+                                $r['details']['intensity_pct'] = $win['intensity_pct'];
+                                $r['details']['trend'] = $win['trend'];
+                            } else {
+                                // Nicht mehr aktiv -> vergangene Instanzen überspringen
+                                if (($r['event_date'] ?? '') < $todayIso) {
+                                    continue;
                                 }
+                                $r['details']['is_active'] = false;
                             }
-                            if ($showerTag === null) {
-                                $showerTag = $baseKey;
+                        } else {
+                            // Sonstige Events oder unbekannte Schauer: prüfen ob Enddatum oder Eventdatum noch aktuell ist
+                            $effectiveEnd = !empty($r['end_date']) ? (string)$r['end_date'] : (string)($r['event_date'] ?? '');
+                            if ($effectiveEnd < $todayIso) {
+                                continue;
                             }
                         }
 
-                        // Ist dieser Schauer bereits als nächste bevorstehende Instanz in der Liste?
                         if ($showerTag !== null && isset($seenShowers[$showerTag])) {
                             continue;
                         }
-
-                        // Identischer normalisierter Titel bereits erfasst?
                         if (!empty($normTitle) && isset($seenTitles[$normTitle])) {
                             continue;
                         }
@@ -158,12 +522,12 @@ class AstronomyService
                         }
 
                         $events[] = $r;
-                        if (count($events) >= $limit) {
-                            break;
-                        }
                     }
 
-                    return $events;
+                    if (!empty($events)) {
+                        usort($events, static fn($a, $b) => strcmp((string)($a['event_date'] ?? ''), (string)($b['event_date'] ?? '')));
+                        return array_slice($events, 0, $limit);
+                    }
                 }
             } catch (Throwable $e) {
                 $this->logger->warn('AstronomyService: Fehler beim Laden der Events', ['error' => $e->getMessage()]);
@@ -197,9 +561,8 @@ class AstronomyService
 
         $hourlyTime = $forecast['hourly']['time'] ?? [];
         $hourlyClouds = $forecast['hourly']['cloud_cover'] ?? [];
-        
+
         $nightClouds = [];
-        $now = time();
         $tonightStart = strtotime('today 21:00');
         $tonightEnd = strtotime('tomorrow 05:00');
 
@@ -276,7 +639,7 @@ class AstronomyService
             }
         }
 
-        // Sichtbare Planeten
+        // Sichtbare Planeten (nur tatsächlich bei Dunkelheit sichtbare Planeten)
         $visiblePlanets = [];
         if (!empty($state['visible_planets'])) {
             foreach ($state['visible_planets'] as $p) {
@@ -308,11 +671,6 @@ class AstronomyService
     }
 
     /**
-     * Standard-Planeten für die Anzeige, falls noch keine Ingest-Daten vorliegen.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    /**
      * Liefert strukturierte Mond-Informationen inklusive Sichtbarkeitszeitraum für die Anzeige.
      *
      * @param array<string, mixed>|null $forecast
@@ -321,7 +679,7 @@ class AstronomyService
      */
     public function getMoonInfo(?array $forecast = null, ?float $overridePhase = null): array
     {
-        if ($forecast === null) {
+        if ($forecast === null && $this->weatherService !== null) {
             try {
                 $forecast = $this->weatherService->getForecastFromDb();
             } catch (Throwable $e) {
@@ -358,17 +716,17 @@ class AstronomyService
         $isFullMoon = ($moonIllum >= 0.95 || ($rawPhase !== null && $rawPhase >= 0.47 && $rawPhase <= 0.53) || mb_stripos($moonPhaseName, 'vollmond') !== false);
         $illumPct = (int)round($moonIllum * 100);
 
-        // Dynamische Beschreibung
+        // Dynamische Beschreibung (Mond ist im Gegensatz zu Planeten auch tagsüber bei Sonnenschein sichtbar)
         if ($isNewMoon) {
-            $description = 'Neumond steht tagsüber nahe der Sonne und bleibt nachts unsichtbar.';
+            $description = 'Neumond steht tagsüber direkt nahe der Sonne und bleibt unsichtbar.';
         } elseif ($isFullMoon) {
             $description = "Vollmond leuchtet die gesamte Nacht mit maximaler Helligkeit ({$illumPct}%).";
         } elseif (mb_stripos($moonPhaseName, 'zunehm') !== false) {
-            $description = "Zunehmender Mond ({$illumPct}% beleuchtet) am Abend- und Nachthimmel zu sehen.";
+            $description = "Zunehmender Mond ({$illumPct}% beleuchtet) – bereits tagsüber am Nachmittag sowie am Abend- und Nachthimmel sichtbar.";
         } elseif (mb_stripos($moonPhaseName, 'abnehm') !== false) {
-            $description = "Abnehmender Mond ({$illumPct}% beleuchtet), vor allem ab Mitternacht bis in die Morgenstunden.";
+            $description = "Abnehmender Mond ({$illumPct}% beleuchtet) – ab der zweiten Nachthälfte und tagsüber bis in den Vormittag/Mittag sichtbar.";
         } else {
-            $description = "{$moonPhaseName} mit {$illumPct}% Beleuchtung am Nachthimmel.";
+            $description = "{$moonPhaseName} mit {$illumPct}% Beleuchtung (auch tagsüber über dem Horizont sichtbar).";
         }
 
         // Auf- und Untergangszeiten ermitteln
@@ -389,11 +747,9 @@ class AstronomyService
             $riseTime = date('H:i', $tRise) . ' Uhr';
 
             if ($tSet && $tSet > $tRise) {
-                // Geht heute vor Mitternacht unter
                 $setTime = date('H:i', $tSet) . ' Uhr';
                 $visibilityWindow = date('H:i', $tRise) . ' – ' . date('H:i', $tSet) . ' Uhr';
             } elseif ($tTomSet) {
-                // Geht morgen früh unter
                 $setTime = date('H:i', $tTomSet) . ' Uhr';
                 $visibilityWindow = date('H:i', $tRise) . ' – ' . date('H:i', $tTomSet) . ' Uhr';
             } elseif ($tSet) {
@@ -403,7 +759,6 @@ class AstronomyService
                 $visibilityWindow = 'ab ' . date('H:i', $tRise) . ' Uhr';
             }
         } elseif ($tomorrowRiseStr) {
-            // Geht erst in der zweiten Nachthälfte auf
             $tTomRise = strtotime(is_array($tomorrowRiseStr) ? (string)$tomorrowRiseStr[0] : (string)$tomorrowRiseStr);
             $riseTime = date('H:i', $tTomRise) . ' Uhr';
             if ($tomorrowSetStr) {
@@ -414,26 +769,28 @@ class AstronomyService
                 $visibilityWindow = 'ab ' . date('H:i', $tTomRise) . ' Uhr';
             }
         } elseif ($todaySetStr) {
-            // Geht heute unter (Stand schon am Himmel)
             $tSet = strtotime(is_array($todaySetStr) ? (string)$todaySetStr[0] : (string)$todaySetStr);
             $setTime = date('H:i', $tSet) . ' Uhr';
             $visibilityWindow = 'bis ' . date('H:i', $tSet) . ' Uhr';
         }
 
-        // Falls keine Messdaten vorliegen: harmonische astronomische Schätzung anhand der Phase
+        // Falls keine Messdaten vorliegen: harmonische astronomische Schätzung anhand der Phase.
+        // Da der Mond auch bei Sonnenschein sichtbar ist, umfasst der Sichtbarkeitszeitraum
+        // die gesamte Zeit über dem Horizont (Aufgang bis Untergang, inkl. Tageslicht).
         if (!$visibilityWindow && !$isNewMoon) {
+            $isWaning = (mb_stripos($moonPhaseName, 'abnehm') !== false || mb_stripos($moonPhaseName, 'letztes') !== false || ($rawPhase !== null && $rawPhase > 0.5));
             if ($isFullMoon) {
-                $riseTime = '18:45 Uhr';
-                $setTime = '06:30 Uhr';
-                $visibilityWindow = '18:45 – 06:30 Uhr';
-            } elseif ($rawPhase !== null && $rawPhase < 0.5) {
+                $riseTime = '18:15 Uhr';
+                $setTime = '07:30 Uhr';
+                $visibilityWindow = '18:15 – 07:30 Uhr';
+            } elseif (!$isWaning) {
                 $riseTime = '13:15 Uhr';
                 $setTime = '23:45 Uhr';
-                $visibilityWindow = '19:30 – 23:45 Uhr';
+                $visibilityWindow = '13:15 – 23:45 Uhr';
             } else {
                 $riseTime = '00:30 Uhr';
                 $setTime = '13:00 Uhr';
-                $visibilityWindow = '00:30 – 06:15 Uhr';
+                $visibilityWindow = '00:30 – 13:00 Uhr';
             }
         }
 
@@ -471,29 +828,212 @@ class AstronomyService
     }
 
     /**
-     * Ergänzt Planeten-Einträge um einen formatierten Sichtbarkeitszeitraum.
+     * Extrahiert eine Uhrzeit (HH:MM) als Minuten seit 00:00 (0..1439).
+     */
+    private function extractTimeMinutes(?string $str): ?int
+    {
+        if ($str === null || trim($str) === '') {
+            return null;
+        }
+        if (preg_match('/\b([01]?\d|2[0-3]):([0-5]\d)\b/', $str, $m)) {
+            return ((int)$m[1]) * 60 + ((int)$m[2]);
+        }
+        return null;
+    }
+
+    /**
+     * Formatiert Minuten seit 00:00 (auch > 1440) als HH:MM.
+     */
+    private function formatMinutesToTime(int $minutes): string
+    {
+        $norm = (($minutes % 1440) + 1440) % 1440;
+        return sprintf('%02d:%02d', intdiv($norm, 60), $norm % 60);
+    }
+
+    /**
+     * Ermittelt Sonnenuntergang, bürgerliche Dämmerung und Sonnenaufgang am Folgetag für Leipzig
+     * als Minuten relativ zu heute 00:00 (sodass der Morgen des Folgetages im Bereich 1440..2880 liegt).
+     *
+     * @return array{sunset_min: int, civil_dusk_min: int, civil_dawn_next_min: int, sunrise_next_min: int}
+     */
+    private function getNightDarknessBounds(): array
+    {
+        $tz = new \DateTimeZone('Europe/Berlin');
+        $todayNoon = (new \DateTimeImmutable('today 12:00:00', $tz))->getTimestamp();
+        $tomorrowNoon = (new \DateTimeImmutable('tomorrow 12:00:00', $tz))->getTimestamp();
+
+        $sunToday = date_sun_info($todayNoon, self::LEIPZIG_LAT, self::LEIPZIG_LON);
+        $sunTomorrow = date_sun_info($tomorrowNoon, self::LEIPZIG_LAT, self::LEIPZIG_LON);
+
+        $sunsetTs = isset($sunToday['sunset']) && is_int($sunToday['sunset'])
+            ? $sunToday['sunset']
+            : (new \DateTimeImmutable('today 18:30:00', $tz))->getTimestamp();
+        $civilDuskTs = isset($sunToday['civil_twilight_end']) && is_int($sunToday['civil_twilight_end'])
+            ? $sunToday['civil_twilight_end']
+            : ($sunsetTs + 35 * 60);
+
+        $sunriseNextTs = isset($sunTomorrow['sunrise']) && is_int($sunTomorrow['sunrise'])
+            ? $sunTomorrow['sunrise']
+            : (new \DateTimeImmutable('tomorrow 07:00:00', $tz))->getTimestamp();
+        $civilDawnNextTs = isset($sunTomorrow['civil_twilight_begin']) && is_int($sunTomorrow['civil_twilight_begin'])
+            ? $sunTomorrow['civil_twilight_begin']
+            : ($sunriseNextTs - 35 * 60);
+
+        $toClockMin = static function (int $ts) use ($tz): int {
+            $dt = (new \DateTimeImmutable('@' . $ts))->setTimezone($tz);
+            return ((int)$dt->format('G')) * 60 + ((int)$dt->format('i'));
+        };
+
+        return [
+            'sunset_min' => $toClockMin($sunsetTs),
+            'civil_dusk_min' => $toClockMin($civilDuskTs),
+            'civil_dawn_next_min' => 1440 + $toClockMin($civilDawnNextTs),
+            'sunrise_next_min' => 1440 + $toClockMin($sunriseNextTs),
+        ];
+    }
+
+    /**
+     * Trennt bei Planeten die astronomische Horizontzeit (Aufgang bis Untergang) von der
+     * tatsächlichen optischen Sichtbarkeit bei Dunkelheit/Dämmerung (ohne Tageslicht-Überstrahlung).
      *
      * @param array<int, array<string, mixed>> $planets
      * @return array<int, array<string, mixed>>
      */
     private function enrichPlanetsWithVisibility(array $planets): array
     {
+        $bounds = $this->getNightDarknessBounds();
+
         foreach ($planets as &$p) {
-            if (empty($p['visibility_window'])) {
-                if (!empty($p['visibility_time'])) {
-                    $p['visibility_window'] = (string)$p['visibility_time'];
-                } elseif (!empty($p['visible_from']) && !empty($p['visible_to'])) {
-                    $p['visibility_window'] = $p['visible_from'] . ' – ' . $p['visible_to'] . (str_contains((string)$p['visible_to'], 'Uhr') ? '' : ' Uhr');
-                } elseif (!empty($p['rise_time']) && !empty($p['set_time'])) {
-                    $p['visibility_window'] = $p['rise_time'] . ' – ' . $p['set_time'] . ' Uhr';
-                } elseif (!empty($p['rise_time'])) {
-                    $p['visibility_window'] = 'ab ' . $p['rise_time'] . ' Uhr';
-                } elseif (!empty($p['set_time'])) {
-                    $p['visibility_window'] = 'bis ' . $p['set_time'] . ' Uhr';
+            $riseMin = $this->extractTimeMinutes(isset($p['rise_time']) ? (string)$p['rise_time'] : null);
+            $setMin = $this->extractTimeMinutes(isset($p['set_time']) ? (string)$p['set_time'] : null);
+
+            if ($riseMin === null && !empty($p['visible_from'])) {
+                $riseMin = $this->extractTimeMinutes((string)$p['visible_from']);
+            }
+            if ($setMin === null && !empty($p['visible_to'])) {
+                $setMin = $this->extractTimeMinutes((string)$p['visible_to']);
+            }
+
+            // Falls nur ein kombinierter String in visibility_window / visibility_time vorliegt
+            $rawWinStr = (string)($p['visibility_window'] ?? ($p['visibility_time'] ?? ''));
+            if (($riseMin === null || $setMin === null) && $rawWinStr !== '') {
+                if (preg_match_all('/\b([01]?\d|2[0-3]):([0-5]\d)\b/', $rawWinStr, $matches) && count($matches[0]) >= 2) {
+                    $riseMin = $riseMin ?? $this->extractTimeMinutes($matches[0][0]);
+                    $setMin = $setMin ?? $this->extractTimeMinutes($matches[0][1]);
+                }
+            }
+
+            // 1. Astronomisches Horizont-Fenster (Aufgang – Untergang, unabhängig vom Sonnenlicht)
+            if ($riseMin !== null && $setMin !== null) {
+                $p['rise_time'] = $this->formatMinutesToTime($riseMin);
+                $p['set_time'] = $this->formatMinutesToTime($setMin);
+                $p['astronomical_window'] = $p['rise_time'] . ' – ' . $p['set_time'] . ' Uhr';
+            } elseif ($riseMin !== null) {
+                $p['astronomical_window'] = 'ab ' . $this->formatMinutesToTime($riseMin) . ' Uhr';
+            } elseif ($setMin !== null) {
+                $p['astronomical_window'] = 'bis ' . $this->formatMinutesToTime($setMin) . ' Uhr';
+            } else {
+                $p['astronomical_window'] = $rawWinStr !== '' ? $rawWinStr : null;
+            }
+
+            $wasMarkedUp = !empty($p['is_visible']);
+
+            // Wenn weder Auf- noch Untergangszeit ermittelbar sind, bisherigen Status beibehalten
+            if ($riseMin === null || $setMin === null) {
+                $p['is_astronomically_up'] = $wasMarkedUp;
+                $p['is_daylight_only'] = false;
+                if (empty($p['visibility_window']) && !empty($p['astronomical_window'])) {
+                    $p['visibility_window'] = $p['astronomical_window'];
+                }
+                continue;
+            }
+
+            // 2. Dunkelheits-/Dämmerungsgrenzen je nach Helligkeit (Magnitude) des Planeten:
+            // Sehr helle Planeten (Venus, Jupiter: mag <= -1.5) sind bereits ~20 Min nach Sonnenuntergang sichtbar,
+            // schwächere Planeten erst ab Ende der bürgerlichen Dämmerung (~35 Min nach Sonnenuntergang).
+            $mag = isset($p['magnitude']) && is_numeric($p['magnitude']) ? (float)$p['magnitude'] : 1.0;
+            if ($mag <= -1.5) {
+                $darkStart = min($bounds['civil_dusk_min'], $bounds['sunset_min'] + 20);
+                $darkEnd = max($bounds['civil_dawn_next_min'], $bounds['sunrise_next_min'] - 20);
+            } else {
+                $darkStart = $bounds['civil_dusk_min'];
+                $darkEnd = $bounds['civil_dawn_next_min'];
+            }
+
+            // 3. Über-Horizont-Intervalle auf dem 48h-Zeitstrahl [0..2880] bilden
+            $horizonIntervals = [];
+            if ($riseMin <= $setMin) {
+                $horizonIntervals[] = [$riseMin, $setMin];
+                $horizonIntervals[] = [$riseMin + 1440, $setMin + 1440];
+            } else {
+                // Über Mitternacht (z. B. Aufgang 21:15, Untergang 08:40)
+                $horizonIntervals[] = [0, $setMin];
+                $horizonIntervals[] = [$riseMin, $setMin + 1440];
+                $horizonIntervals[] = [$riseMin + 1440, 2880];
+            }
+
+            // Schnittmenge mit dem Nachtfenster [darkStart, darkEnd] berechnen (mind. 10 Minuten Dauer)
+            $darkWindows = [];
+            foreach ($horizonIntervals as [$hStart, $hEnd]) {
+                $oStart = max($hStart, $darkStart);
+                $oEnd = min($hEnd, $darkEnd);
+                if ($oEnd - $oStart >= 10) {
+                    $darkWindows[] = [$oStart, $oEnd];
+                }
+            }
+
+            $p['is_astronomically_up'] = $wasMarkedUp || ($setMin !== $riseMin);
+
+            // 4. Prüfen ob "best_time" (oft der astronomische Höchststand/Meridiandurchgang) ins Tageslicht fällt
+            $rawBestTime = isset($p['best_time']) ? trim((string)$p['best_time']) : '';
+            $bestMin = $this->extractTimeMinutes($rawBestTime);
+            $isBestInDaylight = false;
+            if ($bestMin !== null) {
+                // Auf den 48h-Strahl abbilden: Zeiten vor Mittag gehören zum Folgetag (1440+), ab Mittag zu heute
+                $bestTimelineMin = ($bestMin < 720) ? ($bestMin + 1440) : $bestMin;
+                if ($bestTimelineMin < $darkStart || $bestTimelineMin > $darkEnd) {
+                    $isBestInDaylight = true;
+                    $p['astronomical_best_time'] = $this->formatMinutesToTime($bestMin) . ' Uhr (Tag)';
+                }
+            }
+
+            if (!empty($darkWindows) && $wasMarkedUp) {
+                // Planet ist nachts/in der Dämmerung tatsächlich beobachtbar
+                $p['is_visible'] = true;
+                $p['is_daylight_only'] = false;
+
+                $formattedWindows = [];
+                foreach ($darkWindows as [$wStart, $wEnd]) {
+                    $formattedWindows[] = $this->formatMinutesToTime($wStart) . ' – ' . $this->formatMinutesToTime($wEnd);
+                }
+                $p['visibility_window'] = implode(' & ', $formattedWindows) . ' Uhr';
+
+                // Wenn die bisherige "Beste Zeit" mitten am Tag lag (z. B. 12:00 Uhr), auf beste Nacht-/Dämmerungszeit korrigieren
+                if ($isBestInDaylight) {
+                    [$mainStart, $mainEnd] = $darkWindows[0];
+                    if ($mainStart === $darkStart && $mainEnd < $darkEnd) {
+                        // Am Abendhimmel nach Sonnenuntergang am höchsten, bevor er untergeht
+                        $p['best_time'] = $this->formatMinutesToTime($mainStart) . ' Uhr (Abenddämmerung)';
+                    } elseif ($mainEnd === $darkEnd && $mainStart > $darkStart) {
+                        // Am Morgenhimmel vor Sonnenaufgang am höchsten
+                        $p['best_time'] = $this->formatMinutesToTime($mainEnd) . ' Uhr (Morgendämmerung)';
+                    } else {
+                        $midDark = (int)round(($mainStart + $mainEnd) / 2);
+                        $p['best_time'] = $this->formatMinutesToTime($midDark) . ' Uhr';
+                    }
+                }
+            } else {
+                // Planet steht nur tagsüber über dem Horizont (vom Sonnenlicht überstrahlt) oder komplett unter dem Horizont
+                $p['is_visible'] = false;
+                $p['is_daylight_only'] = $wasMarkedUp;
+                $p['visibility_window'] = null;
+                if ($wasMarkedUp) {
+                    $p['best_time'] = 'Tagsüber überstrahlt';
                 }
             }
         }
         unset($p);
+
         return $planets;
     }
 
@@ -575,103 +1115,64 @@ class AstronomyService
      */
     private function getDefaultEvents(): array
     {
-        $year = (int)date('Y');
-        $perseidsYear = (date('m-d') > '08-12') ? ($year + 1) : $year;
-        return [
-            [
-                'event_key' => "orionids-{$year}",
+        $todayTs = strtotime('today');
+        $todayIso = date('Y-m-d', $todayTs);
+        $events = [];
+
+        foreach (['orionids', 'leonids', 'geminids', 'quadrantids', 'perseids'] as $sKey) {
+            $known = self::KNOWN_METEOR_SHOWERS[$sKey];
+            $win = $this->resolveShowerWindow(
+                $known['start'][0],
+                $known['start'][1],
+                $known['peak'][0],
+                $known['peak'][1],
+                $known['end'][0],
+                $known['end'][1],
+                $todayTs
+            );
+            $peakYear = substr($win['peak_date_iso'], 0, 4);
+
+            $events[] = [
+                'event_key' => "{$sKey}-{$peakYear}",
                 'event_type' => 'meteor_shower',
-                'title' => 'Orioniden (Meteorschauer)',
-                'description' => 'Sternschnuppenstrom aus Staubspuren des Kometen Halley. Ca. 15–20 Meteore pro Stunde.',
-                'event_date' => "{$year}-10-21",
-                'peak_time' => "{$year}-10-21 02:00:00",
+                'title' => $known['title'],
+                'description' => $known['description'],
+                'event_date' => $win['peak_date_iso'],
+                'peak_time' => $win['peak_date_iso'] . ' 02:00:00',
+                'end_date' => $win['end_date_iso'],
                 'magnitude' => null,
-                'visibility_rating' => 'good',
+                'visibility_rating' => $known['zhr'] >= 80 ? 'great' : 'good',
                 'details' => [
-                    'zhr' => 20,
-                    'radiant' => 'Orion',
-                    'activity_period' => '02.10. – 07.11.',
-                    'peak_date' => '21.10.',
+                    'zhr' => $known['zhr'],
+                    'radiant' => $known['radiant'],
+                    'activity_period' => $win['activity_period'],
+                    'peak_date' => $win['peak_date'],
+                    'end_date_formatted' => $win['end_date_formatted'],
+                    'is_active' => $win['is_active'],
+                    'is_peak' => $win['is_peak'],
+                    'is_post_peak' => $win['is_post_peak'],
+                    'intensity' => $win['intensity'],
+                    'intensity_pct' => $win['intensity_pct'],
+                    'trend' => $win['trend'],
                 ],
-            ],
-            [
-                'event_key' => "leonids-{$year}",
-                'event_type' => 'meteor_shower',
-                'title' => 'Leoniden-Maximum',
-                'description' => 'Sehr schnelle Sternschnuppen mit feinen Rauchschweifen.',
-                'event_date' => "{$year}-11-17",
-                'peak_time' => "{$year}-11-17 03:00:00",
-                'magnitude' => null,
-                'visibility_rating' => 'good',
-                'details' => [
-                    'zhr' => 15,
-                    'radiant' => 'Löwe',
-                    'activity_period' => '06.11. – 30.11.',
-                    'peak_date' => '17.11.',
-                ],
-            ],
-            [
-                'event_key' => "geminids-{$year}",
-                'event_type' => 'meteor_shower',
-                'title' => 'Geminiden (Stärkster Meteorschauer des Jahres)',
-                'description' => 'Reichster Sternschnuppenstrom des Jahres mit bis zu 120 oft bunten und hellen Sternschnuppen pro Stunde!',
-                'event_date' => "{$year}-12-14",
-                'peak_time' => "{$year}-12-14 01:00:00",
-                'magnitude' => null,
-                'visibility_rating' => 'great',
-                'details' => [
-                    'zhr' => 120,
-                    'radiant' => 'Zwillinge',
-                    'activity_period' => '04.12. – 17.12.',
-                    'peak_date' => '14.12.',
-                ],
-            ],
-            [
-                'event_key' => "quadrantids-" . ($year + 1),
-                'event_type' => 'meteor_shower',
-                'title' => 'Quadrantiden (Winter-Meteorschauer)',
-                'description' => 'Kurzer, aber intensiver Schauer zum Jahresbeginn mit vielen hellen Feuerkugeln.',
-                'event_date' => ($year + 1) . "-01-03",
-                'peak_time' => ($year + 1) . "-01-03 23:00:00",
-                'magnitude' => null,
-                'visibility_rating' => 'good',
-                'details' => [
-                    'zhr' => 80,
-                    'radiant' => 'Bärenhüter',
-                    'activity_period' => '01.01. – 10.01.',
-                    'peak_date' => '03.01.',
-                ],
-            ],
-            [
-                'event_key' => "perseids-{$perseidsYear}",
-                'event_type' => 'meteor_shower',
-                'title' => 'Perseiden (Die Laurentiustränen)',
-                'description' => 'Der beliebteste Sommer-Meteorschauer mit bis zu 100 schnellen Sternschnuppen pro Stunde bei milden Sommernächten.',
-                'event_date' => "{$perseidsYear}-08-12",
-                'peak_time' => "{$perseidsYear}-08-12 23:00:00",
-                'magnitude' => null,
-                'visibility_rating' => 'great',
-                'details' => [
-                    'zhr' => 100,
-                    'radiant' => 'Perseus',
-                    'activity_period' => '17.07. – 24.08.',
-                    'peak_date' => '12.08.',
-                ],
-            ],
-            [
-                'event_key' => "solar-eclipse-2026",
+            ];
+        }
+
+        if ('2026-08-12' >= $todayIso) {
+            $events[] = [
+                'event_key' => 'solar-eclipse-2026',
                 'event_type' => 'eclipse',
                 'title' => 'Große Partielle Sonnenfinsternis über Leipzig',
                 'description' => 'In Leipzig wird die Sonne am Spätnachmittag zu rund 87% vom Neumond bedeckt – ein spektakuläres Himmelsereignis!',
                 'event_date' => '2026-08-12',
                 'peak_time' => '2026-08-12 19:15:00',
+                'end_date' => '2026-08-12',
                 'magnitude' => 0.87,
                 'visibility_rating' => 'great',
                 'details' => ['coverage_pct' => 87, 'type' => 'Partielle Sonnenfinsternis'],
-            ],
-        ];
+            ];
+        }
 
-        $events = array_values(array_filter($events, static fn($e) => ($e['event_date'] ?? '') >= date('Y-m-d')));
         usort($events, static fn($a, $b) => strcmp($a['event_date'], $b['event_date']));
         return $events;
     }
