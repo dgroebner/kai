@@ -304,48 +304,26 @@
         const listEl = document.getElementById('lobby-players-list');
         if (!listEl) return;
 
-        listEl.innerHTML = '';
-        data.players.forEach(p => {
-            const row = document.createElement('div');
-            row.className = 'poker-lobby-player-row';
+        listEl.innerHTML = data.players.map(p => `
+            <div class="poker-lobby-player-row">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span>${p.is_bot ? '🤖' : (p.is_host ? '👑' : '👤')}</span>
+                    <strong>${KaiHtml.escape(p.name)}</strong>
+                    ${p.id === myPlayerId ? '<span style="color: #94a3b8; font-size: 0.8rem;">(Du)</span>' : ''}
+                </div>
+                <div>
+                    ${(isHost && p.is_bot) ? `<button type="button" class="btn btn-sm btn-outline js-btn-kick-bot" data-bot-id="${p.id}">Entfernen</button>` : ''}
+                </div>
+            </div>
+        `).join('');
 
-            const left = document.createElement('div');
-            left.style.display = 'flex';
-            left.style.alignItems = 'center';
-            left.style.gap = '0.5rem';
-
-            const icon = p.is_bot ? '🤖' : '👤';
-            const hostBadge = p.is_host ? '<span class="badge" style="background:#f59e0b; color:#000; font-size:0.7rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:800;">HOST</span>' : '';
-            const botBadge = p.is_bot ? '<span class="badge" style="background:#64748b; color:#fff; font-size:0.7rem; padding:0.15rem 0.4rem; border-radius:4px;">BOT</span>' : '';
-
-            left.innerHTML = `<span>${icon}</span> <strong>${KaiHtml.escape(p.name)}</strong> ${hostBadge} ${botBadge}`;
-
-            const right = document.createElement('div');
-            right.style.display = 'flex';
-            right.style.alignItems = 'center';
-            right.style.gap = '0.5rem';
-
-            right.innerHTML = `<span style="color:#fbbf24; font-weight:700;">🟡 ${p.chips.toLocaleString('de-DE')}</span>`;
-
-            // Kick-Bot Button für Host
-            if (isHost && p.is_bot) {
-                const kickBtn = document.createElement('button');
-                kickBtn.type = 'button';
-                kickBtn.className = 'btn btn-sm btn-outline';
-                kickBtn.style.padding = '0.15rem 0.45rem';
-                kickBtn.style.fontSize = '0.75rem';
-                kickBtn.textContent = '❌';
-                kickBtn.title = 'Bot entfernen';
-                kickBtn.addEventListener('click', async () => {
-                    await HubHttp.postJson(`./api.php?action=kick_bot&room=${encodeURIComponent(roomCode)}`, { bot_id: p.id });
-                    pollStatus();
-                });
-                right.appendChild(kickBtn);
-            }
-
-            row.appendChild(left);
-            row.appendChild(right);
-            listEl.appendChild(row);
+        // Bot-Kicken Event-Delegation
+        listEl.querySelectorAll('.js-btn-kick-bot').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const botId = parseInt(btn.dataset.botId, 10);
+                await HubHttp.postJson(`./api.php?action=kick_bot&room=${encodeURIComponent(roomCode)}`, { bot_id: botId });
+                pollStatus();
+            });
         });
 
         const addBotBtn = document.getElementById('btn-add-bot');
@@ -361,7 +339,7 @@
             if (startBtn) {
                 startBtn.disabled = data.players.length < 2;
                 startBtn.textContent = data.players.length < 2
-                    ? 'Warte auf Mitspieler oder KI-Bots...'
+                    ? 'Warte auf mindestens 2 Spieler oder Bots...'
                     : `🚀 Spiel mit ${data.players.length} Spielern starten`;
             }
         } else {

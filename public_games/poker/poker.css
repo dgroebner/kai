@@ -6,55 +6,80 @@
 .poker-body {
     background: radial-gradient(circle at 50% 40%, #173824 0%, #0c2316 65%, #06140d 100%);
     color: #f8fafc;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
+    overflow: hidden;
     transition: background 0.4s ease;
 }
 
 .poker-body .hub-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.85rem;
     background: rgba(10, 26, 17, 0.85);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 50;
+    flex-shrink: 0;
 }
 
 .poker-back-btn {
-    border-color: rgba(255, 255, 255, 0.15);
     color: #94a3b8;
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+.poker-back-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
+}
+
+.poker-room-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    cursor: pointer;
 }
 
 /* LOBBY */
 .poker-lobby-box {
-    max-width: 480px;
-    margin: 1.5rem auto;
-    padding: 1.5rem;
-    background: rgba(12, 32, 20, 0.9);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    max-width: 460px;
+    width: 90%;
+    margin: auto;
+    background: rgba(15, 30, 22, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
     text-align: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .poker-lobby-players {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin: 1.25rem 0;
-    text-align: left;
+    margin-top: 1.25rem;
+    max-height: 240px;
+    overflow-y: auto;
 }
 
 .poker-lobby-player-row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 0.6rem 0.85rem;
+    align-items: center;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.6rem 0.85rem;
     border-radius: 8px;
     font-size: 0.95rem;
 }
@@ -96,6 +121,7 @@
     margin: 0 auto;
     padding: 0.5rem 0.5rem 1rem 0.5rem;
     box-sizing: border-box;
+    overflow-y: auto;
 }
 
 /* OVALER POKERTISCH */

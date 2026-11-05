@@ -23,12 +23,8 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <!-- TOP-BAR -->
     <header class="hub-header">
         <div class="hub-header-left">
-            <a href="../index.php" class="btn btn-sm btn-outline poker-back-btn" title="Zurück zur Spielauswahl">
-                ‹ Zurück
-            </a>
-            <div class="hub-room-badge" id="btn-copy-code" title="Code anklicken zum Kopieren">
-                Tisch: <span class="room-code-display"><?= $roomCode ?></span>
-            </div>
+            <a href="../index.php" class="poker-back-btn" title="Zurück zur Spielauswahl">&larr; Hub</a>
+            <span class="poker-room-badge" id="btn-copy-code" title="Code anklicken zum Kopieren">RAUM: <?= $roomCode ?: '...' ?></span>
         </div>
 
         <div class="hub-header-right">
@@ -71,9 +67,13 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
     <!-- 1. LOBBY-ANSICHT -->
     <div id="pane-lobby" class="poker-lobby-box hidden">
-        <div style="font-size: 2.5rem; margin-bottom: 0.25rem;">♠️ ♥️ ♦️ ♣️</div>
-        <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;">Texas Hold'em Poker Lobby</h2>
-        <p class="text-muted" style="font-size: 0.85rem;">No-Limit Hold'em · 1.000 Startchips · Blinds 10 / 20</p>
+        <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;">Texas Hold'em Wartezimmer</h2>
+        <p class="text-muted" style="font-size: 0.85rem;">Teile den Code oder lade Mitspieler per WhatsApp ein.</p>
+        <div id="lobby-rules-badge" style="margin: 0.65rem 0 0.85rem 0; font-size: 0.82rem; font-weight: 700;">
+            <span style="display:inline-block; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; padding:0.25rem 0.65rem; border-radius:9999px;">
+                📜 No-Limit Hold'em · 1.000 Startchips · Blinds 10 / 20
+            </span>
+        </div>
         
         <div class="poker-lobby-players" id="lobby-players-list">
             <!-- Spielerliste -->
