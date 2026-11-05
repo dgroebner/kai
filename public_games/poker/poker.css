@@ -1,0 +1,494 @@
+/* ==========================================================================
+   TEXAS HOLD'EM POKER - Quarxl Games
+   Klassischer Luxus-Filztisch, ovale Sitze, Chips & Aktionsleiste
+   ========================================================================== */
+
+.poker-body {
+    background-color: #0b0f19;
+    color: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+.poker-back-btn {
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+}
+
+/* LOBBY */
+.poker-lobby-box {
+    max-width: 480px;
+    margin: 1.5rem auto;
+    padding: 1.5rem;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.poker-lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.25rem 0;
+    text-align: left;
+}
+
+.poker-lobby-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+/* ABBRUCH-BANNER */
+.abort-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    padding: 0.65rem 1rem;
+    border-radius: 10px;
+    max-width: 600px;
+    margin: 0.5rem auto;
+    width: 92%;
+    animation: pulseAlert 2s infinite;
+}
+
+.abort-banner-text {
+    font-size: 0.85rem;
+    color: #fef08a;
+    font-weight: 600;
+}
+
+@keyframes pulseAlert {
+    0%, 100% { border-color: rgba(234, 179, 8, 0.4); }
+    50% { border-color: rgba(234, 179, 8, 0.9); }
+}
+
+/* POKER ARENA */
+.poker-arena {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0.5rem 0.5rem 1rem 0.5rem;
+    box-sizing: border-box;
+}
+
+/* OVALER POKERTISCH */
+.poker-table-wrapper {
+    position: relative;
+    width: 100%;
+    margin: 0.25rem auto;
+}
+
+.poker-table {
+    position: relative;
+    width: 100%;
+    min-height: 380px;
+    background: radial-gradient(circle, #065f46 0%, #064e3b 60%, #022c22 100%);
+    border: 12px solid #1c1917;
+    outline: 2px solid #ca8a04;
+    border-radius: 180px;
+    box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.7), 0 15px 35px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Tisch-Einsatzlinie (Ovaler Ring) */
+.poker-table::before {
+    content: '';
+    position: absolute;
+    inset: 18px;
+    border: 2px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 160px;
+    pointer-events: none;
+}
+
+/* TISCHMITTE: POT & BOARD-KARTEN */
+.poker-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5;
+    gap: 0.45rem;
+}
+
+.poker-pot-badge {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    border-radius: 20px;
+    padding: 0.35rem 1rem;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fbbf24;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.poker-street-indicator {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.25);
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+}
+
+/* COMMUNITY CARDS CONTAINER */
+.community-cards-container {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+    min-height: 85px;
+    margin: 0.25rem 0;
+}
+
+.board-card-slot {
+    width: 58px;
+    height: 82px;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.community-cards-container .quarxl-card {
+    width: 58px;
+    height: 82px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* TURN BANNER */
+.table-turn-banner {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    text-align: center;
+    max-width: 90%;
+}
+
+.table-turn-banner.my-turn {
+    background: rgba(30, 58, 138, 0.9);
+    border-color: #38bdf8;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+/* GEGNER-SITZE (GRID RUND UM DEN TISCH) */
+.poker-seats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+    z-index: 10;
+}
+
+.poker-seat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 0.4rem 0.65rem;
+    min-width: 95px;
+    max-width: 130px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+    transition: all 0.25s ease;
+}
+
+.poker-seat.is-active-turn {
+    border-color: #f59e0b;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
+    background: rgba(30, 41, 59, 0.95);
+}
+
+.poker-seat.is-folded {
+    opacity: 0.45;
+    filter: grayscale(80%);
+}
+
+.poker-seat.is-all-in {
+    border-color: #ef4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+}
+
+.seat-player-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+.seat-chips {
+    font-size: 0.75rem;
+    color: #fbbf24;
+    font-weight: 800;
+}
+
+.seat-bet-badge {
+    background: #0f172a;
+    border: 1px solid #f59e0b;
+    border-radius: 9999px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #fef08a;
+    margin-top: 0.2rem;
+}
+
+.seat-cards-preview {
+    display: flex;
+    gap: 0.15rem;
+    margin-top: 0.25rem;
+}
+
+.seat-cards-preview .quarxl-card {
+    width: 32px;
+    height: 45px;
+}
+
+/* BADGES (D, SB, BB) */
+.poker-role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-size: 0.68rem;
+    font-weight: 900;
+    margin-left: 0.25rem;
+}
+
+.poker-role-badge.role-d {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+}
+
+.poker-role-badge.role-sb {
+    background: #facc15;
+    color: #713f12;
+}
+
+.poker-role-badge.role-bb {
+    background: #f97316;
+    color: #fff;
+}
+
+/* MEIN SPIELERBEREICH (UNTEN) */
+.my-poker-area {
+    margin-top: 0.5rem;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 0.75rem;
+}
+
+.my-cards-and-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.my-hole-cards {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.my-hole-cards .quarxl-card {
+    width: 68px;
+    height: 96px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+}
+
+.my-poker-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.my-chips-wrap {
+    font-size: 1.1rem;
+    color: #f8fafc;
+}
+
+.my-chips-wrap strong {
+    color: #fbbf24;
+    font-size: 1.25rem;
+}
+
+.my-hand-strength {
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+}
+
+/* AKTIONEN-BEDIENLEISTE */
+.poker-action-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.poker-bet-slider-row {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.poker-quick-bets {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: space-between;
+}
+
+.poker-quick-bets .btn {
+    flex: 1;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.poker-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.poker-range {
+    flex: 1;
+    accent-color: #22c55e;
+    cursor: pointer;
+}
+
+.poker-slider-val {
+    font-weight: 800;
+    color: #22c55e;
+    min-width: 45px;
+    text-align: right;
+    font-size: 1rem;
+}
+
+.poker-main-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.poker-main-buttons .btn {
+    flex: 1;
+    font-weight: 800;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.92rem;
+}
+
+.poker-main-buttons .btn:disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    filter: grayscale(60%) !important;
+}
+
+/* SHOWDOWN MODAL */
+.showdown-summary-text {
+    font-size: 0.95rem;
+    color: #e2e8f0;
+    line-height: 1.4;
+}
+
+.showdown-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-height: 48vh;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.showdown-player-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.showdown-player-card.is-winner {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.showdown-player-card .quarxl-card {
+    width: 42px;
+    height: 60px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 640px) {
+    .poker-table {
+        min-height: 330px;
+        border-width: 8px;
+        border-radius: 140px;
+    }
+    .board-card-slot, .community-cards-container .quarxl-card {
+        width: 48px;
+        height: 68px;
+    }
+    .my-hole-cards .quarxl-card {
+        width: 58px;
+        height: 82px;
+    }
+}

@@ -135,6 +135,14 @@
             });
         }
 
+        // Kachel-Klick auf Texas Hold'em Poker
+        const pokerCard = document.getElementById('card-poker');
+        if (pokerCard && modal) {
+            pokerCard.addEventListener('click', () => {
+                openCreateModal('poker', 'Neues Texas Hold\'em Poker Spiel erstellen', false, false, false, false, false);
+            });
+        }
+
         // Modal schließen
         document.querySelectorAll('.js-close-modal').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -169,6 +177,9 @@
                     mode = 'standard';
                     payload.game_mode = mode;
                     payload.three_aces_33 = Boolean(document.getElementById('schnauzer-three-aces-33')?.checked);
+                } else if (gameType === 'poker') {
+                    mode = 'standard';
+                    payload.game_mode = mode;
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';
                     payload.stones = stonesVal === 'auto' ? 'auto' : parseInt(stonesVal, 10);

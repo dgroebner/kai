@@ -116,6 +116,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–8 Spieler</span>
             </div>
+
+            <!-- Texas Hold'em Poker Kachel -->
+            <div class="game-kachel" id="card-poker" role="button" tabindex="0">
+                <div class="game-kachel-icon">♠️</div>
+                <div class="game-kachel-content">
+                    <h2>Texas Hold'em Poker</h2>
+                    <p>No-Limit Hold'em am grünen Filztisch. Hole Cards, Flop, Turn &amp; River mit Chip-Pots, All-Ins und Showdown!</p>
+                </div>
+                <span class="game-kachel-badge">2–8 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
