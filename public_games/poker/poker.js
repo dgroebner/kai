@@ -14,6 +14,8 @@
     let isJoining = false;
     let currentData = null;
     let lastEventKey = '';
+    let renderedBoardCardKeys = [null, null, null, null, null];
+    let renderedHoleCardKeys = [];
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -262,9 +264,7 @@
 
         if (window.QuarxlCards && window.QuarxlCards.SoundFx) {
             const fx = window.QuarxlCards.SoundFx;
-            if (lastEvt.type === 'street_dealt' || lastEvt.type === 'cards_dealt') {
-                fx.cardWhoosh();
-            } else if (lastEvt.type === 'bet' || lastEvt.type === 'raise' || lastEvt.type === 'call') {
+            if (lastEvt.type === 'bet' || lastEvt.type === 'raise' || lastEvt.type === 'call') {
                 fx.cardPlace();
             } else if (lastEvt.type === 'fold') {
                 fx.cardWhoosh();
@@ -304,6 +304,8 @@
             paneLobby?.classList.remove('hidden');
             paneArena?.classList.add('hidden');
             document.getElementById('modal-poker-showdown')?.classList.add('hidden');
+            renderedBoardCardKeys = [null, null, null, null, null];
+            renderedHoleCardKeys = [];
             renderLobby(data);
             return;
         }
@@ -437,19 +439,113 @@
         renderActionBar(data, myPlayer);
     }
 
+    /**
+     * Animiert das Austeilen einer Karte vom Tischzentrum (Pot/Dealer) in den Ziel-Slot.
+     */
+    function animatePokerCardDeal(targetCardEl, cardData, delayMs = 0) {
+        if (!targetCardEl || !window.QuarxlCards) return;
+
+        const sourceEl = document.getElementById('poker-pot-badge') || document.getElementById('poker-table');
+        if (!sourceEl) return;
+
+        targetCardEl.style.opacity = '0';
+
+        // Sicherheits-Fallback, falls Tab im Hintergrund ist
+        const safetyTimer = setTimeout(() => {
+            if (targetCardEl) targetCardEl.style.opacity = '1';
+        }, delayMs + 950);
+
+        setTimeout(() => {
+            const startRect = sourceEl.getBoundingClientRect();
+            const targetRect = targetCardEl.getBoundingClientRect();
+
+            if (targetRect.width === 0 && targetRect.height === 0) {
+                targetCardEl.style.opacity = '1';
+                clearTimeout(safetyTimer);
+                return;
+            }
+
+            const w = targetRect.width || 56;
+            const h = targetRect.height || 80;
+
+            const flightEl = document.createElement('div');
+            flightEl.className = 'quarxl-flying-card poker-flying-card';
+            flightEl.innerHTML = window.QuarxlCards.renderCardBackHtml();
+
+            flightEl.style.width = `${w}px`;
+            flightEl.style.height = `${h}px`;
+            flightEl.style.left = `${startRect.left + (startRect.width - w) / 2}px`;
+            flightEl.style.top = `${startRect.top + (startRect.height - h) / 2}px`;
+            flightEl.style.transform = 'scale(0.65) rotate(-12deg)';
+            flightEl.style.opacity = '0.95';
+
+            document.body.appendChild(flightEl);
+
+            if (window.QuarxlCards.SoundFx) {
+                window.QuarxlCards.SoundFx.cardWhoosh();
+            }
+
+            void flightEl.offsetHeight;
+
+            requestAnimationFrame(() => {
+                flightEl.style.left = `${targetRect.left}px`;
+                flightEl.style.top = `${targetRect.top}px`;
+                flightEl.style.transform = 'scale(1.03) rotate(0deg)';
+                flightEl.style.opacity = '1';
+            });
+
+            // Nach halber Flugzeit Karte in der Luft aufdecken
+            setTimeout(() => {
+                flightEl.innerHTML = window.QuarxlCards.renderCardHtml(cardData, {
+                    deck: getPokerDeck(),
+                    usePokerRanks: true
+                });
+            }, 190);
+
+            // Landung im Ziel-Slot
+            setTimeout(() => {
+                clearTimeout(safetyTimer);
+                if (window.QuarxlCards.SoundFx) {
+                    window.QuarxlCards.SoundFx.cardPlace();
+                }
+                flightEl.remove();
+                if (targetCardEl) {
+                    targetCardEl.style.opacity = '1';
+                    targetCardEl.classList.remove('poker-card-land');
+                    void targetCardEl.offsetWidth;
+                    targetCardEl.classList.add('poker-card-land');
+                }
+            }, 410);
+        }, delayMs);
+    }
+
     function renderCommunityCards(commCards) {
         const container = document.getElementById('community-cards-container');
         if (!container) return;
 
         const slotIds = ['card-flop-1', 'card-flop-2', 'card-flop-3', 'card-turn', 'card-river'];
+        let newCardDealOffset = 0;
+
         slotIds.forEach((slotId, index) => {
             const slot = document.getElementById(slotId);
             if (!slot) return;
+            slot.style.opacity = '1';
 
             const card = commCards[index];
+            const cardKey = card ? `${card.suit}_${card.rank}` : null;
+
             if (card && window.QuarxlCards) {
-                slot.innerHTML = window.QuarxlCards.renderCardHtml(card, { deck: getPokerDeck(), usePokerRanks: true });
+                if (renderedBoardCardKeys[index] !== cardKey) {
+                    renderedBoardCardKeys[index] = cardKey;
+                    slot.innerHTML = window.QuarxlCards.renderCardHtml(card, { deck: getPokerDeck(), usePokerRanks: true });
+                    const cardEl = slot.querySelector('.quarxl-card');
+                    if (cardEl) {
+                        animatePokerCardDeal(cardEl, card, newCardDealOffset * 115);
+                        newCardDealOffset++;
+                    }
+                }
             } else {
+                renderedBoardCardKeys[index] = null;
                 slot.innerHTML = '';
             }
         });
@@ -569,11 +665,22 @@
         // Eigene Handkarten
         const holeContainer = document.getElementById('my-hole-cards');
         if (holeContainer) {
-            holeContainer.innerHTML = '';
-            if (myPlayer.hand && myPlayer.hand.length > 0) {
-                myPlayer.hand.forEach(c => {
+            const hand = myPlayer.hand || [];
+            const newHoleKeys = hand.map(c => `${c.suit}_${c.rank}`);
+            const hasChanged = newHoleKeys.join('|') !== renderedHoleCardKeys.join('|');
+
+            if (hasChanged) {
+                renderedHoleCardKeys = newHoleKeys;
+                holeContainer.innerHTML = '';
+                hand.forEach((c, idx) => {
                     if (window.QuarxlCards) {
-                        holeContainer.innerHTML += window.QuarxlCards.renderCardHtml(c, { deck: getPokerDeck(), usePokerRanks: true });
+                        const wrap = document.createElement('div');
+                        wrap.innerHTML = window.QuarxlCards.renderCardHtml(c, { deck: getPokerDeck(), usePokerRanks: true }).trim();
+                        const cardEl = wrap.firstElementChild;
+                        if (cardEl) {
+                            holeContainer.appendChild(cardEl);
+                            animatePokerCardDeal(cardEl, c, idx * 125);
+                        }
                     }
                 });
             }

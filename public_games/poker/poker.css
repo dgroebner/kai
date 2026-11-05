@@ -930,3 +930,38 @@
         font-size: 0.88rem;
     }
 }
+
+/* FLIEGENDE POKER-KARTEN & LANDE-IMPULS */
+.poker-flying-card > .quarxl-card,
+.poker-flying-card > .quarxl-card-back {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 3px 4px;
+    box-sizing: border-box;
+}
+.poker-flying-card > .quarxl-card .quarxl-card-rank {
+    font-size: 0.9rem;
+}
+.poker-flying-card > .quarxl-card .quarxl-card-mini-suit {
+    width: 11px;
+    height: 13px;
+}
+.poker-flying-card > .quarxl-card .quarxl-figure-rank-huge,
+.poker-flying-card > .quarxl-card .quarxl-number-value-big {
+    font-size: 1.3rem;
+}
+.poker-flying-card > .quarxl-card .quarxl-figure-suit-icon,
+.poker-flying-card > .quarxl-card .quarxl-number-suit-medium {
+    width: 20px;
+    height: 24px;
+}
+
+@keyframes pokerCardLandPulse {
+    0% { transform: scale(1.06); }
+    60% { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+.poker-card-land {
+    animation: pokerCardLandPulse 0.28s ease-out;
+}
