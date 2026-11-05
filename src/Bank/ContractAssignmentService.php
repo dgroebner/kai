@@ -65,11 +65,12 @@ class ContractAssignmentService
                 $contractId = $this->createContractFromTransaction($transactionId, $payee);
             }
 
+            $this->transactionRepository->assignContract($transactionId, $contractId);
+
             if (!$assignOnly) {
                 $this->createRulesFromPatterns($contractId, $patterns, $payee);
+                (new ContractRuleMatcher($this->pdo))->applyAllRulesToUnmatchedTransactions();
             }
-
-            $this->transactionRepository->assignContract($transactionId, $contractId);
 
             $this->pdo->commit();
         } catch (Throwable $e) {
@@ -131,22 +132,25 @@ class ContractAssignmentService
     }
 
     /**
-     * Legt aus den übergebenen Mustern die Erkennungsregeln eines Vertrags an.
+     * Legt aus den übergebenen Mustern eine kombinierte UND-Erkennungsregel für den Vertrag an.
      * Ein Muster wird nur berücksichtigt, wenn sein `use_*`-Schalter gesetzt ist.
      */
     private function createRulesFromPatterns(int $contractId, array $patterns, ?string $payee): void
     {
-        $candidates = [
-            ['exact_match', $this->normalize($patterns['mandate_id'] ?? null), !empty($patterns['use_mandate'])],
-            ['exact_match', $this->normalize($patterns['creditor_id'] ?? null), !empty($patterns['use_creditor_id'])],
-            ['substring', $payee, !empty($patterns['use_payee'])],
-            ['regex', $this->normalize($patterns['text_pattern'] ?? null), true],
-        ];
+        $mandatePattern = !empty($patterns['use_mandate']) ? $this->normalize($patterns['mandate_id'] ?? null) : null;
+        $creditorIdPattern = !empty($patterns['use_creditor_id']) ? $this->normalize($patterns['creditor_id'] ?? null) : null;
+        $payeePattern = !empty($patterns['use_payee']) ? $payee : null;
+        $textPattern = $this->normalize($patterns['text_pattern'] ?? null);
 
-        foreach ($candidates as [$patternType, $value, $isEnabled]) {
-            if ($isEnabled && $value !== null) {
-                $this->contractRepository->addRule($contractId, $patternType, $value, self::DEFAULT_RULE_PRIORITY);
-            }
+        if ($mandatePattern !== null || $creditorIdPattern !== null || $payeePattern !== null || $textPattern !== null) {
+            $this->contractRepository->addCompoundRule(
+                $contractId,
+                $mandatePattern,
+                $creditorIdPattern,
+                $payeePattern,
+                $textPattern,
+                self::DEFAULT_RULE_PRIORITY
+            );
         }
     }
 

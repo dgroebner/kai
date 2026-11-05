@@ -357,7 +357,7 @@ class ReceiptRepository
 
             // 3. bank_contract_rules prüfen (vor heuristischer Partner-Suche)
             $stmtRules = $this->db->prepare("
-                SELECT r.contract_id, r.pattern_type, r.pattern_value, c.name as contract_name, c.auftraggeber
+                SELECT r.*, c.name as contract_name, c.auftraggeber
                 FROM bank_contract_rules r
                 JOIN bank_contracts c ON r.contract_id = c.id
                 WHERE (c.status = 'aktiv' OR c.status IS NULL)
@@ -387,7 +387,48 @@ class ReceiptRepository
             $searchSpace = strtolower($normalizedStore . ' ' . $mandateRaw . ' ' . ($data['invoice_number'] ?? ''));
 
             foreach ($rules as $rule) {
-                $val = strtolower(trim((string)$rule['pattern_value']));
+                $mandatePat = trim((string)($rule['mandate_pattern'] ?? ''));
+                $creditorPat = trim((string)($rule['creditor_id_pattern'] ?? ''));
+                $payeePat = strtolower(trim((string)($rule['payee_pattern'] ?? '')));
+                $textPat = trim((string)($rule['text_pattern'] ?? ''));
+
+                // Kombinierte UND-Regeln prüfen
+                if ($mandatePat !== '' || $creditorPat !== '' || $payeePat !== '' || $textPat !== '') {
+                    // Mandatsnummer: Wenn der Beleg eine Mandatsreferenz enthält, muss sie übereinstimmen.
+                    // Enthält der Beleg keine Mandatsreferenz, muss zumindest ein weiteres Kriterium (Payee/Text) in der Regel existieren und matchen.
+                    if ($mandatePat !== '') {
+                        $ruleMandateClean = strtolower(preg_replace('/\s+/', '', $mandatePat));
+                        $docMandateClean = strtolower($mandateClean);
+                        if ($docMandateClean !== '') {
+                            if ($docMandateClean !== $ruleMandateClean && !str_contains($docMandateClean, $ruleMandateClean)) {
+                                continue;
+                            }
+                        } elseif ($payeePat === '' && $textPat === '') {
+                            continue;
+                        }
+                    }
+
+                    if ($payeePat !== '' && !str_contains($searchSpace, $payeePat)) {
+                        continue;
+                    }
+
+                    if ($textPat !== '') {
+                        $regex = '/' . str_replace('/', '\/', trim($textPat, '/')) . '/i';
+                        if (!@preg_match($regex, $searchSpace)) {
+                            continue;
+                        }
+                    }
+
+                    if ($mandatePat !== '' || $payeePat !== '' || $textPat !== '') {
+                        $cid = (int)$rule['contract_id'];
+                        $this->logger->info("ReceiptRepository: Vertrag #$cid über kombinierte Regel gefunden.");
+                        return $cid;
+                    }
+                    continue;
+                }
+
+                // Legacy-Einzelregel-Fallback
+                $val = strtolower(trim((string)($rule['pattern_value'] ?? '')));
                 if ($val === '') {
                     continue;
                 }

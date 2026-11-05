@@ -186,27 +186,20 @@ class BankGiroService
 
             $this->logger->info("BankGiroService: API Sync abgeschlossen ({$stats['imported']} neu, {$stats['ignored']} Dubletten).");
 
-            // 6. Nachgelagerte Services (Regel-Gedächtnis, KI, CC, E-Bons)
+            // 6. Nachgelagerte Services (Verträge, Regel-Gedächtnis, KI, CC, E-Bons)
+            // 6a. Automatische Vertragszuordnung für alle Transaktionen ohne Vertrag prüfen (unabhängig vom Tag-Status)
+            $contractMatcher = new ContractRuleMatcher($this->pdo);
+            $contractMatchedCount = $contractMatcher->applyAllRulesToUnmatchedTransactions();
+            if ($contractMatchedCount > 0) {
+                $this->logger->info("BankGiroService: $contractMatchedCount Transaktion(en) automatisch Verträgen zugeordnet.");
+            }
+
+            // 6b. Tag-Regeln und KI-Kategorisierung für ungetaggte Transaktionen
+            $ruleMatcher = new RuleMatcher($this->pdo);
+            $taggedCount = $ruleMatcher->applyAllRulesToUntagged();
+
             $unprocessedTxs = $this->repository->getUntaggedTransactions();
-            if (empty($unprocessedTxs)) {
-                $stats['tagged'] = 0;
-            } else {
-                //Automatische Vertragszuordnung für frisch importierte/ungetaggte Transaktionen prüfen
-                $contractMatcher = new ContractRuleMatcher($this->pdo);
-                $stmtUntaggedGiro = $this->pdo->query("SELECT id, remittance_info, remitter, debitor, creditor FROM bank_giro_transactions WHERE contract_id IS NULL");
-                while ($txRow = $stmtUntaggedGiro->fetch(PDO::FETCH_ASSOC)) {
-                    $matchedContractId = $contractMatcher->matchGiroTransaction($txRow);
-                    if ($matchedContractId) {
-                        $stmtUpd = $this->pdo->prepare("UPDATE bank_giro_transactions SET contract_id = :cid WHERE id = :id");
-                        $stmtUpd->execute([':cid' => $matchedContractId, ':id' => $txRow['id']]);
-                    }
-                }
-
-                // Automatische Vertragszuordnung für frisch importierte/ungetaggte Transaktionen prüfen
-                $ruleMatcher = new RuleMatcher($this->pdo);
-                $taggedCount = $ruleMatcher->applyAllRulesToUntagged();
-
-                $unprocessedTxs = $this->repository->getUntaggedTransactions();
+            if (!empty($unprocessedTxs)) {
                 $unmatchedForAi = [];
                 foreach ($unprocessedTxs as $tx) {
                     $unmatchedForAi[] = [
@@ -229,8 +222,8 @@ class BankGiroService
                         }
                     }
                 }
-                $stats['tagged'] = $taggedCount;
             }
+            $stats['tagged'] = $taggedCount;
 
             // Kreditkartenabrechnungen verknüpfen
             $statementMatcher = new StatementMatcher($this->pdo);

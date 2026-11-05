@@ -221,15 +221,19 @@ CREATE TABLE IF NOT EXISTS bank_contracts (
 
 -- 9. Regeln zur automatischen/manuellen Zuordnung von Buchungen zu Verträgen
 CREATE TABLE IF NOT EXISTS bank_contract_rules (
-                                                   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                                                   contract_id INT UNSIGNED NOT NULL,
-                                                   pattern_type ENUM('regex', 'exact_match', 'substring') NOT NULL DEFAULT 'substring',
-    pattern_value VARCHAR(255) NOT NULL,
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    contract_id INT UNSIGNED NOT NULL,
+    mandate_pattern VARCHAR(100) NULL DEFAULT NULL,
+    creditor_id_pattern VARCHAR(100) NULL DEFAULT NULL,
+    payee_pattern VARCHAR(255) NULL DEFAULT NULL,
+    text_pattern VARCHAR(255) NULL DEFAULT NULL,
+    pattern_type ENUM('regex', 'exact_match', 'substring') NULL DEFAULT 'substring',
+    pattern_value VARCHAR(255) NULL DEFAULT NULL,
     priority INT NOT NULL DEFAULT 10,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (contract_id) REFERENCES bank_contracts(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 10. Persistierte Standardisierte KI-Finanzreports
 CREATE TABLE IF NOT EXISTS bank_financial_reports (

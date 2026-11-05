@@ -790,7 +790,7 @@ class ReceiptMatcher
     /**
      * Lädt alle aktiven Vertragsregeln für den Ausschluss von Vertragsbuchungen bei Kreditkarten.
      *
-     * @return array<int, array{pattern_type: string, pattern_value: string}>
+     * @return array<int, array<string, mixed>>
      */
     private function getActiveContractRules(): array
     {
@@ -800,7 +800,7 @@ class ReceiptMatcher
 
         try {
             $stmt = $this->pdo->query("
-                SELECT r.pattern_type, r.pattern_value
+                SELECT r.*
                 FROM bank_contract_rules r
                 JOIN bank_contracts c ON r.contract_id = c.id
                 WHERE c.status = 'aktiv'
@@ -825,6 +825,30 @@ class ReceiptMatcher
 
         $rules = $this->getActiveContractRules();
         foreach ($rules as $rule) {
+            $mandatePattern = trim((string)($rule['mandate_pattern'] ?? ''));
+            $creditorIdPattern = trim((string)($rule['creditor_id_pattern'] ?? ''));
+            $payeePattern = trim((string)($rule['payee_pattern'] ?? ''));
+            $textPattern = trim((string)($rule['text_pattern'] ?? ''));
+
+            if ($mandatePattern !== '' || $creditorIdPattern !== '' || $payeePattern !== '' || $textPattern !== '') {
+                // Kombinierte UND-Regel: Wenn Giro-exklusive Kriterien (Mandat/Gläubiger-ID) gefordert sind,
+                // kann eine Kreditkartenbuchung nicht auf diese Regel matchen.
+                if ($mandatePattern !== '' || $creditorIdPattern !== '') {
+                    continue;
+                }
+                if ($payeePattern !== '' && mb_stripos($merchant, $payeePattern) === false) {
+                    continue;
+                }
+                if ($textPattern !== '' && !$this->evalRegex($textPattern, $merchant)) {
+                    continue;
+                }
+                if ($payeePattern !== '' || $textPattern !== '') {
+                    return true;
+                }
+                continue;
+            }
+
+            // Legacy-Fallback für alte Einzelregeln
             $type = (string)($rule['pattern_type'] ?? 'substring');
             $pattern = (string)($rule['pattern_value'] ?? '');
 

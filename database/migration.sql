@@ -158,4 +158,17 @@ ALTER TABLE `vehicle_charges`
 ALTER TABLE `vehicle_charges`
     ADD INDEX IF NOT EXISTS `idx_vc_trip_id` (`trip_id`);
 
+-- ==========================================================================
+-- DOMAIN: BANK (Kombinierte UND-Regeln für Vertragszuordnung)
+-- ==========================================================================
+
+ALTER TABLE `bank_contract_rules`
+    ADD COLUMN IF NOT EXISTS `mandate_pattern` VARCHAR(100) NULL DEFAULT NULL AFTER `contract_id`,
+    ADD COLUMN IF NOT EXISTS `creditor_id_pattern` VARCHAR(100) NULL DEFAULT NULL AFTER `mandate_pattern`,
+    ADD COLUMN IF NOT EXISTS `payee_pattern` VARCHAR(255) NULL DEFAULT NULL AFTER `creditor_id_pattern`,
+    ADD COLUMN IF NOT EXISTS `text_pattern` VARCHAR(255) NULL DEFAULT NULL AFTER `payee_pattern`,
+    MODIFY COLUMN `pattern_type` ENUM('regex', 'exact_match', 'substring') NULL DEFAULT 'substring',
+    MODIFY COLUMN `pattern_value` VARCHAR(255) NULL DEFAULT NULL;
+
+
 

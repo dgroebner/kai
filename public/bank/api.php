@@ -535,6 +535,20 @@ try {
         exit;
     }
 
+    // Einzelne Vertragsregel löschen
+    if ($action === 'delete_contract_rule') {
+        $ruleId = filter_var($data['rule_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$ruleId) {
+            Auth::sendJsonError(400, 'Ungültige Regel-ID');
+        }
+
+        (new BankContractRepository())->deleteRule($ruleId);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     // Beleg von Vertrag trennen
     if ($action === 'unlink_receipt') {
         $receiptId = filter_var($data['receipt_id'] ?? null, FILTER_VALIDATE_INT);

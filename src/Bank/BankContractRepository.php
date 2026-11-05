@@ -9,10 +9,119 @@ use PDO;
 class BankContractRepository
 {
     private PDO $pdo;
+    private static bool $schemaChecked = false;
 
     public function __construct()
     {
         $this->pdo = Database::getInstance()->getConnection();
+        $this->ensureCompoundRuleColumns();
+    }
+
+    /**
+     * Stellt sicher, dass die Spalten für kombinierte UND-Regeln in bank_contract_rules existieren,
+     * und führt bestehende Einzelregeln automatisch pro Vertrag zusammen.
+     */
+    public function ensureCompoundRuleColumns(): void
+    {
+        if (self::$schemaChecked) {
+            return;
+        }
+        self::$schemaChecked = true;
+
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM bank_contract_rules LIKE 'mandate_pattern'");
+            if ($stmt && $stmt->fetch() !== false) {
+                return;
+            }
+
+            $this->pdo->exec("
+                ALTER TABLE `bank_contract_rules`
+                    ADD COLUMN `mandate_pattern` VARCHAR(100) NULL DEFAULT NULL AFTER `contract_id`,
+                    ADD COLUMN `creditor_id_pattern` VARCHAR(100) NULL DEFAULT NULL AFTER `mandate_pattern`,
+                    ADD COLUMN `payee_pattern` VARCHAR(255) NULL DEFAULT NULL AFTER `creditor_id_pattern`,
+                    ADD COLUMN `text_pattern` VARCHAR(255) NULL DEFAULT NULL AFTER `payee_pattern`,
+                    MODIFY COLUMN `pattern_type` ENUM('regex', 'exact_match', 'substring') NULL DEFAULT 'substring',
+                    MODIFY COLUMN `pattern_value` VARCHAR(255) NULL DEFAULT NULL
+            ");
+
+            $this->consolidateLegacySingleRules();
+        } catch (\Throwable) {
+            // Fehler beim Auto-Migrate ignorieren, falls Berechtigungen eingeschränkt sind
+        }
+    }
+
+    /**
+     * Überführt bestehende Legacy-Einzelregeln (mehrere ODER-Zeilen pro Vertrag)
+     * in kombinierte UND-Regeln anhand der Vertragsstammdaten und Mustertypen.
+     */
+    private function consolidateLegacySingleRules(): void
+    {
+        $stmt = $this->pdo->query("
+            SELECT r.*, c.mandatsnummer, c.auftraggeber
+            FROM bank_contract_rules r
+            LEFT JOIN bank_contracts c ON r.contract_id = c.id
+            WHERE r.mandate_pattern IS NULL
+              AND r.creditor_id_pattern IS NULL
+              AND r.payee_pattern IS NULL
+              AND r.text_pattern IS NULL
+              AND r.pattern_value IS NOT NULL
+            ORDER BY r.contract_id ASC, r.id ASC
+        ");
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        if (empty($rows)) {
+            return;
+        }
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $cid = (int)$row['contract_id'];
+            $grouped[$cid][] = $row;
+        }
+
+        foreach ($grouped as $cid => $contractRules) {
+            $mandate = null;
+            $creditorId = null;
+            $payee = null;
+            $text = null;
+            $priority = 10;
+            $idsToDelete = [];
+
+            foreach ($contractRules as $r) {
+                $val = trim((string)($r['pattern_value'] ?? ''));
+                $type = (string)($r['pattern_type'] ?? 'substring');
+                $priority = max($priority, (int)($r['priority'] ?? 10));
+                $idsToDelete[] = (int)$r['id'];
+
+                if ($val === '') {
+                    continue;
+                }
+
+                $contractMandate = trim((string)($r['mandatsnummer'] ?? ''));
+
+                if ($type === 'exact_match') {
+                    if ($contractMandate !== '' && strcasecmp($val, $contractMandate) === 0) {
+                        $mandate = $val;
+                    } elseif (preg_match('/^[A-Z]{2}\d{2}[A-Z0-9]{3}\d+$/i', str_replace(' ', '', $val))) {
+                        // Typisches SEPA Gläubiger-ID Format (z. B. DE98ZZZ09999999999)
+                        $creditorId = $val;
+                    } else {
+                        $mandate ??= $val;
+                    }
+                } elseif ($type === 'substring') {
+                    $payee ??= $val;
+                } elseif ($type === 'regex') {
+                    $text ??= $val;
+                }
+            }
+
+            if ($mandate !== null || $creditorId !== null || $payee !== null || $text !== null) {
+                $this->addCompoundRule($cid, $mandate, $creditorId, $payee, $text, $priority);
+                if (!empty($idsToDelete)) {
+                    $in = implode(',', array_map('intval', $idsToDelete));
+                    $this->pdo->exec("DELETE FROM bank_contract_rules WHERE id IN ($in)");
+                }
+            }
+        }
     }
 
     /**
@@ -113,7 +222,7 @@ class BankContractRepository
     public function getRulesForContract(int $contractId): array
     {
         $stmt = $this->pdo->prepare("
-            SELECT id, contract_id, pattern_type, pattern_value, priority
+            SELECT id, contract_id, mandate_pattern, creditor_id_pattern, payee_pattern, text_pattern, pattern_type, pattern_value, priority
             FROM bank_contract_rules
             WHERE contract_id = :contract_id
             ORDER BY priority DESC, id ASC
@@ -207,21 +316,79 @@ class BankContractRepository
     }
 
     /**
-     * Fügt eine neue Matching-Regel zu einem Vertrag hinzu.
+     * Fügt eine kombinierte UND-Matching-Regel zu einem Vertrag hinzu.
+     * Wenn für denselben Vertrag bereits eine identische Regel existiert, wird deren ID zurückgegeben.
      */
-    public function addRule(int $contractId, string $patternType, string $patternValue, int $priority = 10): int
+    public function addCompoundRule(
+        int     $contractId,
+        ?string $mandatePattern = null,
+        ?string $creditorIdPattern = null,
+        ?string $payeePattern = null,
+        ?string $textPattern = null,
+        int     $priority = 10
+    ): int
     {
+        // Spezifität automatisch in die Priorität einfließen lassen, falls Standard-Priorität (10) übergeben wurde:
+        // Je mehr Kriterien per UND verknüpft sind (insb. Mandat oder Text-Pattern), desto höher die Priorität.
+        if ($priority === 10) {
+            $specificityBonus = 0;
+            if ($mandatePattern !== null && $mandatePattern !== '') $specificityBonus += 8;
+            if ($textPattern !== null && $textPattern !== '') $specificityBonus += 6;
+            if ($creditorIdPattern !== null && $creditorIdPattern !== '') $specificityBonus += 4;
+            if ($payeePattern !== null && $payeePattern !== '') $specificityBonus += 2;
+            $priority += $specificityBonus;
+        }
+
+        // Prüfen, ob exakt diese Kombination für den Vertrag bereits existiert
+        $stmtCheck = $this->pdo->prepare("
+            SELECT id FROM bank_contract_rules
+            WHERE contract_id = :contract_id
+              AND (mandate_pattern <=> :mandate_pattern)
+              AND (creditor_id_pattern <=> :creditor_id_pattern)
+              AND (payee_pattern <=> :payee_pattern)
+              AND (text_pattern <=> :text_pattern)
+            LIMIT 1
+        ");
+        $stmtCheck->execute([
+            ':contract_id' => $contractId,
+            ':mandate_pattern' => $mandatePattern,
+            ':creditor_id_pattern' => $creditorIdPattern,
+            ':payee_pattern' => $payeePattern,
+            ':text_pattern' => $textPattern,
+        ]);
+        $existingId = $stmtCheck->fetchColumn();
+        if ($existingId !== false) {
+            return (int)$existingId;
+        }
+
         $stmt = $this->pdo->prepare("
-            INSERT INTO bank_contract_rules (contract_id, pattern_type, pattern_value, priority)
-            VALUES (:contract_id, :pattern_type, :pattern_value, :priority)
+            INSERT INTO bank_contract_rules 
+            (contract_id, mandate_pattern, creditor_id_pattern, payee_pattern, text_pattern, pattern_type, pattern_value, priority)
+            VALUES 
+            (:contract_id, :mandate_pattern, :creditor_id_pattern, :payee_pattern, :text_pattern, NULL, NULL, :priority)
         ");
         $stmt->execute([
             ':contract_id' => $contractId,
-            ':pattern_type' => $patternType,
-            ':pattern_value' => $patternValue,
-            ':priority' => $priority
+            ':mandate_pattern' => $mandatePattern,
+            ':creditor_id_pattern' => $creditorIdPattern,
+            ':payee_pattern' => $payeePattern,
+            ':text_pattern' => $textPattern,
+            ':priority' => $priority,
         ]);
         return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
+     * Fügt eine neue Matching-Regel zu einem Vertrag hinzu (Legacy-Wrapper).
+     */
+    public function addRule(int $contractId, string $patternType, string $patternValue, int $priority = 10): int
+    {
+        return match ($patternType) {
+            'exact_match' => $this->addCompoundRule($contractId, $patternValue, null, null, null, $priority),
+            'substring' => $this->addCompoundRule($contractId, null, null, $patternValue, null, $priority),
+            'regex' => $this->addCompoundRule($contractId, null, null, null, $patternValue, $priority),
+            default => 0,
+        };
     }
 
     /**
