@@ -423,8 +423,8 @@
             let isOber = false;
 
             if (norm.rank === 'A') {
-                // Altenburger Daus: KEIN Eckbuchstabe!
-                cornerRankText = '';
+                // Altenburger Daus: 'A' im Eckindex für einheitliche und klare Lesbarkeit
+                cornerRankText = 'A';
                 centerHtml = `
                     <div class="quarxl-daus-composition">
                         <div class="quarxl-daus-symbol">${miniSuitSvg}</div>

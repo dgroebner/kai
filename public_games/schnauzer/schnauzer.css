@@ -308,18 +308,23 @@
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
-    max-height: 50vh;
+    max-height: 52vh;
     overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
 }
 
 .showdown-player-card {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
-    padding: 0.65rem;
+    padding: 0.65rem 0.85rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .showdown-player-card.is-loser {
@@ -327,19 +332,145 @@
     background: rgba(239, 68, 68, 0.1);
 }
 
-.showdown-player-hand {
-    display: flex;
-    gap: 4px;
-    transform: scale(0.65);
-    transform-origin: right center;
-    margin-right: -15px;
+.showdown-player-info {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
+.showdown-player-name {
+    font-weight: 800;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.showdown-player-score {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* Showdown-Handkarten: echte kompakte Kartengröße ohne transform-Overflow */
+.showdown-player-hand {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.showdown-player-hand .quarxl-card {
+    width: 52px;
+    height: 78px;
+    border-radius: 5px;
+    padding: 3px 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.showdown-player-hand .quarxl-card .quarxl-card-rank {
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-card-mini-suit {
+    width: 10px;
+    height: 12px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-card-center {
+    inset: 7px 5px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-figure-rank-huge {
+    font-size: 1.3rem;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-figure-suit-icon {
+    width: 18px;
+    height: 22px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-daus-symbol {
+    width: 20px;
+    height: 26px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-daus-garland {
+    width: 22px;
+    height: 10px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-king-crown {
+    width: 16px;
+    height: 11px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-king-symbol {
+    width: 18px;
+    height: 18px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-number-center-val {
+    font-size: 1.3rem;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-number-suit-icon {
+    width: 16px;
+    height: 20px;
+}
+
+/* GEBER-PREVIEW */
 .dealer-cards-preview {
     display: flex;
     justify-content: center;
     gap: 0.5rem;
-    transform: scale(0.85);
-    transform-origin: center;
-    margin-bottom: -15px;
+    padding: 0.5rem 0;
+}
+
+.dealer-cards-preview .quarxl-card {
+    width: 72px;
+    height: 108px;
+    padding: 4px 5px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-card-rank {
+    font-size: 1rem;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-card-mini-suit {
+    width: 13px;
+    height: 16px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-card-center {
+    inset: 10px 8px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-figure-rank-huge {
+    font-size: 1.7rem;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-figure-suit-icon {
+    width: 24px;
+    height: 30px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-daus-symbol {
+    width: 28px;
+    height: 36px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-number-center-val {
+    font-size: 1.7rem;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-number-suit-icon {
+    width: 22px;
+    height: 27px;
+}
+
+/* Modal Overlay Backdrop Blur */
+.hub-modal-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }

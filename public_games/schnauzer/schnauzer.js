@@ -495,11 +495,11 @@
 
             return `
                 <div class="showdown-player-card ${isLoser ? 'is-loser' : ''}">
-                    <div>
-                        <div style="font-weight: 800; font-size: 0.95rem;">
+                    <div class="showdown-player-info">
+                        <div class="showdown-player-name">
                             ${escapeHtml(s.player_name)} ${isLoser ? '<span style="color:#ef4444;">(-1 🪙)</span>' : ''}
                         </div>
-                        <div style="font-size: 0.82rem; color: #94a3b8;">${s.label}</div>
+                        <div class="showdown-player-score">${escapeHtml(s.label)}</div>
                     </div>
                     <div class="showdown-player-hand">${handHtml}</div>
                 </div>
