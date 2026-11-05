@@ -188,7 +188,12 @@ try {
 
     $roomId = (int)$room['id'];
     $myPlayer = $playerTokenHash !== '' ? $repo->getPlayerByToken($roomId, $playerTokenHash) : null;
-    $myPlayerId = $myPlayer ? (int)$myPlayer['id'] : null;
+    if (!$myPlayer) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Nicht autorisiert oder nicht im Raum']);
+        exit;
+    }
+    $myPlayerId = (int)$myPlayer['id'];
 
     // -------------------------------------------------------------------------
     // 3. STATUS (POLLING & BOT-TRIGGER)
@@ -203,15 +208,8 @@ try {
             'success' => true,
             'data' => $gameState,
             'my_player_id' => $myPlayerId,
-            'is_host' => $myPlayer ? (bool)$myPlayer['is_host'] : false,
+            'is_host' => (bool)$myPlayer['is_host'],
         ]);
-        exit;
-    }
-
-    // Für Spielaktionen ist Authentifizierung nötig
-    if (!$myPlayer) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Nicht autorisiert. Bitte trete dem Raum bei.']);
         exit;
     }
 

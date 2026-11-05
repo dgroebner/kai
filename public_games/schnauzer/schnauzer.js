@@ -6,13 +6,12 @@
     'use strict';
 
     const roomCode = document.body.dataset.room || '';
-    const tokenKey = `kai_gh_token_${roomCode}`;
-    let playerToken = localStorage.getItem(tokenKey) || '';
     let myPlayerId = null;
     let isHost = false;
 
     let pollTimer = null;
     let isPolling = false;
+    let isJoining = false;
     let currentRoomData = null;
     let lastEventKey = '';
 
@@ -28,6 +27,12 @@
         setupJoinModal();
         setupActionButtons();
 
+        // Gespeicherten Spielernamen in der Top-Bar anzeigen falls vorhanden
+        const savedName = localStorage.getItem('kai_gh_player_name') || '';
+        if (savedName) {
+            document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = savedName);
+        }
+
         // Deck-Umschalter im Header einhängen
         const toggleContainer = document.getElementById('deck-toggle-container');
         if (toggleContainer && window.QuarxlCards) {
@@ -41,12 +46,8 @@
             if (currentRoomData) renderGame(currentRoomData);
         });
 
-        // Automatisch beitreten oder Status abfragen
-        if (playerToken) {
-            startPolling();
-        } else {
-            showJoinModal();
-        }
+        // Polling starten (prüft Session & Beitritt)
+        startPolling();
     });
 
     // -------------------------------------------------------------------------
@@ -65,15 +66,17 @@
         const editNameBtn = document.querySelector('.js-btn-edit-name');
         if (editNameBtn) {
             editNameBtn.addEventListener('click', async () => {
-                const currentName = document.querySelector('.js-my-name-display')?.textContent || '';
-                const newName = window.prompt('Neuen Spielernamen eingeben:', currentName);
+                const currentName = localStorage.getItem('kai_gh_player_name') || 'Ich';
+                const newName = window.prompt('Dein neuer Spielername:', currentName);
                 if (newName && newName.trim() && newName.trim() !== currentName) {
+                    const trimmed = newName.trim().substring(0, 25);
                     try {
                         const res = await HubHttp.postJson(`./api.php?action=rename&room=${encodeURIComponent(roomCode)}`, {
-                            name: newName.trim(),
-                        }, { 'X-Player-Token': playerToken });
-                        if (res.success) {
-                            localStorage.setItem('kai_gh_player_name', newName.trim());
+                            name: trimmed,
+                        });
+                        if (res.ok && res.data && res.data.success) {
+                            localStorage.setItem('kai_gh_player_name', trimmed);
+                            document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = trimmed);
                             pollStatus();
                         }
                     } catch (_) {}
@@ -83,7 +86,6 @@
     }
 
     function setupJoinModal() {
-        const joinModal = document.getElementById('join-modal');
         const joinInput = document.getElementById('join-player-name');
         const confirmBtn = document.querySelector('.js-btn-confirm-join');
 
@@ -91,33 +93,24 @@
         if (joinInput && savedName) joinInput.value = savedName;
 
         if (confirmBtn) {
-            confirmBtn.addEventListener('click', async () => {
-                const name = (joinInput?.value || '').trim() || 'Spieler';
-                try {
-                    const res = await HubHttp.postJson('./api.php?action=join', {
-                        room_code: roomCode,
-                        player_name: name,
-                    }, playerToken ? { 'X-Player-Token': playerToken } : {});
-
-                    if (res.success) {
-                        playerToken = res.player_token;
-                        localStorage.setItem(tokenKey, playerToken);
-                        localStorage.setItem('kai_gh_player_name', name);
-                        joinModal.classList.add('hidden');
-                        startPolling();
-                    } else {
-                        showJoinError(res.message || 'Beitritt fehlgeschlagen');
-                    }
-                } catch (e) {
-                    showJoinError('Verbindungsfehler beim Beitritt');
-                }
+            confirmBtn.addEventListener('click', () => {
+                const name = (joinInput?.value || '').trim() || 'Gast';
+                joinRoom(name);
             });
         }
     }
 
     function showJoinModal() {
-        document.getElementById('join-modal')?.classList.remove('hidden');
-        document.getElementById('join-player-name')?.focus();
+        const modal = document.getElementById('join-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            const input = document.getElementById('join-player-name');
+            if (input) {
+                const savedName = localStorage.getItem('kai_gh_player_name') || '';
+                if (savedName) input.value = savedName;
+                input.focus();
+            }
+        }
     }
 
     function showJoinError(msg) {
@@ -125,6 +118,50 @@
         if (err) {
             err.textContent = msg;
             err.classList.remove('hidden');
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // BEITRITT-LOGIK (Automatischer Beitritt mit bekanntem Namen)
+    // -------------------------------------------------------------------------
+    async function handleNotJoined() {
+        const savedName = (localStorage.getItem('kai_gh_player_name') || '').trim();
+        if (savedName && !isJoining) {
+            // Nahtloser automatischer Beitritt mit dem gespeicherten Quarxl-Spielernamen
+            await joinRoom(savedName);
+        } else {
+            showJoinModal();
+        }
+    }
+
+    async function joinRoom(name) {
+        if (isJoining) return;
+        isJoining = true;
+
+        try {
+            const res = await HubHttp.postJson('./api.php?action=join', {
+                room_code: roomCode,
+                player_name: name,
+            });
+
+            if (res.ok && res.data && res.data.success) {
+                if (res.data.player_token) {
+                    localStorage.setItem('kai_gh_player_token', res.data.player_token);
+                }
+                localStorage.setItem('kai_gh_player_name', name);
+                document.getElementById('join-modal')?.classList.add('hidden');
+                document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = name);
+                isJoining = false;
+                pollStatus();
+            } else {
+                isJoining = false;
+                showJoinError(res.data?.message || 'Beitritt fehlgeschlagen');
+                showJoinModal();
+            }
+        } catch (_) {
+            isJoining = false;
+            showJoinError('Verbindungsfehler beim Beitritt');
+            showJoinModal();
         }
     }
 
@@ -138,20 +175,25 @@
     }
 
     async function pollStatus() {
-        if (isPolling) return;
+        if (isPolling || isJoining) return;
         isPolling = true;
 
         try {
-            const res = await HubHttp.getJson(`./api.php?action=status&room=${encodeURIComponent(roomCode)}`, {
-                'X-Player-Token': playerToken,
-            });
+            const res = await HubHttp.getJson(`./api.php?action=status&room=${encodeURIComponent(roomCode)}`);
 
-            if (res.success && res.data) {
-                myPlayerId = res.my_player_id;
-                isHost = Boolean(res.is_host);
-                currentRoomData = res.data;
-                renderGame(res.data);
-                handleEvents(res.data.last_event);
+            if (res.status === 401) {
+                // Spieler noch nicht an diesem Tisch registriert
+                handleNotJoined();
+                return;
+            }
+
+            if (res.ok && res.data && res.data.success) {
+                myPlayerId = res.data.my_player_id;
+                isHost = Boolean(res.data.is_host);
+                currentRoomData = res.data.data;
+                document.getElementById('join-modal')?.classList.add('hidden');
+                renderGame(res.data.data);
+                handleEvents(res.data.data.last_event);
             }
         } catch (_) {
         } finally {
@@ -261,7 +303,7 @@
         listEl.querySelectorAll('.js-btn-kick-bot').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const botId = parseInt(btn.dataset.botId, 10);
-                await HubHttp.postJson(`./api.php?action=kick_bot&room=${encodeURIComponent(roomCode)}`, { bot_id: botId }, { 'X-Player-Token': playerToken });
+                await HubHttp.postJson(`./api.php?action=kick_bot&room=${encodeURIComponent(roomCode)}`, { bot_id: botId });
                 pollStatus();
             });
         });
@@ -476,7 +518,6 @@
                 selectedTableIndex = null;
 
                 if (window.QuarxlCards && hEl && tEl) {
-                    // Beidseitige Fluganimation
                     window.QuarxlCards.animateFlight(hEl, tEl);
                     window.QuarxlCards.animateFlight(tEl, hEl);
                 }
@@ -485,7 +526,7 @@
                     await HubHttp.postJson(`./api.php?action=swap_one&room=${encodeURIComponent(roomCode)}`, {
                         hand_index: hIdx,
                         table_index: tIdx,
-                    }, { 'X-Player-Token': playerToken });
+                    });
                     pollStatus();
                 } catch (_) {}
             });
@@ -499,7 +540,7 @@
                 selectedHandIndex = null;
                 selectedTableIndex = null;
                 try {
-                    await HubHttp.postJson(`./api.php?action=swap_all&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+                    await HubHttp.postJson(`./api.php?action=swap_all&room=${encodeURIComponent(roomCode)}`);
                     pollStatus();
                 } catch (_) {}
             });
@@ -513,7 +554,7 @@
                 selectedHandIndex = null;
                 selectedTableIndex = null;
                 try {
-                    await HubHttp.postJson(`./api.php?action=pass&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+                    await HubHttp.postJson(`./api.php?action=pass&room=${encodeURIComponent(roomCode)}`);
                     pollStatus();
                 } catch (_) {}
             });
@@ -527,7 +568,7 @@
                 selectedHandIndex = null;
                 selectedTableIndex = null;
                 try {
-                    await HubHttp.postJson(`./api.php?action=knock&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+                    await HubHttp.postJson(`./api.php?action=knock&room=${encodeURIComponent(roomCode)}`);
                     pollStatus();
                 } catch (_) {}
             });
@@ -535,7 +576,7 @@
 
         // Geber: Behalten
         document.querySelector('.js-btn-dealer-keep')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=dealer_choice&room=${encodeURIComponent(roomCode)}`, { choice: 'keep' }, { 'X-Player-Token': playerToken });
+            await HubHttp.postJson(`./api.php?action=dealer_choice&room=${encodeURIComponent(roomCode)}`, { choice: 'keep' });
             document.getElementById('modal-dealer-choice')?.classList.add('hidden');
             pollStatus();
         });
@@ -543,33 +584,33 @@
         // Geber: Tauschen
         document.querySelector('.js-btn-dealer-swap')?.addEventListener('click', async () => {
             if (window.QuarxlCards?.SoundFx) window.QuarxlCards.SoundFx.cardWhoosh();
-            await HubHttp.postJson(`./api.php?action=dealer_choice&room=${encodeURIComponent(roomCode)}`, { choice: 'swap' }, { 'X-Player-Token': playerToken });
+            await HubHttp.postJson(`./api.php?action=dealer_choice&room=${encodeURIComponent(roomCode)}`, { choice: 'swap' });
             document.getElementById('modal-dealer-choice')?.classList.add('hidden');
             pollStatus();
         });
 
         // Nächste Runde starten
         document.querySelector('.js-btn-next-round')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=next_round&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+            await HubHttp.postJson(`./api.php?action=next_round&room=${encodeURIComponent(roomCode)}`);
             document.getElementById('modal-showdown')?.classList.add('hidden');
             pollStatus();
         });
 
         // Spiel starten (Lobby)
         document.getElementById('btn-start-game')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=start&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+            await HubHttp.postJson(`./api.php?action=start&room=${encodeURIComponent(roomCode)}`);
             pollStatus();
         });
 
         // KI-Bot hinzufügen
         document.getElementById('btn-add-bot')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=add_bot&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+            await HubHttp.postJson(`./api.php?action=add_bot&room=${encodeURIComponent(roomCode)}`);
             pollStatus();
         });
 
         // Spiel neu starten (Game Over)
         document.getElementById('btn-restart-game')?.addEventListener('click', async () => {
-            await HubHttp.postJson(`./api.php?action=restart&room=${encodeURIComponent(roomCode)}`, {}, { 'X-Player-Token': playerToken });
+            await HubHttp.postJson(`./api.php?action=restart&room=${encodeURIComponent(roomCode)}`);
             document.getElementById('modal-game-over')?.classList.add('hidden');
             pollStatus();
         });
