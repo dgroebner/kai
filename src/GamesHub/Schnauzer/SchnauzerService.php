@@ -662,8 +662,8 @@ class SchnauzerService
             : "Runde beendet nach Klopfen.";
 
         $isGameOver = !$isAllTied && (count($survivors) <= 1 || $onlyBotsLeft);
-        $wName = (count($survivors) >= 1) ? (string)$survivors[0]['player_name'] : null;
-        $wId = (count($survivors) >= 1) ? (int)$survivors[0]['id'] : null;
+        $wName = ($isGameOver && count($survivors) >= 1) ? (string)$survivors[0]['player_name'] : null;
+        $wId = ($isGameOver && count($survivors) >= 1) ? (int)$survivors[0]['id'] : null;
 
         $state['round_result'] = [
             'scores' => $scores,

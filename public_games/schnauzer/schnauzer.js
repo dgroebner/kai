@@ -501,7 +501,7 @@
         const res = data.round_result;
         if (!listEl || !res) return;
 
-        const isGameOver = Boolean(res.is_game_over || res.winner_id);
+        const isGameOver = Boolean(res.is_game_over);
 
         if (titleEl) {
             titleEl.textContent = isGameOver
