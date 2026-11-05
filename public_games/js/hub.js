@@ -34,7 +34,6 @@
         const loch6Group = document.getElementById('group-loch6-modes');
         const skipboGroup = document.getElementById('group-skipbo-modes');
         const schnauzerGroup = document.getElementById('group-schnauzer-modes');
-        const pokerGroup = document.getElementById('group-poker-modes');
         const pinInput = document.getElementById('quarxl-table-access-code') || document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
@@ -65,7 +64,7 @@
 
         updateSavedPinField();
 
-        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false, showSchnauzer = false, showPoker = false) {
+        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false, showSchnauzer = false) {
             if (gameTypeInput) gameTypeInput.value = gameType;
             if (modalTitle) modalTitle.textContent = title;
             if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
@@ -73,7 +72,6 @@
             if (loch6Group) loch6Group.classList.toggle('hidden', !showLoch6);
             if (skipboGroup) skipboGroup.classList.toggle('hidden', !showSkipBo);
             if (schnauzerGroup) schnauzerGroup.classList.toggle('hidden', !showSchnauzer);
-            if (pokerGroup) pokerGroup.classList.toggle('hidden', !showPoker);
             updateSavedPinField();
             modal.classList.remove('hidden');
             if (pinInput && !pinInput.value) {
@@ -141,7 +139,7 @@
         const pokerCard = document.getElementById('card-poker');
         if (pokerCard && modal) {
             pokerCard.addEventListener('click', () => {
-                openCreateModal('poker', 'Neues Texas Hold\'em Poker Spiel erstellen', false, false, false, false, false, true);
+                openCreateModal('poker', 'Neues Texas Hold\'em Poker Spiel erstellen', false, false, false, false, false);
             });
         }
 
@@ -182,7 +180,6 @@
                 } else if (gameType === 'poker') {
                     mode = 'standard';
                     payload.game_mode = mode;
-                    payload.bots_count = parseInt(document.getElementById('poker-bots-count')?.value || '1', 10);
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';
                     payload.stones = stonesVal === 'auto' ? 'auto' : parseInt(stonesVal, 10);

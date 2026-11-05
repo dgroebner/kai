@@ -247,26 +247,6 @@ require_once __DIR__ . '/../bootstrap.php';
                     </div>
                 </div>
 
-                <!-- Poker Optionen -->
-                <div class="form-group hidden" id="group-poker-modes">
-                    <label for="poker-bots-count">KI-Bots am Pokertisch:</label>
-                    <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.25rem;">
-                        <select name="poker_bots_count" id="poker-bots-count" class="form-control" style="max-width: 290px;">
-                            <option value="0">Keine Bots (nur echte Mitspieler)</option>
-                            <option value="1" selected>+ 1 KI-Bot (Heads-Up Duell)</option>
-                            <option value="2">+ 2 KI-Bots (3er Tisch)</option>
-                            <option value="3">+ 3 KI-Bots (4er Tisch)</option>
-                            <option value="4">+ 4 KI-Bots (5er Tisch)</option>
-                            <option value="5">+ 5 KI-Bots (6er Tisch)</option>
-                            <option value="6">+ 6 KI-Bots (7er Tisch)</option>
-                            <option value="7">+ 7 KI-Bots (Full Ring / 8er Tisch)</option>
-                        </select>
-                        <small class="text-muted">
-                            Die Bots werden direkt beim Erstellen an den Tisch gesetzt. In der Lobby können jederzeit weitere Bots hinzugefügt oder entfernt werden.
-                        </small>
-                    </div>
-                </div>
-
                 <div class="form-group" style="margin-top: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <label for="quarxl-table-access-code" style="margin-bottom: 0;">Tisch-PIN (Host-Schutz):</label>

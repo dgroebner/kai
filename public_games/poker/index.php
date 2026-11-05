@@ -81,7 +81,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
         <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.25rem;">
             <button type="button" class="btn btn-outline js-btn-add-bot hidden" id="btn-add-bot">
-                🤖 KI-Bot hinzufügen
+                🤖 + KI-Bot hinzufügen
             </button>
             <button type="button" class="btn btn-primary btn-lg js-btn-start-game hidden" id="btn-start-game">
                 🚀 Spiel starten

@@ -15,6 +15,16 @@
     let currentData = null;
     let lastEventKey = '';
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // -------------------------------------------------------------------------
     // INITIALISIERUNG
     // -------------------------------------------------------------------------
@@ -213,7 +223,8 @@
                 currentData = data;
 
                 myPlayerId = res.data.my_player_id;
-                isHost = Boolean(res.data.is_host);
+                const me = data.players.find(p => p.id === myPlayerId);
+                isHost = Boolean(res.data.is_host || me?.is_host || data.players.length === 1);
 
                 document.getElementById('join-modal')?.classList.add('hidden');
                 renderGame(data);
@@ -308,7 +319,7 @@
             <div class="poker-lobby-player-row">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <span>${p.is_bot ? '🤖' : (p.is_host ? '👑' : '👤')}</span>
-                    <strong>${KaiHtml.escape(p.name)}</strong>
+                    <strong>${escapeHtml(p.name)}</strong>
                     ${p.id === myPlayerId ? '<span style="color: #94a3b8; font-size: 0.8rem;">(Du)</span>' : ''}
                 </div>
                 <div>
@@ -326,24 +337,20 @@
             });
         });
 
-        const addBotBtn = document.getElementById('btn-add-bot');
-        const startBtn = document.getElementById('btn-start-game');
+        // Host-Buttons
+        const btnStart = document.getElementById('btn-start-game');
+        const btnAddBot = document.getElementById('btn-add-bot');
 
-        if (addBotBtn) {
-            addBotBtn.classList.remove('hidden');
-            addBotBtn.disabled = data.players.length >= 8;
+        if (btnStart) {
+            btnStart.classList.toggle('hidden', !isHost);
+            btnStart.disabled = data.players.length < 2;
+            btnStart.textContent = data.players.length < 2
+                ? 'Warte auf mindestens 2 Spieler oder Bots...'
+                : `🚀 Spiel mit ${data.players.length} Spielern starten`;
         }
 
-        if (isHost) {
-            startBtn?.classList.remove('hidden');
-            if (startBtn) {
-                startBtn.disabled = data.players.length < 2;
-                startBtn.textContent = data.players.length < 2
-                    ? 'Warte auf mindestens 2 Spieler oder Bots...'
-                    : `🚀 Spiel mit ${data.players.length} Spielern starten`;
-            }
-        } else {
-            startBtn?.classList.add('hidden');
+        if (btnAddBot) {
+            btnAddBot.classList.toggle('hidden', !isHost || data.players.length >= 8);
         }
     }
 
@@ -483,7 +490,7 @@
             nameRow.style.display = 'flex';
             nameRow.style.alignItems = 'center';
             nameRow.style.gap = '0.2rem';
-            nameRow.innerHTML = `<span class="seat-player-name">${KaiHtml.escape(p.name)}</span> ${roleHtml}`;
+            nameRow.innerHTML = `<span class="seat-player-name">${escapeHtml(p.name)}</span> ${roleHtml}`;
             seat.appendChild(nameRow);
 
             // Chips
@@ -776,11 +783,11 @@
 
         if (summaryEl) {
             if (res.won_by_fold) {
-                summaryEl.innerHTML = `<strong>${KaiHtml.escape(res.winner_name || 'Ein Spieler')}</strong> gewinnt kampflos, da alle anderen gefoldet haben.`;
+                summaryEl.innerHTML = `<strong>${escapeHtml(res.winner_name || 'Ein Spieler')}</strong> gewinnt kampflos, da alle anderen gefoldet haben.`;
             } else if (res.pot_resolutions && res.pot_resolutions.length > 0) {
                 const parts = res.pot_resolutions.map(pot => {
-                    const names = (pot.winner_names || []).map(KaiHtml.escape).join(', ');
-                    return `<strong>${names}</strong> gewinnt mit <em>${KaiHtml.escape(pot.hand_desc)}</em> (${pot.amount.toLocaleString('de-DE')} Chips)`;
+                    const names = (pot.winner_names || []).map(escapeHtml).join(', ');
+                    return `<strong>${names}</strong> gewinnt mit <em>${escapeHtml(pot.hand_desc)}</em> (${pot.amount.toLocaleString('de-DE')} Chips)`;
                 });
                 summaryEl.innerHTML = parts.join('<br>');
             } else {
@@ -808,8 +815,8 @@
                 const handDesc = evalInfo ? evalInfo.label : '';
 
                 left.innerHTML = `
-                    <div style="font-weight: 800; font-size: 0.95rem;">${KaiHtml.escape(p.name)}</div>
-                    <div style="font-size: 0.8rem; color: #38bdf8;">${KaiHtml.escape(handDesc)}</div>
+                    <div style="font-weight: 800; font-size: 0.95rem;">${escapeHtml(p.name)}</div>
+                    <div style="font-size: 0.8rem; color: #38bdf8;">${escapeHtml(handDesc)}</div>
                 `;
 
                 if (isWinner) {
