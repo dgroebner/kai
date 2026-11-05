@@ -257,22 +257,6 @@ require_once __DIR__ . '/../bootstrap.php';
                             <span><strong>Klassisch (alle 24 Schätze):</strong> Gleichmäßig auf alle Spieler verteilt</span>
                         </label>
                     </div>
-
-                    <label style="margin-top: 1rem; display: block;">Bot-Schwierigkeit (falls KI-Bots mitspielen):</label>
-                    <div class="hub-radio-list">
-                        <label class="hub-radio-option">
-                            <input type="radio" name="labyrinth_bot_difficulty" value="normal" checked>
-                            <span><strong>⚔️ Normal (Ausgewogen):</strong> Menschliche Spielstärke, spannend &amp; schlagbar</span>
-                        </label>
-                        <label class="hub-radio-option">
-                            <input type="radio" name="labyrinth_bot_difficulty" value="easy">
-                            <span><strong>🌱 Leicht (Gelegenheitsspieler):</strong> Macht Fehler, übersieht weite Pfade – ideal zum Entspannen</span>
-                        </label>
-                        <label class="hub-radio-option">
-                            <input type="radio" name="labyrinth_bot_difficulty" value="master">
-                            <span><strong>🧠 Meister (Gnadenlos):</strong> Vollständige 44-Varianten-Berechnung</span>
-                        </label>
-                    </div>
                 </div>
 
                 <!-- Schnauzer Optionen -->

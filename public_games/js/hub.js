@@ -193,7 +193,6 @@
                 } else if (gameType === 'labyrinth') {
                     mode = document.querySelector('input[name="labyrinth_mode"]:checked')?.value || 'standard';
                     payload.game_mode = mode;
-                    payload.bot_difficulty = document.querySelector('input[name="labyrinth_bot_difficulty"]:checked')?.value || 'normal';
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';
                     payload.stones = stonesVal === 'auto' ? 'auto' : parseInt(stonesVal, 10);
