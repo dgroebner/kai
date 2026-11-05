@@ -160,12 +160,13 @@ Der `LabyrinthService::getReachableCells(array $board, int $startRow, int $start
 
 ---
 
-## 5. Intelligente Bot-KI (`executeBotTurn`)
+## 5. Einstellbare Bot-Schwierigkeitsgrade (`LabyrinthBot`)
 
-Damit man auch alleine oder zu zweit mit Bots spannende Runden spielen kann, erhält `LabyrinthService` eine mehrstufige Bot-Heuristik:
-1. Der Bot simuliert alle **11 erlaubten Einschub-Positionen $\times$ 4 Rotationen = 44 mögliche Züge**.
-2. **Priorität 1 (Direkter Treffer):** Gibt es eine Kombination aus Einschub + Rotation, nach der das gesuchte Schatzfeld (bzw. am Ende das Startfeld) in `getReachableCells()` liegt? Falls ja → diesen Einschub ausführen und direkt auf den Schatz ziehen!
-3. **Priorität 2 (Distanz-Minimierung):** Falls der Schatz nicht in einem Zug erreichbar ist, wählt der Bot die Kombination + das erreichbare Feld, das die **geringste Manhattan-Distanz** zum Zielschatz hat (und bevorzugt dabei Züge, die ihm selbst viele bewegliche Nachbarwege öffnen).
+Damit Bots weder frustrierend unschlagbar noch langweilig sind, bietet das Spiel drei wählbare Schwierigkeitsgrade:
+
+- **🌱 Leicht (`easy`, Gelegenheitsspieler):** Der Bot prüft nur 3 bis 4 zufällige Pfeile und 2 Drehungen. Weite Schlangenpfade (> 2 Felder) werden mit 80% Wahrscheinlichkeit übersehen – der Bot nähert sich schrittweise an und macht gelegentlich Fehler.
+- **⚔️ Normal (`normal`, Ausgewogen - Standard):** Der Bot prüft 6 bis 7 Pfeile und 3 Drehungen. Direkte Schätze werden zuverlässig gefunden, wenn sie nahe liegen ($\le 3$ Felder); extrem lange Zickzack-Wege über das gesamte Brett werden wie bei einem guten menschlichen Spieler teilweise übersehen.
+- **🧠 Meister (`master`, Gnadenlos):** Vollständige 44-Kombinationen-Breitensuche ohne menschliche Wahrnehmungsschwelle (maximale Spielstärke).
 
 ---
 

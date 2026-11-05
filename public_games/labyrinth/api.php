@@ -74,9 +74,14 @@ try {
             $gameMode = 'standard';
         }
 
+        $botDifficulty = trim((string)($input['bot_difficulty'] ?? 'normal'));
+        if (!in_array($botDifficulty, ['easy', 'normal', 'master'], true)) {
+            $botDifficulty = 'normal';
+        }
+
         $newPlayerToken = bin2hex(random_bytes(16));
         $newHostHash = hash('sha256', $newPlayerToken);
-        $room = $repo->createRoom('labyrinth', $gameMode, $newHostHash, $service->getInitialState($gameMode));
+        $room = $repo->createRoom('labyrinth', $gameMode, $newHostHash, $service->getInitialState($gameMode, $botDifficulty));
         if (!$room) {
             labyrinthRespond(500, ['success' => false, 'message' => 'Konnte Raum nicht erstellen.']);
         }
@@ -178,9 +183,9 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 5. HOST-AKTIONEN: Start, Bots, Revanche
+    // 5. HOST-AKTIONEN: Start, Bots, Revanche, Schwierigkeit
     // -------------------------------------------------------------------------
-    if (in_array($action, ['start', 'add_bot', 'remove_bot', 'rematch'], true)) {
+    if (in_array($action, ['start', 'add_bot', 'remove_bot', 'rematch', 'set_bot_difficulty'], true)) {
         labyrinthRequirePost();
         if (!$isHost) {
             labyrinthRespond(403, ['success' => false, 'message' => 'Nur der Host darf das']);
@@ -190,6 +195,7 @@ try {
             'start' => $service->startGame($roomId),
             'add_bot' => $service->addBot($roomId, ['🤖 Robo-Max', '🤖 Cyber-Ella', '🤖 Bit-Berta', '🤖 Pixel-Paul'][count($repo->getPlayersForRoom($roomId)) % 4]),
             'remove_bot' => $service->removeBot($roomId, (int)($input['bot_id'] ?? 0)),
+            'set_bot_difficulty' => $service->setBotDifficulty($roomId, trim((string)($input['bot_difficulty'] ?? 'normal'))),
             default => $service->rematch($roomId),
         };
         labyrinthRespond($res['success'] ? 200 : 400, $res);

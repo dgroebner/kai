@@ -67,6 +67,13 @@
             const tile = target.closest('.lb-tile.is-reachable');
             if (tile) movePawn(parseInt(tile.dataset.r, 10), parseInt(tile.dataset.c, 10));
         });
+
+        const diffSelect = el('select-bot-difficulty');
+        if (diffSelect) {
+            diffSelect.addEventListener('change', async () => {
+                await hostAction('set_bot_difficulty', { bot_difficulty: diffSelect.value });
+            });
+        }
     }
 
     function shareWhatsapp() {
@@ -228,7 +235,15 @@
         const wanted = botTurn ? 1000 : 1500;
         if (wanted !== state.pollIntervalMs) startPolling(wanted);
 
-        el('game-mode-badge').textContent = `Labyrinth (${data.status === 'lobby' ? 'Lobby' : data.cards_per_player + ' Schätze'})`;
+        const diffLabelsShort = {
+            easy: '🌱 Leicht',
+            normal: '⚔️ Normal',
+            master: '🧠 Meister',
+        };
+        const diffBadge = data.players.some((p) => p.is_bot)
+            ? ` • ${diffLabelsShort[data.bot_difficulty] || '⚔️ Normal'}`
+            : '';
+        el('game-mode-badge').textContent = `Labyrinth (${data.status === 'lobby' ? 'Lobby' : data.cards_per_player + ' Schätze'}${diffBadge})`;
         el('lobby-mode-desc').textContent = MODE_DESC[data.game_mode] || MODE_DESC.standard;
 
         const inLobby = data.status === 'lobby';
@@ -276,6 +291,24 @@
         el('btn-add-bot').classList.toggle('hidden', !state.isHost || data.players.length >= 4);
         el('btn-start-game').classList.toggle('hidden', !state.isHost);
         el('lobby-waiting-notice').classList.toggle('hidden', state.isHost);
+
+        // Bot-Schwierigkeitsgrad Anzeige & Steuerung in der Lobby
+        const diff = data.bot_difficulty || 'normal';
+        const diffLabels = {
+            easy: '🌱 Leicht (Gelegenheitsspieler)',
+            normal: '⚔️ Normal (Ausgewogen)',
+            master: '🧠 Meister (Gnadenlos)',
+        };
+        const diffSelect = el('select-bot-difficulty');
+        if (diffSelect && document.activeElement !== diffSelect) {
+            diffSelect.value = diff;
+        }
+        const guestDiff = el('guest-diff-display');
+        if (guestDiff) {
+            guestDiff.textContent = diffLabels[diff] || diff;
+        }
+        el('host-diff-controls')?.classList.toggle('hidden', !state.isHost);
+        el('guest-diff-display')?.classList.toggle('hidden', state.isHost);
     }
 
     function renderPlayers(data) {

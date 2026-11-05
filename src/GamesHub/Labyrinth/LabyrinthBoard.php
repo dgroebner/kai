@@ -211,21 +211,19 @@ final class LabyrinthBoard
     }
 
     /**
-     * Breitensuche: alle über offene Gänge erreichbaren Felder (inkl. Startfeld).
+     * Breitensuche mit Schrittdistanzen: ermittelt alle erreichbaren Felder und deren Pfadlänge.
      *
-     * @return array<int, array{0:int,1:int}>
+     * @return array<string, int> Map "r,c" => Schrittanzahl vom Startfeld
      */
-    public static function reachable(array $board, int $startRow, int $startCol): array
+    public static function reachableDistances(array $board, int $startRow, int $startCol): array
     {
         $dr = [-1, 0, 1, 0];
         $dc = [0, 1, 0, -1];
-        $seen = [$startRow . ',' . $startCol => true];
-        $queue = [[$startRow, $startCol]];
-        $result = [];
+        $seen = [$startRow . ',' . $startCol => 0];
+        $queue = [[$startRow, $startCol, 0]];
 
         while ($queue) {
-            [$r, $c] = array_shift($queue);
-            $result[] = [$r, $c];
+            [$r, $c, $d] = array_shift($queue);
             foreach (self::openings($board[$r][$c]) as $dir) {
                 $nr = $r + $dr[$dir];
                 $nc = $c + $dc[$dir];
@@ -233,12 +231,28 @@ final class LabyrinthBoard
                     continue;
                 }
                 if (in_array(($dir + 2) % 4, self::openings($board[$nr][$nc]), true)) {
-                    $seen[$nr . ',' . $nc] = true;
-                    $queue[] = [$nr, $nc];
+                    $seen[$nr . ',' . $nc] = $d + 1;
+                    $queue[] = [$nr, $nc, $d + 1];
                 }
             }
         }
 
+        return $seen;
+    }
+
+    /**
+     * Breitensuche: alle über offene Gänge erreichbaren Felder (inkl. Startfeld).
+     *
+     * @return array<int, array{0:int,1:int}>
+     */
+    public static function reachable(array $board, int $startRow, int $startCol): array
+    {
+        $distances = self::reachableDistances($board, $startRow, $startCol);
+        $result = [];
+        foreach ($distances as $key => $_) {
+            [$r, $c] = explode(',', $key);
+            $result[] = [(int)$r, (int)$c];
+        }
         return $result;
     }
 

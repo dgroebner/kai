@@ -27,10 +27,15 @@ class LabyrinthService
         $this->repo = $repo ?? new RoomRepository();
     }
 
-    public function getInitialState(string $gameMode = 'standard'): array
+    public function getInitialState(string $gameMode = 'standard', string $botDifficulty = LabyrinthBot::DIFFICULTY_NORMAL): array
     {
+        if (!array_key_exists($botDifficulty, LabyrinthBot::DIFFICULTIES)) {
+            $botDifficulty = LabyrinthBot::DIFFICULTY_NORMAL;
+        }
+
         return [
             'game_mode' => $gameMode,
+            'bot_difficulty' => $botDifficulty,
             'status' => 'lobby',
             'cards_per_player' => 0,
             'phase' => 'shift',
@@ -190,6 +195,30 @@ class LabyrinthService
     }
 
     /**
+     * Ändert die Bot-Schwierigkeitsstufe in der Lobby (nur Host).
+     */
+    public function setBotDifficulty(int $roomId, string $difficulty): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room || $room['status'] !== 'lobby') {
+            return ['success' => false, 'message' => 'Schwierigkeitsgrad kann nur in der Lobby geändert werden'];
+        }
+        if (!array_key_exists($difficulty, LabyrinthBot::DIFFICULTIES)) {
+            return ['success' => false, 'message' => 'Ungültiger Schwierigkeitsgrad'];
+        }
+
+        $state = $room['state'];
+        $state['bot_difficulty'] = $difficulty;
+        $label = LabyrinthBot::DIFFICULTIES[$difficulty];
+        $state['last_event'] = $this->event('difficulty_changed', "Bot-Stufe wurde auf {$label} gesetzt.");
+
+        if (!$this->persist($room, $state)) {
+            return ['success' => false, 'message' => 'Zustand hat sich geändert, bitte erneut versuchen'];
+        }
+        return ['success' => true, 'bot_difficulty' => $difficulty];
+    }
+
+    /**
      * Setzt ein beendetes Spiel zurück in die Lobby (Revanche im selben Raum).
      */
     public function rematch(int $roomId): array
@@ -198,7 +227,10 @@ class LabyrinthService
         if (!$room || $room['status'] !== 'finished') {
             return ['success' => false, 'message' => 'Revanche ist nur nach Spielende möglich'];
         }
-        $state = $this->getInitialState((string)($room['state']['game_mode'] ?? 'standard'));
+        $state = $this->getInitialState(
+            (string)($room['state']['game_mode'] ?? 'standard'),
+            (string)($room['state']['bot_difficulty'] ?? LabyrinthBot::DIFFICULTY_NORMAL)
+        );
         $state['last_event'] = $this->event('rematch', 'Neue Runde! Der Host kann das Spiel erneut starten.');
         if (!$this->persist($room, $state, 'lobby')) {
             return ['success' => false, 'message' => 'Zustand hat sich geändert, bitte erneut versuchen'];
@@ -234,6 +266,8 @@ class LabyrinthService
 
         $pawn = $state['pawns'][$botId];
         $positions = array_map(fn(array $p) => $p['pos'], $state['pawns']);
+        $botDifficulty = (string)($state['bot_difficulty'] ?? LabyrinthBot::DIFFICULTY_NORMAL);
+
         $decision = LabyrinthBot::decide(
             $state['board'],
             $state['spare'],
@@ -241,7 +275,8 @@ class LabyrinthService
             $positions,
             $botId,
             $pawn['deck'][0] ?? null,
-            $pawn['start']
+            $pawn['start'],
+            $botDifficulty
         );
 
         $state = $this->applyShift($state, $botId, $decision['side'], $decision['index'], $decision['rotation'], $bot['player_name']);
@@ -305,6 +340,7 @@ class LabyrinthService
             'room_code' => $room['room_code'],
             'status' => $state['status'] ?? 'lobby',
             'game_mode' => $state['game_mode'] ?? 'standard',
+            'bot_difficulty' => $state['bot_difficulty'] ?? LabyrinthBot::DIFFICULTY_NORMAL,
             'cards_per_player' => (int)($state['cards_per_player'] ?? 0),
             'phase' => $state['phase'] ?? 'shift',
             'active_player_id' => $activeId,

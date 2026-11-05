@@ -94,6 +94,24 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <h2 class="lb-lobby-title">Wartezimmer</h2>
         <p class="text-muted lb-small" id="lobby-mode-desc"></p>
         <div class="lb-lobby-players" id="lobby-players-list"></div>
+
+        <!-- Bot-Schwierigkeit Steuerung (in der Lobby wählbar) -->
+        <div class="lb-lobby-diff-wrap" id="lobby-diff-wrap">
+            <label for="select-bot-difficulty" class="lb-small text-muted" style="display: block; margin-bottom: 0.35rem; font-weight: 600;">
+                🤖 Bot-Schwierigkeitsgrad:
+            </label>
+            <div id="host-diff-controls" class="hidden">
+                <select id="select-bot-difficulty" class="form-control" style="font-size: 0.88rem; padding: 0.4rem 0.6rem; text-align-last: center; margin-bottom: 0.25rem;">
+                    <option value="easy">🌱 Leicht (Gelegenheitsspieler)</option>
+                    <option value="normal" selected>⚔️ Normal (Ausgewogen)</option>
+                    <option value="master">🧠 Meister (Gnadenlos)</option>
+                </select>
+            </div>
+            <div id="guest-diff-display" class="badge" style="font-size: 0.85rem; padding: 0.35rem 0.75rem; background: rgba(99, 102, 241, 0.25); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px;">
+                ⚔️ Normal (Ausgewogen)
+            </div>
+        </div>
+
         <div class="lb-lobby-actions">
             <button type="button" class="btn btn-outline hidden" id="btn-add-bot">🤖 KI-Bot hinzufügen</button>
             <button type="button" class="btn btn-primary btn-lg hidden" id="btn-start-game">🚀 Spiel starten</button>
