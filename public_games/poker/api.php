@@ -197,37 +197,41 @@ try {
         exit;
     }
 
-    // Spieler-Identifikation für alle Spielaktionen
-    $existingPlayers = $repo->getPlayersForRoom($roomId);
-    $myPlayer = null;
-    foreach ($existingPlayers as $p) {
-        if ($p['player_token_hash'] === $playerTokenHash) {
-            $myPlayer = $p;
-            break;
-        }
-    }
-
-    $myPlayerId = $myPlayer ? (int)$myPlayer['id'] : 0;
-
     // -------------------------------------------------------------------------
-    // 3. STATUS ABFRAGEN (POLLING)
-    // -------------------------------------------------------------------------
-    if ($action === 'state') {
-        $stateData = $service->getStateForPlayer($roomId, $myPlayerId);
-        echo json_encode([
-            'success' => true,
-            'data' => $stateData,
-        ]);
-        exit;
-    }
-
-    // -------------------------------------------------------------------------
-    // 4. EMOJI-REAKTIONEN
+    // 3. EMOJI-REAKTIONEN (auch ohne Player-Objekt lesbar)
     // -------------------------------------------------------------------------
     if ($action === 'reactions') {
         $sinceId = (int)($_GET['since'] ?? 0);
         $reactions = $repo->getReactionsSince($roomId, $sinceId);
         echo json_encode(['success' => true, 'reactions' => $reactions]);
+        exit;
+    }
+
+    // Spieler-Identifikation anhand des Session-/Player-Tokens
+    $myPlayer = $playerTokenHash !== '' ? $repo->getPlayerByToken($roomId, $playerTokenHash) : null;
+    if (!$myPlayer) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Nicht autorisiert oder noch nicht beigetreten.']);
+        exit;
+    }
+
+    $myPlayerId = (int)$myPlayer['id'];
+
+    // -------------------------------------------------------------------------
+    // 4. STATUS ABFRAGEN (POLLING)
+    // -------------------------------------------------------------------------
+    if ($action === 'state' || $action === 'status') {
+        if ($room['status'] === 'active') {
+            $service->triggerBotTurnIfNeeded($roomId);
+        }
+
+        $stateData = $service->getStateForPlayer($roomId, $myPlayerId);
+        echo json_encode([
+            'success' => true,
+            'data' => $stateData,
+            'my_player_id' => $myPlayerId,
+            'is_host' => (bool)$myPlayer['is_host'],
+        ]);
         exit;
     }
 
@@ -237,15 +241,8 @@ try {
             echo json_encode(['success' => false, 'message' => 'Emoji fehlt']);
             exit;
         }
-        $res = $repo->addReaction($roomId, $myPlayerId, (string)($myPlayer['player_name'] ?? 'Gast'), $emoji);
+        $res = $repo->addReaction($roomId, $myPlayerId, (string)$myPlayer['player_name'], $emoji);
         echo json_encode(['success' => (bool)$res]);
-        exit;
-    }
-
-    // Alle weiteren Aktionen erfordern gültigen Spieler-Token
-    if (!$myPlayer) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Nicht autorisiert.']);
         exit;
     }
 
@@ -304,16 +301,16 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 10. KI-BOT HINZUFÜGEN (nur Host in Lobby)
+    // 10. KI-BOT HINZUFÜGEN (in Lobby)
     // -------------------------------------------------------------------------
     if ($action === 'add_bot') {
-        if (!$myPlayer['is_host']) {
+        if ($room['status'] !== 'lobby') {
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Nur der Host kann Bots hinzufügen.']);
+            echo json_encode(['success' => false, 'message' => 'Bots können nur in der Lobby hinzugefügt werden.']);
             exit;
         }
 
-        $botNames = ['Poker-Paule', 'Bluff-Bella', 'Ace-Andy', 'River-Ralf', 'Chip-Charly', 'Fold-Fritz'];
+        $botNames = ['Poker-Paule', 'Bluff-Bella', 'Ace-Andy', 'River-Ralf', 'Chip-Charly', 'Fold-Fritz', 'Texas-Tina', 'Full-House-Felix'];
         $existing = $repo->getPlayersForRoom($roomId);
         $used = array_map(fn($p) => $p['player_name'], $existing);
         $available = array_values(array_diff($botNames, $used));

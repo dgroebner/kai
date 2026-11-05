@@ -747,11 +747,14 @@ class PokerService
         $botTokenHash = hash('sha256', 'poker_bot_' . bin2hex(random_bytes(16)));
         $initialSheet = [
             'chips' => 1000,
+            'current_bet' => 0,
+            'total_bet' => 0,
             'hand' => [],
             'is_bot' => true,
             'is_folded' => false,
             'is_all_in' => false,
             'is_out' => false,
+            'has_acted' => false,
         ];
 
         $player = $this->repo->joinPlayer($roomId, $botTokenHash, $botName, false, $initialSheet);
@@ -813,11 +816,32 @@ class PokerService
         $amount = (int)($decision['amount'] ?? 0);
 
         if ($action === 'bet' || $action === 'raise') {
-            // Betrag absolut zum myCurrentBet berechnen
-            $amount = $myCurrentBet + $amount;
+            $targetBet = $highestBet + max($minRaise, $amount);
+            $maxPossibleBet = $myCurrentBet + $myChips;
+
+            if ($targetBet > $maxPossibleBet) {
+                $action = 'all_in';
+                $amount = $myChips;
+            } else {
+                $amount = $targetBet;
+            }
+        } elseif ($action === 'call') {
+            $amount = min($myChips, $toCall);
+        } elseif ($action === 'all_in') {
+            $amount = $myChips;
+        } else {
+            $amount = 0;
         }
 
-        $this->takeAction($roomId, $activePlayerId, $action, $amount);
+        $res = $this->takeAction($roomId, $activePlayerId, $action, $amount);
+        if (empty($res['success'])) {
+            // Ausweichaktion, falls Bet/Raise ungültig war
+            if ($toCall === 0) {
+                $this->takeAction($roomId, $activePlayerId, 'check', 0);
+            } else {
+                $this->takeAction($roomId, $activePlayerId, 'fold', 0);
+            }
+        }
         return true;
     }
 

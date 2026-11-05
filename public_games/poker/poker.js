@@ -212,13 +212,8 @@
                 const data = res.data.data;
                 currentData = data;
 
-                // Eigenen Spieler identifizieren (anhand des gespeicherten Tokens oder Namens)
-                const savedName = (localStorage.getItem('kai_gh_player_name') || '').trim();
-                const matchedPlayer = data.players.find(p => p.name === savedName) || data.players[0];
-                if (matchedPlayer) {
-                    myPlayerId = matchedPlayer.id;
-                    isHost = Boolean(matchedPlayer.is_host);
-                }
+                myPlayerId = res.data.my_player_id;
+                isHost = Boolean(res.data.is_host);
 
                 document.getElementById('join-modal')?.classList.add('hidden');
                 renderGame(data);
@@ -356,21 +351,20 @@
         const addBotBtn = document.getElementById('btn-add-bot');
         const startBtn = document.getElementById('btn-start-game');
 
-        if (isHost) {
-            addBotBtn?.classList.remove('hidden');
-            startBtn?.classList.remove('hidden');
+        if (addBotBtn) {
+            addBotBtn.classList.remove('hidden');
+            addBotBtn.disabled = data.players.length >= 8;
+        }
 
-            if (addBotBtn) {
-                addBotBtn.disabled = data.players.length >= 8;
-            }
+        if (isHost) {
+            startBtn?.classList.remove('hidden');
             if (startBtn) {
                 startBtn.disabled = data.players.length < 2;
                 startBtn.textContent = data.players.length < 2
-                    ? 'Warte auf mindestens 2 Spieler...'
+                    ? 'Warte auf Mitspieler oder KI-Bots...'
                     : `🚀 Spiel mit ${data.players.length} Spielern starten`;
             }
         } else {
-            addBotBtn?.classList.add('hidden');
             startBtn?.classList.add('hidden');
         }
     }
