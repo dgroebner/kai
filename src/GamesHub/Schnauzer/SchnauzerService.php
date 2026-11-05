@@ -115,9 +115,12 @@ class SchnauzerService
         $deck = SchnauzerDeckFactory::createShuffledDeck();
 
         // Jedem aktiven Spieler 3 Handkarten austeilen
-        foreach ($activePlayers as &$p) {
+        foreach ($players as &$p) {
+            if (!empty($p['sheet']['is_out'])) {
+                continue;
+            }
             $hand = [array_shift($deck), array_shift($deck), array_shift($deck)];
-            $sheet = $p['sheet'];
+            $sheet = $p['sheet'] ?? [];
             $sheet['hand'] = $hand;
             $this->repo->updatePlayerSheet((int)$p['id'], $sheet, (int)($sheet['lives'] ?? 3));
             $p['sheet'] = $sheet;
@@ -705,6 +708,7 @@ class SchnauzerService
         }
 
         $this->repo->updateRoomState($roomId, $state);
+        $this->triggerBotTurnIfNeeded($roomId);
         return ['success' => true];
     }
 
