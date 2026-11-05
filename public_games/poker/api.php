@@ -90,6 +90,15 @@ try {
 
         $player = $repo->joinPlayer((int)$room['id'], $newHostHash, $playerName, true, $initialSheet);
 
+        // Optionale KI-Bots direkt bei der Raumerstellung hinzufügen
+        $botsCount = max(0, min(7, (int)($input['bots_count'] ?? 0)));
+        if ($botsCount > 0) {
+            $botNames = ['Poker-Paule', 'Bluff-Bella', 'Ace-Andy', 'River-Ralf', 'Chip-Charly', 'Fold-Fritz', 'Texas-Tina'];
+            for ($i = 0; $i < $botsCount; $i++) {
+                $service->addBot((int)$room['id'], $botNames[$i] ?? "Bot " . ($i + 1));
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'room_code' => $room['room_code'],

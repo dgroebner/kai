@@ -744,6 +744,11 @@ class PokerService
             return ['success' => false, 'message' => 'Bots können nur in der Lobby hinzugefügt werden.'];
         }
 
+        $existing = $this->repo->getPlayersForRoom($roomId);
+        if (count($existing) >= 8) {
+            return ['success' => false, 'message' => 'Der Tisch ist bereits mit 8 Spielern voll.'];
+        }
+
         $botTokenHash = hash('sha256', 'poker_bot_' . bin2hex(random_bytes(16)));
         $initialSheet = [
             'chips' => 1000,
