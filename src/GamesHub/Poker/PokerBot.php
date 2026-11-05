@@ -85,25 +85,28 @@ class PokerBot
             return ['action' => $canCheck ? 'check' : 'call', 'amount' => min($toCall, $myChips)];
         }
 
-        // Tier 3: Spekulative Hände (Kleine Paare, Suited Connectors wie 98s, A-x suited)
-        if ($isPair || ($isSuited && ($high === 14 || $high - $low <= 2))) {
+        // Tier 3: Spekulative & spielbare Hände (Kleine Paare, Suited Connectors, Ax suited, High Cards >= 10)
+        if ($isPair || $isSuited || $high >= 10 || ($high - $low <= 3)) {
             if ($canCheck) {
                 return ['action' => 'check', 'amount' => 0];
             }
-            // Nur kleine Bets mitgehen (bis 15% des Stacks)
-            if ($toCall <= $myChips * 0.15) {
-                return ['action' => 'call', 'amount' => $toCall];
+            // Bis zu 40 Chips oder 20% des Stacks mitgehen
+            if ($toCall <= max(40, (int)($myChips * 0.2))) {
+                return ['action' => 'call', 'amount' => min($toCall, $myChips)];
             }
             return ['action' => 'fold', 'amount' => 0];
         }
 
-        // Tier 4: Trash-Hände
+        // Tier 4: Schwächere Hände
         if ($canCheck) {
             return ['action' => 'check', 'amount' => 0];
         }
 
-        // Sehr billiges Callen (z. B. 10 oder 20 Chips) zu 25% erlauben
-        if ($toCall <= 20 && mt_rand(1, 100) <= 25) {
+        // Im Small Blind (nur 10 Chips zu callen) oder bei Mini-Bet: Zu 80% mitgehen
+        if ($toCall <= 10 && mt_rand(1, 100) <= 80) {
+            return ['action' => 'call', 'amount' => $toCall];
+        }
+        if ($toCall <= 20 && mt_rand(1, 100) <= 50) {
             return ['action' => 'call', 'amount' => $toCall];
         }
 
@@ -151,14 +154,15 @@ class PokerBot
         // 3. Mittlere Hände: Ein Paar (Category 1)
         if ($category === PokerHandEvaluator::CATEGORY_PAIR) {
             if ($canCheck) {
-                // Gelegentlich kleine Value-Bet
-                if (mt_rand(1, 100) <= 30 && $myChips >= $minRaise) {
-                    return ['action' => 'bet', 'amount' => min($myChips, $minRaise)];
+                // Gelegentlich kleine Value-Bet (40%)
+                if (mt_rand(1, 100) <= 40 && $myChips >= $minRaise) {
+                    $betSize = min($myChips, max($minRaise, (int)($pot * 0.4)));
+                    return ['action' => 'bet', 'amount' => $betSize];
                 }
                 return ['action' => 'check', 'amount' => 0];
             }
-            // Bis zu 25% Pot mitgehen
-            if ($toCall <= $pot * 0.35 && $toCall <= $myChips * 0.25) {
+            // Mit einem Paar moderate Einsätze mitgehen (bis zu 75% Pot oder bei kleiner Bet bis 40 Chips)
+            if ($toCall <= max(40, (int)($pot * 0.75)) && $toCall <= $myChips * 0.4) {
                 return ['action' => 'call', 'amount' => min($toCall, $myChips)];
             }
             return ['action' => 'fold', 'amount' => 0];
@@ -166,16 +170,17 @@ class PokerBot
 
         // 4. Nur High Card (Category 0)
         if ($canCheck) {
-            // Gelegentlicher Bluff (12%)
-            if (mt_rand(1, 100) <= 12 && $myChips >= $minRaise) {
-                return ['action' => 'bet', 'amount' => min($myChips, $minRaise)];
+            // Gelegentlicher Bluff (20%)
+            if (mt_rand(1, 100) <= 20 && $myChips >= $minRaise) {
+                $bluffSize = min($myChips, max($minRaise, (int)($pot * 0.4)));
+                return ['action' => 'bet', 'amount' => $bluffSize];
             }
             return ['action' => 'check', 'amount' => 0];
         }
 
-        // Sehr kleine Einsätze manchmal callen
-        if ($toCall <= 20 && mt_rand(1, 100) <= 15) {
-            return ['action' => 'call', 'amount' => $toCall];
+        // Kleine Einsätze (z. B. bis 30 Chips oder < 30% Pot) zu 45% callen (Float / Chasing Overcards)
+        if (($toCall <= 30 || $toCall <= $pot * 0.3) && $toCall <= $myChips * 0.15 && mt_rand(1, 100) <= 45) {
+            return ['action' => 'call', 'amount' => min($toCall, $myChips)];
         }
 
         return ['action' => 'fold', 'amount' => 0];

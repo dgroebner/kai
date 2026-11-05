@@ -86,7 +86,6 @@ class PokerService
         }
 
         $this->repo->updateRoomState($roomId, $state, 'active');
-        $this->triggerBotTurnIfNeeded($roomId);
 
         return ['success' => true];
     }
@@ -406,7 +405,6 @@ class PokerService
         $this->progressGameAfterAction($roomId, $state, $players);
 
         $this->repo->updateRoomState($roomId, $state);
-        $this->triggerBotTurnIfNeeded($roomId);
 
         return ['success' => true];
     }
@@ -551,6 +549,8 @@ class PokerService
             if ($won > 0) {
                 $p['sheet']['chips'] = (int)($p['sheet']['chips'] ?? 0) + $won;
             }
+            $p['sheet']['current_bet'] = 0;
+            $p['sheet']['total_bet'] = 0;
             $this->repo->updatePlayerSheet($pid, $p['sheet'], (int)$p['sheet']['chips']);
         }
         unset($p);
@@ -593,13 +593,15 @@ class PokerService
         $res = PokerPotManager::resolveShowdown($players, $evaluations);
 
         $wId = (int)$soleWinner['id'];
-        $won = $res['payouts'][$wId] ?? $state['pot'];
+        $won = max((int)($res['payouts'][$wId] ?? 0), (int)($state['pot'] ?? 0));
 
         foreach ($players as &$p) {
             $pid = (int)$p['id'];
             if ($pid === $wId) {
                 $p['sheet']['chips'] = (int)($p['sheet']['chips'] ?? 0) + $won;
             }
+            $p['sheet']['current_bet'] = 0;
+            $p['sheet']['total_bet'] = 0;
             $this->repo->updatePlayerSheet($pid, $p['sheet'], (int)$p['sheet']['chips']);
         }
         unset($p);
@@ -665,7 +667,6 @@ class PokerService
         }
 
         $this->repo->updateRoomState($roomId, $state);
-        $this->triggerBotTurnIfNeeded($roomId);
 
         return ['success' => true];
     }
@@ -769,7 +770,7 @@ class PokerService
     /**
      * Führt automatisch den Zug eines KI-Bots aus, falls dieser an der Reihe ist.
      */
-    public function triggerBotTurnIfNeeded(int $roomId): bool
+    public function triggerBotTurnIfNeeded(int $roomId, float $minDelaySeconds = 0.8): bool
     {
         $room = $this->repo->getRoomById($roomId);
         if (!$room || ($room['status'] ?? '') !== 'active') {
@@ -793,6 +794,13 @@ class PokerService
         }
 
         if (!$activePlayer || empty($activePlayer['sheet']['is_bot'])) {
+            return false;
+        }
+
+        // Bedenkzeit-Prüfung: Bot wartet mindestens $minDelaySeconds nach dem letzten Ereignis,
+        // damit Spieler sehen, was passiert und der Zug nicht in 0 Millisekunden verpufft.
+        $lastEventTime = (float)($state['last_event']['time'] ?? 0);
+        if ($minDelaySeconds > 0 && $lastEventTime > 0 && (microtime(true) - $lastEventTime) < $minDelaySeconds) {
             return false;
         }
 

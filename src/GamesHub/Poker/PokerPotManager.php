@@ -21,6 +21,19 @@ class PokerPotManager
      */
     public static function resolveShowdown(array $players, array $evaluations): array
     {
+        // Normalisiere Spieler-Eigenschaften aus sheet oder root
+        $normalizedPlayers = [];
+        foreach ($players as $p) {
+            $sheet = $p['sheet'] ?? [];
+            $normalizedPlayers[] = [
+                'id' => (int)$p['id'],
+                'player_name' => (string)($p['player_name'] ?? 'Spieler'),
+                'is_folded' => !empty($p['is_folded']) || !empty($sheet['is_folded']),
+                'total_bet' => (int)($p['total_bet'] ?? $sheet['total_bet'] ?? 0),
+            ];
+        }
+        $players = $normalizedPlayers;
+
         $payouts = [];
         foreach ($players as $p) {
             $payouts[(int)$p['id']] = 0;
