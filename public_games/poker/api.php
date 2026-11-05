@@ -304,7 +304,7 @@ try {
     // 9. NEUES GESAMT-SPIEL STARTEN (nach Game Over)
     // -------------------------------------------------------------------------
     if ($action === 'restart') {
-        $res = $service->startGame($roomId);
+        $res = $service->startGame($roomId, true);
         echo json_encode($res);
         exit;
     }

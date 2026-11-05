@@ -913,8 +913,14 @@
                 const act = nextBtn.dataset.action || 'next_hand';
                 nextBtn.disabled = true;
                 try {
-                    await HubHttp.postJson(`./api.php?action=${act}&room=${encodeURIComponent(roomCode)}`, {});
-                    pollStatus();
+                    const res = await HubHttp.postJson(`./api.php?action=${act}&room=${encodeURIComponent(roomCode)}`, {});
+                    if (res.ok && res.data.success) {
+                        const modal = document.getElementById('modal-poker-showdown');
+                        if (modal) modal.classList.add('hidden');
+                        pollStatus();
+                    } else if (res.data?.message) {
+                        HubDialog.alert(res.data.message, 'Fehler');
+                    }
                 } finally {
                     nextBtn.disabled = false;
                 }

@@ -44,12 +44,15 @@ class PokerService
     }
 
     /**
-     * Startet das Spiel aus der Lobby.
+     * Startet das Spiel aus der Lobby (oder als Neustart nach Game Over).
      */
-    public function startGame(int $roomId): array
+    public function startGame(int $roomId, bool $isRestart = false): array
     {
         $room = $this->repo->getRoomById($roomId);
-        if (!$room || $room['status'] !== 'lobby') {
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden.'];
+        }
+        if (!$isRestart && $room['status'] !== 'lobby') {
             return ['success' => false, 'message' => 'Spiel kann nur in der Lobby gestartet werden.'];
         }
 
@@ -61,6 +64,7 @@ class PokerService
         $state = $room['state'];
         $state['hand_number'] = 0;
         $state['abort_votes'] = [];
+        $state['round_result'] = null;
 
         // Jedem Spieler 1000 Startchips zuweisen
         foreach ($players as &$p) {
