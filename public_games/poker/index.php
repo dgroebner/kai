@@ -30,16 +30,16 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
 
         <div class="hub-header-right">
             <button type="button" class="btn btn-sm btn-outline js-btn-poker-help" id="btn-poker-help" title="Poker-Blätter & Rangfolge">
-                📖 Blätter
+                📖 <span class="poker-btn-label">Blätter</span>
             </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-abort-game hidden" id="btn-abort-game" title="Spiel vorzeitig beenden (alle müssen zustimmen)">
-                🏳️ Abbruch
+                🏳️ <span class="poker-btn-label">Abbruch</span>
             </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-edit-name" title="Spielername ändern">
-                ✏️ <span class="js-my-name-display" style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ich</span>
+                ✏️ <span class="js-my-name-display" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ich</span>
             </button>
             <button type="button" class="btn btn-sm btn-whatsapp js-share-whatsapp" title="Per WhatsApp einladen">
-                📲 Einladen
+                📲 <span class="poker-btn-label">Einladen</span>
             </button>
         </div>
     </header>
@@ -100,11 +100,13 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
             <div class="poker-table" id="poker-table">
                 <!-- MITTE: POT & BOARD-KARTEN -->
                 <div class="poker-center">
-                    <div class="poker-pot-badge" id="poker-pot-badge">
-                        <span class="poker-chip-icon">🟡</span> Pot: <span id="poker-pot-amount" class="poker-pot-val">0</span>
-                    </div>
+                    <div class="poker-center-top">
+                        <div class="poker-pot-badge" id="poker-pot-badge">
+                            <span class="poker-chip-icon">🟡</span> Pot: <span id="poker-pot-amount" class="poker-pot-val">0</span>
+                        </div>
 
-                    <div class="poker-street-indicator" id="poker-street-indicator">Pre-Flop</div>
+                        <div class="poker-street-indicator" id="poker-street-indicator">Pre-Flop</div>
+                    </div>
 
                     <!-- 5 Community Cards -->
                     <div class="community-cards-container" id="community-cards-container">
@@ -134,20 +136,20 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                     <!-- 2 Handkarten -->
                 </div>
 
+                <!-- LIVE SPIELHILFE / HAND-BERATER -->
+                <div id="my-poker-assistant" class="poker-assistant-box hidden">
+                    <!-- Dynamisch durch JS befüllt: Bewertung, Möglichkeiten (Draws) & Strategie-Tipp -->
+                </div>
+
                 <div class="my-poker-meta">
                     <div class="my-chips-wrap">
-                        <span class="poker-chip-icon">🟡</span> <strong id="my-chips-val">1.000</strong> Chips
+                        <span class="poker-chip-icon">🟡</span> <strong id="my-chips-val">1.000</strong> <span class="chips-label-text">Chips</span>
                         <span id="my-role-badge" class="poker-role-badge hidden"></span>
                     </div>
                     <div id="my-hand-strength-badge" class="my-hand-strength hidden">
                         <!-- Automatische Hand-Auswertung -->
                     </div>
                 </div>
-            </div>
-
-            <!-- LIVE SPIELHILFE / HAND-BERATER -->
-            <div id="my-poker-assistant" class="poker-assistant-box hidden">
-                <!-- Dynamisch durch JS befüllt: Bewertung, Möglichkeiten (Draws) & Strategie-Tipp -->
             </div>
 
             <!-- AKTIONEN-BEDIENLEISTE -->

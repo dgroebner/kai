@@ -508,34 +508,28 @@
             nameRow.innerHTML = `<span class="seat-player-name">${escapeHtml(p.name)}</span> ${roleHtml}`;
             seat.appendChild(nameRow);
 
-            // Chips
-            const chipsEl = document.createElement('div');
+            // Chips & Current Bet (kompakt in einer Zeile)
+            const metaRow = document.createElement('div');
+            metaRow.className = 'seat-meta-row';
+
+            const chipsEl = document.createElement('span');
             chipsEl.className = 'seat-chips';
             chipsEl.innerHTML = `🟡 ${p.chips.toLocaleString('de-DE')}`;
-            seat.appendChild(chipsEl);
+            metaRow.appendChild(chipsEl);
 
-            // Current Bet
             if (p.current_bet > 0) {
-                const betEl = document.createElement('div');
+                const betEl = document.createElement('span');
                 betEl.className = 'seat-bet-badge';
                 betEl.textContent = `Bet: ${p.current_bet.toLocaleString('de-DE')}`;
-                seat.appendChild(betEl);
+                metaRow.appendChild(betEl);
+            } else if (p.is_folded) {
+                const foldEl = document.createElement('span');
+                foldEl.className = 'seat-status-tag';
+                foldEl.textContent = 'Fold';
+                metaRow.appendChild(foldEl);
             }
 
-            // Cards Preview
-            if (p.hand && p.hand.length > 0 && !p.is_folded) {
-                const cardsRow = document.createElement('div');
-                cardsRow.className = 'seat-cards-preview';
-
-                p.hand.forEach(card => {
-                    if (card.is_hidden && window.QuarxlCards) {
-                        cardsRow.innerHTML += window.QuarxlCards.renderCardBackHtml();
-                    } else if (window.QuarxlCards) {
-                        cardsRow.innerHTML += window.QuarxlCards.renderCardHtml(card, { deck: getPokerDeck(), usePokerRanks: true });
-                    }
-                });
-                seat.appendChild(cardsRow);
-            }
+            seat.appendChild(metaRow);
 
             container.appendChild(seat);
         });
