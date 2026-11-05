@@ -63,11 +63,19 @@ try {
         if ($playerName === '') $playerName = 'Host';
         $playerName = mb_substr($playerName, 0, 30);
 
-        $initialState = $service->getInitialState();
-        $room = $repo->createRoom('poker', $initialState);
+        $gameMode = trim((string)($input['game_mode'] ?? 'standard'));
 
         $newHostToken = bin2hex(random_bytes(16));
         $newHostHash = hash('sha256', $newHostToken);
+
+        $initialState = $service->getInitialState();
+        $room = $repo->createRoom('poker', $gameMode, $newHostHash, $initialState);
+
+        if (!$room) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Konnte Pokertisch nicht erstellen.']);
+            exit;
+        }
 
         $initialSheet = [
             'chips' => 1000,
