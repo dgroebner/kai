@@ -445,7 +445,17 @@
         if (btnSwapOne) btnSwapOne.disabled = !canSwapOne;
         if (btnSwapAll) btnSwapAll.disabled = !isMyTurn;
         if (btnPass) btnPass.disabled = !isMyTurn;
-        if (btnKnock) btnKnock.disabled = !isMyTurn || Boolean(data.knocked_by_player_id);
+        if (btnKnock) {
+            const knockAllowed = Boolean(data.can_knock);
+            btnKnock.disabled = !isMyTurn || !knockAllowed;
+            if (isMyTurn && !data.knocked_by_player_id && !knockAllowed) {
+                btnKnock.title = 'In der ersten Runde darf nicht geklopft werden (Umlaufschutz).';
+            } else if (Boolean(data.knocked_by_player_id)) {
+                btnKnock.title = 'Es wurde bereits geklopft.';
+            } else {
+                btnKnock.title = '';
+            }
+        }
     }
 
     // -------------------------------------------------------------------------

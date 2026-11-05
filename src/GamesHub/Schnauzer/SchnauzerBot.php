@@ -26,10 +26,17 @@ class SchnauzerBot
      * @param array<int, array<string, mixed>> $hand
      * @param array<int, array<string, mixed>> $table
      * @param bool $isKnocked Ist die Schlussrunde bereits eingeläutet?
+     * @param bool $canKnock Darf in diesem Zug geklopft werden (Umlaufschutz)?
+     * @param int $roundTurnCount Anzahl der bisher absolvierten Züge in dieser Runde
      * @return array{action: 'swap_one'|'swap_all'|'knock'|'pass', hand_index?: int, table_index?: int}
      */
-    public static function decideTurn(array $hand, array $table, bool $isKnocked): array
-    {
+    public static function decideTurn(
+        array $hand,
+        array $table,
+        bool $isKnocked,
+        bool $canKnock = true,
+        int $roundTurnCount = 0
+    ): array {
         $curr = SchnauzerScoreCalculator::calculateScore($hand);
         $currScore = $curr['score'];
 
@@ -73,14 +80,14 @@ class SchnauzerBot
             ];
         }
 
-        // 6. Kein Tausch verbessert die Hand
-        if (!$isKnocked) {
-            // Bei 27 Punkten oder mehr macht der Bot zu (klopfen)
-            if ($currScore >= 27.0) {
+        // 6. Kein Tausch verbessert die Hand -> Klopfen oder Schieben
+        if (!$isKnocked && $canKnock) {
+            // Drilling (30.5) oder sehr hohe Hand (>= 29): Klopfen!
+            if (!empty($curr['is_drilling']) || $currScore >= 29.0) {
                 return ['action' => 'knock'];
             }
-            // Bei 24-26 Punkten überlegt der Bot manchmal zu klopfen
-            if ($currScore >= 24.0 && random_int(1, 100) <= 65) {
+            // Bei 28 Punkten: Erst nach etwas Spielverlauf klopfen
+            if ($currScore >= 28.0 && $roundTurnCount >= 3) {
                 return ['action' => 'knock'];
             }
         }

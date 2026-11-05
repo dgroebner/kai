@@ -30,6 +30,7 @@ class SchnauzerService
             'discard_pile' => [],
             'knocked_by_player_id' => null,
             'turns_after_knock_left' => 0,
+            'round_turn_count' => 0,
             'passed_players' => [],
             'last_event' => [
                 'time' => microtime(true),
@@ -103,6 +104,7 @@ class SchnauzerService
         $state['dealer_id'] = $dealerId;
         $state['knocked_by_player_id'] = null;
         $state['turns_after_knock_left'] = 0;
+        $state['round_turn_count'] = 0;
         $state['passed_players'] = [];
         $state['round_result'] = null;
 
@@ -282,6 +284,7 @@ class SchnauzerService
         $state['table_cards'] = $table;
         $this->repo->updatePlayerSheet($playerId, $player['sheet'], (int)($player['sheet']['lives'] ?? 3));
 
+        $state['round_turn_count'] = ($state['round_turn_count'] ?? 0) + 1;
         $state['passed_players'] = [];
         $state['last_event'] = [
             'time' => microtime(true),
@@ -348,6 +351,7 @@ class SchnauzerService
         $state['table_cards'] = $hand;
         $this->repo->updatePlayerSheet($playerId, $player['sheet'], (int)($player['sheet']['lives'] ?? 3));
 
+        $state['round_turn_count'] = ($state['round_turn_count'] ?? 0) + 1;
         $state['passed_players'] = [];
         $state['last_event'] = [
             'time' => microtime(true),
@@ -358,7 +362,7 @@ class SchnauzerService
         ];
 
         // Prüfung auf 31 / 33 Schnauzer
-        $score = SchnauzerScoreCalculator::calculateScore($table);
+        $score = SchnauzerScoreCalculator::calculateScore($player['sheet']['hand']);
         if ($score['is_31'] || $score['is_feuer']) {
             $this->executeShowdown($state, $players, true, $playerId);
             $this->repo->updateRoomState($roomId, $state);
@@ -402,6 +406,7 @@ class SchnauzerService
 
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
 
+        $state['round_turn_count'] = ($state['round_turn_count'] ?? 0) + 1;
         if (!in_array($playerId, $state['passed_players'], true)) {
             $state['passed_players'][] = $playerId;
         }
@@ -461,6 +466,12 @@ class SchnauzerService
         }
 
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
+
+        // Umlaufschutz: In der ersten Runde darf nicht geklopft werden!
+        if (($state['round_turn_count'] ?? 0) < count($activePlayers)) {
+            return ['success' => false, 'message' => 'In der ersten Runde darf nicht geklopft werden.'];
+        }
+
         $state['knocked_by_player_id'] = $playerId;
         $state['turns_after_knock_left'] = count($activePlayers) - 1;
         $state['passed_players'] = [];
@@ -473,8 +484,13 @@ class SchnauzerService
             'player_name' => (string)$player['player_name'],
         ];
 
-        // Wenn nur 2 Spieler spielen und geklopft wird, hat der andere genau 1 Zug
-        $this->advanceTurn($state, $players);
+        // Der Spieler, der geklopft hat, beendet damit seinen Zug.
+        // Die verbleibenden Züge (turns_after_knock_left) werden erst verringert,
+        // wenn die übrigen Spieler ihre nachfolgenden Züge ausführen!
+        $currId = (int)$state['current_player_id'];
+        $nextId = $this->getNextActivePlayerId($activePlayers, $currId);
+        $state['current_player_id'] = $nextId;
+
         $this->repo->updateRoomState($roomId, $state);
 
         $this->triggerBotTurnIfNeeded($roomId);
@@ -729,14 +745,17 @@ class SchnauzerService
         $hand = $activePlayer['sheet']['hand'] ?? [];
         $table = $state['table_cards'] ?? [];
         $isKnocked = ($state['knocked_by_player_id'] !== null);
+        $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
+        $roundTurnCount = (int)($state['round_turn_count'] ?? 0);
+        $canKnock = !$isKnocked && ($roundTurnCount >= count($activePlayers));
 
-        $decision = SchnauzerBot::decideTurn($hand, $table, $isKnocked);
+        $decision = SchnauzerBot::decideTurn($hand, $table, $isKnocked, $canKnock, $roundTurnCount);
 
         if ($decision['action'] === 'swap_one') {
             $this->swapOne($roomId, $activePlayerId, (int)$decision['hand_index'], (int)$decision['table_index']);
         } elseif ($decision['action'] === 'swap_all') {
             $this->swapAll($roomId, $activePlayerId);
-        } elseif ($decision['action'] === 'knock') {
+        } elseif ($decision['action'] === 'knock' && $canKnock) {
             $this->knock($roomId, $activePlayerId);
         } else {
             $this->passTurn($roomId, $activePlayerId);
@@ -852,11 +871,16 @@ class SchnauzerService
             ];
         }
 
+        $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
+        $roundTurnCount = (int)($state['round_turn_count'] ?? 0);
+
         return [
             'room_code' => $room['room_code'],
             'room_status' => $room['status'],
             'phase' => $phase,
             'round_number' => (int)($state['round_number'] ?? 0),
+            'round_turn_count' => $roundTurnCount,
+            'can_knock' => empty($state['knocked_by_player_id']) && ($roundTurnCount >= count($activePlayers)),
             'current_player_id' => $state['current_player_id'] ?? null,
             'dealer_id' => $state['dealer_id'] ?? null,
             'knocked_by_player_id' => $state['knocked_by_player_id'] ?? null,
