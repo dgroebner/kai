@@ -368,16 +368,21 @@
         const bannerEl = document.getElementById('table-turn-banner');
         const turnTextEl = document.getElementById('turn-indicator-text');
         if (bannerEl && turnTextEl) {
+            const activeP = data.players.find(p => p.id === data.current_player_id);
             if (data.knocked_by_player_id) {
                 bannerEl.classList.add('knocked-alert');
                 const knocker = data.players.find(p => p.id === data.knocked_by_player_id);
-                turnTextEl.textContent = `✊ ${knocker ? knocker.name : 'Jemand'} hat geklopft! Noch ${data.turns_after_knock_left} Züge bis zum Showdown!`;
+                const knockerName = knocker ? knocker.name : 'Jemand';
+                if (isMyTurn) {
+                    turnTextEl.textContent = `✊ Letzte Runde (${knockerName} hat geklopft) – DU BIST AM ZUG!`;
+                } else {
+                    turnTextEl.textContent = `✊ Letzte Runde (${knockerName} hat geklopft) – ${activeP ? activeP.name : 'Spieler'} ist am Zug...`;
+                }
             } else {
                 bannerEl.classList.remove('knocked-alert');
                 if (isMyTurn) {
                     turnTextEl.textContent = '🌟 DU BIST AM ZUG! Wähle deine Aktion';
                 } else {
-                    const activeP = data.players.find(p => p.id === data.current_player_id);
                     turnTextEl.textContent = `${activeP ? activeP.name : 'Spieler'} ist am Zug...`;
                 }
             }
@@ -465,7 +470,7 @@
             if (isMyTurn && !data.knocked_by_player_id && !knockAllowed) {
                 btnKnock.title = 'In der ersten Runde (erster Umlauf aller Spieler) darf nicht geklopft werden.';
             } else if (Boolean(data.knocked_by_player_id)) {
-                btnKnock.title = 'Es wurde bereits geklopft.';
+                btnKnock.title = 'Es wurde bereits geklopft (letzte Runde läuft).';
             } else {
                 btnKnock.title = 'Macht die Runde zu – jeder andere Spieler hat noch genau einen Zug.';
             }
