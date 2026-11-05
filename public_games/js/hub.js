@@ -115,6 +115,14 @@
             });
         }
 
+        // Kachel-Klick auf Schnauzer
+        const schnauzerCard = document.getElementById('card-schnauzer');
+        if (schnauzerCard && modal) {
+            schnauzerCard.addEventListener('click', () => {
+                openCreateModal('schnauzer', 'Neues Schnauzer (31) Spiel erstellen', false, false, false, false);
+            });
+        }
+
         // Modal schließen
         document.querySelectorAll('.js-close-modal').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -144,6 +152,9 @@
                     payload.game_mode = mode;
                 } else if (gameType === 'skipbo') {
                     mode = document.querySelector('input[name="skipbo_mode"]:checked')?.value || 'standard';
+                    payload.game_mode = mode;
+                } else if (gameType === 'schnauzer') {
+                    mode = 'standard';
                     payload.game_mode = mode;
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';

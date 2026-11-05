@@ -1,0 +1,345 @@
+/* ==========================================================================
+   Quarxl Schnauzer (31 / Schwimmen) CSS
+   ========================================================================== */
+
+.schnauzer-viewport {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, #173824 0%, #0c2316 65%, #06140d 100%);
+    color: #f8fafc;
+}
+
+/* --------------------------------------------------------------------------
+   HEADER
+   -------------------------------------------------------------------------- */
+.schnauzer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.85rem;
+    background: rgba(10, 26, 17, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 50;
+    flex-shrink: 0;
+}
+
+.schnauzer-header-left,
+.schnauzer-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.schnauzer-back-btn {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+.schnauzer-back-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
+}
+
+.schnauzer-room-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+/* --------------------------------------------------------------------------
+   LOBBY
+   -------------------------------------------------------------------------- */
+.schnauzer-lobby-box {
+    max-width: 460px;
+    width: 90%;
+    margin: auto;
+    background: rgba(15, 30, 22, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+
+.schnauzer-lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.schnauzer-lobby-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+/* --------------------------------------------------------------------------
+   ARENA
+   -------------------------------------------------------------------------- */
+.schnauzer-arena {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    position: relative;
+    padding: 0.5rem 0.5rem 0.75rem;
+    box-sizing: border-box;
+}
+
+/* GEGNER-LEISTE */
+.schnauzer-opponents-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    overflow-x: auto;
+    padding: 0.25rem 0;
+    flex-shrink: 0;
+}
+
+.schnauzer-opponent-card {
+    background: rgba(15, 32, 22, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0.45rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 90px;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.schnauzer-opponent-card.is-active {
+    border-color: #f59e0b;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.12);
+}
+
+.schnauzer-opponent-card.is-out {
+    opacity: 0.4;
+    filter: grayscale(1);
+}
+
+.opponent-avatar-wrap {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.opponent-name-text {
+    font-size: 0.78rem;
+    font-weight: 700;
+    max-width: 85px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opponent-lives-bar {
+    display: flex;
+    gap: 2px;
+    font-size: 0.85rem;
+}
+
+.opponent-cards-fan {
+    display: flex;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+.opponent-mini-back {
+    width: 14px;
+    height: 22px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 2px;
+}
+
+/* TISCHMITTE */
+.schnauzer-table-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    position: relative;
+}
+
+.table-turn-banner {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fef08a;
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    text-align: center;
+    max-width: 90%;
+}
+
+.table-turn-banner.knocked-alert {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    border-color: #ef4444;
+    color: #ffffff;
+    animation: pulseKnock 1.2s infinite;
+}
+
+@keyframes pulseKnock {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+    50% { transform: scale(1.03); box-shadow: 0 0 22px rgba(239, 68, 68, 0.7); }
+}
+
+.schnauzer-table-cards {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    perspective: 800px;
+}
+
+.table-instruction {
+    font-size: 0.76rem;
+    color: #94a3b8;
+    margin-top: 0.65rem;
+    text-align: center;
+}
+
+/* EIGENER BEREICH */
+.schnauzer-my-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.schnauzer-my-status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+    padding: 0 0.5rem;
+    box-sizing: border-box;
+}
+
+.my-lives-display {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1.15rem;
+}
+
+.my-score-badge {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #f59e0b;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.my-score-badge.is-schnauzer {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #0f172a;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.8);
+    font-weight: 900;
+    animation: pulseSchnauzer 1s infinite alternate;
+}
+
+@keyframes pulseSchnauzer {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
+}
+
+.schnauzer-my-hand {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    perspective: 800px;
+}
+
+/* AKTIONEN-LEISTE */
+.schnauzer-action-bar {
+    display: flex;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.schnauzer-action-bar .btn {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    border-radius: 8px;
+    flex: 1 1 auto;
+    min-width: 95px;
+}
+
+/* SHOWDOWN-LISTE */
+.showdown-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.showdown-player-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.65rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.showdown-player-card.is-loser {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.showdown-player-hand {
+    display: flex;
+    gap: 4px;
+    transform: scale(0.65);
+    transform-origin: right center;
+    margin-right: -15px;
+}
+
+.dealer-cards-preview {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    transform: scale(0.85);
+    transform-origin: center;
+    margin-bottom: -15px;
+}

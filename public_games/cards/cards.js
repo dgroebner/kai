@@ -26,6 +26,11 @@
             }
         },
         playCardSound() {
+            if (window.QuarxlCards && window.QuarxlCards.SoundFx) {
+                window.QuarxlCards.SoundFx.cardWhoosh();
+                window.QuarxlCards.SoundFx.cardPlace();
+                return;
+            }
             this.init();
             if (!this.ctx) return;
             const osc = this.ctx.createOscillator();
@@ -41,6 +46,10 @@
             osc.stop(this.ctx.currentTime + 0.09);
         },
         playDrawSound() {
+            if (window.QuarxlCards && window.QuarxlCards.SoundFx) {
+                window.QuarxlCards.SoundFx.cardWhoosh();
+                return;
+            }
             this.init();
             if (!this.ctx) return;
             const now = this.ctx.currentTime;

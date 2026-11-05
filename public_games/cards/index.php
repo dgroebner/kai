@@ -13,6 +13,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <link rel="apple-touch-icon" href="../apple-touch-icon.png">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="../css/games-hub.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="../css/playing-cards.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="./cards.css?v=<?= APP_VERSION ?>">
 </head>
 <body class="games-hub-body cards-viewport" data-room="<?= $roomCode ?>">
@@ -169,6 +170,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <!-- Scripts -->
     <script src="../js/http-hub.js?v=<?= APP_VERSION ?>"></script>
     <script src="../js/reactions.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="../js/playing-cards.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="./cards.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>

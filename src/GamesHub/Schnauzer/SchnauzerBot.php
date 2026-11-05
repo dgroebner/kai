@@ -1,0 +1,91 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Kai\Tools\GamesHub\Schnauzer;
+
+class SchnauzerBot
+{
+    /**
+     * Trifft die Geber-Entscheidung (erstes 3er-Päckchen behalten oder mit dem zweiten tauschen).
+     *
+     * @param array<int, array<string, mixed>> $handA
+     * @param array<int, array<string, mixed>> $handB
+     */
+    public static function decideDealerChoice(array $handA, array $handB): string
+    {
+        $scoreA = SchnauzerScoreCalculator::calculateScore($handA)['score'];
+        $scoreB = SchnauzerScoreCalculator::calculateScore($handB)['score'];
+
+        return ($scoreB > $scoreA) ? 'swap' : 'keep';
+    }
+
+    /**
+     * Trifft die taktische Entscheidung für einen regulären Spielzug.
+     *
+     * @param array<int, array<string, mixed>> $hand
+     * @param array<int, array<string, mixed>> $table
+     * @param bool $isKnocked Ist die Schlussrunde bereits eingeläutet?
+     * @return array{action: 'swap_one'|'swap_all'|'knock'|'pass', hand_index?: int, table_index?: int}
+     */
+    public static function decideTurn(array $hand, array $table, bool $isKnocked): array
+    {
+        $curr = SchnauzerScoreCalculator::calculateScore($hand);
+        $currScore = $curr['score'];
+
+        // 1. Wenn der Bot bereits 31 oder 33 Punkte auf der Hand hat
+        if ($currScore >= 31.0) {
+            return ['action' => 'pass'];
+        }
+
+        // 2. Alle 9 Einzelkarten-Tausche simulieren
+        $bestSingleScore = -1.0;
+        $bestH = 0;
+        $bestT = 0;
+
+        for ($h = 0; $h < count($hand); $h++) {
+            for ($t = 0; $t < count($table); $t++) {
+                $simulatedHand = $hand;
+                $simulatedHand[$h] = $table[$t];
+                $simScore = SchnauzerScoreCalculator::calculateScore($simulatedHand)['score'];
+                if ($simScore > $bestSingleScore) {
+                    $bestSingleScore = $simScore;
+                    $bestH = $h;
+                    $bestT = $t;
+                }
+            }
+        }
+
+        // 3. Tausch aller 3 Karten simulieren
+        $swapAllScore = SchnauzerScoreCalculator::calculateScore($table)['score'];
+
+        // 4. Prüfen, ob Tausch aller 3 Karten besser ist als Einzeltausch und aktuelle Hand
+        if ($swapAllScore > $currScore && $swapAllScore > $bestSingleScore) {
+            return ['action' => 'swap_all'];
+        }
+
+        // 5. Prüfen, ob Einzeltausch die Hand verbessert
+        if ($bestSingleScore > $currScore) {
+            return [
+                'action' => 'swap_one',
+                'hand_index' => $bestH,
+                'table_index' => $bestT,
+            ];
+        }
+
+        // 6. Kein Tausch verbessert die Hand
+        if (!$isKnocked) {
+            // Bei 27 Punkten oder mehr macht der Bot zu (klopfen)
+            if ($currScore >= 27.0) {
+                return ['action' => 'knock'];
+            }
+            // Bei 24-26 Punkten überlegt der Bot manchmal zu klopfen
+            if ($currScore >= 24.0 && random_int(1, 100) <= 65) {
+                return ['action' => 'knock'];
+            }
+        }
+
+        // 7. Schieben
+        return ['action' => 'pass'];
+    }
+}

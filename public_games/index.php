@@ -106,6 +106,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–6 Spieler</span>
             </div>
+
+            <!-- Schnauzer Kachel -->
+            <div class="game-kachel" id="card-schnauzer" role="button" tabindex="0">
+                <div class="game-kachel-icon">🪙</div>
+                <div class="game-kachel-content">
+                    <h2>Schnauzer (31)</h2>
+                    <p>Der traditionsreiche Kartenspiel-Klassiker (Schwimmen / Knack). Tausche Karten, schiebe oder klopfe – mit 3 Leben und wahlweise deutschem oder französischem Blatt!</p>
+                </div>
+                <span class="game-kachel-badge">2–8 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
