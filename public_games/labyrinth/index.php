@@ -38,6 +38,32 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
     </header>
 
+    <!-- SVG Defs für 3D-Spielfiguren -->
+    <svg class="lb-svg-defs" aria-hidden="true" style="position: absolute; width: 0; height: 0; overflow: hidden;">
+        <defs>
+            <radialGradient id="lb-grad-yellow" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#fff59d"/>
+                <stop offset="45%" stop-color="#f59e0b"/>
+                <stop offset="100%" stop-color="#b45309"/>
+            </radialGradient>
+            <radialGradient id="lb-grad-red" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#fca5a5"/>
+                <stop offset="45%" stop-color="#ef4444"/>
+                <stop offset="100%" stop-color="#991b1b"/>
+            </radialGradient>
+            <radialGradient id="lb-grad-green" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#86efac"/>
+                <stop offset="45%" stop-color="#10b981"/>
+                <stop offset="100%" stop-color="#064e3b"/>
+            </radialGradient>
+            <radialGradient id="lb-grad-blue" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#93c5fd"/>
+                <stop offset="45%" stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#1e3a8a"/>
+            </radialGradient>
+        </defs>
+    </svg>
+
     <!-- BEITRITT-OVERLAY -->
     <div id="join-modal" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
         <div class="hub-modal text-center">

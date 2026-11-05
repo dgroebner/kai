@@ -318,10 +318,10 @@
             const progress = p.returning_home ? '🏠 Rückweg!' : `${done}/${total} Schätze`;
             const found = p.collected.map((id) => HubHtml.escape(data.treasures[id]?.emoji || '')).join('');
             return `
-                <div class="lb-player-chip ${p.is_active ? 'is-active' : ''}">
+                <div class="lb-player-chip ${p.is_active ? 'is-active' : ''} ${p.is_me ? 'is-me' : ''}">
                     <span class="lb-dot lb-c-${safeColor(p.color)}"></span>
                     <div class="lb-player-meta">
-                        <span class="lb-player-name">${HubHtml.escape(p.player_name)}${p.is_me ? ' (Du)' : ''}</span>
+                        <span class="lb-player-name">${HubHtml.escape(p.player_name)}${p.is_me ? ' <span class="lb-me-pill">Du</span>' : ''}</span>
                         <span class="lb-player-progress">${progress} ${found}</span>
                     </div>
                 </div>`;
@@ -338,9 +338,25 @@
         if (tile.start) classes.push('is-start', `lb-c-${safeColor(tile.start)}`);
         if (opts.reachable) classes.push('is-reachable');
         if (opts.target) classes.push('is-target');
-        const pawns = (opts.pawns || []).map((c) => `<span class="lb-pawn lb-c-${safeColor(c)}"></span>`).join('');
+
+        const pawnsList = opts.pawns || [];
+        if (pawnsList.length > 0) classes.push('has-pawns');
+
+        const pawnsHtml = pawnsList.map((p) => {
+            const c = safeColor(p.color);
+            const isMeClass = p.is_me ? 'is-me' : '';
+            const star = p.is_me ? '<circle cx="12" cy="22" r="3.2" fill="#fff" stroke="#111" stroke-width="0.8"/>' : '';
+            return `
+                <svg viewBox="0 0 24 32" class="lb-pawn-fig lb-pawn-${c} ${isMeClass}" title="${HubHtml.escape(p.player_name)}">
+                    <path d="M12 2 C8.7 2 6 4.7 6 8 C6 10.3 7.3 12.3 9.2 13.3 C7.5 15.5 5 21 4 26 C3.5 28.5 5.5 30 12 30 C18.5 30 20.5 28.5 20 26 C19 21 16.5 15.5 14.8 13.3 C16.7 12.3 18 10.3 18 8 C18 4.7 15.3 2 12 2 Z" fill="url(#lb-grad-${c})" stroke="#111" stroke-width="1.8" stroke-linejoin="round"/>
+                    <ellipse cx="10" cy="6" rx="2.2" ry="1.3" fill="#fff" opacity="0.65"/>
+                    ${star}
+                </svg>`;
+        }).join('');
+
+        const multiClass = pawnsList.length > 1 ? ' is-multi' : '';
         const coords = opts.r === undefined ? '' : ` data-r="${opts.r}" data-c="${opts.c}"`;
-        return `<div class="${classes.join(' ')}"${coords}>${arms}${treasure}<div class="lb-pawns">${pawns}</div></div>`;
+        return `<div class="${classes.join(' ')}"${coords}>${arms}${treasure}<div class="lb-pawns${multiClass}">${pawnsHtml}</div></div>`;
     }
 
     function renderBoard(data) {
@@ -356,7 +372,7 @@
                     const r = gr - 1;
                     const c = gc - 1;
                     const key = `${r},${c}`;
-                    const pawns = data.players.filter((p) => p.pos && p.pos[0] === r && p.pos[1] === c).map((p) => p.color);
+                    const pawns = data.players.filter((p) => p.pos && p.pos[0] === r && p.pos[1] === c);
                     cells.push(tileHtml(data.board[r][c], data, { r, c, pawns, reachable: reachable.has(key), target: key === targetCell }));
                     continue;
                 }
