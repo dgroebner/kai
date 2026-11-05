@@ -126,6 +126,16 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–8 Spieler</span>
             </div>
+
+            <!-- Das verrückte Labyrinth Kachel -->
+            <div class="game-kachel" id="card-labyrinth" role="button" tabindex="0">
+                <div class="game-kachel-icon">🧭</div>
+                <div class="game-kachel-content">
+                    <h2>Das verrückte Labyrinth</h2>
+                    <p>Schiebe Gänge, öffne Wege und sammle als Erster deine geheimen Schätze ein – auch gegen clevere KI-Bots!</p>
+                </div>
+                <span class="game-kachel-badge">2–4 Spieler</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
@@ -226,6 +236,25 @@ require_once __DIR__ . '/../bootstrap.php';
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                             <input type="radio" name="skipbo_mode" value="classic">
                             <span><strong>Klassisch lang (30 Karten):</strong> Das originale Skip-Bo Turnier-Erlebnis</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Labyrinth Optionen -->
+                <div class="form-group hidden" id="group-labyrinth-modes">
+                    <label>Anzahl Schätze pro Spieler:</label>
+                    <div class="hub-radio-list">
+                        <label class="hub-radio-option">
+                            <input type="radio" name="labyrinth_mode" value="standard" checked>
+                            <span><strong>Standard (5 Schätze):</strong> Ausgewogene Spieldauer, ca. 10–15 Minuten</span>
+                        </label>
+                        <label class="hub-radio-option">
+                            <input type="radio" name="labyrinth_mode" value="fast">
+                            <span><strong>Schnelle Runde (3 Schätze):</strong> Perfekt für zwischendurch</span>
+                        </label>
+                        <label class="hub-radio-option">
+                            <input type="radio" name="labyrinth_mode" value="classic">
+                            <span><strong>Klassisch (alle 24 Schätze):</strong> Gleichmäßig auf alle Spieler verteilt</span>
                         </label>
                     </div>
                 </div>

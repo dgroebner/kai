@@ -34,6 +34,7 @@
         const loch6Group = document.getElementById('group-loch6-modes');
         const skipboGroup = document.getElementById('group-skipbo-modes');
         const schnauzerGroup = document.getElementById('group-schnauzer-modes');
+        const labyrinthGroup = document.getElementById('group-labyrinth-modes');
         const pinInput = document.getElementById('quarxl-table-access-code') || document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
@@ -64,7 +65,7 @@
 
         updateSavedPinField();
 
-        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false, showSchnauzer = false) {
+        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false, showSchnauzer = false, showLabyrinth = false) {
             if (gameTypeInput) gameTypeInput.value = gameType;
             if (modalTitle) modalTitle.textContent = title;
             if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
@@ -72,6 +73,7 @@
             if (loch6Group) loch6Group.classList.toggle('hidden', !showLoch6);
             if (skipboGroup) skipboGroup.classList.toggle('hidden', !showSkipBo);
             if (schnauzerGroup) schnauzerGroup.classList.toggle('hidden', !showSchnauzer);
+            if (labyrinthGroup) labyrinthGroup.classList.toggle('hidden', !showLabyrinth);
             updateSavedPinField();
             modal.classList.remove('hidden');
             if (pinInput && !pinInput.value) {
@@ -143,6 +145,14 @@
             });
         }
 
+        // Kachel-Klick auf Das verrückte Labyrinth
+        const labyrinthCard = document.getElementById('card-labyrinth');
+        if (labyrinthCard && modal) {
+            labyrinthCard.addEventListener('click', () => {
+                openCreateModal('labyrinth', 'Neues Labyrinth-Spiel erstellen', false, false, false, false, false, true);
+            });
+        }
+
         // Modal schließen
         document.querySelectorAll('.js-close-modal').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -179,6 +189,9 @@
                     payload.three_aces_33 = Boolean(document.getElementById('schnauzer-three-aces-33')?.checked);
                 } else if (gameType === 'poker') {
                     mode = 'standard';
+                    payload.game_mode = mode;
+                } else if (gameType === 'labyrinth') {
+                    mode = document.querySelector('input[name="labyrinth_mode"]:checked')?.value || 'standard';
                     payload.game_mode = mode;
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';

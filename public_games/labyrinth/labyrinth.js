@@ -1,0 +1,406 @@
+/**
+ * labyrinth.js - Quarxl "Das verrückte Labyrinth" Client
+ * Reines Rendering + Eingaben; die Spiellogik liegt vollständig auf dem Server.
+ */
+(function () {
+    'use strict';
+
+    const COLORS = ['yellow', 'red', 'green', 'blue'];
+    const ARROW_GLYPHS = { TOP: '▼', BOTTOM: '▲', LEFT: '▶', RIGHT: '◀' };
+    const MODE_DESC = {
+        fast: 'Schnelle Runde: 3 Schätze pro Spieler',
+        standard: 'Standard-Runde: 5 Schätze pro Spieler',
+        classic: 'Klassisch: alle 24 Schätze werden verteilt',
+    };
+
+    const state = {
+        roomCode: '',
+        playerToken: '',
+        isHost: false,
+        data: null,
+        spareSteps: 0,
+        lastEventId: null,
+        lastRenderKey: '',
+        pollTimer: null,
+        pollIntervalMs: 1500,
+        isPolling: false,
+        busy: false,
+    };
+
+    const el = (id) => document.getElementById(id);
+    const safeColor = (c) => (COLORS.includes(c) ? c : 'yellow');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        state.roomCode = (urlParams.get('room') || document.body.dataset.room || '').toUpperCase().trim();
+        state.playerToken = localStorage.getItem('kai_gh_player_token') || '';
+
+        bindStaticHandlers();
+        initRoom();
+    });
+
+    // -------------------------------------------------------------------------
+    // EVENTS (Delegation)
+    // -------------------------------------------------------------------------
+    function bindStaticHandlers() {
+        document.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.closest('.js-btn-rules')) el('rules-modal').classList.remove('hidden');
+            if (target.closest('.js-close-rules')) el('rules-modal').classList.add('hidden');
+            if (target.closest('.js-btn-back-hub')) window.location.href = '../index.php';
+            if (target.closest('.js-share-whatsapp')) shareWhatsapp();
+            if (target.closest('.js-btn-edit-name')) editName();
+            if (target.closest('.js-btn-confirm-join')) confirmJoin();
+            if (target.closest('#btn-add-bot')) hostAction('add_bot');
+            if (target.closest('#btn-start-game')) hostAction('start');
+            if (target.closest('#btn-play-again')) hostAction('rematch');
+            if (target.closest('#btn-rotate-left')) rotateSpare(-1);
+            if (target.closest('#btn-rotate-right')) rotateSpare(1);
+            if (target.closest('#btn-stay')) stayInPlace();
+
+            const removeBtn = target.closest('.js-remove-bot');
+            if (removeBtn) hostAction('remove_bot', { bot_id: parseInt(removeBtn.dataset.botId, 10) });
+
+            const arrow = target.closest('.lb-arrow.is-active');
+            if (arrow) shiftTile(arrow.dataset.side, parseInt(arrow.dataset.index, 10));
+
+            const tile = target.closest('.lb-tile.is-reachable');
+            if (tile) movePawn(parseInt(tile.dataset.r, 10), parseInt(tile.dataset.c, 10));
+        });
+    }
+
+    function shareWhatsapp() {
+        const text = `Komm an meinen Labyrinth-Tisch auf Quarxl! Raum-Code: ${state.roomCode}\n${window.location.href}`;
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    async function editName() {
+        const current = localStorage.getItem('kai_gh_player_name') || 'Ich';
+        const next = await HubDialog.prompt('Spielername ändern', 'Dein neuer Spielername:', current);
+        const trimmed = (next || '').trim().substring(0, 25);
+        if (!trimmed || trimmed === current) return;
+
+        const res = await api('update_name', { player_name: trimmed });
+        if (res.ok && res.data?.success) {
+            localStorage.setItem('kai_gh_player_name', trimmed);
+            pollState();
+        }
+    }
+
+    async function confirmJoin() {
+        const errBox = el('join-error');
+        const name = el('join-player-name')?.value.trim() || 'Gast';
+        const res = await HubHttp.postJson('./api.php?action=join', { room_code: state.roomCode, player_name: name });
+
+        if (res.ok && res.data?.success) {
+            state.playerToken = res.data.player_token;
+            localStorage.setItem('kai_gh_player_token', state.playerToken);
+            localStorage.setItem('kai_gh_player_name', name);
+            el('join-modal').classList.add('hidden');
+            startPolling();
+            pollState();
+        } else if (errBox) {
+            errBox.textContent = res.data?.message || 'Fehler beim Beitritt';
+            errBox.classList.remove('hidden');
+        }
+    }
+
+    async function hostAction(action, extra = {}) {
+        const res = await api(action, extra);
+        if (!(res.ok && res.data?.success)) {
+            await HubDialog.alert('Aktion nicht möglich', res.data?.message || 'Unbekannter Fehler', '⚠️');
+        }
+        pollState(true);
+    }
+
+    function api(action, payload = {}) {
+        return HubHttp.postJson(`./api.php?action=${action}`, { room_code: state.roomCode, ...payload });
+    }
+
+    // -------------------------------------------------------------------------
+    // SPIELZÜGE
+    // -------------------------------------------------------------------------
+    function rotateSpare(direction) {
+        state.spareSteps = (state.spareSteps + direction + 4) % 4;
+        if (state.data) renderSide(state.data);
+    }
+
+    async function shiftTile(side, index) {
+        if (state.busy || !state.data?.is_my_turn || state.data.phase !== 'shift') return;
+        state.busy = true;
+        const rotation = (state.data.spare.rot + state.spareSteps * 90) % 360;
+        const res = await api('shift', { side, index, rotation });
+        state.busy = false;
+        if (res.ok && res.data?.success) {
+            state.spareSteps = 0;
+        } else {
+            await HubDialog.alert('Einschub nicht möglich', res.data?.message || 'Fehler', '🚫');
+        }
+        pollState(true);
+    }
+
+    async function movePawn(row, col) {
+        if (state.busy || !state.data?.is_my_turn || state.data.phase !== 'move') return;
+        state.busy = true;
+        const res = await api('move', { row, col });
+        state.busy = false;
+        if (!(res.ok && res.data?.success)) {
+            await HubDialog.alert('Zug nicht möglich', res.data?.message || 'Fehler', '🚫');
+        }
+        pollState(true);
+    }
+
+    function stayInPlace() {
+        const me = state.data?.players.find((p) => p.is_me);
+        if (me?.pos) movePawn(me.pos[0], me.pos[1]);
+    }
+
+    // -------------------------------------------------------------------------
+    // POLLING
+    // -------------------------------------------------------------------------
+    async function initRoom() {
+        if (!state.roomCode) {
+            window.location.href = '../index.php';
+            return;
+        }
+        el('room-code-display').textContent = `RAUM: ${state.roomCode}`;
+        const savedName = localStorage.getItem('kai_gh_player_name');
+        if (savedName) {
+            document.querySelectorAll('.js-my-name-display').forEach((n) => { n.textContent = savedName; });
+        }
+
+        if (!state.playerToken || !(await pollState(true))) {
+            const nameInput = el('join-player-name');
+            if (savedName && nameInput) nameInput.value = savedName;
+            el('join-modal').classList.remove('hidden');
+            return;
+        }
+        startPolling();
+    }
+
+    function startPolling(intervalMs = 1500) {
+        if (state.pollTimer) clearInterval(state.pollTimer);
+        state.pollIntervalMs = intervalMs;
+        state.pollTimer = setInterval(() => pollState(), intervalMs);
+    }
+
+    async function pollState(force = false) {
+        if (!state.roomCode || !state.playerToken || (state.isPolling && !force)) return false;
+        state.isPolling = true;
+        try {
+            const res = await HubHttp.getJson(`./api.php?action=state&room=${encodeURIComponent(state.roomCode)}`);
+            if (res.ok && res.data?.success) {
+                renderGame(res.data.data);
+                return true;
+            }
+            if (res.status === 401 || res.status === 404) {
+                clearInterval(state.pollTimer);
+                el('join-modal').classList.remove('hidden');
+                return false;
+            }
+        } catch (err) {
+            console.error('Labyrinth Poll Fehler:', err);
+        } finally {
+            state.isPolling = false;
+        }
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // RENDERING
+    // -------------------------------------------------------------------------
+    function renderGame(data) {
+        const { recent_reactions: _ignored, ...stable } = data;
+        const key = JSON.stringify(stable);
+        if (key === state.lastRenderKey) return;
+        state.lastRenderKey = key;
+
+        const previous = state.data;
+        state.data = data;
+
+        const me = data.players.find((p) => p.is_me);
+        if (me) {
+            state.isHost = me.is_host;
+            document.querySelectorAll('.js-my-name-display').forEach((n) => { n.textContent = me.player_name; });
+        }
+
+        const botTurn = data.status === 'active' && !data.is_my_turn && data.players.some((p) => p.is_active && p.is_bot);
+        const wanted = botTurn ? 1000 : 1500;
+        if (wanted !== state.pollIntervalMs) startPolling(wanted);
+
+        el('game-mode-badge').textContent = `Labyrinth (${data.status === 'lobby' ? 'Lobby' : data.cards_per_player + ' Schätze'})`;
+        el('lobby-mode-desc').textContent = MODE_DESC[data.game_mode] || MODE_DESC.standard;
+
+        const inLobby = data.status === 'lobby';
+        el('pane-lobby').classList.toggle('hidden', !inLobby);
+        el('pane-game').classList.toggle('hidden', inLobby);
+        el('modal-winner').classList.toggle('hidden', data.status !== 'finished');
+
+        if (inLobby) {
+            state.spareSteps = 0;
+            renderLobby(data);
+            return;
+        }
+
+        const evt = data.last_event;
+        const isNewEvent = evt && evt.event_id !== state.lastEventId;
+        if (evt?.type === 'shift' || evt?.type === 'move') state.spareSteps = 0;
+        if (evt?.message) el('event-ticker').textContent = evt.message;
+
+        renderPlayers(data);
+        renderBoard(data);
+        renderSide(data);
+
+        if (isNewEvent && previous && evt.type === 'shift') flashShiftedLine(evt);
+        state.lastEventId = evt ? evt.event_id : null;
+
+        if (data.status === 'finished') renderWinner(data);
+    }
+
+    function renderLobby(data) {
+        el('lobby-players-list').innerHTML = data.players.map((p, idx) => {
+            const role = p.is_host ? '👑 Host' : (p.is_bot ? '🤖 Bot' : 'Spieler');
+            const removeBtn = state.isHost && p.is_bot
+                ? `<button type="button" class="btn btn-sm btn-outline js-remove-bot" data-bot-id="${p.id}" title="Bot entfernen">✕</button>`
+                : '';
+            return `
+                <div class="lb-lobby-row">
+                    <div class="lb-lobby-row-main">
+                        <strong>#${idx + 1}</strong>
+                        <span>${HubHtml.escape(p.player_name)} ${p.is_me ? '<strong>(Du)</strong>' : ''}</span>
+                    </div>
+                    <div class="lb-lobby-row-main"><span class="badge">${role}</span>${removeBtn}</div>
+                </div>`;
+        }).join('');
+
+        el('btn-add-bot').classList.toggle('hidden', !state.isHost || data.players.length >= 4);
+        el('btn-start-game').classList.toggle('hidden', !state.isHost);
+        el('lobby-waiting-notice').classList.toggle('hidden', state.isHost);
+    }
+
+    function renderPlayers(data) {
+        el('players-bar').innerHTML = data.players.map((p) => {
+            const done = p.collected.length;
+            const total = done + p.remaining;
+            const progress = p.returning_home ? '🏠 Rückweg!' : `${done}/${total} Schätze`;
+            const found = p.collected.map((id) => HubHtml.escape(data.treasures[id]?.emoji || '')).join('');
+            return `
+                <div class="lb-player-chip ${p.is_active ? 'is-active' : ''}">
+                    <span class="lb-dot lb-c-${safeColor(p.color)}"></span>
+                    <div class="lb-player-meta">
+                        <span class="lb-player-name">${HubHtml.escape(p.player_name)}${p.is_me ? ' (Du)' : ''}</span>
+                        <span class="lb-player-progress">${progress} ${found}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function tileHtml(tile, data, opts = {}) {
+        const open = opts.steps ? tile.open.map((d) => (d + opts.steps) % 4) : tile.open;
+        const arms = open.map((d) => `<span class="lb-arm d${d}"></span>`).join('');
+        const treasure = tile.treasure && data.treasures[tile.treasure]
+            ? `<span class="lb-treasure">${HubHtml.escape(data.treasures[tile.treasure].emoji)}</span>` : '';
+        const classes = ['lb-tile'];
+        if (tile.fixed) classes.push('is-fixed');
+        if (tile.start) classes.push('is-start', `lb-c-${safeColor(tile.start)}`);
+        if (opts.reachable) classes.push('is-reachable');
+        if (opts.target) classes.push('is-target');
+        const pawns = (opts.pawns || []).map((c) => `<span class="lb-pawn lb-c-${safeColor(c)}"></span>`).join('');
+        const coords = opts.r === undefined ? '' : ` data-r="${opts.r}" data-c="${opts.c}"`;
+        return `<div class="${classes.join(' ')}"${coords}>${arms}${treasure}<div class="lb-pawns">${pawns}</div></div>`;
+    }
+
+    function renderBoard(data) {
+        const myTurnShift = data.is_my_turn && data.phase === 'shift';
+        const reachable = new Set((data.reachable || []).map(([r, c]) => `${r},${c}`));
+        const targetCell = data.my_target_cell ? `${data.my_target_cell[0]},${data.my_target_cell[1]}` : '';
+        const cells = [];
+
+        for (let gr = 0; gr < 9; gr++) {
+            for (let gc = 0; gc < 9; gc++) {
+                const inner = gr >= 1 && gr <= 7 && gc >= 1 && gc <= 7;
+                if (inner) {
+                    const r = gr - 1;
+                    const c = gc - 1;
+                    const key = `${r},${c}`;
+                    const pawns = data.players.filter((p) => p.pos && p.pos[0] === r && p.pos[1] === c).map((p) => p.color);
+                    cells.push(tileHtml(data.board[r][c], data, { r, c, pawns, reachable: reachable.has(key), target: key === targetCell }));
+                    continue;
+                }
+                cells.push(arrowHtml(gr, gc, data, myTurnShift));
+            }
+        }
+        el('lb-board').innerHTML = cells.join('');
+    }
+
+    function arrowHtml(gr, gc, data, active) {
+        const evenCol = gc % 2 === 0 && gc >= 2 && gc <= 6;
+        const evenRow = gr % 2 === 0 && gr >= 2 && gr <= 6;
+        let side = null;
+        let index = null;
+        if (gr === 0 && evenCol) { side = 'TOP'; index = gc - 1; }
+        else if (gr === 8 && evenCol) { side = 'BOTTOM'; index = gc - 1; }
+        else if (gc === 0 && evenRow) { side = 'LEFT'; index = gr - 1; }
+        else if (gc === 8 && evenRow) { side = 'RIGHT'; index = gr - 1; }
+        if (!side) return '<div></div>';
+
+        const forbidden = data.forbidden && data.forbidden.side === side && data.forbidden.index === index;
+        const classes = ['lb-arrow'];
+        if (forbidden) classes.push('is-forbidden');
+        else if (active) classes.push('is-active');
+        const glyph = forbidden ? '🚫' : ARROW_GLYPHS[side];
+        return `<div class="lb-arrow-slot"><button type="button" class="${classes.join(' ')}" data-side="${side}" data-index="${index}">${glyph}</button></div>`;
+    }
+
+    function renderSide(data) {
+        const target = el('my-target');
+        if (data.my_target === 'home') {
+            target.innerHTML = '<span class="lb-target-emoji">🏠</span><span class="lb-target-name">Zurück zum Startfeld!</span>';
+        } else if (data.my_target && data.treasures[data.my_target]) {
+            const t = data.treasures[data.my_target];
+            target.innerHTML = `<span class="lb-target-emoji">${HubHtml.escape(t.emoji)}</span><span class="lb-target-name">${HubHtml.escape(t.name)}</span>`;
+        } else {
+            target.textContent = '–';
+        }
+
+        if (data.spare) {
+            el('spare-holder').innerHTML = tileHtml(data.spare, data, { steps: state.spareSteps });
+        }
+
+        const badge = el('turn-status-badge');
+        const guide = el('turn-guide-text');
+        const active = data.players.find((p) => p.is_active);
+        badge.classList.toggle('is-my-turn', !!data.is_my_turn);
+        el('btn-stay').classList.toggle('hidden', !(data.is_my_turn && data.phase === 'move'));
+
+        if (data.status === 'finished') {
+            badge.textContent = '🏁 Beendet';
+            guide.textContent = 'Das Spiel ist vorbei.';
+        } else if (data.is_my_turn) {
+            badge.textContent = '🟢 DU BIST AM ZUG';
+            guide.textContent = data.phase === 'shift'
+                ? 'Drehe die freie Kachel (↺/↻) und schiebe sie über einen Pfeil am Rand ein.'
+                : 'Tippe auf ein grün markiertes Feld, um dorthin zu ziehen.';
+        } else {
+            badge.textContent = '⏳ Warte';
+            guide.textContent = active ? `${active.player_name} ist am Zug...` : 'Warte auf den nächsten Zug...';
+        }
+    }
+
+    function flashShiftedLine(evt) {
+        const cells = [];
+        for (let i = 0; i < 7; i++) {
+            if (evt.side === 'TOP' || evt.side === 'BOTTOM') cells.push([i, evt.index]);
+            else cells.push([evt.index, i]);
+        }
+        cells.forEach(([r, c]) => {
+            el('lb-board').querySelector(`.lb-tile[data-r="${r}"][data-c="${c}"]`)?.classList.add('is-flash');
+        });
+    }
+
+    function renderWinner(data) {
+        el('winner-message').textContent = `${data.winner_name} ist zurück am Startfeld und gewinnt das Labyrinth! 🏆`;
+        el('btn-play-again').classList.toggle('hidden', !state.isHost);
+        el('winner-wait-notice').classList.toggle('hidden', state.isHost);
+    }
+})();
