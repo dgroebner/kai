@@ -332,15 +332,9 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // 11. SPIEL NEUSTARTEN (nach Game Over, nur Host)
+    // 11. SPIEL NEUSTARTEN (nach Game Over / Showdown)
     // -------------------------------------------------------------------------
     if ($action === 'restart') {
-        if (!$myPlayer['is_host']) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Nur der Host kann neu starten.']);
-            exit;
-        }
-
         $res = $service->restartGame($roomId);
         echo json_encode($res);
         exit;

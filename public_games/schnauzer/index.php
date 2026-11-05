@@ -181,26 +181,6 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
     </div>
 
-    <!-- GAME OVER MODAL -->
-    <div id="modal-game-over" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
-        <div class="hub-modal text-center" style="max-width: 440px;">
-            <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🏆</div>
-            <h2 class="hub-modal-title" style="font-size: 1.6rem;">Spiel beendet!</h2>
-            <div id="game-over-winner-text" style="font-size: 1.25rem; font-weight: 800; color: #f59e0b; margin: 1rem 0;"></div>
-            <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 1.5rem;">
-                Alle anderen Spieler sind leider im Schnauzer-Becken untergegangen.
-            </p>
-            <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-                <button type="button" class="btn btn-secondary js-btn-view-cards" id="btn-view-cards" style="width: 100%;">
-                    🃏 Letzte Runde / Karten ansehen
-                </button>
-                <button type="button" class="btn btn-primary btn-lg js-btn-restart-game" id="btn-restart-game" style="width: 100%;">
-                    🔄 Neues Spiel starten
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- SCRIPTE -->
     <script src="../js/http-hub.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="../js/reactions.js?v=<?= APP_VERSION ?>" defer></script>

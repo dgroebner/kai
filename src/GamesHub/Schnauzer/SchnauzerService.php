@@ -714,7 +714,8 @@ class SchnauzerService
             $this->repo->updatePlayerSheet((int)$p['id'], $sheet, 3);
         }
 
-        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        $roomState = $room['state'] ?? [];
+        $threeAces33 = !empty($roomState['rules']['three_aces_33']);
         $state = $this->getInitialState($threeAces33);
         $this->repo->updateRoomState($roomId, $state, 'lobby');
         return ['success' => true];

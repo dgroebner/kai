@@ -269,23 +269,13 @@
             dealerModal?.classList.add('hidden');
         }
 
-        // Showdown Modal
+        // Showdown Modal (auch bei Spielende / Auswertung)
         const showdownModal = document.getElementById('modal-showdown');
-        if (phase === 'showdown') {
+        if (phase === 'showdown' || phase === 'game_over') {
             showdownModal?.classList.remove('hidden');
             renderShowdown(data);
         } else {
             showdownModal?.classList.add('hidden');
-        }
-
-        // Game Over Modal
-        const gameOverModal = document.getElementById('modal-game-over');
-        if (phase === 'game_over') {
-            gameOverModal?.classList.remove('hidden');
-            const wText = document.getElementById('game-over-winner-text');
-            if (wText) wText.textContent = `Glückwunsch an ${data.round_result?.winner_name || 'den Gewinner'}!`;
-        } else {
-            gameOverModal?.classList.add('hidden');
         }
 
         renderArena(data, myPlayer);
@@ -555,14 +545,9 @@
         if (actionsCont) {
             if (isGameOver) {
                 actionsCont.innerHTML = `
-                    <div style="display: flex; gap: 0.5rem; width: 100%;">
-                        <button type="button" class="btn btn-warning btn-lg js-btn-open-ceremony" id="btn-open-ceremony" style="flex: 1; font-weight:800;">
-                            🏆 Zur Siegerehrung
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-lg js-btn-restart-game" style="flex: 1;">
-                            🔄 Neues Spiel
-                        </button>
-                    </div>
+                    <button type="button" class="btn btn-primary btn-lg js-btn-restart-game" id="btn-restart-game" style="width: 100%; font-weight: 800;">
+                        🔄 Neues Spiel starten
+                    </button>
                 `;
             } else {
                 actionsCont.innerHTML = `
@@ -666,7 +651,7 @@
             pollStatus();
         });
 
-        // Nächste Runde, Siegerehrung, Kartenansicht & Neustart via Event Delegation
+        // Nächste Runde & Neustart via Event Delegation
         document.addEventListener('click', async (e) => {
             const btnNext = e.target.closest('.js-btn-next-round');
             if (btnNext) {
@@ -676,26 +661,15 @@
                 return;
             }
 
-            const btnCeremony = e.target.closest('.js-btn-open-ceremony');
-            if (btnCeremony) {
-                document.getElementById('modal-showdown')?.classList.add('hidden');
-                document.getElementById('modal-game-over')?.classList.remove('hidden');
-                return;
-            }
-
-            const btnViewCards = e.target.closest('.js-btn-view-cards');
-            if (btnViewCards) {
-                document.getElementById('modal-game-over')?.classList.add('hidden');
-                document.getElementById('modal-showdown')?.classList.remove('hidden');
-                return;
-            }
-
             const btnRestart = e.target.closest('.js-btn-restart-game');
             if (btnRestart) {
-                await HubHttp.postJson(`./api.php?action=restart&room=${encodeURIComponent(roomCode)}`);
-                document.getElementById('modal-game-over')?.classList.add('hidden');
-                document.getElementById('modal-showdown')?.classList.add('hidden');
-                pollStatus();
+                const res = await HubHttp.postJson(`./api.php?action=restart&room=${encodeURIComponent(roomCode)}`);
+                if (res.ok) {
+                    document.getElementById('modal-showdown')?.classList.add('hidden');
+                    pollStatus();
+                } else if (res.data?.message) {
+                    await HubDialog.alert('Hinweis', res.data.message, '⚠️');
+                }
                 return;
             }
         });
