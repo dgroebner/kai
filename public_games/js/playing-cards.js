@@ -352,7 +352,7 @@
     // -------------------------------------------------------------------------
 
     // Normalisierung von Farben und Rängen
-    function normalizeCardData(card) {
+    function normalizeCardData(card, options = {}) {
         let suit = (card.suit || card.color || '').toLowerCase();
         let rank = (card.rank || (card.value !== undefined ? String(card.value) : '')).toUpperCase();
 
@@ -368,10 +368,13 @@
         }
 
         // Rang-Aliase
-        if (['1', '11', 'A', 'ASS', 'DAUS', 'D'].includes(rank)) rank = 'A';
-        else if (['K', 'KÖNIG', 'KOENIG'].includes(rank)) rank = 'K';
-        else if (['D', 'DAME', 'O', 'OBER', 'Q'].includes(rank)) rank = 'D'; // Dame/Ober
-        else if (['B', 'BUBE', 'U', 'UNTER', 'J'].includes(rank)) rank = 'B'; // Bube/Unter
+        if (['1', '11', 'A', 'ASS', 'DAUS'].includes(rank)) rank = 'A';
+        else if (['K', 'KÖNIG', 'KOENIG', 'KING'].includes(rank)) rank = 'K';
+        else if (['D', 'DAME', 'O', 'OBER', 'Q', 'QUEEN'].includes(rank)) {
+            rank = (options.usePokerRanks || rank === 'Q' || rank === 'QUEEN') ? 'Q' : 'D';
+        } else if (['B', 'BUBE', 'U', 'UNTER', 'J', 'JACK'].includes(rank)) {
+            rank = (options.usePokerRanks || rank === 'J' || rank === 'JACK') ? 'J' : 'B';
+        }
 
         return { suit, rank, id: card.id || `${suit}_${rank}` };
     }
@@ -381,7 +384,7 @@
      */
     function renderCardHtml(cardData, options = {}) {
         if (!cardData) return '';
-        const norm = normalizeCardData(cardData);
+        const norm = normalizeCardData(cardData, options);
         const deck = options.deck || getPreferredDeck();
         const isGerman = (deck === 'german');
 
@@ -440,7 +443,7 @@
                         <div class="quarxl-king-symbol">${miniSuitSvg}</div>
                     </div>
                 `;
-            } else if (norm.rank === 'D') { // Ober
+            } else if (norm.rank === 'D' || norm.rank === 'Q') { // Ober
                 cornerRankText = 'O';
                 isOber = true;
                 centerHtml = `
@@ -449,7 +452,7 @@
                         <div class="quarxl-figure-rank-huge">O</div>
                     </div>
                 `;
-            } else if (norm.rank === 'B') { // Unter
+            } else if (norm.rank === 'B' || norm.rank === 'J') { // Unter
                 cornerRankText = 'U';
                 isUnter = true;
                 centerHtml = `
@@ -512,10 +515,12 @@
 
         let cornerRankText = norm.rank;
         if (norm.rank === 'D') cornerRankText = 'D'; // Dame
+        else if (norm.rank === 'Q') cornerRankText = 'Q'; // Queen
         else if (norm.rank === 'B') cornerRankText = 'B'; // Bube
+        else if (norm.rank === 'J') cornerRankText = 'J'; // Jack
         else if (norm.rank === 'A') cornerRankText = 'A'; // Ass
 
-        if (['A', 'K', 'D', 'B'].includes(norm.rank)) {
+        if (['A', 'K', 'D', 'B', 'Q', 'J'].includes(norm.rank)) {
             centerHtml = `
                 <div class="quarxl-figure-composition">
                     <div class="quarxl-figure-rank-huge">${cornerRankText}</div>

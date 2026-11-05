@@ -13,6 +13,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Texas Hold'em Poker | Quarxl Games</title>
     <link rel="stylesheet" href="../css/games-hub.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="../css/playing-cards.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="./poker.css?v=<?= APP_VERSION ?>">
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0c2316">
@@ -25,6 +26,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <div class="hub-header-left">
             <a href="../index.php" class="poker-back-btn" title="Zurück zur Spielauswahl">&larr; Hub</a>
             <span class="poker-room-badge" id="btn-copy-code" title="Code anklicken zum Kopieren">RAUM: <?= $roomCode ?: '...' ?></span>
+            <div id="deck-toggle-container"></div>
         </div>
 
         <div class="hub-header-right">

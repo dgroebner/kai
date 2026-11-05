@@ -217,7 +217,40 @@
 .community-cards-container .quarxl-card {
     width: 58px;
     height: 82px;
+    padding: 3px 4px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.community-cards-container .quarxl-card .quarxl-card-rank {
+    font-size: 0.95rem;
+}
+.community-cards-container .quarxl-card .quarxl-card-mini-suit {
+    width: 12px;
+    height: 14px;
+}
+.community-cards-container .quarxl-card .quarxl-figure-rank-huge,
+.community-cards-container .quarxl-card .quarxl-number-value-big {
+    font-size: 1.35rem;
+}
+.community-cards-container .quarxl-card .quarxl-figure-suit-icon,
+.community-cards-container .quarxl-card .quarxl-number-suit-medium {
+    width: 22px;
+    height: 26px;
+}
+.community-cards-container .quarxl-card .quarxl-king-crown {
+    width: 20px;
+    height: 14px;
+}
+.community-cards-container .quarxl-card .quarxl-king-symbol {
+    width: 22px;
+    height: 22px;
+}
+.community-cards-container .quarxl-card .quarxl-daus-symbol {
+    width: 24px;
+    height: 30px;
+}
+.community-cards-container .quarxl-card .quarxl-daus-garland {
+    width: 30px;
+    height: 14px;
 }
 
 /* TURN BANNER */
@@ -316,9 +349,26 @@
     margin-top: 0.25rem;
 }
 
-.seat-cards-preview .quarxl-card {
+.seat-cards-preview .quarxl-card,
+.seat-cards-preview .quarxl-card-back {
     width: 32px;
     height: 45px;
+    min-width: 32px;
+    padding: 2px 3px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.seat-cards-preview .quarxl-card .quarxl-card-rank {
+    font-size: 0.72rem;
+}
+.seat-cards-preview .quarxl-card .quarxl-card-mini-suit {
+    width: 8px;
+    height: 10px;
+}
+.seat-cards-preview .quarxl-card .quarxl-card-center {
+    display: none;
+}
+.seat-cards-preview .quarxl-card-back .quarxl-card-back-ornament {
+    font-size: 0.85rem;
 }
 
 /* BADGES (D, SB, BB) */
@@ -377,7 +427,40 @@
 .my-hole-cards .quarxl-card {
     width: 68px;
     height: 96px;
+    padding: 4px 5px;
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+}
+.my-hole-cards .quarxl-card .quarxl-card-rank {
+    font-size: 1.05rem;
+}
+.my-hole-cards .quarxl-card .quarxl-card-mini-suit {
+    width: 13px;
+    height: 16px;
+}
+.my-hole-cards .quarxl-card .quarxl-figure-rank-huge,
+.my-hole-cards .quarxl-card .quarxl-number-value-big {
+    font-size: 1.55rem;
+}
+.my-hole-cards .quarxl-card .quarxl-figure-suit-icon,
+.my-hole-cards .quarxl-card .quarxl-number-suit-medium {
+    width: 26px;
+    height: 30px;
+}
+.my-hole-cards .quarxl-card .quarxl-king-crown {
+    width: 22px;
+    height: 15px;
+}
+.my-hole-cards .quarxl-card .quarxl-king-symbol {
+    width: 26px;
+    height: 26px;
+}
+.my-hole-cards .quarxl-card .quarxl-daus-symbol {
+    width: 28px;
+    height: 34px;
+}
+.my-hole-cards .quarxl-card .quarxl-daus-garland {
+    width: 34px;
+    height: 16px;
 }
 
 .my-poker-meta {
@@ -510,8 +593,33 @@
 }
 
 .showdown-player-card .quarxl-card {
-    width: 42px;
-    height: 60px;
+    width: 44px;
+    height: 62px;
+    padding: 3px 3px;
+}
+.showdown-player-card .quarxl-card .quarxl-card-rank {
+    font-size: 0.8rem;
+}
+.showdown-player-card .quarxl-card .quarxl-card-mini-suit {
+    width: 10px;
+    height: 12px;
+}
+.showdown-player-card .quarxl-card .quarxl-figure-rank-huge,
+.showdown-player-card .quarxl-card .quarxl-number-value-big {
+    font-size: 1.05rem;
+}
+.showdown-player-card .quarxl-card .quarxl-figure-suit-icon,
+.showdown-player-card .quarxl-card .quarxl-number-suit-medium {
+    width: 16px;
+    height: 19px;
+}
+.showdown-player-card .quarxl-card .quarxl-king-crown {
+    width: 16px;
+    height: 11px;
+}
+.showdown-player-card .quarxl-card .quarxl-king-symbol {
+    width: 16px;
+    height: 16px;
 }
 
 /* RESPONSIVE */

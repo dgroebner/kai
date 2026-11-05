@@ -25,6 +25,10 @@
             .replace(/'/g, '&#039;');
     }
 
+    function getPokerDeck() {
+        return localStorage.getItem('quarxl_playing_cards_deck') || 'french';
+    }
+
     // -------------------------------------------------------------------------
     // INITIALISIERUNG
     // -------------------------------------------------------------------------
@@ -108,6 +112,18 @@
                 }
             });
         }
+
+        // Deck-Umschalter im Header einhängen
+        const toggleContainer = document.getElementById('deck-toggle-container');
+        if (toggleContainer && window.QuarxlCards) {
+            window.QuarxlCards.renderDeckToggle(toggleContainer, () => {
+                if (currentData) renderGame(currentData);
+            });
+        }
+
+        window.addEventListener('quarxl:deckchange', () => {
+            if (currentData) renderGame(currentData);
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -433,7 +449,7 @@
 
             const card = commCards[index];
             if (card && window.QuarxlCards) {
-                slot.innerHTML = window.QuarxlCards.renderCardHtml(card, { deck: 'french' });
+                slot.innerHTML = window.QuarxlCards.renderCardHtml(card, { deck: getPokerDeck(), usePokerRanks: true });
             } else {
                 slot.innerHTML = '';
             }
@@ -516,7 +532,7 @@
                     if (card.is_hidden && window.QuarxlCards) {
                         cardsRow.innerHTML += window.QuarxlCards.renderCardBackHtml();
                     } else if (window.QuarxlCards) {
-                        cardsRow.innerHTML += window.QuarxlCards.renderCardHtml(card, { deck: 'french' });
+                        cardsRow.innerHTML += window.QuarxlCards.renderCardHtml(card, { deck: getPokerDeck(), usePokerRanks: true });
                     }
                 });
                 seat.appendChild(cardsRow);
@@ -564,7 +580,7 @@
             if (myPlayer.hand && myPlayer.hand.length > 0) {
                 myPlayer.hand.forEach(c => {
                     if (window.QuarxlCards) {
-                        holeContainer.innerHTML += window.QuarxlCards.renderCardHtml(c, { deck: 'french' });
+                        holeContainer.innerHTML += window.QuarxlCards.renderCardHtml(c, { deck: getPokerDeck(), usePokerRanks: true });
                     }
                 });
             }
@@ -830,7 +846,7 @@
 
                 p.hand.forEach(c => {
                     if (window.QuarxlCards) {
-                        right.innerHTML += window.QuarxlCards.renderCardHtml(c, { deck: 'french' });
+                        right.innerHTML += window.QuarxlCards.renderCardHtml(c, { deck: getPokerDeck(), usePokerRanks: true });
                     }
                 });
 
