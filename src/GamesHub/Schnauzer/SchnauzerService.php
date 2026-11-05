@@ -66,7 +66,7 @@ class SchnauzerService
             $sheet['is_swimming'] = false;
             $sheet['is_out'] = false;
             $sheet['hand'] = [];
-            $this->repo->updatePlayerSheet((int)$p['id'], $sheet);
+            $this->repo->updatePlayerSheet((int)$p['id'], $sheet, 3);
             $p['sheet'] = $sheet;
         }
         unset($p);
@@ -114,7 +114,7 @@ class SchnauzerService
             $hand = [array_shift($deck), array_shift($deck), array_shift($deck)];
             $sheet = $p['sheet'];
             $sheet['hand'] = $hand;
-            $this->repo->updatePlayerSheet((int)$p['id'], $sheet);
+            $this->repo->updatePlayerSheet((int)$p['id'], $sheet, (int)($sheet['lives'] ?? 3));
             $p['sheet'] = $sheet;
         }
         unset($p);
@@ -201,7 +201,7 @@ class SchnauzerService
             // Geber nimmt die 3 verdeckten Reservekarten, seine ursprünglichen kommen auf den Tisch
             $dealer['sheet']['hand'] = $reserve;
             $state['table_cards'] = $dealerHand;
-            $this->repo->updatePlayerSheet($dealerId, $dealer['sheet']);
+            $this->repo->updatePlayerSheet($dealerId, $dealer['sheet'], (int)($dealer['sheet']['lives'] ?? 3));
             $choiceText = "{$dealer['player_name']} tauscht mit dem zweiten Päckchen.";
         } else {
             // Geber behält seine Hand, Reservekarten kommen auf den Tisch
@@ -280,7 +280,7 @@ class SchnauzerService
 
         $player['sheet']['hand'] = $hand;
         $state['table_cards'] = $table;
-        $this->repo->updatePlayerSheet($playerId, $player['sheet']);
+        $this->repo->updatePlayerSheet($playerId, $player['sheet'], (int)($player['sheet']['lives'] ?? 3));
 
         $state['passed_players'] = [];
         $state['last_event'] = [
@@ -346,7 +346,7 @@ class SchnauzerService
         // Komplett-Tausch
         $player['sheet']['hand'] = $table;
         $state['table_cards'] = $hand;
-        $this->repo->updatePlayerSheet($playerId, $player['sheet']);
+        $this->repo->updatePlayerSheet($playerId, $player['sheet'], (int)($player['sheet']['lives'] ?? 3));
 
         $state['passed_players'] = [];
         $state['last_event'] = [
@@ -591,7 +591,7 @@ class SchnauzerService
                 $sheet['is_out'] = true; // Ausgeschieden / ertrunken
                 $eliminatedNames[] = (string)$p['player_name'];
             }
-            $this->repo->updatePlayerSheet($pid, $sheet);
+            $this->repo->updatePlayerSheet($pid, $sheet, (int)($sheet['lives'] ?? 0));
         }
         unset($p);
 
@@ -688,7 +688,7 @@ class SchnauzerService
             $sheet['is_swimming'] = false;
             $sheet['is_out'] = false;
             $sheet['hand'] = [];
-            $this->repo->updatePlayerSheet((int)$p['id'], $sheet);
+            $this->repo->updatePlayerSheet((int)$p['id'], $sheet, 3);
         }
 
         $state = $this->getInitialState();

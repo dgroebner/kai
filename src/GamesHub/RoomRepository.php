@@ -213,7 +213,7 @@ class RoomRepository
     /**
      * Aktualisiert den Spielzettel und Punktestand eines Spielers.
      */
-    public function updatePlayerSheet(int $playerId, array $sheet, int $totalScore): bool
+    public function updatePlayerSheet(int $playerId, array $sheet, int $totalScore = 0): bool
     {
         $stmt = $this->pdo->prepare('
             UPDATE games_hub_players
