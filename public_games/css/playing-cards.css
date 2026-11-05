@@ -9,7 +9,7 @@
     --card-radius: 9px;
     
     /* Farben Deutsches Blatt */
-    --c-german-acorns: #713f12;    /* Eichel Braun/Gold */
+    --c-german-acorns: #1e293b;    /* Eichel: Edles Anthrazit für Indizes, da das Eichelmuster selbst rot-gold-grün ist */
     --c-german-leaves: #166534;    /* Laub/Grün Smaragd */
     --c-german-hearts: #b91c1c;    /* Herz Rot */
     --c-german-bells: #b45309;     /* Schellen Gold/Bernstein */
@@ -129,8 +129,8 @@
 }
 
 .quarxl-card-mini-suit {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 19px;
     margin-top: 1px;
     display: flex;
     align-items: center;
@@ -169,8 +169,8 @@
 }
 
 .quarxl-daus-symbol {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 46px;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
@@ -201,8 +201,8 @@
 }
 
 .quarxl-figure-suit-icon {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 38px;
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
@@ -262,8 +262,8 @@
 }
 
 .quarxl-number-suit-medium {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 40px;
 }
 
 /* --------------------------------------------------------------------------

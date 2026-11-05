@@ -19,17 +19,32 @@
     const SVG = {
         // --- DEUTSCHES BLATT (Altenburger Art) ---
 
-        // Eichel: Authentische Eichel mit Hütchen, Riffelung & Stiel
+        // Eichel: Originalgetreue rot-goldene Altenburger Eichel mit grünem Schuppenhütchen
         acorns: `
-            <svg viewBox="0 0 100 100" class="quarxl-svg-suit svg-acorns" fill="currentColor">
-                <!-- Stiel & Kappe -->
-                <path d="M47,6 C48,2 52,2 53,6 C54,12 55,16 57,18 C64,18 72,21 75,28 C78,35 77,41 71,45 C64,50 36,50 29,45 C23,41 22,35 25,28 C28,21 36,18 43,18 C45,16 46,12 47,6 Z" fill="#582a0b" />
-                <path d="M30,30 Q50,22 70,30 Q50,38 30,30 Z" fill="#3c1b05" opacity="0.6" />
-                <!-- Eichel-Körper (warmes Kastanienbraun/Gold) -->
-                <path d="M29,44 C26,58 35,82 48,94 C49,95 51,95 52,94 C65,82 74,58 71,44 C67,49 33,49 29,44 Z" fill="#8c4912" />
-                <path d="M48,93 C40,84 33,65 35,48 C40,51 60,51 65,48 C67,65 60,84 52,93 Z" fill="#a45b1c" opacity="0.4" />
-                <!-- Glanzlicht -->
-                <ellipse cx="40" cy="58" rx="4" ry="12" transform="rotate(-15 40 58)" fill="#fed7aa" opacity="0.5" />
+            <svg viewBox="0 0 100 130" class="quarxl-svg-suit svg-acorns">
+                <!-- Stiel & Blättchen an der Basis -->
+                <path d="M50,126 Q46,114 50,102" stroke="#14532d" stroke-width="5" stroke-linecap="round" fill="none" />
+                <path d="M50,116 Q34,120 30,110 Q40,106 50,110 Z" fill="#15803d" />
+                <path d="M50,116 Q66,120 70,110 Q60,106 50,110 Z" fill="#15803d" />
+                <!-- Grünes Schuppen-Hütchen (Kappe) -->
+                <path d="M22,102 C22,80 78,80 78,102 C78,110 22,110 22,102 Z" fill="#16a34a" stroke="#14532d" stroke-width="2.5" />
+                <!-- Schuppenmuster -->
+                <path d="M26,96 Q50,104 74,96" stroke="#14532d" stroke-width="2" fill="none" />
+                <path d="M30,90 Q50,98 70,90" stroke="#14532d" stroke-width="2" fill="none" />
+                <path d="M36,84 Q50,92 64,84" stroke="#14532d" stroke-width="2" fill="none" />
+                <path d="M38,82 L38,106 M50,80 L50,108 M62,82 L62,106" stroke="#14532d" stroke-width="1.8" stroke-dasharray="2,3" fill="none" />
+                <!-- Eichel-Körper: Schlank, aufrecht, zweifarbig rot/gold geteilt -->
+                <!-- Linke Hälfte: Karminrot -->
+                <path d="M50,8 C42,20 23,48 23,82 C23,90 35,98 50,98 Z" fill="#dc2626" />
+                <path d="M50,8 C44,22 30,52 30,80 C30,88 38,94 50,96 Z" fill="#ef4444" opacity="0.4" />
+                <!-- Rechte Hälfte: Sonnengelb / Gold -->
+                <path d="M50,8 C58,20 77,48 77,82 C77,90 65,98 50,98 Z" fill="#f59e0b" />
+                <path d="M50,8 C56,22 70,52 70,80 C70,88 62,94 50,96 Z" fill="#fbbf24" opacity="0.65" />
+                <!-- Mittlere Naht & Kontur -->
+                <path d="M50,8 L50,98" stroke="#78350f" stroke-width="2.5" stroke-linecap="round" />
+                <path d="M50,8 C42,20 23,48 23,82 C23,90 35,98 50,98 C65,98 77,90 77,82 C77,48 58,20 50,8 Z" stroke="#78350f" stroke-width="2.5" fill="none" />
+                <!-- Glanzlicht an der Spitze -->
+                <circle cx="50" cy="14" r="3.5" fill="#fef08a" />
             </svg>
         `,
 
