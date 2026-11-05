@@ -92,12 +92,14 @@ class SchnauzerService
     private function dealNewRound(int $roomId, array &$state, array &$players, int $dealerId): array
     {
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
-        if (count($activePlayers) < 2) {
+        $humanSurvivors = array_values(array_filter($activePlayers, fn($p) => empty($p['sheet']['is_bot'])));
+        if (count($activePlayers) < 2 || count($humanSurvivors) === 0) {
             $state['phase'] = 'game_over';
             $winner = $activePlayers[0] ?? null;
             $state['round_result'] = [
                 'winner_id' => $winner ? (int)$winner['id'] : null,
                 'winner_name' => $winner ? (string)$winner['player_name'] : 'Niemand',
+                'is_game_over' => true,
             ];
             $this->repo->updateRoomState($roomId, $state, 'finished');
             return ['success' => true];
@@ -633,6 +635,23 @@ class SchnauzerService
 
         // Prüfen, wie viele noch im Spiel sind
         $survivors = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
+        $humanSurvivors = array_values(array_filter($survivors, fn($p) => empty($p['sheet']['is_bot'])));
+        $onlyBotsLeft = (count($humanSurvivors) === 0 && count($survivors) > 0);
+
+        if ($onlyBotsLeft && count($survivors) > 1) {
+            // Wenn alle menschlichen Spieler ausgeschieden sind: führenden Bot als Sieger ermitteln
+            usort($survivors, function ($a, $b) use ($scores) {
+                $livesA = (int)($a['sheet']['lives'] ?? 0);
+                $livesB = (int)($b['sheet']['lives'] ?? 0);
+                if ($livesA !== $livesB) return $livesB <=> $livesA;
+                $swimA = !empty($a['sheet']['is_swimming']) ? 0 : 1;
+                $swimB = !empty($b['sheet']['is_swimming']) ? 0 : 1;
+                if ($swimA !== $swimB) return $swimB <=> $swimA;
+                $scoreA = $scores[$a['id']]['score'] ?? 0;
+                $scoreB = $scores[$b['id']]['score'] ?? 0;
+                return $scoreB <=> $scoreA;
+            });
+        }
 
         $loserNames = array_map(function ($id) use ($scores) {
             return $scores[$id]['player_name'] ?? 'Spieler';
@@ -642,14 +661,15 @@ class SchnauzerService
             ? "⚡ {$scores[$schnauzerPlayerId]['player_name']} hat 31 (Schnauzer)! Sofortiges Rundenende."
             : "Runde beendet nach Klopfen.";
 
-        $isGameOver = !$isAllTied && (count($survivors) <= 1);
-        $wName = (count($survivors) === 1) ? (string)$survivors[0]['player_name'] : null;
-        $wId = (count($survivors) === 1) ? (int)$survivors[0]['id'] : null;
+        $isGameOver = !$isAllTied && (count($survivors) <= 1 || $onlyBotsLeft);
+        $wName = (count($survivors) >= 1) ? (string)$survivors[0]['player_name'] : null;
+        $wId = (count($survivors) >= 1) ? (int)$survivors[0]['id'] : null;
 
         $state['round_result'] = [
             'scores' => $scores,
             'min_score' => $minScore,
             'is_all_tied' => $isAllTied,
+            'only_bots_left' => $onlyBotsLeft,
             'loser_ids' => $loserIds,
             'loser_names' => implode(', ', $loserNames),
             'eliminated_names' => $eliminatedNames,
@@ -667,7 +687,9 @@ class SchnauzerService
             'time' => microtime(true),
             'type' => $isGameOver ? 'game_over' : 'round_ended',
             'message' => $isGameOver
-                ? "🏆 Spiel vorbei! {$wName} hat als letzter Überlebender gewonnen!"
+                ? ($onlyBotsLeft && count($survivors) > 1
+                    ? "🏆 Spiel beendet! Alle menschlichen Spieler sind ausgeschieden. {$wName} (Bot) gewinnt nach Punkten/Leben!"
+                    : "🏆 Spiel vorbei! {$wName} hat als letzter Überlebender gewonnen!")
                 : ($isAllTied
                     ? "{$endReason} 🤝 Gleichstand aller Spieler ({$minScore} Punkte) – niemand verliert ein Leben!"
                     : "{$endReason} Verliert 1 Leben: " . implode(', ', $loserNames)),
@@ -692,8 +714,9 @@ class SchnauzerService
         $players = $this->repo->getPlayersForRoom($roomId);
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
 
-        if (count($activePlayers) < 2) {
-            return ['success' => false, 'message' => 'Nicht genug Überlebende für eine weitere Runde.'];
+        $humanSurvivors = array_values(array_filter($activePlayers, fn($p) => empty($p['sheet']['is_bot'])));
+        if (count($activePlayers) < 2 || count($humanSurvivors) === 0) {
+            return ['success' => false, 'message' => 'Spiel beendet.'];
         }
 
         // Nächsten Geber ermitteln: Bei Gleichstand aller Spieler gibt derselbe Geber noch einmal neu,

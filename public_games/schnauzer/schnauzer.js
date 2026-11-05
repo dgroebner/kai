@@ -512,8 +512,12 @@
         if (summaryEl) {
             if (isGameOver) {
                 const wName = escapeHtml(res.winner_name || 'Gewinner');
+                let extraText = '';
+                if (res.only_bots_left) {
+                    extraText = '<br><span style="color:#94a3b8;font-size:0.85rem;">Alle menschlichen Spieler sind ausgeschieden.</span>';
+                }
                 const loserText = res.loser_names ? `<br><span style="color:#ef4444;font-size:0.85rem;font-weight:600;">Ausgeschieden: ${escapeHtml(res.loser_names)}</span>` : '';
-                summaryEl.innerHTML = `🏆 <strong>${wName}</strong> hat das Spiel gewonnen!${loserText}`;
+                summaryEl.innerHTML = `🏆 <strong>${wName}</strong> hat das Spiel gewonnen!${extraText}${loserText}`;
             } else if (res.is_all_tied) {
                 summaryEl.innerHTML = `🤝 <strong>Gleichstand aller Spieler!</strong> (${res.min_score} Punkte)<br><span style="color:#38bdf8;font-size:0.85rem;font-weight:600;">Niemand verliert ein Leben – es wird neu gegeben.</span>`;
             } else {
