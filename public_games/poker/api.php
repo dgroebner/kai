@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\GamesHub\RoomRepository;
 use Kai\Tools\GamesHub\Poker\PokerService;
-use Kai\Tools\GamesHub\RateLimiter;
+use Kai\Tools\Shared\Security\RateLimiter;
 use Kai\Tools\Shared\Log\Logger;
 
 header('Content-Type: application/json; charset=utf-8');
