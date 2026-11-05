@@ -26,7 +26,7 @@
     }
 
     function getPokerDeck() {
-        return localStorage.getItem('quarxl_playing_cards_deck') || 'french';
+        return 'french';
     }
 
     // -------------------------------------------------------------------------
@@ -113,16 +113,15 @@
             });
         }
 
-        // Deck-Umschalter im Header einhängen
-        const toggleContainer = document.getElementById('deck-toggle-container');
-        if (toggleContainer && window.QuarxlCards) {
-            window.QuarxlCards.renderDeckToggle(toggleContainer, () => {
-                if (currentData) renderGame(currentData);
+        // Spielhilfe / Blätter-Modal
+        const helpModal = document.getElementById('modal-poker-help');
+        document.getElementById('btn-poker-help')?.addEventListener('click', () => {
+            helpModal?.classList.remove('hidden');
+        });
+        document.querySelectorAll('.js-close-poker-help').forEach(btn => {
+            btn.addEventListener('click', () => {
+                helpModal?.classList.add('hidden');
             });
-        }
-
-        window.addEventListener('quarxl:deckchange', () => {
-            if (currentData) renderGame(currentData);
         });
     }
 
@@ -591,10 +590,37 @@
         const strengthBadge = document.getElementById('my-hand-strength-badge');
         if (strengthBadge) {
             if (data.my_score && !myPlayer.is_folded) {
-                strengthBadge.textContent = data.my_score.label;
+                strengthBadge.textContent = data.my_score.description || data.my_score.label || '';
                 strengthBadge.classList.remove('hidden');
             } else {
                 strengthBadge.classList.add('hidden');
+            }
+        }
+
+        // Live Spielhilfe / Hand-Berater
+        const assistantBox = document.getElementById('my-poker-assistant');
+        if (assistantBox) {
+            const ast = data.my_assistant;
+            if (ast && !myPlayer.is_folded && data.phase !== 'showdown' && data.phase !== 'game_over') {
+                const starsHtml = '⭐'.repeat(Math.max(1, Math.min(5, Number(ast.stars || 1))));
+                const color = ast.strength_color || '#38bdf8';
+                const possList = (ast.possibilities || [])
+                    .map(item => `<div>${escapeHtml(item)}</div>`)
+                    .join('');
+
+                assistantBox.innerHTML = `
+                    <div class="assistant-header-row">
+                        <span class="assistant-title">🧠 ${escapeHtml(ast.title)}</span>
+                        <span class="assistant-strength-pill" style="color: ${escapeHtml(color)}; border-color: ${escapeHtml(color)}55;">
+                            ${starsHtml} ${escapeHtml(ast.strength_text)}
+                        </span>
+                    </div>
+                    <div class="assistant-possibilities">${possList}</div>
+                    ${ast.advice ? `<div class="assistant-advice">💡 Tipp: ${escapeHtml(ast.advice)}</div>` : ''}
+                `;
+                assistantBox.classList.remove('hidden');
+            } else {
+                assistantBox.classList.add('hidden');
             }
         }
     }

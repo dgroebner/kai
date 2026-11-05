@@ -46,6 +46,13 @@ class PokerHandEvaluator
         11 => 'Buben', 12 => 'Damen', 13 => 'Könige', 14 => 'Asse',
     ];
 
+    private const SUIT_LABELS = [
+        'hearts' => 'Herz ♥',
+        'diamonds' => 'Karo ♦',
+        'spades' => 'Pik ♠',
+        'clubs' => 'Kreuz ♣',
+    ];
+
     /**
      * Ermittelt die stärkste 5-Karten-Hand aus bis zu 7 Karten.
      *
@@ -248,8 +255,264 @@ class PokerHandEvaluator
             'category' => $category,
             'category_name' => self::CATEGORY_NAMES[$category],
             'description' => $description,
+            'label' => $description,
             'best_cards' => $cards,
         ];
+    }
+
+    /**
+     * Erstellt eine umfassende Live-Spielhilfe für die aktuellen Hand- und Tischkarten.
+     *
+     * @param array<int, array{suit: string, rank: string, value: int}> $holeCards
+     * @param array<int, array{suit: string, rank: string, value: int}> $communityCards
+     * @return array{
+     *     title: string,
+     *     category_name: string,
+     *     stars: int,
+     *     strength_text: string,
+     *     strength_color: string,
+     *     possibilities: array<int, string>,
+     *     advice: string
+     * }|null
+     */
+    public static function analyzeHandForAssistant(array $holeCards, array $communityCards): ?array
+    {
+        if (count($holeCards) < 2) {
+            return null;
+        }
+
+        // 1. PRE-FLOP ANALYSE (nur 2 Handkarten)
+        if (empty($communityCards)) {
+            $v1 = (int)$holeCards[0]['value'];
+            $v2 = (int)$holeCards[1]['value'];
+            $high = max($v1, $v2);
+            $low = min($v1, $v2);
+            $isPair = ($v1 === $v2);
+            $isSuited = ($holeCards[0]['suit'] === $holeCards[1]['suit']);
+            $gap = $high - $low;
+            $suitLabel = self::SUIT_LABELS[$holeCards[0]['suit']] ?? $holeCards[0]['suit'];
+
+            if ($isPair) {
+                $plural = self::RANK_PLURALS[$high] ?? (string)$high;
+                $single = self::RANK_LABELS[$high] ?? (string)$high;
+                $title = "Pocket Paar: Zwei {$plural}";
+                $possibilities = [
+                    "🎯 Drilling-Chance: Noch eine {$single} auf dem Tisch macht einen starken Drilling (Set)!",
+                    "🛡️ Du startest bereits mit einem fertigen Paar auf der Hand.",
+                ];
+
+                if ($high >= 11) {
+                    $stars = 5;
+                    $strengthText = 'Monster-Starthand';
+                    $color = '#22c55e';
+                    $advice = 'Top-Blatt! Erhöhen (Raise) oder kräftig mitgehen empfohlen.';
+                } elseif ($high >= 7) {
+                    $stars = 4;
+                    $strengthText = 'Starke Starthand';
+                    $color = '#22c55e';
+                    $advice = 'Starkes Paar – Sicher mitgehen (Call) oder moderat erhöhen.';
+                } else {
+                    $stars = 3;
+                    $strengthText = 'Kleines Paar';
+                    $color = '#38bdf8';
+                    $advice = 'Günstig den Flop anschauen und auf einen Drilling hoffen.';
+                }
+
+                return [
+                    'title' => $title,
+                    'category_name' => 'Pocket Paar',
+                    'stars' => $stars,
+                    'strength_text' => $strengthText,
+                    'strength_color' => $color,
+                    'possibilities' => $possibilities,
+                    'advice' => $advice,
+                ];
+            }
+
+            $highName = self::RANK_LABELS[$high] ?? (string)$high;
+            $lowName = self::RANK_LABELS[$low] ?? (string)$low;
+            $suitedSuffix = $isSuited ? " ({$suitLabel})" : '';
+            $title = "Starthand: {$highName} & {$lowName}{$suitedSuffix}";
+
+            $possibilities = [
+                "🎯 Paar-Chance: Jede {$highName} oder {$lowName} auf dem Flop bringt dir ein Paar.",
+            ];
+            if ($isSuited) {
+                $possibilities[] = "🎨 Gleichfarbig ({$suitLabel}): Erhöhte Chance auf einen Flush (3 weitere nötig).";
+            }
+            if ($gap <= 4 || ($high === 14 && $low <= 5)) {
+                $possibilities[] = "📏 Straßen-Potenzial: Karten liegen nah beieinander (Chance auf Straße).";
+            }
+
+            if ($high === 14 && $low >= 12) {
+                $stars = 5;
+                $strengthText = 'Sehr stark';
+                $color = '#22c55e';
+                $advice = 'Sehr starke hohe Karten – Erhöhen oder sicher mitgehen.';
+            } elseif (($high >= 13 && $low >= 10) || ($high === 14 && $isSuited)) {
+                $stars = 4;
+                $strengthText = 'Stark';
+                $color = '#22c55e';
+                $advice = 'Gute Starthand – Flop anschauen lohnt sich.';
+            } elseif ($isSuited || $gap <= 2 || $high >= 12) {
+                $stars = 3;
+                $strengthText = 'Spielbar';
+                $color = '#38bdf8';
+                $advice = 'Solide Hand – Bei kleinem Einsatz mitgehen (Check / Call).';
+            } else {
+                $stars = 2;
+                $strengthText = 'Schwach';
+                $color = '#f59e0b';
+                $advice = 'Eher schwache Starthand – Kostenlos schieben (Check) oder bei Erhöhung passen.';
+            }
+
+            return [
+                'title' => $title,
+                'category_name' => 'Starthand',
+                'stars' => $stars,
+                'strength_text' => $strengthText,
+                'strength_color' => $color,
+                'possibilities' => $possibilities,
+                'advice' => $advice,
+            ];
+        }
+
+        // 2. POST-FLOP ANALYSE (Flop, Turn, River: 5 bis 7 Karten)
+        $allCards = array_merge($holeCards, $communityCards);
+        $eval = self::evaluate7Cards($allCards);
+        $cat = $eval['category'];
+        $title = $eval['description'];
+        $cardsRemaining = max(0, 5 - count($communityCards));
+        $possibilities = [];
+        $hasStrongDraw = false;
+
+        if ($cardsRemaining > 0) {
+            // A) Flush-Draw prüfen
+            if ($cat < self::CATEGORY_FLUSH) {
+                $suitCounts = [];
+                foreach ($allCards as $c) {
+                    $s = $c['suit'];
+                    $suitCounts[$s] = ($suitCounts[$s] ?? 0) + 1;
+                }
+                foreach ($suitCounts as $s => $cnt) {
+                    $sLabel = self::SUIT_LABELS[$s] ?? $s;
+                    if ($cnt === 4) {
+                        $possibilities[] = "🎨 Flush-Draw: 4x {$sLabel} vorhanden – nur noch 1 {$sLabel}-Karte zum Flush!";
+                        $hasStrongDraw = true;
+                    } elseif ($cnt === 3 && $cardsRemaining === 2) {
+                        $possibilities[] = "🎨 Backdoor-Flush: 3x {$sLabel} – noch 2 {$sLabel} auf Turn & River nötig.";
+                    }
+                }
+            }
+
+            // B) Straßen-Draw prüfen (exakte Simulation fehlender Kartenwerte 2..14)
+            if ($cat < self::CATEGORY_STRAIGHT) {
+                $existingVals = array_values(array_unique(array_map(fn($c) => (int)$c['value'], $allCards)));
+                rsort($existingVals);
+                if (!self::hasStraightInValues($existingVals)) {
+                    $straightOutRanks = [];
+                    for ($v = 2; $v <= 14; $v++) {
+                        if (in_array($v, $existingVals, true)) {
+                            continue;
+                        }
+                        $testVals = $existingVals;
+                        $testVals[] = $v;
+                        rsort($testVals);
+                        if (self::hasStraightInValues($testVals)) {
+                            $straightOutRanks[] = self::RANK_LABELS[$v] ?? (string)$v;
+                        }
+                    }
+                    if (!empty($straightOutRanks)) {
+                        $outList = implode(' oder ', $straightOutRanks);
+                        $possibilities[] = "📏 Straßen-Draw: Eine {$outList} komplettiert deine Straße!";
+                        $hasStrongDraw = true;
+                    }
+                }
+            }
+
+            // C) Paar / Drilling / Full-House Verbesserungen
+            if ($cat === self::CATEGORY_HIGH_CARD) {
+                $h1 = self::RANK_LABELS[(int)$holeCards[0]['value']] ?? '';
+                $h2 = self::RANK_LABELS[(int)$holeCards[1]['value']] ?? '';
+                $possibilities[] = "🎯 Paar-Chance: Jede {$h1} oder {$h2} bringt dir ein eigenes Paar.";
+            } elseif ($cat === self::CATEGORY_PAIR) {
+                $possibilities[] = "🎯 Ausbau-Chance: Gleiche Karte zum Drilling oder zweite Trefferkarte für Zwei Paare.";
+            } elseif ($cat === self::CATEGORY_TWO_PAIR) {
+                $possibilities[] = "🔥 Full-House-Chance: Jede weitere Karte deiner beiden Paare bildet ein Full House!";
+            } elseif ($cat === self::CATEGORY_THREE_OF_A_KIND) {
+                $possibilities[] = "🔥 Monster-Chance: Noch 1 gleiche Karte zum Vierling oder ein Board-Paar zum Full House!";
+            }
+        } else {
+            $possibilities[] = "🏁 Alle 5 Tischkarten liegen – dein finales Blatt steht fest.";
+        }
+
+        // Bewertung & Tipp anhand Kategorie
+        if ($cat >= self::CATEGORY_FULL_HOUSE) {
+            $stars = 5;
+            $strengthText = 'Monster-Blatt';
+            $color = '#22c55e';
+            $advice = 'Absolutes Spitzenblatt! Setzen oder erhöhen, um den Pot maximal aufzubauen.';
+        } elseif ($cat >= self::CATEGORY_STRAIGHT) {
+            $stars = 5;
+            $strengthText = 'Sehr stark';
+            $color = '#22c55e';
+            $advice = 'Starkes Gewinner-Blatt! Selbstbewusst setzen oder erhöhen.';
+        } elseif ($cat === self::CATEGORY_THREE_OF_A_KIND || $cat === self::CATEGORY_TWO_PAIR) {
+            $stars = 4;
+            $strengthText = 'Stark';
+            $color = '#22c55e';
+            $advice = 'Sehr gutes Blatt! Value-Bet setzen oder normale Einsätze mitgehen.';
+        } elseif ($cat === self::CATEGORY_PAIR) {
+            $stars = 3;
+            $strengthText = 'Solides Paar';
+            $color = '#38bdf8';
+            $advice = 'Solides Paar – Kostenlos schieben (Check) oder moderate Einsätze mitgehen.';
+        } else {
+            if ($hasStrongDraw) {
+                $stars = 2;
+                $strengthText = 'Draw-Chance';
+                $color = '#f59e0b';
+                $advice = 'Noch kein Paar, aber starke Draw-Chance! Günstig im Spiel bleiben (Check / kleiner Call).';
+            } else {
+                $stars = 1;
+                $strengthText = 'Schwach';
+                $color = '#94a3b8';
+                $advice = 'Nur höchste Karte – Kostenlos checken oder bei höherem Einsatz lieber passen (Fold).';
+            }
+        }
+
+        return [
+            'title' => $title,
+            'category_name' => self::CATEGORY_NAMES[$cat] ?? 'Blatt',
+            'stars' => $stars,
+            'strength_text' => $strengthText,
+            'strength_color' => $color,
+            'possibilities' => $possibilities,
+            'advice' => $advice,
+        ];
+    }
+
+    /**
+     * Prüft, ob in einer absteigend sortierten Liste eindeutiger Kartenwerte eine 5er-Straße enthalten ist.
+     *
+     * @param array<int> $uniqueDescValues
+     */
+    private static function hasStraightInValues(array $uniqueDescValues): bool
+    {
+        $vals = $uniqueDescValues;
+        if (in_array(14, $vals, true)) {
+            $vals[] = 1; // Ass kann auch als 1 für A-2-3-4-5 dienen
+        }
+        $n = count($vals);
+        if ($n < 5) {
+            return false;
+        }
+        for ($i = 0; $i <= $n - 5; $i++) {
+            if ($vals[$i] - $vals[$i + 4] === 4) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

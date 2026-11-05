@@ -26,10 +26,12 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         <div class="hub-header-left">
             <a href="../index.php" class="poker-back-btn" title="Zurück zur Spielauswahl">&larr; Hub</a>
             <span class="poker-room-badge" id="btn-copy-code" title="Code anklicken zum Kopieren">RAUM: <?= $roomCode ?: '...' ?></span>
-            <div id="deck-toggle-container"></div>
         </div>
 
         <div class="hub-header-right">
+            <button type="button" class="btn btn-sm btn-outline js-btn-poker-help" id="btn-poker-help" title="Poker-Blätter & Rangfolge">
+                📖 Blätter
+            </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-abort-game hidden" id="btn-abort-game" title="Spiel vorzeitig beenden (alle müssen zustimmen)">
                 🏳️ Abbruch
             </button>
@@ -143,6 +145,11 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 </div>
             </div>
 
+            <!-- LIVE SPIELHILFE / HAND-BERATER -->
+            <div id="my-poker-assistant" class="poker-assistant-box hidden">
+                <!-- Dynamisch durch JS befüllt: Bewertung, Möglichkeiten (Draws) & Strategie-Tipp -->
+            </div>
+
             <!-- AKTIONEN-BEDIENLEISTE -->
             <div class="poker-action-bar" id="poker-action-bar">
                 <!-- Setz-Slider & Schnellwahl (nur bei Bet/Raise) -->
@@ -190,6 +197,34 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 <button type="button" class="btn btn-primary btn-lg js-btn-next-hand" id="btn-next-hand" style="width: 100%; font-weight: 800;">
                     ➡️ Nächste Hand starten
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. POKER-BLÄTTER & RANGFOLGE MODAL (SPIELHILFE) -->
+    <div id="modal-poker-help" class="hub-modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="hub-modal" style="max-width: 540px; width: 95%; max-height: 88vh; overflow-y: auto; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <h3 class="hub-modal-title" style="margin: 0;">📖 Poker-Blätter (Rangfolge)</h3>
+                <button type="button" class="btn btn-sm btn-outline js-close-poker-help">✕</button>
+            </div>
+            <p class="text-muted" style="font-size: 0.82rem; margin-bottom: 0.85rem;">
+                Aus deinen <strong>2 Handkarten</strong> und den <strong>5 Tischkarten</strong> zählen automatisch die besten 5 Karten. Von oben (unschlagbar) nach unten:
+            </p>
+            <div class="poker-hand-rankings-list">
+                <div class="ranking-row"><span class="ranking-pos">1.</span><div><strong>👑 Royal Flush</strong> <span class="ranking-ex">10 J Q K A in einer Farbe</span><div class="ranking-desc">Höchste Straße in derselben Farbe – unschlagbar!</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">2.</span><div><strong>🌟 Straight Flush</strong> <span class="ranking-ex">z.B. 5 6 7 8 9 in ♥</span><div class="ranking-desc">Fünf aufeinanderfolgende Karten derselben Farbe.</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">3.</span><div><strong>💣 Vierling (Quads)</strong> <span class="ranking-ex">z.B. A A A A + K</span><div class="ranking-desc">Vier Karten desselben Rangs.</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">4.</span><div><strong>🏠 Full House</strong> <span class="ranking-ex">z.B. K K K + Q Q</span><div class="ranking-desc">Ein Drilling plus ein Paar.</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">5.</span><div><strong>🎨 Flush</strong> <span class="ranking-ex">Beliebige 5 Karten in ♠</span><div class="ranking-desc">Fünf Karten derselben Farbe (Reihenfolge egal).</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">6.</span><div><strong>📏 Straße (Straight)</strong> <span class="ranking-ex">z.B. 7 8 9 10 J (bunt)</span><div class="ranking-desc">Fünf aufeinanderfolgende Karten (Farbe egal).</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">7.</span><div><strong>🔥 Drilling (Trips/Set)</strong> <span class="ranking-ex">z.B. Q Q Q + 9 + 4</span><div class="ranking-desc">Drei Karten desselben Rangs.</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">8.</span><div><strong>✌️ Zwei Paare</strong> <span class="ranking-ex">z.B. J J + 8 8 + A</span><div class="ranking-desc">Zwei verschiedene Paare plus 1 Beikarte (Kicker).</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">9.</span><div><strong>👍 Ein Paar</strong> <span class="ranking-ex">z.B. 10 10 + A K 5</span><div class="ranking-desc">Zwei Karten desselben Rangs.</div></div></div>
+                <div class="ranking-row"><span class="ranking-pos">10.</span><div><strong>🃏 Höchste Karte (High Card)</strong> <span class="ranking-ex">z.B. A hoch</span><div class="ranking-desc">Keine Kombination – die höchste Einzelkarte entscheidet.</div></div></div>
+            </div>
+            <div style="margin-top: 1rem; text-align: right;">
+                <button type="button" class="btn btn-primary js-close-poker-help" style="width: 100%;">Verstanden</button>
             </div>
         </div>
     </div>

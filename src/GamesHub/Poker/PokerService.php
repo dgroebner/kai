@@ -906,8 +906,9 @@ class PokerService
             ];
         }
 
-        // Eigene Hand-Stärke ausrechnen (falls im Spiel)
+        // Eigene Hand-Stärke & Spielhilfe ausrechnen (falls im Spiel)
         $myScoreInfo = null;
+        $myAssistantInfo = null;
         $myPlayer = null;
         foreach ($players as $p) {
             if ((int)$p['id'] === $forPlayerId) {
@@ -922,6 +923,7 @@ class PokerService
             if (count($allCards) >= 5) {
                 $myScoreInfo = PokerHandEvaluator::evaluate7Cards($allCards);
             }
+            $myAssistantInfo = PokerHandEvaluator::analyzeHandForAssistant($myPlayer['sheet']['hand'], $commCards);
         }
 
         // Aktuelle Wettoptionen für den Spieler am Zug
@@ -951,6 +953,7 @@ class PokerService
             'abort_votes' => $state['abort_votes'] ?? [],
             'players' => $publicPlayers,
             'my_score' => $myScoreInfo,
+            'my_assistant' => $myAssistantInfo,
             'can_check' => ($toCall === 0),
             'call_amount' => min($myChips, $toCall),
             'min_bet_amount' => min($myChips + $myCurrentBet, $highestBet + $minRaise),

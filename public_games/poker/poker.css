@@ -622,6 +622,100 @@
     height: 16px;
 }
 
+/* LIVE SPIELHILFE / HAND-BERATER */
+.poker-assistant-box {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.assistant-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.assistant-title {
+    font-weight: 800;
+    color: #f8fafc;
+    font-size: 0.88rem;
+}
+
+.assistant-strength-pill {
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.12rem 0.5rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.assistant-possibilities {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    color: #cbd5e1;
+    font-size: 0.79rem;
+}
+
+.assistant-advice {
+    color: #fef08a;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 0.3rem;
+    margin-top: 0.1rem;
+}
+
+/* BLÄTTER-RANGFOLGE MODAL */
+.poker-hand-rankings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.ranking-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+}
+
+.ranking-pos {
+    font-weight: 900;
+    color: #f59e0b;
+    min-width: 1.4rem;
+}
+
+.ranking-ex {
+    display: inline-block;
+    margin-left: 0.35rem;
+    font-size: 0.74rem;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 0.08rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.ranking-desc {
+    color: #94a3b8;
+    font-size: 0.76rem;
+    margin-top: 0.12rem;
+}
+
 /* RESPONSIVE */
 @media (max-width: 640px) {
     .poker-table {
