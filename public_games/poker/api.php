@@ -211,8 +211,8 @@ try {
     // -------------------------------------------------------------------------
     if ($action === 'reactions') {
         $sinceId = (int)($_GET['since'] ?? 0);
-        $reactions = $repo->getReactionsSince($roomId, $sinceId);
-        echo json_encode(['success' => true, 'reactions' => $reactions]);
+        $reactions = $repo->getRecentReactions($roomId, $sinceId);
+        echo json_encode(['success' => true, 'reactions' => $reactions], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -251,7 +251,10 @@ try {
             exit;
         }
         $res = $repo->addReaction($roomId, $myPlayerId, (string)$myPlayer['player_name'], $emoji);
-        echo json_encode(['success' => (bool)$res]);
+        if (empty($res['success'])) {
+            http_response_code(($res['error'] ?? '') === 'spam_cooldown' ? 429 : 400);
+        }
+        echo json_encode($res, JSON_UNESCAPED_UNICODE);
         exit;
     }
 

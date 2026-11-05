@@ -29,6 +29,9 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
         </div>
 
         <div class="hub-header-right">
+            <button type="button" class="btn btn-sm btn-outline js-btn-reactions" title="Reaktion senden">
+                😀
+            </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-poker-help" id="btn-poker-help" title="Poker-Blätter & Rangfolge">
                 📖 <span class="poker-btn-label">Blätter</span>
             </button>
