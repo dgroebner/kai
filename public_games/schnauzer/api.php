@@ -124,6 +124,12 @@ try {
             foreach ($existingPlayers as $p) {
                 if ($p['player_token_hash'] === $playerTokenHash) {
                     $repo->setPlayerConnected((int)$p['id'], true);
+                    $inputName = trim((string)($input['player_name'] ?? ''));
+                    if ($inputName !== '' && $inputName !== $p['player_name']) {
+                        $inputName = mb_substr($inputName, 0, 30);
+                        $repo->updatePlayerName((int)$p['id'], $inputName);
+                        $p['player_name'] = $inputName;
+                    }
                     echo json_encode([
                         'success' => true,
                         'room_code' => $room['room_code'],
@@ -377,14 +383,14 @@ try {
     // -------------------------------------------------------------------------
     // 13. SPIELERNAME ÄNDERN
     // -------------------------------------------------------------------------
-    if ($action === 'rename') {
-        $newName = trim((string)($input['name'] ?? ''));
+    if ($action === 'rename' || $action === 'update_name') {
+        $newName = trim((string)($input['name'] ?? $input['player_name'] ?? ''));
         if ($newName === '') {
             echo json_encode(['success' => false, 'message' => 'Name darf nicht leer sein.']);
             exit;
         }
         $newName = mb_substr($newName, 0, 30);
-        $repo->updatePlayerName($roomId, $myPlayerId, $newName);
+        $repo->updatePlayerName($myPlayerId, $newName);
         echo json_encode(['success' => true, 'name' => $newName]);
         exit;
     }

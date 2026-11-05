@@ -67,17 +67,29 @@
         if (editNameBtn) {
             editNameBtn.addEventListener('click', async () => {
                 const currentName = localStorage.getItem('kai_gh_player_name') || 'Ich';
-                const newName = window.prompt('Dein neuer Spielername:', currentName);
+                const newName = await HubDialog.prompt(
+                    'Spielername ändern',
+                    'Wie möchtest du am Tisch heißen?',
+                    currentName,
+                    {
+                        icon: '✏️',
+                        confirmText: 'Speichern',
+                        placeholder: 'Dein Name...',
+                    }
+                );
                 if (newName && newName.trim() && newName.trim() !== currentName) {
                     const trimmed = newName.trim().substring(0, 25);
                     try {
                         const res = await HubHttp.postJson(`./api.php?action=rename&room=${encodeURIComponent(roomCode)}`, {
                             name: trimmed,
+                            player_name: trimmed,
                         });
                         if (res.ok && res.data && res.data.success) {
                             localStorage.setItem('kai_gh_player_name', trimmed);
                             document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = trimmed);
                             pollStatus();
+                        } else if (res.data?.message) {
+                            await HubDialog.alert('Hinweis', res.data.message, '⚠️');
                         }
                     } catch (_) {}
                 }

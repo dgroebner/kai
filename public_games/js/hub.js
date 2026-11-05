@@ -15,6 +15,16 @@
         if (nameInput && savedName) {
             nameInput.value = savedName;
         }
+        if (nameInput) {
+            const saveName = () => {
+                const val = nameInput.value.trim();
+                if (val) {
+                    localStorage.setItem('kai_gh_player_name', val);
+                }
+            };
+            nameInput.addEventListener('input', saveName);
+            nameInput.addEventListener('change', saveName);
+        }
 
         const modal = document.getElementById('modal-create-room');
         const modalTitle = document.getElementById('create-modal-title');
