@@ -303,6 +303,16 @@
     min-width: 95px;
 }
 
+.schnauzer-action-bar .btn:disabled,
+.schnauzer-action-bar .btn.is-disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    filter: grayscale(60%) !important;
+}
+
 /* SHOWDOWN-LISTE */
 .showdown-results-list {
     display: flex;

@@ -459,13 +459,15 @@
         if (btnPass) btnPass.disabled = !isMyTurn;
         if (btnKnock) {
             const knockAllowed = Boolean(data.can_knock);
-            btnKnock.disabled = !isMyTurn || !knockAllowed;
+            const isKnockDisabled = !isMyTurn || !knockAllowed;
+            btnKnock.disabled = isKnockDisabled;
+            btnKnock.classList.toggle('is-disabled', isKnockDisabled);
             if (isMyTurn && !data.knocked_by_player_id && !knockAllowed) {
-                btnKnock.title = 'In der ersten Runde darf nicht geklopft werden (Umlaufschutz).';
+                btnKnock.title = 'In der ersten Runde (erster Umlauf aller Spieler) darf nicht geklopft werden.';
             } else if (Boolean(data.knocked_by_player_id)) {
                 btnKnock.title = 'Es wurde bereits geklopft.';
             } else {
-                btnKnock.title = '';
+                btnKnock.title = 'Macht die Runde zu – jeder andere Spieler hat noch genau einen Zug.';
             }
         }
     }
@@ -626,11 +628,15 @@
         const btnKnock = document.getElementById('btn-knock');
         if (btnKnock) {
             btnKnock.addEventListener('click', async () => {
+                if (btnKnock.disabled || btnKnock.classList.contains('is-disabled')) return;
                 if (window.QuarxlCards?.SoundFx) window.QuarxlCards.SoundFx.knock();
                 selectedHandIndex = null;
                 selectedTableIndex = null;
                 try {
-                    await HubHttp.postJson(`./api.php?action=knock&room=${encodeURIComponent(roomCode)}`);
+                    const res = await HubHttp.postJson(`./api.php?action=knock&room=${encodeURIComponent(roomCode)}`);
+                    if (!res.ok && res.data?.message) {
+                        await HubDialog.alert('Hinweis', res.data.message, '⚠️');
+                    }
                     pollStatus();
                 } catch (_) {}
             });
