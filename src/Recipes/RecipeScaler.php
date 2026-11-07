@@ -2,16 +2,18 @@
 
 namespace Kai\Tools\Recipes;
 
+use Kai\Tools\System\SystemSettingsService;
+
 /**
  * Skalierungs- und Packungsgrößen-Logik für Kochrezepte.
  *
- * Berücksichtigt Erwachsene (Faktor 1.0) und Kinder/Jugendliche (Faktor 0.8),
+ * Berücksichtigt Erwachsene (Faktor 1.0) und Kinder/Jugendliche (konfigurierbarer Faktor, Standard 0.8),
  * rundet auf küchentaugliche Mengen und gleicht Bedarfswerte mit handelsüblichen
  * Packungsgrößen im Supermarkt ab, um Lebensmittelverschwendung zu vermeiden.
  */
 class RecipeScaler
 {
-    public const KID_PORTION_FACTOR = 0.8;
+    private float $kidPortionFactor;
 
     /**
      * Handelsübliche Packungsgrößen im deutschen Lebensmitteleinzelhandel (Rewe / Globus),
@@ -45,6 +47,12 @@ class RecipeScaler
         'kichererbsen' => ['size' => 240.0, 'unit' => 'g', 'pack_label' => 'Dose (240 g Abtropfgewicht)', 'tip' => 'Rest mit etwas Öl und Paprika im Ofen knusprig rösten.'],
     ];
 
+    public function __construct(?SystemSettingsService $settings = null)
+    {
+        $pct = ($settings ?? new SystemSettingsService())->getRecipeKidPortionPct();
+        $this->kidPortionFactor = round($pct / 100.0, 2);
+    }
+
     /**
      * Berechnet den effektiven Portionenwert aus Erwachsenen und Kindern.
      */
@@ -52,7 +60,7 @@ class RecipeScaler
     {
         $adults = max(0, $adults);
         $kids = max(0, $kids);
-        $total = $adults + ($kids * self::KID_PORTION_FACTOR);
+        $total = $adults + ($kids * $this->kidPortionFactor);
 
         return max(0.5, round($total, 2));
     }
@@ -133,6 +141,7 @@ class RecipeScaler
         $recipe['scaling'] = [
             'adults' => $adults,
             'kids' => $kids,
+            'kid_portion_pct' => (int)round($this->kidPortionFactor * 100),
             'base_servings' => $baseServings,
             'target_servings' => $targetServings,
             'scale_factor' => round($scaleFactor, 3),
@@ -188,7 +197,7 @@ class RecipeScaler
     }
 
     /**
-     * Formatiert eine Dezimalmenge lesbar (z. B. 1.5 -> "1,5", 2.0 -> "2", 0.5 -> "½").
+     * Formatiert eine Dezimalmenge lesbar (z. B. 1.5 -> "1,5", 2.0 -> "2").
      */
     public function formatQuantity(float $qty): string
     {
@@ -240,7 +249,6 @@ class RecipeScaler
         $totalPurchased = $packagesNeeded * $packSize;
         $leftover = max(0.0, round($totalPurchased - $neededQty, 1));
 
-        // Wenn der Rest minimal ist (< 12% einer Packung), empfehlen wir direkt die ganze Packung ins Gericht zu geben
         $useAllHint = null;
         if ($leftover > 0 && ($leftover / $packSize) <= 0.25) {
             $useAllHint = sprintf(

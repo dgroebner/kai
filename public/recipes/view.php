@@ -22,9 +22,9 @@ if (!$recipeId) {
 }
 
 $repo = new RecipeRepository();
-$scaler = new RecipeScaler();
-$timelineService = new RecipeTimelineService();
 $settings = new SystemSettingsService();
+$scaler = new RecipeScaler($settings);
+$timelineService = new RecipeTimelineService();
 
 $rawRecipe = $repo->getRecipeById($recipeId, $variantId);
 if (!$rawRecipe) {
@@ -32,8 +32,8 @@ if (!$rawRecipe) {
     exit;
 }
 
-$adults = isset($_GET['adults']) ? max(0, (int)$_GET['adults']) : (int)($rawRecipe['default_adults'] ?? 2);
-$kids = isset($_GET['kids']) ? max(0, (int)$_GET['kids']) : (int)($rawRecipe['default_kids'] ?? 2);
+$adults = isset($_GET['adults']) ? max(0, (int)$_GET['adults']) : (int)($rawRecipe['default_adults'] ?? $settings->getRecipeDefaultAdults());
+$kids = isset($_GET['kids']) ? max(0, (int)$_GET['kids']) : (int)($rawRecipe['default_kids'] ?? $settings->getRecipeDefaultKids());
 if ($adults === 0 && $kids === 0) {
     $adults = 2;
 }
@@ -51,6 +51,7 @@ $variants = $recipe['variants'] ?? [];
 
 $stoveType = $settings->getStoveType();
 $stoveLevels = $settings->getStoveLevels();
+$kidPortionPct = $settings->getRecipeKidPortionPct();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -94,33 +95,33 @@ $stoveLevels = $settings->getStoveLevels();
 
             <div class="kpi-grid recipe-kpi-grid">
                 <div class="kpi-card">
-                    <span class="kpi-label">⏱️ Gesamtzeit (Synchron)</span>
-                    <span class="kpi-value"><?= (int)$timeline['total_synchronized_minutes'] ?> Min.</span>
-                    <span class="kpi-sub">Vorbereitung: <?= (int)$timeline['pre_prep_minutes'] ?> Min. · Herd: <?= (int)$timeline['max_cook_minutes'] ?> Min.</span>
+                    <div class="kpi-label">⏱️ Gesamtzeit (Synchron)</div>
+                    <div class="kpi-value kpi-value-sm"><?= (int)$timeline['total_synchronized_minutes'] ?> Min.</div>
+                    <div class="kpi-note kpi-note-muted">Vorbereitung: <?= (int)$timeline['pre_prep_minutes'] ?> Min. · Herd: <?= (int)$timeline['max_cook_minutes'] ?> Min.</div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">🔥 Herd-Konfiguration</span>
-                    <span class="kpi-value"><?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?></span>
-                    <span class="kpi-sub">Konkrete Stufen 1 bis <?= (int)$stoveLevels ?></span>
+                    <div class="kpi-label">🔥 Herd-Konfiguration</div>
+                    <div class="kpi-value kpi-value-sm"><?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="kpi-note kpi-note-muted">Konkrete Stufen 1 bis <?= (int)$stoveLevels ?></div>
                 </div>
                 <div class="kpi-card">
-                    <span class="kpi-label">🥗 Nährwerte (pro Portion)</span>
-                    <span class="kpi-value">
+                    <div class="kpi-label">🥗 Nährwerte (pro Portion)</div>
+                    <div class="kpi-value kpi-value-sm">
                         <?= !empty($recipe['calories_per_serving']) ? (int)$recipe['calories_per_serving'] . ' kcal' : 'k. A.' ?>
-                    </span>
-                    <span class="kpi-sub">
+                    </div>
+                    <div class="kpi-note kpi-note-muted">
                         EW: <?= $recipe['protein_per_serving'] !== null ? number_format((float)$recipe['protein_per_serving'], 1, ',', '.') . ' g' : '–' ?> ·
                         KH: <?= $recipe['carbs_per_serving'] !== null ? number_format((float)$recipe['carbs_per_serving'], 1, ',', '.') . ' g' : '–' ?> ·
                         Fett: <?= $recipe['fat_per_serving'] !== null ? number_format((float)$recipe['fat_per_serving'], 1, ',', '.') . ' g' : '–' ?>
-                    </span>
+                    </div>
                 </div>
                 <?php if (!empty($recipe['source_url'])): ?>
                     <div class="kpi-card">
-                        <span class="kpi-label">🔗 Original-Quelle</span>
-                        <span class="kpi-value recipe-source-link-wrap">
+                        <div class="kpi-label">🔗 Original-Quelle</div>
+                        <div class="kpi-value kpi-value-sm recipe-source-link-wrap">
                             <a href="<?= htmlspecialchars((string)$recipe['source_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer" class="btn-link">Webseite öffnen &nearr;</a>
-                        </span>
-                        <span class="kpi-sub">Importiert &amp; aufbereitet</span>
+                        </div>
+                        <div class="kpi-note kpi-note-muted">Importiert &amp; aufbereitet</div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -169,7 +170,7 @@ $stoveLevels = $settings->getStoveLevels();
                     </div>
 
                     <div class="recipe-portion-box">
-                        <span class="recipe-portion-title">🧒 Kinder / Jugendliche (80 %)</span>
+                        <span class="recipe-portion-title">🧒 Kinder / Jugendliche (<?= (int)$kidPortionPct ?> %)</span>
                         <div class="recipe-stepper">
                             <button type="button" class="btn btn-sm btn-outline js-portion-step" data-target="kids" data-delta="-1" data-read-interactive="1">&minus;</button>
                             <input type="number" id="input-kids" class="form-control form-control-sm recipe-portion-input" value="<?= $kids ?>" min="0" max="20" data-read-interactive="1">
@@ -397,7 +398,7 @@ $stoveLevels = $settings->getStoveLevels();
             <div class="recipe-section-header">
                 <div>
                     <h2>👩‍🍳 Synchronisierter Kochablauf (Schritt für Schritt)</h2>
-                    <p class="text-muted">Alle Mengenangaben stehen direkt im Schritt – kein Hochscrollen nötig! Herdstufen bezogen auf euer <?= (int)$stoveLevels ?>-Stufen-Ceranfeld.</p>
+                    <p class="text-muted">Alle Mengenangaben stehen direkt im Schritt – kein Hochscrollen nötig! Herdstufen bezogen auf euer <?= (int)$stoveLevels ?>-Stufen-<?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?>.</p>
                 </div>
                 <a href="cook.php?id=<?= (int)$recipe['id'] ?>&amp;variant_id=<?= $activeVariantId ?>&amp;adults=<?= $adults ?>&amp;kids=<?= $kids ?><?= $serveTime ? '&amp;serve_time=' . urlencode($serveTime) : '' ?>"
                    class="btn btn-primary">👨‍🍳 Großansicht (Koch-Modus)</a>
@@ -464,7 +465,7 @@ $stoveLevels = $settings->getStoveLevels();
 <!-- MODAL 1: EINKAUFSLISTE MIT VORRATSSCHRANK-FILTER -->
 <?php if ($canWrite): ?>
 <div id="modal-recipe-shopping" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-shopping-title">
-    <div class="modal-content recipe-modal-lg">
+    <div class="modal-card modal-card--lg">
         <div class="modal-header">
             <h3 id="modal-shopping-title">🛒 Zutaten auf die Einkaufsliste setzen</h3>
             <button type="button" class="modal-close js-close-shopping-modal" aria-label="Schließen">&times;</button>
@@ -521,18 +522,17 @@ $stoveLevels = $settings->getStoveLevels();
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-
-            <div class="modal-actions recipe-modal-footer">
-                <button type="button" class="btn btn-outline modal-close js-close-shopping-modal">Abbrechen</button>
-                <button type="button" class="btn btn-primary" id="btn-confirm-add-shopping">🛒 Ausgewählte Artikel auf Einkaufsliste setzen</button>
-            </div>
+        </div>
+        <div class="modal-footer recipe-modal-footer">
+            <button type="button" class="btn btn-outline js-close-shopping-modal">Abbrechen</button>
+            <button type="button" class="btn btn-primary" id="btn-confirm-add-shopping">🛒 Ausgewählte Artikel auf Einkaufsliste setzen</button>
         </div>
     </div>
 </div>
 
 <!-- MODAL 2: KI-ZUTATENTAUSCH ("ALTERNATIVE SUCHEN" & ALS REZEPTABWANDLUNG SPEICHERN) -->
 <div id="modal-recipe-alternatives" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-alt-title">
-    <div class="modal-content recipe-modal-lg">
+    <div class="modal-card modal-card--lg">
         <div class="modal-header">
             <h3 id="modal-alt-title">🔄 Zutat austauschen &amp; Rezeptabwandlung speichern</h3>
             <button type="button" class="modal-close js-close-alt-modal" aria-label="Schließen">&times;</button>
@@ -555,10 +555,9 @@ $stoveLevels = $settings->getStoveLevels();
             </div>
 
             <div id="alt-results-container" class="recipe-alt-cards-list"></div>
-
-            <div class="modal-actions recipe-modal-footer">
-                <button type="button" class="btn btn-outline modal-close js-close-alt-modal">Schließen</button>
-            </div>
+        </div>
+        <div class="modal-footer recipe-modal-footer">
+            <button type="button" class="btn btn-outline js-close-alt-modal">Schließen</button>
         </div>
     </div>
 </div>

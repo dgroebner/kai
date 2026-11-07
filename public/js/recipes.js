@@ -144,6 +144,61 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Küchenprofil & Haushalts-Präferenzen Modal (index.php)
+    const profileModal = document.getElementById('modal-kitchen-profile');
+    const profileForm = document.getElementById('form-kitchen-profile');
+
+    function openProfileModal() {
+        if (!profileModal) return;
+        profileModal.classList.remove('hidden');
+    }
+
+    function closeProfileModal() {
+        if (!profileModal) return;
+        profileModal.classList.add('hidden');
+    }
+
+    if (profileForm) {
+        profileForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('btn-submit-profile');
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                const stoveTypeEl = document.getElementById('prof-stove-type');
+                const stoveLevelsEl = document.getElementById('prof-stove-levels');
+                const ovenModeEl = document.getElementById('prof-oven-mode');
+                const adultsEl = document.getElementById('prof-default-adults');
+                const kidsEl = document.getElementById('prof-default-kids');
+                const kidPctEl = document.getElementById('prof-kid-pct');
+                const shallotsEl = document.getElementById('prof-prefer-shallots');
+                const prefsEl = document.getElementById('prof-household-prefs');
+
+                const res = await window.KaiHttp.postJson('api.php', {
+                    action: 'save_kitchen_profile',
+                    stove_type: stoveTypeEl ? stoveTypeEl.value : 'Ceranfeld',
+                    stove_levels: stoveLevelsEl ? parseInt(stoveLevelsEl.value || '12', 10) : 12,
+                    oven_default_mode: ovenModeEl ? ovenModeEl.value : 'Umluft',
+                    recipe_default_adults: adultsEl ? parseInt(adultsEl.value || '2', 10) : 2,
+                    recipe_default_kids: kidsEl ? parseInt(kidsEl.value || '2', 10) : 2,
+                    recipe_kid_portion_pct: kidPctEl ? parseInt(kidPctEl.value || '80', 10) : 80,
+                    recipe_prefer_shallots: shallotsEl && shallotsEl.checked ? 1 : 0,
+                    recipe_household_preferences: prefsEl ? prefsEl.value.trim() : ''
+                });
+
+                if (res && res.success) {
+                    window.location.reload();
+                } else {
+                    alert((res && res.message) ? res.message : 'Fehler beim Speichern des Küchenprofils.');
+                }
+            } catch (err) {
+                alert('Netzwerkfehler beim Speichern des Küchenprofils.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
     // =========================================================================
     // 2. DETAILANSICHT: SKALIERER, TIMING, EINKAUFSLISTE & VARIANTEN (view.php)
     // =========================================================================
@@ -413,6 +468,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (e.target.closest('.js-close-import-modal')) {
             closeImportModal();
+            return;
+        }
+
+        // Küchenprofil-Modal öffnen / schließen
+        if (e.target.closest('#btn-open-profile-modal') || e.target.closest('.js-open-profile-modal')) {
+            openProfileModal();
+            return;
+        }
+        if (e.target.closest('.js-close-profile-modal')) {
+            closeProfileModal();
             return;
         }
 

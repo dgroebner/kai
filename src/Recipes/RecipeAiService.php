@@ -12,7 +12,7 @@ use Kai\Tools\System\SystemSettingsService;
  * - Multimodaler Rezept-Import (Foto, PDF, Web-URL, Freitext)
  * - Übersetzung von Küchen-Fachbegriffen in klare, jugendfreundliche Sprache (11+ Jahre)
  * - Konkrete Herd-Stufen (z. B. 12-Stufen-Ceranfeld) & Backofen-Einstellungen
- * - Automatische Schalotten-Präferenz, 2-Phasen Mise en Place & Multi-Topf-Zerlegung
+ * - Automatische Schalotten-Präferenz, individuelle Haushalts-Vorlieben, 2-Phasen Mise en Place & Multi-Topf-Zerlegung
  * - KI-gestützter Zutatentausch ("Alternative suchen") & Varianten-Generierung
  */
 class RecipeAiService
@@ -51,6 +51,11 @@ class RecipeAiService
         $stoveLevels = $this->settings->getStoveLevels();
         $ovenMode = $this->settings->getOvenDefaultMode();
         $preferShallots = $this->settings->isRecipePreferShallotsEnabled();
+        $defaultAdults = $this->settings->getRecipeDefaultAdults();
+        $defaultKids = $this->settings->getRecipeDefaultKids();
+        $kidPortionPct = $this->settings->getRecipeKidPortionPct();
+        $defaultServings = round($defaultAdults + ($defaultKids * ($kidPortionPct / 100.0)), 2);
+        $householdPrefs = $this->settings->getRecipeHouseholdPreferences();
 
         $sourceContent = trim($textOrUrl);
         if ($sourceType === 'url') {
@@ -61,6 +66,10 @@ class RecipeAiService
             ? "WICHTIGE HAUSHALTS-PRÄFERENZ: Ersetze reguläre Zwiebeln/Speisezwiebeln/Gemüsezwiebeln automatisch durch 'Schalotten' (passe die Stückzahl sinnvoll an, z. B. 1 große Zwiebel = 2 Schalotten) und erwähne diesen Hinweis kurz in den Varianten-Notizen."
             : "Behalte Zwiebeln wie im Originalrezept bei.";
 
+        $customPrefBlock = $householdPrefs !== ''
+            ? "WEITERE HAUSHALTS-VORLIEBEN & REGELN (unbedingt beim Import berücksichtigen!): {$householdPrefs}"
+            : "";
+
         $midLow = max(1, (int)round($stoveLevels * 0.2));
         $simmer = max(2, (int)round($stoveLevels * 0.38));
         $medium = max(3, (int)round($stoveLevels * 0.55));
@@ -69,7 +78,7 @@ class RecipeAiService
 
         $prompt = <<<PROMPT
 Du bist ein präziser, familienfreundlicher Koch-Assistent für das Smart-Home-System "Kai".
-Analysiere das übergebene Rezept (aus Text, Webseite, Foto oder PDF) und bereite es für unseren Haushalt (2 Erwachsene + 2 Kinder/Jugendliche ab 11 Jahren, die selbstständig kochen) optimal auf.
+Analysiere das übergebene Rezept (aus Text, Webseite, Foto oder PDF) und bereite es für unseren Haushalt ({$defaultAdults} Erwachsene + {$defaultKids} Kinder/Jugendliche ab 11 Jahren mit {$kidPortionPct}% Portionsgröße = {$defaultServings} Vollportionen) optimal auf.
 
 VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
 1. KEIN KÜCHEN-CHINESISCH (Jugendgerecht 11+ Jahre):
@@ -89,6 +98,7 @@ VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
    - Nenne in JEDEM Kochschritt-Text (`instruction`) die exakte Menge der jeweiligen Zutat direkt im Satz (z. B. "Jetzt **2 TL Currypulver** und **200 ml Sahne** einrühren"), damit man beim Kochen niemals nach oben zur Zutatenliste scrollen muss!
    - Befülle zusätzlich `ingredients_inline` für jeden Schritt als Array der in diesem Schritt verwendeten Zutaten.
 4. {$shallotRule}
+   {$customPrefBlock}
 5. 2-PHASEN MISE EN PLACE (VORBEREITUNG) & MULTI-TOPF-TIMING:
    - Zerlege das Gericht in logische Komponenten (`components`), z. B. "Vorbereitung", "Hauptgericht / Fleisch", "Kartoffeln / Beilage", "Gemüse / Soße".
    - Vorbereitung vor dem Einschalten des Herdes (`phase = "mise_en_place_pre"`): Nur das, was bereitstehen muss, bevor der erste Topf heiß wird.
@@ -107,16 +117,16 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt in exakt dieser Struktur:
   "prep_time_minutes": 20,
   "cook_time_minutes": 35,
   "total_time_minutes": 55,
-  "default_adults": 2,
-  "default_kids": 2,
-  "default_servings": 3.6,
+  "default_adults": {$defaultAdults},
+  "default_kids": {$defaultKids},
+  "default_servings": {$defaultServings},
   "calories_per_serving": 540,
   "protein_per_serving": 32.0,
   "carbs_per_serving": 48.0,
   "fat_per_serving": 22.0,
   "equipment_list": ["Große Pfanne", "Kochtopf mit Deckel", "Schneidebrett", "Kochmesser"],
   "variant_name": "Standard (Familien-Variante)",
-  "variant_notes": "Angepasst auf 12-Stufen-Ceranfeld und Schalotten.",
+  "variant_notes": "Angepasst auf {$stoveLevels}-Stufen-{$stoveType} und Familien-Präferenzen.",
   "ingredients": [
     {
       "ingredient_name": "Schalotten",
@@ -196,13 +206,16 @@ PROMPT;
     public function suggestIngredientAlternatives(array $recipe, string $ingredientName, string $reason = ''): array
     {
         $stoveLevels = $this->settings->getStoveLevels();
+        $householdPrefs = $this->settings->getRecipeHouseholdPreferences();
         $title = (string)($recipe['title'] ?? 'Gericht');
         $reasonHint = trim($reason) !== '' ? "Grund/Wunsch des Nutzers: {$reason}" : "Der Nutzer möchte eine geschmacklich passende Abwechslung.";
+        $prefHint = $householdPrefs !== '' ? "Haushalts-Vorlieben beachten: {$householdPrefs}" : "";
 
         $prompt = <<<PROMPT
 Du bist ein kreativer Familien-Kochassistent.
 Im Rezept "{$title}" möchte die Familie die Zutat "{$ingredientName}" durch eine Alternative ersetzen.
 {$reasonHint}
+{$prefHint}
 
 Schlage 3 konkret passende Alternativen vor, die im Supermarkt (Rewe/Globus) leicht erhältlich sind und Kindern/Jugendlichen (11+ Jahre) sowie Erwachsenen gut schmecken.
 Berücksichtige unseren Herd mit {$stoveLevels} Stufen.
@@ -396,7 +409,6 @@ PROMPT;
             throw new Exception('Die Rezept-Webseite konnte nicht geladen werden (HTTP ' . $httpCode . ').');
         }
 
-        // 1. Strukturierte JSON-LD Rezeptdaten extrahieren (falls auf Foodblogs vorhanden)
         $extractedBlocks = [];
         if (preg_match_all('/<script[^>]*type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is', $html, $matches)) {
             foreach ($matches[1] as $jsonBlock) {
@@ -407,7 +419,6 @@ PROMPT;
             }
         }
 
-        // 2. Störende Tags entfernen und sichtbaren Text extrahieren
         $cleanHtml = preg_replace('/<(script|style|svg|noscript|footer|nav|iframe)[^>]*>.*?<\/\1>/is', ' ', $html) ?? $html;
         $plainText = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($cleanHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? '');
 
@@ -423,11 +434,12 @@ PROMPT;
      */
     private function normalizeParsedRecipe(array $raw, string $sourceType, ?string $sourceUrl): array
     {
-        $adults = max(1, (int)($raw['default_adults'] ?? 2));
-        $kids = max(0, (int)($raw['default_kids'] ?? 2));
+        $adults = max(1, (int)($raw['default_adults'] ?? $this->settings->getRecipeDefaultAdults()));
+        $kids = max(0, (int)($raw['default_kids'] ?? $this->settings->getRecipeDefaultKids()));
+        $kidFactor = $this->settings->getRecipeKidPortionPct() / 100.0;
         $servings = isset($raw['default_servings']) && (float)$raw['default_servings'] > 0
             ? (float)$raw['default_servings']
-            : round($adults + ($kids * 0.8), 2);
+            : round($adults + ($kids * $kidFactor), 2);
 
         $recipeData = [
             'title' => trim((string)($raw['title'] ?? 'Importiertes Rezept')),

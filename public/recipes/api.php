@@ -8,6 +8,7 @@ use Kai\Tools\Recipes\RecipeShoppingService;
 use Kai\Tools\Recipes\RecipeTimelineService;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
+use Kai\Tools\System\SystemSettingsService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -31,6 +32,7 @@ if ($action === '') {
 
 $writeActions = [
     'import_recipe',
+    'save_kitchen_profile',
     'save_manual_recipe',
     'suggest_alternatives',
     'create_substituted_variant',
@@ -48,9 +50,19 @@ $logger = new Logger();
 $repo = new RecipeRepository();
 $scaler = new RecipeScaler();
 $timelineService = new RecipeTimelineService();
+$settingsService = new SystemSettingsService();
 
 try {
     switch ($action) {
+        // --- 0. Küchenprofil & Haushalts-Präferenzen speichern ---
+        case 'save_kitchen_profile':
+            $settingsService->saveKitchenProfile($input);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Küchenprofil und Haushalts-Präferenzen erfolgreich gespeichert!',
+            ]);
+            break;
+
         // --- 1. Rezept per KI importieren (URL, Foto, PDF, Text) ---
         case 'import_recipe':
             $sourceType = trim((string)($input['source_type'] ?? 'text'));
@@ -62,8 +74,13 @@ try {
             $mimeType = !empty($input['mime_type']) ? trim((string)$input['mime_type']) : null;
             $base64Data = !empty($input['base64_data']) ? trim((string)$input['base64_data']) : null;
 
-            if ($sourceType === 'url' && $textOrUrl === '') {
-                Auth::sendJsonError(400, 'Bitte gib eine gültige Rezept-URL ein.');
+            if ($sourceType === 'url') {
+                if ($textOrUrl === '') {
+                    Auth::sendJsonError(400, 'Bitte gib eine gültige Rezept-URL ein.');
+                }
+                if (str_contains($textOrUrl, 'drive.google.com/drive/folders')) {
+                    Auth::sendJsonError(400, 'Google-Drive-Ordner können nicht direkt als Webseite ausgelesen werden. Bitte wähle die PDF- oder Bilddatei über den Tab „Foto / PDF“ direkt aus.');
+                }
             }
             if (($sourceType === 'photo' || $sourceType === 'pdf') && ($base64Data === null || $mimeType === null)) {
                 Auth::sendJsonError(400, 'Bitte wähle eine Foto- oder PDF-Datei aus.');
@@ -79,7 +96,7 @@ try {
                 }
             }
 
-            $aiService = new RecipeAiService();
+            $aiService = new RecipeAiService(null, $settingsService, $logger);
             $parsed = $aiService->importRecipe($sourceType, $textOrUrl, $mimeType, $base64Data);
 
             $parsed['recipe']['created_by'] = $_SESSION['user_email'] ?? null;
@@ -140,7 +157,7 @@ try {
                 Auth::sendJsonError(404, 'Rezept nicht gefunden.');
             }
 
-            $aiService = new RecipeAiService();
+            $aiService = new RecipeAiService(null, $settingsService, $logger);
             $alternatives = $aiService->suggestIngredientAlternatives($recipe, $ingredientName, $reason);
 
             echo json_encode([
@@ -168,7 +185,7 @@ try {
                 Auth::sendJsonError(404, 'Rezept nicht gefunden.');
             }
 
-            $aiService = new RecipeAiService();
+            $aiService = new RecipeAiService(null, $settingsService, $logger);
             $newVariantData = $aiService->buildSubstitutedVariant(
                 $recipe,
                 $oldIngredient,

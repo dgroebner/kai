@@ -29,6 +29,10 @@ $stoveType = $settings->getStoveType();
 $stoveLevels = $settings->getStoveLevels();
 $ovenMode = $settings->getOvenDefaultMode();
 $preferShallots = $settings->isRecipePreferShallotsEnabled();
+$defaultAdults = $settings->getRecipeDefaultAdults();
+$defaultKids = $settings->getRecipeDefaultKids();
+$kidPortionPct = $settings->getRecipeKidPortionPct();
+$householdPrefs = $settings->getRecipeHouseholdPreferences();
 
 $sourceIcons = [
     'url' => '🔗 Web-Rezept',
@@ -56,6 +60,7 @@ $sourceIcons = [
             <a href="../einkaufsliste/index.php" class="btn btn-outline">🛒 Einkaufsliste</a>
             <a href="../index.php" class="btn btn-outline">&larr; Übersicht</a>
             <?php if ($canWrite): ?>
+                <button type="button" class="btn btn-outline" id="btn-open-profile-modal">⚙️ Küchenprofil &amp; Präferenzen</button>
                 <button type="button" class="btn btn-primary" id="btn-open-import-modal">✨ Rezept importieren (KI)</button>
             <?php endif; ?>
         </div>
@@ -64,13 +69,23 @@ $sourceIcons = [
     <main>
         <!-- Haushalts-Küchenprofil Banner -->
         <section class="card recipe-kitchen-profile-bar">
-            <div class="recipe-profile-badges">
-                <span class="recipe-profile-pill">🔥 Herd: <strong><?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?> (Stufe 1–<?= (int)$stoveLevels ?>)</strong></span>
-                <span class="recipe-profile-pill">🌀 Ofen: <strong><?= htmlspecialchars($ovenMode, ENT_QUOTES, 'UTF-8') ?></strong></span>
-                <?php if ($preferShallots): ?>
-                    <span class="recipe-profile-pill recipe-profile-pill--highlight">🧅 Präferenz: <strong>Schalotten statt Zwiebeln</strong></span>
+            <div class="recipe-profile-row">
+                <div class="recipe-profile-badges">
+                    <span class="recipe-profile-pill">🔥 Herd: <strong><?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?> (Stufe 1–<?= (int)$stoveLevels ?>)</strong></span>
+                    <span class="recipe-profile-pill">🌀 Ofen: <strong><?= htmlspecialchars($ovenMode, ENT_QUOTES, 'UTF-8') ?></strong></span>
+                    <span class="recipe-profile-pill">👨‍👩‍👧‍👦 Standard: <strong><?= $defaultAdults ?> Erw. + <?= $defaultKids ?> Ki. (<?= $kidPortionPct ?> %)</strong></span>
+                    <?php if ($preferShallots): ?>
+                        <span class="recipe-profile-pill recipe-profile-pill--highlight">🧅 Präferenz: <strong>Schalotten statt Zwiebeln</strong></span>
+                    <?php endif; ?>
+                    <?php if ($householdPrefs !== ''): ?>
+                        <span class="recipe-profile-pill recipe-profile-pill--highlight" title="<?= htmlspecialchars($householdPrefs, ENT_QUOTES, 'UTF-8') ?>">
+                            ✨ Vorlieben: <strong><?= htmlspecialchars(mb_strimwidth($householdPrefs, 0, 45, '…'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($canWrite): ?>
+                    <button type="button" class="btn btn-sm btn-outline js-open-profile-modal">✏️ Anpassen</button>
                 <?php endif; ?>
-                <span class="recipe-profile-pill">⏱️ Multi-Topf Timing &amp; 2-Phasen Mise en Place</span>
             </div>
         </section>
 
@@ -176,17 +191,17 @@ $sourceIcons = [
     </main>
 </div>
 
-<!-- MODAL: KI-Rezept-Import (Foto, PDF, URL, Freitext) -->
 <?php if ($canWrite): ?>
+<!-- MODAL 1: KI-Rezept-Import (Foto, PDF, URL, Freitext) -->
 <div id="modal-recipe-import" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-import-title">
-    <div class="modal-content recipe-modal-lg">
+    <form id="form-recipe-import" class="modal-card modal-card--lg">
         <div class="modal-header">
             <h3 id="modal-import-title">✨ Rezept importieren &amp; intelligent aufbereiten</h3>
             <button type="button" class="modal-close js-close-import-modal" aria-label="Schließen">&times;</button>
         </div>
         <div class="modal-body">
             <p class="text-muted recipe-modal-intro">
-                Kai extrahiert Zutaten, Nährwerte und Kochschritte, ersetzt Zwiebeln automatisch durch <strong>Schalotten</strong>,
+                Kai extrahiert Zutaten, Nährwerte und Kochschritte, wendet eure <strong>Haushalts-Präferenzen</strong> an,
                 übersetzt Fachbegriffe in einfache Sprache, ergänzt <strong>Herdstufen (1–<?= (int)$stoveLevels ?>)</strong> und berechnet den Synchron-Zeitplan für alle Töpfe.
             </p>
 
@@ -197,42 +212,114 @@ $sourceIcons = [
                 <button type="button" class="btn btn-sm btn-outline js-import-tab" data-import-type="text">📝 Freitext / Notiz</button>
             </div>
 
-            <form id="form-recipe-import">
-                <input type="hidden" id="import-source-type" value="photo">
+            <input type="hidden" id="import-source-type" value="photo">
 
-                <!-- Tab 1: Foto oder PDF Upload -->
-                <div id="import-pane-photo" class="recipe-import-pane">
-                    <label class="form-label" for="import-file-input">Foto einer Buchseite, Karteikarte oder PDF-Dokument auswählen:</label>
-                    <input type="file" id="import-file-input" class="form-control" accept="image/jpeg,image/png,image/webp,application/pdf">
-                    <div id="import-file-preview" class="recipe-file-preview hidden"></div>
-                    <label class="form-label recipe-mt-sm" for="import-photo-hint">Optionale Zusatznotiz (z. B. „Bitte ohne Pilze“ oder „Für 4 Personen“):</label>
-                    <input type="text" id="import-photo-hint" class="form-control" placeholder="Optionaler Hinweis für die KI...">
-                </div>
+            <!-- Tab 1: Foto oder PDF Upload -->
+            <div id="import-pane-photo" class="recipe-import-pane">
+                <label class="form-label" for="import-file-input">Foto einer Buchseite, Karteikarte oder PDF-Dokument auswählen:</label>
+                <input type="file" id="import-file-input" class="form-control" accept="image/jpeg,image/png,image/webp,application/pdf">
+                <div id="import-file-preview" class="recipe-file-preview hidden"></div>
+                <label class="form-label recipe-mt-sm" for="import-photo-hint">Optionale Zusatznotiz (z. B. „Bitte ohne Pilze“ oder „Für 4 Personen“):</label>
+                <input type="text" id="import-photo-hint" class="form-control" placeholder="Optionaler Hinweis für die KI...">
+            </div>
 
-                <!-- Tab 2: URL Import -->
-                <div id="import-pane-url" class="recipe-import-pane hidden">
-                    <label class="form-label" for="import-url-input">Link zur Rezept-Webseite (z. B. Chefkoch, EatSmarter, Foodblog):</label>
-                    <input type="url" id="import-url-input" class="form-control" placeholder="https://www.chefkoch.de/rezepte/...">
-                </div>
+            <!-- Tab 2: URL Import -->
+            <div id="import-pane-url" class="recipe-import-pane hidden">
+                <label class="form-label" for="import-url-input">Link zur Rezept-Webseite (z. B. Chefkoch, EatSmarter, Foodblog):</label>
+                <input type="url" id="import-url-input" class="form-control" placeholder="https://www.chefkoch.de/rezepte/...">
+            </div>
 
-                <!-- Tab 3: Freitext Import -->
-                <div id="import-pane-text" class="recipe-import-pane hidden">
-                    <label class="form-label" for="import-text-input">Rezepttext, Zutatenliste oder eigene Kochanleitung einfügen:</label>
-                    <textarea id="import-text-input" class="form-control" rows="7" placeholder="Zutaten und Zubereitung hier einfügen..."></textarea>
-                </div>
+            <!-- Tab 3: Freitext Import -->
+            <div id="import-pane-text" class="recipe-import-pane hidden">
+                <label class="form-label" for="import-text-input">Rezepttext, Zutatenliste oder eigene Kochanleitung einfügen:</label>
+                <textarea id="import-text-input" class="form-control" rows="7" placeholder="Zutaten und Zubereitung hier einfügen..."></textarea>
+            </div>
 
-                <div id="import-status-box" class="recipe-import-status hidden">
-                    <span class="recipe-spinner">⏳</span>
-                    <span id="import-status-text">Gemini analysiert das Rezept, berechnet Herdstufen und synchronisiert die Töpfe (dauert ca. 10–20 Sek.)...</span>
-                </div>
-
-                <div class="modal-actions recipe-modal-footer">
-                    <button type="button" class="btn btn-outline modal-close js-close-import-modal">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary" id="btn-submit-import">🚀 Rezept analysieren &amp; speichern</button>
-                </div>
-            </form>
+            <div id="import-status-box" class="recipe-import-status hidden">
+                <span class="recipe-spinner">⏳</span>
+                <span id="import-status-text">Gemini analysiert das Rezept, berechnet Herdstufen und synchronisiert die Töpfe (dauert ca. 10–20 Sek.)...</span>
+            </div>
         </div>
-    </div>
+        <div class="modal-footer recipe-modal-footer">
+            <button type="button" class="btn btn-outline js-close-import-modal">Abbrechen</button>
+            <button type="submit" class="btn btn-primary" id="btn-submit-import">🚀 Rezept analysieren &amp; speichern</button>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL 2: Küchenprofil & Haushalts-Präferenzen -->
+<div id="modal-kitchen-profile" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+    <form id="form-kitchen-profile" class="modal-card modal-card--lg">
+        <div class="modal-header">
+            <h3 id="modal-profile-title">⚙️ Küchenprofil &amp; Haushalts-Präferenzen</h3>
+            <button type="button" class="modal-close js-close-profile-modal" aria-label="Schließen">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted recipe-modal-intro">
+                Diese Grundeinstellungen nutzt Kai automatisch beim Importieren neuer Rezepte, bei der Berechnung konkreter Herdstufen und bei der Standard-Skalierung.
+            </p>
+
+            <h4 class="recipe-modal-sec-title">🔥 Herd &amp; Backofen</h4>
+            <div class="recipe-settings-grid">
+                <div>
+                    <label class="form-label" for="prof-stove-type">Herd-Typ:</label>
+                    <select id="prof-stove-type" class="form-control">
+                        <option value="Ceranfeld" <?= $stoveType === 'Ceranfeld' ? 'selected' : '' ?>>Ceranfeld (Elektro)</option>
+                        <option value="Induktion" <?= $stoveType === 'Induktion' ? 'selected' : '' ?>>Induktionskochfeld</option>
+                        <option value="Gasherd" <?= $stoveType === 'Gasherd' ? 'selected' : '' ?>>Gasherd</option>
+                        <option value="Massekochfeld" <?= $stoveType === 'Massekochfeld' ? 'selected' : '' ?>>Klassisches Massekochfeld</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="prof-stove-levels">Anzahl Herdstufen (Skala):</label>
+                    <input type="number" id="prof-stove-levels" class="form-control" min="3" max="18" value="<?= (int)$stoveLevels ?>" required>
+                </div>
+                <div>
+                    <label class="form-label" for="prof-oven-mode">Standard Backofen-Beheizung:</label>
+                    <select id="prof-oven-mode" class="form-control">
+                        <option value="Umluft" <?= $ovenMode === 'Umluft' ? 'selected' : '' ?>>Umluft</option>
+                        <option value="Ober-/Unterhitze" <?= $ovenMode === 'Ober-/Unterhitze' ? 'selected' : '' ?>>Ober-/Unterhitze</option>
+                        <option value="Heißluft" <?= $ovenMode === 'Heißluft' ? 'selected' : '' ?>>Heißluft</option>
+                    </select>
+                </div>
+            </div>
+
+            <h4 class="recipe-modal-sec-title recipe-mt-sm">👨‍👩‍👧‍👦 Standard-Portionen im Haushalt</h4>
+            <div class="recipe-settings-grid">
+                <div>
+                    <label class="form-label" for="prof-default-adults">Anzahl Erwachsene (100 %):</label>
+                    <input type="number" id="prof-default-adults" class="form-control" min="1" max="20" value="<?= (int)$defaultAdults ?>" required>
+                </div>
+                <div>
+                    <label class="form-label" for="prof-default-kids">Anzahl Kinder / Jugendliche:</label>
+                    <input type="number" id="prof-default-kids" class="form-control" min="0" max="20" value="<?= (int)$defaultKids ?>" required>
+                </div>
+                <div>
+                    <label class="form-label" for="prof-kid-pct">Portionsgröße Kinder (in %):</label>
+                    <input type="number" id="prof-kid-pct" class="form-control" min="30" max="100" step="5" value="<?= (int)$kidPortionPct ?>" required>
+                </div>
+            </div>
+
+            <h4 class="recipe-modal-sec-title recipe-mt-sm">🧅 Zutaten-Vorlieben &amp; Standard-Abwandlungen</h4>
+            <label class="recipe-checkbox-card">
+                <input type="checkbox" id="prof-prefer-shallots" value="1" <?= $preferShallots ? 'checked' : '' ?>>
+                <div>
+                    <strong>Schalotten statt regulärer Zwiebeln bevorzugen</strong>
+                    <div class="text-muted">Ersetzt beim Rezept-Import automatisch Speise-/Gemüsezwiebeln durch die passende Menge Schalotten.</div>
+                </div>
+            </label>
+
+            <div class="recipe-mt-sm">
+                <label class="form-label" for="prof-household-prefs">Weitere Haushalts-Vorlieben, Standard-Ersetzungen oder No-Gos (Freitext für die KI):</label>
+                <textarea id="prof-household-prefs" class="form-control" rows="3"
+                          placeholder="z. B. Keine scharfen Chilis, kein frischer Koriander, lieber Dinkelmehl statt Weizenmehl..."><?= htmlspecialchars($householdPrefs, ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+        </div>
+        <div class="modal-footer recipe-modal-footer">
+            <button type="button" class="btn btn-outline js-close-profile-modal">Abbrechen</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-kitchen-profile">💾 Einstellungen speichern</button>
+        </div>
+    </form>
 </div>
 <?php endif; ?>
 

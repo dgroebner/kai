@@ -6,7 +6,11 @@ INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `label`) V
 ('stove_type', 'Ceranfeld', 'Herd-Typ (z. B. Ceranfeld, Induktion, Gas)'),
 ('stove_levels', '12', 'Anzahl Herdstufen (Skala z. B. 9 oder 12)'),
 ('oven_default_mode', 'Umluft', 'Bevorzugte Backofen-Beheizungsart'),
-('recipe_prefer_shallots', '1', 'Rezepte: Schalotten statt Zwiebeln bevorzugen (1/0)');
+('recipe_prefer_shallots', '1', 'Rezepte: Schalotten statt Zwiebeln bevorzugen (1/0)'),
+('recipe_default_adults', '2', 'Rezepte: Standard-Anzahl Erwachsene'),
+('recipe_default_kids', '2', 'Rezepte: Standard-Anzahl Kinder / Jugendliche'),
+('recipe_kid_portion_pct', '80', 'Rezepte: Portionsgröße pro Kind in % (z. B. 80)'),
+('recipe_household_preferences', '', 'Rezepte: Freitext-Haushaltspräferenzen & No-Gos für KI');
 
 -- Initiale Rechte ausschließlich für die Gruppe 'Admin' vergeben
 INSERT IGNORE INTO `group_permissions` (`group_id`, `permission`)
