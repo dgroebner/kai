@@ -184,7 +184,7 @@ $sourceIcons = [
                             <?php if ($canWrite): ?>
                                 <button type="button" class="btn btn-outline btn-sm recipe-btn-danger recipe-card-btn-del js-delete-recipe" data-recipe-id="<?= $rid ?>" title="Rezept löschen" aria-label="Rezept löschen">🗑️</button>
                             <?php endif; ?>
-                            <a href="view.php?id=<?= $rid ?>" class="btn btn-outline btn-sm recipe-card-btn-main">📖 Details &amp; Planung</a>
+                            <a href="view.php?id=<?= $rid ?>" class="btn btn-outline btn-sm recipe-card-btn-main">📖 Details</a>
                             <a href="cook.php?id=<?= $rid ?>" class="btn btn-primary btn-sm recipe-card-btn-main">👨‍🍳 Koch-Modus</a>
                         </div>
                     </article>
