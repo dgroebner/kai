@@ -82,7 +82,7 @@
 
 @media (max-width: 640px) {
     .schnauzer-header {
-        padding: 0.35rem 0.45rem;
+        padding: 0.3rem 0.45rem;
         gap: 0.25rem;
     }
     .schnauzer-header-left,
@@ -160,9 +160,12 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     position: relative;
-    padding: 0.5rem 0.5rem 0.75rem;
+    padding: 0.45rem 0.5rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
 }
 
@@ -243,6 +246,7 @@
     justify-content: center;
     flex: 1;
     position: relative;
+    margin: 0.25rem 0;
 }
 
 .table-turn-banner {
@@ -253,7 +257,7 @@
     border-radius: 9999px;
     font-size: 0.84rem;
     font-weight: 800;
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.75rem;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     text-align: center;
     max-width: 90%;
@@ -281,7 +285,7 @@
 .table-instruction {
     font-size: 0.76rem;
     color: #94a3b8;
-    margin-top: 0.65rem;
+    margin-top: 0.55rem;
     text-align: center;
 }
 
@@ -290,7 +294,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     flex-shrink: 0;
 }
 
@@ -372,7 +376,175 @@
     filter: grayscale(60%) !important;
 }
 
-/* SHOWDOWN-LISTE */
+/* --------------------------------------------------------------------------
+   RESPONSIVES DESIGN FÜR MOBILGERÄTE & KOMPAKTE BILDSCHIRME
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px), (max-height: 760px) {
+    .schnauzer-viewport {
+        --card-width: 66px;
+        --card-height: 98px;
+        --card-radius: 7px;
+    }
+
+    .schnauzer-arena {
+        padding: 0.25rem 0.35rem calc(0.55rem + env(safe-area-inset-bottom, 0px)) 0.35rem;
+        gap: 0.2rem;
+    }
+
+    .schnauzer-opponents-row {
+        gap: 0.35rem;
+        padding: 0.15rem 0;
+    }
+
+    .schnauzer-opponent-card {
+        padding: 0.25rem 0.45rem;
+        min-width: 72px;
+        gap: 0.15rem;
+        border-radius: 8px;
+    }
+
+    .opponent-avatar-wrap {
+        font-size: 1.1rem;
+    }
+
+    .opponent-name-text {
+        font-size: 0.72rem;
+        max-width: 68px;
+    }
+
+    .opponent-lives-bar {
+        font-size: 0.75rem;
+    }
+
+    .opponent-mini-back {
+        width: 11px;
+        height: 17px;
+    }
+
+    .schnauzer-table-center {
+        margin: 0.15rem 0;
+    }
+
+    .table-turn-banner {
+        padding: 0.2rem 0.65rem;
+        font-size: 0.76rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .table-instruction {
+        font-size: 0.7rem;
+        margin-top: 0.25rem;
+    }
+
+    .schnauzer-table-cards,
+    .schnauzer-my-hand {
+        gap: 0.45rem;
+    }
+
+    /* Kartengrößen in Spielfeld & Hand */
+    .schnauzer-table-cards .quarxl-card,
+    .schnauzer-my-hand .quarxl-card {
+        padding: 3px 4px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-card-rank,
+    .schnauzer-my-hand .quarxl-card .quarxl-card-rank {
+        font-size: 0.88rem;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-card-mini-suit,
+    .schnauzer-my-hand .quarxl-card .quarxl-card-mini-suit {
+        width: 12px;
+        height: 14px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-card-center,
+    .schnauzer-my-hand .quarxl-card .quarxl-card-center {
+        inset: 8px 6px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-figure-rank-huge,
+    .schnauzer-table-cards .quarxl-card .quarxl-number-value-big,
+    .schnauzer-my-hand .quarxl-card .quarxl-figure-rank-huge,
+    .schnauzer-my-hand .quarxl-card .quarxl-number-value-big {
+        font-size: 1.45rem;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-figure-suit-icon,
+    .schnauzer-my-hand .quarxl-card .quarxl-figure-suit-icon {
+        width: 20px;
+        height: 25px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-daus-symbol,
+    .schnauzer-my-hand .quarxl-card .quarxl-daus-symbol {
+        width: 22px;
+        height: 28px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-daus-garland,
+    .schnauzer-my-hand .quarxl-card .quarxl-daus-garland {
+        width: 24px;
+        height: 12px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-king-crown,
+    .schnauzer-my-hand .quarxl-card .quarxl-king-crown {
+        width: 18px;
+        height: 13px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-king-symbol,
+    .schnauzer-my-hand .quarxl-card .quarxl-king-symbol {
+        width: 20px;
+        height: 20px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-number-suit-medium,
+    .schnauzer-my-hand .quarxl-card .quarxl-number-suit-medium {
+        width: 22px;
+        height: 28px;
+    }
+
+    .schnauzer-my-area {
+        gap: 0.25rem;
+        width: 100%;
+    }
+
+    .schnauzer-my-status-bar {
+        padding: 0 0.35rem;
+    }
+
+    .my-lives-display {
+        font-size: 0.95rem;
+    }
+
+    .my-score-badge {
+        font-size: 0.78rem;
+        padding: 0.2rem 0.55rem;
+    }
+
+    /* Kompakte, zuverlässig sichtbare Aktions-Buttons */
+    .schnauzer-action-bar {
+        gap: 0.3rem;
+        margin-top: 0.15rem;
+        width: 100%;
+        max-width: 430px;
+        padding: 0 0.25rem;
+        box-sizing: border-box;
+    }
+
+    .schnauzer-action-bar .btn {
+        padding: 0.46rem 0.45rem;
+        font-size: 0.78rem;
+        min-width: 0;
+        flex: 1 1 calc(50% - 0.3rem);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   SHOWDOWN-LISTE
+   -------------------------------------------------------------------------- */
 .showdown-results-list {
     display: flex;
     flex-direction: column;

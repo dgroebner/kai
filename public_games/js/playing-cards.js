@@ -48,7 +48,7 @@
             </svg>
         `,
 
-        // Grün / Laub: Das typische geschwungene sächsische Wein-/Lindenblatt
+        // Grün / Blatt: Das typische geschwungene sächsische Wein-/Lindenblatt
         leaves: `
             <svg viewBox="0 0 100 100" class="quarxl-svg-suit svg-leaves" fill="currentColor">
                 <!-- Blatt-Stiel -->
@@ -320,7 +320,7 @@
 
         container.innerHTML = `
             <div class="quarxl-deck-toggle" role="group" aria-label="Kartendeck wählen">
-                <button type="button" class="quarxl-deck-btn ${currentDeck === 'german' ? 'active' : ''}" data-deck="german" title="Altenburger Deutsches Blatt (Eichel, Grün, Herz, Schellen)">
+                <button type="button" class="quarxl-deck-btn ${currentDeck === 'german' ? 'active' : ''}" data-deck="german" title="Altenburger Deutsches Blatt (Eichel, Blatt, Herz, Schellen)">
                     <span>🌰</span> Deutsch
                 </button>
                 <button type="button" class="quarxl-deck-btn ${currentDeck === 'french' ? 'active' : ''}" data-deck="french" title="Französisches Blatt (Kreuz, Pik, Herz, Karo)">
@@ -359,7 +359,7 @@
         // Farb-Aliase auflösen
         if (['clubs', 'kreuz', 'acorns', 'eichel'].includes(suit)) {
             suit = 'clubs'; // intern Kreuz/Eichel
-        } else if (['spades', 'pik', 'leaves', 'gruen', 'grün', 'laub'].includes(suit)) {
+        } else if (['spades', 'pik', 'leaves', 'gruen', 'grün', 'laub', 'blatt'].includes(suit)) {
             suit = 'spades'; // intern Pik/Grün
         } else if (['hearts', 'herz', 'rot'].includes(suit)) {
             suit = 'hearts'; // intern Herz

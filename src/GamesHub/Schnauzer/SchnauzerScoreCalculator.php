@@ -103,7 +103,7 @@ class SchnauzerScoreCalculator
 
         $suitGerman = match ($bestSuit) {
             'clubs' => 'Eichel / Kreuz',
-            'spades' => 'Laub / Pik',
+            'spades' => 'Blatt / Pik',
             'hearts' => 'Herz',
             'diamonds' => 'Schellen / Karo',
             default => '',
