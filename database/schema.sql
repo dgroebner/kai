@@ -1372,6 +1372,10 @@ CREATE TABLE IF NOT EXISTS `recipe_variants` (
     `variant_name` VARCHAR(120) NOT NULL DEFAULT 'Standard (Familien-Variante)',
     `is_default` TINYINT(1) NOT NULL DEFAULT 1,
     `notes` TEXT NULL,
+    `calories_per_serving` INT UNSIGNED NULL,
+    `protein_per_serving` DECIMAL(6,1) NULL,
+    `carbs_per_serving` DECIMAL(6,1) NULL,
+    `fat_per_serving` DECIMAL(6,1) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_rv_recipe` (`recipe_id`),
     CONSTRAINT `fk_rv_recipe` FOREIGN KEY (`recipe_id`) REFERENCES `recipes`(`id`) ON DELETE CASCADE

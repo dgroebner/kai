@@ -151,6 +151,11 @@ $sourceIcons = [
                                 <span class="recipe-source-badge"><?= htmlspecialchars($srcLabel, ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php if ($canWrite): ?>
                                     <button type="button"
+                                            class="recipe-fav-btn js-rename-recipe"
+                                            data-recipe-id="<?= $rid ?>"
+                                            data-current-title="<?= htmlspecialchars((string)$r['title'], ENT_QUOTES, 'UTF-8') ?>"
+                                            title="Rezept umbenennen">✏️</button>
+                                    <button type="button"
                                             class="recipe-fav-btn js-toggle-fav <?= $isFav ? 'is-fav' : '' ?>"
                                             data-recipe-id="<?= $rid ?>"
                                             title="Als Favorit markieren">

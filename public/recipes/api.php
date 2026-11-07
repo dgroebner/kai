@@ -37,6 +37,8 @@ $writeActions = [
     'save_manual_recipe',
     'suggest_alternatives',
     'create_substituted_variant',
+    'create_low_calorie_variant',
+    'rename_recipe',
     'delete_variant',
     'delete_recipe',
     'toggle_favorite',
@@ -237,6 +239,59 @@ try {
                 'variant_id' => $newVariantId,
                 'variant_name' => $newVariantData['variant_name'],
                 'message' => 'Rezeptabwandlung erfolgreich gespeichert!',
+            ]);
+            break;
+
+        // --- 4b. Kalorienreduzierte Light-Variante per Knopfdruck erzeugen ---
+        case 'create_low_calorie_variant':
+            $recipeId = filter_var($input['recipe_id'] ?? null, FILTER_VALIDATE_INT);
+            $baseVariantId = filter_var($input['variant_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+
+            if (!$recipeId) {
+                Auth::sendJsonError(400, 'Ungültige Rezept-ID.');
+            }
+
+            $recipe = $repo->getRecipeById($recipeId, $baseVariantId);
+            if (!$recipe) {
+                Auth::sendJsonError(404, 'Rezept nicht gefunden.');
+            }
+
+            $aiService = new RecipeAiService(null, $settingsService, $logger);
+            $lowCalData = $aiService->buildLowCalorieVariant($recipe);
+
+            $newVariantId = $repo->saveVariant(
+                $recipeId,
+                $lowCalData['variant_name'],
+                $lowCalData['notes'],
+                $lowCalData['ingredients'],
+                $lowCalData['components'],
+                false,
+                $lowCalData['nutrition'] ?? null
+            );
+
+            echo json_encode([
+                'success' => true,
+                'recipe_id' => $recipeId,
+                'variant_id' => $newVariantId,
+                'variant_name' => $lowCalData['variant_name'],
+                'message' => 'Kalorienreduzierte Variante erfolgreich erstellt!',
+            ]);
+            break;
+
+        // --- 4c. Rezept manuell umbenennen ---
+        case 'rename_recipe':
+            $recipeId = filter_var($input['recipe_id'] ?? null, FILTER_VALIDATE_INT);
+            $newTitle = trim((string)($input['title'] ?? ''));
+
+            if (!$recipeId || $newTitle === '') {
+                Auth::sendJsonError(400, 'Bitte gib einen gültigen Rezeptnamen ein.');
+            }
+
+            $ok = $repo->renameRecipe($recipeId, $newTitle);
+            echo json_encode([
+                'success' => $ok,
+                'title' => mb_substr($newTitle, 0, 191),
+                'message' => 'Rezept erfolgreich umbenannt!',
             ]);
             break;
 

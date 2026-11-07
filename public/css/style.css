@@ -12609,8 +12609,43 @@ body.wisdom-modal-open {
 }
 
 /* Detailseite (view.php) */
+.recipe-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
 .recipe-detail-h1 {
-    margin: 0.25rem 0 0;
+    margin: 0;
+}
+
+.btn.recipe-btn-lowcal,
+.btn-outline.recipe-btn-lowcal {
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    color: #34d399 !important;
+    background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.btn.recipe-btn-lowcal:hover,
+.btn-outline.recipe-btn-lowcal:hover {
+    background-color: rgba(16, 185, 129, 0.24) !important;
+    border-color: rgba(16, 185, 129, 0.75) !important;
+    color: #a7f3d0 !important;
+}
+
+.recipe-kcal-saved-badge {
+    display: inline-block;
+    margin-left: 0.45rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    vertical-align: middle;
 }
 
 .btn.recipe-btn-danger,

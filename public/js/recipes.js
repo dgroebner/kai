@@ -711,6 +711,78 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Kalorienreduzierte Variante per Knopfdruck erstellen
+        const lowCalBtn = e.target.closest('.js-create-lowcal-variant');
+        if (lowCalBtn) {
+            const rid = parseInt(lowCalBtn.getAttribute('data-recipe-id') || '0', 10);
+            const vid = parseInt(lowCalBtn.getAttribute('data-variant-id') || '0', 10) || null;
+            if (!rid) return;
+
+            const origText = lowCalBtn.textContent;
+            lowCalBtn.disabled = true;
+            lowCalBtn.textContent = '⏳ KI erstellt Light-Variante...';
+
+            try {
+                const res = await window.KaiHttp.postJson('api.php', {
+                    action: 'create_low_calorie_variant',
+                    recipe_id: rid,
+                    variant_id: vid
+                });
+                if (res && res.success && res.variant_id) {
+                    window.location.href = 'view.php?id=' + encodeURIComponent(rid) + '&variant_id=' + encodeURIComponent(res.variant_id);
+                } else {
+                    alert((res && res.message) ? res.message : 'Fehler beim Erstellen der kalorienreduzierten Variante.');
+                    lowCalBtn.disabled = false;
+                    lowCalBtn.textContent = origText;
+                }
+            } catch (err) {
+                alert('Netzwerkfehler beim Erstellen der kalorienreduzierten Variante.');
+                lowCalBtn.disabled = false;
+                lowCalBtn.textContent = origText;
+            }
+            return;
+        }
+
+        // Rezept manuell umbenennen
+        const renameBtn = e.target.closest('.js-rename-recipe');
+        if (renameBtn) {
+            const rid = parseInt(renameBtn.getAttribute('data-recipe-id') || '0', 10);
+            const currentTitle = renameBtn.getAttribute('data-current-title') || currentRecipeTitle || '';
+            if (!rid) return;
+
+            const newTitle = prompt('Neuer Name für das Rezept:', currentTitle);
+            if (newTitle === null) return;
+            const trimmed = newTitle.trim();
+            if (!trimmed || trimmed === currentTitle) return;
+
+            renameBtn.disabled = true;
+            try {
+                const res = await window.KaiHttp.postJson('api.php', {
+                    action: 'rename_recipe',
+                    recipe_id: rid,
+                    title: trimmed
+                });
+                if (res && res.success) {
+                    const heading = document.getElementById('recipe-title-heading');
+                    if (heading) {
+                        heading.textContent = res.title || trimmed;
+                    }
+                    renameBtn.setAttribute('data-current-title', res.title || trimmed);
+                    const cardLink = renameBtn.closest('.recipe-card')?.querySelector('.recipe-card-title a');
+                    if (cardLink) {
+                        cardLink.textContent = res.title || trimmed;
+                    }
+                } else {
+                    alert((res && res.message) ? res.message : 'Fehler beim Umbenennen.');
+                }
+            } catch (err) {
+                alert('Netzwerkfehler beim Umbenennen.');
+            } finally {
+                renameBtn.disabled = false;
+            }
+            return;
+        }
+
         // --- KOCH-MODUS INTERAKTIONEN ---
         const cookViewBtn = e.target.closest('.js-cook-view-btn');
         if (cookViewBtn) {

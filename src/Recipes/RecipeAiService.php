@@ -403,6 +403,147 @@ PROMPT;
     }
 
     /**
+     * Erzeugt per KI-Analyse auf Knopfdruck eine kalorienreduzierte Light-Variante eines bestehenden Rezepts
+     * inklusive angepasster Zutaten, neu berechneter Nährwerte und synchronisierter Kochschritte.
+     *
+     * @param array<string, mixed> $recipe
+     * @return array{variant_name: string, notes: string, nutrition: array<string, mixed>, ingredients: array<int, array<string, mixed>>, components: array<int, array<string, mixed>>}
+     * @throws Exception
+     */
+    public function buildLowCalorieVariant(array $recipe): array
+    {
+        $stoveType = $this->settings->getStoveType();
+        $stoveLevels = $this->settings->getStoveLevels();
+        $ovenMode = $this->settings->getOvenDefaultMode();
+        $householdPrefs = $this->settings->getRecipeHouseholdPreferences();
+
+        $title = (string)($recipe['title'] ?? 'Gericht');
+        $baseCalories = (int)($recipe['base_calories_per_serving'] ?? $recipe['calories_per_serving'] ?? 0);
+        $baseProtein = (float)($recipe['base_protein_per_serving'] ?? $recipe['protein_per_serving'] ?? 0);
+        $baseCarbs = (float)($recipe['base_carbs_per_serving'] ?? $recipe['carbs_per_serving'] ?? 0);
+        $baseFat = (float)($recipe['base_fat_per_serving'] ?? $recipe['fat_per_serving'] ?? 0);
+
+        $currentIngredients = [];
+        foreach ($recipe['ingredients'] ?? [] as $ing) {
+            $currentIngredients[] = [
+                'ingredient_name' => $ing['ingredient_name'] ?? '',
+                'quantity' => (float)($ing['quantity'] ?? 1),
+                'unit' => $ing['unit'] ?? '',
+                'prep_note' => $ing['prep_note'] ?? null,
+                'component_name' => $ing['component_name'] ?? null,
+                'market' => $ing['market'] ?? 'Rewe',
+                'shopping_category' => $ing['shopping_category'] ?? 'Sonstiges',
+                'is_pantry_staple' => (int)($ing['is_pantry_staple'] ?? 0),
+            ];
+        }
+
+        $currentComponents = [];
+        foreach ($recipe['components'] ?? [] as $comp) {
+            $steps = [];
+            foreach ($comp['steps'] ?? [] as $step) {
+                $steps[] = [
+                    'step_number' => (int)($step['step_number'] ?? 1),
+                    'phase' => $step['phase'] ?? 'cooking',
+                    'title' => $step['title'] ?? '',
+                    'instruction' => $step['instruction'] ?? '',
+                    'ingredients_inline' => $step['ingredients_inline_parsed'] ?? [],
+                    'stove_level' => $step['stove_level'] ?? null,
+                    'oven_setting' => $step['oven_setting'] ?? null,
+                    'duration_minutes' => (int)($step['duration_minutes'] ?? 0),
+                    'is_passive_wait' => (int)($step['is_passive_wait'] ?? 0),
+                    'parallel_hint' => $step['parallel_hint'] ?? null,
+                ];
+            }
+            $currentComponents[] = [
+                'component_name' => $comp['component_name'] ?? 'Hauptgericht',
+                'pot_or_appliance' => $comp['pot_or_appliance'] ?? null,
+                'preheat_minutes' => (int)($comp['preheat_minutes'] ?? 0),
+                'active_cook_minutes' => (int)($comp['active_cook_minutes'] ?? 0),
+                'passive_cook_minutes' => (int)($comp['passive_cook_minutes'] ?? 0),
+                'rest_minutes' => (int)($comp['rest_minutes'] ?? 0),
+                'steps' => $steps,
+            ];
+        }
+
+        $recipeJson = json_encode([
+            'title' => $title,
+            'base_nutrition_per_serving' => [
+                'calories_per_serving' => $baseCalories,
+                'protein_per_serving' => $baseProtein,
+                'carbs_per_serving' => $baseCarbs,
+                'fat_per_serving' => $baseFat,
+            ],
+            'ingredients' => $currentIngredients,
+            'components' => $currentComponents,
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        $prefHint = $householdPrefs !== '' ? "Haushalts-Präferenzen beachten: {$householdPrefs}" : '';
+
+        $prompt = <<<PROMPT
+Du bist ein erfahrener Familien-Kochassistent und Ernährungsberater.
+Erstelle für das folgende Rezept "{$title}" eine schmackhafte, familientaugliche **kalorienreduzierte Variante ("🥗 Kalorienreduziert / Light")**.
+
+VERBINDLICHE REGELN FÜR DIE KALORIENREDUZIERTE VARIANTE:
+1. SINNVOLLE KALORIENERSPARNIS (ca. 20 % bis 35 % weniger kcal pro Portion) BEI VOLLEM GESCHMACK:
+   - Ersetze fettreiche Saucen-/Milchprodukte durch leichte Supermarkt-Alternativen (z. B. "Kokosmilch" -> "Kokosmilch Light (fettreduziert)", "Sahne / Schmand / Crème fraîche" -> "Kochsahne (7–15 % Fett) / Frischkäse light / Skyr", "Käse" -> "fettreduzierter Käse / Light-Mozzarella").
+   - Reduziere Bratfett / Öl auf ein sinnvolles Minimum (z. B. 1 TL statt 2 EL Pflanzenöl in einer beschichteten Pfanne).
+   - Reduziere kaloriendichte Sättigungsbeilagen (wie Reis oder Nudeln) moderat um ca. 15–20 % und erhöhe zum Ausgleich ggf. leicht den vorhandenen Gemüseanteil (z. B. Paprika, Karotten, Erbsen), damit alle satt und zufrieden werden.
+   - Behalte mageres Eiweiß (z. B. Putenbrustfilet, Hähnchenbrust) vollständig bei, da es optimal sättigt.
+   - WICHTIG: Streiche KEINE geschmacksgebenden Zutaten des Originalrezepts (wie Paprika, Karotten, Erbsen, Ananassaft, Schalotten, Knoblauch, Gewürze, Brühe) ersatzlos weg! Der Charakter des Gerichts muss erhalten bleiben.
+2. VOLLSTÄNDIGE SYNCHRONISATION IN DEN KOCHSCHRITTEN:
+   - Passe in JEDEM betroffenen Kochschritt (`title`, `instruction` mit **fettgedruckten Inline-Mengen** wie `**1 TL Pflanzenöl**` oder `**400 ml Kokosmilch Light**` und `ingredients_inline`) die geänderten Zutaten und Mengen exakt an!
+   - Behalte die Herdstufen für unser {$stoveType} (Skala 1 bis {$stoveLevels}, Backofen {$ovenMode}) und die 2-Phasen-Mise-en-Place-Struktur bei.
+   {$prefHint}
+3. NÄHRWERTE & ZUSAMMENFASSUNG:
+   - Berechne die neuen Nährwerte pro Portion (`calories_per_serving`, `protein_per_serving`, `carbs_per_serving`, `fat_per_serving`) realistisch.
+   - Schreibe in `notes` eine kurze, übersichtliche Zusammenfassung der Einsparung (z. B. "Ca. 510 kcal statt {$baseCalories} kcal pro Portion: Kokosmilch Light statt regulärer Kokosmilch, nur 1 TL Bratöl und etwas mehr Gemüse bei leicht reduzierter Reismenge.").
+
+AKTUELLES REZEPT (JSON):
+{$recipeJson}
+
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt in dieser Struktur:
+{
+  "variant_name": "🥗 Kalorienreduziert (Light)",
+  "notes": "Zusammenfassung der Kalorienersparnis und Anpassungen",
+  "calories_per_serving": 495,
+  "protein_per_serving": 42.0,
+  "carbs_per_serving": 54.0,
+  "fat_per_serving": 11.5,
+  "ingredients": [ ... ],
+  "components": [ ... ]
+}
+PROMPT;
+
+        $response = $this->gemini->generate($prompt, null, null, true, null, null, 0.2, 90);
+        if (!is_array($response) || empty($response['ingredients']) || empty($response['components'])) {
+            throw new Exception('Die kalorienreduzierte Variante konnte von der KI nicht vollständig erstellt werden.');
+        }
+
+        $normalizedIngredients = [];
+        foreach ($response['ingredients'] as $ing) {
+            if (!is_array($ing) || empty($ing['ingredient_name'])) {
+                continue;
+            }
+            $ingName = trim((string)$ing['ingredient_name']);
+            $ing['is_pantry_staple'] = $this->isAllowedPantryStaple($ingName, !empty($ing['is_pantry_staple'])) ? 1 : 0;
+            $normalizedIngredients[] = $ing;
+        }
+
+        return [
+            'variant_name' => trim((string)($response['variant_name'] ?? '🥗 Kalorienreduziert (Light)')),
+            'notes' => trim((string)($response['notes'] ?? 'Kalorienreduzierte Light-Variante.')),
+            'nutrition' => [
+                'calories_per_serving' => !empty($response['calories_per_serving']) ? (int)$response['calories_per_serving'] : null,
+                'protein_per_serving' => isset($response['protein_per_serving']) ? (float)$response['protein_per_serving'] : null,
+                'carbs_per_serving' => isset($response['carbs_per_serving']) ? (float)$response['carbs_per_serving'] : null,
+                'fat_per_serving' => isset($response['fat_per_serving']) ? (float)$response['fat_per_serving'] : null,
+            ],
+            'ingredients' => $normalizedIngredients,
+            'components' => is_array($response['components']) ? $response['components'] : [],
+        ];
+    }
+
+    /**
      * Lädt den Inhalt einer Rezept-URL (Webseite, Google-Drive-Datei, PDF oder Bild) sicher per cURL.
      * Verhindert SSRF durch Protokoll- und IP-Prüfung.
      *

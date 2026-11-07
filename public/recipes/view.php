@@ -85,7 +85,16 @@ if (!function_exists('formatRecipeInstruction')) {
     <header class="page-header">
         <div>
             <span class="recipe-cat-badge"><?= htmlspecialchars((string)$recipe['category'], ENT_QUOTES, 'UTF-8') ?></span>
-            <h1 class="recipe-detail-h1"><?= htmlspecialchars((string)$recipe['title'], ENT_QUOTES, 'UTF-8') ?></h1>
+            <div class="recipe-title-row">
+                <h1 class="recipe-detail-h1" id="recipe-title-heading"><?= htmlspecialchars((string)$recipe['title'], ENT_QUOTES, 'UTF-8') ?></h1>
+                <?php if ($canWrite): ?>
+                    <button type="button"
+                            class="btn btn-sm btn-outline js-rename-recipe"
+                            data-recipe-id="<?= (int)$recipe['id'] ?>"
+                            data-current-title="<?= htmlspecialchars((string)$recipe['title'], ENT_QUOTES, 'UTF-8') ?>"
+                            title="Rezept manuell umbenennen">✏️ Umbenennen</button>
+                <?php endif; ?>
+            </div>
         </div>
         <div class="page-header-actions">
             <a href="index.php" class="btn btn-outline">&larr; Alle Rezepte</a>
@@ -121,10 +130,18 @@ if (!function_exists('formatRecipeInstruction')) {
                     <div class="kpi-value kpi-value-sm"><?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?></div>
                     <div class="kpi-note kpi-note-muted">Stufen 1 bis <?= (int)$stoveLevels ?></div>
                 </div>
+                <?php
+                $baseKcal = !empty($recipe['base_calories_per_serving']) ? (int)$recipe['base_calories_per_serving'] : 0;
+                $activeKcal = !empty($recipe['calories_per_serving']) ? (int)$recipe['calories_per_serving'] : 0;
+                $savedKcal = ($baseKcal > 0 && $activeKcal > 0 && $baseKcal > $activeKcal) ? ($baseKcal - $activeKcal) : 0;
+                ?>
                 <div class="kpi-card">
                     <div class="kpi-label">🥗 Nährwerte</div>
                     <div class="kpi-value kpi-value-sm">
-                        <?= !empty($recipe['calories_per_serving']) ? (int)$recipe['calories_per_serving'] . '<span class="kpi-unit"> kcal</span>' : '<span class="text-muted">k. A.</span>' ?>
+                        <?= $activeKcal > 0 ? $activeKcal . '<span class="kpi-unit"> kcal</span>' : '<span class="text-muted">k. A.</span>' ?>
+                        <?php if ($savedKcal > 0): ?>
+                            <span class="recipe-kcal-saved-badge">&minus;<?= $savedKcal ?> kcal</span>
+                        <?php endif; ?>
                     </div>
                     <div class="kpi-note kpi-note-muted">
                         EW <?= $recipe['protein_per_serving'] !== null ? number_format((float)$recipe['protein_per_serving'], 1, ',', '.') . 'g' : '–' ?> ·
@@ -157,6 +174,12 @@ if (!function_exists('formatRecipeInstruction')) {
                 </div>
                 <?php if ($canWrite): ?>
                     <div class="recipe-variants-list">
+                        <button type="button"
+                                class="btn btn-sm btn-outline recipe-btn-lowcal js-create-lowcal-variant"
+                                data-recipe-id="<?= (int)$recipe['id'] ?>"
+                                data-variant-id="<?= $activeVariantId ?>">
+                            🥗 Kalorienreduzierte Variante
+                        </button>
                         <?php if (!empty($recipe['source_url'])): ?>
                             <button type="button" class="btn btn-sm btn-outline js-reimport-recipe" data-recipe-id="<?= (int)$recipe['id'] ?>">
                                 🔄 Aus Quelle neu importieren

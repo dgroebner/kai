@@ -11,10 +11,38 @@ use PDO;
 class RecipeRepository
 {
     private PDO $pdo;
+    private static bool $variantNutritionColumnsChecked = false;
 
     public function __construct(?Database $db = null)
     {
         $this->pdo = ($db ?? Database::getInstance())->getConnection();
+        $this->ensureVariantNutritionColumns();
+    }
+
+    /**
+     * Stellt sicher, dass die optionalen Nährwert-Spalten in recipe_variants vorhanden sind.
+     */
+    private function ensureVariantNutritionColumns(): void
+    {
+        if (self::$variantNutritionColumnsChecked) {
+            return;
+        }
+        self::$variantNutritionColumnsChecked = true;
+
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM recipe_variants LIKE 'calories_per_serving'");
+            if ($stmt && $stmt->fetch() === false) {
+                $this->pdo->exec("
+                    ALTER TABLE recipe_variants
+                        ADD COLUMN calories_per_serving INT UNSIGNED NULL AFTER notes,
+                        ADD COLUMN protein_per_serving DECIMAL(6,1) NULL AFTER calories_per_serving,
+                        ADD COLUMN carbs_per_serving DECIMAL(6,1) NULL AFTER protein_per_serving,
+                        ADD COLUMN fat_per_serving DECIMAL(6,1) NULL AFTER carbs_per_serving
+                ");
+            }
+        } catch (\Throwable) {
+            // Ignorieren falls Tabelle noch nicht existiert oder ALTER eingeschränkt ist
+        }
     }
 
     /**
@@ -162,6 +190,24 @@ class RecipeRepository
         }
         unset($comp);
 
+        $recipe['base_calories_per_serving'] = $recipe['calories_per_serving'] !== null ? (int)$recipe['calories_per_serving'] : null;
+        $recipe['base_protein_per_serving'] = $recipe['protein_per_serving'] !== null ? (float)$recipe['protein_per_serving'] : null;
+        $recipe['base_carbs_per_serving'] = $recipe['carbs_per_serving'] !== null ? (float)$recipe['carbs_per_serving'] : null;
+        $recipe['base_fat_per_serving'] = $recipe['fat_per_serving'] !== null ? (float)$recipe['fat_per_serving'] : null;
+
+        if (!empty($activeVariant['calories_per_serving'])) {
+            $recipe['calories_per_serving'] = (int)$activeVariant['calories_per_serving'];
+        }
+        if (isset($activeVariant['protein_per_serving']) && $activeVariant['protein_per_serving'] !== null) {
+            $recipe['protein_per_serving'] = (float)$activeVariant['protein_per_serving'];
+        }
+        if (isset($activeVariant['carbs_per_serving']) && $activeVariant['carbs_per_serving'] !== null) {
+            $recipe['carbs_per_serving'] = (float)$activeVariant['carbs_per_serving'];
+        }
+        if (isset($activeVariant['fat_per_serving']) && $activeVariant['fat_per_serving'] !== null) {
+            $recipe['fat_per_serving'] = (float)$activeVariant['fat_per_serving'];
+        }
+
         $recipe['equipment_parsed'] = !empty($recipe['equipment_list'])
             ? (json_decode((string)$recipe['equipment_list'], true) ?: array_filter(array_map('trim', explode(',', (string)$recipe['equipment_list']))))
             : [];
@@ -260,6 +306,8 @@ class RecipeRepository
 
     /**
      * Speichert eine neue Rezeptabwandlung (Variante/Fork) für ein bestehendes Rezept.
+     *
+     * @param array<string, mixed>|null $nutrition
      */
     public function saveVariant(
         int $recipeId,
@@ -267,7 +315,8 @@ class RecipeRepository
         ?string $notes,
         array $ingredients,
         array $components,
-        bool $makeDefault = false
+        bool $makeDefault = false,
+        ?array $nutrition = null
     ): int {
         $this->pdo->beginTransaction();
 
@@ -277,7 +326,7 @@ class RecipeRepository
                 $uStmt->execute([':rid' => $recipeId]);
             }
 
-            $variantId = $this->insertVariantInternal($recipeId, $variantName, $notes, $ingredients, $components, $makeDefault);
+            $variantId = $this->insertVariantInternal($recipeId, $variantName, $notes, $ingredients, $components, $makeDefault, $nutrition);
             $this->pdo->commit();
 
             return $variantId;
@@ -285,6 +334,22 @@ class RecipeRepository
             $this->pdo->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Benennt ein Rezept manuell um.
+     */
+    public function renameRecipe(int $recipeId, string $newTitle): bool
+    {
+        $clean = trim($newTitle);
+        if ($clean === '') {
+            return false;
+        }
+        $stmt = $this->pdo->prepare("UPDATE recipes SET title = :title WHERE id = :id");
+        return $stmt->execute([
+            ':title' => mb_substr($clean, 0, 191),
+            ':id' => $recipeId,
+        ]);
     }
 
     /**
@@ -346,24 +411,51 @@ class RecipeRepository
         return (int)$this->pdo->lastInsertId();
     }
 
+    /**
+     * @param array<string, mixed>|null $nutrition
+     */
     private function insertVariantInternal(
         int $recipeId,
         string $variantName,
         ?string $notes,
         array $ingredients,
         array $components,
-        bool $isDefault
+        bool $isDefault,
+        ?array $nutrition = null
     ): int {
-        $vStmt = $this->pdo->prepare("
-            INSERT INTO recipe_variants (recipe_id, variant_name, is_default, notes)
-            VALUES (:recipe_id, :variant_name, :is_default, :notes)
-        ");
-        $vStmt->execute([
-            ':recipe_id' => $recipeId,
-            ':variant_name' => $variantName !== '' ? $variantName : 'Variante',
-            ':is_default' => $isDefault ? 1 : 0,
-            ':notes' => $notes,
-        ]);
+        try {
+            $vStmt = $this->pdo->prepare("
+                INSERT INTO recipe_variants (
+                    recipe_id, variant_name, is_default, notes,
+                    calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving
+                ) VALUES (
+                    :recipe_id, :variant_name, :is_default, :notes,
+                    :calories_per_serving, :protein_per_serving, :carbs_per_serving, :fat_per_serving
+                )
+            ");
+            $vStmt->execute([
+                ':recipe_id' => $recipeId,
+                ':variant_name' => $variantName !== '' ? $variantName : 'Variante',
+                ':is_default' => $isDefault ? 1 : 0,
+                ':notes' => $notes,
+                ':calories_per_serving' => !empty($nutrition['calories_per_serving']) ? (int)$nutrition['calories_per_serving'] : null,
+                ':protein_per_serving' => isset($nutrition['protein_per_serving']) && $nutrition['protein_per_serving'] !== '' ? (float)$nutrition['protein_per_serving'] : null,
+                ':carbs_per_serving' => isset($nutrition['carbs_per_serving']) && $nutrition['carbs_per_serving'] !== '' ? (float)$nutrition['carbs_per_serving'] : null,
+                ':fat_per_serving' => isset($nutrition['fat_per_serving']) && $nutrition['fat_per_serving'] !== '' ? (float)$nutrition['fat_per_serving'] : null,
+            ]);
+        } catch (\Throwable) {
+            // Fallback für DB ohne optionale Nährwert-Spalten auf recipe_variants
+            $vStmt = $this->pdo->prepare("
+                INSERT INTO recipe_variants (recipe_id, variant_name, is_default, notes)
+                VALUES (:recipe_id, :variant_name, :is_default, :notes)
+            ");
+            $vStmt->execute([
+                ':recipe_id' => $recipeId,
+                ':variant_name' => $variantName !== '' ? $variantName : 'Variante',
+                ':is_default' => $isDefault ? 1 : 0,
+                ':notes' => $notes,
+            ]);
+        }
         $variantId = (int)$this->pdo->lastInsertId();
 
         // Zutaten einfügen
