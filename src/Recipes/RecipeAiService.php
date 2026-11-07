@@ -59,7 +59,20 @@ class RecipeAiService
 
         $sourceContent = trim($textOrUrl);
         if ($sourceType === 'url') {
-            $sourceContent = $this->fetchRecipeWebPage($sourceContent);
+            $fetched = $this->fetchRecipeWebPage($sourceContent);
+            $sourceContent = $fetched['text'];
+            if ($fetched['mime_type'] !== null && $fetched['base64_data'] !== null) {
+                $mimeType = $fetched['mime_type'];
+                $base64Data = $fetched['base64_data'];
+            }
+        } elseif ($sourceType === 'pdf' && $base64Data !== null && $base64Data !== '') {
+            $pdfRaw = base64_decode($base64Data, true);
+            if (is_string($pdfRaw) && $pdfRaw !== '') {
+                $extractedPdfText = $this->extractTextFromPdfBinary($pdfRaw);
+                if ($extractedPdfText !== '') {
+                    $sourceContent = trim($sourceContent . "\n\nEXTRAHIERTER PDF-TEXT:\n" . $extractedPdfText);
+                }
+            }
         }
 
         $shallotRule = $preferShallots
@@ -78,9 +91,13 @@ class RecipeAiService
 
         $prompt = <<<PROMPT
 Du bist ein präziser, familienfreundlicher Koch-Assistent für das Smart-Home-System "Kai".
-Analysiere das übergebene Rezept (aus Text, Webseite, Foto oder PDF) und bereite es für unseren Haushalt ({$defaultAdults} Erwachsene + {$defaultKids} Kinder/Jugendliche ab 11 Jahren mit {$kidPortionPct}% Portionsgröße = {$defaultServings} Vollportionen) optimal auf.
+Analysiere das übergebene Rezept (aus Text, Webseite, Foto oder PDF) und bereite es strukturiert auf.
 
 VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
+0. ABSOLUTE ORIGINAL-TREUE BEI ZUTATEN & MENGEN (HÖCHSTE PRIORITÄT!):
+   - Übernimm AUSNAHMSLOS ALLE Zutaten aus dem Originalrezept (inkl. jedem Gemüse wie Paprika/Karotten/Erbsen, Säften wie Ananassaft, Beilagen wie Reis/Nudeln/Kartoffeln, Fleisch, Saucen und Gewürzen)! Lass NIEMALS eine Zutat weg und erfinde kein eigenes Rezept!
+   - Übernimm die EXAKTEN Mengenangaben des Originalrezepts unverändert als Basiswerte (z. B. wenn im Rezept 800 g Putenbrustfilet, 350 g Basmati-Reis, 200 g Tiefkühlerbsen, 2 Stück Paprika, 3 Stück Karotten, 100 ml Ananassaft stehen, müssen exakt diese Zahlen in `ingredients` und `steps` stehen!). Rechne Mengen beim Import NICHT selbst um (einzige Ausnahme: Umwandlung von Zwiebel in Schalotten).
+   - Wenn im Originalrezept die Personenanzahl angegeben ist (z. B. "Für 3 Erwachsene und 3 Kinder" oder "Für 4 Personen"), trage diese Werte in `default_adults` und `default_kids` ein (falls nur Gesamtpersonen z. B. 4 genannt sind: `default_adults = 2`, `default_kids = 2`; falls gar nichts angegeben ist: `default_adults = {$defaultAdults}`, `default_kids = {$defaultKids}`).
 1. KEIN KÜCHEN-CHINESISCH (Jugendgerecht 11+ Jahre):
    - Verzichte auf unerklärte Fachbegriffe wie "blanchieren", "anschwitzen", "ablöschen", "reduzieren", "legieren", "parieren".
    - Beschreibe stattdessen konkret die Handlung und woran man erkennt, dass der Schritt fertig ist (z. B. statt "anschwitzen": "3-4 Minuten anbraten, bis die Schalotten weich und glasig sind, aber noch nicht braun").
@@ -95,19 +112,20 @@ VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
      * Wasser im Topf aufkochen: Stufe {$stoveLevels}
    - Backofen: Gib konkrete Gradzahlen mit Beheizungsart an (Standard: {$ovenMode}, z. B. "180 °C {$ovenMode}").
 3. INLINE-MENGEN IN JEDES SCHRITT-TEXTFELD:
-   - Nenne in JEDEM Kochschritt-Text (`instruction`) die exakte Menge der jeweiligen Zutat direkt im Satz (z. B. "Jetzt **2 TL Currypulver** und **200 ml Sahne** einrühren"), damit man beim Kochen niemals nach oben zur Zutatenliste scrollen muss!
-   - Befülle zusätzlich `ingredients_inline` für jeden Schritt als Array der in diesem Schritt verwendeten Zutaten.
+   - Nenne in JEDEM Kochschritt-Text (`instruction`) die exakte Menge der jeweiligen Zutat direkt im Satz in Markdown-Fettschrift (z. B. "Jetzt **3 TL mildes Currypulver** darüberstreuen" oder "**100 ml Ananassaft**, **150 ml Gemüsebrühe** und **400 ml Kokosmilch** dazugießen"), damit man beim Kochen niemals nach oben zur Zutatenliste scrollen muss!
+   - Befülle zusätzlich `ingredients_inline` für jeden Schritt als Array aller in diesem Schritt verwendeten Zutaten mit exakt denselben Mengen.
 4. {$shallotRule}
    {$customPrefBlock}
 5. 2-PHASEN MISE EN PLACE (VORBEREITUNG) & MULTI-TOPF-TIMING:
-   - Zerlege das Gericht in logische Komponenten (`components`), z. B. "Vorbereitung", "Hauptgericht / Fleisch", "Kartoffeln / Beilage", "Gemüse / Soße".
-   - Vorbereitung vor dem Einschalten des Herdes (`phase = "mise_en_place_pre"`): Nur das, was bereitstehen muss, bevor der erste Topf heiß wird.
-   - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): Wenn eine Komponente längere Zeit passiv kocht/schmort/backt (>= 15 Min, z. B. Fleisch schmort 60 Min), lege das Schälen/Schneiden späterer Beilagen (z. B. Kartoffeln schälen) gezielt in diese Wartezeit!
-   - Berücksichtige bei Kochtöpfen (z. B. Kartoffeln, Nudeln, Reis) explizit einen Aufheiz-Schritt (`phase = "preheat"`, z. B. "Topf mit Salzwasser auf Stufe {$stoveLevels} zum Kochen bringen", `duration_minutes = 8`), damit die Synchronisation mehrerer Töpfe exakt aufgeht!
+   - Zerlege das Gericht in logische Komponenten (`components`), z. B. "Vorbereitung", "Hauptgericht / Pfanne", "Reis / Beilage".
+   - Vorbereitung vor dem Einschalten des Herdes (`phase = "mise_en_place_pre"`): Schneide- und Vorbereitungsarbeiten, die erledigt sein sollten, bevor die Pfanne/der Topf heiß wird.
+   - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): Wenn eine Komponente längere Zeit passiv kocht/schmort/backt (>= 15 Min), lege das Schneiden späterer Zutaten gezielt in diese Wartezeit!
+   - Berücksichtige bei Kochtöpfen (z. B. Kartoffeln, Nudeln, Reis) explizit einen Aufheiz-Schritt (`phase = "preheat"`, z. B. "Topf mit Wasser auf Stufe {$stoveLevels} zum Kochen bringen", `duration_minutes = 6`), damit die Synchronisation mehrerer Töpfe exakt aufgeht!
 6. VORRATSSCHRANK-FILTER & PACKUNGSGRÖSSEN:
-   - Setze `is_pantry_staple = 1` bei typischen Vorratsartikeln, die man fast immer im Schrank hat (Salz, Pfeffer, Gewürze, Speiseöl, Olivenöl, Essig, Mehl, Zucker, Brühe, Senf, Schalotten, Knoblauch). Bei frischen Einkaufszutaten `is_pantry_staple = 0`.
-   - Gib bei verpackten Zutaten (z. B. Schmand, Sahne, Dosentomaten, Kokosmilch, Frischkäse, Quark) die übliche Supermarkt-Packungsgröße (`package_size`, `package_unit`) und einen kurzen `leftover_tip` zur Resteverwertung an.
-   - Ordne `market` ('Rewe' oder 'Globus') und `shopping_category` (z. B. 'Obst & Gemüse', 'Frischetheke (Fleisch & Wurst, Käse)', 'Molkereiprodukte & Eier', 'Nudeln, Reis & Konserven', 'Gewürze, Öle & Fertiggerichte', 'Tiefkühlkost', 'Brot & Backwaren', 'Sonstiges') zu.
+   - Setze `is_pantry_staple = 1` NUR bei kleinen Würz- und Basis-Zutaten, die man fast immer im Vorratsschrank hat (Salz, Pfeffer, Gewürze wie Currypulver/Paprikapulver, Speiseöl/Olivenöl, Essig, Brühe/Gemüsebrühe, Senf, Mehl/Speisestärke in kleinen Mengen, Zucker, Schalotten, Zwiebeln, Knoblauch).
+   - WICHTIG: Hauptzutaten, Sättigungsbeilagen und Konserven wie **Reis, Nudeln, Kartoffeln, Fleisch, Fisch, frisches oder TK-Gemüse (Paprika, Karotten, Erbsen), Dosen-Gemüse (Mais, Bohnen), Kokosmilch, Sahne, Schmand, Käse und Fruchtsäfte (Ananassaft)** erhalten IMMER `is_pantry_staple = 0`!
+   - Gib bei verpackten Zutaten (z. B. Putenbrustfilet 400g, Kokosmilch 400ml, Schmand 200g, Sahne 200g) die übliche Supermarkt-Packungsgröße (`package_size`, `package_unit`) und einen kurzen `leftover_tip` zur Resteverwertung an.
+   - Ordne `market` ('Rewe' oder 'Globus') und `shopping_category` (z. B. 'Obst & Gemüse', 'Frischetheke (Fleisch & Wurst, Käse)', 'Molkereiprodukte & Eier', 'Nudeln, Reis & Konserven', 'Gewürze, Öle & Fertiggerichte', 'Tiefkühlkost', 'Getränke', 'Brot & Backwaren', 'Sonstiges') zu.
 
 Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt in exakt dieser Struktur:
 {
@@ -248,13 +266,14 @@ PROMPT;
             if (!is_array($alt) || empty($alt['alternative_name'])) {
                 continue;
             }
+            $altName = trim((string)$alt['alternative_name']);
             $result[] = [
-                'alternative_name' => trim((string)$alt['alternative_name']),
+                'alternative_name' => $altName,
                 'quantity' => max(0.1, (float)($alt['quantity'] ?? 1.0)),
                 'unit' => trim((string)($alt['unit'] ?? 'Stück')),
                 'taste_note' => trim((string)($alt['taste_note'] ?? '')),
                 'cooking_adjustment' => trim((string)($alt['cooking_adjustment'] ?? '')),
-                'is_pantry_staple' => !empty($alt['is_pantry_staple']) ? 1 : 0,
+                'is_pantry_staple' => $this->isAllowedPantryStaple($altName, !empty($alt['is_pantry_staple'])) ? 1 : 0,
                 'shopping_category' => trim((string)($alt['shopping_category'] ?? 'Sonstiges')),
             ];
         }
@@ -300,7 +319,7 @@ PROMPT;
                 $ing['ingredient_name'] = $newName;
                 $ing['quantity'] = $newQty;
                 $ing['unit'] = $newUnit;
-                $ing['is_pantry_staple'] = !empty($replacement['is_pantry_staple']) ? 1 : 0;
+                $ing['is_pantry_staple'] = $this->isAllowedPantryStaple($newName, !empty($replacement['is_pantry_staple'])) ? 1 : 0;
                 $ing['shopping_category'] = !empty($replacement['shopping_category']) ? (string)$replacement['shopping_category'] : ($ing['shopping_category'] ?? 'Sonstiges');
                 $ing['package_size'] = null;
                 $ing['leftover_tip'] = null;
@@ -384,18 +403,29 @@ PROMPT;
     }
 
     /**
-     * Lädt den Text- und JSON-LD-Inhalt einer Rezept-Webseite sicher per cURL.
+     * Lädt den Inhalt einer Rezept-URL (Webseite, Google-Drive-Datei, PDF oder Bild) sicher per cURL.
      * Verhindert SSRF durch Protokoll- und IP-Prüfung.
      *
+     * @return array{text: string, mime_type: string|null, base64_data: string|null}
      * @throws Exception
      */
-    private function fetchRecipeWebPage(string $url): string
+    private function fetchRecipeWebPage(string $url): array
     {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             throw new Exception('Ungültige Rezept-URL.');
         }
 
-        $parts = parse_url($url);
+        // Google Drive Datei-Links (/file/d/{ID}/view oder /open?id={ID}) automatisch in Direkt-Download umwandeln
+        $downloadUrl = $url;
+        if (preg_match('/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i', $url, $m)) {
+            $downloadUrl = 'https://drive.google.com/uc?export=download&id=' . $m[1];
+        } elseif (preg_match('/drive\.google\.com\/open\?.*?id=([a-zA-Z0-9_-]+)/i', $url, $m)) {
+            $downloadUrl = 'https://drive.google.com/uc?export=download&id=' . $m[1];
+        } elseif (preg_match('/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/i', $url, $m)) {
+            $downloadUrl = 'https://docs.google.com/document/d/' . $m[1] . '/export?format=pdf';
+        }
+
+        $parts = parse_url($downloadUrl);
         $scheme = strtolower((string)($parts['scheme'] ?? ''));
         $host = strtolower((string)($parts['host'] ?? ''));
 
@@ -411,7 +441,7 @@ PROMPT;
             }
         }
 
-        $ch = curl_init($url);
+        $ch = curl_init($downloadUrl);
         if ($ch === false) {
             throw new Exception('Netzwerk-Client konnte nicht initialisiert werden.');
         }
@@ -419,12 +449,12 @@ PROMPT;
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 3,
-            CURLOPT_TIMEOUT => 20,
+            CURLOPT_MAXREDIRS => 8,
+            CURLOPT_TIMEOUT => 25,
             CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             CURLOPT_HTTPHEADER => [
-                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept: text/html,application/xhtml+xml,application/pdf,image/*,*/*;q=0.8',
                 'Accept-Language: de-DE,de;q=0.9,en;q=0.7',
             ],
         ]);
@@ -433,16 +463,51 @@ PROMPT;
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         }
 
-        $html = curl_exec($ch);
+        $body = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $contentType = strtolower((string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
         curl_close($ch);
 
-        if (!is_string($html) || $html === '' || $httpCode >= 400) {
-            throw new Exception('Die Rezept-Webseite konnte nicht geladen werden (HTTP ' . $httpCode . ').');
+        if (!is_string($body) || $body === '' || $httpCode >= 400) {
+            throw new Exception('Die Rezept-Quelle konnte nicht geladen werden (HTTP ' . $httpCode . ').');
         }
 
+        // 1. Prüfen, ob die geladene Ressource ein PDF-Dokument ist (z. B. Google Drive PDF oder direkter PDF-Link)
+        if (str_starts_with($body, '%PDF-') || str_contains($contentType, 'application/pdf')) {
+            $pdfText = $this->extractTextFromPdfBinary($body);
+            return [
+                'text' => $pdfText !== '' ? ("EXTRAHIERTER PDF-TEXT:\n" . $pdfText) : '',
+                'mime_type' => 'application/pdf',
+                'base64_data' => base64_encode($body),
+            ];
+        }
+
+        // 2. Prüfen, ob die geladene Ressource ein Bild ist (JPEG, PNG, WebP)
+        if (str_starts_with($body, "\xFF\xD8\xFF") || str_contains($contentType, 'image/jpeg')) {
+            return [
+                'text' => '',
+                'mime_type' => 'image/jpeg',
+                'base64_data' => base64_encode($body),
+            ];
+        }
+        if (str_starts_with($body, "\x89PNG") || str_contains($contentType, 'image/png')) {
+            return [
+                'text' => '',
+                'mime_type' => 'image/png',
+                'base64_data' => base64_encode($body),
+            ];
+        }
+        if (str_contains($contentType, 'image/webp')) {
+            return [
+                'text' => '',
+                'mime_type' => 'image/webp',
+                'base64_data' => base64_encode($body),
+            ];
+        }
+
+        // 3. Klassische HTML-Webseite (JSON-LD + bereinigter Seitentext)
         $extractedBlocks = [];
-        if (preg_match_all('/<script[^>]*type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is', $html, $matches)) {
+        if (preg_match_all('/<script[^>]*type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is', $body, $matches)) {
             foreach ($matches[1] as $jsonBlock) {
                 $trimmed = trim($jsonBlock);
                 if (stripos($trimmed, 'Recipe') !== false || stripos($trimmed, 'recipeIngredient') !== false) {
@@ -451,11 +516,84 @@ PROMPT;
             }
         }
 
-        $cleanHtml = preg_replace('/<(script|style|svg|noscript|footer|nav|iframe)[^>]*>.*?<\/\1>/is', ' ', $html) ?? $html;
+        $cleanHtml = preg_replace('/<(script|style|svg|noscript|footer|nav|iframe)[^>]*>.*?<\/\1>/is', ' ', $body) ?? $body;
         $plainText = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($cleanHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? '');
 
-        $combined = implode("\n\n", $extractedBlocks) . "\n\nSEITENTEXT:\n" . mb_substr($plainText, 0, 20000);
-        return trim($combined);
+        $combined = implode("\n\n", $extractedBlocks) . "\n\nSEITENTEXT:\n" . mb_substr($plainText, 0, 24000);
+        return [
+            'text' => trim($combined),
+            'mime_type' => null,
+            'base64_data' => null,
+        ];
+    }
+
+    /**
+     * Extrahiert den Rohtext aus einer PDF-Binärdatei über Smalot\PdfParser als zusätzliche Text-Stütze.
+     */
+    private function extractTextFromPdfBinary(string $pdfBinary): string
+    {
+        try {
+            if (class_exists(\Smalot\PdfParser\Parser::class)) {
+                $parser = new \Smalot\PdfParser\Parser();
+                $pdf = $parser->parseContent($pdfBinary);
+                return trim($pdf->getText());
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warn('RecipeAiService: PDF-Text-Extraktion fehlgeschlagen, nutze rein multimodale PDF-Analyse.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        return '';
+    }
+
+    /**
+     * Prüft deterministisch, ob eine Zutat wirklich ein Kleinstmengen-Vorratsartikel (Gewürz, Öl, Salz, Schalotten/Knoblauch, Brühe) ist.
+     * Verhindert, dass Hauptzutaten wie Reis, Nudeln, Erbsen, Mais, Gemüse, Fleisch oder Kokosmilch im Vorratsschrank-Check landen.
+     */
+    private function isAllowedPantryStaple(string $ingredientName, bool $aiFlag): bool
+    {
+        if (!$aiFlag) {
+            return false;
+        }
+
+        $lower = mb_strtolower(trim($ingredientName));
+
+        // Explizite Ausschlussliste: Hauptzutaten, Sättigungsbeilagen, Gemüse, Konserven, Milchprodukte & Säfte sind NIE Vorratsschrank-Kleinstmengen
+        $neverPantryKeywords = [
+            'reis', 'basmati', 'jasminreis', 'risotto', 'nudel', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'lasagne', 'gnocchi', 'spätzle',
+            'kartoffel', 'süßkartoffel', 'pommes', 'krokette', 'klöße',
+            'pute', 'hähnchen', 'huhn', 'rind', 'schwein', 'hackfleisch', 'schnitzel', 'gulasch', 'filet', 'lachs', 'fisch', 'garnele', 'schinken', 'speck', 'wurst', 'würstchen', 'tofu',
+            'erbse', 'mais', 'bohne', 'linse', 'kichererbse', 'paprika', 'karotte', 'möhre', 'tomate', 'gurke', 'zucchini', 'aubergine', 'brokkoli', 'blumenkohl', 'spinat', 'kohl', 'lauch', 'porree', 'sellerie', 'pilz', 'champignon', 'spargel', 'kürbis', 'salat', 'avocado',
+            'ananas', 'apfel', 'banane', 'orange', 'beere', 'zitrone', 'limette', 'mango', 'pfirsich', 'saft', 'ananassaft', 'orangensaft', 'apfelsaft',
+            'kokosmilch', 'sahne', 'schlagsahne', 'kochsahne', 'schmand', 'crème', 'creme', 'frischkäse', 'quark', 'joghurt', 'milch', 'käse', 'mozzarella', 'parmesan', 'gouda', 'emmentaler', 'feta', 'hirtenkäse', 'ei', 'eier',
+            'brot', 'brötchen', 'toast', 'tortilla', 'wrap', 'pita', 'blätterteig', 'hefeteig', 'pizzateig',
+        ];
+
+        foreach ($neverPantryKeywords as $kw) {
+            if (mb_strpos($lower, $kw) !== false) {
+                return false;
+            }
+        }
+
+        // Positivliste für echte Vorratsschrank-Prüfartikel
+        $allowedPantryKeywords = [
+            'salz', 'pfeffer', 'curry', 'paprikapulver', 'edelsüß', 'rosenscharf', 'muskat', 'zimt', 'kreuzkümmel', 'cumin', 'kurkuma', 'koriander', 'chili', 'cayenne',
+            'oregano', 'basilikum', 'thymian', 'rosmarin', 'majoran', 'petersilie', 'schnittlauch', 'dill', 'lorbeer', 'kräuter', 'gewürz',
+            'öl', 'pflanzenöl', 'sonnenblumenöl', 'rapsöl', 'olivenöl', 'sesamöl', 'kokosöl', 'bratfett', 'butter', 'margarine', 'butterschmalz',
+            'essig', 'balsamico', 'sojasauce', 'sojasoße', 'worcester', 'fischsauce', 'senf', 'tomatenmark', 'ketchup', 'mayonnaise',
+            'brühe', 'gemüsebrühe', 'hühnerbrühe', 'rinderbrühe', 'fond', 'brühwürfel',
+            'zucker', 'honig', 'agavendicksaft', 'ahornsirup', 'vanillezucker', 'vanille', 'backpulver', 'natron', 'hefe',
+            'mehl', 'speisestärke', 'stärke', 'mondamin', 'semmelbrösel', 'paniermehl',
+            'schalotte', 'zwiebel', 'knoblauch', 'ingwer', 'wasser',
+        ];
+
+        foreach ($allowedPantryKeywords as $kw) {
+            if (mb_strpos($lower, $kw) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -469,9 +607,20 @@ PROMPT;
         $adults = max(1, (int)($raw['default_adults'] ?? $this->settings->getRecipeDefaultAdults()));
         $kids = max(0, (int)($raw['default_kids'] ?? $this->settings->getRecipeDefaultKids()));
         $kidFactor = $this->settings->getRecipeKidPortionPct() / 100.0;
-        $servings = isset($raw['default_servings']) && (float)$raw['default_servings'] > 0
-            ? (float)$raw['default_servings']
-            : round($adults + ($kids * $kidFactor), 2);
+        // Wichtig: default_servings immer konsistent aus default_adults + default_kids * kidFactor berechnen,
+        // damit bei unveränderter Personenanzahl der Skalierungsfaktor exakt 1.00 beträgt!
+        $servings = round($adults + ($kids * $kidFactor), 2);
+
+        $rawIngredients = is_array($raw['ingredients'] ?? null) ? $raw['ingredients'] : [];
+        $normalizedIngredients = [];
+        foreach ($rawIngredients as $ing) {
+            if (!is_array($ing) || empty($ing['ingredient_name'])) {
+                continue;
+            }
+            $ingName = trim((string)$ing['ingredient_name']);
+            $ing['is_pantry_staple'] = $this->isAllowedPantryStaple($ingName, !empty($ing['is_pantry_staple'])) ? 1 : 0;
+            $normalizedIngredients[] = $ing;
+        }
 
         $recipeData = [
             'title' => trim((string)($raw['title'] ?? 'Importiertes Rezept')),
@@ -495,7 +644,7 @@ PROMPT;
         $variantData = [
             'variant_name' => trim((string)($raw['variant_name'] ?? 'Standard (Familien-Variante)')),
             'notes' => trim((string)($raw['variant_notes'] ?? $raw['notes'] ?? '')),
-            'ingredients' => is_array($raw['ingredients'] ?? null) ? $raw['ingredients'] : [],
+            'ingredients' => $normalizedIngredients,
             'components' => is_array($raw['components'] ?? null) ? $raw['components'] : [],
         ];
 

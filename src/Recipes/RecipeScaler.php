@@ -79,9 +79,17 @@ class RecipeScaler
      */
     public function scaleRecipe(array $recipe, int $adults, int $kids): array
     {
-        $baseServings = max(0.5, (float)($recipe['default_servings'] ?? 3.6));
+        $baseAdults = isset($recipe['default_adults']) ? (int)$recipe['default_adults'] : null;
+        $baseKids = isset($recipe['default_kids']) ? (int)$recipe['default_kids'] : null;
+
+        $baseServings = ($baseAdults !== null && $baseKids !== null && ($baseAdults > 0 || $baseKids > 0))
+            ? $this->calculateEffectiveServings($baseAdults, $baseKids)
+            : max(0.5, (float)($recipe['default_servings'] ?? 3.6));
+
         $targetServings = $this->calculateEffectiveServings($adults, $kids);
-        $scaleFactor = $targetServings / $baseServings;
+        $isUnscaled = ($baseAdults !== null && $baseKids !== null && $adults === $baseAdults && $kids === $baseKids)
+            || abs($targetServings - $baseServings) < 0.01;
+        $scaleFactor = $isUnscaled ? 1.0 : ($targetServings / $baseServings);
 
         $scaledIngredients = [];
         $freshIngredients = [];
@@ -90,7 +98,7 @@ class RecipeScaler
         foreach ($recipe['ingredients'] ?? [] as $ing) {
             $baseQty = (float)($ing['quantity'] ?? 1.0);
             $unit = trim((string)($ing['unit'] ?? 'Stück'));
-            $scaledQty = $this->roundQuantity($baseQty * $scaleFactor, $unit);
+            $scaledQty = $isUnscaled ? $baseQty : $this->roundQuantity($baseQty * $scaleFactor, $unit);
 
             $ing['base_quantity'] = $baseQty;
             $ing['scaled_quantity'] = $scaledQty;
@@ -128,7 +136,7 @@ class RecipeScaler
                 foreach ($inlineList as $inItem) {
                     $inQty = (float)($inItem['quantity'] ?? 0);
                     $inUnit = trim((string)($inItem['unit'] ?? ''));
-                    $sQty = $inQty > 0 ? $this->roundQuantity($inQty * $scaleFactor, $inUnit) : 0;
+                    $sQty = $inQty > 0 ? ($isUnscaled ? $inQty : $this->roundQuantity($inQty * $scaleFactor, $inUnit)) : 0;
                     $scaledInline[] = [
                         'name' => (string)($inItem['name'] ?? ''),
                         'base_quantity' => $inQty,

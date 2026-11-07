@@ -657,19 +657,56 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Komplettes Rezept löschen
-        const delRecipeBtn = e.target.closest('#btn-delete-recipe');
+        // Komplettes Rezept löschen (in Übersicht und Detailansicht)
+        const delRecipeBtn = e.target.closest('#btn-delete-recipe') || e.target.closest('.js-delete-recipe');
         if (delRecipeBtn) {
             const rid = parseInt(delRecipeBtn.getAttribute('data-recipe-id') || '0', 10);
             if (!rid || !confirm('Möchtest du dieses Rezept samt aller Varianten unwiderruflich löschen?')) return;
-            const res = await window.KaiHttp.postJson('api.php', {
-                action: 'delete_recipe',
-                recipe_id: rid
-            });
-            if (res && res.success) {
-                window.location.href = 'index.php';
-            } else {
-                alert('Fehler beim Löschen des Rezepts.');
+            delRecipeBtn.disabled = true;
+            try {
+                const res = await window.KaiHttp.postJson('api.php', {
+                    action: 'delete_recipe',
+                    recipe_id: rid
+                });
+                if (res && res.success) {
+                    window.location.href = 'index.php';
+                } else {
+                    alert((res && res.message) ? res.message : 'Fehler beim Löschen des Rezepts.');
+                    delRecipeBtn.disabled = false;
+                }
+            } catch (err) {
+                alert('Netzwerkfehler beim Löschen des Rezepts.');
+                delRecipeBtn.disabled = false;
+            }
+            return;
+        }
+
+        // Bestehendes Rezept aus der Original-Quelle neu importieren
+        const reimportBtn = e.target.closest('.js-reimport-recipe');
+        if (reimportBtn) {
+            const rid = parseInt(reimportBtn.getAttribute('data-recipe-id') || '0', 10);
+            if (!rid || !confirm('Möchtest du das Rezept jetzt frisch aus der hinterlegten Original-Quelle (z. B. Google Drive PDF / Webseite) neu importieren und das aktuelle Rezept ersetzen?')) return;
+
+            const origText = reimportBtn.textContent;
+            reimportBtn.disabled = true;
+            reimportBtn.textContent = '⏳ Importiere neu...';
+
+            try {
+                const res = await window.KaiHttp.postJson('api.php', {
+                    action: 'reimport_recipe',
+                    recipe_id: rid
+                });
+                if (res && res.success && res.recipe_id) {
+                    window.location.href = 'view.php?id=' + encodeURIComponent(res.recipe_id);
+                } else {
+                    alert((res && res.message) ? res.message : 'Fehler beim Neu-Importieren des Rezepts.');
+                    reimportBtn.disabled = false;
+                    reimportBtn.textContent = origText;
+                }
+            } catch (err) {
+                alert('Netzwerkfehler beim Neu-Importieren.');
+                reimportBtn.disabled = false;
+                reimportBtn.textContent = origText;
             }
             return;
         }

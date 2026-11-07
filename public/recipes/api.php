@@ -32,6 +32,7 @@ if ($action === '') {
 
 $writeActions = [
     'import_recipe',
+    'reimport_recipe',
     'save_kitchen_profile',
     'save_manual_recipe',
     'suggest_alternatives',
@@ -107,6 +108,34 @@ try {
                 'recipe_id' => $recipeId,
                 'title' => $parsed['recipe']['title'],
                 'message' => 'Rezept erfolgreich analysiert und gespeichert!',
+            ]);
+            break;
+
+        // --- 1b. Bestehendes Rezept aus seiner Original-URL neu importieren ---
+        case 'reimport_recipe':
+            $oldRecipeId = filter_var($input['recipe_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$oldRecipeId) {
+                Auth::sendJsonError(400, 'Ungültige Rezept-ID.');
+            }
+
+            $existing = $repo->getRecipeById($oldRecipeId);
+            if (!$existing || empty($existing['source_url'])) {
+                Auth::sendJsonError(400, 'Für dieses Rezept ist keine Quell-URL zum Neu-Importieren hinterlegt.');
+            }
+
+            $aiService = new RecipeAiService(null, $settingsService, $logger);
+            $parsed = $aiService->importRecipe('url', (string)$existing['source_url']);
+            $parsed['recipe']['created_by'] = $_SESSION['user_email'] ?? null;
+            $parsed['recipe']['is_favorite'] = !empty($existing['is_favorite']) ? 1 : 0;
+
+            $newRecipeId = $repo->saveFullRecipe($parsed['recipe'], $parsed['variant']);
+            $repo->deleteRecipe($oldRecipeId);
+
+            echo json_encode([
+                'success' => true,
+                'recipe_id' => $newRecipeId,
+                'title' => $parsed['recipe']['title'],
+                'message' => 'Rezept wurde erfolgreich neu aus der Quelle importiert!',
             ]);
             break;
 

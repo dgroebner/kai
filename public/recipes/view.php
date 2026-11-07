@@ -92,8 +92,11 @@ if (!function_exists('formatRecipeInstruction')) {
             <a href="cook.php?id=<?= (int)$recipe['id'] ?>&amp;variant_id=<?= $activeVariantId ?>&amp;adults=<?= $adults ?>&amp;kids=<?= $kids ?><?= $serveTime ? '&amp;serve_time=' . urlencode($serveTime) : '' ?>"
                id="btn-launch-cook-mode"
                class="btn btn-primary">👨‍🍳 Koch-Modus starten</a>
+            <?php if ($canWrite && !empty($recipe['source_url'])): ?>
+                <button type="button" class="btn btn-outline js-reimport-recipe" data-recipe-id="<?= (int)$recipe['id'] ?>">🔄 Neu importieren</button>
+            <?php endif; ?>
             <?php if ($canWrite): ?>
-                <button type="button" class="btn btn-outline recipe-btn-danger" id="btn-delete-recipe" data-recipe-id="<?= (int)$recipe['id'] ?>">🗑️ Löschen</button>
+                <button type="button" class="btn btn-outline recipe-btn-danger js-delete-recipe" id="btn-delete-recipe" data-recipe-id="<?= (int)$recipe['id'] ?>">🗑️ Rezept löschen</button>
             <?php endif; ?>
         </div>
     </header>
@@ -140,7 +143,7 @@ if (!function_exists('formatRecipeInstruction')) {
                 <?php endif; ?>
             </div>
 
-            <!-- Varianten-Umschalter (Rezeptabwandlungen) -->
+            <!-- Varianten-Umschalter (Rezeptabwandlungen) & Rezept-Aktionen -->
             <div class="recipe-variants-bar">
                 <div class="recipe-variants-list">
                     <span class="recipe-variants-label">🔀 Rezept-Variante:</span>
@@ -152,10 +155,22 @@ if (!function_exists('formatRecipeInstruction')) {
                         </a>
                     <?php endforeach; ?>
                 </div>
-                <?php if ($canWrite && count($variants) > 1): ?>
-                    <button type="button" class="btn btn-sm btn-outline recipe-btn-danger" id="btn-delete-variant" data-variant-id="<?= $activeVariantId ?>">
-                        Variante löschen
-                    </button>
+                <?php if ($canWrite): ?>
+                    <div class="recipe-variants-list">
+                        <?php if (!empty($recipe['source_url'])): ?>
+                            <button type="button" class="btn btn-sm btn-outline js-reimport-recipe" data-recipe-id="<?= (int)$recipe['id'] ?>">
+                                🔄 Aus Quelle neu importieren
+                            </button>
+                        <?php endif; ?>
+                        <?php if (count($variants) > 1): ?>
+                            <button type="button" class="btn btn-sm btn-outline recipe-btn-danger" id="btn-delete-variant" data-variant-id="<?= $activeVariantId ?>">
+                                Variante löschen
+                            </button>
+                        <?php endif; ?>
+                        <button type="button" class="btn btn-sm btn-outline recipe-btn-danger js-delete-recipe" data-recipe-id="<?= (int)$recipe['id'] ?>">
+                            🗑️ Rezept löschen
+                        </button>
+                    </div>
                 <?php endif; ?>
             </div>
 
