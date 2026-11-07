@@ -261,16 +261,18 @@ require_once __DIR__ . '/../bootstrap.php';
 
                 <!-- Schnauzer Optionen -->
                 <div class="form-group hidden" id="group-schnauzer-modes">
-                    <label>Hausregeln &amp; Varianten:</label>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
-                        <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-weight: normal; cursor: pointer;">
-                            <input type="checkbox" name="schnauzer_three_aces_33" id="schnauzer-three-aces-33" value="1" style="margin-top: 0.25rem;">
+                    <label>Regelwerk &amp; Variante:</label>
+                    <div class="hub-radio-list">
+                        <label class="hub-radio-option">
+                            <input type="radio" name="schnauzer_rules_mode" value="standard" checked>
                             <span>
-                                <strong>3 Asse zählen 33 Punkte (Feuer)</strong><br>
-                                <small class="text-muted" style="display: block; line-height: 1.35; margin-top: 2px;">
-                                    Inaktiv (Standard): 3 Asse zählen als normaler Drilling 30,5 Punkte.<br>
-                                    Aktiv: 3 Asse bilden das höchste Blatt mit 33 Punkten (sofortiger Schnauzer).
-                                </small>
+                                <strong>Standard-Regeln:</strong> 31 Punkte = Schnauzer (sofortiges Rundenende), 3 Asse = 30,5 Punkte (Drilling), mit Schieben &amp; Klopfsperre im 1. Umlauf
+                            </span>
+                        </label>
+                        <label class="hub-radio-option">
+                            <input type="radio" name="schnauzer_rules_mode" value="gelenau">
+                            <span>
+                                <strong>Gelenauer Regeln:</strong> Schnauzer = 3 Asse (+1 Leben), 31 Punkte werden sofort ausgelegt, kein Schieben (1/3 Karten tauschen oder direkt zumachen)
                             </span>
                         </label>
                     </div>

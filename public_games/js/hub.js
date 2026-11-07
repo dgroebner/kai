@@ -184,9 +184,11 @@
                     mode = document.querySelector('input[name="skipbo_mode"]:checked')?.value || 'standard';
                     payload.game_mode = mode;
                 } else if (gameType === 'schnauzer') {
-                    mode = 'standard';
+                    mode = document.querySelector('input[name="schnauzer_rules_mode"]:checked')?.value || 'standard';
                     payload.game_mode = mode;
-                    payload.three_aces_33 = Boolean(document.getElementById('schnauzer-three-aces-33')?.checked);
+                    payload.rules_mode = mode;
+                    payload.gelenauer_regeln = (mode === 'gelenau');
+                    payload.three_aces_33 = (mode === 'gelenau');
                 } else if (gameType === 'poker') {
                     mode = 'standard';
                     payload.game_mode = mode;

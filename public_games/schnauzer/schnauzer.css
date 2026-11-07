@@ -3,11 +3,15 @@
    ========================================================================== */
 
 .schnauzer-viewport {
+    width: 100%;
+    max-width: 100vw;
     height: 100vh;
     height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    overflow-x: hidden;
+    box-sizing: border-box;
     background: radial-gradient(circle at 50% 40%, #173824 0%, #0c2316 65%, #06140d 100%);
     color: #f8fafc;
 }
@@ -19,6 +23,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
     padding: 0.5rem 0.85rem;
     background: rgba(10, 26, 17, 0.85);
     backdrop-filter: blur(8px);
@@ -32,7 +40,19 @@
 .schnauzer-header-right {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
+    min-width: 0;
+    flex-shrink: 1;
+    white-space: nowrap;
+}
+
+.schnauzer-my-name {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: bottom;
 }
 
 .schnauzer-back-btn {
@@ -41,6 +61,7 @@
     text-decoration: none;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    white-space: nowrap;
 }
 .schnauzer-back-btn:hover {
     background: rgba(255, 255, 255, 0.05);
@@ -56,6 +77,44 @@
     font-size: 0.78rem;
     font-weight: 800;
     letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .schnauzer-header {
+        padding: 0.35rem 0.45rem;
+        gap: 0.25rem;
+    }
+    .schnauzer-header-left,
+    .schnauzer-header-right {
+        gap: 0.25rem;
+    }
+    .schnauzer-back-btn {
+        font-size: 0.78rem;
+        padding: 0.15rem 0.3rem;
+    }
+    .schnauzer-room-badge {
+        font-size: 0.68rem;
+        padding: 0.14rem 0.4rem;
+    }
+    .schnauzer-btn-label {
+        display: none;
+    }
+    .schnauzer-my-name {
+        max-width: 52px;
+    }
+    .schnauzer-header .btn-sm {
+        padding: 0.22rem 0.42rem;
+        font-size: 0.76rem;
+    }
+    .schnauzer-header .quarxl-deck-toggle {
+        font-size: 0.68rem;
+        padding: 1px;
+    }
+    .schnauzer-header .quarxl-deck-btn {
+        padding: 2px 5px;
+        gap: 2px;
+    }
 }
 
 /* --------------------------------------------------------------------------

@@ -12,13 +12,22 @@ class SchnauzerService
     {
     }
 
+    private function isGelenauerRules(array $state): bool
+    {
+        return !empty($state['rules']['gelenauer_regeln'])
+            || (($state['rules']['mode'] ?? '') === 'gelenau')
+            || !empty($state['rules']['three_aces_33']);
+    }
+
     /**
      * Erzeugt den initialen Raumzustand.
      *
      * @return array<string, mixed>
      */
-    public function getInitialState(bool $threeAces33 = false): array
+    public function getInitialState(string|bool $rulesMode = 'standard'): array
     {
+        $isGelenau = ($rulesMode === true || $rulesMode === 'gelenau');
+
         return [
             'phase' => 'lobby', // 'lobby', 'dealing_choice', 'playing', 'showdown', 'game_over'
             'round_number' => 0,
@@ -33,7 +42,9 @@ class SchnauzerService
             'round_turn_count' => 0,
             'passed_players' => [],
             'rules' => [
-                'three_aces_33' => $threeAces33,
+                'mode' => $isGelenau ? 'gelenau' : 'standard',
+                'gelenauer_regeln' => $isGelenau,
+                'three_aces_33' => $isGelenau,
             ],
             'last_event' => [
                 'time' => microtime(true),
@@ -158,9 +169,9 @@ class SchnauzerService
 
         // Falls Geber ein KI-Bot ist: Sofort entscheiden
         if (!empty($dealer['sheet']['is_bot'])) {
-            $threeAces33 = !empty($state['rules']['three_aces_33']);
+            $isGelenau = $this->isGelenauerRules($state);
             $dealerHand = $dealer['sheet']['hand'];
-            $botChoice = SchnauzerBot::decideDealerChoice($dealerHand, $dealerReserve, $threeAces33);
+            $botChoice = SchnauzerBot::decideDealerChoice($dealerHand, $dealerReserve, $isGelenau);
             $this->applyDealerChoice($state, $players, $dealerId, $botChoice);
         }
 
@@ -236,14 +247,23 @@ class SchnauzerService
             'player_name' => (string)$dealer['player_name'],
         ];
 
-        // Sofortige Schnauzer-Prüfung: Hat jemand bereits 31 (oder 33) auf der Hand?
-        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        // Sofortige Prüfung: Hat jemand bereits 31 (oder 3 Asse / Schnauzer) auf der Hand?
+        $isGelenau = $this->isGelenauerRules($state);
+        $instantPlayerId = null;
         foreach ($activePlayers as $ap) {
-            $score = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand'], $threeAces33);
-            if ($score['is_31'] || $score['is_feuer']) {
-                $this->executeShowdown($state, $players, true, (int)$ap['id']);
-                return;
+            $score = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand'], $isGelenau);
+            if ($score['is_feuer']) {
+                $instantPlayerId = (int)$ap['id'];
+                break;
             }
+            if ($score['is_31'] && $instantPlayerId === null) {
+                $instantPlayerId = (int)$ap['id'];
+            }
+        }
+
+        if ($instantPlayerId !== null) {
+            $this->executeShowdown($state, $players, true, $instantPlayerId);
+            return;
         }
     }
 
@@ -308,9 +328,9 @@ class SchnauzerService
             'table_index' => $tableIndex,
         ];
 
-        // Prüfung auf 31 / 33 Schnauzer
-        $threeAces33 = !empty($state['rules']['three_aces_33']);
-        $score = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
+        // Prüfung auf 31 / 3 Asse (Schnauzer)
+        $isGelenau = $this->isGelenauerRules($state);
+        $score = SchnauzerScoreCalculator::calculateScore($hand, $isGelenau);
         if ($score['is_31'] || $score['is_feuer']) {
             $this->executeShowdown($state, $players, true, $playerId);
             $this->repo->updateRoomState($roomId, $state);
@@ -372,9 +392,9 @@ class SchnauzerService
             'player_name' => (string)$player['player_name'],
         ];
 
-        // Prüfung auf 31 / 33 Schnauzer
-        $threeAces33 = !empty($state['rules']['three_aces_33']);
-        $score = SchnauzerScoreCalculator::calculateScore($player['sheet']['hand'], $threeAces33);
+        // Prüfung auf 31 / 3 Asse (Schnauzer)
+        $isGelenau = $this->isGelenauerRules($state);
+        $score = SchnauzerScoreCalculator::calculateScore($player['sheet']['hand'], $isGelenau);
         if ($score['is_31'] || $score['is_feuer']) {
             $this->executeShowdown($state, $players, true, $playerId);
             $this->repo->updateRoomState($roomId, $state);
@@ -389,7 +409,7 @@ class SchnauzerService
     }
 
     /**
-     * Schieben ("Ich passe").
+     * Schieben ("Ich passe") — nur in Standard-Regeln erlaubt.
      */
     public function passTurn(int $roomId, int $playerId): array
     {
@@ -401,6 +421,16 @@ class SchnauzerService
         $state = $room['state'];
         if ($state['phase'] !== 'playing' || (int)$state['current_player_id'] !== $playerId) {
             return ['success' => false, 'message' => 'Du bist nicht am Zug.'];
+        }
+
+        if ($this->isGelenauerRules($state)) {
+            if ($state['knocked_by_player_id'] !== null) {
+                return $this->knock($roomId, $playerId);
+            }
+            return [
+                'success' => false,
+                'message' => 'Nach Gelenauer Regeln gibt es kein Schieben! Du musst 1 oder 3 Karten tauschen oder zumachen.',
+            ];
         }
 
         $players = $this->repo->getPlayersForRoom($roomId);
@@ -447,6 +477,9 @@ class SchnauzerService
 
     /**
      * Schließen / Klopfen ("Ich mache zu").
+     * In den Gelenauer Regeln darf bereits ab dem 1. Umlauf zugemacht werden,
+     * und in der Schlussrunde nach dem ersten Zumachen dürfen nachfolgende Spieler
+     * ebenfalls "zumachen" (Karten behalten).
      */
     public function knock(int $roomId, int $playerId): array
     {
@@ -460,9 +493,7 @@ class SchnauzerService
             return ['success' => false, 'message' => 'Du bist nicht am Zug.'];
         }
 
-        if ($state['knocked_by_player_id'] !== null) {
-            return ['success' => false, 'message' => 'Es wurde bereits geklopft.'];
-        }
+        $isGelenau = $this->isGelenauerRules($state);
 
         $players = $this->repo->getPlayersForRoom($roomId);
         $player = null;
@@ -477,13 +508,38 @@ class SchnauzerService
             return ['success' => false, 'message' => 'Spieler nicht gefunden.'];
         }
 
+        // Fall 1: Es wurde bereits von jemandem zugemacht (Schlussrunde läuft)
+        if ($state['knocked_by_player_id'] !== null) {
+            if (!$isGelenau) {
+                return ['success' => false, 'message' => 'Es wurde bereits geklopft.'];
+            }
+
+            // Gelenauer Regeln: Nachfolgende Spieler dürfen in der Schlussrunde ebenfalls "zumachen" (Karten behalten)
+            $state['round_turn_count'] = ($state['round_turn_count'] ?? 0) + 1;
+            $state['last_event'] = [
+                'time' => microtime(true),
+                'type' => 'player_knocked',
+                'message' => "✊ {$player['player_name']} macht ebenfalls zu (behält seine Karten).",
+                'player_id' => $playerId,
+                'player_name' => (string)$player['player_name'],
+            ];
+
+            $this->advanceTurn($state, $players);
+            $this->repo->updateRoomState($roomId, $state);
+
+            $this->triggerBotTurnIfNeeded($roomId);
+            return ['success' => true];
+        }
+
+        // Fall 2: Erster Spieler macht zu (läutet Schlussrunde ein)
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
 
-        // Umlaufschutz: In der ersten Runde darf nicht geklopft werden!
-        if (($state['round_turn_count'] ?? 0) < count($activePlayers)) {
+        // Umlaufschutz gilt nur in den Standard-Regeln (bei Gelenauer Regeln darf sofort in Runde 1 zugemacht werden)
+        if (!$isGelenau && (($state['round_turn_count'] ?? 0) < count($activePlayers))) {
             return ['success' => false, 'message' => 'In der ersten Runde darf nicht geklopft werden.'];
         }
 
+        $state['round_turn_count'] = ($state['round_turn_count'] ?? 0) + 1;
         $state['knocked_by_player_id'] = $playerId;
         $state['turns_after_knock_left'] = count($activePlayers) - 1;
         $state['passed_players'] = [];
@@ -567,18 +623,21 @@ class SchnauzerService
     }
 
     /**
-     * Wertet den Showdown aus, verteilt Lebensabzüge und prüft auf Spielende.
+     * Wertet den Showdown aus, verteilt Lebensabzüge (sowie Bonusleben bei Gelenauer Schnauzer) und prüft auf Spielende.
      */
     private function executeShowdown(array &$state, array &$players, bool $wasInstantSchnauzer, ?int $schnauzerPlayerId): void
     {
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
         $scores = [];
         $minScore = 999.0;
-        $threeAces33 = !empty($state['rules']['three_aces_33']);
+        $isGelenau = $this->isGelenauerRules($state);
+
+        $bonusLifePlayerId = null;
+        $bonusLifePlayerName = null;
 
         foreach ($activePlayers as $ap) {
             $pid = (int)$ap['id'];
-            $res = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand'], $threeAces33);
+            $res = SchnauzerScoreCalculator::calculateScore($ap['sheet']['hand'], $isGelenau);
             $scores[$pid] = [
                 'player_id' => $pid,
                 'player_name' => (string)$ap['player_name'],
@@ -588,6 +647,11 @@ class SchnauzerService
                 'is_31' => $res['is_31'],
                 'is_feuer' => $res['is_feuer'],
             ];
+
+            if ($isGelenau && !empty($res['is_feuer'])) {
+                $bonusLifePlayerId = $pid;
+                $bonusLifePlayerName = (string)$ap['player_name'];
+            }
 
             if ($res['score'] < $minScore) {
                 $minScore = $res['score'];
@@ -612,7 +676,26 @@ class SchnauzerService
         if ($isAllTied) {
             $loserIds = [];
         } else {
-            // Lebensabzüge durchführen
+            // Gelenauer Regeln: Bei Schnauzer (3 Asse) erhält der Inhaber +1 Leben
+            if ($bonusLifePlayerId !== null) {
+                foreach ($players as &$p) {
+                    $pid = (int)$p['id'];
+                    if ($pid !== $bonusLifePlayerId) continue;
+
+                    $sheet = &$p['sheet'];
+                    if (!empty($sheet['is_swimming'])) {
+                        $sheet['is_swimming'] = false;
+                        $sheet['lives'] = 1;
+                    } else {
+                        $sheet['lives'] = (int)($sheet['lives'] ?? 3) + 1;
+                    }
+                    $this->repo->updatePlayerSheet($pid, $sheet, (int)$sheet['lives']);
+                    break;
+                }
+                unset($p);
+            }
+
+            // Lebensabzüge für die Spieler mit der niedrigsten Punktzahl durchführen
             foreach ($players as &$p) {
                 $pid = (int)$p['id'];
                 if (!in_array($pid, $loserIds, true)) continue;
@@ -657,9 +740,21 @@ class SchnauzerService
             return $scores[$id]['player_name'] ?? 'Spieler';
         }, $loserIds);
 
-        $endReason = $wasInstantSchnauzer
-            ? "⚡ {$scores[$schnauzerPlayerId]['player_name']} hat 31 (Schnauzer)! Sofortiges Rundenende."
-            : "Runde beendet nach Klopfen.";
+        if ($wasInstantSchnauzer) {
+            $triggerInfo = $scores[$schnauzerPlayerId] ?? null;
+            $triggerName = $triggerInfo['player_name'] ?? 'Spieler';
+            if ($isGelenau) {
+                if (!empty($triggerInfo['is_feuer'])) {
+                    $endReason = "⚡ {$triggerName} legt einen SCHNAUZER (3 Asse) aus (+1 Leben)!";
+                } else {
+                    $endReason = "⚡ {$triggerName} legt 31 Punkte aus! Sofortiges Rundenende.";
+                }
+            } else {
+                $endReason = "⚡ {$triggerName} hat 31 (Schnauzer)! Sofortiges Rundenende.";
+            }
+        } else {
+            $endReason = $isGelenau ? "Runde beendet nach Zumachen." : "Runde beendet nach Klopfen.";
+        }
 
         $isGameOver = !$isAllTied && (count($survivors) <= 1 || $onlyBotsLeft);
         $wName = ($isGameOver && count($survivors) >= 1) ? (string)$survivors[0]['player_name'] : null;
@@ -678,6 +773,8 @@ class SchnauzerService
             'winner_name' => $wName,
             'was_instant_schnauzer' => $wasInstantSchnauzer,
             'schnauzer_player_id' => $schnauzerPlayerId,
+            'bonus_life_player_id' => $bonusLifePlayerId,
+            'bonus_life_player_name' => $bonusLifePlayerName,
         ];
 
         // Die Runde geht IMMER in den Showdown, damit alle Spieler die Hände und Punkte
@@ -756,8 +853,8 @@ class SchnauzerService
         }
 
         $roomState = $room['state'] ?? [];
-        $threeAces33 = !empty($roomState['rules']['three_aces_33']);
-        $state = $this->getInitialState($threeAces33);
+        $isGelenau = $this->isGelenauerRules($roomState);
+        $state = $this->getInitialState($isGelenau ? 'gelenau' : 'standard');
         $this->repo->updateRoomState($roomId, $state, 'lobby');
         return ['success' => true];
     }
@@ -797,16 +894,18 @@ class SchnauzerService
         $isKnocked = ($state['knocked_by_player_id'] !== null);
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
         $roundTurnCount = (int)($state['round_turn_count'] ?? 0);
-        $canKnock = !$isKnocked && ($roundTurnCount >= count($activePlayers));
+        $isGelenau = $this->isGelenauerRules($state);
+        $canKnock = $isGelenau ? true : (!$isKnocked && ($roundTurnCount >= count($activePlayers)));
 
-        $threeAces33 = !empty($state['rules']['three_aces_33']);
-        $decision = SchnauzerBot::decideTurn($hand, $table, $isKnocked, $canKnock, $roundTurnCount, $threeAces33);
+        $decision = SchnauzerBot::decideTurn($hand, $table, $isKnocked, $canKnock, $roundTurnCount, $isGelenau);
 
         if ($decision['action'] === 'swap_one') {
             $this->swapOne($roomId, $activePlayerId, (int)$decision['hand_index'], (int)$decision['table_index']);
         } elseif ($decision['action'] === 'swap_all') {
             $this->swapAll($roomId, $activePlayerId);
         } elseif ($decision['action'] === 'knock' && $canKnock) {
+            $this->knock($roomId, $activePlayerId);
+        } elseif ($isGelenau) {
             $this->knock($roomId, $activePlayerId);
         } else {
             $this->passTurn($roomId, $activePlayerId);
@@ -884,6 +983,7 @@ class SchnauzerService
         $phase = $state['phase'] ?? 'lobby';
 
         $isShowdownOrOver = in_array($phase, ['showdown', 'game_over'], true);
+        $isGelenau = $this->isGelenauerRules($state);
 
         $publicPlayers = [];
         $myScoreInfo = null;
@@ -898,12 +998,11 @@ class SchnauzerService
             $visibleHand = ($isMe || $isShowdownOrOver) ? $hand : array_fill(0, count($hand), ['is_hidden' => true]);
 
             $scoreInfo = null;
-            $threeAces33 = !empty($state['rules']['three_aces_33']);
             if ($isMe && !empty($hand)) {
-                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
+                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand, $isGelenau);
                 $myScoreInfo = $scoreInfo;
             } elseif ($isShowdownOrOver && !empty($hand)) {
-                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand, $threeAces33);
+                $scoreInfo = SchnauzerScoreCalculator::calculateScore($hand, $isGelenau);
             }
 
             $publicPlayers[] = [
@@ -926,14 +1025,22 @@ class SchnauzerService
         $activePlayers = array_values(array_filter($players, fn($p) => empty($p['sheet']['is_out'])));
         $roundTurnCount = (int)($state['round_turn_count'] ?? 0);
 
+        $canKnock = $isGelenau
+            ? true
+            : (empty($state['knocked_by_player_id']) && ($roundTurnCount >= count($activePlayers)));
+
         return [
             'room_code' => $room['room_code'],
             'room_status' => $room['status'],
             'phase' => $phase,
             'round_number' => (int)($state['round_number'] ?? 0),
             'round_turn_count' => $roundTurnCount,
-            'can_knock' => empty($state['knocked_by_player_id']) && ($roundTurnCount >= count($activePlayers)),
-            'rules' => $state['rules'] ?? ['three_aces_33' => false],
+            'can_knock' => $canKnock,
+            'rules' => [
+                'mode' => $isGelenau ? 'gelenau' : 'standard',
+                'gelenauer_regeln' => $isGelenau,
+                'three_aces_33' => $isGelenau,
+            ],
             'current_player_id' => $state['current_player_id'] ?? null,
             'dealer_id' => $state['dealer_id'] ?? null,
             'knocked_by_player_id' => $state['knocked_by_player_id'] ?? null,

@@ -10,10 +10,10 @@ class SchnauzerScoreCalculator
      * Berechnet die Punktzahl und Kombination einer Schnauzer-Hand (3 Karten).
      *
      * @param array<int, array<string, mixed>> $cards
-     * @param bool $threeAces33 Hausregel: 3 Asse zählen 33 Punkte (Feuer), sonst 30,5
+     * @param bool $gelenauerRegeln Gelenauer Regeln: 3 Asse = Schnauzer (33 Punkte), 31 Punkte = reguläre 31 (sofort auslegen)
      * @return array{score: float, is_31: bool, is_feuer: bool, is_drilling: bool, best_suit: string, label: string}
      */
-    public static function calculateScore(array $cards, bool $threeAces33 = false): array
+    public static function calculateScore(array $cards, bool $gelenauerRegeln = false): array
     {
         if (empty($cards)) {
             return [
@@ -33,16 +33,16 @@ class SchnauzerScoreCalculator
             $r2 = (string)($cards[2]['rank'] ?? '');
 
             if ($r0 !== '' && $r0 === $r1 && $r1 === $r2) {
-                // Drei Asse / Daus: Prüfen, ob Hausregel (33 Punkte) oder Standard (30,5 Punkte) gilt
+                // Drei Asse / Daus: Prüfen, ob Gelenauer Regeln (Schnauzer = 33 Punkte) oder Standard (30,5 Punkte) gilt
                 if ($r0 === 'A') {
-                    if ($threeAces33) {
+                    if ($gelenauerRegeln) {
                         return [
                             'score' => 33.0,
-                            'is_31' => true,
+                            'is_31' => false,
                             'is_feuer' => true,
                             'is_drilling' => true,
                             'best_suit' => 'all',
-                            'label' => '33 Punkte (Drei Asse / Feuer) - SCHNAUZER!',
+                            'label' => 'SCHNAUZER! (Drei Asse)',
                         ];
                     }
 
@@ -110,9 +110,13 @@ class SchnauzerScoreCalculator
         };
 
         $is31 = ($bestScore === 31);
-        $label = $is31
-            ? "31 Punkte ({$suitGerman}) - SCHNAUZER!"
-            : "{$bestScore} Punkte ({$suitGerman})";
+        if ($is31) {
+            $label = $gelenauerRegeln
+                ? "31 Punkte ({$suitGerman})"
+                : "31 Punkte ({$suitGerman}) - SCHNAUZER!";
+        } else {
+            $label = "{$bestScore} Punkte ({$suitGerman})";
+        }
 
         return [
             'score' => (float)$bestScore,

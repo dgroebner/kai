@@ -22,7 +22,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <header class="schnauzer-header">
         <div class="schnauzer-header-left">
             <a href="../index.php" class="schnauzer-back-btn">&larr; Hub</a>
-            <span class="schnauzer-room-badge" id="room-code-display">RAUM: <?= $roomCode ?: '...' ?></span>
+            <span class="schnauzer-room-badge" id="room-code-display"><span class="schnauzer-btn-label">RAUM: </span><?= $roomCode ?: '...' ?></span>
             <div id="deck-toggle-container"></div>
         </div>
         <div class="schnauzer-header-right">
@@ -30,10 +30,10 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
                 😀
             </button>
             <button type="button" class="btn btn-sm btn-outline js-btn-edit-name" title="Spielername ändern">
-                ✏️ <span class="js-my-name-display" style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ich</span>
+                ✏️ <span class="js-my-name-display schnauzer-my-name">Ich</span>
             </button>
             <button type="button" class="btn btn-sm btn-whatsapp js-share-whatsapp" title="Per WhatsApp einladen">
-                📲 Einladen
+                📲 <span class="schnauzer-btn-label">Einladen</span>
             </button>
         </div>
     </header>

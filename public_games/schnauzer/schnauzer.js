@@ -233,6 +233,14 @@
         }
     }
 
+    function isGelenauerMode(data) {
+        return Boolean(
+            data &&
+            data.rules &&
+            (data.rules.gelenauer_regeln || data.rules.mode === 'gelenau' || data.rules.three_aces_33)
+        );
+    }
+
     // -------------------------------------------------------------------------
     // RENDERING
     // -------------------------------------------------------------------------
@@ -287,11 +295,11 @@
     function renderLobby(data) {
         const rulesBadge = document.getElementById('lobby-rules-badge');
         if (rulesBadge) {
-            const has33 = Boolean(data.rules && data.rules.three_aces_33);
-            if (has33) {
-                rulesBadge.innerHTML = '<span style="display:inline-block; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; padding:0.25rem 0.65rem; border-radius:9999px;">🔥 Hausregel aktiv: 3 Asse = 33 Punkte (Feuer)</span>';
+            const isGelenau = isGelenauerMode(data);
+            if (isGelenau) {
+                rulesBadge.innerHTML = '<span style="display:inline-block; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; padding:0.25rem 0.65rem; border-radius:9999px;">⚒️ Gelenauer Regeln: 3 Asse = Schnauzer (+1 🪙) &bull; 31 sofort auslegen &bull; Kein Schieben</span>';
             } else {
-                rulesBadge.innerHTML = '<span style="display:inline-block; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; padding:0.25rem 0.65rem; border-radius:9999px;">📜 Standard-Regeln: 3 Asse = 30,5 Punkte (Drilling)</span>';
+                rulesBadge.innerHTML = '<span style="display:inline-block; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; padding:0.25rem 0.65rem; border-radius:9999px;">📜 Standard-Regeln: 31 = Schnauzer &bull; 3 Asse = 30,5 Pkt. &bull; Mit Schieben</span>';
             }
         }
 
@@ -333,6 +341,7 @@
     // -------------------------------------------------------------------------
     function renderArena(data, myPlayer) {
         const isMyTurn = (data.current_player_id === myPlayerId && data.phase === 'playing');
+        const isGelenau = isGelenauerMode(data);
 
         // 1. Gegner rendern
         const oppContainer = document.getElementById('opponents-container');
@@ -373,10 +382,11 @@
                 bannerEl.classList.add('knocked-alert');
                 const knocker = data.players.find(p => p.id === data.knocked_by_player_id);
                 const knockerName = knocker ? knocker.name : 'Jemand';
+                const knockVerb = isGelenau ? 'zugemacht' : 'geklopft';
                 if (isMyTurn) {
-                    turnTextEl.textContent = `✊ Letzte Runde (${knockerName} hat geklopft) – DU BIST AM ZUG!`;
+                    turnTextEl.textContent = `✊ Letzte Runde (${knockerName} hat ${knockVerb}) – DU BIST AM ZUG!`;
                 } else {
-                    turnTextEl.textContent = `✊ Letzte Runde (${knockerName} hat geklopft) – ${activeP ? activeP.name : 'Spieler'} ist am Zug...`;
+                    turnTextEl.textContent = `✊ Letzte Runde (${knockerName} hat ${knockVerb}) – ${activeP ? activeP.name : 'Spieler'} ist am Zug...`;
                 }
             } else {
                 bannerEl.classList.remove('knocked-alert');
@@ -461,18 +471,36 @@
         const canSwapOne = (isMyTurn && selectedHandIndex !== null && selectedTableIndex !== null);
         if (btnSwapOne) btnSwapOne.disabled = !canSwapOne;
         if (btnSwapAll) btnSwapAll.disabled = !isMyTurn;
-        if (btnPass) btnPass.disabled = !isMyTurn;
+
+        // Nach Gelenauer Regeln gibt es kein Schieben!
+        if (btnPass) {
+            btnPass.classList.toggle('hidden', isGelenau);
+            btnPass.disabled = !isMyTurn || isGelenau;
+        }
+
         if (btnKnock) {
             const knockAllowed = Boolean(data.can_knock);
             const isKnockDisabled = !isMyTurn || !knockAllowed;
             btnKnock.disabled = isKnockDisabled;
             btnKnock.classList.toggle('is-disabled', isKnockDisabled);
-            if (isMyTurn && !data.knocked_by_player_id && !knockAllowed) {
-                btnKnock.title = 'In der ersten Runde (erster Umlauf aller Spieler) darf nicht geklopft werden.';
-            } else if (Boolean(data.knocked_by_player_id)) {
-                btnKnock.title = 'Es wurde bereits geklopft (letzte Runde läuft).';
+
+            if (isGelenau) {
+                if (Boolean(data.knocked_by_player_id)) {
+                    btnKnock.textContent = '✊ Ebenfalls zumachen';
+                    btnKnock.title = 'Karten ohne Tausch behalten (dein letzter Zug in dieser Runde).';
+                } else {
+                    btnKnock.textContent = '✊ Zumachen';
+                    btnKnock.title = 'Macht die Runde zu – jeder andere Spieler darf noch 1× tauschen oder ebenfalls zumachen.';
+                }
             } else {
-                btnKnock.title = 'Macht die Runde zu – jeder andere Spieler hat noch genau einen Zug.';
+                btnKnock.textContent = '✊ Klopfen (Zumachen)';
+                if (isMyTurn && !data.knocked_by_player_id && !knockAllowed) {
+                    btnKnock.title = 'In der ersten Runde (erster Umlauf aller Spieler) darf nicht geklopft werden.';
+                } else if (Boolean(data.knocked_by_player_id)) {
+                    btnKnock.title = 'Es wurde bereits geklopft (letzte Runde läuft).';
+                } else {
+                    btnKnock.title = 'Macht die Runde zu – jeder andere Spieler hat noch genau einen Zug.';
+                }
             }
         }
     }
@@ -502,6 +530,7 @@
         if (!listEl || !res) return;
 
         const isGameOver = Boolean(res.is_game_over);
+        const isGelenau = isGelenauerMode(data);
 
         if (titleEl) {
             titleEl.textContent = isGameOver
@@ -516,14 +545,23 @@
                 if (res.only_bots_left) {
                     extraText = '<br><span style="color:#94a3b8;font-size:0.85rem;">Alle menschlichen Spieler sind ausgeschieden.</span>';
                 }
+                const bonusText = res.bonus_life_player_name
+                    ? `<br><span style="color:#22c55e;font-size:0.85rem;font-weight:700;">⚡ Schnauzer (3 Asse): ${escapeHtml(res.bonus_life_player_name)} (+1 🪙)</span>`
+                    : '';
                 const loserText = res.loser_names ? `<br><span style="color:#ef4444;font-size:0.85rem;font-weight:600;">Ausgeschieden: ${escapeHtml(res.loser_names)}</span>` : '';
-                summaryEl.innerHTML = `🏆 <strong>${wName}</strong> hat das Spiel gewonnen!${extraText}${loserText}`;
+                summaryEl.innerHTML = `🏆 <strong>${wName}</strong> hat das Spiel gewonnen!${extraText}${bonusText}${loserText}`;
             } else if (res.is_all_tied) {
                 summaryEl.innerHTML = `🤝 <strong>Gleichstand aller Spieler!</strong> (${res.min_score} Punkte)<br><span style="color:#38bdf8;font-size:0.85rem;font-weight:600;">Niemand verliert ein Leben – es wird neu gegeben.</span>`;
+            } else if (res.was_instant_schnauzer) {
+                if (res.bonus_life_player_id) {
+                    summaryEl.innerHTML = `⚡ <strong>${escapeHtml(res.bonus_life_player_name || 'Spieler')}</strong> legt einen <strong>Schnauzer (3 Asse)</strong> aus (+1 🪙)!<br><span style="color:#ef4444;font-size:0.88rem;">Verliert 1 Leben: ${escapeHtml(res.loser_names)}</span>`;
+                } else if (isGelenau) {
+                    summaryEl.innerHTML = `⚡ <strong>31 Punkte sofort ausgelegt!</strong><br><span style="color:#ef4444;font-size:0.88rem;">Verliert 1 Leben: ${escapeHtml(res.loser_names)}</span>`;
+                } else {
+                    summaryEl.innerHTML = `⚡ <strong>Sofortiger Schnauzer (31 Punkte)!</strong><br><span style="color:#ef4444;font-size:0.88rem;">Verliert 1 Leben: ${escapeHtml(res.loser_names)}</span>`;
+                }
             } else {
-                summaryEl.textContent = res.was_instant_schnauzer
-                    ? '⚡ Sofortiger Schnauzer! Ein Spieler hatte 31 Punkte.'
-                    : `Verliert 1 Leben: ${res.loser_names}`;
+                summaryEl.textContent = `Verliert 1 Leben: ${res.loser_names}`;
             }
         }
 
@@ -531,6 +569,7 @@
         listEl.innerHTML = scores.map(s => {
             const isWinner = isGameOver && (s.player_id === res.winner_id);
             const isLoser = (res.loser_ids || []).includes(s.player_id);
+            const hasBonusLife = (res.bonus_life_player_id && s.player_id === res.bonus_life_player_id);
             const handHtml = (s.hand || []).map(c => window.QuarxlCards.renderCardHtml(c)).join('');
 
             let badgeHtml = '';
@@ -543,9 +582,12 @@
                     ? ' <span style="color:#ef4444;">(☠️ Ausgeschieden)</span>'
                     : ' <span style="color:#ef4444;">(-1 🪙)</span>';
             }
+            if (hasBonusLife) {
+                badgeHtml += ' <span style="color:#22c55e;font-weight:800;">(+1 🪙)</span>';
+            }
 
             return `
-                <div class="showdown-player-card ${isLoser ? 'is-loser' : ''} ${isWinner ? 'is-winner' : ''}">
+                <div class="showdown-player-card ${isLoser ? 'is-loser' : ''} ${isWinner || hasBonusLife ? 'is-winner' : ''}">
                     <div class="showdown-player-info">
                         <div class="showdown-player-name">
                             ${escapeHtml(s.player_name)}${badgeHtml}

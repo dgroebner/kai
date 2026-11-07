@@ -64,13 +64,16 @@ try {
         $playerName = mb_substr($playerName, 0, 30);
 
         $gameMode = trim((string)($input['game_mode'] ?? 'standard'));
+        $rulesMode = trim((string)($input['rules_mode'] ?? $gameMode));
+        if (!in_array($rulesMode, ['standard', 'gelenau'], true)) {
+            $rulesMode = (!empty($input['three_aces_33']) || !empty($input['gelenauer_regeln'])) ? 'gelenau' : 'standard';
+        }
 
         $newPlayerToken = bin2hex(random_bytes(16));
         $newHostHash = hash('sha256', $newPlayerToken);
 
-        $threeAces33 = !empty($input['three_aces_33']);
-        $initialState = $service->getInitialState($threeAces33);
-        $room = $repo->createRoom('schnauzer', $gameMode, $newHostHash, $initialState);
+        $initialState = $service->getInitialState($rulesMode);
+        $room = $repo->createRoom('schnauzer', $rulesMode, $newHostHash, $initialState);
 
         if (!$room) {
             http_response_code(500);
