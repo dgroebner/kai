@@ -122,8 +122,8 @@ VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
    - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): Wenn eine Komponente längere Zeit passiv kocht/schmort/backt (>= 15 Min), lege das Schneiden späterer Zutaten gezielt in diese Wartezeit!
    - Berücksichtige bei Kochtöpfen (z. B. Kartoffeln, Nudeln, Reis) explizit einen Aufheiz-Schritt (`phase = "preheat"`, z. B. "Topf mit Wasser auf Stufe {$stoveLevels} zum Kochen bringen", `duration_minutes = 6`), damit die Synchronisation mehrerer Töpfe exakt aufgeht!
 6. VORRATSSCHRANK-FILTER & PACKUNGSGRÖSSEN:
-   - Setze `is_pantry_staple = 1` NUR bei kleinen Würz- und Basis-Zutaten, die man fast immer im Vorratsschrank hat (Salz, Pfeffer, Gewürze wie Currypulver/Paprikapulver, Speiseöl/Olivenöl, Essig, Brühe/Gemüsebrühe, Senf, Mehl/Speisestärke in kleinen Mengen, Zucker, Schalotten, Zwiebeln, Knoblauch).
-   - WICHTIG: Hauptzutaten, Sättigungsbeilagen und Konserven wie **Reis, Nudeln, Kartoffeln, Fleisch, Fisch, frisches oder TK-Gemüse (Paprika, Karotten, Erbsen), Dosen-Gemüse (Mais, Bohnen), Kokosmilch, Sahne, Schmand, Käse und Fruchtsäfte (Ananassaft)** erhalten IMMER `is_pantry_staple = 0`!
+   - Setze `is_pantry_staple = 1` bei Vorrats- und Basis-Zutaten, die man normalerweise im Vorratsschrank hat und vor dem Einkauf nur kurz prüft (Salz, Pfeffer, Gewürze wie Currypulver/Paprikapulver, Speiseöl/Olivenöl, Essig, Brühe/Gemüsebrühe, Senf, Mehl/Speisestärke, Zucker, Schalotten, Zwiebeln, Knoblauch/Knoblauchzehen sowie Reis/Basmati-Reis).
+   - WICHTIG: Frische Hauptzutaten, Kühlwaren und spezielle Konserven wie **Fleisch, Fisch, frisches oder TK-Gemüse (Paprika, Karotten, Erbsen), Dosen-Gemüse (Mais, Bohnen), Kokosmilch, Sahne, Schmand, Käse, Kartoffeln und Fruchtsäfte (Ananassaft)** erhalten IMMER `is_pantry_staple = 0`!
    - Gib bei verpackten Zutaten (z. B. Putenbrustfilet 400g, Kokosmilch 400ml, Schmand 200g, Sahne 200g) die übliche Supermarkt-Packungsgröße (`package_size`, `package_unit`) und einen kurzen `leftover_tip` zur Resteverwertung an.
    - Ordne `market` ('Rewe' oder 'Globus') und `shopping_category` (z. B. 'Obst & Gemüse', 'Frischetheke (Fleisch & Wurst, Käse)', 'Molkereiprodukte & Eier', 'Nudeln, Reis & Konserven', 'Gewürze, Öle & Fertiggerichte', 'Tiefkühlkost', 'Getränke', 'Brot & Backwaren', 'Sonstiges') zu.
 
@@ -547,53 +547,13 @@ PROMPT;
     }
 
     /**
-     * Prüft deterministisch, ob eine Zutat wirklich ein Kleinstmengen-Vorratsartikel (Gewürz, Öl, Salz, Schalotten/Knoblauch, Brühe) ist.
-     * Verhindert, dass Hauptzutaten wie Reis, Nudeln, Erbsen, Mais, Gemüse, Fleisch oder Kokosmilch im Vorratsschrank-Check landen.
+     * Prüft deterministisch über RecipeScaler::isPantryStapleIngredient(), ob eine Zutat in den
+     * Vorratsschrank-Check (Gewürze, Öl, Salz, Schalotten/Zwiebeln/Knoblauch, Brühe, Reis) gehört.
      */
     private function isAllowedPantryStaple(string $ingredientName, bool $aiFlag): bool
     {
-        if (!$aiFlag) {
-            return false;
-        }
-
-        $lower = mb_strtolower(trim($ingredientName));
-
-        // Explizite Ausschlussliste: Hauptzutaten, Sättigungsbeilagen, Gemüse, Konserven, Milchprodukte & Säfte sind NIE Vorratsschrank-Kleinstmengen
-        $neverPantryKeywords = [
-            'reis', 'basmati', 'jasminreis', 'risotto', 'nudel', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'lasagne', 'gnocchi', 'spätzle',
-            'kartoffel', 'süßkartoffel', 'pommes', 'krokette', 'klöße',
-            'pute', 'hähnchen', 'huhn', 'rind', 'schwein', 'hackfleisch', 'schnitzel', 'gulasch', 'filet', 'lachs', 'fisch', 'garnele', 'schinken', 'speck', 'wurst', 'würstchen', 'tofu',
-            'erbse', 'mais', 'bohne', 'linse', 'kichererbse', 'paprika', 'karotte', 'möhre', 'tomate', 'gurke', 'zucchini', 'aubergine', 'brokkoli', 'blumenkohl', 'spinat', 'kohl', 'lauch', 'porree', 'sellerie', 'pilz', 'champignon', 'spargel', 'kürbis', 'salat', 'avocado',
-            'ananas', 'apfel', 'banane', 'orange', 'beere', 'zitrone', 'limette', 'mango', 'pfirsich', 'saft', 'ananassaft', 'orangensaft', 'apfelsaft',
-            'kokosmilch', 'sahne', 'schlagsahne', 'kochsahne', 'schmand', 'crème', 'creme', 'frischkäse', 'quark', 'joghurt', 'milch', 'käse', 'mozzarella', 'parmesan', 'gouda', 'emmentaler', 'feta', 'hirtenkäse', 'ei', 'eier',
-            'brot', 'brötchen', 'toast', 'tortilla', 'wrap', 'pita', 'blätterteig', 'hefeteig', 'pizzateig',
-        ];
-
-        foreach ($neverPantryKeywords as $kw) {
-            if (mb_strpos($lower, $kw) !== false) {
-                return false;
-            }
-        }
-
-        // Positivliste für echte Vorratsschrank-Prüfartikel
-        $allowedPantryKeywords = [
-            'salz', 'pfeffer', 'curry', 'paprikapulver', 'edelsüß', 'rosenscharf', 'muskat', 'zimt', 'kreuzkümmel', 'cumin', 'kurkuma', 'koriander', 'chili', 'cayenne',
-            'oregano', 'basilikum', 'thymian', 'rosmarin', 'majoran', 'petersilie', 'schnittlauch', 'dill', 'lorbeer', 'kräuter', 'gewürz',
-            'öl', 'pflanzenöl', 'sonnenblumenöl', 'rapsöl', 'olivenöl', 'sesamöl', 'kokosöl', 'bratfett', 'butter', 'margarine', 'butterschmalz',
-            'essig', 'balsamico', 'sojasauce', 'sojasoße', 'worcester', 'fischsauce', 'senf', 'tomatenmark', 'ketchup', 'mayonnaise',
-            'brühe', 'gemüsebrühe', 'hühnerbrühe', 'rinderbrühe', 'fond', 'brühwürfel',
-            'zucker', 'honig', 'agavendicksaft', 'ahornsirup', 'vanillezucker', 'vanille', 'backpulver', 'natron', 'hefe',
-            'mehl', 'speisestärke', 'stärke', 'mondamin', 'semmelbrösel', 'paniermehl',
-            'schalotte', 'zwiebel', 'knoblauch', 'ingwer', 'wasser',
-        ];
-
-        foreach ($allowedPantryKeywords as $kw) {
-            if (mb_strpos($lower, $kw) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        $scaler = new RecipeScaler($this->settings);
+        return $scaler->isPantryStapleIngredient($ingredientName, $aiFlag);
     }
 
     /**

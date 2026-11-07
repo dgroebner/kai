@@ -116,8 +116,12 @@ class RecipeScaler
 
             $ing['package_analysis'] = $packInfo;
 
+            // Deterministischer Vorratsschrank-Abgleich (Gewürze, Öl, Salz, Brühe, Schalotten, Zwiebeln, Knoblauch)
+            $isPantry = $this->isPantryStapleIngredient((string)$ing['ingredient_name'], !empty($ing['is_pantry_staple']));
+            $ing['is_pantry_staple'] = $isPantry ? 1 : 0;
+
             $scaledIngredients[] = $ing;
-            if (!empty($ing['is_pantry_staple'])) {
+            if ($isPantry) {
                 $pantryIngredients[] = $ing;
             } else {
                 $freshIngredients[] = $ing;
@@ -353,5 +357,80 @@ class RecipeScaler
         }
 
         return $instruction;
+    }
+
+    /**
+     * Prüft deterministisch anhand des Zutatennamens, ob es sich um einen Vorratsschrank-Artikel
+     * (Gewürze, Kräuter, Salz, Pfeffer, Öl, Essig, Brühe, Senf, Tomatenmark, Mehl/Stärke, Zucker, Schalotten, Zwiebeln, Knoblauch)
+     * oder um eine frische Einkaufs-/Hauptzutat handelt.
+     */
+    public function isPantryStapleIngredient(string $ingredientName, bool $fallbackFlag = false): bool
+    {
+        $lower = mb_strtolower(trim($ingredientName));
+        if ($lower === '') {
+            return $fallbackFlag;
+        }
+
+        // Frühlingszwiebeln / Lauchzwiebeln sind Frischeartikel
+        if (mb_strpos($lower, 'frühlingszwiebel') !== false || mb_strpos($lower, 'lauchzwiebel') !== false) {
+            return false;
+        }
+
+        // Hauptzutaten, Frischgemüse, Obst, Milchprodukte, Fleisch & Fisch sind Frische-/Einkaufszutaten
+        $freshOverrideKeywords = [
+            'nudel', 'spaghetti', 'penne', 'fusilli', 'tagliatelle', 'lasagne', 'gnocchi', 'spätzle',
+            'kartoffel', 'pommes', 'krokette', 'klöße',
+            'pute', 'hähnchen', 'huhn', 'rind', 'schwein', 'hackfleisch', 'schnitzel', 'gulasch', 'filet', 'lachs', 'fisch', 'garnele', 'schinken', 'speck', 'wurst', 'würstchen', 'tofu',
+            'erbse', 'mais', 'bohne', 'linse', 'kichererbse', 'karotte', 'möhre', 'gurke', 'zucchini', 'aubergine', 'brokkoli', 'blumenkohl', 'spinat', 'kohl', 'porree', 'sellerie', 'pilz', 'champignon', 'spargel', 'kürbis', 'salat', 'avocado',
+            'ananas', 'apfel', 'banane', 'orange', 'beere', 'mango', 'pfirsich', 'ananassaft', 'orangensaft', 'apfelsaft',
+            'kokosmilch', 'sahne', 'schlagsahne', 'kochsahne', 'schmand', 'crème', 'creme', 'frischkäse', 'quark', 'joghurt', 'milch', 'käse', 'mozzarella', 'parmesan', 'gouda', 'emmentaler', 'feta', 'hirtenkäse',
+            'brot', 'brötchen', 'toast', 'tortilla', 'wrap', 'pita', 'blätterteig', 'hefeteig', 'pizzateig',
+        ];
+
+        foreach ($freshOverrideKeywords as $kw) {
+            if (mb_strpos($lower, $kw) !== false) {
+                return false;
+            }
+        }
+
+        // Frische Paprika (Schote) vs. Paprikapulver (Gewürz)
+        if (mb_strpos($lower, 'paprika') !== false
+            && mb_strpos($lower, 'pulver') === false
+            && mb_strpos($lower, 'edelsüß') === false
+            && mb_strpos($lower, 'rosenscharf') === false
+            && mb_strpos($lower, 'geräuchert') === false
+        ) {
+            return false;
+        }
+
+        // Frische Tomaten / Dosentomaten vs. Tomatenmark
+        if (mb_strpos($lower, 'tomate') !== false && mb_strpos($lower, 'tomatenmark') === false) {
+            return false;
+        }
+
+        // Positivliste: Diese Artikel gehören IMMER in den Vorratsschrank-Check (auch wenn die KI is_pantry_staple=0 geliefert hat)
+        $alwaysPantryKeywords = [
+            'schalotte', 'zwiebel', 'knoblauch', 'ingwer',
+            'reis', 'basmati', 'jasminreis', 'risottoreis', 'milchreis', 'parboiled',
+            'salz', 'pfeffer', 'curry', 'paprikapulver', 'edelsüß', 'rosenscharf', 'muskat', 'zimt', 'kreuzkümmel', 'cumin', 'kurkuma', 'koriander', 'chili', 'cayenne',
+            'oregano', 'basilikum', 'thymian', 'rosmarin', 'majoran', 'petersilie', 'schnittlauch', 'dill', 'lorbeer', 'gewürz', 'kräuter',
+            'pflanzenöl', 'sonnenblumenöl', 'rapsöl', 'olivenöl', 'sesamöl', 'kokosöl', 'speiseöl', 'bratöl', 'bratfett', 'butterschmalz',
+            'essig', 'balsamico', 'sojasauce', 'sojasoße', 'worcester', 'fischsauce', 'senf', 'tomatenmark', 'ketchup', 'mayonnaise',
+            'brühe', 'gemüsebrühe', 'hühnerbrühe', 'rinderbrühe', 'brühwürfel', 'fond',
+            'zucker', 'honig', 'agavendicksaft', 'ahornsirup', 'vanillezucker', 'backpulver', 'natron', 'trockenhefe',
+            'mehl', 'speisestärke', 'stärke', 'mondamin', 'semmelbrösel', 'paniermehl', 'wasser',
+        ];
+
+        foreach ($alwaysPantryKeywords as $kw) {
+            if (mb_strpos($lower, $kw) !== false) {
+                return true;
+            }
+        }
+
+        if (preg_match('/\böl\b/u', $lower)) {
+            return true;
+        }
+
+        return false;
     }
 }
