@@ -308,21 +308,52 @@ PROMPT;
             $newIngredients[] = $ing;
         }
 
+        // Namen-Varianten für das Ersetzen (z. B. "TK-Erbsen", "Erbsen (TK)" und "Erbsen")
+        $oldSearchVariants = array_values(array_unique(array_filter([
+            $oldIngredientName,
+            trim((string)preg_replace('/\s*\(.*?\)/', '', $oldIngredientName)),
+            trim((string)preg_replace('/^(?:TK-|frische[nr]?\s+)/i', '', $oldIngredientName)),
+        ])));
+
         $newComponents = [];
         foreach ($recipe['components'] ?? [] as $comp) {
+            $compName = (string)($comp['component_name'] ?? '');
+            foreach ($oldSearchVariants as $searchName) {
+                if ($searchName !== '' && mb_stripos($compName, $searchName) !== false) {
+                    $compName = str_ireplace($searchName, $newName, $compName);
+                }
+            }
+            $comp['component_name'] = $compName;
+
             $steps = [];
             foreach ($comp['steps'] ?? [] as $step) {
+                $title = (string)($step['title'] ?? '');
                 $instr = (string)($step['instruction'] ?? '');
                 $replacedInStep = false;
 
-                if (mb_stripos($instr, $oldIngredientName) !== false) {
-                    $instr = str_ireplace($oldIngredientName, $newName, $instr);
-                    $replacedInStep = true;
+                foreach ($oldSearchVariants as $searchName) {
+                    if ($searchName === '') continue;
+                    if (mb_stripos($title, $searchName) !== false) {
+                        $title = str_ireplace($searchName, $newName, $title);
+                        $replacedInStep = true;
+                    }
+                    if (mb_stripos($instr, $searchName) !== false) {
+                        $instr = str_ireplace($searchName, $newName, $instr);
+                        $replacedInStep = true;
+                    }
                 }
 
                 $inline = $step['ingredients_inline_parsed'] ?? [];
                 foreach ($inline as &$inItem) {
-                    if (mb_strtolower(trim((string)($inItem['name'] ?? ''))) === mb_strtolower(trim($oldIngredientName))) {
+                    $inName = trim((string)($inItem['name'] ?? ''));
+                    $isMatch = false;
+                    foreach ($oldSearchVariants as $searchName) {
+                        if (mb_strtolower($inName) === mb_strtolower($searchName)) {
+                            $isMatch = true;
+                            break;
+                        }
+                    }
+                    if ($isMatch) {
                         $inItem['name'] = $newName;
                         $inItem['quantity'] = $newQty;
                         $inItem['unit'] = $newUnit;
@@ -335,6 +366,7 @@ PROMPT;
                     $instr .= ' (' . $cookAdjustment . ')';
                 }
 
+                $step['title'] = $title;
                 $step['instruction'] = $instr;
                 $step['ingredients_inline'] = $inline;
                 $steps[] = $step;

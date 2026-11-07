@@ -12599,11 +12599,88 @@ body.wisdom-modal-open {
 }
 
 .recipe-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
     margin-bottom: 1.25rem;
 }
 
+.recipe-kpi-grid .kpi-card {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.95rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 110px;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recipe-kpi-grid .kpi-card:hover {
+    border-color: rgba(59, 130, 246, 0.45);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+}
+
+.recipe-kpi-grid .kpi-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.recipe-kpi-grid .kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--accent, #3b82f6);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+}
+
+.recipe-kpi-grid .kpi-unit {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted, #94a3b8);
+    margin-left: 0.2rem;
+}
+
+.recipe-kpi-grid .kpi-note {
+    font-size: 0.76rem;
+    line-height: 1.35;
+    color: var(--text-muted, #94a3b8);
+    white-space: normal;
+    font-weight: 400;
+    margin-top: 0;
+}
+
 .recipe-source-link-wrap {
-    font-size: 1rem;
+    font-size: 0.95rem;
+}
+
+.recipe-source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.recipe-source-link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
 }
 
 .recipe-variants-bar {
@@ -12649,7 +12726,7 @@ body.wisdom-modal-open {
 .recipe-portion-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 0.85rem;
     margin: 1rem 0;
 }
 
@@ -12657,22 +12734,31 @@ body.wisdom-modal-open {
     background: rgba(15, 23, 42, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
-    padding: 0.85rem;
+    padding: 0.85rem 0.65rem;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    justify-content: space-between;
     align-items: center;
+    min-height: 96px;
 }
 
 .recipe-portion-title {
     font-size: 0.85rem;
     font-weight: 600;
+    min-height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .recipe-stepper {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.45rem;
+    width: 100%;
 }
 
 .recipe-portion-input {
@@ -12683,12 +12769,22 @@ body.wisdom-modal-open {
 
 .recipe-scaler-summary {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     gap: 0.75rem;
-    padding-top: 0.85rem;
+    padding-top: 0.9rem;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.recipe-scaler-calc-label {
+    font-size: 0.92rem;
+    color: var(--text-main, #f8fafc);
+}
+
+.recipe-btn-block {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 0.55rem 1rem;
 }
 
 .recipe-serve-time-row {
@@ -13502,6 +13598,12 @@ body.wisdom-modal-open {
     margin-top: 1.1rem;
 }
 
+@media (max-width: 850px) {
+    .recipe-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     .recipe-control-grid,
     .recipe-ingredients-grid,
@@ -13525,5 +13627,11 @@ body.wisdom-modal-open {
     .recipe-focus-nav-bar {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+@media (max-width: 480px) {
+    .recipe-kpi-grid {
+        grid-template-columns: 1fr;
     }
 }

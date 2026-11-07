@@ -52,6 +52,18 @@ $variants = $recipe['variants'] ?? [];
 $stoveType = $settings->getStoveType();
 $stoveLevels = $settings->getStoveLevels();
 $kidPortionPct = $settings->getRecipeKidPortionPct();
+
+if (!function_exists('formatRecipeInstruction')) {
+    function formatRecipeInstruction(?string $text): string
+    {
+        if ($text === null || $text === '') {
+            return '';
+        }
+        $escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        $formatted = preg_replace('/\*\*(.*?)\*\*/s', '<strong>$1</strong>', $escaped);
+        return nl2br((string)$formatted);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -95,31 +107,33 @@ $kidPortionPct = $settings->getRecipeKidPortionPct();
 
             <div class="kpi-grid recipe-kpi-grid">
                 <div class="kpi-card">
-                    <div class="kpi-label">⏱️ Gesamtzeit (Synchron)</div>
-                    <div class="kpi-value kpi-value-sm"><?= (int)$timeline['total_synchronized_minutes'] ?> Min.</div>
+                    <div class="kpi-label">⏱️ Gesamtzeit</div>
+                    <div class="kpi-value kpi-value-sm">
+                        <?= (int)$timeline['total_synchronized_minutes'] ?><span class="kpi-unit"> Min.</span>
+                    </div>
                     <div class="kpi-note kpi-note-muted">Vorbereitung: <?= (int)$timeline['pre_prep_minutes'] ?> Min. · Herd: <?= (int)$timeline['max_cook_minutes'] ?> Min.</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">🔥 Herd-Konfiguration</div>
+                    <div class="kpi-label">🔥 Herd &amp; Ofen</div>
                     <div class="kpi-value kpi-value-sm"><?= htmlspecialchars($stoveType, ENT_QUOTES, 'UTF-8') ?></div>
-                    <div class="kpi-note kpi-note-muted">Konkrete Stufen 1 bis <?= (int)$stoveLevels ?></div>
+                    <div class="kpi-note kpi-note-muted">Stufen 1 bis <?= (int)$stoveLevels ?></div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label">🥗 Nährwerte (pro Portion)</div>
+                    <div class="kpi-label">🥗 Nährwerte</div>
                     <div class="kpi-value kpi-value-sm">
-                        <?= !empty($recipe['calories_per_serving']) ? (int)$recipe['calories_per_serving'] . ' kcal' : 'k. A.' ?>
+                        <?= !empty($recipe['calories_per_serving']) ? (int)$recipe['calories_per_serving'] . '<span class="kpi-unit"> kcal</span>' : '<span class="text-muted">k. A.</span>' ?>
                     </div>
                     <div class="kpi-note kpi-note-muted">
-                        EW: <?= $recipe['protein_per_serving'] !== null ? number_format((float)$recipe['protein_per_serving'], 1, ',', '.') . ' g' : '–' ?> ·
-                        KH: <?= $recipe['carbs_per_serving'] !== null ? number_format((float)$recipe['carbs_per_serving'], 1, ',', '.') . ' g' : '–' ?> ·
-                        Fett: <?= $recipe['fat_per_serving'] !== null ? number_format((float)$recipe['fat_per_serving'], 1, ',', '.') . ' g' : '–' ?>
+                        EW <?= $recipe['protein_per_serving'] !== null ? number_format((float)$recipe['protein_per_serving'], 1, ',', '.') . 'g' : '–' ?> ·
+                        KH <?= $recipe['carbs_per_serving'] !== null ? number_format((float)$recipe['carbs_per_serving'], 1, ',', '.') . 'g' : '–' ?> ·
+                        Fett <?= $recipe['fat_per_serving'] !== null ? number_format((float)$recipe['fat_per_serving'], 1, ',', '.') . 'g' : '–' ?>
                     </div>
                 </div>
                 <?php if (!empty($recipe['source_url'])): ?>
                     <div class="kpi-card">
                         <div class="kpi-label">🔗 Original-Quelle</div>
                         <div class="kpi-value kpi-value-sm recipe-source-link-wrap">
-                            <a href="<?= htmlspecialchars((string)$recipe['source_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer" class="btn-link">Webseite öffnen &nearr;</a>
+                            <a href="<?= htmlspecialchars((string)$recipe['source_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer" class="recipe-source-link">Webseite öffnen &nearr;</a>
                         </div>
                         <div class="kpi-note kpi-note-muted">Importiert &amp; aufbereitet</div>
                     </div>
@@ -170,7 +184,7 @@ $kidPortionPct = $settings->getRecipeKidPortionPct();
                     </div>
 
                     <div class="recipe-portion-box">
-                        <span class="recipe-portion-title">🧒 Kinder / Jugendliche (<?= (int)$kidPortionPct ?> %)</span>
+                        <span class="recipe-portion-title">🧒 Kinder (<?= (int)$kidPortionPct ?> %)</span>
                         <div class="recipe-stepper">
                             <button type="button" class="btn btn-sm btn-outline js-portion-step" data-target="kids" data-delta="-1" data-read-interactive="1">&minus;</button>
                             <input type="number" id="input-kids" class="form-control form-control-sm recipe-portion-input" value="<?= $kids ?>" min="0" max="20" data-read-interactive="1">
@@ -180,9 +194,11 @@ $kidPortionPct = $settings->getRecipeKidPortionPct();
                 </div>
 
                 <div class="recipe-scaler-summary">
-                    <span>Berechnete Gesamtmenge: <strong id="label-effective-servings"><?= str_replace('.', ',', (string)$recipe['scaling']['target_servings']) ?></strong> Vollportionen</span>
+                    <div class="recipe-scaler-calc-label">
+                        Berechnete Gesamtmenge: <strong id="label-effective-servings"><?= str_replace('.', ',', (string)$recipe['scaling']['target_servings']) ?></strong> Vollportionen
+                    </div>
                     <?php if ($canWrite): ?>
-                        <button type="button" class="btn btn-primary btn-sm" id="btn-open-shopping-modal">
+                        <button type="button" class="btn btn-primary btn-sm recipe-btn-block" id="btn-open-shopping-modal">
                             🛒 Zutaten auf Einkaufsliste setzen
                         </button>
                     <?php endif; ?>
@@ -349,7 +365,7 @@ $kidPortionPct = $settings->getRecipeKidPortionPct();
                             <?php foreach ($timeline['mise_en_place_pre'] as $mStep): ?>
                                 <li>
                                     <strong><?= htmlspecialchars((string)($mStep['title'] ?: 'Vorbereitung'), ENT_QUOTES, 'UTF-8') ?>:</strong>
-                                    <?= htmlspecialchars((string)$mStep['instruction'], ENT_QUOTES, 'UTF-8') ?>
+                                    <?= formatRecipeInstruction((string)$mStep['instruction']) ?>
                                     <?php if (!empty($mStep['ingredients_inline_scaled'])): ?>
                                         <div class="recipe-inline-ing-pills">
                                             <?php foreach ($mStep['ingredients_inline_scaled'] as $inItem): ?>
@@ -377,7 +393,7 @@ $kidPortionPct = $settings->getRecipeKidPortionPct();
                                         <?= !empty($pStep['clock_time']) ? htmlspecialchars((string)$pStep['clock_time'], ENT_QUOTES, 'UTF-8') . ' Uhr' : htmlspecialchars((string)$pStep['relative_label'], ENT_QUOTES, 'UTF-8') ?>
                                     </span>
                                     <strong><?= htmlspecialchars((string)($pStep['title'] ?: 'Parallel-Vorbereitung'), ENT_QUOTES, 'UTF-8') ?>:</strong>
-                                    <?= htmlspecialchars((string)$pStep['instruction'], ENT_QUOTES, 'UTF-8') ?>
+                                    <?= formatRecipeInstruction((string)$pStep['instruction']) ?>
                                     <?php if (!empty($pStep['ingredients_inline_scaled'])): ?>
                                         <div class="recipe-inline-ing-pills">
                                             <?php foreach ($pStep['ingredients_inline_scaled'] as $inItem): ?>
@@ -447,7 +463,7 @@ $kidPortionPct = $settings->getRecipeKidPortionPct();
                                 </div>
                             <?php endif; ?>
 
-                            <p class="recipe-step-instruction"><?= nl2br(htmlspecialchars((string)$step['instruction'], ENT_QUOTES, 'UTF-8')) ?></p>
+                            <p class="recipe-step-instruction"><?= formatRecipeInstruction((string)$step['instruction']) ?></p>
 
                             <?php if (!empty($step['parallel_hint'])): ?>
                                 <div class="recipe-step-parallel-note">

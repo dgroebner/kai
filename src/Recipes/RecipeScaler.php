@@ -49,7 +49,13 @@ class RecipeScaler
 
     public function __construct(?SystemSettingsService $settings = null)
     {
-        $pct = ($settings ?? new SystemSettingsService())->getRecipeKidPortionPct();
+        $pct = 80;
+        try {
+            $service = $settings ?? new SystemSettingsService();
+            $pct = $service->getRecipeKidPortionPct();
+        } catch (\Throwable $e) {
+            $pct = 80;
+        }
         $this->kidPortionFactor = round($pct / 100.0, 2);
     }
 
@@ -125,12 +131,19 @@ class RecipeScaler
                     $sQty = $inQty > 0 ? $this->roundQuantity($inQty * $scaleFactor, $inUnit) : 0;
                     $scaledInline[] = [
                         'name' => (string)($inItem['name'] ?? ''),
+                        'base_quantity' => $inQty,
                         'quantity' => $sQty,
                         'unit' => $inUnit,
                         'display' => ($sQty > 0 ? $this->formatQuantity($sQty) . ($inUnit !== '' ? ' ' . $inUnit . ' ' : ' ') : '') . (string)($inItem['name'] ?? ''),
                     ];
                 }
                 $step['ingredients_inline_scaled'] = $scaledInline;
+
+                // Mengenangaben im Fließtext des Schritts bei Skalierungsabweichung automatisch anpassen
+                if (abs($scaleFactor - 1.0) > 0.001 && !empty($step['instruction'])) {
+                    $step['instruction'] = $this->scaleInstructionText((string)$step['instruction'], $scaledInline);
+                }
+
                 $compSteps[] = $step;
                 $scaledAllSteps[] = $step;
             }
@@ -269,5 +282,68 @@ class RecipeScaler
             'leftover_tip' => $useAllHint ?: ($tip ?: 'Rest zeitnah für ein anderes Gericht oder Beilage verwerten.'),
             'is_exact_match' => $leftover < 1.0,
         ];
+    }
+
+    /**
+     * Passt feste Mengenangaben im Fließtext eines Kochschritts an die
+     * skalierten Mengen der Inline-Zutaten an.
+     *
+     * @param string $instruction
+     * @param array<int, array<string, mixed>> $scaledInline
+     * @return string
+     */
+    public function scaleInstructionText(string $instruction, array $scaledInline): string
+    {
+        if ($instruction === '' || empty($scaledInline)) {
+            return $instruction;
+        }
+
+        foreach ($scaledInline as $item) {
+            $baseQty = (float)($item['base_quantity'] ?? 0);
+            $scaledQty = (float)($item['quantity'] ?? 0);
+            $name = trim((string)($item['name'] ?? ''));
+            $unit = trim((string)($item['unit'] ?? ''));
+
+            if ($baseQty <= 0 || $scaledQty <= 0 || abs($baseQty - $scaledQty) < 0.001 || $name === '') {
+                continue;
+            }
+
+            $baseStr = $this->formatQuantity($baseQty);
+            $baseStrDot = str_replace(',', '.', $baseStr);
+            $scaledStr = $this->formatQuantity($scaledQty);
+
+            // Pattern für Menge (z. B. "4", "4,5", "4.5", "500")
+            $qtyVariants = array_unique([$baseStr, $baseStrDot]);
+            $qtyPattern = '(?:' . implode('|', array_map(fn($q) => preg_quote($q, '/'), $qtyVariants)) . ')';
+
+            // Einheiten-Varianten
+            $unitPattern = '';
+            if ($unit !== '' && mb_strtolower($unit) !== 'stück' && mb_strtolower($unit) !== 'stk') {
+                $unitClean = preg_quote($unit, '/');
+                $unitPattern = '(?:\s*(?:' . $unitClean . '|' . mb_strtolower($unitClean) . '))?';
+            } else {
+                $unitPattern = '(?:\s*(?:Stück|Stk\.?|stk))?';
+            }
+
+            // Name-Stem (z. B. "Schalotten" -> "Schalott", "Putenbrust" -> "Putenbrust")
+            $nameClean = trim((string)preg_replace('/\s*\(.*?\)/', '', $name));
+            $words = preg_split('/\s+/', $nameClean);
+            $mainWord = end($words) ?: $nameClean;
+            $stem = rtrim($mainWord, 'enEN');
+            if (mb_strlen($stem) < 3) {
+                $stem = $mainWord;
+            }
+            $namePattern = '(?:' . preg_quote($nameClean, '/') . '|' . preg_quote($mainWord, '/') . '|' . preg_quote($stem, '/') . '[a-zA-ZäöüÄÖÜß]*)';
+
+            // 1. Markdown-Pattern mit ** : z. B. **4 Schalotten** oder **500 g Putenbrust**
+            $patternBold = '/(\*\*\s*(?:ca\.\s*)?)' . $qtyPattern . '(' . $unitPattern . '(?:\s+|\b)' . $namePattern . '\s*\*\*)/iu';
+            $instruction = (string)preg_replace($patternBold, '${1}' . $scaledStr . '${2}', $instruction);
+
+            // 2. Reguläres Pattern im Text: z. B. 4 Schalotten oder 500 g Putenbrust
+            $patternPlain = '/(\b(?:ca\.\s*)?)' . $qtyPattern . '(' . $unitPattern . '\s+' . $namePattern . '\b)/iu';
+            $instruction = (string)preg_replace($patternPlain, '${1}' . $scaledStr . '${2}', $instruction);
+        }
+
+        return $instruction;
     }
 }

@@ -20,10 +20,22 @@ if (!$recipeId) {
     exit;
 }
 
-$repo = new RecipeRepository();
-$scaler = new RecipeScaler();
-$timelineService = new RecipeTimelineService();
 $settings = new SystemSettingsService();
+$repo = new RecipeRepository();
+$scaler = new RecipeScaler($settings);
+$timelineService = new RecipeTimelineService();
+
+if (!function_exists('formatRecipeInstruction')) {
+    function formatRecipeInstruction(?string $text): string
+    {
+        if ($text === null || $text === '') {
+            return '';
+        }
+        $escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        $formatted = preg_replace('/\*\*(.*?)\*\*/s', '<strong>$1</strong>', $escaped);
+        return nl2br((string)$formatted);
+    }
+}
 
 $rawRecipe = $repo->getRecipeById($recipeId, $variantId);
 if (!$rawRecipe) {
@@ -173,7 +185,7 @@ $stoveLevels = $settings->getStoveLevels();
 
                         <!-- Haupt-Anweisung in großer Küchentypografie -->
                         <div class="recipe-focus-instruction">
-                            <?= nl2br(htmlspecialchars((string)$step['instruction'], ENT_QUOTES, 'UTF-8')) ?>
+                            <?= formatRecipeInstruction((string)$step['instruction']) ?>
                         </div>
 
                         <?php if (!empty($step['parallel_hint'])): ?>
@@ -268,7 +280,7 @@ $stoveLevels = $settings->getStoveLevels();
                                     </div>
                                 <?php endif; ?>
 
-                                <p class="recipe-step-instruction"><?= nl2br(htmlspecialchars((string)$step['instruction'], ENT_QUOTES, 'UTF-8')) ?></p>
+                                <p class="recipe-step-instruction"><?= formatRecipeInstruction((string)$step['instruction']) ?></p>
                             </div>
                         </div>
                     <?php endforeach; ?>
