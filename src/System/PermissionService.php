@@ -39,9 +39,7 @@ class PermissionService
             // Assign user to Admin group
             $stmt = $dbCon->prepare("INSERT IGNORE INTO user_groups (user_email, group_id) VALUES (:email, :group_id)");
             $stmt->execute(["email" => $email, "group_id" => $adminGroupId]);
-            
-            // Give Admin group all permissions? The concept doesnt say it automatically gives permissions, but maybe Admin bypasses checks or has all permissions?
-            // "Der Benutzer wird zwingend der Admin-Gruppe zugewiesen... Session-Variable für temporäre Gruppenwechsel wird gelöscht"
+
             unset($_SESSION["temp_group_id"]);
         }
 
@@ -52,12 +50,10 @@ class PermissionService
     private function loadPermissionsIntoSession(string $email): void
     {
         $dbCon = $this->db->getConnection();
-        
+
         $tempGroupId = $_SESSION["temp_group_id"] ?? null;
-        
+
         if ($tempGroupId) {
-            // Check if user is allowed to use temp group (only if they actually belong to Admin normally? The concept: "sofern die Berechtigung für den Test vorliegt")
-            // Let s assume for now if temp_group_id is set, we use it. We will clear it on login if Admin anyway.
             $stmt = $dbCon->prepare("
                 SELECT permission FROM group_permissions WHERE group_id = :group_id
             ");
@@ -91,6 +87,7 @@ class PermissionService
                 'shopping_read', 'shopping_write', 'shopping_master',
                 'suggestions_read', 'suggestions_write',
                 'recipe_read', 'recipe_write',
+                'recipes_read', 'recipes_write',
                 'history_read', 'history_write',
                 'school_read', 'school_write',
                 'calendar_read', 'calendar_write',
@@ -128,4 +125,3 @@ class PermissionService
         return in_array($permission, $permissions, true);
     }
 }
-

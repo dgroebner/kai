@@ -741,6 +741,8 @@ function getEventLabel(string $eventType): string
                                     'suggestions_read', 'suggestions_write',
                                     // Einkaufsliste — Rezept & KI-Tab
                                     'recipe_read', 'recipe_write',
+                                    // Kochrezepte & Küchenbegleiter
+                                    'recipes_read', 'recipes_write',
                                     // Einkaufsliste — Historie & E-Bons-Tab
                                     'history_read', 'history_write',
                                     // Schule & Vertretungsplan

@@ -76,8 +76,8 @@ final class Auth
                             }
                         }
 
-                        // Formular-Elemente für Schüler-Selbstverwaltung eigener Fächer explizit freigeben
-                        if (stripos($attrs, 'data-student-self-edit="1"') !== false) {
+                        // Formular-Elemente für Schüler-Selbstverwaltung eigener Fächer oder reine Lese-Interaktionen (z.B. Portionen-Skalierer, Timer) explizit freigeben
+                        if (stripos($attrs, 'data-student-self-edit="1"') !== false || stripos($attrs, 'data-read-interactive="1"') !== false) {
                             return $matches[0];
                         }
 

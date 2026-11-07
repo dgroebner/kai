@@ -55,5 +55,24 @@ class SystemSettingsService
     {
         return (bool)$this->repository->get('trip_calendar_auto_accept', 1);
     }
+
+    public function getStoveType(): string
+    {
+        return (string)$this->repository->get('stove_type', 'Ceranfeld');
+    }
+
+    public function getStoveLevels(): int
+    {
+        return max(1, (int)$this->repository->get('stove_levels', 12));
+    }
+
+    public function getOvenDefaultMode(): string
+    {
+        return (string)$this->repository->get('oven_default_mode', 'Umluft');
+    }
+
+    public function isRecipePreferShallotsEnabled(): bool
+    {
+        return (bool)$this->repository->get('recipe_prefer_shallots', 1);
+    }
 }
-
