@@ -77,8 +77,8 @@ $csrfToken = Auth::csrfToken();
                     <span class="hood-navi-zone-tag" id="navi-zone-tag" style="background: var(--hood-accent);">START</span>
                 </div>
 
-                <!-- Navi Daten-Anzeige (Besitzer, Kaufpreis, Miete) -->
-                <div class="hood-navi-stats">
+                <!-- Navi Daten-Anzeige für kaufbare Grundstücke -->
+                <div class="hood-navi-stats" id="navi-stats-purchasable">
                     <div class="hood-navi-stat-box">
                         <div class="label">Kaufpreis</div>
                         <div class="val gold" id="navi-price">0 $</div>
@@ -90,6 +90,15 @@ $csrfToken = Auth::csrfToken();
                     <div class="hood-navi-stat-box">
                         <div class="label">Besitzer</div>
                         <div class="val" id="navi-owner" style="font-size: 0.85rem;">Frei</div>
+                    </div>
+                </div>
+
+                <!-- Navi Anzeige für Ereignisse, Karten & Sonderfelder -->
+                <div class="hood-navi-event-box" id="navi-event-box" style="display: none;">
+                    <div class="hood-navi-event-icon" id="navi-event-icon">🗃️</div>
+                    <div class="hood-navi-event-body">
+                        <div class="hood-navi-event-title" id="navi-event-title">Handschuhfach</div>
+                        <div class="hood-navi-event-desc" id="navi-event-desc">Greif ins Fach: Glück oder Bußgeld?</div>
                     </div>
                 </div>
 

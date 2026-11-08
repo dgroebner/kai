@@ -137,6 +137,11 @@
                 naviOwner: document.getElementById('navi-owner'),
                 naviPrice: document.getElementById('navi-price'),
                 naviRent: document.getElementById('navi-rent'),
+                statsPurchasable: document.getElementById('navi-stats-purchasable'),
+                eventBox: document.getElementById('navi-event-box'),
+                eventIcon: document.getElementById('navi-event-icon'),
+                eventTitle: document.getElementById('navi-event-title'),
+                eventDesc: document.getElementById('navi-event-desc'),
                 btnRoll: document.getElementById('btn-roll'),
                 btnGroupBuy: document.getElementById('btn-group-buy'),
                 btnBuy: document.getElementById('btn-buy'),
@@ -845,7 +850,7 @@
             } else if (tileType === 'street') {
                 this.renderStreetPlot(group, level, ownerColor, isMortgaged, tileName);
             } else {
-                this.renderSpecialPlot(group, tileType, tileName);
+                this.renderSpecialPlot(group, tileType, tileName, tileIndex);
             }
         }
 
@@ -1793,43 +1798,190 @@
             }
         }
 
-        // --- D. SPEZIELLE FELDER (Start, Werkstatt, Rastplatz, Radar, Karten) ---
-        renderSpecialPlot(group, tileType, tileName) {
-            const plotMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+        // --- D. SPEZIELLE FELDER (Start, Werkstatt, Rastplatz, Radar, Handschuhfach, Radio) ---
+        renderSpecialPlot(group, tileType, tileName, tileIndex = 0) {
+            // Grundstücksboden
+            const plotMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
             const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), plotMat);
             plot.position.set(0, 0.18, 0);
+            plot.receiveShadow = true;
             group.add(plot);
 
-            if (tileType === 'start') {
-                // Grand-Prix Start- & Ziel-Torbogen
+            // Gehweg vor dem Areal
+            const walk = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 18), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
+            walk.position.set(-5.5, 0.4, 0);
+            walk.receiveShadow = true;
+            group.add(walk);
+
+            const isHandschuhfach = [7, 22, 36].includes(tileIndex) || tileName.toLowerCase().includes('handschuhfach');
+            const isRadioTicker = [2, 17, 33].includes(tileIndex) || tileName.toLowerCase().includes('radio');
+
+            if (isHandschuhfach) {
+                // 1. HANDSCHUHFACH 🗃️ — DER MYSTERY-TRESOR / RETRO DRIVE-IN KIOSK
+                // Kiosk-Körper in warmem Bernstein-Gold
+                const kioskBody = new THREE.Mesh(new THREE.BoxGeometry(7.5, 4.2, 9.5), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }));
+                kioskBody.position.set(3.5, 2.3, 0);
+                kioskBody.castShadow = true;
+                group.add(kioskBody);
+
+                // Geschwungenes Vordach mit goldenem Neon-Licht
+                const canopy = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.3, 10.5), new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.6 }));
+                canopy.position.set(-1.0, 4.4, 0);
+                group.add(canopy);
+
+                const neonTrim = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.1, 10.6), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+                neonTrim.position.set(-1.0, 4.5, 0);
+                group.add(neonTrim);
+
+                // Großes leuchtendes Schild "🗃️ HANDSCHUHFACH"
+                const sign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 8.5), new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+                sign.position.set(-1.1, 5.3, 0);
+                group.add(sign);
+
+                // Schwebende, goldene Schatulle / Tresor
+                const chestMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.9, roughness: 0.2 });
+                const chest = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 2.2), chestMat);
+                chest.position.set(-1.0, 2.2, 0);
+                chest.rotation.y = Math.PI / 4;
+                chest.castShadow = true;
+                group.add(chest);
+
+                // Rotes 3D-Symbol auf dem Tresor
+                const qBox = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                qBox.position.set(-1.0, 2.4, 0);
+                group.add(qBox);
+
+                // Goldmünzen vor dem Kiosk
+                for (let c = 0; c < 5; c++) {
+                    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.15, 12), chestMat);
+                    coin.position.set(-3.2 + (c % 2) * 0.4, 0.55 + Math.floor(c / 2) * 0.15, -1.5 + c * 0.6);
+                    group.add(coin);
+                }
+
+                // Warnkegel am Straßenrand
+                [-3.8, 3.8].forEach(oz => {
+                    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+                    cone.position.set(-4.5, 0.7, oz);
+                    group.add(cone);
+                });
+
+            } else if (isRadioTicker) {
+                // 2. RADIO TICKER 📻 — HOOD FM 104.2 SENDE-TURM & STUDIO
+                const studio = new THREE.Mesh(new THREE.BoxGeometry(7.0, 3.8, 8.0), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 }));
+                studio.position.set(3.5, 2.1, 0);
+                studio.castShadow = true;
+                group.add(studio);
+
+                // Leuchtendes "ON AIR" Schild
+                const onAirSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 3.2), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                onAirSign.position.set(-0.2, 4.3, 0);
+                group.add(onAirSign);
+
+                // Sende-Turm (14m hoch, rot-weiß gestreift)
+                const towerMatR = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.5 });
+                const towerMatW = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5 });
+                for (let s = 0; s < 7; s++) {
+                    const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.18 - s * 0.015, 0.22 - s * 0.015, 2.0, 8), s % 2 === 0 ? towerMatR : towerMatW);
+                    seg.position.set(4.0, 4.0 + s * 1.9, -2.5);
+                    seg.castShadow = true;
+                    group.add(seg);
+                }
+
+                // Rotes Blinklicht auf der Turmspitze
+                const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                beacon.position.set(4.0, 17.5, -2.5);
+                group.add(beacon);
+
+                // Satellitenschüssel
+                const dish = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.5, 12), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7 }));
+                dish.position.set(2.0, 4.8, 2.5);
+                dish.rotation.x = -0.6;
+                dish.rotation.y = 0.4;
+                group.add(dish);
+
+            } else if (tileType === 'start') {
+                // 3. START & ZIEL 🏁 — GRAND-PRIX ZIELBOGEN
                 const archMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6 });
-                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 7), archMat);
-                p1.position.set(-6.5, 3.5, -4);
+                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 7.5, 12), archMat);
+                p1.position.set(-6.5, 3.75, -4.5);
                 group.add(p1);
-                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 7), archMat);
-                p2.position.set(-6.5, 3.5, 4);
+                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 7.5, 12), archMat);
+                p2.position.set(-6.5, 3.75, 4.5);
                 group.add(p2);
-                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 8.5), archMat);
-                beam.position.set(-6.5, 7.2, 0);
+                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.0, 9.6), archMat);
+                beam.position.set(-6.5, 7.6, 0);
                 group.add(beam);
+
+                const banner = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 8.4), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+                banner.position.set(-6.5, 6.4, 0);
+                group.add(banner);
+
+            } else if (tileType === 'tax') {
+                // 4. KFZ- & MAUT-STELLE 🛑
+                const tollBooth = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.4, 3.2), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+                tollBooth.position.set(1.5, 1.9, 0);
+                group.add(tollBooth);
+
+                const barrierPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6.0), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+                barrierPole.position.set(-2.5, 1.2, 0);
+                barrierPole.rotation.x = Math.PI / 2;
+                group.add(barrierPole);
+
+                const ledSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 2.4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                ledSign.position.set(0.0, 3.8, 0);
+                group.add(ledSign);
+
             } else if (tileType === 'jail') {
-                // Kfz-Verwahrstelle & Hebebühne
-                const garage = new THREE.Mesh(new THREE.BoxGeometry(9, 5, 10), new THREE.MeshStandardMaterial({ color: 0x64748b }));
-                garage.position.set(1.5, 2.5, 0);
+                // 5. WERKSTATT / HEBEBÜHNE 🔧
+                const garage = new THREE.Mesh(new THREE.BoxGeometry(9.0, 5.2, 10.5), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+                garage.position.set(3.0, 2.8, 0);
+                garage.castShadow = true;
                 group.add(garage);
-                const lift = new THREE.Mesh(new THREE.BoxGeometry(2, 2.5, 4), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
-                lift.position.set(-5, 1.25, 0);
-                group.add(lift);
+
+                const liftMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.6 });
+                const liftP1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, 0.3), liftMat);
+                liftP1.position.set(-3.5, 1.75, -1.8);
+                group.add(liftP1);
+                const liftP2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, 0.3), liftMat);
+                liftP2.position.set(-3.5, 1.75, 1.8);
+                group.add(liftP2);
+
+                for (let t = 0; t < 3; t++) {
+                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0x18181b }));
+                    tire.position.set(-5.5, 0.55 + t * 0.35, 3.5);
+                    group.add(tire);
+                }
+
             } else if (tileType === 'parking') {
-                // Panorama-Aussichtspunkt mit Picknickbank
-                const shelter = new THREE.Mesh(new THREE.ConeGeometry(3.5, 2.2, 6), new THREE.MeshStandardMaterial({ color: 0x15803d }));
-                shelter.position.set(0, 3.5, 0);
+                // 6. KÜSTEN-RASTPLATZ ☕
+                const shelter = new THREE.Mesh(new THREE.ConeGeometry(4.0, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
+                shelter.position.set(2.0, 3.8, 0);
                 group.add(shelter);
+
+                const table = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2.8), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+                table.position.set(2.0, 0.8, 0);
+                group.add(table);
+
+                const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+                scope.position.set(-4.5, 1.2, 0);
+                scope.rotation.z = -0.3;
+                group.add(scope);
+
             } else {
-                // Funkmast oder Infotafel
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-                pole.position.set(-4, 3, 0);
-                group.add(pole);
+                // 7. RADARFALLE 📸
+                const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4.5, 12), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+                tower.position.set(-3.5, 2.25, 0);
+                group.add(tower);
+
+                const flashBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                flashBox.position.set(-3.5, 4.6, 0);
+                group.add(flashBox);
+
+                const signMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+                const sign = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.1, 16), signMat);
+                sign.position.set(-3.5, 3.0, 0);
+                sign.rotation.x = Math.PI / 2;
+                group.add(sign);
             }
         }
 
@@ -2067,11 +2219,69 @@
             this.selectedTileIndex = tileIdx;
             this.ui.naviName.textContent = tile.name;
 
-            const owner = state.players.find(p => p.id === tile.owner);
-            this.ui.naviOwner.textContent = owner ? owner.name : 'Frei';
+            const isPurchasable = (tile.type === 'street' || tile.type === 'beach' || tile.type === 'club');
 
-            this.ui.naviPrice.textContent = `${tile.price || 0} $`;
-            this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
+            if (this.ui.statsPurchasable && this.ui.eventBox) {
+                if (isPurchasable) {
+                    this.ui.statsPurchasable.style.display = 'grid';
+                    this.ui.eventBox.style.display = 'none';
+
+                    const owner = state.players.find(p => p.id === tile.owner);
+                    this.ui.naviOwner.textContent = owner ? owner.name : 'Frei';
+                    this.ui.naviPrice.textContent = `${tile.price || 0} $`;
+                    this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
+                } else {
+                    this.ui.statsPurchasable.style.display = 'none';
+                    this.ui.eventBox.style.display = 'flex';
+
+                    let icon = '📍';
+                    let eventTitle = tile.name;
+                    let desc = tile.desc || '';
+
+                    if (tile.type === 'card') {
+                        const isRadio = (tile.deck === 'radio' || [2, 17, 33].includes(tileIdx));
+                        icon = isRadio ? '📻' : '🗃️';
+                        if (state.last_card && state.last_card.text) {
+                            eventTitle = isRadio ? 'Live aus dem Radio Ticker' : 'Aus dem Handschuhfach gezogen';
+                            desc = state.last_card.text;
+                        } else {
+                            eventTitle = tile.name;
+                            desc = isRadio ? 'Zufällige Live-Nachricht aus der Hood.' : 'Greif ins Fach: Glück oder Bußgeld?';
+                        }
+                    } else if (tile.type === 'tax') {
+                        icon = '🛑';
+                        eventTitle = tile.name;
+                        desc = 'Fällige Abgabe: 200 $ an die Stadtkasse entrichtet.';
+                    } else if (tile.type === 'go_to_jail') {
+                        icon = '📸';
+                        eventTitle = 'Radarfalle ausgelöst!';
+                        desc = 'Zu schnell gefahren! Wagen wird in die Werkstatt geschleppt.';
+                    } else if (tile.type === 'jail') {
+                        icon = '🔧';
+                        eventTitle = tile.name;
+                        desc = activePlayer.in_jail
+                            ? `Wagen auf der Hebebühne (${activePlayer.jail_turns || 1}/3). 50 $ Kaution zahlen.`
+                            : 'Nur zu Besuch. Freie Weiterfahrt!';
+                    } else if (tile.type === 'parking') {
+                        icon = '☕';
+                        eventTitle = tile.name;
+                        desc = 'Kostenlose Rast mit Meerblick. Keine Gebühren fällig.';
+                    } else if (tile.type === 'start') {
+                        icon = '🏁';
+                        eventTitle = tile.name;
+                        desc = 'Ziehe 200 $ Prämie ein beim Passieren oder Landen!';
+                    }
+
+                    this.ui.eventIcon.textContent = icon;
+                    this.ui.eventTitle.textContent = eventTitle;
+                    this.ui.eventDesc.textContent = desc;
+                }
+            } else {
+                const owner = state.players.find(p => p.id === tile.owner);
+                this.ui.naviOwner.textContent = owner ? owner.name : 'Frei';
+                this.ui.naviPrice.textContent = `${tile.price || 0} $`;
+                this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
+            }
 
             const groupNames = {
                 docks: 'Docks & Industrie',
