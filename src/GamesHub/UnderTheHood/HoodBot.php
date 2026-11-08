@@ -98,8 +98,8 @@ class HoodBot
         }
 
         // 5. Zug beenden
-        if ($state['phase'] === 'TURN_END' || $state['can_roll_again']) {
-            return $this->service->endTurn($roomId, $botPlayerId);
+        if ($state['phase'] === 'TURN_END' || !empty($state['can_roll_again'])) {
+            return $this->service->endTurn($roomId, $botPlayerId, $depth + 1);
         }
 
         return ['success' => true, 'state' => $state];

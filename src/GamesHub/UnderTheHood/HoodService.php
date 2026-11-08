@@ -660,7 +660,7 @@ class HoodService
     /**
      * Beendet den Zug und schaltet zum nächsten aktiven Spieler weiter.
      */
-    public function endTurn(int $roomId, int $playerId): array
+    public function endTurn(int $roomId, int $playerId, int $depth = 0): array
     {
         $room = $this->repo->getRoomById($roomId);
         if (!$room) {
@@ -682,6 +682,13 @@ class HoodService
                 'text' => "⚡ Pasch! {$player['name']} darf noch einmal Gas geben."
             ];
             $this->repo->updateRoomState($roomId, $state);
+
+            // Falls Bot: sofort den Pasch-Bonuswurf ausführen!
+            if ($player['is_bot']) {
+                $bot = new HoodBot($this);
+                return $bot->playTurn($roomId, $player['id'], $depth + 1);
+            }
+
             return ['success' => true, 'state' => $state];
         }
 
@@ -712,7 +719,7 @@ class HoodService
         // Falls nächster Spieler ein Bot ist: Bot-Zug ausführen!
         if ($nextPlayer['is_bot'] && !$nextPlayer['bankrupt'] && $state['status'] === 'active') {
             $bot = new HoodBot($this);
-            return $bot->playTurn($roomId, $nextPlayer['id']);
+            return $bot->playTurn($roomId, $nextPlayer['id'], $depth + 1);
         }
 
         return ['success' => true, 'state' => $state];

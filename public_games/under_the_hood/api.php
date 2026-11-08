@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../bootstrap.php';
 
 use Kai\Tools\GamesHub\RoomRepository;
+use Kai\Tools\GamesHub\UnderTheHood\HoodBot;
 use Kai\Tools\GamesHub\UnderTheHood\HoodConfig;
 use Kai\Tools\GamesHub\UnderTheHood\HoodService;
 use Kai\Tools\Shared\Log\Logger;
@@ -149,11 +150,25 @@ try {
 
     // 3. STATE ABRUFEN
     if ($action === 'state') {
+        // Falls aktuell ein Bot an der Reihe ist (z.B. nach Pasch oder Reconnect), Bot-Zug automatisch vorantreiben
+        $activePlayer = $state['players'][$state['current_player_index']] ?? null;
+        if ($activePlayer && !empty($activePlayer['is_bot']) && empty($activePlayer['bankrupt']) && ($state['status'] ?? '') === 'active') {
+            $bot = new HoodBot($service);
+            $botRes = $bot->playTurn($roomId, (int)$activePlayer['id']);
+            if (!empty($botRes['state'])) {
+                $state = $botRes['state'];
+                $updatedRoom = $repo->getRoomById($roomId);
+                if ($updatedRoom) {
+                    $room = $updatedRoom;
+                }
+            }
+        }
+
         hoodRespond(200, [
             'success' => true,
             'state'   => $state,
             'me'      => $currentPlayer,
-            'version' => $room['state_version'],
+            'version' => $room['state_version'] ?? 1,
         ]);
     }
 
