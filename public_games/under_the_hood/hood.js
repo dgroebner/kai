@@ -795,6 +795,12 @@
             document.getElementById('btn-leave').addEventListener('click', () => {
                 window.location.href = '../index.php';
             });
+
+            // Restart Button (ohne Inline-Handler wg. CSP)
+            const btnRestart = document.getElementById('btn-restart-game');
+            if (btnRestart) {
+                btnRestart.addEventListener('click', () => window.location.reload());
+            }
         }
 
         // ---------------------------------------------------------------------

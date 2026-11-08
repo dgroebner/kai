@@ -1,10 +1,11 @@
-const CACHE_VERSION = 'gh-v18';
+const CACHE_VERSION = 'gh-v19';
 const CACHE_NAME = `kai-games-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
     './css/games-hub.css',
     './js/http-hub.js',
     './js/hub.js',
+    './js/three.min.js',
     './js/qwixx.js',
     './js/kniffel.js',
     './android-chrome-192x192.png',
@@ -76,7 +77,7 @@ self.addEventListener('fetch', (event) => {
                     }).catch(() => {});
                 }
                 return response;
-            }).catch(() => cached);
+            }).catch(() => cached || new Response('Offline', { status: 503 }));
 
             return cached || networkFetch;
         })

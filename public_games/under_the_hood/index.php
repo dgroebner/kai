@@ -16,8 +16,10 @@ $csrfToken = Auth::csrfToken();
     <title>Under the Hood 🏎️ — Quarxl 3D</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#090d16">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="../android-chrome-192x192.png">
     <link rel="manifest" href="../manifest.json">
     <link rel="apple-touch-icon" href="../apple-touch-icon.png">
     <link rel="stylesheet" href="./hood.css?v=<?= APP_VERSION ?>">
@@ -208,14 +210,14 @@ $csrfToken = Auth::csrfToken();
             <div style="font-size: 3rem; margin-bottom: 0.5rem;">🏆</div>
             <h2 class="hood-modal-title" style="margin-bottom: 0.5rem;">SIEG IN DER HOOD!</h2>
             <p id="winner-text" style="color: var(--hood-gold); font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;"></p>
-            <button type="button" class="hood-btn-primary" onclick="window.location.reload();">
+            <button type="button" class="hood-btn-primary" id="btn-restart-game">
                 🔄 NOCHMAL SPIELEN
             </button>
         </div>
     </div>
 
-    <!-- Three.js (r160) Bundle via CDN -->
-    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <!-- Three.js (lokal bereitgestellt für strikte CSP) -->
+    <script src="../js/three.min.js?v=<?= APP_VERSION ?>"></script>
     <script src="./hood.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>
