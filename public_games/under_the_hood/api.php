@@ -257,6 +257,22 @@ try {
         hoodRespond(200, $res);
     }
 
+    // 10b. HAUS AN DIE BANK VERKAUFEN
+    if ($action === 'sell_building') {
+        hoodRequirePost();
+        $tileIndex = (int)($input['tile_index'] ?? -1);
+        $res = $service->sellBuilding($roomId, $actingPlayerId, $tileIndex);
+        hoodRespond(200, $res);
+    }
+
+    // 10c. GRUNDSTÜCK AN DIE BANK VERKAUFEN
+    if ($action === 'sell_property') {
+        hoodRequirePost();
+        $tileIndex = (int)($input['tile_index'] ?? -1);
+        $res = $service->sellProperty($roomId, $actingPlayerId, $tileIndex);
+        hoodRespond(200, $res);
+    }
+
     // 11. KAUTION ZAHLEN
     if ($action === 'pay_bail') {
         hoodRequirePost();

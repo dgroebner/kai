@@ -157,6 +157,15 @@
                 sheetOwner: document.getElementById('sheet-owner'),
                 sheetBtnBuild: document.getElementById('sheet-btn-build'),
                 sheetBtnMortgage: document.getElementById('sheet-btn-mortgage'),
+                btnPortfolio: document.getElementById('btn-portfolio'),
+                modalPortfolio: document.getElementById('modal-portfolio'),
+                portfolioClose: document.getElementById('portfolio-close'),
+                naviHeaderClickable: document.getElementById('navi-header-clickable'),
+                naviMonopolyStatus: document.getElementById('navi-monopoly-status'),
+                sheetGroupBadge: document.getElementById('sheet-group-badge'),
+                sheetMonopolyInfo: document.getElementById('sheet-monopoly-info'),
+                sheetBtnSellBuilding: document.getElementById('sheet-btn-sell-building'),
+                sheetBtnSellProperty: document.getElementById('sheet-btn-sell-property'),
                 winnerModal: document.getElementById('modal-winner'),
                 winnerText: document.getElementById('winner-text'),
             };
@@ -3213,6 +3222,22 @@
             document.getElementById('sheet-close').addEventListener('click', () => this.closePropertySheet());
             this.ui.sheetBtnBuild.addEventListener('click', () => this.actionBuild());
             this.ui.sheetBtnMortgage.addEventListener('click', () => this.actionMortgage());
+            if (this.ui.sheetBtnSellBuilding) {
+                this.ui.sheetBtnSellBuilding.addEventListener('click', () => this.actionSellBuilding());
+            }
+            if (this.ui.sheetBtnSellProperty) {
+                this.ui.sheetBtnSellProperty.addEventListener('click', () => this.actionSellProperty());
+            }
+
+            if (this.ui.btnPortfolio) {
+                this.ui.btnPortfolio.addEventListener('click', () => this.openPortfolioModal());
+            }
+            if (this.ui.portfolioClose) {
+                this.ui.portfolioClose.addEventListener('click', () => this.closePortfolioModal());
+            }
+            if (this.ui.naviHeaderClickable) {
+                this.ui.naviHeaderClickable.addEventListener('click', () => this.openPortfolioModal());
+            }
 
             document.getElementById('btn-audio-toggle').addEventListener('click', (e) => {
                 this.audio.enabled = !this.audio.enabled;
@@ -3441,17 +3466,45 @@
                 this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
             }
 
-            const groupNames = {
-                docks: 'Docks & Industrie',
-                suburb: 'Vorstadt & Diners',
-                arts: 'Künstlerviertel',
-                promenade: 'Flaniermeile',
-                downtown: 'Downtown',
-                marina: 'Yachthafen',
-                heights: 'Panorama-Höhen',
-                millionaires: 'Millionaires’ Hill',
-            };
-            this.ui.naviZoneTag.textContent = groupNames[tile.group] || tile.type.toUpperCase();
+            const groupData = this.getGroupData(tile.group);
+            this.ui.naviZoneTag.textContent = tile.group ? groupData.name : tile.type.toUpperCase();
+            if (tile.group && groupData.color) {
+                this.ui.naviZoneTag.style.background = groupData.color;
+            }
+
+            // Status des Viertels & Monopols in der Cockpit-Navi anzeigen
+            if (this.ui.naviMonopolyStatus) {
+                if (tile.group) {
+                    const groupInfo = this.checkGroupOwnership(tile.group);
+                    this.ui.naviMonopolyStatus.style.display = 'block';
+
+                    if (groupInfo && groupInfo.isFullMonopoly) {
+                        const monoOwner = state.players.find(p => p.id === groupInfo.monopolyOwnerId);
+                        const isMine = (groupInfo.monopolyOwnerId === this.myPlayerId);
+                        this.ui.naviMonopolyStatus.style.color = '#f59e0b';
+                        this.ui.naviMonopolyStatus.innerHTML = isMine
+                            ? `👑 <strong>Monopol komplett!</strong> Ausbau bereit (Miete verdoppelt)`
+                            : `👑 <strong>Monopol von ${monoOwner ? monoOwner.name : 'Gegner'}!</strong> (Doppelte Miete)`;
+                    } else if (groupInfo) {
+                        const myCount = this.myPlayerId ? (groupInfo.ownerCounts[this.myPlayerId] || 0) : 0;
+                        const ownedTotal = Object.values(groupInfo.ownerCounts).reduce((a, b) => a + b, 0);
+                        this.ui.naviMonopolyStatus.style.color = 'var(--hood-muted)';
+                        if (myCount > 0) {
+                            this.ui.naviMonopolyStatus.innerHTML = `📍 Viertel: <strong>${myCount}/${groupInfo.total}</strong> in deinem Besitz (${groupData.name})`;
+                        } else {
+                            this.ui.naviMonopolyStatus.innerHTML = `📍 Viertel: ${ownedTotal}/${groupInfo.total} vergeben (${groupData.name})`;
+                        }
+                    }
+                } else if (tile.type === 'beach') {
+                    this.ui.naviMonopolyStatus.style.display = 'block';
+                    this.ui.naviMonopolyStatus.style.color = 'var(--hood-muted)';
+                    const beaches = state.tiles.filter(t => t.type === 'beach');
+                    const myBeaches = this.myPlayerId ? beaches.filter(b => b.owner === this.myPlayerId).length : 0;
+                    this.ui.naviMonopolyStatus.innerHTML = `🏖️ Küstenstrände: <strong>${myBeaches}/4</strong> in deinem Besitz`;
+                } else {
+                    this.ui.naviMonopolyStatus.style.display = 'none';
+                }
+            }
 
             if (activePlayer) {
                 this.ui.cashBadge.textContent = `${activePlayer.cash} $`;
@@ -3594,6 +3647,45 @@
             }
         }
 
+        getGroupData(groupKey) {
+            const groups = {
+                docks: { name: 'Docks & Industrie', color: '#8B5A2B', badge: '🏭' },
+                suburb: { name: 'Vorstadt & Diners', color: '#38BDF8', badge: '☕' },
+                arts: { name: 'Künstlerviertel', color: '#EC4899', badge: '🎨' },
+                promenade: { name: 'Flaniermeile', color: '#F97316', badge: '🌴' },
+                downtown: { name: 'Downtown & Skyline', color: '#EF4444', badge: '🏙️' },
+                marina: { name: 'Yachthafen & Marina', color: '#EAB308', badge: '⛵' },
+                heights: { name: 'Panorama-Höhen', color: '#22C55E', badge: '⛰️' },
+                millionaires: { name: 'Millionaires’ Hill', color: '#3B82F6', badge: '💎' },
+            };
+            return groups[groupKey] || { name: groupKey || 'Sondergebiet', color: '#64748b', badge: '📍' };
+        }
+
+        checkGroupOwnership(groupKey) {
+            if (!this.state || !this.state.tiles || !groupKey) return null;
+            const groupTiles = this.state.tiles.filter(t => t.group === groupKey);
+            if (groupTiles.length === 0) return null;
+
+            const firstOwner = groupTiles[0].owner;
+            const isFullMonopoly = (firstOwner !== null && firstOwner !== undefined) &&
+                groupTiles.every(t => t.owner === firstOwner);
+
+            const ownerCounts = {};
+            groupTiles.forEach(t => {
+                if (t.owner !== null && t.owner !== undefined) {
+                    ownerCounts[t.owner] = (ownerCounts[t.owner] || 0) + 1;
+                }
+            });
+
+            return {
+                tiles: groupTiles,
+                total: groupTiles.length,
+                isFullMonopoly,
+                monopolyOwnerId: isFullMonopoly ? firstOwner : null,
+                ownerCounts
+            };
+        }
+
         async actionBuild() {
             if (this.selectedTileIndex === null) return;
             this.audio.playBuild();
@@ -3601,8 +3693,38 @@
             if (res.success) {
                 this.closePropertySheet();
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                this.renderPortfolioModal();
             } else {
                 alert(res.message || 'Ausbau nicht möglich');
+            }
+        }
+
+        async actionSellBuilding() {
+            if (this.selectedTileIndex === null) return;
+            this.audio.playCash();
+            const res = await this.apiPost('sell_building', { tile_index: this.selectedTileIndex });
+            if (res.success) {
+                this.closePropertySheet();
+                this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                this.renderPortfolioModal();
+            } else {
+                alert(res.message || 'Verkauf nicht möglich');
+            }
+        }
+
+        async actionSellProperty() {
+            if (this.selectedTileIndex === null) return;
+            if (!confirm('Möchtest du dieses Grundstück wirklich an die Bank verkaufen? Es ist danach wieder für alle frei.')) {
+                return;
+            }
+            this.audio.playCash();
+            const res = await this.apiPost('sell_property', { tile_index: this.selectedTileIndex });
+            if (res.success) {
+                this.closePropertySheet();
+                this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                this.renderPortfolioModal();
+            } else {
+                alert(res.message || 'Verkauf nicht möglich');
             }
         }
 
@@ -3613,6 +3735,7 @@
             if (res.success) {
                 this.closePropertySheet();
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                this.renderPortfolioModal();
             } else {
                 alert(res.message || 'Aktion nicht möglich');
             }
@@ -3630,7 +3753,66 @@
             this.ui.sheetOwner.textContent = owner ? `Besitzer: ${owner.name}` : 'Frei / Zu verkaufen';
 
             const isMine = (tile.owner === this.myPlayerId);
-            this.ui.sheetBtnBuild.style.display = (isMine && tile.type === 'street') ? 'block' : 'none';
+            const groupData = this.getGroupData(tile.group);
+            if (this.ui.sheetGroupBadge) {
+                this.ui.sheetGroupBadge.textContent = `${groupData.badge} ${groupData.name}`;
+                this.ui.sheetGroupBadge.style.color = groupData.color;
+            }
+
+            const groupInfo = this.checkGroupOwnership(tile.group);
+
+            if (this.ui.sheetMonopolyInfo) {
+                if (tile.type === 'street') {
+                    const houseCost = tile.house_cost || 100;
+                    const levelNames = ['Unbebaut', '1 Haus 🏡', '2 Häuser 🏡🏡', '3 Häuser 🏡🏡🏡', 'Luxus-Hotel 🏨'];
+                    const curLevelName = levelNames[Math.min(tile.level || 0, 4)];
+
+                    if (isMine) {
+                        if (groupInfo && groupInfo.isFullMonopoly) {
+                            this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #22c55e;">Vollständiges Viertel!</strong> Miete ist verdoppelt.<br>Aktuell: <em>${curLevelName}</em> (Ausbau: ${houseCost} $)`;
+                        } else {
+                            const myCount = groupInfo ? (groupInfo.ownerCounts[this.myPlayerId] || 0) : 0;
+                            const total = groupInfo ? groupInfo.total : 3;
+                            this.ui.sheetMonopolyInfo.innerHTML = `⚠️ <strong style="color: #f59e0b;">Viertel unvollständig (${myCount}/${total})</strong><br>Zum Bauen von Häusern musst du alle ${total} Straßen dieses Viertels besitzen.`;
+                        }
+                    } else if (owner) {
+                        if (groupInfo && groupInfo.isFullMonopoly) {
+                            this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #ef4444;">Vollständiges Viertel von ${owner.name}!</strong><br>Miete verdoppelt! Aktuell: <em>${curLevelName}</em>`;
+                        } else {
+                            this.ui.sheetMonopolyInfo.innerHTML = `🏠 Im Besitz von ${owner.name}. Aktuell: <em>${curLevelName}</em>`;
+                        }
+                    } else {
+                        this.ui.sheetMonopolyInfo.innerHTML = `🏷️ Dieses Grundstück ist frei und kann beim Daraufladen gekauft werden.`;
+                    }
+                } else {
+                    this.ui.sheetMonopolyInfo.innerHTML = tile.desc || 'Sondergrundstück';
+                }
+            }
+
+            // Buttons steuern
+            const canBuild = (isMine && tile.type === 'street' && groupInfo && groupInfo.isFullMonopoly && (tile.level || 0) < 5 && !tile.mortgaged);
+            this.ui.sheetBtnBuild.style.display = canBuild ? 'block' : 'none';
+            if (canBuild) {
+                this.ui.sheetBtnBuild.textContent = `🏗️ HAUS / HOTEL BAUEN (${tile.house_cost || 100} $)`;
+            }
+
+            const canSellBuilding = (isMine && tile.type === 'street' && (tile.level || 0) > 1);
+            if (this.ui.sheetBtnSellBuilding) {
+                this.ui.sheetBtnSellBuilding.style.display = canSellBuilding ? 'block' : 'none';
+                if (canSellBuilding) {
+                    this.ui.sheetBtnSellBuilding.textContent = `🏚️ HAUS VERKAUFEN (+${Math.round((tile.house_cost || 100) / 2)} $)`;
+                }
+            }
+
+            const canSellProperty = (isMine && (!tile.level || tile.level <= 1));
+            if (this.ui.sheetBtnSellProperty) {
+                this.ui.sheetBtnSellProperty.style.display = canSellProperty ? 'block' : 'none';
+                if (canSellProperty) {
+                    const refund = tile.mortgaged ? Math.round(tile.price / 2) : tile.price;
+                    this.ui.sheetBtnSellProperty.textContent = `💰 AN BANK VERKAUFEN (+${refund} $)`;
+                }
+            }
+
             this.ui.sheetBtnMortgage.style.display = isMine ? 'block' : 'none';
             this.ui.sheetBtnMortgage.textContent = tile.mortgaged ? 'Hypothek ablösen' : 'Mit Hypothek beleihen';
 
@@ -3639,6 +3821,169 @@
 
         closePropertySheet() {
             this.ui.sheetBackdrop.classList.remove('open');
+        }
+
+        openPortfolioModal() {
+            this.renderPortfolioModal();
+            if (this.ui.modalPortfolio) {
+                this.ui.modalPortfolio.classList.add('open');
+            }
+        }
+
+        closePortfolioModal() {
+            if (this.ui.modalPortfolio) {
+                this.ui.modalPortfolio.classList.remove('open');
+            }
+        }
+
+        renderPortfolioModal() {
+            if (!this.state || !this.state.tiles) return;
+
+            const sumContainer = document.getElementById('portfolio-players-summary');
+            const groupsContainer = document.getElementById('portfolio-groups-list');
+            if (!sumContainer || !groupsContainer) return;
+
+            // 1. Spieler-Zusammenfassung oben
+            sumContainer.innerHTML = '';
+            this.state.players.forEach(p => {
+                const ownedTiles = this.state.tiles.filter(t => t.owner === p.id);
+                const monopolies = ['docks','suburb','arts','promenade','downtown','marina','heights','millionaires']
+                    .filter(g => this.checkGroupOwnership(g)?.monopolyOwnerId === p.id).length;
+
+                const badge = document.createElement('div');
+                badge.style.display = 'flex';
+                badge.style.alignItems = 'center';
+                badge.style.gap = '0.4rem';
+                badge.style.padding = '0.35rem 0.65rem';
+                badge.style.borderRadius = '8px';
+                badge.style.background = 'rgba(15, 23, 42, 0.7)';
+                badge.style.border = `2px solid ${p.color}`;
+                badge.style.fontSize = '0.8rem';
+                badge.innerHTML = `
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background: ${p.color};"></div>
+                    <strong>${p.name}</strong>: ${p.cash} $
+                    <span style="color: var(--hood-muted);">(${ownedTiles.length} Grundstücke${monopolies > 0 ? `, 👑 ${monopolies}` : ''})</span>
+                `;
+                sumContainer.appendChild(badge);
+            });
+
+            // 2. Viertel auflisten
+            groupsContainer.innerHTML = '';
+            const groupKeys = ['docks', 'suburb', 'arts', 'promenade', 'downtown', 'marina', 'heights', 'millionaires'];
+
+            groupKeys.forEach(gKey => {
+                const gData = this.getGroupData(gKey);
+                const gInfo = this.checkGroupOwnership(gKey);
+                if (!gInfo) return;
+
+                const card = document.createElement('div');
+                card.className = 'hood-group-card';
+                card.style.setProperty('--group-color', gData.color);
+
+                const header = document.createElement('div');
+                header.className = 'hood-group-header';
+
+                const title = document.createElement('div');
+                title.className = 'hood-group-title';
+                title.innerHTML = `<span>${gData.badge}</span> <span style="color: ${gData.color};">${gData.name}</span>`;
+
+                const badge = document.createElement('div');
+                if (gInfo.isFullMonopoly) {
+                    const owner = this.state.players.find(p => p.id === gInfo.monopolyOwnerId);
+                    badge.className = 'hood-group-monopoly-badge';
+                    badge.innerHTML = `👑 Monopol: <span style="color: ${owner ? owner.color : '#fff'}; font-weight: 800;">${owner ? owner.name : ''}</span>`;
+                } else {
+                    const ownedCount = Object.values(gInfo.ownerCounts).reduce((a, b) => a + b, 0);
+                    badge.style.fontSize = '0.75rem';
+                    badge.style.color = 'var(--hood-muted)';
+                    badge.textContent = `${ownedCount}/${gInfo.total} vergeben`;
+                }
+
+                header.appendChild(title);
+                header.appendChild(badge);
+                card.appendChild(header);
+
+                // Grid der Straßen
+                const grid = document.createElement('div');
+                grid.className = 'hood-group-tiles-grid';
+
+                gInfo.tiles.forEach(tile => {
+                    const owner = this.state.players.find(p => p.id === tile.owner);
+                    const isMine = (tile.owner === this.myPlayerId);
+                    const item = document.createElement('div');
+                    item.className = 'hood-group-tile-item';
+
+                    let levelText = '';
+                    if (tile.level === 2) levelText = '🏡 1 Haus';
+                    else if (tile.level === 3) levelText = '🏡🏡 2 Häuser';
+                    else if (tile.level === 4) levelText = '🏡🏡🏡 3 Häuser';
+                    else if (tile.level === 5) levelText = '🏨 Hotel';
+
+                    item.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: #fff;">${tile.name}</strong>
+                            <span style="color: var(--hood-gold);">${tile.price} $</span>
+                        </div>
+                        <div class="hood-group-tile-owner">
+                            ${owner
+                                ? `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${owner.color};"></span>
+                                   <span style="color:${owner.color};">${owner.name}</span> ${levelText ? `• ${levelText}` : ''}`
+                                : '<span style="color: var(--hood-muted);">Frei</span>'
+                            }
+                        </div>
+                    `;
+
+                    // Quick-Action Buttons, wenn es meine Straße ist
+                    if (isMine) {
+                        const canBuild = gInfo.isFullMonopoly && (tile.level || 0) < 5 && !tile.mortgaged;
+                        const canSellBuilding = (tile.level || 0) > 1;
+
+                        if (canBuild || canSellBuilding) {
+                            const actDiv = document.createElement('div');
+                            actDiv.className = 'hood-group-tile-actions';
+
+                            if (canBuild) {
+                                const btnB = document.createElement('button');
+                                btnB.className = 'hood-btn-primary hood-btn-gold';
+                                btnB.textContent = `🏗️ +1 Haus (${tile.house_cost || 100} $)`;
+                                btnB.addEventListener('click', async () => {
+                                    const res = await this.apiPost('build', { tile_index: tile.index });
+                                    if (res.success) {
+                                        this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                                        this.renderPortfolioModal();
+                                    } else {
+                                        alert(res.message || 'Ausbau nicht möglich');
+                                    }
+                                });
+                                actDiv.appendChild(btnB);
+                            }
+
+                            if (canSellBuilding) {
+                                const btnS = document.createElement('button');
+                                btnS.className = 'hood-btn-primary hood-btn-secondary';
+                                btnS.textContent = `🏚️ -1 Haus`;
+                                btnS.addEventListener('click', async () => {
+                                    const res = await this.apiPost('sell_building', { tile_index: tile.index });
+                                    if (res.success) {
+                                        this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                                        this.renderPortfolioModal();
+                                    } else {
+                                        alert(res.message || 'Verkauf nicht möglich');
+                                    }
+                                });
+                                actDiv.appendChild(btnS);
+                            }
+
+                            item.appendChild(actDiv);
+                        }
+                    }
+
+                    grid.appendChild(item);
+                });
+
+                card.appendChild(grid);
+                groupsContainer.appendChild(card);
+            });
         }
 
         // ---------------------------------------------------------------------

@@ -24,14 +24,15 @@ class HoodService
         $boardTiles = [];
         foreach ($tiles as $idx => $t) {
             $boardTiles[$idx] = [
-                'index'     => $idx,
-                'name'      => $t['name'],
-                'type'      => $t['type'],
-                'group'     => $t['group'] ?? null,
-                'price'     => $t['price'] ?? 0,
-                'owner'     => null, // Player ID
-                'level'     => 0,    // 0 = unberührt, 1 = erschlossen, 2..4 = 1..3 Häuser, 5 = Hotel
-                'mortgaged' => false,
+                'index'      => $idx,
+                'name'       => $t['name'],
+                'type'       => $t['type'],
+                'group'      => $t['group'] ?? null,
+                'price'      => $t['price'] ?? 0,
+                'house_cost' => $t['house_cost'] ?? 100,
+                'owner'      => null, // Player ID
+                'level'      => 0,    // 0 = unberührt, 1 = erschlossen, 2..4 = 1..3 Häuser, 5 = Hotel
+                'mortgaged'  => false,
             ];
         }
 
@@ -621,6 +622,103 @@ class HoodService
                 'text' => "📉 {$player['name']} beleiht '{$tileConfig['name']}' und erhält {$mortgageVal} $ Notfall-Cash."
             ];
         }
+
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'state' => $state];
+    }
+
+    /**
+     * Verkauft ein Haus / eine Ausbaustufe an die Bank zurück (50% Erstattung der Baukosten).
+     */
+    public function sellBuilding(int $roomId, int $playerId, int $tileIndex): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+        $playerIdx = $this->getPlayerIndexById($state, $playerId);
+        if ($playerIdx === null) {
+            return ['success' => false, 'message' => 'Spieler nicht gefunden'];
+        }
+        $player = &$state['players'][$playerIdx];
+        $tileConfig = HoodConfig::getTiles()[$tileIndex] ?? null;
+        $tileState = &$state['tiles'][$tileIndex];
+
+        if (!$tileConfig || ($tileConfig['type'] ?? '') !== 'street') {
+            return ['success' => false, 'message' => 'Nur Straßen haben Gebäude'];
+        }
+        if ($tileState['owner'] !== $playerId) {
+            return ['success' => false, 'message' => 'Gehört dir nicht'];
+        }
+        if (($tileState['level'] ?? 0) <= 1) {
+            return ['success' => false, 'message' => 'Keine Häuser vorhanden zum Verkaufen'];
+        }
+
+        $group = $tileConfig['group'];
+        // Gleichmäßiges Abreißen prüfen
+        foreach ($state['tiles'] as $t) {
+            if (($t['group'] ?? null) === $group && ($t['level'] ?? 1) > $tileState['level']) {
+                return ['success' => false, 'message' => 'Du musst gleichmäßig abreißen (höchste Stufe zuerst)'];
+            }
+        }
+
+        $houseCost = $tileConfig['house_cost'] ?? 100;
+        $refund = (int)($houseCost / 2);
+
+        $tileState['level']--;
+        $player['cash'] += $refund;
+
+        $state['log'][] = [
+            'time' => date('H:i'),
+            'text' => "🏚️ {$player['name']} reißt ein Gebäude auf '{$tileConfig['name']}' ab und erhält {$refund} $ von der Bank."
+        ];
+
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'state' => $state];
+    }
+
+    /**
+     * Verkauft ein unbebautes Grundstück komplett an die Bank zurück.
+     * Erstattet den Kaufpreis, damit das Grundstück wieder frei wird.
+     */
+    public function sellProperty(int $roomId, int $playerId, int $tileIndex): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+        $playerIdx = $this->getPlayerIndexById($state, $playerId);
+        if ($playerIdx === null) {
+            return ['success' => false, 'message' => 'Spieler nicht gefunden'];
+        }
+        $player = &$state['players'][$playerIdx];
+        $tileConfig = HoodConfig::getTiles()[$tileIndex] ?? null;
+        $tileState = &$state['tiles'][$tileIndex];
+
+        if (!$tileConfig || !in_array($tileConfig['type'] ?? '', ['street', 'beach', 'club'], true)) {
+            return ['success' => false, 'message' => 'Dieses Feld kann nicht verkauft werden'];
+        }
+        if ($tileState['owner'] !== $playerId) {
+            return ['success' => false, 'message' => 'Gehört dir nicht'];
+        }
+        if (($tileState['level'] ?? 0) > 1) {
+            return ['success' => false, 'message' => 'Zuerst müssen alle Gebäude abgerissen werden'];
+        }
+
+        $price = $tileConfig['price'] ?? 100;
+        $refund = !empty($tileState['mortgaged']) ? (int)($price / 2) : $price;
+
+        $player['cash'] += $refund;
+        $tileState['owner'] = null;
+        $tileState['level'] = 0;
+        $tileState['mortgaged'] = false;
+
+        $state['log'][] = [
+            'time' => date('H:i'),
+            'text' => "🏷️ {$player['name']} verkauft '{$tileConfig['name']}' an die Bank zurück (+{$refund} $). Das Grundstück ist wieder frei!"
+        ];
 
         $this->repo->updateRoomState($roomId, $state);
         return ['success' => true, 'state' => $state];

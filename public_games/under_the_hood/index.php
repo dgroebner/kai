@@ -47,8 +47,9 @@ $csrfToken = Auth::csrfToken();
                 <span id="cash-badge-amount">1.500 $</span>
             </div>
 
-            <!-- Blick-Steuerung & Ton -->
+            <!-- Blick-Steuerung, Grundbuch & Ton -->
             <div class="hood-view-controls">
+                <button type="button" class="hood-btn-icon" id="btn-portfolio" title="Grundbuch &amp; Viertel-Übersicht" style="width: auto; padding: 0 0.65rem; font-size: 0.8rem; font-weight: 700; border-radius: 9999px; gap: 0.3rem;">📋 Viertel</button>
                 <button type="button" class="hood-btn-icon" id="btn-look-road" title="Blick nach vorn auf die Straße">🛣️</button>
                 <button type="button" class="hood-btn-icon" id="btn-look-plot" title="Blick aus dem Fenster aufs Grundstück">🏡</button>
                 <button type="button" class="hood-btn-icon" id="btn-audio-toggle" title="Ton an/aus">🔊</button>
@@ -69,13 +70,16 @@ $csrfToken = Auth::csrfToken();
             <div class="hood-navi-screen">
                 
                 <!-- Navi Header -->
-                <div class="hood-navi-header">
+                <div class="hood-navi-header" id="navi-header-clickable" style="cursor: pointer;" title="Hier tippen für Viertel-Übersicht">
                     <div class="hood-navi-location">
                         <span>📍</span>
                         <div class="hood-navi-name" id="navi-name">Start &amp; Ziel</div>
                     </div>
                     <span class="hood-navi-zone-tag" id="navi-zone-tag" style="background: var(--hood-accent);">START</span>
                 </div>
+
+                <!-- Status des Stadtviertels (Monopol & Besitz) -->
+                <div id="navi-monopoly-status" style="font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; padding: 0.25rem 0.5rem; border-radius: 6px; background: rgba(15, 23, 42, 0.7); display: none; text-align: center;"></div>
 
                 <!-- Navi Daten-Anzeige für kaufbare Grundstücke -->
                 <div class="hood-navi-stats" id="navi-stats-purchasable">
@@ -145,11 +149,14 @@ $csrfToken = Auth::csrfToken();
             <div class="hood-sheet-handle"></div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
+                    <div id="sheet-group-badge" style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--hood-gold); margin-bottom: 0.2rem;">VIERTEL</div>
                     <h3 id="sheet-title" style="font-size: 1.3rem; margin-bottom: 0.2rem;">Grundstück</h3>
                     <div id="sheet-owner" style="font-size: 0.85rem; color: var(--hood-muted);">Besitzer: Niemand</div>
                 </div>
                 <button type="button" class="hood-btn-icon" id="sheet-close">✕</button>
             </div>
+
+            <div id="sheet-monopoly-info" style="font-size: 0.8rem; font-weight: 600; margin: 0.6rem 0; padding: 0.45rem 0.65rem; border-radius: 8px; background: rgba(15, 23, 42, 0.7); line-height: 1.35;"></div>
 
             <div class="hood-sheet-price-tag">
                 <span class="amount" id="sheet-price">0 $</span>
@@ -158,12 +165,36 @@ $csrfToken = Auth::csrfToken();
 
             <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
                 <button type="button" class="hood-btn-primary hood-btn-gold" id="sheet-btn-build" style="display: none;">
-                    🏗️ HAUS / HOTEL BAUEN
+                    🏗️ HAUS BAUEN
+                </button>
+                <button type="button" class="hood-btn-primary hood-btn-secondary" id="sheet-btn-sell-building" style="display: none;">
+                    🏚️ HAUS VERKAUFEN
+                </button>
+                <button type="button" class="hood-btn-primary hood-btn-secondary" id="sheet-btn-sell-property" style="display: none;">
+                    💰 AN BANK VERKAUFEN
                 </button>
                 <button type="button" class="hood-btn-primary hood-btn-secondary" id="sheet-btn-mortgage" style="display: none;">
                     🏦 HYPOTHEK TOGGELN
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Grundbuch & Viertel-Übersichts-Modal -->
+    <div class="hood-modal-backdrop" id="modal-portfolio">
+        <div class="hood-modal" style="max-width: 650px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 1.25rem;">
+            <div class="hood-modal-header" style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="hood-modal-title" style="margin: 0; font-size: 1.25rem;">📋 Viertel &amp; Grundbuch</h2>
+                <button type="button" class="hood-btn-icon" id="portfolio-close">✕</button>
+            </div>
+            
+            <p style="font-size: 0.8rem; color: var(--hood-muted); margin-bottom: 0.75rem;">
+                Besitzt ein Fahrer alle Straßen eines Viertels, verdoppelt sich die Miete und es können Häuser gebaut werden!
+            </p>
+
+            <div id="portfolio-players-summary" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;"></div>
+
+            <div id="portfolio-groups-list" style="overflow-y: auto; flex: 1; padding-right: 0.25rem; display: flex; flex-direction: column; gap: 0.75rem;"></div>
         </div>
     </div>
 
