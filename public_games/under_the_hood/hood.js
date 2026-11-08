@@ -1,5 +1,5 @@
 /**
- * UNDER THE HOOD 🏎️ — 3D First-Person Cockpit & Game Engine
+ * UNDER THE HOOD 🏎️ — 3D First-Person Cockpit & Sunny Coastal Circuit
  */
 
 (function () {
@@ -44,7 +44,7 @@
             this.init();
             for (let i = 0; i < 4; i++) {
                 setTimeout(() => {
-                    this.playTone(180 + Math.random() * 80, 'triangle', 0.08, 0.15);
+                    this.playTone(200 + Math.random() * 90, 'triangle', 0.08, 0.15);
                 }, i * 60);
             }
         }
@@ -56,8 +56,8 @@
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(80, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(240, this.ctx.currentTime + 0.5);
+                osc.frequency.setValueAtTime(90, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(260, this.ctx.currentTime + 0.5);
                 gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.55);
                 osc.connect(gain);
@@ -69,8 +69,8 @@
 
         playCash() {
             this.init();
-            this.playTone(987.77, 'sine', 0.12, 0.2); // B5
-            setTimeout(() => this.playTone(1318.51, 'sine', 0.35, 0.25), 100); // E6
+            this.playTone(987.77, 'sine', 0.12, 0.2);
+            setTimeout(() => this.playTone(1318.51, 'sine', 0.35, 0.25), 100);
         }
 
         playBuild() {
@@ -87,7 +87,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // 2. HAUPTKLASSE: HOOD GAME (COCKPIT EGO-PERSPEKTIVE)
+    // 2. HAUPTKLASSE: HOOD GAME (COCKPIT EGO-PERSPEKTIVE & GESCHWUNGENE STRECKE)
     // -------------------------------------------------------------------------
     class HoodGame {
         constructor() {
@@ -107,44 +107,45 @@
             this.container = document.getElementById('hood-canvas-container');
             this.tileMeshes = [];
             this.tilePlotGroups = [];
-            this.carMeshes = {}; // playerId -> Mesh
+            this.carMeshes = {};
             this.isDriving = false;
+
+            // Spline-Rundkurs Daten
+            this.trackCurve = null;
+            this.trackPoints = []; // 40 Wegpunkte
 
             // Cockpit Rig
             this.cockpitRig = null;
             this.steeringWheel = null;
+            this.carHoodMat = null;
             this.carHoodMesh = null;
-            this.cockpitYaw = -0.55; // Standard: Leicht nach rechts zum Grundstück blicken
+            this.cockpitYaw = -0.75; // Standard beim Stehen: Blick nach schräg rechts zum Grundstück
             this.cockpitPitch = 0.0;
-            this.targetYaw = -0.55;
+            this.targetYaw = -0.75;
             this.targetPitch = 0.0;
 
-            // Touch Drag für freies Umsehen im Cockpit
+            // Touch Drag für freies Umsehen
             this.isDragging = false;
             this.prevTouch = { x: 0, y: 0 };
 
-            // Dom-Elemente
+            // UI-Elemente
             this.ui = {
                 roomBadge: document.getElementById('room-badge-code'),
                 cashBadge: document.getElementById('cash-badge-amount'),
                 tickerText: document.getElementById('ticker-text'),
-                // Navi Display Elemente
                 naviZoneTag: document.getElementById('navi-zone-tag'),
                 naviName: document.getElementById('navi-name'),
                 naviOwner: document.getElementById('navi-owner'),
                 naviPrice: document.getElementById('navi-price'),
                 naviRent: document.getElementById('navi-rent'),
-                // Buttons
                 btnRoll: document.getElementById('btn-roll'),
                 btnGroupBuy: document.getElementById('btn-group-buy'),
                 btnBuy: document.getElementById('btn-buy'),
                 btnPass: document.getElementById('btn-pass'),
                 btnEndTurn: document.getElementById('btn-end-turn'),
                 btnBail: document.getElementById('btn-bail'),
-                // Blick-Umschalter
                 btnLookPlot: document.getElementById('btn-look-plot'),
                 btnLookRoad: document.getElementById('btn-look-road'),
-                // Modals
                 lobbyModal: document.getElementById('modal-lobby'),
                 sheetBackdrop: document.getElementById('sheet-backdrop'),
                 sheetTitle: document.getElementById('sheet-title'),
@@ -157,7 +158,6 @@
             };
 
             this.selectedTileIndex = null;
-            this.currentSpeed = 0;
         }
 
         init() {
@@ -166,7 +166,8 @@
             this.playerToken = localStorage.getItem('quarxl_hood_token_' + this.roomCode) || null;
 
             this.setupThree();
-            this.buildRealisticTrack();
+            this.initSplineTrack();
+            this.buildRealisticCircuit();
             this.buildCockpit();
             this.bindEvents();
 
@@ -179,18 +180,18 @@
         }
 
         // ---------------------------------------------------------------------
-        // 3. THREE.JS SZENE & BELEUCHTUNG
+        // 3. THREE.JS SZENE: STRAHLENDER, SONNIGER TAG AM MEER
         // ---------------------------------------------------------------------
         setupThree() {
             const w = this.container.clientWidth;
             const h = this.container.clientHeight;
 
             this.scene = new THREE.Scene();
-            this.scene.background = new THREE.Color(0x0c1222);
-            this.scene.fog = new THREE.FogExp2(0x0c1222, 0.0035);
+            // Strahlend blauer Sommerhimmel
+            this.scene.background = new THREE.Color(0x7dd3fc);
+            this.scene.fog = new THREE.FogExp2(0xbfe0f7, 0.0018);
 
-            // Weitwinkelkamera für Cockpit-Gefühl (65° FOV)
-            this.camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 1200);
+            this.camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 1400);
 
             this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
             this.renderer.setSize(w, h);
@@ -199,18 +200,15 @@
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             this.container.appendChild(this.renderer.domElement);
 
-            // Himmels- und Sonnenlicht
-            const ambient = new THREE.AmbientLight(0x94a3b8, 0.9);
-            this.scene.add(ambient);
-
-            const sun = new THREE.DirectionalLight(0xffedd5, 1.4);
-            sun.position.set(120, 180, 90);
+            // 1. Sonne: Kräftiges warmes Sonnenlicht
+            const sun = new THREE.DirectionalLight(0xfffbeb, 1.8);
+            sun.position.set(160, 260, 140);
             sun.castShadow = true;
             sun.shadow.mapSize.width = 2048;
             sun.shadow.mapSize.height = 2048;
             sun.shadow.camera.near = 10;
-            sun.shadow.camera.far = 600;
-            const d = 160;
+            sun.shadow.camera.far = 800;
+            const d = 240;
             sun.shadow.camera.left = -d;
             sun.shadow.camera.right = d;
             sun.shadow.camera.top = d;
@@ -218,32 +216,42 @@
             sun.shadow.bias = -0.0003;
             this.scene.add(sun);
 
-            // Weiches Himmelslicht
-            const hemi = new THREE.HemisphereLight(0x38bdf8, 0x1e293b, 0.5);
+            // 2. Himmels- und Bodenlicht (Blauer Himmel + grüner Rasen-Bounce)
+            const hemi = new THREE.HemisphereLight(0x38bdf8, 0x4ade80, 0.75);
             this.scene.add(hemi);
 
-            // Ozean rund um die Insel
-            const oceanGeo = new THREE.PlaneGeometry(1600, 1600);
-            const oceanMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.15, metalness: 0.2 });
+            const ambient = new THREE.AmbientLight(0xe0f2fe, 0.65);
+            this.scene.add(ambient);
+
+            // 3. Glitzernder türkiser Ozean
+            const oceanGeo = new THREE.PlaneGeometry(2400, 2400);
+            const oceanMat = new THREE.MeshStandardMaterial({
+                color: 0x0284c7,
+                roughness: 0.15,
+                metalness: 0.35,
+            });
             const ocean = new THREE.Mesh(oceanGeo, oceanMat);
             ocean.rotation.x = -Math.PI / 2;
             ocean.position.y = -2;
             this.scene.add(ocean);
 
-            // Insel-Terrain
-            const landGeo = new THREE.PlaneGeometry(600, 600);
-            const landMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
-            const land = new THREE.Mesh(landGeo, landMat);
-            land.rotation.x = -Math.PI / 2;
-            land.position.y = -0.1;
-            land.receiveShadow = true;
-            this.scene.add(land);
+            // 4. Saftig grüne Küsteninsel
+            const islandGeo = new THREE.PlaneGeometry(800, 800);
+            const islandMat = new THREE.MeshStandardMaterial({
+                color: 0x22c55e, // Schönes sattes Wiesengrün
+                roughness: 0.85,
+            });
+            const island = new THREE.Mesh(islandGeo, islandMat);
+            island.rotation.x = -Math.PI / 2;
+            island.position.y = -0.1;
+            island.receiveShadow = true;
+            this.scene.add(island);
 
             // Render-Schleife
             const animate = () => {
                 requestAnimationFrame(animate);
 
-                // Weiche Kamera-Interpolation
+                // Sanfte Kamera-Interpolation
                 this.cockpitYaw = THREE.MathUtils.lerp(this.cockpitYaw, this.targetYaw, 0.08);
                 this.cockpitPitch = THREE.MathUtils.lerp(this.cockpitPitch, this.targetPitch, 0.08);
 
@@ -251,9 +259,8 @@
                     this.camera.rotation.set(this.cockpitPitch, this.cockpitYaw, 0, 'YXZ');
                 }
 
-                // Lenkrad-Drehung bei Kurvenfahrt
                 if (this.steeringWheel && this.isDriving) {
-                    this.steeringWheel.rotation.z = Math.sin(Date.now() * 0.005) * 0.25;
+                    this.steeringWheel.rotation.z = Math.sin(Date.now() * 0.005) * 0.3;
                 }
 
                 this.renderer.render(this.scene, this.camera);
@@ -270,81 +277,106 @@
         }
 
         // ---------------------------------------------------------------------
-        // 4. REALISTISCHE STRASSEN-STRECKE (40 FELDER Á 20 METER)
+        // 4. GESCHWUNGENER KÜSTEN-RUNDKURS (SPLINE OHNE HARTE 90°-KNICKE)
         // ---------------------------------------------------------------------
-        getTileCoords(index) {
-            // Große Insel: Jede Seite hat 10 Kacheln á 20m = 200m pro Seite
-            const half = 100;
-            const step = (half * 2) / 10; // 20m pro Kachel
+        initSplineTrack() {
+            // Kontrollpunkte für einen organisch geschwungenen Küsten-Rundkurs (ca. 400m x 350m)
+            const controlPoints = [
+                new THREE.Vector3(0, 0, 160),      // 0: Start & Ziel
+                new THREE.Vector3(80, 0, 155),     // Docks
+                new THREE.Vector3(155, 0, 120),    // North Beach
+                new THREE.Vector3(195, 0, 50),     // Vorstadt
+                new THREE.Vector3(205, 0, -40),    // Künstlerviertel
+                new THREE.Vector3(170, 0, -125),   // Palm Bay
+                new THREE.Vector3(95, 0, -175),    // Flaniermeile
+                new THREE.Vector3(0, 0, -190),     // Downtown Skyline (Nordseite)
+                new THREE.Vector3(-95, 0, -180),   // Marina
+                new THREE.Vector3(-165, 0, -130),  // Sunset Bay
+                new THREE.Vector3(-205, 0, -45),   // Panorama-Höhen
+                new THREE.Vector3(-195, 0, 50),    // Ocean Pier
+                new THREE.Vector3(-150, 0, 125),   // Millionaires’ Hill
+                new THREE.Vector3(-75, 0, 160),    // Anfahrt Start
+            ];
 
-            if (index >= 0 && index <= 10) {
-                // Südseite (Blick nach Osten)
-                return { x: -half + index * step, z: half, rotY: Math.PI / 2 };
-            } else if (index > 10 && index <= 20) {
-                // Ostseite (Blick nach Norden)
-                const i = index - 10;
-                return { x: half, z: half - i * step, rotY: Math.PI };
-            } else if (index > 20 && index <= 30) {
-                // Nordseite (Blick nach Westen)
-                const i = index - 20;
-                return { x: half - i * step, z: -half, rotY: -Math.PI / 2 };
-            } else {
-                // Westseite (Blick nach Süden)
-                const i = index - 30;
-                return { x: -half, z: -half + i * step, rotY: 0 };
+            this.trackCurve = new THREE.CatmullRomCurve3(controlPoints, true, 'centripetal', 0.5);
+
+            // 40 gleichmäßig verteilte Streckenabschnitte berechnen
+            this.trackPoints = [];
+            for (let i = 0; i < 40; i++) {
+                const u = i / 40.0;
+                const pos = this.trackCurve.getPointAt(u);
+                const tangent = this.trackCurve.getTangentAt(u).normalize();
+
+                // Normalenvektor nach rechts: N = (-tangent.z, 0, tangent.x)
+                const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+                // Rotationswinkel um Y: Auto-Ausrichtung vorwärts entlang Tangente
+                const angle = Math.atan2(-tangent.x, -tangent.z);
+
+                this.trackPoints.push({
+                    index: i,
+                    pos: pos,
+                    tangent: tangent,
+                    normal: normal,
+                    angle: angle,
+                });
             }
         }
 
-        buildRealisticTrack() {
-            const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
-            const curbMat = new THREE.MeshStandardMaterial({ color: 0xe4e4e7, roughness: 0.7 });
-            const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
-            const laneMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+        buildRealisticCircuit() {
+            const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.85 });
+            const curbMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
+            const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 });
+            const laneMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
 
             for (let i = 0; i < 40; i++) {
-                const coords = this.getTileCoords(i);
-                const tileGroup = new THREE.Group();
-                tileGroup.position.set(coords.x, 0, coords.z);
-                tileGroup.rotation.y = coords.rotY;
+                const tp = this.trackPoints[i];
+                const nextTp = this.trackPoints[(i + 1) % 40];
+                const segLength = tp.pos.distanceTo(nextTp.pos);
 
-                // Breite Straße (Fahrbahn 14m breit, 20m lang)
-                const roadGeo = new THREE.BoxGeometry(14, 0.4, 20);
+                const tileGroup = new THREE.Group();
+                tileGroup.position.copy(tp.pos);
+                tileGroup.rotation.y = tp.angle;
+
+                // 1. Breite 2-spurige Straße (14m breit)
+                const roadGeo = new THREE.BoxGeometry(14, 0.4, segLength + 0.5);
                 const road = new THREE.Mesh(roadGeo, asphaltMat);
-                road.position.set(0, 0.2, 0);
+                road.position.set(0, 0.2, -(segLength / 2));
                 road.receiveShadow = true;
                 road.userData = { tileIndex: i };
                 tileGroup.add(road);
                 this.tileMeshes[i] = road;
 
-                // Gelber Mittelstreifen
-                const laneGeo = new THREE.BoxGeometry(0.35, 0.42, 10);
+                // Gelbe gestrichelte Mittellinie
+                const laneGeo = new THREE.BoxGeometry(0.35, 0.42, segLength * 0.5);
                 const lane = new THREE.Mesh(laneGeo, laneMat);
-                lane.position.set(0, 0.21, 0);
+                lane.position.set(0, 0.21, -(segLength / 2));
                 tileGroup.add(lane);
 
-                // Bordstein & Gehweg rechts (zum Grundstück hin)
-                const curbGeo = new THREE.BoxGeometry(0.5, 0.55, 20);
+                // Weißer Bordstein & Gehweg rechts
+                const curbGeo = new THREE.BoxGeometry(0.5, 0.55, segLength + 0.5);
                 const curb = new THREE.Mesh(curbGeo, curbMat);
-                curb.position.set(7.25, 0.27, 0);
+                curb.position.set(7.25, 0.27, -(segLength / 2));
                 curb.castShadow = true;
                 tileGroup.add(curb);
 
-                const walkGeo = new THREE.BoxGeometry(5, 0.5, 20);
+                const walkGeo = new THREE.BoxGeometry(5.5, 0.5, segLength + 0.5);
                 const walk = new THREE.Mesh(walkGeo, sidewalkMat);
-                walk.position.set(10, 0.25, 0);
+                walk.position.set(10.25, 0.25, -(segLength / 2));
                 walk.receiveShadow = true;
                 tileGroup.add(walk);
 
                 // Straßenlaterne am Gehweg
-                this.addStreetLamp(tileGroup, 9, 0);
+                this.addStreetLamp(tileGroup, 9, -(segLength / 2));
 
-                // Großes Grundstück rechts neben dem Gehweg (x = 24m)
+                // 2. Das Grundstück rechts neben dem Gehweg (Sicherer Abstand: x = 24m)
+                // Dadurch schneidet das Auto in Kurven NIEMALS durch Schilder oder Häuser!
                 const plotGroup = new THREE.Group();
-                plotGroup.position.set(24, 0, 0);
+                plotGroup.position.set(24, 0, -(segLength / 2));
                 tileGroup.add(plotGroup);
                 this.tilePlotGroups[i] = plotGroup;
 
-                // Initial als Wildnis (Stufe 0) rendern
+                // Initial als sonnige Wildnis (Stufe 0) rendern
                 this.renderPlotState(i, 0, null, false);
 
                 this.scene.add(tileGroup);
@@ -353,13 +385,12 @@
 
         addStreetLamp(parent, x, z) {
             const poleGeo = new THREE.CylinderGeometry(0.12, 0.15, 6, 8);
-            const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6 });
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6 });
             const pole = new THREE.Mesh(poleGeo, poleMat);
             pole.position.set(x, 3, z);
             pole.castShadow = true;
             parent.add(pole);
 
-            // Lampenschirm & Licht
             const lampGeo = new THREE.SphereGeometry(0.4, 8, 8);
             const lampMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
             const lamp = new THREE.Mesh(lampGeo, lampMat);
@@ -368,71 +399,68 @@
         }
 
         // ---------------------------------------------------------------------
-        // 5. DAS 3D-COCKPIT (FAHRERSITZ, LENKRAD, SCHEIBEN & MOTORHAUBE)
+        // 5. DAS 3D-COCKPIT (KORREKTE AUSRICHTUNG: BLICK NACH VORN ÜBER DIE HAUBE!)
         // ---------------------------------------------------------------------
         buildCockpit() {
             this.cockpitRig = new THREE.Group();
 
-            // 1. Sichtbare Motorhaube vorn durch die Windschutzscheibe
-            const hoodGeo = new THREE.BoxGeometry(3.6, 0.6, 4.2);
+            // 1. Motorhaube vorn (in Fahrtrichtung -Z!)
+            const hoodGeo = new THREE.BoxGeometry(3.6, 0.55, 3.8);
             this.carHoodMat = new THREE.MeshStandardMaterial({
                 color: 0xef4444,
-                roughness: 0.25,
-                metalness: 0.7,
+                roughness: 0.2,
+                metalness: 0.6,
             });
             this.carHoodMesh = new THREE.Mesh(hoodGeo, this.carHoodMat);
-            this.carHoodMesh.position.set(0, 0.6, 2.5);
+            this.carHoodMesh.position.set(0, 0.65, -2.6);
             this.carHoodMesh.castShadow = true;
             this.cockpitRig.add(this.carHoodMesh);
 
-            // 2. Armaturenbrett (Dashboard aus dunklem Leder/Charcoal)
+            // 2. Armaturenbrett (vor der Scheibe)
             const dashMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85 });
             const dashGeo = new THREE.BoxGeometry(3.8, 0.75, 1.4);
             const dash = new THREE.Mesh(dashGeo, dashMat);
-            dash.position.set(0, 0.85, 0.65);
+            dash.position.set(0, 0.85, -0.7);
             this.cockpitRig.add(dash);
 
-            // 3. Windschutzscheiben-A-Säulen (Rahmen)
+            // 3. Windschutzscheiben-A-Säulen
             const pillarMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 });
             const pillarGeo = new THREE.BoxGeometry(0.18, 2.2, 0.25);
 
-            // Linke A-Säule
             const leftPillar = new THREE.Mesh(pillarGeo, pillarMat);
-            leftPillar.position.set(-1.8, 1.6, 0.6);
+            leftPillar.position.set(-1.8, 1.6, -0.6);
             leftPillar.rotation.z = -0.3;
-            leftPillar.rotation.x = -0.3;
+            leftPillar.rotation.x = 0.3;
             this.cockpitRig.add(leftPillar);
 
-            // Rechte A-Säule
             const rightPillar = new THREE.Mesh(pillarGeo, pillarMat);
-            rightPillar.position.set(1.8, 1.6, 0.6);
+            rightPillar.position.set(1.8, 1.6, -0.6);
             rightPillar.rotation.z = 0.3;
-            rightPillar.rotation.x = -0.3;
+            rightPillar.rotation.x = 0.3;
             this.cockpitRig.add(rightPillar);
 
-            // 4. Dach-Querträger mit Rückspiegel
+            // Dach-Querträger mit Rückspiegel
             const roofGeo = new THREE.BoxGeometry(3.8, 0.2, 0.5);
             const roof = new THREE.Mesh(roofGeo, pillarMat);
-            roof.position.set(0, 2.45, 0.2);
+            roof.position.set(0, 2.45, -0.2);
             this.cockpitRig.add(roof);
 
             const mirrorGeo = new THREE.BoxGeometry(0.9, 0.28, 0.08);
             const mirrorMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.1, metalness: 0.9 });
             const mirror = new THREE.Mesh(mirrorGeo, mirrorMat);
-            mirror.position.set(0, 2.25, 0.3);
+            mirror.position.set(0, 2.25, -0.3);
             this.cockpitRig.add(mirror);
 
-            // 5. Sport-Lenkrad auf der Fahrerseite (Links)
+            // 4. Sport-Lenkrad auf der Fahrerseite (Links, z = -0.35)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.65, 0.95, 0.2);
-            wheelGroup.rotation.x = -0.4;
+            wheelGroup.position.set(-0.7, 0.95, -0.35);
+            wheelGroup.rotation.x = 0.35;
 
             const ringGeo = new THREE.TorusGeometry(0.42, 0.045, 8, 24);
             const wheelMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.7 });
             const ring = new THREE.Mesh(ringGeo, wheelMat);
             wheelGroup.add(ring);
 
-            // Hupen-Mitte
             const hubGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.06, 12);
             hubGeo.rotateX(Math.PI / 2);
             const hub = new THREE.Mesh(hubGeo, wheelMat);
@@ -441,15 +469,15 @@
             this.cockpitRig.add(wheelGroup);
             this.steeringWheel = wheelGroup;
 
-            // 6. Die Kamera im Fahrersitz platzieren (Augenhöhe)
-            this.camera.position.set(-0.65, 1.45, -0.1);
+            // 5. Die Kamera auf Augenhöhe des Fahrers (Links, Blick nach -Z)
+            this.camera.position.set(-0.7, 1.45, 0.2);
             this.cockpitRig.add(this.camera);
 
             this.scene.add(this.cockpitRig);
         }
 
         // ---------------------------------------------------------------------
-        // 6. VISUELLE GRUNDSTÜCKS-EVOLUTION (LEBENSGROSS NEBEN DEM BEIFAHRER)
+        // 6. VISUELLE GRUNDSTÜCKS-EVOLUTION IM SONNENLICHT
         // ---------------------------------------------------------------------
         renderPlotState(tileIndex, level, ownerColor = null, isMortgaged = false) {
             const group = this.tilePlotGroups[tileIndex];
@@ -459,10 +487,10 @@
                 group.remove(group.children[0]);
             }
 
-            // Großes Grundstück: 22m x 22m
+            // Grundstücks-Boden: 22m x 20m
             const plotMat = new THREE.MeshStandardMaterial({
-                color: level === 0 ? 0x3f3f46 : 0x15803d, // Verwilderter Schotterboden vs. sattes Grün
-                roughness: 0.9,
+                color: level === 0 ? 0x854d0e : 0x16a34a, // Trockene Wildnis vs. sattes Grün
+                roughness: 0.85,
             });
             const plotGeo = new THREE.BoxGeometry(22, 0.4, 20);
             const plot = new THREE.Mesh(plotGeo, plotMat);
@@ -473,11 +501,10 @@
             const hexColor = ownerColor || '#3b82f6';
             const playerMat = new THREE.MeshStandardMaterial({ color: hexColor, roughness: 0.5 });
 
-            // STUFE 0: WILDNIS (Unkraut, Felsen & Holz-Verkaufsschild direkt am Gehweg)
+            // STUFE 0: WILDNIS (Sonniges Brachland mit Steinen & großem Holzschild)
             if (level === 0) {
-                // Steine & Schutt
                 const rockGeo = new THREE.DodecahedronGeometry(1.2, 0);
-                const rockMat = new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.9 });
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0x71717a, roughness: 0.9 });
                 const r1 = new THREE.Mesh(rockGeo, rockMat);
                 r1.position.set(-4, 0.8, -3);
                 r1.castShadow = true;
@@ -488,9 +515,9 @@
                 r2.scale.set(0.8, 0.8, 0.8);
                 group.add(r2);
 
-                // Großes Holzschild "ZU VERKAUFEN" am Gehwegrand
+                // Großes Holzschild "ZU VERKAUFEN"
                 const postGeo = new THREE.CylinderGeometry(0.12, 0.12, 3.5);
-                const woodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+                const woodMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
                 const p1 = new THREE.Mesh(postGeo, woodMat);
                 p1.position.set(-10, 1.75, -2);
                 group.add(p1);
@@ -508,16 +535,14 @@
                 return;
             }
 
-            // STUFE 1: ERSCHLOSSEN (Gepflegter Zaun, gepflasterte Einfahrt & Fahnenmast)
+            // STUFE 1: ERSCHLOSSEN (Zaun in Spielerfarbe, gemäht & beflaggt)
             if (level >= 1) {
-                // Weißer / Spielerfarbener Zaun entlang des Gehwegs (x = -10.5)
                 const fenceGeo = new THREE.BoxGeometry(0.2, 1.3, 19);
                 const fence = new THREE.Mesh(fenceGeo, playerMat);
                 fence.position.set(-10.5, 0.9, 0);
                 fence.castShadow = true;
                 group.add(fence);
 
-                // Einfahrt mit Pfeilern
                 const pillarGeo = new THREE.BoxGeometry(0.6, 2.2, 0.6);
                 const pillarMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
                 const pLeft = new THREE.Mesh(pillarGeo, pillarMat);
@@ -528,7 +553,6 @@
                 pRight.position.set(-10.5, 1.1, 3);
                 group.add(pRight);
 
-                // Fahnenmast mit Besitzer-Fahne
                 const flagPoleGeo = new THREE.CylinderGeometry(0.08, 0.08, 6);
                 const pole = new THREE.Mesh(flagPoleGeo, pillarMat);
                 pole.position.set(-9.5, 3, -4);
@@ -540,7 +564,7 @@
                 group.add(flag);
             }
 
-            // STUFE 2–4: 1 BIS 3 MODERNE HÄUSER
+            // STUFE 2–4: 1 BIS 3 MODERNE VILLEN
             if (level >= 2 && level <= 4) {
                 const count = level - 1;
                 const offsetsZ = count === 1 ? [0] : count === 2 ? [-5, 5] : [-6, 0, 6];
@@ -549,16 +573,14 @@
                     const houseGroup = new THREE.Group();
                     houseGroup.position.set(0, 0, oz);
 
-                    // 2-stöckiger Hauskörper
                     const bodyGeo = new THREE.BoxGeometry(10, 4.8, 5.5);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
                     const body = new THREE.Mesh(bodyGeo, bodyMat);
                     body.position.set(0, 2.6, 0);
                     body.castShadow = true;
                     body.receiveShadow = true;
                     houseGroup.add(body);
 
-                    // Satteldach in Spielerfarbe
                     const roofGeo = new THREE.ConeGeometry(5.2, 2.2, 4);
                     const roof = new THREE.Mesh(roofGeo, playerMat);
                     roof.position.set(0, 5.8, 0);
@@ -566,7 +588,6 @@
                     roof.castShadow = true;
                     houseGroup.add(roof);
 
-                    // Große Fensterfronten (Warmes Licht)
                     const winGeo = new THREE.BoxGeometry(0.1, 1.8, 2.8);
                     const winMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
                     const win = new THREE.Mesh(winGeo, winMat);
@@ -577,33 +598,30 @@
                 });
             }
 
-            // STUFE 5: LUXUS-VILLA / HOTEL MIT POOL & PALMEN
+            // STUFE 5: LUXUS-HOTEL MIT POOL & PALMEN
             if (level === 5) {
                 const hotelGroup = new THREE.Group();
 
-                // Großes 3-stöckiges Luxus-Gebäude
                 const mainGeo = new THREE.BoxGeometry(14, 8.5, 14);
-                const mainMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3, metalness: 0.2 });
+                const mainMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.2 });
                 const main = new THREE.Mesh(mainGeo, mainMat);
                 main.position.set(2, 4.45, 0);
                 main.castShadow = true;
                 hotelGroup.add(main);
 
-                // Glas-Fassade zum Spieler hin
                 const glassGeo = new THREE.BoxGeometry(0.2, 6.5, 10);
                 const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8 });
                 const glass = new THREE.Mesh(glassGeo, glassMat);
                 glass.position.set(-5.1, 4.5, 0);
                 hotelGroup.add(glass);
 
-                // Großer beleuchteter Swimming Pool im Vorgarten
+                // Swimming Pool
                 const poolGeo = new THREE.BoxGeometry(6, 0.3, 8);
                 const poolMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
                 const pool = new THREE.Mesh(poolGeo, poolMat);
                 pool.position.set(-8, 0.45, 0);
                 hotelGroup.add(pool);
 
-                // Palmen am Pool
                 this.addPalmTree(hotelGroup, -8, -5);
                 this.addPalmTree(hotelGroup, -8, 5);
 
@@ -620,7 +638,7 @@
             parent.add(trunk);
 
             const crownGeo = new THREE.SphereGeometry(2.2, 6, 6);
-            const crownMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 });
+            const crownMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
             const crown = new THREE.Mesh(crownGeo, crownMat);
             crown.position.set(x, 5.2, z);
             crown.scale.set(1.4, 0.5, 1.4);
@@ -628,58 +646,51 @@
         }
 
         // ---------------------------------------------------------------------
-        // 7. FAHRT-ANIMATION AUS DER EGO-PERSPEKTIVE
+        // 7. WEICHE FAHRT ENTLANG DES SPLINES (BLICK NACH VORN)
         // ---------------------------------------------------------------------
         driveToTile(fromIndex, toIndex, onComplete) {
             this.isDriving = true;
             this.audio.playEngine();
 
-            // Während der Fahrt: Blick geradeaus auf die Straße
+            // Während der Fahrt: Blick exakt geradeaus auf die Straße!
             this.targetYaw = 0.0;
             this.targetPitch = 0.0;
 
             const steps = (toIndex >= fromIndex) ? (toIndex - fromIndex) : (40 - fromIndex + toIndex);
-            const waypoints = [];
-            for (let s = 1; s <= steps; s++) {
-                const idx = (fromIndex + s) % 40;
-                waypoints.push(this.getTileCoords(idx));
-            }
+            const totalDuration = Math.max(1400, steps * 280);
+            const startTime = performance.now();
 
-            let currentStep = 0;
-            const animateStep = () => {
-                if (currentStep >= waypoints.length) {
+            const stepLoop = (now) => {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / totalDuration, 1);
+
+                // Sanfte Beschleunigungs- und Bremskurve (Cubic Ease In-Out)
+                const eased = progress < 0.5
+                    ? 4 * progress * progress * progress
+                    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+                const currentU = (fromIndex / 40.0 + (steps / 40.0) * eased) % 1.0;
+                const pos = this.trackCurve.getPointAt(currentU);
+                const tangent = this.trackCurve.getTangentAt(currentU).normalize();
+                const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+                // Auto fährt auf der rechten Fahrspur (x = +3.2m relativ zur Straßenmitte)
+                const carPos = pos.clone().add(normal.clone().multiplyScalar(3.2));
+                this.cockpitRig.position.copy(carPos);
+                this.cockpitRig.rotation.y = Math.atan2(-tangent.x, -tangent.z);
+
+                if (progress < 1) {
+                    requestAnimationFrame(stepLoop);
+                } else {
                     this.isDriving = false;
-                    // Am Ziel angekommen: Kamera schwenkt sanft nach rechts aufs Grundstück!
-                    this.targetYaw = -0.55;
+                    // Am Ziel sanft nach rechts zum Grundstück blicken
+                    this.targetYaw = -0.75;
                     this.targetPitch = -0.05;
                     if (onComplete) onComplete();
-                    return;
                 }
-
-                const target = waypoints[currentStep];
-                const startPos = this.cockpitRig.position.clone();
-                // Auto fährt auf der rechten Fahrspur (x = +3.5 relativ zur Straßenmitte)
-                const targetPos = new THREE.Vector3(target.x, 0, target.z);
-
-                const startTime = performance.now();
-                const duration = Math.max(140, 480 - steps * 25);
-
-                const stepLoop = (now) => {
-                    const progress = Math.min((now - startTime) / duration, 1);
-                    this.cockpitRig.position.lerpVectors(startPos, targetPos, progress);
-                    this.cockpitRig.rotation.y = THREE.MathUtils.lerp(this.cockpitRig.rotation.y, target.rotY, 0.2);
-
-                    if (progress < 1) {
-                        requestAnimationFrame(stepLoop);
-                    } else {
-                        currentStep++;
-                        animateStep();
-                    }
-                };
-                requestAnimationFrame(stepLoop);
             };
 
-            animateStep();
+            requestAnimationFrame(stepLoop);
         }
 
         // ---------------------------------------------------------------------
@@ -688,7 +699,6 @@
         bindEvents() {
             const c = this.container;
 
-            // Touch / Drag zum Umschauen im Auto
             c.addEventListener('pointerdown', (e) => {
                 this.isDragging = true;
                 this.prevTouch = { x: e.clientX, y: e.clientY };
@@ -709,14 +719,14 @@
                 this.isDragging = false;
             });
 
-            // Blick-Quick-Toggles
+            // Quick-Blick Toggles
             this.ui.btnLookPlot.addEventListener('click', () => {
-                this.targetYaw = -0.65; // Aus dem Beifahrerfenster schauen
+                this.targetYaw = -0.85; // Aus dem Beifahrerfenster aufs Grundstück schauen
                 this.targetPitch = -0.05;
             });
 
             this.ui.btnLookRoad.addEventListener('click', () => {
-                this.targetYaw = 0.0; // Geradeaus auf die Straße schauen
+                this.targetYaw = 0.0; // Geradeaus nach vorn durch die Scheibe blicken
                 this.targetPitch = 0.0;
             });
 
@@ -799,7 +809,6 @@
                 this.isHost = !!me.is_host;
                 this.ui.cashBadge.textContent = `${me.cash} $`;
 
-                // Motorhauben-Farbe auf eigene Spielerfarbe anpassen
                 if (this.carHoodMat && me.color) {
                     this.carHoodMat.color.set(me.color);
                 }
@@ -829,16 +838,21 @@
                             this.updateNaviScreen(newState, activePlayer);
                         });
                     } else {
-                        // Position direkt setzen falls initial
-                        const coords = this.getTileCoords(activePlayer.position || 0);
-                        this.cockpitRig.position.set(coords.x, 0, coords.z);
-                        this.cockpitRig.rotation.y = coords.rotY;
+                        const tp = this.trackPoints[activePlayer.position || 0];
+                        if (tp) {
+                            const carPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(3.2));
+                            this.cockpitRig.position.copy(carPos);
+                            this.cockpitRig.rotation.y = tp.angle;
+                        }
                         this.updateNaviScreen(newState, activePlayer);
                     }
                 } else if (!this.isDriving) {
-                    const coords = this.getTileCoords(activePlayer.position || 0);
-                    this.cockpitRig.position.set(coords.x, 0, coords.z);
-                    this.cockpitRig.rotation.y = coords.rotY;
+                    const tp = this.trackPoints[activePlayer.position || 0];
+                    if (tp) {
+                        const carPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(3.2));
+                        this.cockpitRig.position.copy(carPos);
+                        this.cockpitRig.rotation.y = tp.angle;
+                    }
                     this.updateNaviScreen(newState, activePlayer);
                 }
             }
@@ -880,7 +894,6 @@
             this.ui.naviPrice.textContent = `${tile.price || 0} $`;
             this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
 
-            // Farbgruppe Badge
             const groupNames = {
                 docks: 'Docks & Industrie',
                 suburb: 'Vorstadt & Diners',
