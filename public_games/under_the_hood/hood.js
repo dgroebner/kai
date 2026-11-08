@@ -496,10 +496,10 @@
                 this.renderPlotState({ index: i, type: this.getTileTypeByIndex(i), level: 0 }, null, false);
                 this.scene.add(plotGroup);
 
-                // Elegante geschwungene Straßenlaterne alle 2 Stationen
+                // Elegante geschwungene Straßenlaterne auf der linken Straßenseite (damit Grundstücke rechts 100% frei sichtbar sind!)
                 if (i % 2 === 0) {
-                    const lampPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(7.5));
-                    this.addCurvedStreetLamp(lampPos, tp.angle);
+                    const lampPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(-7.5));
+                    this.addCurvedStreetLamp(lampPos, tp.angle + Math.PI);
                 }
             }
         }
@@ -766,24 +766,24 @@
             this.cockpitRig.add(wheelGroup);
             this.steeringWheel = wheelGroup;
 
-            // 5. Beifahrersitz rechts (gibt echtes Cockpit-Gefühl, blockiert aber nicht den Blick!)
+            // 5. Beifahrersitz rechts (dezent und tief platziert, blockiert niemals den Blick auf die Grundstücke!)
             const seatGroup = new THREE.Group();
-            seatGroup.position.set(0.75, 0.55, 0.1);
+            seatGroup.position.set(0.95, 0.35, 0.5);
 
-            const seatBaseGeo = new THREE.BoxGeometry(0.7, 0.35, 0.7);
+            const seatBaseGeo = new THREE.BoxGeometry(0.65, 0.25, 0.65);
             const seatMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.8 });
             const seatBase = new THREE.Mesh(seatBaseGeo, seatMat);
             seatGroup.add(seatBase);
 
-            const seatBackGeo = new THREE.BoxGeometry(0.65, 0.9, 0.2);
+            const seatBackGeo = new THREE.BoxGeometry(0.55, 0.45, 0.15);
             const seatBack = new THREE.Mesh(seatBackGeo, seatMat);
-            seatBack.position.set(0, 0.5, 0.3);
+            seatBack.position.set(0, 0.3, 0.15);
             seatBack.rotation.x = -0.15;
             seatGroup.add(seatBack);
 
-            const headrestGeo = new THREE.BoxGeometry(0.35, 0.25, 0.15);
+            const headrestGeo = new THREE.BoxGeometry(0.28, 0.16, 0.1);
             const headrest = new THREE.Mesh(headrestGeo, seatMat);
-            headrest.position.set(0, 1.05, 0.38);
+            headrest.position.set(0, 0.62, 0.2);
             seatGroup.add(headrest);
 
             this.cockpitRig.add(seatGroup);
@@ -847,15 +847,16 @@
             }
         }
 
-        // --- A. BARS & CLUBS (Bauruine bei Leerstand -> Aktiver VIP-Nightclub bei Besitz) ---
+        // --- A. BARS & CLUBS (Einladende, realistische Luxus-Lounge mit Terrasse & Bar) ---
         renderClubPlot(group, ownerColor, isMortgaged, tileName) {
             const isOwned = !!ownerColor;
 
             if (!isOwned) {
-                // 1. DIE CLUB-BAURUINE (Unfertiges Industriegelände mit Warnabsperrungen & Baugerüst)
+                // 1. DIE CLUB-BAURUINE (Verlassene Gewerbefläche im Umbau)
                 const ruinMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
                 const brickMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-                const rebarMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.8 }); // Rostiger Bewehrungsstahl
+                const woodMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
+                const rebarMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.8 });
 
                 // Rissiges Beton-Fundament
                 const baseGeo = new THREE.BoxGeometry(22, 0.3, 19);
@@ -864,121 +865,232 @@
                 base.receiveShadow = true;
                 group.add(base);
 
-                // Drei abgebrochene, unfertige Beton- & Ziegelwand-Fragmente
-                const wall1 = new THREE.Mesh(new THREE.BoxGeometry(8, 3.8, 1.2), ruinMat);
-                wall1.position.set(3, 1.9, -4);
+                // Drei abgebrochene, unfertige Mauerfragmente
+                const wall1 = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 1.2), ruinMat);
+                wall1.position.set(2, 1.6, -4);
                 wall1.castShadow = true;
                 group.add(wall1);
 
-                const wall2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 7), brickMat);
-                wall2.position.set(-4, 1.25, 1);
+                const wall2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.4, 7), brickMat);
+                wall2.position.set(-3, 1.2, 2);
                 wall2.castShadow = true;
                 group.add(wall2);
 
-                const wall3 = new THREE.Mesh(new THREE.BoxGeometry(5, 1.8, 1.0), ruinMat);
-                wall3.position.set(2, 0.9, 5);
-                group.add(wall3);
-
-                // Rostige Bewehrungsstäbe (Rebar), die oben aus den Wänden ragen
-                for (let r = 0; r < 5; r++) {
-                    const rebarGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.3, 6);
-                    const rebar = new THREE.Mesh(rebarGeo, rebarMat);
-                    rebar.position.set(1 + r * 1.2, 4.2, -4);
+                // Rostige Bewehrungsstäbe (Rebar)
+                for (let r = 0; r < 4; r++) {
+                    const rebar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6), rebarMat);
+                    rebar.position.set(0.5 + r * 1.2, 3.5, -4);
                     rebar.rotation.z = (Math.random() - 0.5) * 0.25;
                     group.add(rebar);
                 }
 
-                // Vernagelte Tür mit Kreuzbrettern
-                const boardGeo = new THREE.BoxGeometry(0.12, 0.35, 2.4);
-                const woodMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
-                const b1 = new THREE.Mesh(boardGeo, woodMat);
-                b1.position.set(-3.4, 1.4, 1);
-                b1.rotation.y = 0.5;
-                group.add(b1);
-                const b2 = new THREE.Mesh(boardGeo, woodMat);
-                b2.position.set(-3.4, 1.4, 1);
-                b2.rotation.y = -0.5;
-                group.add(b2);
-
-                // Gelb-schwarze Baustellen-Absperrschranke
-                const barrierGeo = new THREE.BoxGeometry(0.2, 0.6, 4.2);
-                const barrierMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.7 });
-                const barrier = new THREE.Mesh(barrierGeo, barrierMat);
+                // Bau-Schranke & Absperrung
+                const barrier = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 4.5), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.7 }));
                 barrier.position.set(-6.5, 0.6, 0);
                 group.add(barrier);
 
-                // Verwittertes Bauschild "BAURUINE • ZU VERKAUFEN"
-                const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8), woodMat);
-                signPost.position.set(-6.5, 1.4, 3.5);
+                // Verwittertes Bauschild
+                const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6), woodMat);
+                signPost.position.set(-6.5, 1.3, 3.5);
                 group.add(signPost);
 
                 const signBoard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.6), new THREE.MeshStandardMaterial({ color: 0xca8a04 }));
-                signBoard.position.set(-6.5, 2.2, 3.5);
+                signBoard.position.set(-6.5, 2.0, 3.5);
                 group.add(signBoard);
 
             } else {
-                // 2. DER WIEDERHERGESTELLTE, AKTIVE VIP-NIGHTCLUB / LOUNGE
+                // 2. DIE WIEDERHERGESTELLTE, EINLADENDE LUXUS-LOUNGE
                 const hex = ownerColor;
-                const facadeMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.35, metalness: 0.5 });
-                const neonMat = new THREE.MeshBasicMaterial({ color: hex });
-                const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.65 });
+                const neonGlowMat = new THREE.MeshBasicMaterial({ color: hex });
+                const warmLightMat = new THREE.MeshBasicMaterial({ color: 0xfef08a }); // Warmes Innenraumlicht
+                const woodDeckMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.75 }); // Teakholz-Terrasse
+                const whiteWallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 }); // Helle, einladende Fassade
+                const darkAccentMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }); // Anthrazit-Rahmen
+                const glassMat = new THREE.MeshStandardMaterial({
+                    color: 0x38bdf8,
+                    roughness: 0.1,
+                    metalness: 0.8,
+                    transparent: true,
+                    opacity: 0.5,
+                });
+                const cushionMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 }); // Weiße Lounge-Kissen
 
-                // Edler dunkler Vorplatz
-                const plazaGeo = new THREE.BoxGeometry(22, 0.35, 19);
-                const plazaMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.7 });
-                const plaza = new THREE.Mesh(plazaGeo, plazaMat);
-                plaza.position.set(0, 0.18, 0);
-                plaza.receiveShadow = true;
-                group.add(plaza);
+                // A. Grundstücks-Basis & Großzügige Teakholz-Außenterrasse
+                const baseGeo = new THREE.BoxGeometry(22, 0.35, 19);
+                const base = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 }));
+                base.position.set(0, 0.18, 0);
+                base.receiveShadow = true;
+                group.add(base);
 
-                // Club-Hauptgebäude in luxuriöser kubischer Architektur
-                const clubBody = new THREE.Mesh(new THREE.BoxGeometry(12, 6.2, 12), facadeMat);
-                clubBody.position.set(2, 3.2, 0);
-                clubBody.castShadow = true;
-                group.add(clubBody);
+                // Holzdeck im Vorbereich (Lounge-Terrasse)
+                const deckGeo = new THREE.BoxGeometry(9, 0.08, 17);
+                const deck = new THREE.Mesh(deckGeo, woodDeckMat);
+                deck.position.set(-4.5, 0.4, 0);
+                deck.receiveShadow = true;
+                group.add(deck);
 
-                // Leuchtende Neon-Lichtbänder an den Kanten in Spielerfarbe!
-                const neonRoof = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.25, 12.4), neonMat);
-                neonRoof.position.set(2, 6.35, 0);
-                group.add(neonRoof);
+                // B. Das Lounge-Hauptgebäude (Modernes, helles Pavillon-Design)
+                // Hauptkörper (Weißer Feinputz)
+                const bldGeo = new THREE.BoxGeometry(10, 5.2, 16);
+                const bld = new THREE.Mesh(bldGeo, whiteWallMat);
+                bld.position.set(4.5, 2.8, 0);
+                bld.castShadow = true;
+                bld.receiveShadow = true;
+                group.add(bld);
 
-                const neonVertical = new THREE.Mesh(new THREE.BoxGeometry(0.25, 6.2, 0.25), neonMat);
-                neonVertical.position.set(-4.1, 3.2, 6.1);
-                group.add(neonVertical);
+                // Dachüberstand / Kranz mit dezentem Neonstreifen in Spielerfarbe
+                const roofGeo = new THREE.BoxGeometry(11, 0.4, 17.5);
+                const roof = new THREE.Mesh(roofGeo, darkAccentMat);
+                roof.position.set(4.3, 5.5, 0);
+                group.add(roof);
 
-                // Großes leuchtendes 3D-Neonschild über dem Portal
-                const neonSign = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.4, 5.5), neonMat);
-                neonSign.position.set(-4.2, 4.8, 0);
-                group.add(neonSign);
+                const roofNeon = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.15, 17.7), neonGlowMat);
+                roofNeon.position.set(4.3, 5.65, 0);
+                group.add(roofNeon);
 
-                // Roter VIP-Teppichläufer vom Gehweg bis zum Eingang
-                const carpetMat = new THREE.MeshStandardMaterial({ color: 0xbe123c, roughness: 0.8 });
-                const carpet = new THREE.Mesh(new THREE.BoxGeometry(6, 0.05, 2.2), carpetMat);
-                carpet.position.set(-6.5, 0.38, 0);
+                // C. Große Panorama-Glasfront mit warmem, gemütlichem Innenraumlicht!
+                // Warmes Licht im Inneren (hinter dem Glas)
+                const interiorGlow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.8, 12), warmLightMat);
+                interiorGlow.position.set(-0.35, 2.3, 0);
+                group.add(interiorGlow);
+
+                // Glasfassade davor
+                const glassFacade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.9, 12.2), glassMat);
+                glassFacade.position.set(-0.45, 2.3, 0);
+                group.add(glassFacade);
+
+                // Anthrazitfarbene Fensterrahmen-Sprossen
+                [-4, 0, 4].forEach(oz => {
+                    const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.0, 0.15), darkAccentMat);
+                    mullion.position.set(-0.48, 2.3, oz);
+                    group.add(mullion);
+                });
+
+                // D. Überdachte Eingangs-Pergola mit Beleuchtung
+                const pergolaRoof = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 7.5), darkAccentMat);
+                pergolaRoof.position.set(-3.2, 4.3, 0);
+                group.add(pergolaRoof);
+
+                // Pergola-Stützen
+                [-3.5, 3.5].forEach(oz => {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.1, 0.2), darkAccentMat);
+                    post.position.set(-5.3, 2.2, oz);
+                    post.castShadow = true;
+                    group.add(post);
+                });
+
+                // Warmes Eingangslicht unter der Pergola
+                const downlight = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), warmLightMat);
+                downlight.position.set(-3.2, 4.1, 0);
+                group.add(downlight);
+
+                // E. Edles Leuchtschild über dem Eingang ("THE NEON LOUNGE" / Club-Name)
+                const signBackdrop = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 5.5), darkAccentMat);
+                signBackdrop.position.set(-0.6, 4.7, 0);
+                group.add(signBackdrop);
+
+                const signLettering = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 4.8), neonGlowMat);
+                signLettering.position.set(-0.65, 4.7, 0);
+                group.add(signLettering);
+
+                // Martini-Cocktailglas-Symbol neben dem Schriftzug
+                const glassStem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), neonGlowMat);
+                glassStem.position.set(-0.68, 4.6, 2.8);
+                group.add(glassStem);
+                const glassCup = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 8), neonGlowMat);
+                glassCup.position.set(-0.68, 4.9, 2.8);
+                group.add(glassCup);
+
+                // F. Einladende Outdoor-Lounge-Möbel auf der Holzterrasse!
+                // Gemütliche weiße Lounge-Sofas (L-Form)
+                [-4.2, 4.2].forEach((oz) => {
+                    const sofaGroup = new THREE.Group();
+                    sofaGroup.position.set(-4.8, 0.45, oz);
+
+                    // Sofa-Sockel aus Holz
+                    const sBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.35, 3.2), woodDeckMat);
+                    sBase.position.y = 0.18;
+                    sofaGroup.add(sBase);
+
+                    // Weiße Polsterkissen
+                    const sCushion = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 3.0), cushionMat);
+                    sCushion.position.y = 0.45;
+                    sofaGroup.add(sCushion);
+
+                    // Rückenlehne
+                    const sBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.65, 3.0), cushionMat);
+                    sBack.position.set(1.0, 0.75, 0);
+                    sofaGroup.add(sBack);
+
+                    // Kleiner Loungetisch mit Windlicht
+                    const table = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 1.4), darkAccentMat);
+                    table.position.set(-1.8, 0.2, 0);
+                    sofaGroup.add(table);
+
+                    const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8), warmLightMat);
+                    candle.position.set(-1.8, 0.45, 0);
+                    sofaGroup.add(candle);
+
+                    group.add(sofaGroup);
+                });
+
+                // G. Moderne Pflanzkübel mit subtropischen Palmen am Terrassenrand
+                [-7.2, 7.2].forEach(oz => {
+                    const planter = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 1.2), whiteWallMat);
+                    planter.position.set(-8.0, 1.1, oz);
+                    planter.castShadow = true;
+                    group.add(planter);
+
+                    // Grüne Fächerpalme im Kübel
+                    const palmFronds = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 }));
+                    palmFronds.scale.set(1.4, 0.8, 1.4);
+                    palmFronds.position.set(-8.0, 2.2, oz);
+                    group.add(palmFronds);
+                });
+
+                // H. Roter VIP-Läufer & Messing-Ständer am Eingang
+                const carpet = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.04, 1.8), new THREE.MeshStandardMaterial({ color: 0xbe123c, roughness: 0.8 }));
+                carpet.position.set(-6.2, 0.46, 0);
                 group.add(carpet);
 
-                // Goldene Absperrständer mit Kordel (Velvet Rope)
                 const brassMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 });
-                [-1.2, 1.2].forEach(oz => {
+                [-1.1, 1.1].forEach(oz => {
                     [-4.5, -7.5].forEach(ox => {
-                        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0, 8), brassMat);
-                        pole.position.set(ox, 0.88, oz);
+                        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), brassMat);
+                        pole.position.set(ox, 0.9, oz);
                         group.add(pole);
 
-                        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), brassMat);
-                        ball.position.set(ox, 1.4, oz);
+                        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), brassMat);
+                        ball.position.set(ox, 1.35, oz);
                         group.add(ball);
                     });
                 });
 
-                // Rooftop Sky-Lounge mit Glasbalustrade & Skybeam-Suchscheinwerfern
-                const skybeamGeo = new THREE.CylinderGeometry(0.2, 3.5, 45, 16);
-                const skybeamMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.35 });
-                const beam1 = new THREE.Mesh(skybeamGeo, skybeamMat);
-                beam1.position.set(5, 28, 4);
+                // I. Dachterrasse mit Glasgeländer & dezenten Party-Lichterketten (statt klobiger Schornsteine!)
+                const balustrade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 16.5), glassMat);
+                balustrade.position.set(-0.8, 6.2, 0);
+                group.add(balustrade);
+
+                // Schwebende Lichterkette auf dem Dach
+                for (let l = 0; l < 6; l++) {
+                    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), warmLightMat);
+                    const bz = -6 + l * 2.4;
+                    const by = 6.4 + Math.sin((l / 5) * Math.PI) * 0.4;
+                    bulb.position.set(2, by, bz);
+                    group.add(bulb);
+                }
+
+                // Elegante, feine Suchscheinwerfer (schmal und transparent, nicht klobig!)
+                const beamGeo = new THREE.CylinderGeometry(0.1, 1.4, 35, 12);
+                const beamMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.15 });
+                const beam1 = new THREE.Mesh(beamGeo, beamMat);
+                beam1.position.set(6, 22, 5);
+                beam1.rotation.z = 0.1;
                 group.add(beam1);
-                const beam2 = new THREE.Mesh(skybeamGeo, skybeamMat);
-                beam2.position.set(5, 28, -4);
+
+                const beam2 = new THREE.Mesh(beamGeo, beamMat);
+                beam2.position.set(6, 22, -5);
+                beam2.rotation.z = -0.1;
                 group.add(beam2);
             }
         }
