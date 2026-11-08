@@ -1,0 +1,526 @@
+/* ==========================================================================
+   UNDER THE HOOD 🏎️ — PWA 3D Stylesheet
+   ========================================================================== */
+
+:root {
+    --hood-bg: #090d16;
+    --hood-surface: rgba(15, 23, 42, 0.88);
+    --hood-surface-hover: rgba(30, 41, 59, 0.95);
+    --hood-border: rgba(255, 255, 255, 0.12);
+    --hood-accent: #3b82f6;
+    --hood-accent-glow: rgba(59, 130, 246, 0.4);
+    --hood-gold: #f59e0b;
+    --hood-green: #10b981;
+    --hood-red: #ef4444;
+    --hood-text: #f8fafc;
+    --hood-muted: #94a3b8;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.hood-body {
+    background-color: var(--hood-bg);
+    color: var(--hood-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    touch-action: none;
+    user-select: none;
+}
+
+/* 3D Canvas */
+#hood-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#hood-canvas-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* UI Layer */
+.hood-ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.hood-interactive {
+    pointer-events: auto;
+}
+
+/* Top Navigation Bar */
+.hood-topbar {
+    padding: calc(0.5rem + var(--safe-top)) 0.75rem 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: linear-gradient(180deg, rgba(9, 13, 22, 0.85) 0%, rgba(9, 13, 22, 0) 100%);
+}
+
+.hood-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    background: var(--hood-surface);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--hood-border);
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.hood-cash-badge {
+    color: var(--hood-gold);
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+}
+
+.hood-btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--hood-surface);
+    border: 1px solid var(--hood-border);
+    color: var(--hood-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: transform 0.15s, background 0.15s;
+}
+
+.hood-btn-icon:active {
+    transform: scale(0.92);
+    background: var(--hood-surface-hover);
+}
+
+/* Turn Indicator Banner */
+.hood-turn-pill {
+    margin: 0 auto;
+    font-size: 0.85rem;
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-color: var(--hood-accent);
+}
+
+/* Event Ticker / Toast */
+.hood-ticker-bar {
+    margin: 0.25rem 0.75rem auto 0.75rem;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--hood-border);
+    border-radius: 10px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: hoodSlideDown 0.3s ease;
+}
+
+@keyframes hoodSlideDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.hood-ticker-text {
+    flex: 1;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Player Mini-Bar (Pills of all players) */
+.hood-players-row {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.25rem 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.hood-players-row::-webkit-scrollbar {
+    display: none;
+}
+
+.hood-player-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--hood-surface);
+    border: 1px solid var(--hood-border);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0.75;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.hood-player-chip.active {
+    opacity: 1;
+    transform: scale(1.05);
+    border-color: var(--hood-gold);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.hood-chip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* Bottom Action Deck */
+.hood-action-deck {
+    padding: 0.5rem 0.75rem calc(0.75rem + var(--safe-bottom)) 0.75rem;
+    background: linear-gradient(0deg, rgba(9, 13, 22, 0.95) 0%, rgba(9, 13, 22, 0.8) 70%, rgba(9, 13, 22, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Big Action Button */
+.hood-btn-primary {
+    width: 100%;
+    max-width: 340px;
+    padding: 0.9rem 1.25rem;
+    border-radius: 14px;
+    border: none;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 6px 20px var(--hood-accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+}
+
+.hood-btn-primary:active {
+    transform: scale(0.97);
+}
+
+.hood-btn-primary.pulse {
+    animation: hoodPulse 1.8s infinite;
+}
+
+@keyframes hoodPulse {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
+    70% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.hood-btn-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.hood-btn-secondary {
+    background: var(--hood-surface);
+    border: 1px solid var(--hood-border);
+    color: var(--hood-text);
+}
+
+.hood-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 340px;
+}
+
+.hood-btn-group .hood-btn-primary {
+    flex: 1;
+}
+
+/* Dice Display */
+.hood-dice-display {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+}
+
+.hood-die {
+    width: 44px;
+    height: 44px;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 2px 2px rgba(255, 255, 255, 0.8);
+    transform: rotate(0deg);
+    transition: transform 0.3s;
+}
+
+/* Modals & Overlays (Lobby, Detail Sheet, Victory) */
+.hood-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.hood-modal-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hood-modal {
+    background: #0f172a;
+    border: 1px solid var(--hood-border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    transform: scale(0.95);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hood-modal-backdrop.open .hood-modal {
+    transform: scale(1);
+}
+
+.hood-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.hood-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* Property Inspection Bottom Sheet */
+.hood-sheet-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+}
+
+.hood-sheet-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hood-sheet {
+    background: #0f172a;
+    border-top: 1px solid var(--hood-border);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 1.25rem 1.25rem calc(1.5rem + var(--safe-bottom)) 1.25rem;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.hood-sheet-backdrop.open .hood-sheet {
+    transform: translateY(0);
+}
+
+.hood-sheet-handle {
+    width: 40px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    margin: 0 auto 1rem auto;
+}
+
+.hood-sheet-price-tag {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0.5rem 0 1rem 0;
+}
+
+.hood-sheet-price-tag .amount {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--hood-gold);
+}
+
+/* Rent Table */
+.hood-rent-table {
+    width: 100%;
+    margin: 0.75rem 0;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.hood-rent-table tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hood-rent-table td {
+    padding: 0.4rem 0.2rem;
+}
+
+.hood-rent-table td:last-child {
+    text-align: right;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.hood-rent-table tr.active-level {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--hood-accent);
+}
+
+.hood-rent-table tr.active-level td:last-child {
+    color: var(--hood-gold);
+}
+
+/* Lobby Form Controls */
+.hood-form-group {
+    margin-bottom: 1rem;
+}
+
+.hood-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--hood-muted);
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+}
+
+.hood-input {
+    width: 100%;
+    padding: 0.75rem;
+    background: #1e293b;
+    border: 1px solid var(--hood-border);
+    border-radius: 10px;
+    color: var(--hood-text);
+    font-size: 0.95rem;
+}
+
+.hood-color-picker {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.hood-color-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+.hood-color-swatch.selected {
+    transform: scale(1.15);
+    border-color: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.hood-vehicle-picker {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.hood-vehicle-card {
+    background: #1e293b;
+    border: 1px solid var(--hood-border);
+    border-radius: 10px;
+    padding: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.hood-vehicle-card.selected {
+    border-color: var(--hood-accent);
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.hood-vehicle-card .icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.hood-vehicle-card .name {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive Fixes */
+@media (min-width: 768px) {
+    .hood-sheet {
+        max-width: 480px;
+        margin: 0 auto 2rem auto;
+        border-radius: 20px;
+    }
+}

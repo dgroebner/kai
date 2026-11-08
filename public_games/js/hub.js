@@ -254,5 +254,55 @@
                 }
             });
         }
+
+        // =====================================================================
+        // FEATURE-FLAG: UNDER THE HOOD (3x schnelles Tippen auf Versionsnummer)
+        // =====================================================================
+        const versionTrigger = document.getElementById('quarxl-version-trigger');
+        const hoodCard = document.getElementById('card-under-the-hood');
+        const HOOD_FLAG_KEY = 'quarxl_flag_under_the_hood';
+
+        const updateHoodVisibility = () => {
+            if (!hoodCard) return;
+            const isUnlocked = localStorage.getItem(HOOD_FLAG_KEY) === 'true';
+            hoodCard.style.display = isUnlocked ? 'flex' : 'none';
+        };
+        updateHoodVisibility();
+
+        if (versionTrigger) {
+            let tapCount = 0;
+            let lastTapTime = 0;
+
+            versionTrigger.addEventListener('click', async () => {
+                const now = Date.now();
+                if (now - lastTapTime < 500) {
+                    tapCount++;
+                } else {
+                    tapCount = 1;
+                }
+                lastTapTime = now;
+
+                if (tapCount === 3) {
+                    tapCount = 0;
+                    const currentlyUnlocked = localStorage.getItem(HOOD_FLAG_KEY) === 'true';
+                    const newState = !currentlyUnlocked;
+                    localStorage.setItem(HOOD_FLAG_KEY, newState ? 'true' : 'false');
+                    updateHoodVisibility();
+
+                    if (newState) {
+                        if (hoodCard) hoodCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        await HubDialog.alert('🏎️ Under the Hood freigeschaltet!', 'Das neue 3D-Monopoly-Browsergame ist jetzt in deiner Spieleauswahl aktiv.', '🎉');
+                    } else {
+                        await HubDialog.alert('Under the Hood verborgen', 'Das Spiel wurde wieder ausgeblendet.', '🔒');
+                    }
+                }
+            });
+        }
+
+        if (hoodCard) {
+            hoodCard.addEventListener('click', () => {
+                window.location.href = './under_the_hood/index.php';
+            });
+        }
     });
 })();

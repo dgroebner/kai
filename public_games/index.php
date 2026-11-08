@@ -136,10 +136,20 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–4 Spieler</span>
             </div>
+
+            <!-- Under the Hood Kachel (3D Monopoly — Feature-Flag / Easter-Egg) -->
+            <div class="game-kachel" id="card-under-the-hood" role="button" tabindex="0" style="display: none;">
+                <div class="game-kachel-icon">🏎️</div>
+                <div class="game-kachel-content">
+                    <h2>Under the Hood <span style="font-size: 0.72rem; background: var(--color-blue); color: #fff; padding: 0.15rem 0.45rem; border-radius: 9999px; margin-left: 0.35rem; vertical-align: middle;">3D</span></h2>
+                    <p>Cruist mit euren Karren durch die Küstenmetropole, erschließt verwilderte Grundstücke und baut Luxushotels!</p>
+                </div>
+                <span class="game-kachel-badge">1–6 Spieler &bull; 3D</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
-            games.agent-smith.de &bull; v<?= APP_VERSION ?>
+            games.agent-smith.de &bull; <span id="quarxl-version-trigger" style="cursor: pointer; user-select: none;">v<?= APP_VERSION ?></span>
         </footer>
     </div>
 
