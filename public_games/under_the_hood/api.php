@@ -66,12 +66,13 @@ try {
         if ($playerName === '') $playerName = 'Driver';
         $vehicle = trim((string)($input['vehicle'] ?? 'sportscar'));
         $color = trim((string)($input['color'] ?? '#ef4444'));
+        $isHotSeat = !empty($input['is_hotseat']);
 
         $newPlayerToken = bin2hex(random_bytes(16));
         $newHostHash = hash('sha256', $newPlayerToken);
 
-        $initialState = $service->createInitialState();
-        $room = $repo->createRoom('under_the_hood', 'standard', $newHostHash, $initialState);
+        $initialState = $service->createInitialState(['is_hotseat' => $isHotSeat]);
+        $room = $repo->createRoom('under_the_hood', $isHotSeat ? 'hotseat' : 'standard', $newHostHash, $initialState);
         if (!$room) {
             hoodRespond(500, ['success' => false, 'message' => 'Konnte Raum nicht anlegen']);
         }
@@ -166,6 +167,20 @@ try {
         hoodRespond(200, $res);
     }
 
+    // 4b. LOKALEN SPIELER HINZUFÜGEN (Hot-Seat-Modus)
+    if ($action === 'add_local') {
+        hoodRequirePost();
+        if (!$currentPlayer || empty($currentPlayer['is_host'])) {
+            hoodRespond(403, ['success' => false, 'message' => 'Nur der Host kann Spieler hinzufügen']);
+        }
+        $localName = mb_substr(trim((string)($input['player_name'] ?? 'Spieler 2')), 0, 25);
+        if ($localName === '') $localName = 'Spieler 2';
+        $localVeh = trim((string)($input['vehicle'] ?? 'camper'));
+        $localColor = trim((string)($input['color'] ?? '#3b82f6'));
+        $res = $service->addLocalPlayer($roomId, $localName, $localVeh, $localColor);
+        hoodRespond(200, $res);
+    }
+
     // 5. SPIEL STARTEN (Nur Host)
     if ($action === 'start') {
         hoodRequirePost();
@@ -181,24 +196,33 @@ try {
         hoodRespond(401, ['success' => false, 'message' => 'Spieler nicht autorisiert']);
     }
 
+    // Im Hot-Seat-Modus agiert der Host stellvertretend für den aktuell aktiven lokalen Spieler
+    $actingPlayerId = $currentPlayer['id'];
+    if (!empty($state['is_hotseat']) && !empty($currentPlayer['is_host'])) {
+        $activePlayer = $state['players'][$state['current_player_index']] ?? null;
+        if ($activePlayer && !$activePlayer['is_bot']) {
+            $actingPlayerId = $activePlayer['id'];
+        }
+    }
+
     // 6. WÜRFELN
     if ($action === 'roll') {
         hoodRequirePost();
-        $res = $service->rollDice($roomId, $currentPlayer['id']);
+        $res = $service->rollDice($roomId, $actingPlayerId);
         hoodRespond(200, $res);
     }
 
     // 7. KAUFEN
     if ($action === 'buy') {
         hoodRequirePost();
-        $res = $service->buyCurrentTile($roomId, $currentPlayer['id']);
+        $res = $service->buyCurrentTile($roomId, $actingPlayerId);
         hoodRespond(200, $res);
     }
 
     // 8. KAUF ÜBERSPRINGEN
     if ($action === 'pass') {
         hoodRequirePost();
-        $res = $service->passCurrentTile($roomId, $currentPlayer['id']);
+        $res = $service->passCurrentTile($roomId, $actingPlayerId);
         hoodRespond(200, $res);
     }
 
@@ -206,7 +230,7 @@ try {
     if ($action === 'build') {
         hoodRequirePost();
         $tileIndex = (int)($input['tile_index'] ?? -1);
-        $res = $service->buildHouse($roomId, $currentPlayer['id'], $tileIndex);
+        $res = $service->buildHouse($roomId, $actingPlayerId, $tileIndex);
         hoodRespond(200, $res);
     }
 
@@ -214,21 +238,21 @@ try {
     if ($action === 'mortgage') {
         hoodRequirePost();
         $tileIndex = (int)($input['tile_index'] ?? -1);
-        $res = $service->toggleMortgage($roomId, $currentPlayer['id'], $tileIndex);
+        $res = $service->toggleMortgage($roomId, $actingPlayerId, $tileIndex);
         hoodRespond(200, $res);
     }
 
     // 11. KAUTION ZAHLEN
     if ($action === 'pay_bail') {
         hoodRequirePost();
-        $res = $service->payBail($roomId, $currentPlayer['id']);
+        $res = $service->payBail($roomId, $actingPlayerId);
         hoodRespond(200, $res);
     }
 
     // 12. ZUG BEENDEN
     if ($action === 'end_turn') {
         hoodRequirePost();
-        $res = $service->endTurn($roomId, $currentPlayer['id']);
+        $res = $service->endTurn($roomId, $actingPlayerId);
         hoodRespond(200, $res);
     }
 

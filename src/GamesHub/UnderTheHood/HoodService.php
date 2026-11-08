@@ -43,6 +43,7 @@ class HoodService
 
         return [
             'status'               => 'lobby',
+            'is_hotseat'           => !empty($options['is_hotseat']),
             'round'                => 1,
             'current_player_index' => 0,
             'phase'                => 'ROLL', // ROLL, BUY_DECISION, TURN_END
@@ -135,6 +136,48 @@ class HoodService
         $state['log'][] = [
             'time' => date('H:i'),
             'text' => '🚗 ' . $name . ' rollt mit einem ' . (HoodConfig::VEHICLES[$vehicle]['name'] ?? 'Wagen') . ' an die Startlinie!'
+        ];
+
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'player' => $newPlayer, 'state' => $state];
+    }
+
+    /**
+     * Fügt einen weiteren lokalen menschlichen Spieler für den Hot-Seat-Modus hinzu.
+     */
+    public function addLocalPlayer(int $roomId, string $name, string $vehicle, string $color): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+
+        if (count($state['players']) >= 6) {
+            return ['success' => false, 'message' => 'Maximale Spieleranzahl (6) erreicht'];
+        }
+
+        $playerId = count($state['players']) + 1;
+        $newPlayer = [
+            'id'               => $playerId,
+            'token_hash'       => 'local_' . bin2hex(random_bytes(8)),
+            'name'             => $name,
+            'vehicle'          => $vehicle,
+            'color'            => $color,
+            'cash'             => HoodConfig::STARTING_CASH,
+            'position'         => 0,
+            'in_jail'          => false,
+            'jail_turns'       => 0,
+            'jail_free_cards'  => 0,
+            'is_bot'           => false,
+            'bankrupt'         => false,
+            'is_host'          => false,
+        ];
+
+        $state['players'][] = $newPlayer;
+        $state['log'][] = [
+            'time' => date('H:i'),
+            'text' => '🛋️ ' . $name . ' (' . (HoodConfig::VEHICLES[$vehicle]['name'] ?? 'Wagen') . ') sitzt mit am Steuer (Hot-Seat)!'
         ];
 
         $this->repo->updateRoomState($roomId, $state);

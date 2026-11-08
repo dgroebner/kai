@@ -13,7 +13,7 @@ $csrfToken = Auth::csrfToken();
 <html lang="de">
 <head>
     <meta charset="utf-8">
-    <title>Under the Hood 🏎️ — Quarxl 3D</title>
+    <title>Under the Hood 🏎️ — Quarxl 3D Cockpit</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#090d16">
     <meta name="mobile-web-app-capable" content="yes">
@@ -26,13 +26,13 @@ $csrfToken = Auth::csrfToken();
 </head>
 <body class="hood-body">
 
-    <!-- 3D WebGL Canvas Container -->
+    <!-- 3D First-Person Cockpit & Street Canvas -->
     <div id="hood-canvas-container"></div>
 
     <!-- UI Overlay Layer -->
     <div class="hood-ui-layer">
         
-        <!-- Header / Navigation -->
+        <!-- Header / Navigation Bar -->
         <header class="hood-topbar hood-interactive">
             <div style="display: flex; gap: 0.4rem; align-items: center;">
                 <button type="button" class="hood-btn-icon" id="btn-leave" title="Zurück zu Quarxl">◀</button>
@@ -47,56 +47,84 @@ $csrfToken = Auth::csrfToken();
                 <span id="cash-badge-amount">1.500 $</span>
             </div>
 
-            <button type="button" class="hood-btn-icon" id="btn-audio-toggle" title="Ton an/aus">🔊</button>
+            <!-- Blick-Steuerung & Ton -->
+            <div class="hood-view-controls">
+                <button type="button" class="hood-btn-icon" id="btn-look-road" title="Blick nach vorn auf die Straße">🛣️</button>
+                <button type="button" class="hood-btn-icon" id="btn-look-plot" title="Blick aus dem Fenster aufs Grundstück">🏡</button>
+                <button type="button" class="hood-btn-icon" id="btn-audio-toggle" title="Ton an/aus">🔊</button>
+            </div>
         </header>
 
-        <!-- Turn Indicator Pill -->
-        <div class="hood-turn-pill hood-badge hood-interactive" id="turn-pill-text">
-            🏁 Warte auf Spielstart...
-        </div>
-
-        <!-- Live Ticker / Letztes Ereignis -->
+        <!-- Live Ticker Bar -->
         <div class="hood-ticker-bar hood-interactive">
             <span style="font-size: 1rem;">📢</span>
-            <div class="hood-ticker-text" id="ticker-text">Willkommen in der Hood!</div>
+            <div class="hood-ticker-text" id="ticker-text">Du sitzt am Steuer. Lass die Motoren an!</div>
         </div>
 
-        <!-- Spieler-Statusreihe (Horizontaler Scroll) -->
-        <div class="hood-players-row hood-interactive" id="players-row"></div>
-
-        <!-- Unten: Aktions-Deck -->
-        <div class="hood-action-deck hood-interactive" id="action-deck">
+        <!-- ==================================================================
+             DAS ARMATURENBRETT & DAS MITTEL-NAVI (Cockpit-Console)
+             ================================================================== -->
+        <div class="hood-cockpit-console hood-interactive">
             
-            <!-- Würfel-Anzeige -->
-            <div class="hood-dice-display" id="dice-display">
-                <div class="hood-die" id="die-1">?</div>
-                <div class="hood-die" id="die-2">?</div>
-            </div>
+            <div class="hood-navi-screen">
+                
+                <!-- Navi Header -->
+                <div class="hood-navi-header">
+                    <div class="hood-navi-location">
+                        <span>📍</span>
+                        <div class="hood-navi-name" id="navi-name">Start &amp; Ziel</div>
+                    </div>
+                    <span class="hood-navi-zone-tag" id="navi-zone-tag" style="background: var(--hood-accent);">START</span>
+                </div>
 
-            <!-- Würfeln-Button -->
-            <button type="button" class="hood-btn-primary pulse" id="btn-roll">
-                <span>🎲</span> WÜRFELN
-            </button>
+                <!-- Navi Daten-Anzeige (Besitzer, Kaufpreis, Miete) -->
+                <div class="hood-navi-stats">
+                    <div class="hood-navi-stat-box">
+                        <div class="label">Kaufpreis</div>
+                        <div class="val gold" id="navi-price">0 $</div>
+                    </div>
+                    <div class="hood-navi-stat-box">
+                        <div class="label">Miete</div>
+                        <div class="val" id="navi-rent">0 $</div>
+                    </div>
+                    <div class="hood-navi-stat-box">
+                        <div class="label">Besitzer</div>
+                        <div class="val" id="navi-owner" style="font-size: 0.85rem;">Frei</div>
+                    </div>
+                </div>
 
-            <!-- Kaufentscheidungs-Gruppe -->
-            <div class="hood-btn-group" id="btn-group-buy" style="display: none;">
-                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-buy">
-                    <span>🏡</span> KAUFEN
+                <!-- Würfel-Cluster & Aktions-Buttons -->
+                <div class="hood-dice-cluster" id="dice-display">
+                    <div class="hood-die" id="die-1">?</div>
+                    <div class="hood-die" id="die-2">?</div>
+                </div>
+
+                <!-- 1. Motor Start / Würfeln -->
+                <button type="button" class="hood-btn-primary pulse" id="btn-roll">
+                    <span>⚡</span> MOTOR START &amp; WÜRFELN
                 </button>
-                <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-pass">
-                    <span>💨</span> WEITER
+
+                <!-- 2. Kaufen / Weiterfahren -->
+                <div class="hood-btn-group" id="btn-group-buy" style="display: none;">
+                    <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-buy">
+                        <span>🏡</span> KAUFEN
+                    </button>
+                    <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-pass">
+                        <span>💨</span> WEITER
+                    </button>
+                </div>
+
+                <!-- 3. Kaution zahlen -->
+                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-bail" style="display: none;">
+                    <span>💸</span> KAUTION ZAHLEN (50 $)
                 </button>
+
+                <!-- 4. Zug beenden -->
+                <button type="button" class="hood-btn-primary" id="btn-end-turn" style="display: none;">
+                    <span>👉</span> ZUG BEENDEN
+                </button>
+
             </div>
-
-            <!-- Kaution zahlen -->
-            <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-bail" style="display: none;">
-                <span>💸</span> KAUTION ZAHLEN (50 $)
-            </button>
-
-            <!-- Zug beenden Button -->
-            <button type="button" class="hood-btn-primary" id="btn-end-turn" style="display: none;">
-                <span>👉</span> ZUG BEENDEN
-            </button>
 
         </div>
 
@@ -139,12 +167,19 @@ $csrfToken = Auth::csrfToken();
                 <div class="hood-modal-header">
                     <h2 class="hood-modal-title">🏎️ Under the Hood</h2>
                 </div>
-                <p style="font-size: 0.85rem; color: var(--hood-muted); margin-bottom: 1.25rem;">
-                    Erstelle eine 3D-Multiplayer-Runde oder spiele sofort gegen smarte KI-Gegner.
-                </p>
+
+                <!-- Modus-Auswahl: Hot-Seat vs. Online -->
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button type="button" class="hood-btn-primary" id="mode-tab-hotseat" style="flex: 1; padding: 0.6rem; font-size: 0.85rem;">
+                        🛋️ Hot-Seat (1 PC)
+                    </button>
+                    <button type="button" class="hood-btn-primary hood-btn-secondary" id="mode-tab-online" style="flex: 1; padding: 0.6rem; font-size: 0.85rem;">
+                        🌐 Online (Codes)
+                    </button>
+                </div>
 
                 <div class="hood-form-group">
-                    <label class="hood-label" for="input-player-name">Dein Fahrer-Name</label>
+                    <label class="hood-label" for="input-player-name">Fahrer 1 Name</label>
                     <input type="text" id="input-player-name" class="hood-input" value="Driver" maxlength="20">
                 </div>
 
@@ -175,7 +210,7 @@ $csrfToken = Auth::csrfToken();
                 </div>
 
                 <button type="button" class="hood-btn-primary" id="btn-create-room" style="margin-top: 1rem;">
-                    🏁 RAUM ERSTELLEN
+                    🏁 SPIEL ERSTELLEN
                 </button>
             </div>
 
@@ -185,13 +220,21 @@ $csrfToken = Auth::csrfToken();
                     <h2 class="hood-modal-title">🏎️ Startaufstellung</h2>
                     <div class="hood-badge" id="lobby-room-code">---</div>
                 </div>
-                <p style="font-size: 0.85rem; color: var(--hood-muted); margin-bottom: 1rem;">
-                    Teile den Code mit Freunden oder füge KI-Fahrer hinzu.
+                <p style="font-size: 0.85rem; color: var(--hood-muted); margin-bottom: 1rem;" id="lobby-room-info">
+                    Füge weitere Mitspieler oder KI-Fahrer hinzu.
                 </p>
 
                 <ul id="lobby-players-list" style="list-style: none; margin-bottom: 1.25rem;"></ul>
 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Hot-Seat Spieler hinzufügen -->
+                    <div id="hotseat-add-box" style="display: none; background: #1e293b; padding: 0.75rem; border-radius: 12px; margin-bottom: 0.5rem;">
+                        <input type="text" id="input-local-name" class="hood-input" placeholder="Name Mitspieler (z.B. Anna)" style="margin-bottom: 0.5rem;">
+                        <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-add-local" style="padding: 0.6rem;">
+                            ➕ Weiteren lokalen Spieler hinzufügen
+                        </button>
+                    </div>
+
                     <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-add-bot">
                         🤖 + KI-FAHRER HINZUFÜGEN
                     </button>
