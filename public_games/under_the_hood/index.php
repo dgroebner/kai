@@ -226,6 +226,46 @@ $csrfToken = Auth::csrfToken();
                 </button>
             </div>
 
+            <!-- Formular: Raum beitreten (Gast / Spieler 2+) -->
+            <div id="lobby-join-form" style="display: none;">
+                <div class="hood-modal-header">
+                    <h2 class="hood-modal-title">🏎️ Spiel beitreten</h2>
+                    <div class="hood-badge" id="join-room-code-badge">---</div>
+                </div>
+
+                <div class="hood-form-group">
+                    <label class="hood-label" for="join-player-name">Dein Fahrer-Name</label>
+                    <input type="text" id="join-player-name" class="hood-input" placeholder="Dein Spielername" maxlength="20">
+                </div>
+
+                <div class="hood-form-group">
+                    <label class="hood-label">Farbe deines Wagens &amp; Zäune</label>
+                    <div class="hood-color-picker" id="join-color-picker">
+                        <?php foreach (HoodConfig::PLAYER_COLORS as $idx => $c): ?>
+                            <div class="hood-color-swatch <?= $idx === 1 ? 'selected' : '' ?>" style="background-color: <?= $c ?>;" data-color="<?= $c ?>"></div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="hood-form-group">
+                    <label class="hood-label">Fahrzeug-Klasse</label>
+                    <div class="hood-vehicle-picker" id="join-vehicle-picker">
+                        <?php foreach (HoodConfig::VEHICLES as $key => $v): ?>
+                            <div class="hood-vehicle-card <?= $key === 'muscle' ? 'selected' : '' ?>" data-vehicle="<?= $key ?>">
+                                <div class="icon"><?= $v['icon'] ?></div>
+                                <div class="name"><?= $v['name'] ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div id="join-error-box" class="hidden" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
+
+                <button type="button" class="hood-btn-primary js-btn-confirm-join" id="btn-confirm-join" style="margin-top: 1rem;">
+                    🏁 DEM RENNEN BEITRETEN
+                </button>
+            </div>
+
             <!-- Warteraum / Vor dem Start -->
             <div id="lobby-waiting-room" style="display: none;">
                 <div class="hood-modal-header">

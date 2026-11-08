@@ -3095,6 +3095,22 @@
         // 8. WEICHE FAHRT ENTLANG DES SPLINES
         // ---------------------------------------------------------------------
         driveToTile(fromIndex, toIndex, onComplete) {
+            const from = Number.isFinite(fromIndex) ? Math.floor(fromIndex) : (parseInt(fromIndex, 10) || 0);
+            const to = Number.isFinite(toIndex) ? Math.floor(toIndex) : (parseInt(toIndex, 10) || 0);
+
+            const steps = (to >= from) ? (to - from) : (40 - from + to);
+            if (steps <= 0 || steps >= 40 || !this.trackCurve) {
+                this.isDriving = false;
+                const tp = this.trackPoints ? this.trackPoints[to % 40] : null;
+                if (tp && this.cockpitRig) {
+                    const carPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(3.2));
+                    this.cockpitRig.position.copy(carPos);
+                    this.cockpitRig.rotation.y = tp.angle;
+                }
+                if (onComplete) onComplete();
+                return;
+            }
+
             this.isDriving = true;
             this.audio.playEngine();
 
@@ -3102,28 +3118,41 @@
             this.targetYaw = 0.0;
             this.targetPitch = 0.0;
 
-            const steps = (toIndex >= fromIndex) ? (toIndex - fromIndex) : (40 - fromIndex + toIndex);
             const totalDuration = Math.max(1400, steps * 280);
             const startTime = performance.now();
 
             const stepLoop = (now) => {
+                if (!this.trackCurve) {
+                    this.isDriving = false;
+                    if (onComplete) onComplete();
+                    return;
+                }
+
                 const elapsed = now - startTime;
-                const progress = Math.min(elapsed / totalDuration, 1);
+                const progress = Math.min(Math.max(elapsed / totalDuration, 0), 1);
 
                 // Sanfte Ease-In-Out Beschleunigung
                 const eased = progress < 0.5
                     ? 4 * progress * progress * progress
                     : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
-                const currentU = (fromIndex / 40.0 + (steps / 40.0) * eased) % 1.0;
-                const pos = this.trackCurve.getPointAt(currentU);
-                const tangent = this.trackCurve.getTangentAt(currentU).normalize();
-                const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+                let currentU = (from / 40.0 + (steps / 40.0) * eased) % 1.0;
+                if (!Number.isFinite(currentU) || isNaN(currentU)) currentU = 0;
+                if (currentU < 0) currentU += 1.0;
+                currentU = Math.min(Math.max(currentU, 0), 0.9999);
 
-                // Auto fährt flüssig auf der rechten Fahrspur (x = +3.2m)
-                const carPos = pos.clone().add(normal.clone().multiplyScalar(3.2));
-                this.cockpitRig.position.copy(carPos);
-                this.cockpitRig.rotation.y = Math.atan2(-tangent.x, -tangent.z);
+                try {
+                    const pos = this.trackCurve.getPointAt(currentU);
+                    const tangent = this.trackCurve.getTangentAt(currentU).normalize();
+                    const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+
+                    // Auto fährt flüssig auf der rechten Fahrspur (x = +3.2m)
+                    const carPos = pos.clone().add(normal.clone().multiplyScalar(3.2));
+                    this.cockpitRig.position.copy(carPos);
+                    this.cockpitRig.rotation.y = Math.atan2(-tangent.x, -tangent.z);
+                } catch (err) {
+                    console.warn('Track curve point calculation error:', err);
+                }
 
                 if (progress < 1) {
                     requestAnimationFrame(stepLoop);
@@ -3227,7 +3256,14 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    this.applyState(data.state, data.me);
+                    if (data.me) {
+                        this.applyState(data.state, data.me);
+                    } else {
+                        this.showJoinModal(data.state);
+                    }
+                } else if (res.status === 404) {
+                    alert('Dieser Spielraum existiert nicht oder wurde beendet.');
+                    window.location.href = './index.php';
                 }
             } catch (e) {}
         }
@@ -3269,17 +3305,21 @@
             }
 
             // Fahrt animieren
-            const activePlayer = newState.players[newState.current_player_index];
+            const activePlayer = (newState.players && newState.current_player_index !== undefined)
+                ? newState.players[newState.current_player_index]
+                : null;
             if (activePlayer) {
+                const newPos = Number.isFinite(activePlayer.position) ? Math.floor(activePlayer.position) : 0;
                 if (oldState && !this.isDriving) {
-                    const oldActive = oldState.players.find(p => p.id === activePlayer.id);
-                    if (oldActive && oldActive.position !== activePlayer.position) {
-                        this.driveToTile(oldActive.position, activePlayer.position, () => {
+                    const oldActive = oldState.players ? oldState.players.find(p => p.id === activePlayer.id) : null;
+                    const oldPos = (oldActive && Number.isFinite(oldActive.position)) ? Math.floor(oldActive.position) : null;
+                    if (oldPos !== null && oldPos !== newPos) {
+                        this.driveToTile(oldPos, newPos, () => {
                             this.updateNaviScreen(newState, activePlayer);
                         });
                     } else {
-                        const tp = this.trackPoints[activePlayer.position || 0];
-                        if (tp) {
+                        const tp = this.trackPoints ? this.trackPoints[newPos % 40] : null;
+                        if (tp && this.cockpitRig) {
                             const carPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(3.2));
                             this.cockpitRig.position.copy(carPos);
                             this.cockpitRig.rotation.y = tp.angle;
@@ -3287,8 +3327,8 @@
                         this.updateNaviScreen(newState, activePlayer);
                     }
                 } else if (!this.isDriving) {
-                    const tp = this.trackPoints[activePlayer.position || 0];
-                    if (tp) {
+                    const tp = this.trackPoints ? this.trackPoints[newPos % 40] : null;
+                    if (tp && this.cockpitRig) {
                         const carPos = tp.pos.clone().add(tp.normal.clone().multiplyScalar(3.2));
                         this.cockpitRig.position.copy(carPos);
                         this.cockpitRig.rotation.y = tp.angle;
@@ -3297,9 +3337,21 @@
                 }
             }
 
-            if (newState.last_dice) {
-                document.getElementById('die-1').textContent = newState.last_dice[0];
-                document.getElementById('die-2').textContent = newState.last_dice[1];
+            // Würfelanzeige aktualisieren (inkl. Animation bei neuem Wurf)
+            if (newState.last_dice && Array.isArray(newState.last_dice)) {
+                const isNewDice = !this.lastRenderedDice ||
+                    this.lastRenderedDice[0] !== newState.last_dice[0] ||
+                    this.lastRenderedDice[1] !== newState.last_dice[1];
+
+                if (isNewDice && !this.isRollingAnimation) {
+                    this.lastRenderedDice = [...newState.last_dice];
+                    this.playDiceRollAnimation(newState.last_dice);
+                } else if (!this.isRollingAnimation) {
+                    const d1 = document.getElementById('die-1');
+                    const d2 = document.getElementById('die-2');
+                    if (d1) d1.textContent = newState.last_dice[0];
+                    if (d2) d2.textContent = newState.last_dice[1];
+                }
             }
 
             if (newState.status === 'finished' && newState.winner_id) {
@@ -3438,11 +3490,77 @@
         // ---------------------------------------------------------------------
         // 11. AKTIONEN
         // ---------------------------------------------------------------------
-        async actionRoll() {
+        playDiceRollAnimation(targetDice, onComplete) {
+            const cluster = document.getElementById('dice-display');
+            const d1 = document.getElementById('die-1');
+            const d2 = document.getElementById('die-2');
+            if (!cluster || !d1 || !d2) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            this.isRollingAnimation = true;
+            cluster.classList.add('is-rolling');
+            d1.classList.remove('landing');
+            d2.classList.remove('landing');
+
+            if ('vibrate' in navigator) {
+                try { navigator.vibrate([25, 35, 25]); } catch (_) {}
+            }
+
             this.audio.playRoll();
+
+            let ticks = 0;
+            const maxTicks = 8;
+            const timer = setInterval(() => {
+                ticks++;
+                d1.textContent = Math.floor(Math.random() * 6) + 1;
+                d2.textContent = Math.floor(Math.random() * 6) + 1;
+
+                if (ticks >= maxTicks) {
+                    clearInterval(timer);
+                    cluster.classList.remove('is-rolling');
+                    this.isRollingAnimation = false;
+
+                    if (targetDice && targetDice.length >= 2) {
+                        d1.textContent = targetDice[0];
+                        d2.textContent = targetDice[1];
+                    }
+
+                    d1.classList.add('landing');
+                    d2.classList.add('landing');
+
+                    if ('vibrate' in navigator) {
+                        try { navigator.vibrate([40]); } catch (_) {}
+                    }
+
+                    setTimeout(() => {
+                        d1.classList.remove('landing');
+                        d2.classList.remove('landing');
+                        if (onComplete) onComplete();
+                    }, 350);
+                }
+            }, 65);
+        }
+
+        async actionRoll() {
+            if (this.isRollingAnimation) return;
+            this.ui.btnRoll.disabled = true;
+
             const res = await this.apiPost('roll');
-            if (res.success) {
-                this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+            this.ui.btnRoll.disabled = false;
+
+            if (res.success && res.state) {
+                if (res.state.last_dice) {
+                    this.lastRenderedDice = [...res.state.last_dice];
+                    this.playDiceRollAnimation(res.state.last_dice, () => {
+                        this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                    });
+                } else {
+                    this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                }
+            } else {
+                alert(res.message || 'Würfeln fehlgeschlagen');
             }
         }
 
@@ -3529,7 +3647,12 @@
         showLobbyModal(isCreating) {
             this.ui.lobbyModal.classList.add('open');
             const formCreate = document.getElementById('lobby-create-form');
-            formCreate.style.display = isCreating ? 'block' : 'none';
+            const formJoin = document.getElementById('lobby-join-form');
+            const formWaiting = document.getElementById('lobby-waiting-room');
+
+            if (formCreate) formCreate.style.display = isCreating ? 'block' : 'none';
+            if (formJoin) formJoin.style.display = 'none';
+            if (formWaiting) formWaiting.style.display = 'none';
 
             const nameInput = document.getElementById('input-player-name');
             const savedName = localStorage.getItem('kai_gh_player_name');
@@ -3697,8 +3820,13 @@
 
         renderLobbyModal(state) {
             this.ui.lobbyModal.classList.add('open');
-            document.getElementById('lobby-create-form').style.display = 'none';
-            document.getElementById('lobby-waiting-room').style.display = 'block';
+            const formCreate = document.getElementById('lobby-create-form');
+            const formJoin = document.getElementById('lobby-join-form');
+            const formWaiting = document.getElementById('lobby-waiting-room');
+
+            if (formCreate) formCreate.style.display = 'none';
+            if (formJoin) formJoin.style.display = 'none';
+            if (formWaiting) formWaiting.style.display = 'block';
 
             const isHotSeat = !!state.is_hotseat;
             document.getElementById('lobby-room-code').textContent = isHotSeat ? '🛋️ HOT-SEAT' : this.roomCode;
@@ -3722,13 +3850,108 @@
                 li.innerHTML = `
                     <div style="width: 14px; height: 14px; border-radius: 50%; background: ${p.color}; box-shadow: 0 0 6px ${p.color};"></div>
                     <strong>${p.name}</strong>
-                    <span style="color: var(--hood-muted); font-size: 0.8rem;">(${p.is_bot ? 'KI' : 'Lokal'})</span>
+                    <span style="color: var(--hood-muted); font-size: 0.8rem;">(${p.is_bot ? 'KI' : (p.is_host ? 'Host' : 'Fahrer')})</span>
                 `;
                 list.appendChild(li);
             });
 
             document.getElementById('btn-add-bot').style.display = this.isHost ? 'block' : 'none';
             document.getElementById('btn-start-game').style.display = this.isHost ? 'block' : 'none';
+        }
+
+        showJoinModal(state) {
+            this.ui.lobbyModal.classList.add('open');
+            const formCreate = document.getElementById('lobby-create-form');
+            const formWaiting = document.getElementById('lobby-waiting-room');
+            const formJoin = document.getElementById('lobby-join-form');
+
+            if (formCreate) formCreate.style.display = 'none';
+            if (formWaiting) formWaiting.style.display = 'none';
+            if (formJoin) formJoin.style.display = 'block';
+
+            const roomBadge = document.getElementById('join-room-code-badge');
+            if (roomBadge) roomBadge.textContent = this.roomCode;
+
+            const joinNameInput = document.getElementById('join-player-name');
+            const savedName = localStorage.getItem('kai_gh_player_name');
+            if (joinNameInput && savedName && !joinNameInput.value) {
+                joinNameInput.value = savedName;
+            }
+
+            const joinColors = document.querySelectorAll('#join-color-picker .hood-color-swatch');
+            joinColors.forEach(swatch => {
+                if (swatch._hoodBound) return;
+                swatch._hoodBound = true;
+                swatch.addEventListener('click', (e) => {
+                    joinColors.forEach(s => s.classList.remove('selected'));
+                    e.currentTarget.classList.add('selected');
+                });
+            });
+
+            const joinVehicles = document.querySelectorAll('#join-vehicle-picker .hood-vehicle-card');
+            joinVehicles.forEach(card => {
+                if (card._hoodBound) return;
+                card._hoodBound = true;
+                card.addEventListener('click', (e) => {
+                    joinVehicles.forEach(c => c.classList.remove('selected'));
+                    e.currentTarget.classList.add('selected');
+                });
+            });
+
+            const btnJoin = document.getElementById('btn-confirm-join');
+            if (btnJoin && !btnJoin._hoodBound) {
+                btnJoin._hoodBound = true;
+                btnJoin.addEventListener('click', async () => {
+                    const name = (joinNameInput ? joinNameInput.value.trim() : '') || 'Racer';
+                    const selColor = document.querySelector('#join-color-picker .hood-color-swatch.selected');
+                    const color = selColor ? selColor.dataset.color : '#3b82f6';
+                    const selVeh = document.querySelector('#join-vehicle-picker .hood-vehicle-card.selected');
+                    const vehicle = selVeh ? selVeh.dataset.vehicle : 'muscle';
+                    const errBox = document.getElementById('join-error-box');
+                    if (errBox) errBox.classList.add('hidden');
+
+                    btnJoin.disabled = true;
+                    try {
+                        const res = await fetch('api.php?action=join', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                room_code: this.roomCode,
+                                player_name: name,
+                                color: color,
+                                vehicle: vehicle,
+                            }),
+                        });
+                        const data = await res.json();
+                        btnJoin.disabled = false;
+                        if (data.success) {
+                            localStorage.setItem('kai_gh_player_name', name);
+                            this.playerToken = data.player_token;
+                            this.myPlayerId = data.player_id;
+                            localStorage.setItem('quarxl_hood_token_' + this.roomCode, this.playerToken);
+
+                            if (formJoin) formJoin.style.display = 'none';
+
+                            const mePlayer = data.state.players.find(p => p.id === this.myPlayerId);
+                            this.applyState(data.state, mePlayer);
+                            this.startPolling();
+                        } else {
+                            if (errBox) {
+                                errBox.textContent = data.message || 'Beitritt fehlgeschlagen.';
+                                errBox.classList.remove('hidden');
+                            } else {
+                                alert(data.message || 'Beitritt fehlgeschlagen.');
+                            }
+                        }
+                    } catch (e) {
+                        btnJoin.disabled = false;
+                        if (errBox) {
+                            errBox.textContent = 'Netzwerkfehler beim Beitritt.';
+                            errBox.classList.remove('hidden');
+                        }
+                    }
+                });
+            }
         }
     }
 
