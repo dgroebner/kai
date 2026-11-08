@@ -242,28 +242,15 @@
             ocean.position.y = -2;
             this.scene.add(ocean);
 
-            // Sanfte grüne Hügel-Landschaft
-            const islandGeo = new THREE.PlaneGeometry(900, 900, 32, 32);
-            // Sanfte Wellenform im Terrain für natürliche Unebenheiten
-            const posAttr = islandGeo.attributes.position;
-            for (let i = 0; i < posAttr.count; i++) {
-                const vx = posAttr.getX(i);
-                const vy = posAttr.getY(i);
-                const dist = Math.sqrt(vx * vx + vy * vy);
-                // Sanfte Erhöhungen im Insel-Inneren
-                if (dist < 350) {
-                    posAttr.setZ(i, Math.sin(vx * 0.015) * Math.cos(vy * 0.015) * 6 - 0.2);
-                }
-            }
-            islandGeo.computeVertexNormals();
-
+            // Stabile grüne Insel-Landschaft (Ebene Basis bei y = -0.05, garantiert kein Durchdrücken durch die Straße bei y = 0.25!)
+            const islandGeo = new THREE.PlaneGeometry(1200, 1200);
             const islandMat = new THREE.MeshStandardMaterial({
                 color: 0x16a34a,
                 roughness: 0.85,
             });
             const island = new THREE.Mesh(islandGeo, islandMat);
             island.rotation.x = -Math.PI / 2;
-            island.position.y = -0.1;
+            island.position.y = -0.05;
             island.receiveShadow = true;
             this.scene.add(island);
 
@@ -379,23 +366,23 @@
                 const t = this.trackCurve.getTangentAt(u).normalize();
                 const n = new THREE.Vector3(-t.z, 0, t.x).normalize();
 
-                // 1. Straßenband (Höhe y = 0.2)
+                // 1. Straßenband (Höhe y = 0.25, garantiert sauber über dem Terrain bei y = -0.05)
                 const rL = p.clone().add(n.clone().multiplyScalar(-roadWidth / 2));
                 const rR = p.clone().add(n.clone().multiplyScalar(roadWidth / 2));
-                roadPositions.push(rL.x, 0.2, rL.z);
-                roadPositions.push(rR.x, 0.2, rR.z);
+                roadPositions.push(rL.x, 0.25, rL.z);
+                roadPositions.push(rR.x, 0.25, rR.z);
 
-                // 2. Bordsteinkante aus Granit (Höhe y = 0.28, Breite 0.6)
+                // 2. Bordsteinkante aus Granit (Höhe y = 0.32, Breite 0.6)
                 const cL = rR.clone();
                 const cR = p.clone().add(n.clone().multiplyScalar(roadWidth / 2 + 0.6));
-                curbPositions.push(cL.x, 0.28, cL.z);
-                curbPositions.push(cR.x, 0.28, cR.z);
+                curbPositions.push(cL.x, 0.32, cL.z);
+                curbPositions.push(cR.x, 0.32, cR.z);
 
-                // 3. Gehwegband rechts (Höhe y = 0.35 aus Naturstein)
+                // 3. Gehwegband rechts (Höhe y = 0.38 aus Naturstein)
                 const wL = cR.clone();
                 const wR = p.clone().add(n.clone().multiplyScalar(roadWidth / 2 + walkWidth));
-                walkPositions.push(wL.x, 0.35, wL.z);
-                walkPositions.push(wR.x, 0.35, wR.z);
+                walkPositions.push(wL.x, 0.38, wL.z);
+                walkPositions.push(wR.x, 0.38, wR.z);
 
                 // 4. Fahrbahnmarkierungen: Durchgezogene weiße Außenlinie rechts & gestrichelte gelbe Mittellinie
                 if (i < SAMPLES) {
@@ -409,7 +396,7 @@
                     walkIndices.push(base, base + 1, base + 2);
                     walkIndices.push(base + 1, base + 3, base + 2);
 
-                    // Weiße Begrenzungslinie (Höhe y = 0.22)
+                    // Weiße Begrenzungslinie (Höhe y = 0.27)
                     const wl1 = p.clone().add(n.clone().multiplyScalar(roadWidth / 2 - 0.5));
                     const wl2 = p.clone().add(n.clone().multiplyScalar(roadWidth / 2 - 0.25));
                     const nextP = this.trackCurve.getPointAt(((i + 1) % SAMPLES) / SAMPLES);
@@ -419,11 +406,11 @@
                     const wl4 = nextP.clone().add(nextN.clone().multiplyScalar(roadWidth / 2 - 0.25));
 
                     const wIdx = wCount * 4;
-                    whiteLinePositions.push(wl1.x, 0.22, wl1.z, wl2.x, 0.22, wl2.z, wl3.x, 0.22, wl3.z, wl4.x, 0.22, wl4.z);
+                    whiteLinePositions.push(wl1.x, 0.27, wl1.z, wl2.x, 0.27, wl2.z, wl3.x, 0.27, wl3.z, wl4.x, 0.27, wl4.z);
                     whiteLineIndices.push(wIdx, wIdx + 1, wIdx + 2, wIdx + 1, wIdx + 3, wIdx + 2);
                     wCount++;
 
-                    // Gelbe gestrichelte Mittellinie (2 Abschnitte gelb, 1 Abschnitt frei)
+                    // Gelbe gestrichelte Mittellinie (Höhe y = 0.27, 2 Abschnitte gelb, 1 Abschnitt frei)
                     if (i % 3 < 2) {
                         const yl1 = p.clone().add(n.clone().multiplyScalar(-0.2));
                         const yl2 = p.clone().add(n.clone().multiplyScalar(0.2));
@@ -431,7 +418,7 @@
                         const yl4 = nextP.clone().add(nextN.clone().multiplyScalar(0.2));
 
                         const yIdx = yCount * 4;
-                        yellowLinePositions.push(yl1.x, 0.22, yl1.z, yl2.x, 0.22, yl2.z, yl3.x, 0.22, yl3.z, yl4.x, 0.22, yl4.z);
+                        yellowLinePositions.push(yl1.x, 0.27, yl1.z, yl2.x, 0.27, yl2.z, yl3.x, 0.27, yl3.z, yl4.x, 0.27, yl4.z);
                         yellowLineIndices.push(yIdx, yIdx + 1, yIdx + 2, yIdx + 1, yIdx + 3, yIdx + 2);
                         yCount++;
                     }
@@ -549,16 +536,17 @@
                 roughness: 0.9,
             });
 
+            // Sanfte Panoramahügel im Hintergrund (mit sicherem Sicherheitsabstand von mindestens 35m zu allen Streckenabschnitten und Grundstücken!)
             const hillConfigs = [
-                { x: 0, z: -320, r: 130, h: 45 },
-                { x: 260, z: -180, r: 110, h: 38 },
-                { x: 300, z: 120, r: 120, h: 42 },
-                { x: 0, z: 320, r: 140, h: 48 },
-                { x: -280, z: 140, r: 115, h: 40 },
-                { x: -290, z: -190, r: 125, h: 44 },
-                // Insel-Innere sanfte Hügel
-                { x: 30, z: -20, r: 85, h: 22 },
-                { x: -40, z: 30, r: 75, h: 18 },
+                { x: 0, z: -360, r: 85, h: 45 },
+                { x: 310, z: -200, r: 80, h: 40 },
+                { x: 340, z: 120, r: 85, h: 42 },
+                { x: 0, z: 360, r: 85, h: 46 },
+                { x: -320, z: 140, r: 80, h: 40 },
+                { x: -330, z: -200, r: 80, h: 44 },
+                // Insel-Innere sanfte Hügel (strenger Abstand zur Fahrbahn innen bei dist=145!)
+                { x: 20, z: -15, r: 45, h: 16 },
+                { x: -20, z: 15, r: 40, h: 14 },
             ];
 
             hillConfigs.forEach(hc => {
@@ -712,42 +700,42 @@
         buildPanoramacockpit() {
             this.cockpitRig = new THREE.Group();
 
-            // 1. Aerodynamische Motorhaube vorn (in Fahrtrichtung -Z!)
-            const hoodGeo = new THREE.BoxGeometry(3.2, 0.45, 3.4);
+            // 1. Aerodynamische flache Motorhaube vorn (in Fahrtrichtung -Z!)
+            const hoodGeo = new THREE.BoxGeometry(3.0, 0.28, 3.2);
             this.carHoodMat = new THREE.MeshStandardMaterial({
                 color: 0xef4444,
                 roughness: 0.22,
                 metalness: 0.7,
             });
             this.carHoodMesh = new THREE.Mesh(hoodGeo, this.carHoodMat);
-            this.carHoodMesh.position.set(0, 0.65, -2.4);
+            this.carHoodMesh.position.set(0, 0.42, -2.5);
             this.carHoodMesh.castShadow = true;
             this.cockpitRig.add(this.carHoodMesh);
 
-            // 2. Geschwungenes Armaturenbrett (dezentes schwarzes Nappaleder)
-            const dashGeo = new THREE.BoxGeometry(3.5, 0.5, 1.3);
+            // 2. Sportlich abgesenktes Armaturenbrett (dezentes schwarzes Nappaleder, blockiert nicht das Sichtfeld!)
+            const dashGeo = new THREE.BoxGeometry(3.5, 0.3, 1.1);
             const dashMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
             const dash = new THREE.Mesh(dashGeo, dashMat);
-            dash.position.set(0, 0.75, -0.8);
+            dash.position.set(0, 0.52, -0.85);
             this.cockpitRig.add(dash);
 
             // 3. Digitales Tacho-Kombiinstrument vor dem Fahrer (strahlt dezent in Cyan)
-            const clusterGeo = new THREE.BoxGeometry(0.85, 0.3, 0.05);
+            const clusterGeo = new THREE.BoxGeometry(0.72, 0.2, 0.04);
             const clusterMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 1.05, -0.65);
+            cluster.position.set(-0.7, 0.78, -0.7);
             cluster.rotation.x = -0.25;
             this.cockpitRig.add(cluster);
 
-            // Tacho-Hutze über dem Display
-            const cowlGeo = new THREE.BoxGeometry(0.95, 0.15, 0.4);
+            // Schlanke Tacho-Hutze über dem Display (flach integriert)
+            const cowlGeo = new THREE.BoxGeometry(0.8, 0.08, 0.25);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 1.2, -0.75);
+            cowl.position.set(-0.7, 0.9, -0.78);
             this.cockpitRig.add(cowl);
 
             // 4. Sportlenkrad (Links auf Fahrerseite)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.88, -0.4);
+            wheelGroup.position.set(-0.7, 0.8, -0.4);
             wheelGroup.rotation.x = 0.35;
 
             const ringGeo = new THREE.TorusGeometry(0.38, 0.04, 10, 24);
@@ -1623,6 +1611,117 @@
             const tex = new THREE.CanvasTexture(canvas);
             tex.colorSpace = THREE.SRGBColorSpace;
             this._texCache['panoramatafel'] = tex;
+            return tex;
+        }
+
+        getAutokinoSignTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['autokino_sign']) return this._texCache['autokino_sign'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // 1. OBERES SCHILD: "AUTOKINO" (Creme-Kasten mit Glühbirnen-Rahmen & roten 3D-Buchstaben wie im Foto!)
+            ctx.fillStyle = '#fef3c7';
+            ctx.fillRect(40, 30, 944, 230);
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 14;
+            ctx.strokeRect(40, 30, 944, 230);
+
+            // Glühbirnen-Kette um den Rahmen
+            for (let bx = 55; bx <= 970; bx += 32) {
+                const drawBulb = (x, y) => {
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+                };
+                drawBulb(bx, 40);
+                drawBulb(bx, 250);
+            }
+            for (let by = 55; by <= 235; by += 30) {
+                const drawBulb = (x, y) => {
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+                };
+                drawBulb(50, by);
+                drawBulb(974, by);
+            }
+
+            // Schriftzug "AUTOKINO" in tiefroten 3D-Relief-Buchstaben
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 130px "Arial Black", "Impact", sans-serif';
+
+            ctx.fillStyle = '#7f1d1d';
+            ctx.fillText('AUTOKINO', 516, 150);
+            ctx.strokeStyle = '#450a0a';
+            ctx.lineWidth = 14;
+            ctx.strokeText('AUTOKINO', 512, 145);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillText('AUTOKINO', 512, 145);
+            ctx.fillStyle = '#fca5a5';
+            ctx.font = '900 120px "Arial Black", "Impact", sans-serif';
+            ctx.fillText('AUTOKINO', 512, 143);
+
+            // 2. UNTERES SCHILD: "& Sunset Point" (Türkis-cremefarbene geschwungene Plakette)
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(80, 290, 864, 180);
+            ctx.strokeStyle = '#0f766e';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(80, 290, 864, 180);
+
+            // Elegante Schreibschrift "& Sunset Point"
+            ctx.font = 'italic 700 85px "Brush Script MT", "Segoe Script", "Dancing Script", cursive, sans-serif';
+            ctx.fillStyle = '#0f766e';
+            ctx.fillText('& Sunset Point', 512, 380);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['autokino_sign'] = tex;
+            return tex;
+        }
+
+        getAutokinoScreenTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['autokino_screen']) return this._texCache['autokino_screen'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Film-Leinwand: Sonnenuntergangs-Road-Movie Szene!
+            const grad = ctx.createLinearGradient(0, 0, 0, 512);
+            grad.addColorStop(0, '#f97316');
+            grad.addColorStop(0.4, '#ec4899');
+            grad.addColorStop(0.7, '#8b5cf6');
+            grad.addColorStop(1, '#1e1b4b');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1024, 512);
+
+            // Riesige goldene Sonne
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath(); ctx.arc(512, 320, 140, 0, Math.PI * 2); ctx.fill();
+
+            // Silhouette eines Autos auf dem Highway
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 440, 1024, 72);
+            ctx.fillRect(400, 410, 224, 35);
+            ctx.fillRect(440, 385, 140, 28);
+
+            // Retro Filmtitel oben
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 52px "Arial Black", sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillText('NOW SHOWING: UNDER THE HOOD', 512, 70);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['autokino_screen'] = tex;
             return tex;
         }
 
@@ -2532,86 +2631,169 @@
 
             } else if (tileType === 'parking') {
                 // =============================================================
-                // 6. RASTPLATZ ☕ — KÜSTEN-AUSSICHTSPUNKT (BILD 6)
+                // 6. AUTOKINO & SUNSET POINT 🎬🌅 (EXAKT WIE IM REFERENZBILD DES USERS!)
                 // =============================================================
-                const overlookGroup = new THREE.Group();
-                overlookGroup.position.set(2.5, 0, 0);
+                const cinemaGroup = new THREE.Group();
+                cinemaGroup.position.set(3.5, 0, 0);
 
-                // Paved Stone Aussichtsterrasse mit Meerblick
-                const terrace = new THREE.Mesh(new THREE.BoxGeometry(13.0, 0.45, 14.0), new THREE.MeshStandardMaterial({ color: 0xd4d4d8, roughness: 0.85 }));
-                terrace.position.set(-1.0, 0.35, 0);
-                terrace.receiveShadow = true;
-                overlookGroup.add(terrace);
+                // Schotter- & Gras-Areal des Autokinos
+                const groundMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 0.9 });
+                const cinemaGround = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.4, 18.0), groundMat);
+                cinemaGround.position.set(2.0, 0.35, 0);
+                cinemaGround.receiveShadow = true;
+                cinemaGroup.add(cinemaGround);
 
-                // Rustikale Naturstein-Pfeiler mit Holz-Doppelgeländer (wie im Foto!)
-                const stoneMat = new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.9 });
-                const woodRailMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 });
+                // Schotter-Zufahrtsstraße
+                const gravelMat = new THREE.MeshStandardMaterial({ color: 0xa8a29e, roughness: 0.95 });
+                const driveWay = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.05, 18.0), gravelMat);
+                driveWay.position.set(-3.5, 0.58, 0);
+                driveWay.receiveShadow = true;
+                cinemaGroup.add(driveWay);
 
-                [-6.5, 0, 5.5].forEach(pz => {
-                    const stonePillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.8), stoneMat);
-                    stonePillar.position.set(-5.5, 0.95, pz);
-                    overlookGroup.add(stonePillar);
+                // =========================================================
+                // 1. DAS MONUMENTALE EINGANGS-PORTAL (BILLBOARD AUF PFEILERN)
+                // =========================================================
+                const poleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.7, roughness: 0.25 });
+                const pLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 8.2, 16), poleMat);
+                pLeft.position.set(-6.2, 4.1, -4.5);
+                cinemaGroup.add(pLeft);
+
+                const pRight = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 8.2, 16), poleMat);
+                pRight.position.set(-6.2, 4.1, 4.5);
+                cinemaGroup.add(pRight);
+
+                // Großes zweigeteiltes Billboard: "AUTOKINO" + "& Sunset Point" (Canvas-Textur!)
+                const signMat = new THREE.MeshStandardMaterial({ map: this.getAutokinoSignTexture(), roughness: 0.3 });
+                const mainBillboard = new THREE.Mesh(new THREE.BoxGeometry(0.25, 4.5, 9.2), signMat);
+                mainBillboard.position.set(-6.2, 5.6, 0);
+                mainBillboard.castShadow = true;
+                cinemaGroup.add(mainBillboard);
+
+                // Bunte Wimpelketten / Fahnen an Seilen (Rot, Gelb, Cyan)
+                const flagColors = [0xef4444, 0xfacc15, 0x06b6d4, 0x22c55e, 0xf97316];
+                for (let f = 0; f < 8; f++) {
+                    const flag = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.45, 3), new THREE.MeshBasicMaterial({ color: flagColors[f % flagColors.length] }));
+                    flag.position.set(-6.15, 3.8 - (f % 3) * 0.15, -4.0 + f * 1.1);
+                    flag.rotation.x = Math.PI;
+                    cinemaGroup.add(flag);
+                }
+
+                // =========================================================
+                // 2. KASSENHÄUSCHEN ("EINFAHRT / TICKETS") MIT SCHRANKE
+                // =========================================================
+                const shedMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+                const ticketShed = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.7, 2.6), shedMat);
+                ticketShed.position.set(-1.8, 1.9, 4.8);
+                ticketShed.castShadow = true;
+                cinemaGroup.add(ticketShed);
+
+                // Satteldach
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(2.2, 0.9, 4), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+                roof.position.set(-1.8, 3.7, 4.8);
+                roof.rotation.y = Math.PI / 4;
+                cinemaGroup.add(roof);
+
+                // Kassenfenster
+                const shedWin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 1.2), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+                shedWin.position.set(-3.05, 2.2, 4.8);
+                cinemaGroup.add(shedWin);
+
+                // Kassen-Schranke
+                const barrier = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.2, 8), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+                barrier.position.set(-3.2, 1.1, 2.2);
+                barrier.rotation.x = Math.PI / 2;
+                cinemaGroup.add(barrier);
+
+                // Wegweiser-Schild "Sunset Point ➔"
+                const arrowPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), shedMat);
+                arrowPole.position.set(-4.5, 1.2, -4.8);
+                cinemaGroup.add(arrowPole);
+                const arrowSign = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 1.4), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+                arrowSign.position.set(-4.5, 1.8, -4.8);
+                cinemaGroup.add(arrowSign);
+
+                // =========================================================
+                // 3. RIESIGE MONUMENTALE PROJEKTIONS-LEINWAND IM HINTERGRUND
+                // =========================================================
+                const screenMat = new THREE.MeshBasicMaterial({ map: this.getAutokinoScreenTexture() });
+                const bigScreen = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7.2, 13.5), screenMat);
+                bigScreen.position.set(9.5, 4.8, 0);
+                bigScreen.castShadow = true;
+                cinemaGroup.add(bigScreen);
+
+                // Stahl-Trägergerüst hinter der Leinwand
+                const scaffoldMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7 });
+                [-5.5, 0, 5.5].forEach(sz => {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 7.5, 8), scaffoldMat);
+                    leg.position.set(10.2, 4.2, sz);
+                    leg.rotation.z = 0.2;
+                    cinemaGroup.add(leg);
                 });
 
-                // Horizontale Holz-Geländerstangen
-                const rail1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 12.0), woodRailMat);
-                rail1.position.set(-5.5, 1.25, 0);
-                overlookGroup.add(rail1);
-                const rail2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 12.0), woodRailMat);
-                rail2.position.set(-5.5, 0.85, 0);
-                overlookGroup.add(rail2);
-
-                // Poliertes Edelstahl-Aussichtsfernrohr (Coin-Telescope auf Sockel)
-                const scopeGroup = new THREE.Group();
-                scopeGroup.position.set(-5.2, 1.1, -1.8);
-                const scopePedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.1, 12), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 }));
-                scopeGroup.add(scopePedestal);
-                const scopeBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.9, 12), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95, roughness: 0.1 }));
-                scopeBarrel.rotation.z = -0.35;
-                scopeBarrel.position.set(-0.15, 0.65, 0);
-                scopeGroup.add(scopeBarrel);
-                overlookGroup.add(scopeGroup);
-
-                // Parkbänke mit Holzlattung & Eisenfüßen
-                [-3.5, 2.5].forEach(bz => {
-                    const bench = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 2.2), woodRailMat);
-                    bench.position.set(-3.5, 0.7, bz);
-                    overlookGroup.add(bench);
+                // =========================================================
+                // 4. AUTOKINO-PARKREIHEN MIT LAUTSPRECHER-SÄULEN & AUTOS
+                // =========================================================
+                // Lautsprechersäulen zwischen den Parkreihen
+                [-2.5, 2.5].forEach(pz => {
+                    [1.5, 5.0].forEach(px => {
+                        const speakerPost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), scaffoldMat);
+                        speakerPost.position.set(px, 1.35, pz);
+                        cinemaGroup.add(speakerPost);
+                        const speakerBox = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.35), new THREE.MeshStandardMaterial({ color: 0x18181b }));
+                        speakerBox.position.set(px, 2.1, pz);
+                        cinemaGroup.add(speakerBox);
+                    });
                 });
 
-                // Picknick-Tisch mit Sitzbänken
-                const picnicTable = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.85, 2.6), woodRailMat);
-                picnicTable.position.set(1.5, 0.7, -2.5);
-                overlookGroup.add(picnicTable);
-
-                // Panorama-Informationstafel mit Karte (Canvas-Textur!)
-                const panoMat = new THREE.MeshStandardMaterial({ map: this.getPanoramatafelTexture(), roughness: 0.4 });
-                const panoBoard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 1.8), panoMat);
-                panoBoard.position.set(-3.2, 1.3, 0);
-                panoBoard.rotation.z = -0.25;
-                overlookGroup.add(panoBoard);
-
-                // Blaues "P Aussichtspunkt" Verkehrsschild an der Zufahrt
-                const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 }));
-                signPole.position.set(-6.8, 1.5, 5.8);
-                overlookGroup.add(signPole);
-                const pSign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 0.9), new THREE.MeshStandardMaterial({ map: this.getViewpointSignTexture() }));
-                pSign.position.set(-6.8, 2.2, 5.8);
-                overlookGroup.add(pSign);
-
-                // Mediterrane Pinien / Zypressen für natürlichen Schatten
-                [ { x: 3.5, z: 3.5, h: 5.5 }, { x: 4.0, z: -4.5, h: 6.2 } ].forEach(tree => {
-                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, tree.h * 0.4, 8), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
-                    trunk.position.set(tree.x, tree.h * 0.2, tree.z);
-                    overlookGroup.add(trunk);
-
-                    const crown = new THREE.Mesh(new THREE.SphereGeometry(tree.h * 0.35, 8, 8), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 }));
-                    crown.position.set(tree.x, tree.h * 0.65, tree.z);
-                    crown.scale.set(1.4, 0.8, 1.4);
-                    overlookGroup.add(crown);
+                // 2 geparkte Autos vor der Leinwand
+                [
+                    { x: 3.5, z: -2.2, col: 0x0284c7 },
+                    { x: 4.2, z: 2.2, col: 0xf97316 },
+                ].forEach(car => {
+                    const cBody = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.7, 1.8), new THREE.MeshStandardMaterial({ color: car.col, roughness: 0.4 }));
+                    cBody.position.set(car.x, 0.95, car.z);
+                    cinemaGroup.add(cBody);
+                    const cTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.55, 1.5), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 }));
+                    cTop.position.set(car.x - 0.3, 1.5, car.z);
+                    cinemaGroup.add(cTop);
                 });
 
-                group.add(overlookGroup);
+                // =========================================================
+                // 5. SNACK-BAR / FOOD-TRUCK & SUNSET OVERLOOK
+                // =========================================================
+                const foodTruck = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 4.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6 }));
+                foodTruck.position.set(1.5, 1.65, -6.2);
+                cinemaGroup.add(foodTruck);
+
+                // Sonnenschirm & Picknicktisch
+                const umbrella = new THREE.Mesh(new THREE.ConeGeometry(1.8, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+                umbrella.position.set(4.5, 2.6, -6.2);
+                cinemaGroup.add(umbrella);
+                const uPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.0, 8), poleMat);
+                uPole.position.set(4.5, 1.5, -6.2);
+                cinemaGroup.add(uPole);
+
+                const table = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.75, 2.2), shedMat);
+                table.position.set(4.5, 0.95, -6.2);
+                cinemaGroup.add(table);
+
+                // Aussichts-Geländer zum Meer ("Sunset Point")
+                const sunsetRail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 14.0), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+                sunsetRail.position.set(10.8, 1.0, 0);
+                cinemaGroup.add(sunsetRail);
+
+                // Schattenspendende Kiefern im Hintergrund
+                [ { x: 7.5, z: 6.8 }, { x: 8.5, z: -6.5 } ].forEach(tree => {
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.5, 8), shedMat);
+                    trunk.position.set(tree.x, 2.2, tree.z);
+                    cinemaGroup.add(trunk);
+                    const foliage = new THREE.Mesh(new THREE.SphereGeometry(2.4, 8, 8), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 }));
+                    foliage.position.set(tree.x, 4.8, tree.z);
+                    foliage.scale.set(1.2, 0.8, 1.2);
+                    cinemaGroup.add(foliage);
+                });
+
+                group.add(cinemaGroup);
 
             } else if (tileType === 'start') {
                 // =============================================================
