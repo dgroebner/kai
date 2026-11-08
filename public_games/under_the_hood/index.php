@@ -189,12 +189,15 @@ $csrfToken = Auth::csrfToken();
 
                 <div class="hood-form-group">
                     <label class="hood-label" for="input-player-name">Fahrer 1 Name</label>
-                    <input type="text" id="input-player-name" class="hood-input" value="Driver" maxlength="20">
+                    <input type="text" id="input-player-name" class="hood-input" placeholder="Dein Spielername" maxlength="20">
                 </div>
 
                 <div class="hood-form-group">
-                    <label class="hood-label" for="input-pin">Tisch-PIN (Host)</label>
-                    <input type="password" id="input-pin" class="hood-input" placeholder="Tisch-PIN" value="123456">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <label class="hood-label" for="input-pin" style="margin-bottom: 0;">Tisch-PIN (Host-Schutz)</label>
+                        <span id="pin-saved-badge" class="hidden" style="font-size: 0.75rem; color: #22c55e; font-weight: 700;">✓ PIN gespeichert</span>
+                    </div>
+                    <input type="password" id="input-pin" class="hood-input" placeholder="PIN aus der Konfiguration" value="">
                 </div>
 
                 <div class="hood-form-group">

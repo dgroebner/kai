@@ -3531,11 +3531,60 @@
             const formCreate = document.getElementById('lobby-create-form');
             formCreate.style.display = isCreating ? 'block' : 'none';
 
+            const nameInput = document.getElementById('input-player-name');
+            const savedName = localStorage.getItem('kai_gh_player_name');
+            if (nameInput && savedName) {
+                nameInput.value = savedName;
+            }
+            if (nameInput && !nameInput._hoodBound) {
+                nameInput._hoodBound = true;
+                const saveName = () => {
+                    const val = nameInput.value.trim();
+                    if (val) {
+                        localStorage.setItem('kai_gh_player_name', val);
+                    }
+                };
+                nameInput.addEventListener('input', saveName);
+                nameInput.addEventListener('change', saveName);
+            }
+
+            const pinInput = document.getElementById('input-pin');
+            const pinBadge = document.getElementById('pin-saved-badge');
+
+            const updateSavedPinField = () => {
+                const savedPin = localStorage.getItem('kai_gh_host_pin') || '';
+                if (pinInput) {
+                    if (savedPin) {
+                        pinInput.value = savedPin;
+                        if (pinBadge) pinBadge.classList.remove('hidden');
+                    } else {
+                        if (pinBadge) pinBadge.classList.add('hidden');
+                    }
+                }
+            };
+
+            if (pinInput && !pinInput._hoodBound) {
+                pinInput._hoodBound = true;
+                pinInput.addEventListener('input', () => {
+                    const savedPin = localStorage.getItem('kai_gh_host_pin') || '';
+                    if (pinBadge) {
+                        if (pinInput.value && pinInput.value === savedPin) {
+                            pinBadge.classList.remove('hidden');
+                        } else {
+                            pinBadge.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+
+            updateSavedPinField();
+
             let chosenMode = 'hotseat';
             const tabHotSeat = document.getElementById('mode-tab-hotseat');
             const tabOnline = document.getElementById('mode-tab-online');
 
-            if (tabHotSeat && tabOnline) {
+            if (tabHotSeat && tabOnline && !tabHotSeat._hoodBound) {
+                tabHotSeat._hoodBound = true;
                 tabHotSeat.addEventListener('click', () => {
                     chosenMode = 'hotseat';
                     tabHotSeat.classList.remove('hood-btn-secondary');
@@ -3550,6 +3599,8 @@
 
             const colorSwatches = document.querySelectorAll('.hood-color-swatch');
             colorSwatches.forEach(swatch => {
+                if (swatch._hoodBound) return;
+                swatch._hoodBound = true;
                 swatch.addEventListener('click', (e) => {
                     colorSwatches.forEach(s => s.classList.remove('selected'));
                     e.currentTarget.classList.add('selected');
@@ -3558,43 +3609,59 @@
 
             const vehicleCards = document.querySelectorAll('.hood-vehicle-card');
             vehicleCards.forEach(card => {
+                if (card._hoodBound) return;
+                card._hoodBound = true;
                 card.addEventListener('click', (e) => {
                     vehicleCards.forEach(c => c.classList.remove('selected'));
                     e.currentTarget.classList.add('selected');
                 });
             });
 
-            document.getElementById('btn-create-room').addEventListener('click', async () => {
-                const name = document.getElementById('input-player-name').value.trim() || 'Driver';
-                const pin = document.getElementById('input-pin').value.trim();
-                const selColor = document.querySelector('.hood-color-swatch.selected');
-                const color = selColor ? selColor.dataset.color : '#ef4444';
-                const selVeh = document.querySelector('.hood-vehicle-card.selected');
-                const vehicle = selVeh ? selVeh.dataset.vehicle : 'sportscar';
+            const btnCreate = document.getElementById('btn-create-room');
+            if (btnCreate && !btnCreate._hoodBound) {
+                btnCreate._hoodBound = true;
+                btnCreate.addEventListener('click', async () => {
+                    const name = (nameInput ? nameInput.value.trim() : '') || 'Driver';
+                    const pin = pinInput ? pinInput.value.trim() : '';
+                    const selColor = document.querySelector('.hood-color-swatch.selected');
+                    const color = selColor ? selColor.dataset.color : '#ef4444';
+                    const selVeh = document.querySelector('.hood-vehicle-card.selected');
+                    const vehicle = selVeh ? selVeh.dataset.vehicle : 'sportscar';
 
-                const res = await fetch('api.php?action=create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        player_name: name,
-                        pin: pin,
-                        color: color,
-                        vehicle: vehicle,
-                        is_hotseat: (chosenMode === 'hotseat')
-                    }),
+                    const res = await fetch('api.php?action=create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: name,
+                            pin: pin,
+                            color: color,
+                            vehicle: vehicle,
+                            is_hotseat: (chosenMode === 'hotseat')
+                        }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (name) {
+                            localStorage.setItem('kai_gh_player_name', name);
+                        }
+                        if (pin) {
+                            localStorage.setItem('kai_gh_host_pin', pin);
+                        }
+                        this.roomCode = data.room_code;
+                        this.playerToken = data.player_token;
+                        localStorage.setItem('quarxl_hood_token_' + this.roomCode, this.playerToken);
+                        window.history.replaceState({}, '', `?room=${this.roomCode}`);
+                        this.applyState(data.state, data.state.players[0]);
+                        this.startPolling();
+                    } else {
+                        if (res.status === 403 || (data.message && data.message.toLowerCase().includes('pin'))) {
+                            localStorage.removeItem('kai_gh_host_pin');
+                            updateSavedPinField();
+                        }
+                        alert(data.message || 'Konnte Raum nicht anlegen');
+                    }
                 });
-                const data = await res.json();
-                if (data.success) {
-                    this.roomCode = data.room_code;
-                    this.playerToken = data.player_token;
-                    localStorage.setItem('quarxl_hood_token_' + this.roomCode, this.playerToken);
-                    window.history.replaceState({}, '', `?room=${this.roomCode}`);
-                    this.applyState(data.state, data.state.players[0]);
-                    this.startPolling();
-                } else {
-                    alert(data.message || 'Konnte Raum nicht anlegen');
-                }
-            });
+            }
 
             const btnAddLocal = document.getElementById('btn-add-local');
             if (btnAddLocal) {

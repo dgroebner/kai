@@ -538,3 +538,7 @@ body.hood-body {
         border-radius: 20px;
     }
 }
+
+.hidden {
+    display: none !important;
+}
