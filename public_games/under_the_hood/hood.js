@@ -1284,6 +1284,348 @@
             return tex;
         }
 
+        // --- SONDERFELD-TEXTUR-GENERATOREN (FOTOREALISTISCHE SCHILDER & GRAFFITI) ---
+        getDriveInFasciaTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['drivein_fascia']) return this._texCache['drivein_fascia'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            // 50s Diner Red & Gold Fassade
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillRect(0, 0, 1024, 256);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 14;
+            ctx.strokeRect(7, 7, 1010, 242);
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(18, 18, 988, 220);
+            // Schriftzug DRIVE-IN
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 110px "Arial Black", "Impact", sans-serif';
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 30;
+            ctx.fillStyle = '#fef08a';
+            ctx.fillText('DRIVE-IN', 512, 128);
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('DRIVE-IN', 512, 128);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['drivein_fascia'] = tex;
+            return tex;
+        }
+
+        getMysteryVaultTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['mystery_vault']) return this._texCache['mystery_vault'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            // Reich verziertes Gold-Metall mit Gravuren & Nieten
+            const grad = ctx.createRadialGradient(256, 256, 50, 256, 256, 256);
+            grad.addColorStop(0, '#fef08a');
+            grad.addColorStop(0.5, '#f59e0b');
+            grad.addColorStop(1, '#b45309');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 512);
+            // Rahmen & Zierleisten
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 16;
+            ctx.strokeRect(8, 8, 496, 496);
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(26, 26, 460, 460);
+            // Nieten an den Ecken
+            const drawRivet = (x, y) => {
+                ctx.fillStyle = '#451a03';
+                ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath(); ctx.arc(x - 3, y - 3, 8, 0, Math.PI * 2); ctx.fill();
+            };
+            drawRivet(45, 45); drawRivet(467, 45); drawRivet(45, 467); drawRivet(467, 467);
+            // Zentrales Tresor-Drehrad
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.arc(256, 256, 110, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath(); ctx.arc(256, 256, 92, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#451a03';
+            ctx.lineWidth = 10;
+            for (let a = 0; a < 6; a++) {
+                const ang = a * Math.PI / 3;
+                ctx.beginPath();
+                ctx.moveTo(256, 256);
+                ctx.lineTo(256 + Math.cos(ang) * 90, 256 + Math.sin(ang) * 90);
+                ctx.stroke();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['mystery_vault'] = tex;
+            return tex;
+        }
+
+        getHoodFmGraffitiTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['hoodfm_graffiti']) return this._texCache['hoodfm_graffiti'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            // Ziegelwand-Hintergrund
+            ctx.fillStyle = '#7c2d12';
+            ctx.fillRect(0, 0, 1024, 512);
+            ctx.strokeStyle = '#431407';
+            ctx.lineWidth = 2;
+            for (let y = 0; y < 512; y += 24) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1024, y); ctx.stroke();
+                const offset = (y / 24) % 2 === 0 ? 0 : 32;
+                for (let x = offset; x < 1024; x += 64) {
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 24); ctx.stroke();
+                }
+            }
+            // Farbige Spray-Wolke / Splatter um das Logo (Cyan, Magenta, Violett)
+            const splashGrad = ctx.createRadialGradient(512, 256, 80, 512, 256, 380);
+            splashGrad.addColorStop(0, 'rgba(6, 182, 212, 0.85)');
+            splashGrad.addColorStop(0.4, 'rgba(236, 72, 153, 0.7)');
+            splashGrad.addColorStop(0.7, 'rgba(147, 51, 234, 0.55)');
+            splashGrad.addColorStop(1, 'rgba(124, 45, 18, 0)');
+            ctx.fillStyle = splashGrad;
+            ctx.fillRect(100, 40, 824, 432);
+
+            // Kopfhörer-Bogen über dem Logo
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 26;
+            ctx.beginPath();
+            ctx.arc(512, 230, 230, Math.PI * 0.95, Math.PI * 2.05);
+            ctx.stroke();
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(260, 200, 45, 90);
+            ctx.fillRect(719, 200, 45, 90);
+
+            // HOOD FM Schriftzug im Wildstyle-Comic-Look
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 135px "Arial Black", "Impact", sans-serif';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText('HOOD FM', 522, 262);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 18;
+            ctx.strokeText('HOOD FM', 512, 250);
+            const textGrad = ctx.createLinearGradient(0, 180, 0, 320);
+            textGrad.addColorStop(0, '#fef08a');
+            textGrad.addColorStop(0.5, '#f97316');
+            textGrad.addColorStop(1, '#dc2626');
+            ctx.fillStyle = textGrad;
+            ctx.fillText('HOOD FM', 512, 250);
+
+            // Subtitel & Frequenz
+            ctx.font = '900 36px "Arial Black", sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('104.2 MHZ • ON AIR', 512, 345);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['hoodfm_graffiti'] = tex;
+            return tex;
+        }
+
+        getTollPlazaSignTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['toll_sign']) return this._texCache['toll_sign'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, 1024, 256);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(4, 4, 1016, 248);
+
+            const lanes = [
+                { type: 'cross', x: 130 },
+                { type: 'cross', x: 385 },
+                { type: 'telepass_arrow', x: 640 },
+                { type: 'cash_arrow', x: 895 },
+            ];
+            lanes.forEach(l => {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(l.x - 100, 25, 200, 206);
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(l.x - 100, 25, 200, 206);
+
+                if (l.type === 'cross') {
+                    ctx.shadowColor = '#ef4444';
+                    ctx.shadowBlur = 20;
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 22;
+                    ctx.beginPath();
+                    ctx.moveTo(l.x - 55, 60); ctx.lineTo(l.x + 55, 196);
+                    ctx.moveTo(l.x + 55, 60); ctx.lineTo(l.x - 55, 196);
+                    ctx.stroke();
+                } else {
+                    ctx.shadowColor = '#22c55e';
+                    ctx.shadowBlur = 20;
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath();
+                    ctx.moveTo(l.x, 205);
+                    ctx.lineTo(l.x - 45, 140);
+                    ctx.lineTo(l.x - 18, 140);
+                    ctx.lineTo(l.x - 18, 80);
+                    ctx.lineTo(l.x + 18, 80);
+                    ctx.lineTo(l.x + 18, 140);
+                    ctx.lineTo(l.x + 45, 140);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    if (l.type === 'telepass_arrow') {
+                        ctx.fillStyle = '#f97316';
+                        ctx.fillRect(l.x - 85, 38, 45, 45);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '900 32px sans-serif';
+                        ctx.fillText('t', l.x - 63, 72);
+                    }
+                }
+                ctx.shadowBlur = 0;
+            });
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['toll_sign'] = tex;
+            return tex;
+        }
+
+        getHazardStripeTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['hazard_stripe']) return this._texCache['hazard_stripe'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#eab308';
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = '#18181b';
+            for (let i = -256; i < 512; i += 64) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i + 32, 0);
+                ctx.lineTo(i + 32 + 256, 256);
+                ctx.lineTo(i + 256, 256);
+                ctx.closePath();
+                ctx.fill();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 1);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['hazard_stripe'] = tex;
+            return tex;
+        }
+
+        getWorkshopSignTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['workshop_sign']) return this._texCache['workshop_sign'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(0, 0, 1024, 256);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(5, 5, 1014, 246);
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 88px "Arial Black", "Impact", sans-serif';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText('KFZ-Meisterbetrieb', 512, 95);
+
+            ctx.font = '700 48px sans-serif';
+            ctx.fillStyle = '#0284c7';
+            ctx.fillText('Reparatur aller Marken', 512, 178);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['workshop_sign'] = tex;
+            return tex;
+        }
+
+        getViewpointSignTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['viewpoint_sign']) return this._texCache['viewpoint_sign'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath();
+            ctx.roundRect(16, 16, 480, 480, 45);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 20;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 240px "Arial Black", sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('P', 256, 210);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(60, 360, 392, 70);
+            ctx.font = '900 40px sans-serif';
+            ctx.fillStyle = '#1d4ed8';
+            ctx.fillText('Aussichtspunkt', 256, 398);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['viewpoint_sign'] = tex;
+            return tex;
+        }
+
+        getPanoramatafelTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['panoramatafel']) return this._texCache['panoramatafel'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 256);
+            grad.addColorStop(0, '#38bdf8');
+            grad.addColorStop(0.5, '#0284c7');
+            grad.addColorStop(1, '#0369a1');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath();
+            ctx.ellipse(120, 150, 90, 35, 0, 0, Math.PI * 2);
+            ctx.ellipse(380, 160, 110, 40, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(250, 140); ctx.lineTo(260, 120); ctx.lineTo(262, 140); ctx.fill();
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 14;
+            ctx.strokeRect(7, 7, 498, 242);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(20, 200, 472, 42);
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '700 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('PANORAMA • HOOD BAY', 256, 228);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['panoramatafel'] = tex;
+            return tex;
+        }
+
         // --- A. BARS & CLUBS (Exakte 1:1 Umsetzung der fotorealistischen Referenzbilder!) ---
         renderClubPlot(group, ownerColor, isMortgaged, tileName) {
             const isOwned = !!ownerColor;
@@ -1798,7 +2140,7 @@
             }
         }
 
-        // --- D. SPEZIELLE FELDER (Start, Werkstatt, Rastplatz, Radar, Handschuhfach, Radio) ---
+        // --- D. SPEZIELLE FELDER (1:1 UMSETZUNG DER REFERENZBILDER DES USERS!) ---
         renderSpecialPlot(group, tileType, tileName, tileIndex = 0) {
             // Grundstücksboden
             const plotMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
@@ -1817,171 +2159,484 @@
             const isRadioTicker = [2, 17, 33].includes(tileIndex) || tileName.toLowerCase().includes('radio');
 
             if (isHandschuhfach) {
-                // 1. HANDSCHUHFACH 🗃️ — DER MYSTERY-TRESOR / RETRO DRIVE-IN KIOSK
-                // Kiosk-Körper in warmem Bernstein-Gold
-                const kioskBody = new THREE.Mesh(new THREE.BoxGeometry(7.5, 4.2, 9.5), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }));
-                kioskBody.position.set(3.5, 2.3, 0);
-                kioskBody.castShadow = true;
-                group.add(kioskBody);
+                // =============================================================
+                // 1. HANDSCHUHFACH 🗃️ — RETRO DRIVE-IN MIT SCHWEBENDEM GOLD-TRESOR (BILD 1)
+                // =============================================================
+                const driveInGroup = new THREE.Group();
+                driveInGroup.position.set(3.5, 0, 0);
 
-                // Geschwungenes Vordach mit goldenem Neon-Licht
-                const canopy = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.3, 10.5), new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.6 }));
-                canopy.position.set(-1.0, 4.4, 0);
-                group.add(canopy);
+                // Asphalt-Zufahrt mit Drive-Through Markierungen
+                const lane = new THREE.Mesh(new THREE.BoxGeometry(11, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+                lane.position.set(-2.0, 0.38, 0);
+                driveInGroup.add(lane);
 
-                const neonTrim = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.1, 10.6), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
-                neonTrim.position.set(-1.0, 4.5, 0);
-                group.add(neonTrim);
-
-                // Großes leuchtendes Schild "🗃️ HANDSCHUHFACH"
-                const sign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 8.5), new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
-                sign.position.set(-1.1, 5.3, 0);
-                group.add(sign);
-
-                // Schwebende, goldene Schatulle / Tresor
-                const chestMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.9, roughness: 0.2 });
-                const chest = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 2.2), chestMat);
-                chest.position.set(-1.0, 2.2, 0);
-                chest.rotation.y = Math.PI / 4;
-                chest.castShadow = true;
-                group.add(chest);
-
-                // Rotes 3D-Symbol auf dem Tresor
-                const qBox = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-                qBox.position.set(-1.0, 2.4, 0);
-                group.add(qBox);
-
-                // Goldmünzen vor dem Kiosk
-                for (let c = 0; c < 5; c++) {
-                    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.15, 12), chestMat);
-                    coin.position.set(-3.2 + (c % 2) * 0.4, 0.55 + Math.floor(c / 2) * 0.15, -1.5 + c * 0.6);
-                    group.add(coin);
+                // Weiß markierte Haltelinien & Chevrons
+                for (let z = -6; z <= 6; z += 3) {
+                    const mark = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.01, 0.25), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+                    mark.position.set(-4.5, 0.41, z);
+                    driveInGroup.add(mark);
                 }
 
-                // Warnkegel am Straßenrand
-                [-3.8, 3.8].forEach(oz => {
-                    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
-                    cone.position.set(-4.5, 0.7, oz);
-                    group.add(cone);
+                // Hauptgebäude: 50s Diner-Look (Creme & Karminrot)
+                const dinerBody = new THREE.Mesh(new THREE.BoxGeometry(8.2, 4.2, 9.6), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.45 }));
+                dinerBody.position.set(1.5, 2.3, 0);
+                dinerBody.castShadow = true;
+                driveInGroup.add(dinerBody);
+
+                // Roter Sockelstreifen
+                const redBase = new THREE.Mesh(new THREE.BoxGeometry(8.4, 1.2, 9.8), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4 }));
+                redBase.position.set(1.5, 0.9, 0);
+                driveInGroup.add(redBase);
+
+                // Großes Panorama-Glasfenster mit warmem Innenlicht
+                const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+                const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 7.8), windowMat);
+                frontWin.position.set(-2.65, 2.6, 0);
+                driveInGroup.add(frontWin);
+
+                // Weites, geschwungenes Vordach über der Drive-In Fahrspur
+                const canopy = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.45, 11.5), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.35 }));
+                canopy.position.set(-3.2, 4.4, 0);
+                canopy.castShadow = true;
+                driveInGroup.add(canopy);
+
+                // Goldene Kanten-Zierleiste um das Vordach (wie im Bild)
+                const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.15, 11.7), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 }));
+                goldTrim.position.set(-3.2, 4.6, 0);
+                driveInGroup.add(goldTrim);
+
+                // Schräge V-Stützen aus Chrom
+                const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95, roughness: 0.1 });
+                const pillar1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.4, 16), chromeMat);
+                pillar1.position.set(-5.6, 2.2, -4.2);
+                pillar1.rotation.z = -0.15;
+                driveInGroup.add(pillar1);
+
+                const pillar2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.4, 16), chromeMat);
+                pillar2.position.set(-5.6, 2.2, 4.2);
+                pillar2.rotation.z = -0.15;
+                driveInGroup.add(pillar2);
+
+                // Beleuchtetes "DRIVE-IN" Retro-Dachschild (Canvas-Textur)
+                const signMat = new THREE.MeshStandardMaterial({ map: this.getDriveInFasciaTexture(), roughness: 0.3 });
+                const roofSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.6, 5.2), signMat);
+                roofSign.position.set(-3.2, 5.4, 0);
+                driveInGroup.add(roofSign);
+
+                // Roter Retro-Klassiker unter dem Vordach geparkt (wie im Foto!)
+                const carGroup = new THREE.Group();
+                carGroup.position.set(-3.8, 0.4, 1.5);
+                const carBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.4, roughness: 0.3 }));
+                carBody.position.set(0, 0.45, 0);
+                carGroup.add(carBody);
+                const carTop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 2.0), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.4 }));
+                carTop.position.set(0, 0.95, -0.3);
+                carGroup.add(carTop);
+                // Räder
+                [-0.9, 0.9].forEach(wx => {
+                    [-1.3, 1.3].forEach(wz => {
+                        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0x18181b }));
+                        wheel.rotation.z = Math.PI / 2;
+                        wheel.position.set(wx, 0.3, wz);
+                        carGroup.add(wheel);
+                    });
                 });
+                driveInGroup.add(carGroup);
+
+                // =========================================================
+                // DER SCHWEBENDE GOLD-TRESOR MIT MÜNZWIRBEL (HIGHLIGHT!)
+                // =========================================================
+                const vaultGroup = new THREE.Group();
+                vaultGroup.position.set(-3.2, 6.4, 0);
+                vaultGroup.rotation.y = Math.PI / 5;
+
+                // Goldener Tresor-Würfel mit Nieten & Relief-Textur
+                const vaultMat = new THREE.MeshStandardMaterial({ map: this.getMysteryVaultTexture(), metalness: 0.85, roughness: 0.2 });
+                const vaultBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.4), vaultMat);
+                vaultBody.castShadow = true;
+                vaultGroup.add(vaultBody);
+
+                // Geöffnete Tresor-Pforte mit goldenem Glanz
+                const door = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.0, 0.3), vaultMat);
+                door.position.set(1.3, 0, 1.4);
+                door.rotation.y = -Math.PI / 3;
+                vaultGroup.add(door);
+
+                // Intensiver goldener Lichtschein aus dem Inneren
+                const vaultLight = new THREE.PointLight(0xfbbf24, 2.5, 10);
+                vaultLight.position.set(0, 0, 0.5);
+                vaultGroup.add(vaultLight);
+
+                // Halo aus 12 schwebenden Goldmünzen rund um den Tresor
+                const coinMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.9, roughness: 0.15 });
+                for (let c = 0; c < 12; c++) {
+                    const ang = (c / 12) * Math.PI * 2;
+                    const r = 2.4 + (c % 3) * 0.4;
+                    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 12), coinMat);
+                    coin.position.set(Math.cos(ang) * r, (c % 4) * 0.3 - 0.45, Math.sin(ang) * r);
+                    coin.rotation.x = Math.random() * Math.PI;
+                    coin.rotation.y = Math.random() * Math.PI;
+                    vaultGroup.add(coin);
+                }
+                driveInGroup.add(vaultGroup);
+                group.add(driveInGroup);
 
             } else if (isRadioTicker) {
-                // 2. RADIO TICKER 📻 — HOOD FM 104.2 SENDE-TURM & STUDIO
-                const studio = new THREE.Mesh(new THREE.BoxGeometry(7.0, 3.8, 8.0), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 }));
-                studio.position.set(3.5, 2.1, 0);
-                studio.castShadow = true;
-                group.add(studio);
+                // =============================================================
+                // 2. RADIO TICKER 📻 — HOOD FM FUNKHAUS & SENDE-MAST (BILD 2)
+                // =============================================================
+                const radioGroup = new THREE.Group();
+                radioGroup.position.set(3.5, 0, 0);
 
-                // Leuchtendes "ON AIR" Schild
-                const onAirSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 3.2), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-                onAirSign.position.set(-0.2, 4.3, 0);
-                group.add(onAirSign);
+                // Ziegel-Gebäude (2-geschossig)
+                const studioBody = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5.2, 9.5), new THREE.MeshStandardMaterial({ color: 0x431407, roughness: 0.85 }));
+                studioBody.position.set(1.5, 2.8, 0);
+                studioBody.castShadow = true;
+                radioGroup.add(studioBody);
 
-                // Sende-Turm (14m hoch, rot-weiß gestreift)
-                const towerMatR = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.5 });
-                const towerMatW = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5 });
-                for (let s = 0; s < 7; s++) {
-                    const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.18 - s * 0.015, 0.22 - s * 0.015, 2.0, 8), s % 2 === 0 ? towerMatR : towerMatW);
-                    seg.position.set(4.0, 4.0 + s * 1.9, -2.5);
-                    seg.castShadow = true;
-                    group.add(seg);
+                // Riesiges HOOD FM Graffiti-Wandbild auf der Front (Canvas-Textur!)
+                const graffitiMat = new THREE.MeshStandardMaterial({ map: this.getHoodFmGraffitiTexture(), roughness: 0.8 });
+                const graffitiWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4.4, 8.8), graffitiMat);
+                graffitiWall.position.set(-2.8, 2.8, 0);
+                radioGroup.add(graffitiWall);
+
+                // Obere Studiofenster mit warmem ON-AIR Schein
+                const winOnAir = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 4.5), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+                winOnAir.position.set(-2.82, 4.2, 1.5);
+                radioGroup.add(winOnAir);
+
+                // Dach-Ausrüstung: 2 weiße Satellitenschüsseln
+                const dishMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5, roughness: 0.3 });
+                [ -1.8, 1.8 ].forEach(dz => {
+                    const dish = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.45, 16), dishMat);
+                    dish.position.set(0.5, 5.9, dz);
+                    dish.rotation.x = -0.7;
+                    dish.rotation.y = 0.3;
+                    radioGroup.add(dish);
+
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0, 8), dishMat);
+                    pole.position.set(0.5, 5.5, dz);
+                    radioGroup.add(pole);
+                });
+
+                // =========================================================
+                // DER ROT-WEISS GESTREIFTE GITTER-SENDEMAST (18m HOCH!)
+                // =========================================================
+                const mastMatR = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.6, roughness: 0.3 });
+                const mastMatW = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.6, roughness: 0.3 });
+                const towerX = 4.2;
+                const towerZ = -3.2;
+
+                // 8 rot-weiße Gitter-Segmente
+                for (let s = 0; s < 8; s++) {
+                    const h = 2.1;
+                    const wBot = 1.6 - s * 0.12;
+                    const wTop = 1.48 - s * 0.12;
+                    const mat = (s % 2 === 0) ? mastMatR : mastMatW;
+
+                    // 4 Eck-Pfeiler des Gittermasts
+                    [-wBot / 2, wBot / 2].forEach(ox => {
+                        [-wBot / 2, wBot / 2].forEach(oz => {
+                            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, h, 8), mat);
+                            leg.position.set(towerX + ox, 0.4 + s * h + h / 2, towerZ + oz);
+                            radioGroup.add(leg);
+                        });
+                    });
+
+                    // Horizontale Verbindungsstreben
+                    const cross = new THREE.Mesh(new THREE.BoxGeometry(wBot, 0.08, wBot), mat);
+                    cross.position.set(towerX, 0.4 + s * h + h, towerZ);
+                    radioGroup.add(cross);
                 }
 
-                // Rotes Blinklicht auf der Turmspitze
-                const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-                beacon.position.set(4.0, 17.5, -2.5);
-                group.add(beacon);
+                // Blinkendes rotes Hindernisfeuer auf der Mastspitze
+                const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                beacon.position.set(towerX, 17.5, towerZ);
+                radioGroup.add(beacon);
 
-                // Satellitenschüssel
-                const dish = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.5, 12), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7 }));
-                dish.position.set(2.0, 4.8, 2.5);
-                dish.rotation.x = -0.6;
-                dish.rotation.y = 0.4;
-                group.add(dish);
+                const beaconLight = new THREE.PointLight(0xff0000, 2.0, 15);
+                beaconLight.position.set(towerX, 17.5, towerZ);
+                radioGroup.add(beaconLight);
 
-            } else if (tileType === 'start') {
-                // 3. START & ZIEL 🏁 — GRAND-PRIX ZIELBOGEN
-                const archMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6 });
-                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 7.5, 12), archMat);
-                p1.position.set(-6.5, 3.75, -4.5);
-                group.add(p1);
-                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 7.5, 12), archMat);
-                p2.position.set(-6.5, 3.75, 4.5);
-                group.add(p2);
-                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.0, 9.6), archMat);
-                beam.position.set(-6.5, 7.6, 0);
-                group.add(beam);
+                // HOOD FM Übertragungswagen im Hof geparkt
+                const van = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 4.2), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }));
+                van.position.set(-2.2, 0.9, -3.2);
+                radioGroup.add(van);
+                const vanDecal = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 2.6), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
+                vanDecal.position.set(-3.32, 0.9, -3.2);
+                radioGroup.add(vanDecal);
 
-                const banner = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 8.4), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
-                banner.position.set(-6.5, 6.4, 0);
-                group.add(banner);
+                group.add(radioGroup);
+
+            } else if (tileType === 'go_to_jail' || (!isHandschuhfach && !isRadioTicker && tileType === 'radar')) {
+                // =============================================================
+                // 3. RADARFALLE 📸 — POLISCAN-BLITZERSÄULE (BILD 3)
+                // =============================================================
+                const radarGroup = new THREE.Group();
+                // Direkt am Straßenrand platziert, sodass der Fahrer direkt daran vorbeifährt!
+                radarGroup.position.set(-4.8, 0, 0.5);
+
+                // Betonsockel
+                const baseGeo = new THREE.BoxGeometry(1.6, 0.4, 1.6);
+                const baseMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 });
+                const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+                baseMesh.position.set(0, 0.4, 0);
+                baseMesh.receiveShadow = true;
+                radarGroup.add(baseMesh);
+
+                // Anthrazitfarbene Metallsäule (Matte Slate / Graphite)
+                const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1e242c, metalness: 0.45, roughness: 0.35 });
+                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 4.6, 24), pillarMat);
+                pillar.position.set(0, 2.7, 0);
+                pillar.castShadow = true;
+                radarGroup.add(pillar);
+
+                // 4 horizontale Glas-Sensorringe (Laser, Kamera 1, Rotlicht-Blitz, Kamera 2)
+                const glassMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.1, metalness: 0.9 });
+                const flashRingMat = new THREE.MeshBasicMaterial({ color: 0xb91c1c });
+
+                [
+                    { y: 4.3, isFlash: false },
+                    { y: 3.6, isFlash: false },
+                    { y: 2.9, isFlash: true }, // Rotlicht-Blitzglas
+                    { y: 2.2, isFlash: false },
+                ].forEach(ring => {
+                    const cut = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.56, 0.45, 24), ring.isFlash ? flashRingMat : glassMat);
+                    cut.position.set(0, ring.y, 0);
+                    radarGroup.add(cut);
+
+                    // Innere Linse
+                    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1 }));
+                    lens.position.set(0.35, ring.y, 0);
+                    radarGroup.add(lens);
+                });
+
+                // Rote Status-LED
+                const diode = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                diode.position.set(0.56, 2.9, 0);
+                radarGroup.add(diode);
+
+                group.add(radarGroup);
 
             } else if (tileType === 'tax') {
-                // 4. KFZ- & MAUT-STELLE 🛑
-                const tollBooth = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.4, 3.2), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-                tollBooth.position.set(1.5, 1.9, 0);
-                group.add(tollBooth);
+                // =============================================================
+                // 4. MAUTSTELLE 🛑 — AUTOBAHN TOLL PLAZA (BILD 4)
+                // =============================================================
+                const tollGroup = new THREE.Group();
+                tollGroup.position.set(1.5, 0, 0);
 
-                const barrierPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6.0), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-                barrierPole.position.set(-2.5, 1.2, 0);
-                barrierPole.rotation.x = Math.PI / 2;
-                group.add(barrierPole);
+                // Großes Stahl-Überdachungsportal (überbrückt die Fahrspur)
+                const canopyMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
+                const tollCanopy = new THREE.Mesh(new THREE.BoxGeometry(11.5, 0.7, 13.0), canopyMat);
+                tollCanopy.position.set(-2.0, 5.2, 0);
+                tollCanopy.castShadow = true;
+                tollGroup.add(tollCanopy);
 
-                const ledSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 2.4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-                ledSign.position.set(0.0, 3.8, 0);
-                group.add(ledSign);
+                // Stahl-Pfeiler für das Dach
+                [-6.5, 2.5].forEach(px => {
+                    [-5.5, 5.5].forEach(pz => {
+                        const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5.2, 0.5), canopyMat);
+                        col.position.set(px, 2.6, pz);
+                        tollGroup.add(col);
+                    });
+                });
+
+                // Digitales LED-Spuranzeigen-Schild (Canvas-Textur mit roten Kreuzen & grünen Pfeilen!)
+                const signMat = new THREE.MeshStandardMaterial({ map: this.getTollPlazaSignTexture(), roughness: 0.2 });
+                const matrixSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 11.0), signMat);
+                matrixSign.position.set(-6.55, 4.4, 0);
+                tollGroup.add(matrixSign);
+
+                // Mauthäuschen (Toll Booth) mit Fenster
+                const booth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.4, 3.2), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+                booth.position.set(0.5, 1.9, 0);
+                tollGroup.add(booth);
+                const boothWin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.0), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+                boothWin.position.set(-0.75, 2.2, 0);
+                tollGroup.add(boothWin);
+
+                // Gelb-schwarz schraffierter Beton-Prallschutz (Hazard Chevron Stripes)
+                const hazardMat = new THREE.MeshStandardMaterial({ map: this.getHazardStripeTexture(), roughness: 0.7 });
+                const crashBarrier = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 4.5), hazardMat);
+                crashBarrier.position.set(-2.5, 0.7, -3.5);
+                tollGroup.add(crashBarrier);
+
+                // Rot-weiß gestreifte Schranke über der Fahrspur
+                const barrierBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5.8, 8), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+                barrierBoom.position.set(-4.5, 1.2, 0);
+                barrierBoom.rotation.x = Math.PI / 2;
+                tollGroup.add(barrierBoom);
+
+                group.add(tollGroup);
 
             } else if (tileType === 'jail') {
-                // 5. WERKSTATT / HEBEBÜHNE 🔧
-                const garage = new THREE.Mesh(new THREE.BoxGeometry(9.0, 5.2, 10.5), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-                garage.position.set(3.0, 2.8, 0);
-                garage.castShadow = true;
-                group.add(garage);
+                // =============================================================
+                // 5. WERKSTATT / GEFÄNGNIS 🔧 — KFZ-MEISTERBETRIEB (BILD 5)
+                // =============================================================
+                const shopGroup = new THREE.Group();
+                shopGroup.position.set(3.5, 0, 0);
 
-                const liftMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.6 });
-                const liftP1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, 0.3), liftMat);
-                liftP1.position.set(-3.5, 1.75, -1.8);
-                group.add(liftP1);
-                const liftP2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.5, 0.3), liftMat);
-                liftP2.position.set(-3.5, 1.75, 1.8);
-                group.add(liftP2);
+                // Backstein-Werkstatthalle mit Rolltoren
+                const shopBody = new THREE.Mesh(new THREE.BoxGeometry(9.5, 5.4, 11.5), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 }));
+                shopBody.position.set(1.5, 2.8, 0);
+                shopBody.castShadow = true;
+                shopGroup.add(shopBody);
 
-                for (let t = 0; t < 3; t++) {
-                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0x18181b }));
-                    tire.position.set(-5.5, 0.55 + t * 0.35, 3.5);
-                    group.add(tire);
+                // Großes Fassadenschild "KFZ-Meisterbetrieb - Reparatur aller Marken"
+                const signMat = new THREE.MeshStandardMaterial({ map: this.getWorkshopSignTexture(), roughness: 0.5 });
+                const shopSign = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.6, 9.2), signMat);
+                shopSign.position.set(-3.3, 4.8, 0);
+                shopGroup.add(shopSign);
+
+                // 2 geöffnete Werkstatt-Tore (Blick in die helle Werkstatt)
+                [-2.8, 2.8].forEach(bz => {
+                    const bayCut = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.4, 3.8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+                    bayCut.position.set(-3.28, 1.9, bz);
+                    shopGroup.add(bayCut);
+                });
+
+                // =========================================================
+                // BLAUE 2-SÄULEN-HEBEBÜHNE MIT AUFGEBOCKTEM WAGEN (WIE IM FOTO!)
+                // =========================================================
+                const liftMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.4 });
+                const post1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.0, 0.35), liftMat);
+                post1.position.set(-4.2, 2.0, -1.8);
+                shopGroup.add(post1);
+
+                const post2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.0, 0.35), liftMat);
+                post2.position.set(-4.2, 2.0, 1.8);
+                shopGroup.add(post2);
+
+                // Aufgebocktes silbernes Fahrzeug auf 1.8m Höhe
+                const carOnLift = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.1, 4.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.3 }));
+                carOnLift.position.set(-4.2, 2.5, 0);
+                carOnLift.castShadow = true;
+                shopGroup.add(carOnLift);
+
+                // Reifenstapel im Hof
+                for (let t = 0; t < 4; t++) {
+                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.28, 12), new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 }));
+                    tire.position.set(-5.6, 0.45 + t * 0.28, 3.8);
+                    shopGroup.add(tire);
                 }
 
+                // Blaue und rote Ölfässer
+                const drumB = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }));
+                drumB.position.set(-5.4, 0.8, -3.8);
+                shopGroup.add(drumB);
+                const drumR = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+                drumR.position.set(-4.8, 0.8, -4.2);
+                shopGroup.add(drumR);
+
+                group.add(shopGroup);
+
             } else if (tileType === 'parking') {
-                // 6. KÜSTEN-RASTPLATZ ☕
-                const shelter = new THREE.Mesh(new THREE.ConeGeometry(4.0, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
-                shelter.position.set(2.0, 3.8, 0);
-                group.add(shelter);
+                // =============================================================
+                // 6. RASTPLATZ ☕ — KÜSTEN-AUSSICHTSPUNKT (BILD 6)
+                // =============================================================
+                const overlookGroup = new THREE.Group();
+                overlookGroup.position.set(2.5, 0, 0);
 
-                const table = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2.8), new THREE.MeshStandardMaterial({ color: 0x78350f }));
-                table.position.set(2.0, 0.8, 0);
-                group.add(table);
+                // Paved Stone Aussichtsterrasse mit Meerblick
+                const terrace = new THREE.Mesh(new THREE.BoxGeometry(13.0, 0.45, 14.0), new THREE.MeshStandardMaterial({ color: 0xd4d4d8, roughness: 0.85 }));
+                terrace.position.set(-1.0, 0.35, 0);
+                terrace.receiveShadow = true;
+                overlookGroup.add(terrace);
 
-                const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-                scope.position.set(-4.5, 1.2, 0);
-                scope.rotation.z = -0.3;
-                group.add(scope);
+                // Rustikale Naturstein-Pfeiler mit Holz-Doppelgeländer (wie im Foto!)
+                const stoneMat = new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.9 });
+                const woodRailMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 });
+
+                [-6.5, 0, 5.5].forEach(pz => {
+                    const stonePillar = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.8), stoneMat);
+                    stonePillar.position.set(-5.5, 0.95, pz);
+                    overlookGroup.add(stonePillar);
+                });
+
+                // Horizontale Holz-Geländerstangen
+                const rail1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 12.0), woodRailMat);
+                rail1.position.set(-5.5, 1.25, 0);
+                overlookGroup.add(rail1);
+                const rail2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 12.0), woodRailMat);
+                rail2.position.set(-5.5, 0.85, 0);
+                overlookGroup.add(rail2);
+
+                // Poliertes Edelstahl-Aussichtsfernrohr (Coin-Telescope auf Sockel)
+                const scopeGroup = new THREE.Group();
+                scopeGroup.position.set(-5.2, 1.1, -1.8);
+                const scopePedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.1, 12), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 }));
+                scopeGroup.add(scopePedestal);
+                const scopeBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.9, 12), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95, roughness: 0.1 }));
+                scopeBarrel.rotation.z = -0.35;
+                scopeBarrel.position.set(-0.15, 0.65, 0);
+                scopeGroup.add(scopeBarrel);
+                overlookGroup.add(scopeGroup);
+
+                // Parkbänke mit Holzlattung & Eisenfüßen
+                [-3.5, 2.5].forEach(bz => {
+                    const bench = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 2.2), woodRailMat);
+                    bench.position.set(-3.5, 0.7, bz);
+                    overlookGroup.add(bench);
+                });
+
+                // Picknick-Tisch mit Sitzbänken
+                const picnicTable = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.85, 2.6), woodRailMat);
+                picnicTable.position.set(1.5, 0.7, -2.5);
+                overlookGroup.add(picnicTable);
+
+                // Panorama-Informationstafel mit Karte (Canvas-Textur!)
+                const panoMat = new THREE.MeshStandardMaterial({ map: this.getPanoramatafelTexture(), roughness: 0.4 });
+                const panoBoard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 1.8), panoMat);
+                panoBoard.position.set(-3.2, 1.3, 0);
+                panoBoard.rotation.z = -0.25;
+                overlookGroup.add(panoBoard);
+
+                // Blaues "P Aussichtspunkt" Verkehrsschild an der Zufahrt
+                const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 }));
+                signPole.position.set(-6.8, 1.5, 5.8);
+                overlookGroup.add(signPole);
+                const pSign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 0.9), new THREE.MeshStandardMaterial({ map: this.getViewpointSignTexture() }));
+                pSign.position.set(-6.8, 2.2, 5.8);
+                overlookGroup.add(pSign);
+
+                // Mediterrane Pinien / Zypressen für natürlichen Schatten
+                [ { x: 3.5, z: 3.5, h: 5.5 }, { x: 4.0, z: -4.5, h: 6.2 } ].forEach(tree => {
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, tree.h * 0.4, 8), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+                    trunk.position.set(tree.x, tree.h * 0.2, tree.z);
+                    overlookGroup.add(trunk);
+
+                    const crown = new THREE.Mesh(new THREE.SphereGeometry(tree.h * 0.35, 8, 8), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 }));
+                    crown.position.set(tree.x, tree.h * 0.65, tree.z);
+                    crown.scale.set(1.4, 0.8, 1.4);
+                    overlookGroup.add(crown);
+                });
+
+                group.add(overlookGroup);
+
+            } else if (tileType === 'start') {
+                // =============================================================
+                // 7. START & ZIEL 🏁 — GRAND-PRIX ZIELBOGEN
+                // =============================================================
+                const archMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.7, roughness: 0.3 });
+                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 8.0, 16), archMat);
+                p1.position.set(-6.5, 4.0, -4.8);
+                group.add(p1);
+                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 8.0, 16), archMat);
+                p2.position.set(-6.5, 4.0, 4.8);
+                group.add(p2);
+                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 10.2), archMat);
+                beam.position.set(-6.5, 8.0, 0);
+                group.add(beam);
+
+                const banner = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 8.8), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+                banner.position.set(-6.5, 6.7, 0);
+                group.add(banner);
 
             } else {
-                // 7. RADARFALLE 📸
+                // Fallback / Generischer Landmark-Pfosten
                 const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4.5, 12), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
                 tower.position.set(-3.5, 2.25, 0);
                 group.add(tower);
-
-                const flashBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-                flashBox.position.set(-3.5, 4.6, 0);
-                group.add(flashBox);
-
-                const signMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
-                const sign = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.1, 16), signMat);
-                sign.position.set(-3.5, 3.0, 0);
-                sign.rotation.x = Math.PI / 2;
-                group.add(sign);
             }
         }
 
