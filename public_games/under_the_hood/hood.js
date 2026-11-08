@@ -557,15 +557,7 @@
                 this.scene.add(hill);
             });
 
-            // 2. Weißer Sandstrand-Ring um die Küste
-            const beachGeo = new THREE.RingGeometry(220, 260, 48);
-            const beachMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.95 });
-            const beachRing = new THREE.Mesh(beachGeo, beachMat);
-            beachRing.rotation.x = -Math.PI / 2;
-            beachRing.position.y = -0.05;
-            this.scene.add(beachRing);
-
-            // 3. Flauschige 3D-Sommerwolken am Himmel
+            // 2. Flauschige 3D-Sommerwolken am Himmel
             const cloudMat = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
                 roughness: 0.9,
@@ -2241,12 +2233,14 @@
 
         // --- D. SPEZIELLE FELDER (1:1 UMSETZUNG DER REFERENZBILDER DES USERS!) ---
         renderSpecialPlot(group, tileType, tileName, tileIndex = 0) {
-            // Grundstücksboden
-            const plotMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
-            const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), plotMat);
-            plot.position.set(0, 0.18, 0);
-            plot.receiveShadow = true;
-            group.add(plot);
+            // Grundstücksboden (für normale Felder; das Autokino hat sein eigenes sauberes Areal)
+            if (tileType !== 'parking') {
+                const plotMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+                const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), plotMat);
+                plot.position.set(0, 0.18, 0);
+                plot.receiveShadow = true;
+                group.add(plot);
+            }
 
             // Gehweg vor dem Areal
             const walk = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 18), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
@@ -2636,17 +2630,17 @@
                 const cinemaGroup = new THREE.Group();
                 cinemaGroup.position.set(3.5, 0, 0);
 
-                // Schotter- & Gras-Areal des Autokinos
-                const groundMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 0.9 });
-                const cinemaGround = new THREE.Mesh(new THREE.BoxGeometry(18.0, 0.4, 18.0), groundMat);
-                cinemaGround.position.set(2.0, 0.35, 0);
+                // Schotter- & Gras-Areal des Autokinos (Einheitlicher, flackerfreier Grundstücksboden)
+                const groundMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 0.95 });
+                const cinemaGround = new THREE.Mesh(new THREE.BoxGeometry(22.0, 0.45, 19.0), groundMat);
+                cinemaGround.position.set(0.5, 0.22, 0);
                 cinemaGround.receiveShadow = true;
                 cinemaGroup.add(cinemaGround);
 
-                // Schotter-Zufahrtsstraße
+                // Schotter-Zufahrtsstraße (leicht erhaben, kein Z-Fighting)
                 const gravelMat = new THREE.MeshStandardMaterial({ color: 0xa8a29e, roughness: 0.95 });
-                const driveWay = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.05, 18.0), gravelMat);
-                driveWay.position.set(-3.5, 0.58, 0);
+                const driveWay = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.04, 18.0), gravelMat);
+                driveWay.position.set(-5.0, 0.46, 0);
                 driveWay.receiveShadow = true;
                 cinemaGroup.add(driveWay);
 
