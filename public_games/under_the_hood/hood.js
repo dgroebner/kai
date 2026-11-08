@@ -198,6 +198,8 @@
             this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             this.renderer.shadowMap.enabled = true;
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            this.renderer.toneMappingExposure = 1.15;
             this.container.appendChild(this.renderer.domElement);
 
             // Warme Sommersonne
@@ -847,252 +849,662 @@
             }
         }
 
-        // --- A. BARS & CLUBS (Einladende, realistische Luxus-Lounge mit Terrasse & Bar) ---
-        renderClubPlot(group, ownerColor, isMortgaged, tileName) {
-            const isOwned = !!ownerColor;
+        // ---------------------------------------------------------------------
+        // TEXTUR-GENERATOREN (FOTOREALISTISCHE NEON-SCHILDER, FENSTER & ZIEGEL)
+        // ---------------------------------------------------------------------
+        getNeonFasciaTexture(title = 'The Neon Lounge', isOwned = false, colorHex = '#00f5ff') {
+            const key = `fascia_${title}_${isOwned ? colorHex : 'ruin'}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
 
-            if (!isOwned) {
-                // 1. DIE CLUB-BAURUINE (Verlassene Gewerbefläche im Umbau)
-                const ruinMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
-                const brickMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-                const woodMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
-                const rebarMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.8 });
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
 
-                // Rissiges Beton-Fundament
-                const baseGeo = new THREE.BoxGeometry(22, 0.3, 19);
-                const base = new THREE.Mesh(baseGeo, ruinMat);
-                base.position.set(0, 0.15, 0);
-                base.receiveShadow = true;
-                group.add(base);
+            if (isOwned) {
+                // --- AKTIV (Wie im Referenzbild: Strahlendes Neon, Cyan & Magenta) ---
+                ctx.fillStyle = '#090c14';
+                ctx.fillRect(0, 0, 1024, 256);
 
-                // Drei abgebrochene, unfertige Mauerfragmente
-                const wall1 = new THREE.Mesh(new THREE.BoxGeometry(8, 3.2, 1.2), ruinMat);
-                wall1.position.set(2, 1.6, -4);
-                wall1.castShadow = true;
-                group.add(wall1);
-
-                const wall2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.4, 7), brickMat);
-                wall2.position.set(-3, 1.2, 2);
-                wall2.castShadow = true;
-                group.add(wall2);
-
-                // Rostige Bewehrungsstäbe (Rebar)
-                for (let r = 0; r < 4; r++) {
-                    const rebar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 6), rebarMat);
-                    rebar.position.set(0.5 + r * 1.2, 3.5, -4);
-                    rebar.rotation.z = (Math.random() - 0.5) * 0.25;
-                    group.add(rebar);
+                // Subtile horizontale Bürsten-Struktur
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
+                for (let y = 0; y < 256; y += 4) {
+                    ctx.fillRect(0, y, 1024, 1.5);
                 }
 
-                // Bau-Schranke & Absperrung
-                const barrier = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 4.5), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.7 }));
-                barrier.position.set(-6.5, 0.6, 0);
-                group.add(barrier);
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 8;
+                ctx.strokeRect(4, 4, 1016, 248);
 
-                // Verwittertes Bauschild
-                const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6), woodMat);
-                signPost.position.set(-6.5, 1.3, 3.5);
-                group.add(signPost);
+                ctx.save();
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
 
-                const signBoard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.6), new THREE.MeshStandardMaterial({ color: 0xca8a04 }));
-                signBoard.position.set(-6.5, 2.0, 3.5);
-                group.add(signBoard);
+                const drawNeon = (x1, y1, x2, y2, col, w) => {
+                    ctx.shadowColor = col;
+                    ctx.shadowBlur = 24;
+                    ctx.strokeStyle = col;
+                    ctx.lineWidth = w + 4;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+
+                    ctx.shadowBlur = 6;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = w * 0.45;
+                    ctx.stroke();
+                };
+
+                // Geometrische Neon-Linien Links (Cyan & Magenta wie im Referenzbild!)
+                drawNeon(45, 65, 205, 65, '#00f5ff', 5);
+                drawNeon(75, 45, 185, 205, '#ec4899', 5);
+                drawNeon(135, 205, 225, 125, '#00f5ff', 5);
+                drawNeon(45, 185, 145, 185, '#00f5ff', 5);
+
+                // Geometrische Neon-Linien Rechts ("X" & Zickzack wie im Bild!)
+                drawNeon(800, 65, 930, 205, '#ec4899', 5);
+                drawNeon(930, 65, 800, 205, '#00f5ff', 5);
+                drawNeon(860, 50, 960, 125, '#00f5ff', 5);
+                drawNeon(830, 205, 970, 205, '#ec4899', 5);
+
+                // Schriftzug "The Neon Lounge" in eleganter Leuchtschrift
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = 'italic 700 86px "Brush Script MT", "Segoe Script", "Dancing Script", cursive, sans-serif';
+
+                ctx.shadowColor = colorHex;
+                ctx.shadowBlur = 35;
+                ctx.fillStyle = colorHex;
+                ctx.fillText(title, 512, 128);
+
+                ctx.shadowBlur = 14;
+                ctx.fillText(title, 512, 128);
+
+                ctx.shadowBlur = 4;
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillText(title, 512, 128);
+                ctx.restore();
 
             } else {
-                // 2. DIE WIEDERHERGESTELLTE, EINLADENDE LUXUS-LOUNGE
-                const hex = ownerColor;
-                const neonGlowMat = new THREE.MeshBasicMaterial({ color: hex });
-                const warmLightMat = new THREE.MeshBasicMaterial({ color: 0xfef08a }); // Warmes Innenraumlicht
-                const woodDeckMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.75 }); // Teakholz-Terrasse
-                const whiteWallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 }); // Helle, einladende Fassade
-                const darkAccentMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }); // Anthrazit-Rahmen
-                const glassMat = new THREE.MeshStandardMaterial({
-                    color: 0x38bdf8,
-                    roughness: 0.1,
-                    metalness: 0.8,
-                    transparent: true,
-                    opacity: 0.5,
-                });
-                const cushionMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 }); // Weiße Lounge-Kissen
+                // --- BAURUINE (Wie im Ruinen-Referenzbild: Ausgeschaltetes Metall, Rost, Efeu, Graffiti) ---
+                ctx.fillStyle = '#30353f';
+                ctx.fillRect(0, 0, 1024, 256);
 
-                // A. Grundstücks-Basis & Großzügige Teakholz-Außenterrasse
-                const baseGeo = new THREE.BoxGeometry(22, 0.35, 19);
-                const base = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 }));
-                base.position.set(0, 0.18, 0);
-                base.receiveShadow = true;
-                group.add(base);
-
-                // Holzdeck im Vorbereich (Lounge-Terrasse)
-                const deckGeo = new THREE.BoxGeometry(9, 0.08, 17);
-                const deck = new THREE.Mesh(deckGeo, woodDeckMat);
-                deck.position.set(-4.5, 0.4, 0);
-                deck.receiveShadow = true;
-                group.add(deck);
-
-                // B. Das Lounge-Hauptgebäude (Modernes, helles Pavillon-Design)
-                // Hauptkörper (Weißer Feinputz)
-                const bldGeo = new THREE.BoxGeometry(10, 5.2, 16);
-                const bld = new THREE.Mesh(bldGeo, whiteWallMat);
-                bld.position.set(4.5, 2.8, 0);
-                bld.castShadow = true;
-                bld.receiveShadow = true;
-                group.add(bld);
-
-                // Dachüberstand / Kranz mit dezentem Neonstreifen in Spielerfarbe
-                const roofGeo = new THREE.BoxGeometry(11, 0.4, 17.5);
-                const roof = new THREE.Mesh(roofGeo, darkAccentMat);
-                roof.position.set(4.3, 5.5, 0);
-                group.add(roof);
-
-                const roofNeon = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.15, 17.7), neonGlowMat);
-                roofNeon.position.set(4.3, 5.65, 0);
-                group.add(roofNeon);
-
-                // C. Große Panorama-Glasfront mit warmem, gemütlichem Innenraumlicht!
-                // Warmes Licht im Inneren (hinter dem Glas)
-                const interiorGlow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.8, 12), warmLightMat);
-                interiorGlow.position.set(-0.35, 2.3, 0);
-                group.add(interiorGlow);
-
-                // Glasfassade davor
-                const glassFacade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.9, 12.2), glassMat);
-                glassFacade.position.set(-0.45, 2.3, 0);
-                group.add(glassFacade);
-
-                // Anthrazitfarbene Fensterrahmen-Sprossen
-                [-4, 0, 4].forEach(oz => {
-                    const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.0, 0.15), darkAccentMat);
-                    mullion.position.set(-0.48, 2.3, oz);
-                    group.add(mullion);
-                });
-
-                // D. Überdachte Eingangs-Pergola mit Beleuchtung
-                const pergolaRoof = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 7.5), darkAccentMat);
-                pergolaRoof.position.set(-3.2, 4.3, 0);
-                group.add(pergolaRoof);
-
-                // Pergola-Stützen
-                [-3.5, 3.5].forEach(oz => {
-                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.1, 0.2), darkAccentMat);
-                    post.position.set(-5.3, 2.2, oz);
-                    post.castShadow = true;
-                    group.add(post);
-                });
-
-                // Warmes Eingangslicht unter der Pergola
-                const downlight = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), warmLightMat);
-                downlight.position.set(-3.2, 4.1, 0);
-                group.add(downlight);
-
-                // E. Edles Leuchtschild über dem Eingang ("THE NEON LOUNGE" / Club-Name)
-                const signBackdrop = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 5.5), darkAccentMat);
-                signBackdrop.position.set(-0.6, 4.7, 0);
-                group.add(signBackdrop);
-
-                const signLettering = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 4.8), neonGlowMat);
-                signLettering.position.set(-0.65, 4.7, 0);
-                group.add(signLettering);
-
-                // Martini-Cocktailglas-Symbol neben dem Schriftzug
-                const glassStem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), neonGlowMat);
-                glassStem.position.set(-0.68, 4.6, 2.8);
-                group.add(glassStem);
-                const glassCup = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 8), neonGlowMat);
-                glassCup.position.set(-0.68, 4.9, 2.8);
-                group.add(glassCup);
-
-                // F. Einladende Outdoor-Lounge-Möbel auf der Holzterrasse!
-                // Gemütliche weiße Lounge-Sofas (L-Form)
-                [-4.2, 4.2].forEach((oz) => {
-                    const sofaGroup = new THREE.Group();
-                    sofaGroup.position.set(-4.8, 0.45, oz);
-
-                    // Sofa-Sockel aus Holz
-                    const sBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.35, 3.2), woodDeckMat);
-                    sBase.position.y = 0.18;
-                    sofaGroup.add(sBase);
-
-                    // Weiße Polsterkissen
-                    const sCushion = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 3.0), cushionMat);
-                    sCushion.position.y = 0.45;
-                    sofaGroup.add(sCushion);
-
-                    // Rückenlehne
-                    const sBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.65, 3.0), cushionMat);
-                    sBack.position.set(1.0, 0.75, 0);
-                    sofaGroup.add(sBack);
-
-                    // Kleiner Loungetisch mit Windlicht
-                    const table = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 1.4), darkAccentMat);
-                    table.position.set(-1.8, 0.2, 0);
-                    sofaGroup.add(table);
-
-                    const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8), warmLightMat);
-                    candle.position.set(-1.8, 0.45, 0);
-                    sofaGroup.add(candle);
-
-                    group.add(sofaGroup);
-                });
-
-                // G. Moderne Pflanzkübel mit subtropischen Palmen am Terrassenrand
-                [-7.2, 7.2].forEach(oz => {
-                    const planter = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 1.2), whiteWallMat);
-                    planter.position.set(-8.0, 1.1, oz);
-                    planter.castShadow = true;
-                    group.add(planter);
-
-                    // Grüne Fächerpalme im Kübel
-                    const palmFronds = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 }));
-                    palmFronds.scale.set(1.4, 0.8, 1.4);
-                    palmFronds.position.set(-8.0, 2.2, oz);
-                    group.add(palmFronds);
-                });
-
-                // H. Roter VIP-Läufer & Messing-Ständer am Eingang
-                const carpet = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.04, 1.8), new THREE.MeshStandardMaterial({ color: 0xbe123c, roughness: 0.8 }));
-                carpet.position.set(-6.2, 0.46, 0);
-                group.add(carpet);
-
-                const brassMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 });
-                [-1.1, 1.1].forEach(oz => {
-                    [-4.5, -7.5].forEach(ox => {
-                        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), brassMat);
-                        pole.position.set(ox, 0.9, oz);
-                        group.add(pole);
-
-                        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), brassMat);
-                        ball.position.set(ox, 1.35, oz);
-                        group.add(ball);
-                    });
-                });
-
-                // I. Dachterrasse mit Glasgeländer & dezenten Party-Lichterketten (statt klobiger Schornsteine!)
-                const balustrade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 16.5), glassMat);
-                balustrade.position.set(-0.8, 6.2, 0);
-                group.add(balustrade);
-
-                // Schwebende Lichterkette auf dem Dach
-                for (let l = 0; l < 6; l++) {
-                    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), warmLightMat);
-                    const bz = -6 + l * 2.4;
-                    const by = 6.4 + Math.sin((l / 5) * Math.PI) * 0.4;
-                    bulb.position.set(2, by, bz);
-                    group.add(bulb);
+                // Dunkle Regen- und Schmutzschlieren
+                for (let x = 0; x < 1024; x += 32) {
+                    const h = 80 + (Math.sin(x * 0.1) + 1) * 70;
+                    const grad = ctx.createLinearGradient(x, 0, x, h);
+                    grad.addColorStop(0, 'rgba(15, 20, 25, 0.7)');
+                    grad.addColorStop(1, 'rgba(15, 20, 25, 0.0)');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x, 0, 28, h);
                 }
 
-                // Elegante, feine Suchscheinwerfer (schmal und transparent, nicht klobig!)
-                const beamGeo = new THREE.CylinderGeometry(0.1, 1.4, 35, 12);
-                const beamMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.15 });
-                const beam1 = new THREE.Mesh(beamGeo, beamMat);
-                beam1.position.set(6, 22, 5);
-                beam1.rotation.z = 0.1;
-                group.add(beam1);
+                // Ausgeschaltete, rostige Metallbuchstaben
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = 'italic 700 86px "Brush Script MT", "Segoe Script", "Dancing Script", cursive, sans-serif';
 
-                const beam2 = new THREE.Mesh(beamGeo, beamMat);
-                beam2.position.set(6, 22, -5);
-                beam2.rotation.z = -0.1;
-                group.add(beam2);
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#1c1917';
+                ctx.fillText(title, 512, 128);
+
+                ctx.strokeStyle = '#44403c';
+                ctx.lineWidth = 3;
+                ctx.strokeText(title, 512, 128);
+
+                // Lose Kabel & Halterungen der zerstörten Neon-Röhren
+                ctx.strokeStyle = '#18181b';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(80, 70);
+                ctx.bezierCurveTo(90, 140, 60, 160, 70, 210);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(850, 70);
+                ctx.bezierCurveTo(860, 130, 840, 170, 850, 220);
+                ctx.stroke();
+
+                // Grüner Efeu & Moos, der vom Dach über den Schriftzug wuchert
+                ctx.fillStyle = '#1e3a1e';
+                for (let ix = 0; ix < 1024; ix += 18) {
+                    const drop = 20 + Math.sin(ix * 0.2) * 25 + (Math.cos(ix * 0.05) + 1) * 20;
+                    ctx.beginPath();
+                    ctx.arc(ix, drop * 0.6, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(ix + 6, drop, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Graffiti-Tags
+                ctx.font = 'bold 36px sans-serif';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.fillText('NO FUTURE', 220, 210);
+                ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
+                ctx.fillText('VOID', 740, 210);
+                ctx.restore();
             }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getBarWindowTexture(isOwned = false, colorHex = '#00f5ff') {
+            const key = `window_${isOwned ? colorHex : 'ruin'}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            if (isOwned) {
+                // --- AKTIV: Glühende Bar, Regale voller Flaschen, Cocktails ---
+                const grad = ctx.createLinearGradient(0, 0, 0, 512);
+                grad.addColorStop(0, '#040711');
+                grad.addColorStop(0.5, '#0a1020');
+                grad.addColorStop(1, '#020306');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 512, 512);
+
+                ctx.fillStyle = 'rgba(0, 245, 255, 0.28)';
+                ctx.fillRect(40, 160, 432, 26);
+                ctx.fillStyle = 'rgba(236, 72, 153, 0.32)';
+                ctx.fillRect(40, 270, 432, 26);
+                ctx.fillStyle = 'rgba(0, 245, 255, 0.22)';
+                ctx.fillRect(40, 380, 432, 32);
+
+                const bCols1 = ['#38bdf8', '#818cf8', '#a855f7', '#00f5ff', '#ec4899', '#fef08a'];
+                for (let x = 55; x < 460; x += 17) {
+                    const col = bCols1[(x * 5) % bCols1.length];
+                    const h = 26 + (x % 5) * 5;
+                    ctx.fillStyle = col;
+                    ctx.shadowColor = col;
+                    ctx.shadowBlur = 12;
+                    ctx.fillRect(x, 160 - h, 9, h);
+                    ctx.fillRect(x + 2, 160 - h - 8, 5, 8);
+                }
+
+                const bCols2 = ['#ec4899', '#f43f5e', '#a855f7', '#c084fc', '#f472b6', '#38bdf8'];
+                for (let x = 55; x < 460; x += 15) {
+                    const col = bCols2[(x * 9) % bCols2.length];
+                    const h = 28 + (x % 4) * 6;
+                    ctx.fillStyle = col;
+                    ctx.shadowColor = col;
+                    ctx.shadowBlur = 14;
+                    ctx.fillRect(x, 270 - h, 8, h);
+                    ctx.fillRect(x + 2, 270 - h - 8, 4, 8);
+                }
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(20, 395, 472, 110);
+                ctx.fillStyle = '#090d16';
+                for (let hx = 90; hx < 440; hx += 85) {
+                    ctx.beginPath();
+                    ctx.arc(hx, 390, 22, Math.PI, 0);
+                    ctx.fill();
+                }
+
+                const refl = ctx.createLinearGradient(0, 0, 512, 512);
+                refl.addColorStop(0.2, 'rgba(255, 255, 255, 0.0)');
+                refl.addColorStop(0.35, 'rgba(255, 255, 255, 0.12)');
+                refl.addColorStop(0.42, 'rgba(255, 255, 255, 0.0)');
+                refl.addColorStop(0.65, 'rgba(255, 255, 255, 0.08)');
+                refl.addColorStop(0.72, 'rgba(255, 255, 255, 0.0)');
+                ctx.fillStyle = refl;
+                ctx.fillRect(0, 0, 512, 512);
+
+            } else {
+                // --- BAURUINE: Zersplittertes Glas, vernagelte Holzbretter, Dunkelheit ---
+                ctx.fillStyle = '#0a0d14';
+                ctx.fillRect(0, 0, 512, 512);
+
+                // Zersplittertes Glas (Zackige Riss-Scherben)
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.beginPath();
+                ctx.moveTo(14, 14);
+                ctx.lineTo(80, 14);
+                ctx.lineTo(45, 90);
+                ctx.lineTo(130, 40);
+                ctx.lineTo(165, 14);
+                ctx.lineTo(165, 180);
+                ctx.lineTo(110, 140);
+                ctx.lineTo(80, 260);
+                ctx.lineTo(14, 200);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(80, 260);
+                ctx.lineTo(130, 320);
+                ctx.lineTo(90, 420);
+                ctx.lineTo(14, 380);
+                ctx.moveTo(130, 320);
+                ctx.lineTo(165, 340);
+                ctx.stroke();
+
+                // Rechte Seite vernagelt mit Sperrholz
+                ctx.fillStyle = '#5c3a21';
+                ctx.fillRect(340, 14, 150, 484);
+                ctx.strokeStyle = '#382314';
+                ctx.lineWidth = 3;
+                for (let py = 14; py < 500; py += 65) {
+                    ctx.beginPath();
+                    ctx.moveTo(340, py);
+                    ctx.lineTo(490, py);
+                    ctx.stroke();
+                    ctx.fillStyle = '#1c1917';
+                    ctx.fillRect(350, py + 12, 5, 5);
+                    ctx.fillRect(475, py + 12, 5, 5);
+                    ctx.fillStyle = '#5c3a21';
+                }
+
+                ctx.font = 'bold 42px sans-serif';
+                ctx.fillStyle = 'rgba(236, 72, 153, 0.7)';
+                ctx.fillText('STAY', 360, 220);
+                ctx.fillText('OUT', 370, 275);
+            }
+
+            // Metall-Sprossen
+            ctx.fillStyle = '#0a0d14';
+            ctx.fillRect(0, 0, 512, 14);
+            ctx.fillRect(0, 498, 512, 14);
+            ctx.fillRect(0, 0, 14, 512);
+            ctx.fillRect(498, 0, 14, 512);
+            ctx.fillRect(165, 0, 14, 512);
+            ctx.fillRect(333, 0, 14, 512);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getBrickTexture(isRuin = false) {
+            const key = `brick_${isRuin ? 'ruin' : 'clean'}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = isRuin ? '#1c1917' : '#292524';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const rows = 20;
+            const rowH = 512 / rows;
+            const brickW = 48;
+
+            for (let r = 0; r < rows; r++) {
+                const y = r * rowH;
+                const offset = (r % 2) * (brickW / 2);
+                for (let x = -brickW; x < 512 + brickW; x += brickW) {
+                    const bx = x + offset;
+                    const baseShade = isRuin ? 30 : 42;
+                    const shade = baseShade + Math.floor(Math.random() * 16);
+                    ctx.fillStyle = isRuin
+                        ? `rgb(${shade + 8}, ${shade + 2}, ${shade})`
+                        : `rgb(${shade + 12}, ${shade + 6}, ${shade + 2})`;
+                    ctx.fillRect(bx + 1.5, y + 1.5, brickW - 3, rowH - 3);
+                }
+            }
+
+            if (isRuin) {
+                ctx.fillStyle = 'rgba(20, 35, 20, 0.55)';
+                for (let i = 0; i < 18; i++) {
+                    ctx.beginPath();
+                    ctx.arc(Math.random() * 512, 450 + Math.random() * 60, 25 + Math.random() * 30, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 2);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getClubCornerSignTexture(isOwned = false) {
+            const key = `cornersign_${isOwned ? 'on' : 'off'}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#080a10';
+            ctx.fillRect(0, 0, 256, 128);
+
+            if (isOwned) {
+                ctx.strokeStyle = '#00f5ff';
+                ctx.shadowColor = '#00f5ff';
+                ctx.shadowBlur = 14;
+                ctx.lineWidth = 6;
+                ctx.strokeRect(8, 8, 240, 112);
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '900 52px "Arial Black", "Impact", sans-serif';
+                ctx.shadowColor = '#ec4899';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#ec4899';
+                ctx.fillText('CLUB', 128, 64);
+                ctx.shadowBlur = 4;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('CLUB', 128, 64);
+            } else {
+                ctx.strokeStyle = '#27272a';
+                ctx.lineWidth = 5;
+                ctx.strokeRect(8, 8, 240, 112);
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '900 52px "Arial Black", "Impact", sans-serif';
+                ctx.fillStyle = '#3f3f46';
+                ctx.fillText('CLUB', 128, 64);
+
+                ctx.strokeStyle = '#09090b';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(80, 8);
+                ctx.lineTo(140, 70);
+                ctx.lineTo(190, 120);
+                ctx.stroke();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getSkylineTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['skyline']) return this._texCache['skyline'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 1024, 512);
+
+            const blds = [
+                { x: 20, w: 90, h: 320 },
+                { x: 130, w: 120, h: 420 },
+                { x: 270, w: 110, h: 360 },
+                { x: 400, w: 130, h: 490 },
+                { x: 550, w: 110, h: 410 },
+                { x: 680, w: 95, h: 460 },
+                { x: 795, w: 120, h: 350 },
+                { x: 935, w: 80, h: 390 },
+            ];
+
+            blds.forEach(b => {
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(b.x, 512 - b.h, b.w, b.h);
+
+                const cols = Math.floor(b.w / 12);
+                const rows = Math.floor(b.h / 14);
+                for (let r = 2; r < rows - 2; r++) {
+                    for (let c = 1; c < cols - 1; c++) {
+                        if (Math.random() < 0.65) {
+                            ctx.fillStyle = Math.random() < 0.85 ? '#fef08a' : '#38bdf8';
+                            ctx.fillRect(b.x + c * 12 + 2, 512 - b.h + r * 14 + 2, 7, 8);
+                        }
+                    }
+                }
+            });
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['skyline'] = tex;
+            return tex;
+        }
+
+        // --- A. BARS & CLUBS (Exakte 1:1 Umsetzung der fotorealistischen Referenzbilder!) ---
+        renderClubPlot(group, ownerColor, isMortgaged, tileName) {
+            const isOwned = !!ownerColor;
+            const hex = ownerColor || '#00f5ff';
+
+            // 1. FUNDAMENT & BÜRGERSTEIG
+            const baseGeo = new THREE.BoxGeometry(22, 0.35, 19);
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: isOwned ? 0x181e29 : 0x141820,
+                roughness: 0.8,
+            });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.set(0, 0.18, 0);
+            base.receiveShadow = true;
+            group.add(base);
+
+            // Bürgersteig vor dem Gebäude
+            const walkGeo = new THREE.BoxGeometry(7, 0.08, 18);
+            const walkMat = new THREE.MeshStandardMaterial({
+                color: isOwned ? 0x94a3b8 : 0x475569,
+                roughness: isOwned ? 0.65 : 0.95,
+            });
+            const walk = new THREE.Mesh(walkGeo, walkMat);
+            walk.position.set(-5.5, 0.4, 0);
+            walk.receiveShadow = true;
+            group.add(walk);
+
+            // 2. DAS GEBÄUDE (18m breit, 6.2m hoch, 12m tief)
+            const bldGroup = new THREE.Group();
+            bldGroup.position.set(4.0, 0, 0);
+
+            // Unterer Mauerwerk-Sockel mit Ziegeltextur
+            const brickMat = new THREE.MeshStandardMaterial({
+                map: this.getBrickTexture(!isOwned),
+                roughness: 0.9,
+            });
+            const brickBase = new THREE.Mesh(new THREE.BoxGeometry(11.8, 1.8, 18), brickMat);
+            brickBase.position.set(0, 0.9 + 0.35, 0);
+            brickBase.castShadow = true;
+            bldGroup.add(brickBase);
+
+            // Oberer Beton-/Fassadenkörper
+            const concreteMat = new THREE.MeshStandardMaterial({
+                color: isOwned ? 0x22262f : 0x272c35,
+                roughness: 0.85,
+            });
+            const mainBody = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.4, 18), concreteMat);
+            mainBody.position.set(0, 4.0 + 0.35, 0);
+            mainBody.castShadow = true;
+            bldGroup.add(mainBody);
+
+            // Beton-Pfeiler an den Ecken
+            const pillarMat = new THREE.MeshStandardMaterial({ color: isOwned ? 0x333b49 : 0x3f4654, roughness: 0.75 });
+            [-8.9, 8.9].forEach(pz => {
+                const pil = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.4, 0.8), pillarMat);
+                pil.position.set(-5.8, 3.2 + 0.35, pz);
+                pil.castShadow = true;
+                bldGroup.add(pil);
+            });
+
+            // 3. FENSTER LINKS & RECHTS
+            const winMat = new THREE.MeshBasicMaterial({
+                map: this.getBarWindowTexture(isOwned, hex),
+            });
+
+            // Linkes Fenster
+            const winLeft = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 3.2), winMat);
+            winLeft.position.set(-6.02, 3.0 + 0.35, -4.8);
+            winLeft.rotation.y = -Math.PI / 2;
+            bldGroup.add(winLeft);
+
+            // Rechtes Fenster
+            const winRight = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 3.2), winMat);
+            winRight.position.set(-6.02, 3.0 + 0.35, 4.8);
+            winRight.rotation.y = -Math.PI / 2;
+            bldGroup.add(winRight);
+
+            // 4. HAUPTEINGANG
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.6 });
+            const doors = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.4, 2.8), doorMat);
+            doors.position.set(-5.6, 1.7 + 0.35, 0);
+            bldGroup.add(doors);
+
+            // Türgriffe aus gebürstetem Edelstahl
+            const handleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+            [-0.15, 0.15].forEach(dz => {
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 8), handleMat);
+                handle.position.set(-5.75, 1.7 + 0.35, dz);
+                bldGroup.add(handle);
+            });
+
+            // Wenn Ruine: 3 Holzbretter schräg über die Türen genagelt!
+            if (!isOwned) {
+                const woodBoardMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
+                [-0.4, 0.0, 0.4].forEach((yo, bIdx) => {
+                    const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 3.2), woodBoardMat);
+                    board.position.set(-5.8, 1.8 + yo + 0.35, 0);
+                    board.rotation.x = (bIdx - 1) * 0.12;
+                    bldGroup.add(board);
+                });
+            }
+
+            // 5. DAS VORDACH / BALDACHIN ÜBER DEM EINGANG
+            const canopyMat = new THREE.MeshStandardMaterial({ color: 0x181b22, roughness: 0.6 });
+            const canopy = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 4.2), canopyMat);
+            canopy.position.set(-7.1, 3.8 + 0.35, 0);
+            canopy.castShadow = true;
+            bldGroup.add(canopy);
+
+            if (isOwned) {
+                // Zwei leuchtende Neon-Kantenstreifen am Vordach (Cyan & Magenta wie im Bild!)
+                const neonCyan = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.06, 4.25), new THREE.MeshBasicMaterial({ color: 0x00f5ff }));
+                neonCyan.position.set(-7.1, 3.7 + 0.35, 0);
+                bldGroup.add(neonCyan);
+
+                const neonPink = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.06, 4.25), new THREE.MeshBasicMaterial({ color: 0xec4899 }));
+                neonPink.position.set(-7.1, 3.9 + 0.35, 0);
+                bldGroup.add(neonPink);
+
+                // 3 warme Downlights unter dem Vordach
+                [-1.2, 0, 1.2].forEach(lz => {
+                    const spot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+                    spot.position.set(-7.1, 3.65 + 0.35, lz);
+                    bldGroup.add(spot);
+                });
+            }
+
+            // 6. DAS GROSSE NEON-FASSADENSCHILD "The Neon Lounge"
+            const fasciaMat = new THREE.MeshBasicMaterial({
+                map: this.getNeonFasciaTexture(tileName, isOwned, hex),
+            });
+            const fascia = new THREE.Mesh(new THREE.PlaneGeometry(18.2, 1.9), fasciaMat);
+            fascia.position.set(-6.02, 5.25 + 0.35, 0);
+            fascia.rotation.y = -Math.PI / 2;
+            bldGroup.add(fascia);
+
+            // Dachkanten-Neonlinie
+            if (isOwned) {
+                const roofNeon = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 18.2), new THREE.MeshBasicMaterial({ color: 0xec4899 }));
+                roofNeon.position.set(-6.05, 6.2 + 0.35, 0);
+                bldGroup.add(roofNeon);
+            }
+
+            // 7. ECK-SCHILD "CLUB" AN DER RECHTEN AUSSENWAND
+            const clubSignMat = new THREE.MeshBasicMaterial({
+                map: this.getClubCornerSignTexture(isOwned),
+            });
+            const clubSign = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.15), clubSignMat);
+            clubSign.position.set(-5.6, 4.4 + 0.35, 9.15);
+            bldGroup.add(clubSign);
+
+            // 8. INDUSTRIELLE DACH-ELEMENTE (HVAC-Klimageräte & Abzugsrohre wie im Bild!)
+            const hvacMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6, roughness: 0.6 });
+            // HVAC 1
+            const hvac1 = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 2.0), hvacMat);
+            hvac1.position.set(0, 7.0 + 0.35, -3.5);
+            hvac1.castShadow = true;
+            bldGroup.add(hvac1);
+
+            // HVAC 2
+            const hvac2 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 1.6), hvacMat);
+            hvac2.position.set(2, 6.8 + 0.35, 2.5);
+            hvac2.castShadow = true;
+            bldGroup.add(hvac2);
+
+            // Geschwungenes Abluftrohr
+            const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 2.2, 12), hvacMat);
+            vent.position.set(-1, 7.3 + 0.35, 0.5);
+            bldGroup.add(vent);
+
+            const ventCap = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.4, 12), hvacMat);
+            ventCap.position.set(-1, 8.5 + 0.35, 0.5);
+            bldGroup.add(ventCap);
+
+            // 9. VORBEREICH / BÜRGERSTEIG-DETAILS
+            if (isOwned) {
+                // Roter VIP-Teppichläufer
+                const carpet = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.04, 1.8), new THREE.MeshStandardMaterial({ color: 0x9f1239, roughness: 0.8 }));
+                carpet.position.set(-3.5, 0.44, 0);
+                bldGroup.add(carpet);
+
+                // Chrom-Kordelständer & schwarze Seile
+                const brassMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.15 });
+                [-1.2, 1.2].forEach(oz => {
+                    [-2.5, -4.8].forEach(ox => {
+                        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), brassMat);
+                        pole.position.set(ox, 0.85 + 0.35, oz);
+                        bldGroup.add(pole);
+
+                        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), brassMat);
+                        ball.position.set(ox, 1.3 + 0.35, oz);
+                        bldGroup.add(ball);
+                    });
+                });
+            } else {
+                // Ruine: Trümmer, Schutt und wildes Gras auf dem Gehweg
+                const weedMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 });
+                for (let w = 0; w < 16; w++) {
+                    const weed = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 6, 6), weedMat);
+                    weed.scale.set(0.6, 1.4, 0.6);
+                    weed.position.set(-7.5 + (Math.random() - 0.5) * 3, 0.5, (Math.random() - 0.5) * 16);
+                    bldGroup.add(weed);
+                }
+
+                // Betontrümmer
+                const rubbleMat = new THREE.MeshStandardMaterial({ color: 0x71717a, roughness: 0.95 });
+                for (let rb = 0; rb < 8; rb++) {
+                    const chunk = new THREE.Mesh(new THREE.BoxGeometry(0.4 + Math.random() * 0.5, 0.25, 0.4 + Math.random() * 0.5), rubbleMat);
+                    chunk.position.set(-6.5 + (Math.random() - 0.5) * 4, 0.5, (Math.random() - 0.5) * 12);
+                    chunk.rotation.set(Math.random() * 0.4, Math.random() * 3, Math.random() * 0.4);
+                    bldGroup.add(chunk);
+                }
+            }
+
+            // 10. HINTERGRUND: SKYLINE-HOCHHÄUSER MIT LEUCHTENDEN FENSTERN
+            const skylineMat = new THREE.MeshBasicMaterial({
+                map: this.getSkylineTexture(),
+                transparent: true,
+                opacity: 0.75,
+            });
+            const skylineMesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 16), skylineMat);
+            skylineMesh.position.set(11.0, 10.0, 0);
+            skylineMesh.rotation.y = -Math.PI / 2;
+            bldGroup.add(skylineMesh);
+
+            group.add(bldGroup);
         }
 
         // --- B. STRÄNDE (Verfallenes Wrack & Ruine bei Leerstand -> Aktives Luxus-Strandbad bei Besitz) ---
