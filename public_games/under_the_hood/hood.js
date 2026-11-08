@@ -802,7 +802,7 @@
         // ---------------------------------------------------------------------
         // 7. TRANSFORMATION DER GRUNDSTÜCKE: STRÄNDE & BARS ALS BAURUINEN / LUXUS
         // ---------------------------------------------------------------------
-        renderPlotState(tileData, ownerColor = null, isMortgaged = false) {
+        renderPlotState(tileData, ownerColor = null, isMortgaged = false, ownerName = null) {
             const tileIndex = typeof tileData === 'object' ? tileData.index : tileData;
             const group = this.tilePlotGroups[tileIndex];
             if (!group) return;
@@ -828,7 +828,9 @@
             } else if (tileType === 'beach') {
                 this.renderBeachPlot(group, ownerColor, isMortgaged, tileName);
             } else if (tileType === 'street') {
-                this.renderStreetPlot(group, level, ownerColor, isMortgaged, tileName);
+                const groupKey = (typeof tileData === 'object' && tileData.group) ? tileData.group : this.getTileGroupByIndex(tileIndex);
+                const price = (typeof tileData === 'object' && tileData.price) ? tileData.price : 200;
+                this.renderStreetPlot(group, level, ownerColor, isMortgaged, tileName, groupKey, price, tileIndex, ownerName);
             } else {
                 this.renderSpecialPlot(group, tileType, tileName, tileIndex);
             }
@@ -1717,6 +1719,156 @@
             return tex;
         }
 
+        getTileGroupByIndex(i) {
+            const groups = {
+                1: 'docks', 3: 'docks',
+                6: 'suburb', 8: 'suburb', 9: 'suburb',
+                11: 'arts', 13: 'arts', 14: 'arts',
+                16: 'promenade', 18: 'promenade', 19: 'promenade',
+                21: 'downtown', 23: 'downtown', 24: 'downtown',
+                26: 'marina', 27: 'marina', 29: 'marina',
+                31: 'heights', 32: 'heights', 34: 'heights',
+                37: 'millionaires', 39: 'millionaires',
+            };
+            return groups[i] || 'docks';
+        }
+
+        getGroupColor(groupKey) {
+            const map = {
+                docks: '#8B5A2B',        // Braun / Rost
+                suburb: '#38BDF8',       // Hellblau / Sky Blue
+                arts: '#EC4899',         // Pink / Magenta
+                promenade: '#F97316',    // Orange
+                downtown: '#EF4444',     // Rot
+                marina: '#EAB308',       // Gelb / Gold
+                heights: '#22C55E',      // Grün
+                millionaires: '#3B82F6', // Dunkelblau / Royal
+            };
+            return map[groupKey] || '#64748b';
+        }
+
+        getGroupName(groupKey) {
+            const map = {
+                docks: 'Docks & Industrie',
+                suburb: 'Vorstadt & Diners',
+                arts: 'Künstlerviertel',
+                promenade: 'Flaniermeile',
+                downtown: 'Downtown & Skyline',
+                marina: 'Yachthafen & Marina',
+                heights: 'Panorama-Höhen',
+                millionaires: 'Millionaires’ Hill',
+            };
+            return map[groupKey] || 'Kategorie';
+        }
+
+        getForSaleSignTexture(tileName, groupName, groupColorHex, price) {
+            const key = `forsale_${tileName}_${groupColorHex}_${price}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Hintergrund: Weißes wettergegerbtes Blechschild mit Rosträndern (wie im Foto 1!)
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(0, 0, 512, 256);
+
+            ctx.fillStyle = 'rgba(120, 53, 15, 0.12)';
+            ctx.fillRect(4, 4, 25, 45);
+            ctx.fillRect(480, 210, 28, 42);
+
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(4, 4, 504, 248);
+
+            // OBERER KATEGORIE-FARB-BALKEN (Deutliche Kennzeichnung der Straßengruppe!)
+            ctx.fillStyle = groupColorHex;
+            ctx.fillRect(8, 8, 496, 54);
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 24px "Arial Black", sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+            ctx.shadowBlur = 6;
+            ctx.fillText(`${groupName.toUpperCase()} • ${price} $`, 256, 35);
+            ctx.shadowBlur = 0;
+
+            // HAUPTZEILE "ZU VERKAUFEN" in fetter markanter schwarzer Schrift
+            ctx.font = '900 58px "Arial Black", "Impact", sans-serif';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText('ZU VERKAUFEN', 256, 125);
+
+            // Straßenname & Details
+            ctx.font = '700 22px sans-serif';
+            ctx.fillStyle = '#334155';
+            ctx.fillText(`Objekt: ${tileName}`, 256, 175);
+
+            // Makler- / Privatverkaufs-Hinweis
+            ctx.font = 'italic 16px sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('Privatverkauf • Bauparzelle der Stadt • 555-HOOD', 256, 215);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getOwnedGardenSignTexture(tileName, groupName, groupColorHex, ownerName, ownerColorHex) {
+            const key = `owned_garden_${tileName}_${groupColorHex}_${ownerName}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Hochwertige Emaillierte Tafel
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, 512, 256);
+
+            // KATEGORIE-FARB-RAHMEN
+            ctx.strokeStyle = groupColorHex;
+            ctx.lineWidth = 12;
+            ctx.strokeRect(6, 6, 500, 244);
+
+            // Oberer Streifen mit Gruppenfarbe
+            ctx.fillStyle = groupColorHex;
+            ctx.fillRect(12, 12, 488, 48);
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 22px "Arial Black", sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(groupName.toUpperCase(), 256, 36);
+
+            // Straßenname
+            ctx.font = '900 44px sans-serif';
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(tileName, 256, 115);
+
+            // Eigentümer-Badge in Spielerfarbe
+            ctx.fillStyle = ownerColorHex || '#22c55e';
+            ctx.beginPath();
+            ctx.roundRect(50, 165, 412, 60, 10);
+            ctx.fill();
+
+            ctx.font = '900 26px sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(`Eigentum: ${ownerName || 'Danny'}`, 256, 195);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
         // --- A. BARS & CLUBS (Exakte 1:1 Umsetzung der fotorealistischen Referenzbilder!) ---
         renderClubPlot(group, ownerColor, isMortgaged, tileName) {
             const isOwned = !!ownerColor;
@@ -2088,146 +2240,269 @@
             }
         }
 
-        // --- C. STRASSEN (Level 0: Natürliche Wiese mit Schild -> Level 1–5: Villen & Hotels) ---
-        renderStreetPlot(group, level, ownerColor, isMortgaged, tileName) {
-            const hexColor = ownerColor || '#3b82f6';
-            const playerMat = new THREE.MeshStandardMaterial({ color: hexColor, roughness: 0.45, metalness: 0.2 });
+        // --- C. STRASSEN (EXAKTE UMSETZUNG DER BEIDEN REFERENZBILDER DES USERS!) ---
+        renderStreetPlot(group, level, ownerColor, isMortgaged, tileName, groupKey = 'docks', price = 200, tileIndex = 1, ownerName = null) {
+            const isOwned = !!ownerColor;
+            const groupColorHex = this.getGroupColor(groupKey);
+            const groupName = this.getGroupName(groupKey);
+            const ownerHex = ownerColor || '#3b82f6';
 
-            // Grundstücks-Boden: Gepflegter, saftiger grüner Rasen
-            const plotMat = new THREE.MeshStandardMaterial({
-                color: level === 0 ? 0x22c55e : 0x16a34a,
-                roughness: 0.85,
-            });
-            const plotGeo = new THREE.BoxGeometry(20, 0.35, 18);
-            const plot = new THREE.Mesh(plotGeo, plotMat);
-            plot.position.set(0, 0.18, 0);
-            plot.receiveShadow = true;
-            group.add(plot);
+            // Gehweg vor dem Grundstück mit integriertem KATEGORIE-FARB-BORDSTEIN!
+            // So sieht der Fahrer schon auf der Straße sofort die zusammenhängenden Farbabschnitte!
+            const curbStrip = new THREE.Mesh(
+                new THREE.BoxGeometry(0.35, 0.12, 18),
+                new THREE.MeshBasicMaterial({ color: new THREE.Color(groupColorHex) })
+            );
+            curbStrip.position.set(-5.6, 0.44, 0);
+            group.add(curbStrip);
 
-            // STUFE 0: WILDNIS & VERKAUFSSCHILD (Sonnige Blumenwiese mit runden Kieselsteinen)
-            if (level === 0) {
-                // Weiche, abgerundete Natursteine im Rasen
-                const rockMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.85 });
-                const r1 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 10, 8), rockMat);
-                r1.position.set(-2.5, 0.4, -2.5);
-                r1.scale.set(1.2, 0.6, 1.0);
-                group.add(r1);
+            if (!isOwned) {
+                // =============================================================
+                // 1. UNBEBAUT / ZU VERKAUFEN (EXAKT WIE IM REFERENZBILD 1!)
+                // =============================================================
+                // Verwilderter Boden mit Erdflecken, hohem Unkraut und Gestrüpp
+                const wildGroundMat = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.95 });
+                const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), wildGroundMat);
+                plot.position.set(0, 0.18, 0);
+                plot.receiveShadow = true;
+                group.add(plot);
 
-                const r2 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), rockMat);
-                r2.position.set(3, 0.35, 3.2);
-                r2.scale.set(1.0, 0.5, 1.3);
-                group.add(r2);
+                // Erdflecken
+                const dirtMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.95 });
+                const d1 = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 7), dirtMat);
+                d1.position.set(-1, 0.37, 2);
+                group.add(d1);
 
-                // Bunte Wildblumen im Gras
-                const flowerColors = [0xfef08a, 0xf43f5e, 0xa855f7, 0xffffff];
-                for (let fl = 0; fl < 12; fl++) {
-                    const flMat = new THREE.MeshBasicMaterial({ color: flowerColors[fl % flowerColors.length] });
-                    const flower = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), flMat);
-                    flower.position.set((Math.random() - 0.5) * 12, 0.42, (Math.random() - 0.5) * 12);
+                // Schiefer, alter Maschendrahtzaun entlang der Grundstücksgrenze (wie im Foto!)
+                const woodPostMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
+                const fenceWireMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+
+                for (let z = -8; z <= 8; z += 2.6) {
+                    // Schiefe Holzpfosten
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.2, 6), woodPostMat);
+                    post.position.set(-6.5, 1.1, z);
+                    post.rotation.z = (Math.sin(z * 1.5)) * 0.12;
+                    post.rotation.x = (Math.cos(z * 1.8)) * 0.1;
+                    group.add(post);
+
+                    // Maschendraht-Feld
+                    if (z < 8) {
+                        const wireGeo = new THREE.BoxGeometry(0.04, 1.4, 2.6);
+                        const wire = new THREE.Mesh(wireGeo, fenceWireMat);
+                        wire.position.set(-6.5, 0.9, z + 1.3);
+                        wire.rotation.z = (Math.sin(z)) * 0.08;
+                        group.add(wire);
+                    }
+                }
+
+                // =========================================================
+                // DAS ORIGINALE "ZU VERKAUFEN"-SCHILD AM ZAUN (MIT KATEGORIE-FARBE!)
+                // =========================================================
+                const signMat = new THREE.MeshStandardMaterial({
+                    map: this.getForSaleSignTexture(tileName, groupName, groupColorHex, price),
+                    roughness: 0.5
+                });
+                const forSaleSign = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.4, 2.8), signMat);
+                forSaleSign.position.set(-6.3, 1.3, -1.5);
+                forSaleSign.rotation.y = 0.05;
+                forSaleSign.rotation.z = -0.06;
+                group.add(forSaleSign);
+
+                // Geröllhaufen / Schotterberge (wie im Foto!)
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 });
+                for (let r = 0; r < 7; r++) {
+                    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4 + (r % 3) * 0.2, 0), rockMat);
+                    stone.position.set(-3.5 + (r % 3) * 0.6, 0.5 + Math.floor(r / 3) * 0.3, -3.5 + (r % 2) * 0.8);
+                    stone.rotation.set(r * 0.5, r * 0.7, 0);
+                    group.add(stone);
+                }
+
+                // Altreifen-Stapel im Unkraut (wie im Foto!)
+                const tireMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.95 });
+                for (let t = 0; t < 3; t++) {
+                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.28, 12), tireMat);
+                    tire.position.set(-2.0, 0.45 + t * 0.26, 1.2);
+                    tire.rotation.x = Math.PI / 2 + (t === 2 ? 0.3 : 0);
+                    group.add(tire);
+                }
+
+                // Wildes Gestrüpp & Disteln
+                const bushMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 });
+                for (let b = 0; b < 6; b++) {
+                    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.7 + (b % 3) * 0.3, 6, 6), bushMat);
+                    bush.position.set(2 + (b % 2) * 2, 0.8, -4 + b * 1.6);
+                    bush.scale.set(1.2, 0.8, 1.1);
+                    group.add(bush);
+                }
+
+                // Verwilderter Baum im Hintergrund
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4.5, 8), woodPostMat);
+                trunk.position.set(4, 2.4, 2);
+                group.add(trunk);
+                const crown = new THREE.Mesh(new THREE.SphereGeometry(2.6, 8, 8), bushMat);
+                crown.position.set(4, 5.2, 2);
+                group.add(crown);
+
+            } else {
+                // =============================================================
+                // 2. GEKAUFT: GEPFLEGTER ZIERRASEN & METALLZAUN (BILD 2)
+                // =============================================================
+                // Perfekt gemähter, satter englischer Rasen
+                const lawnMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.75 });
+                const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), lawnMat);
+                plot.position.set(0, 0.18, 0);
+                plot.receiveShadow = true;
+                group.add(plot);
+
+                // Mulch-Beete entlang des Zauns mit Rindenmulch
+                const mulchMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.95 });
+                const bed1 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.04, 7.0), mulchMat);
+                bed1.position.set(-5.0, 0.38, -4.5);
+                group.add(bed1);
+                const bed2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.04, 7.0), mulchMat);
+                bed2.position.set(-5.0, 0.38, 4.5);
+                group.add(bed2);
+
+                // Bunte Rosenbeete & Lavendel
+                const roseCols = [0xf43f5e, 0xec4899, 0xa855f7, 0xf8fafc];
+                for (let fl = 0; fl < 16; fl++) {
+                    const fMat = new THREE.MeshBasicMaterial({ color: roseCols[fl % roseCols.length] });
+                    const flower = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 6), fMat);
+                    const zSide = fl < 8 ? -4.5 + (fl % 4) * 1.4 : 2.5 + (fl % 4) * 1.4;
+                    flower.position.set(-5.0 + (fl % 2) * 0.6, 0.45, zSide);
                     group.add(flower);
                 }
 
-                // Hochwertiges Holzschild "GRUNDSTÜCK ZU VERKAUFEN"
-                const woodMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
-                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.8), woodMat);
-                post.position.set(-6, 1.4, 0);
-                group.add(post);
+                // Moderner moosgrüner Doppelstabmattenzaun (wie im Foto!)
+                const fenceMat = new THREE.MeshStandardMaterial({ color: 0x14532d, metalness: 0.5, roughness: 0.4 });
+                const capMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(groupColorHex) });
 
-                const board = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 3.2), new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.7 }));
-                board.position.set(-6, 2.2, 0);
-                board.castShadow = true;
-                group.add(board);
-                return;
-            }
+                // Linker Zaunflügel
+                const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.3, 7.0), fenceMat);
+                fLeft.position.set(-6.5, 1.0, -4.5);
+                group.add(fLeft);
 
-            // STUFE 1: ERSCHLOSSEN (Gepflegter Vorgartenzaun, Flagge & Pflasterweg)
-            if (level >= 1) {
-                // Pflasterweg von der Straße
+                // Rechter Zaunflügel
+                const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.3, 7.0), fenceMat);
+                fRight.position.set(-6.5, 1.0, 4.5);
+                group.add(fRight);
+
+                // Zaunpfosten mit Kategorie-Farb-Kappen!
+                [-8.0, -4.5, -1.2, 1.2, 4.5, 8.0].forEach(pz => {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.5, 0.12), fenceMat);
+                    post.position.set(-6.5, 1.05, pz);
+                    group.add(post);
+
+                    // Pfostenkappe in KATEGORIE-FARBE
+                    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.16), capMat);
+                    cap.position.set(-6.5, 1.82, pz);
+                    group.add(cap);
+                });
+
+                // Gartentor in der Mitte (2.4m Durchgang)
+                const gate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 2.2), fenceMat);
+                gate.position.set(-6.5, 0.95, 0);
+                group.add(gate);
+
+                // Gepflasterter Gartenweg durch das Tor
                 const pathMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.8 });
-                const walkPath = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 2.4), pathMat);
-                walkPath.position.set(-5, 0.38, 0);
-                group.add(walkPath);
+                const gardenPath = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 2.2), pathMat);
+                gardenPath.position.set(-2.5, 0.38, 0);
+                group.add(gardenPath);
 
-                const fenceGeo = new THREE.BoxGeometry(0.18, 1.0, 16);
-                const fence = new THREE.Mesh(fenceGeo, playerMat);
-                fence.position.set(-7.5, 0.75, 0);
-                fence.castShadow = true;
-                group.add(fence);
+                // Eigentümer-Schild am Tor
+                const signMat = new THREE.MeshStandardMaterial({
+                    map: this.getOwnedGardenSignTexture(tileName, groupName, groupColorHex, ownerName, ownerHex),
+                    roughness: 0.3
+                });
+                const gateSign = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 1.6), signMat);
+                gateSign.position.set(-6.45, 1.5, 1.4);
+                group.add(gateSign);
 
-                const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 5), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
-                flagPole.position.set(-6.5, 2.5, -3.5);
+                // BESITZER-FLAGGE am Eingang in SPIELERFARBE!
+                const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.5, 8), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8 }));
+                flagPole.position.set(-6.4, 2.4, -1.4);
                 group.add(flagPole);
 
-                const flag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.0, 1.5), playerMat);
-                flag.position.set(-6.5, 4.4, -4.2);
-                group.add(flag);
-            }
+                const ownerFlag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.9, 1.4), new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 }));
+                ownerFlag.position.set(-6.4, 4.1, -2.1);
+                group.add(ownerFlag);
 
-            // STUFE 2–4: 1 BIS 3 MODERNE SKANDINAVISCHE KÜSTENVILLEN
-            if (level >= 2 && level <= 4) {
-                const count = level - 1;
-                const offsetsZ = count === 1 ? [0] : count === 2 ? [-4.5, 4.5] : [-5.5, 0, 5.5];
+                // Gepflegte Solitärbäume & Formgehölze
+                const tidyTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 3.8, 8), new THREE.MeshStandardMaterial({ color: 0x573a08 }));
+                tidyTrunk.position.set(3.5, 2.0, 3.5);
+                group.add(tidyTrunk);
+                const tidyCrown = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 10), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
+                tidyCrown.position.set(3.5, 4.5, 3.5);
+                group.add(tidyCrown);
 
-                offsetsZ.forEach(oz => {
-                    const houseGroup = new THREE.Group();
-                    houseGroup.position.set(1.8, 0, oz);
+                // =============================================================
+                // 3. WENN HÄUSER GEBAUT SIND (Level 1–4: Villen, Level 5: Luxus-Resort)
+                // =============================================================
+                if (level >= 1 && level <= 4) {
+                    const houseCount = level;
+                    const offsetsZ = houseCount === 1 ? [0] : houseCount === 2 ? [-3.8, 3.8] : houseCount === 3 ? [-5.0, 0, 5.0] : [-5.5, -1.8, 1.8, 5.5];
 
-                    // Weißer Stilmauer-Körper
-                    const bodyGeo = new THREE.BoxGeometry(7.5, 4.2, 4.8);
-                    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
-                    const body = new THREE.Mesh(bodyGeo, bodyMat);
-                    body.position.set(0, 2.2, 0);
-                    body.castShadow = true;
-                    body.receiveShadow = true;
-                    houseGroup.add(body);
+                    offsetsZ.forEach(oz => {
+                        const houseGroup = new THREE.Group();
+                        houseGroup.position.set(2.5, 0, oz);
 
-                    // Modernes Pult-/Satteldach in Spielerfarbe
-                    const roofGeo = new THREE.BoxGeometry(8.2, 0.5, 5.4);
-                    const roof = new THREE.Mesh(roofGeo, playerMat);
-                    roof.position.set(0, 4.4, 0);
-                    roof.castShadow = true;
-                    houseGroup.add(roof);
+                        const body = new THREE.Mesh(
+                            new THREE.BoxGeometry(6.5, 3.8, 3.6),
+                            new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 })
+                        );
+                        body.position.set(0, 2.1, 0);
+                        body.castShadow = true;
+                        houseGroup.add(body);
 
-                    // Große Panorama-Glasfront mit Himmelsreflexion
-                    const glassGeo = new THREE.BoxGeometry(0.1, 2.4, 3.2);
-                    const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8 });
-                    const glass = new THREE.Mesh(glassGeo, glassMat);
-                    glass.position.set(-3.8, 2.2, 0);
-                    houseGroup.add(glass);
+                        // Pultdach mit Kategorie-Farb-Akzent & Spielerfarbe
+                        const roof = new THREE.Mesh(
+                            new THREE.BoxGeometry(7.2, 0.45, 4.2),
+                            new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 })
+                        );
+                        roof.position.set(0, 4.1, 0);
+                        houseGroup.add(roof);
 
-                    group.add(houseGroup);
-                });
-            }
+                        // Glasfenster
+                        const win = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.1, 2.0, 2.4),
+                            new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.7 })
+                        );
+                        win.position.set(-3.3, 2.0, 0);
+                        houseGroup.add(win);
 
-            // STUFE 5: LUXUS-RESORT MIT PRIVAT-POOL & PALME
-            if (level === 5) {
-                const hotelGroup = new THREE.Group();
+                        group.add(houseGroup);
+                    });
+                } else if (level === 5) {
+                    // Level 5: Großes Luxus-Hotel
+                    const hotelGroup = new THREE.Group();
+                    hotelGroup.position.set(2.5, 0, 0);
 
-                const mainGeo = new THREE.BoxGeometry(11, 7.5, 11);
-                const mainMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.2 });
-                const main = new THREE.Mesh(mainGeo, mainMat);
-                main.position.set(2, 3.9, 0);
-                main.castShadow = true;
-                hotelGroup.add(main);
+                    const hotelBody = new THREE.Mesh(
+                        new THREE.BoxGeometry(9.5, 7.5, 10.5),
+                        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 })
+                    );
+                    hotelBody.position.set(0, 3.9, 0);
+                    hotelBody.castShadow = true;
+                    hotelGroup.add(hotelBody);
 
-                const roofDeck = new THREE.Mesh(new THREE.BoxGeometry(12, 0.4, 12), playerMat);
-                roofDeck.position.set(2, 7.8, 0);
-                hotelGroup.add(roofDeck);
+                    const hotelRoof = new THREE.Mesh(
+                        new THREE.BoxGeometry(10.5, 0.5, 11.5),
+                        new THREE.MeshStandardMaterial({ color: ownerHex })
+                    );
+                    hotelRoof.position.set(0, 7.8, 0);
+                    hotelGroup.add(hotelRoof);
 
-                const glassGeo = new THREE.BoxGeometry(0.2, 5.5, 8);
-                const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8 });
-                const glass = new THREE.Mesh(glassGeo, glassMat);
-                glass.position.set(-3.6, 4.0, 0);
-                hotelGroup.add(glass);
+                    // Pool im Garten
+                    const pool = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.5, 0.2, 6.5),
+                        new THREE.MeshBasicMaterial({ color: 0x06b6d4 })
+                    );
+                    pool.position.set(-4.5, 0.4, 0);
+                    hotelGroup.add(pool);
 
-                // Türkiser Swimmingpool im Garten
-                const poolGeo = new THREE.BoxGeometry(5.2, 0.25, 7.5);
-                const poolMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
-                const pool = new THREE.Mesh(poolGeo, poolMat);
-                pool.position.set(-6.5, 0.4, 0);
-                hotelGroup.add(pool);
-
-                group.add(hotelGroup);
+                    group.add(hotelGroup);
+                }
             }
         }
 
@@ -2989,7 +3264,7 @@
             if (newState.tiles) {
                 newState.tiles.forEach(t => {
                     const owner = newState.players.find(p => p.id === t.owner);
-                    this.renderPlotState(t, owner ? owner.color : null, t.mortgaged);
+                    this.renderPlotState(t, owner ? owner.color : null, t.mortgaged, owner ? owner.name : null);
                 });
             }
 
