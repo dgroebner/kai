@@ -198,20 +198,6 @@ if (!empty($dailyWisdom)) {
                 </a>
             <?php endif; ?>
 
-            <?php if (Auth::hasPermission('ebon_read')): ?>
-                <a href="kassenbon/index.php" class="card tool-card">
-                    <span class="tool-card-icon">🧾</span>
-                    <span class="tool-card-title">Rechnungen</span>
-                </a>
-            <?php endif; ?>
-
-            <?php if (Auth::hasPermission('finance_read')): ?>
-                <a href="bank/index.php" class="card tool-card">
-                    <span class="tool-card-icon">🏦</span>
-                    <span class="tool-card-title">Finanzen</span>
-                </a>
-            <?php endif; ?>
-
             <?php if (Auth::hasPermission('car_read')): ?>
                 <a href="car/index.php" class="card tool-card">
                     <span class="tool-card-icon">🚗</span>
@@ -223,6 +209,20 @@ if (!empty($dailyWisdom)) {
                 <a href="transit/index.php" class="card tool-card">
                     <span class="tool-card-icon">🚋</span>
                     <span class="tool-card-title">ÖPNV</span>
+                </a>
+            <?php endif; ?>
+
+            <?php if (Auth::hasPermission('ebon_read')): ?>
+                <a href="kassenbon/index.php" class="card tool-card">
+                    <span class="tool-card-icon">🧾</span>
+                    <span class="tool-card-title">Rechnungen</span>
+                </a>
+            <?php endif; ?>
+
+            <?php if (Auth::hasPermission('finance_read')): ?>
+                <a href="bank/index.php" class="card tool-card">
+                    <span class="tool-card-icon">🏦</span>
+                    <span class="tool-card-title">Finanzen</span>
                 </a>
             <?php endif; ?>
 
