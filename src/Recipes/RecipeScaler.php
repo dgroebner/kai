@@ -98,7 +98,7 @@ class RecipeScaler
         foreach ($recipe['ingredients'] ?? [] as $ing) {
             $baseQty = (float)($ing['quantity'] ?? 1.0);
             $unit = trim((string)($ing['unit'] ?? 'Stück'));
-            $scaledQty = $isUnscaled ? $baseQty : $this->roundQuantity($baseQty * $scaleFactor, $unit);
+            $scaledQty = $isUnscaled ? $baseQty : $this->roundQuantity($baseQty * $scaleFactor, $unit, (string)($ing['ingredient_name'] ?? ''));
 
             $ing['base_quantity'] = $baseQty;
             $ing['scaled_quantity'] = $scaledQty;
@@ -140,7 +140,7 @@ class RecipeScaler
                 foreach ($inlineList as $inItem) {
                     $inQty = (float)($inItem['quantity'] ?? 0);
                     $inUnit = trim((string)($inItem['unit'] ?? ''));
-                    $sQty = $inQty > 0 ? ($isUnscaled ? $inQty : $this->roundQuantity($inQty * $scaleFactor, $inUnit)) : 0;
+                    $sQty = $inQty > 0 ? ($isUnscaled ? $inQty : $this->roundQuantity($inQty * $scaleFactor, $inUnit, (string)($inItem['name'] ?? ''))) : 0;
                     $scaledInline[] = [
                         'name' => (string)($inItem['name'] ?? ''),
                         'base_quantity' => $inQty,
@@ -183,15 +183,42 @@ class RecipeScaler
     /**
      * Rundet eine skalierte Menge auf praxistaugliche Küchenwerte.
      */
-    public function roundQuantity(float $qty, string $unit): float
+    public function roundQuantity(float $qty, string $unit, string $ingredientName = ''): float
     {
         if ($qty <= 0) {
             return 0.0;
         }
 
         $lowerUnit = mb_strtolower(trim($unit));
+        $lowerName = mb_strtolower(trim($ingredientName));
 
-        // Gramm / Milliliter ab 50 auf 5er oder 10er runden
+        // 1. Kleinstmengen (Prise, Messerspitze, Spritzer, Schuss, Tropfen) -> immer ganze Zahlen (mind. 1)
+        if (
+            preg_match('/(prise|prisen|messerspitze|msp|spritzer|schuss|tropfen)/u', $lowerUnit) ||
+            preg_match('/(prise|messerspitze|spritzer|tropfen)/u', $lowerName)
+        ) {
+            return max(1.0, (float)round($qty));
+        }
+
+        // 2. Löffel-Mengen (TL, EL, Teelöffel, Esslöffel, inkl. "gehäufter TL", "gestrichener EL" etc.)
+        // Word-Boundary Regex gegen Fehlmatches bei "Beutel", "Tafel", "Nelke" etc.
+        if (preg_match('/(?<![a-zäöü])(tl|el|teelöffel|esslöffel)\.?(?![a-zäöü])/iu', $lowerUnit)) {
+            if ($qty < 0.2) {
+                return 0.25;
+            }
+            if ($qty < 1.0) {
+                // Viertel-Schritte: 0.25, 0.5, 0.75, 1.0
+                return round($qty * 4) / 4;
+            }
+            if ($qty < 3.0) {
+                // Halbe Schritte: 1.0, 1.5, 2.0, 2.5, 3.0
+                return round($qty * 2) / 2;
+            }
+            // Ab 3 EL/TL auf ganze Löffel runden
+            return (float)round($qty);
+        }
+
+        // 3. Gramm / Milliliter
         if (in_array($lowerUnit, ['g', 'gramm', 'ml', 'milliliter'], true)) {
             if ($qty >= 250) {
                 return round($qty / 10) * 10;
@@ -199,26 +226,107 @@ class RecipeScaler
             if ($qty >= 50) {
                 return round($qty / 5) * 5;
             }
-            return max(1.0, round($qty));
+            return max(1.0, (float)round($qty));
         }
 
-        // Stückzahlen, Zehen, Schalotten, Eier etc. auf halbe oder ganze Einheiten runden
-        if (in_array($lowerUnit, ['stück', 'stk', 'zehe', 'zehen', 'bund', 'dose', 'dosen', 'becher', 'packung', 'pck', 'scheibe', 'scheiben'], true)) {
-            if ($qty < 0.4) {
+        // 4. Kilogramm / Liter
+        if (in_array($lowerUnit, ['kg', 'kilogramm', 'l', 'liter'], true)) {
+            if ($qty >= 2.0) {
+                return round($qty * 10) / 10;
+            }
+            return round($qty * 20) / 20; // 0.05er Schritte: z. B. 0.25, 0.5, 0.75, 1.25
+        }
+
+        // 5. Knoblauch & Knoblauchzehen -> immer ganze Zehen (mind. 1)
+        if (
+            preg_match('/(zehe|zehen)/u', $lowerUnit) ||
+            str_contains($lowerName, 'knoblauch')
+        ) {
+            return max(1.0, (float)round($qty));
+        }
+
+        // 6. Ganze Gewürze & Kräuterstängel -> immer ganze Einheiten
+        if (
+            preg_match('/(lorbeer|nelke|wacholder|sternanis|zimtstange|vanilleschote|chilischote)/u', $lowerName) ||
+            preg_match('/(zweig|zweige|stängel|strunk|kapsel|kapseln)/u', $lowerUnit)
+        ) {
+            return max(1.0, (float)round($qty));
+        }
+
+        // 7. Schalotten & Zwiebeln -> ganze Einheiten (unter 0.75 halbe Zwiebel erlaubt)
+        if (
+            str_contains($lowerName, 'schalotte') ||
+            (str_contains($lowerName, 'zwiebel') && !str_contains($lowerName, 'frühlingszwiebel') && !str_contains($lowerName, 'lauchzwiebel'))
+        ) {
+            if ($qty < 0.75) {
                 return 0.5;
             }
-            return round($qty * 2) / 2;
+            return max(1.0, (float)round($qty));
         }
 
-        // TL / EL auf Viertel oder Halbe runden
-        if (in_array($lowerUnit, ['tl', 'el', 'teelöffel', 'esslöffel', 'prise', 'prisen'], true)) {
-            if ($qty < 0.3) {
-                return 0.25;
+        // 8. Diskrete Portionsartikel & Würste (Wiener Würstchen, Frikadellen, Patties, Eier, Schnitzel...) -> immer ganze Stück
+        $discreteKeywords = [
+            'würstchen', 'wurst', 'wiener', 'bockwurst', 'bratwurst', 'weißwurst', 'knacker', 'mettende', 'cabannossi', 'kabanos', 'chorizo', 'frankfurter', 'currywurst',
+            'frikadelle', 'bulette', 'fleischpflanzerl', 'patty', 'burger',
+            'schnitzel', 'kotelett', 'steak', 'keule', 'schenkel',
+            'spieß', 'maiskolben', 'brötchen', 'bagel', 'tortilla', 'wrap', 'pita'
+        ];
+        foreach ($discreteKeywords as $kw) {
+            if (str_contains($lowerName, $kw)) {
+                return max(1.0, (float)round($qty));
             }
-            return round($qty * 2) / 2;
         }
 
-        return round($qty, 2);
+        // Eier (Ei, Eier)
+        if (
+            preg_match('/\b(ei|eier)\b/u', $lowerUnit) ||
+            preg_match('/\b(ei|eier)\b/u', $lowerName) ||
+            (str_contains($lowerName, 'ei') && (str_contains($lowerName, 'hühnerei') || str_contains($lowerName, 'wachtelei')))
+        ) {
+            if (!str_contains($lowerName, 'eierteig') && !str_contains($lowerName, 'spätzle')) {
+                return max(1.0, (float)round($qty));
+            }
+        }
+
+        // 9. Dosen, Gläser, Becher, Packungen, Tuben, Bund
+        if (preg_match('/(dose|dosen|glas|gläser|becher|packung|pck|tube|tuben|bund)/u', $lowerUnit)) {
+            if ($qty < 0.75) {
+                return 0.5;
+            }
+            return max(1.0, (float)round($qty));
+        }
+
+        // 10. Scheiben (Brot, Toast, Schinken, Käse)
+        if (preg_match('/(scheibe|scheiben)/u', $lowerUnit)) {
+            if ($qty < 1.5) {
+                return max(1.0, (float)round($qty));
+            }
+            return (float)round($qty);
+        }
+
+        // 11. Allgemeine Stückzahlen (Obst, Gemüse wie Paprika, Zitrone, Karotte...)
+        if (in_array($lowerUnit, ['stück', 'stk', 'stk.', ''], true)) {
+            if ($qty < 0.75) {
+                return 0.5;
+            }
+            if ($qty < 2.0) {
+                return round($qty * 2) / 2; // 1.0, 1.5, 2.0
+            }
+            // Ab 2 Stück auf ganze Einheiten runden (z. B. 2.44 -> 2, 7.33 -> 7)
+            return (float)round($qty);
+        }
+
+        // 12. Generischer Fallback für sonstige Einheiten (küchentaugliche Interpolation)
+        if ($qty < 0.2) {
+            return 0.25;
+        }
+        if ($qty < 1.0) {
+            return round($qty * 4) / 4;
+        }
+        if ($qty < 3.0) {
+            return round($qty * 2) / 2;
+        }
+        return (float)round($qty);
     }
 
     /**

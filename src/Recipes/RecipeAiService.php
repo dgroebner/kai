@@ -117,10 +117,15 @@ VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
 4. {$shallotRule}
    {$customPrefBlock}
 5. 2-PHASEN MISE EN PLACE (VORBEREITUNG) & MULTI-TOPF-TIMING:
-   - Zerlege das Gericht in logische Komponenten (`components`), z. B. "Vorbereitung", "Hauptgericht / Pfanne", "Reis / Beilage".
-   - Vorbereitung vor dem Einschalten des Herdes (`phase = "mise_en_place_pre"`): Schneide- und Vorbereitungsarbeiten, die erledigt sein sollten, bevor die Pfanne/der Topf heiß wird.
-   - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): Wenn eine Komponente längere Zeit passiv kocht/schmort/backt (>= 15 Min), lege das Schneiden späterer Zutaten gezielt in diese Wartezeit!
-   - Berücksichtige bei Kochtöpfen (z. B. Kartoffeln, Nudeln, Reis) explizit einen Aufheiz-Schritt (`phase = "preheat"`, z. B. "Topf mit Wasser auf Stufe {$stoveLevels} zum Kochen bringen", `duration_minutes = 6`), damit die Synchronisation mehrerer Töpfe exakt aufgeht!
+   - Zerlege das Gericht in logische Komponenten (`components`), z. B. "Vorbereitung", "Hauptgericht / Pfanne", "Nudeln / Beilage".
+   - WICHTIG: Die Phasen `mise_en_place_pre` und `mise_en_place_parallel` sind AUSSCHLIESSLICH für kalte Schneide-, Rüst- und Vorbereitungsarbeiten auf der Arbeitsfläche (ohne Herd/Hitze)!
+   - Sobald ein Schritt Hitze, Kochen, Braten, Köcheln, Backen oder eine Herd-Stufe (`stove_level`) erfordert, ist er IMMER `phase = "cooking"` (oder `phase = "preheat"` beim Wasser aufkochen / Ofen vorheizen)! Setze NIEMALS `mise_en_place_parallel` für echte Kochvorgänge auf dem Herd (wie Nudeln kochen)!
+   - Vorbereitung vor dem Einschalten des Herdes (`phase = "mise_en_place_pre"`): Schneide-, Würfel- und Rüst-Arbeiten, die fertig sein müssen, bevor der Herd eingeschaltet wird.
+   - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): Reine Schneide-/Vorbereitungsarbeiten (ohne Herd!), die während passiver Schmorzeiten erledigt werden können.
+   - Chronologische Reihenfolge bei Töpfen (Nudeln, Reis, Kartoffeln):
+     1. Schritt: Wasser aufsetzen & erhitzen (`phase = "preheat"`, Stufe {$stoveLevels}, ca. 6 Min).
+     2. Schritt: Nudeln/Reis hineingeben & garen (`phase = "cooking"`, z. B. Stufe 5, 10 Min).
+     Wasser muss IMMER vor dem Hineingeben der Nudeln kochen!
 6. VORRATSSCHRANK-FILTER & PACKUNGSGRÖSSEN:
    - Setze `is_pantry_staple = 1` bei Vorrats- und Basis-Zutaten, die man normalerweise im Vorratsschrank hat und vor dem Einkauf nur kurz prüft (Salz, Pfeffer, Gewürze wie Currypulver/Paprikapulver, Speiseöl/Olivenöl, Essig, Brühe/Gemüsebrühe, Senf, Mehl/Speisestärke, Zucker, Schalotten, Zwiebeln, Knoblauch/Knoblauchzehen sowie Reis/Basmati-Reis).
    - WICHTIG: Frische Hauptzutaten, Kühlwaren und spezielle Konserven wie **Fleisch, Fisch, frisches oder TK-Gemüse (Paprika, Karotten, Erbsen), Dosen-Gemüse (Mais, Bohnen), Kokosmilch, Sahne, Schmand, Käse, Kartoffeln und Fruchtsäfte (Ananassaft)** erhalten IMMER `is_pantry_staple = 0`!
@@ -742,11 +747,41 @@ PROMPT;
             'equipment_list' => is_array($raw['equipment_list'] ?? null) ? $raw['equipment_list'] : [],
         ];
 
+        $rawComponents = is_array($raw['components'] ?? null) ? $raw['components'] : [];
+        $normalizedComponents = [];
+        foreach ($rawComponents as $comp) {
+            if (!is_array($comp)) {
+                continue;
+            }
+            $steps = is_array($comp['steps'] ?? null) ? $comp['steps'] : [];
+            $normalizedSteps = [];
+            foreach ($steps as $step) {
+                if (!is_array($step)) {
+                    continue;
+                }
+                $phase = (string)($step['phase'] ?? 'cooking');
+                $title = (string)($step['title'] ?? '');
+                $instruction = (string)($step['instruction'] ?? '');
+                $text = mb_strtolower($title . ' ' . $instruction);
+                $hasStoveOrOven = ($step['stove_level'] ?? null) !== null || !empty($step['oven_setting']);
+
+                $isCookingAction = $hasStoveOrOven || preg_match('/\b(kochen|aufkochen|erhitzen|braten|anbraten|köcheln|garen|sieden|dünsten|schmoren|backen|ablöschen)\b/iu', $text);
+                $isPreheatAction = preg_match('/\b(aufkochen|wasser aufsetzen|wasser erhitzen|wasser zum kochen|vorheizen|topf erhitzen|ofen vorheizen)\b/iu', $text);
+
+                if ($isCookingAction && ($phase === 'mise_en_place_pre' || $phase === 'mise_en_place_parallel')) {
+                    $step['phase'] = $isPreheatAction ? 'preheat' : 'cooking';
+                }
+                $normalizedSteps[] = $step;
+            }
+            $comp['steps'] = $normalizedSteps;
+            $normalizedComponents[] = $comp;
+        }
+
         $variantData = [
             'variant_name' => trim((string)($raw['variant_name'] ?? 'Standard (Familien-Variante)')),
             'notes' => trim((string)($raw['variant_notes'] ?? $raw['notes'] ?? '')),
             'ingredients' => $normalizedIngredients,
-            'components' => is_array($raw['components'] ?? null) ? $raw['components'] : [],
+            'components' => $normalizedComponents,
         ];
 
         return [

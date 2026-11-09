@@ -38,6 +38,22 @@ class RecipeTimelineService
                 $phase = (string)($step['phase'] ?? 'cooking');
                 $dur = max(0, (int)($step['duration_minutes'] ?? 0));
 
+                $title = (string)($step['title'] ?? '');
+                $instruction = (string)($step['instruction'] ?? '');
+                $text = mb_strtolower($title . ' ' . $instruction);
+                $hasStoveOrOven = ($step['stove_level'] ?? null) !== null || !empty($step['oven_setting']);
+
+                // Koch-Aktionen und Herd-Nutzung schließen Mise en Place (reine Schneide-/Vorbereitungsarbeit) aus
+                $isCookingAction = $hasStoveOrOven || preg_match('/\b(kochen|aufkochen|erhitzen|braten|anbraten|köcheln|garen|sieden|dünsten|schmoren|backen|ablöschen)\b/iu', $text);
+                $isPreheatAction = preg_match('/\b(aufkochen|wasser aufsetzen|wasser erhitzen|wasser zum kochen|vorheizen|topf erhitzen|ofen vorheizen)\b/iu', $text);
+
+                if ($isCookingAction) {
+                    if ($phase === 'mise_en_place_pre' || $phase === 'mise_en_place_parallel') {
+                        $phase = $isPreheatAction ? 'preheat' : 'cooking';
+                        $step['phase'] = $phase;
+                    }
+                }
+
                 if ($phase === 'mise_en_place_pre') {
                     $effectiveDur = $dur > 0 ? $dur : 3;
                     $step['effective_duration_min'] = $effectiveDur;
@@ -176,16 +192,33 @@ class RecipeTimelineService
             if ($cmp !== 0) {
                 return $cmp;
             }
-            // Bei gleicher Minute: Vorbereitung vor Aufheizen vor Kochen
+
+            // Innerhalb derselben Komponente (z. B. Nudeln: 1. Wasser aufkochen, 2. Nudeln kochen)
+            // muss die Reihenfolge der Schrittnummern zwingend erhalten bleiben!
+            $compA = (string)($a['component_name'] ?? '');
+            $compB = (string)($b['component_name'] ?? '');
+            if ($compA !== '' && $compA === $compB) {
+                $stepCmp = ((int)($a['step_number'] ?? 0) <=> (int)($b['step_number'] ?? 0));
+                if ($stepCmp !== 0) {
+                    return $stepCmp;
+                }
+            }
+
+            // Bei gleicher Minute: Vorbereitung vor Aufheizen vor Kochen vor Kochpause
             $prio = [
                 'mise_en_place_pre' => 1,
-                'mise_en_place_parallel' => 2,
-                'preheat' => 3,
-                'cooking' => 4,
+                'preheat' => 2,
+                'cooking' => 3,
+                'mise_en_place_parallel' => 4,
                 'resting' => 5,
                 'serving' => 6,
             ];
-            return ($prio[$a['phase'] ?? 'cooking'] ?? 4) <=> ($prio[$b['phase'] ?? 'cooking'] ?? 4);
+            $prioCmp = ($prio[$a['phase'] ?? 'cooking'] ?? 3) <=> ($prio[$b['phase'] ?? 'cooking'] ?? 3);
+            if ($prioCmp !== 0) {
+                return $prioCmp;
+            }
+
+            return ((int)($a['step_number'] ?? 0) <=> (int)($b['step_number'] ?? 0));
         });
 
         // Durchgehende Synchron-Schrittnummer vergeben
