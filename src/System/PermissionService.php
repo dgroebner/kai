@@ -86,7 +86,6 @@ class PermissionService
                 'weather_read', 'weather_write',
                 'shopping_read', 'shopping_write', 'shopping_master',
                 'suggestions_read', 'suggestions_write',
-                'recipe_read', 'recipe_write',
                 'recipes_read', 'recipes_write',
                 'history_read', 'history_write',
                 'school_read', 'school_write',

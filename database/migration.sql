@@ -127,3 +127,11 @@ CREATE TABLE IF NOT EXISTS `car_trip_ignored_charges` (
     INDEX `idx_charge_id` (`charge_id`),
     FOREIGN KEY (`trip_id`) REFERENCES `car_trips`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ==========================================================================
+-- MIGRATION v1.36.36: BERECHTIGUNGEN KONSOLIDIEREN (recipe_* -> recipes_*)
+-- ==========================================================================
+UPDATE IGNORE `group_permissions` SET `permission` = 'recipes_read' WHERE `permission` = 'recipe_read';
+UPDATE IGNORE `group_permissions` SET `permission` = 'recipes_write' WHERE `permission` = 'recipe_write';
+DELETE FROM `group_permissions` WHERE `permission` IN ('recipe_read', 'recipe_write');

@@ -725,7 +725,7 @@ function getEventLabel(string $eventType): string
                             </thead>
                             <tbody>
                             <?php
-                            // Standard-Rechte sammeln, damit das UI nicht leer ist
+                            // Standard-Rechte sammeln, damit das UI nicht leer ist (recipe_* auf recipes_* konsolidiert)
                             $availablePermissions = [
                                     // System & Finanzen
                                     'system_read', 'system_write',
@@ -739,9 +739,7 @@ function getEventLabel(string $eventType): string
                                     'shopping_read', 'shopping_write', 'shopping_master',
                                     // Einkaufsliste — Vorschläge-Tab
                                     'suggestions_read', 'suggestions_write',
-                                    // Einkaufsliste — Rezept & KI-Tab
-                                    'recipe_read', 'recipe_write',
-                                    // Kochrezepte & Küchenbegleiter
+                                    // Kochrezepte & Küchenbegleiter (inkl. Einkaufsliste Rezept-Tab)
                                     'recipes_read', 'recipes_write',
                                     // Einkaufsliste — Historie & E-Bons-Tab
                                     'history_read', 'history_write',
@@ -754,16 +752,60 @@ function getEventLabel(string $eventType): string
                                     // ÖPNV & Pendler-Monitor
                                     'transit_read', 'transit_write',
                             ];
+
+                            $permissionLabels = [
+                                'system_read' => 'System & Aktivitäten ansehen',
+                                'system_write' => 'System & Rollen/Rechte verwalten',
+                                'finance_read' => 'Finanzen & Kontostände ansehen',
+                                'finance_write' => 'Finanzen synchronisieren & verwalten',
+                                'ebon_read' => 'E-Bons & Rechnungen ansehen',
+                                'ebon_write' => 'E-Bons bearbeiten & löschen',
+                                'pv_read' => 'PV-Überschuss & Strompreise ansehen',
+                                'pv_write' => 'PV-Ladevorgänge steuern',
+                                'car_read' => 'Fahrzeugstatus & Telemetrie ansehen',
+                                'car_write' => 'Fahrzeug & Reisen planen/verwalten',
+                                'weather_read' => 'Wetter-Dashboard ansehen',
+                                'weather_write' => 'Wetter-Konfiguration anpassen',
+                                'shopping_read' => 'Einkaufsliste ansehen & abhaken',
+                                'shopping_write' => 'Einkaufsliste bearbeiten & hinzufügen',
+                                'shopping_master' => 'Einkaufsliste leeren & aufräumen',
+                                'suggestions_read' => 'Einkaufsliste: Vorschläge ansehen',
+                                'suggestions_write' => 'Einkaufsliste: Vorschläge übernehmen/ablehnen',
+                                'recipes_read' => 'Kochrezepte & Koch-Modus ansehen / nutzen',
+                                'recipes_write' => 'Kochrezepte importieren, bearbeiten & löschen',
+                                'history_read' => 'Einkaufsliste: Historie ansehen',
+                                'history_write' => 'Einkaufsliste: Historie verwalten',
+                                'school_read' => 'Stunden- & Vertretungsplan ansehen',
+                                'school_write' => 'Stundenplan konfigurieren & synchronisieren',
+                                'calendar_read' => 'Kalender & Geburtstage ansehen',
+                                'calendar_write' => 'Kalender-Einträge & Erinnerungen bearbeiten',
+                                'gamification_read' => 'Familien-Quests ansehen',
+                                'gamification_write' => 'Familien-Quests erledigen & Punkte sammeln',
+                                'gamification_admin' => 'Familien-Quests & Belohnungen konfigurieren',
+                                'transit_read' => 'ÖPNV & Pendler-Verbindungen ansehen',
+                                'transit_write' => 'ÖPNV-Pendlerprofile & Haltestellen bearbeiten',
+                            ];
                             ?>
 
                             <?php foreach ($availablePermissions as $perm): ?>
                                 <tr>
-                                    <td data-label="Recht"><strong><?= htmlspecialchars($perm) ?></strong></td>
+                                    <td data-label="Recht">
+                                        <strong><?= htmlspecialchars($perm) ?></strong>
+                                        <?php if (isset($permissionLabels[$perm])): ?>
+                                            <br><small class="text-muted"><?= htmlspecialchars($permissionLabels[$perm], ENT_QUOTES, 'UTF-8') ?></small>
+                                        <?php endif; ?>
+                                    </td>
                                     <?php foreach ($groups as $group): ?>
+                                        <?php
+                                        $perms = $groupPermissions[$group['id']] ?? [];
+                                        $isChecked = in_array($perm, $perms, true)
+                                            || ($perm === 'recipes_read' && in_array('recipe_read', $perms, true))
+                                            || ($perm === 'recipes_write' && in_array('recipe_write', $perms, true));
+                                        ?>
                                         <td data-label="<?= htmlspecialchars($group['name']) ?>"
                                             style="text-align: center;">
                                             <input type="checkbox" name="group_permissions[<?= $group['id'] ?>][]"
-                                                   value="<?= htmlspecialchars($perm) ?>" <?= in_array($perm, $groupPermissions[$group['id']] ?? []) ? 'checked' : '' ?>
+                                                   value="<?= htmlspecialchars($perm) ?>" <?= $isChecked ? 'checked' : '' ?>
                                                    style="transform: scale(1.3);">
                                         </td>
                                     <?php endforeach; ?>

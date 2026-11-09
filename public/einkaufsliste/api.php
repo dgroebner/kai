@@ -89,8 +89,8 @@ if (in_array($action, $suggestionWriteActions, true) && !Auth::hasPermission('su
 
 // Rezept-spezifische Rechteprüfung
 $recipeWriteActions = ['parse_recipe', 'save_recipe_items'];
-if (in_array($action, $recipeWriteActions, true) && !Auth::hasPermission('recipe_write')) {
-    Auth::sendJsonError(403, 'Fehlende Berechtigung für den Rezept-Assistenten (recipe_write)');
+if (in_array($action, $recipeWriteActions, true) && !Auth::hasPermission('recipes_write')) {
+    Auth::sendJsonError(403, 'Fehlende Berechtigung für den Rezept-Assistenten (recipes_write)');
 }
 
 // Histor-spezifische Rechteprüfung
