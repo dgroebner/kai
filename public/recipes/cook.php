@@ -95,7 +95,10 @@ $stoveLevels = $settings->getStoveLevels();
         <!-- AKTIVE PARALLEL-TIMER DOCK (für mehrere Töpfe gleichzeitig) -->
         <section id="cook-timers-dock" class="card recipe-timers-dock hidden" aria-live="polite">
             <div class="recipe-timers-dock-header">
-                <strong>⏱️ Laufende Küchen-Timer</strong>
+                <div class="recipe-timers-dock-title">
+                    <strong>⏱️ Laufende Küchen-Timer</strong>
+                    <span class="recipe-timers-count-badge hidden" id="cook-timers-count">0</span>
+                </div>
                 <button type="button" class="btn btn-sm btn-outline js-add-custom-timer" data-read-interactive="1">+ Eigener Timer</button>
             </div>
             <div id="cook-timers-list" class="recipe-timers-grid"></div>
@@ -128,7 +131,16 @@ $stoveLevels = $settings->getStoveLevels();
                     <?php
                     $stepNum = (int)$step['sync_step_index'];
                     $durMin = (int)($step['duration_minutes'] ?? 0);
+                    $phase = (string)($step['phase'] ?? 'cooking');
+                    $isPrepPhase = in_array($phase, ['mise_en_place_pre', 'mise_en_place_parallel', 'serving'], true);
+                    $hasTimer = $durMin > 0 && (!empty($step['is_passive_wait']) || !$isPrepPhase);
+
                     $timerTitle = ($step['title'] ?: $step['sync_badge']) . ' (Schritt ' . $stepNum . ')';
+                    $nextStep = $syncSteps[$idx + 1] ?? null;
+                    $nextStepIndex = $nextStep ? ($idx + 1) : -1;
+                    $nextStepTitle = $nextStep
+                        ? (($nextStep['title'] ?: $nextStep['sync_badge']) . ' (Schritt ' . (int)$nextStep['sync_step_index'] . ')')
+                        : '🎉 Fertig gekocht! Guten Appetit!';
                     ?>
                     <article class="card recipe-focus-card <?= $idx === 0 ? '' : 'hidden' ?>"
                              data-step-index="<?= $idx ?>"
@@ -194,13 +206,16 @@ $stoveLevels = $settings->getStoveLevels();
                             </div>
                         <?php endif; ?>
 
-                        <!-- One-Click Timer-Button für diesen Schritt -->
-                        <?php if ($durMin > 0): ?>
+                        <!-- One-Click Timer-Button für diesen Schritt (nur bei echten Gar-/Wartezeiten) -->
+                        <?php if ($hasTimer): ?>
                             <div class="recipe-focus-timer-cta">
                                 <button type="button"
                                         class="btn btn-primary btn-lg js-start-step-timer"
+                                        data-step-index="<?= $idx ?>"
                                         data-minutes="<?= $durMin ?>"
                                         data-label="<?= htmlspecialchars((string)$timerTitle, ENT_QUOTES, 'UTF-8') ?>"
+                                        data-next-step-index="<?= $nextStepIndex ?>"
+                                        data-next-step-title="<?= htmlspecialchars((string)$nextStepTitle, ENT_QUOTES, 'UTF-8') ?>"
                                         data-read-interactive="1">
                                     ⏱️ Timer starten (<?= $durMin ?> Min.)
                                 </button>
@@ -241,7 +256,16 @@ $stoveLevels = $settings->getStoveLevels();
                         <?php
                         $stepNum = (int)$step['sync_step_index'];
                         $durMin = (int)($step['duration_minutes'] ?? 0);
+                        $phase = (string)($step['phase'] ?? 'cooking');
+                        $isPrepPhase = in_array($phase, ['mise_en_place_pre', 'mise_en_place_parallel', 'serving'], true);
+                        $hasTimer = $durMin > 0 && (!empty($step['is_passive_wait']) || !$isPrepPhase);
+
                         $timerTitle = ($step['title'] ?: $step['sync_badge']) . ' (Schritt ' . $stepNum . ')';
+                        $nextStep = $syncSteps[$idx + 1] ?? null;
+                        $nextStepIndex = $nextStep ? ($idx + 1) : -1;
+                        $nextStepTitle = $nextStep
+                            ? (($nextStep['title'] ?: $nextStep['sync_badge']) . ' (Schritt ' . (int)$nextStep['sync_step_index'] . ')')
+                            : '🎉 Fertig gekocht! Guten Appetit!';
                         ?>
                         <div class="recipe-step-card js-cook-checklist-row" data-step-index="<?= $idx ?>">
                             <div class="recipe-step-number-col">
@@ -254,11 +278,14 @@ $stoveLevels = $settings->getStoveLevels();
                                     <?php if (!empty($step['stove_level'])): ?>
                                         <span class="recipe-step-stove-badge">🔥 <?= htmlspecialchars((string)$step['stove_level'], ENT_QUOTES, 'UTF-8') ?></span>
                                     <?php endif; ?>
-                                    <?php if ($durMin > 0): ?>
+                                    <?php if ($hasTimer): ?>
                                         <button type="button"
                                                 class="btn btn-sm btn-outline js-start-step-timer"
+                                                data-step-index="<?= $idx ?>"
                                                 data-minutes="<?= $durMin ?>"
                                                 data-label="<?= htmlspecialchars((string)$timerTitle, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-next-step-index="<?= $nextStepIndex ?>"
+                                                data-next-step-title="<?= htmlspecialchars((string)$nextStepTitle, ENT_QUOTES, 'UTF-8') ?>"
                                                 data-read-interactive="1">
                                             ⏱️ Timer <?= $durMin ?> Min. starten
                                         </button>

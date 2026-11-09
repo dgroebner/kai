@@ -357,6 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
             counterLabel.textContent = 'Schritt ' + (stepIdx + 1) + ' von ' + totalCookSteps;
         }
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        updateStepTimerButtons();
     }
 
     // Parallele Küchen-Timer Verwaltung
@@ -364,6 +365,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const timersList = document.getElementById('cook-timers-list');
     let activeTimers = [];
     let timerSeq = 1;
+
+    function showRecipeToast(msg, duration) {
+        duration = duration || 3200;
+        let toast = document.getElementById('recipe-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'recipe-toast';
+            toast.className = 'recipe-toast hidden';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.classList.remove('hidden');
+        requestAnimationFrame(function () {
+            toast.classList.add('is-visible');
+        });
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(function () {
+            toast.classList.remove('is-visible');
+            setTimeout(function () { toast.classList.add('hidden'); }, 300);
+        }, duration);
+    }
 
     function playTimerAlarmSound() {
         try {
@@ -395,11 +417,72 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(m).padStart(2, '0') + ':' + String(rem).padStart(2, '0');
     }
 
-    function startKitchenTimer(label, durationMinutes) {
+    function updateStepTimerButtons() {
+        const stepButtons = document.querySelectorAll('.js-start-step-timer');
+        stepButtons.forEach(function (btn) {
+            const stepIdxStr = btn.getAttribute('data-step-index');
+            if (stepIdxStr === null || stepIdxStr === '') return;
+            const stepIdx = parseInt(stepIdxStr, 10);
+            const matching = activeTimers.find(function (t) { return t.stepIndex === stepIdx; });
+            const origMins = btn.getAttribute('data-minutes') || '1';
+            const isLargeBtn = btn.classList.contains('btn-lg');
+
+            if (matching) {
+                if (matching.finished) {
+                    btn.classList.add('is-timer-finished');
+                    btn.classList.remove('is-timer-running');
+                    const nextLabel = (matching.nextStepIndex !== null && matching.nextStepIndex >= 0)
+                        ? 'Weiter zu Schritt ' + (matching.nextStepIndex + 1) + ' &rarr;'
+                        : 'Fertig gekocht!';
+                    btn.innerHTML = '🔔 Fertig! ' + (isLargeBtn ? nextLabel : '');
+                } else if (matching.paused) {
+                    btn.classList.add('is-timer-running');
+                    btn.classList.remove('is-timer-finished');
+                    btn.innerHTML = '⏸️ Pausiert (' + formatSeconds(matching.remainingSeconds) + ')';
+                } else {
+                    btn.classList.add('is-timer-running');
+                    btn.classList.remove('is-timer-finished');
+                    btn.innerHTML = '⏱️ Läuft: ' + formatSeconds(matching.remainingSeconds);
+                }
+            } else {
+                if (btn.classList.contains('is-timer-running') || btn.classList.contains('is-timer-finished')) {
+                    btn.classList.remove('is-timer-running', 'is-timer-finished');
+                    btn.innerHTML = isLargeBtn
+                        ? '⏱️ Timer starten (' + origMins + ' Min.)'
+                        : '⏱️ Timer ' + origMins + ' Min. starten';
+                }
+            }
+        });
+    }
+
+    function startKitchenTimer(label, durationMinutes, stepIndex, nextStepIndex, nextStepTitle) {
+        const stepIdx = (stepIndex !== null && stepIndex !== undefined && stepIndex !== '') ? parseInt(stepIndex, 10) : null;
+        const nextIdx = (nextStepIndex !== null && nextStepIndex !== undefined && nextStepIndex !== '' && parseInt(nextStepIndex, 10) >= 0) ? parseInt(nextStepIndex, 10) : null;
+
+        // Prüfen, ob bereits ein Timer für diesen Schritt existiert
+        if (stepIdx !== null) {
+            const existing = activeTimers.find(function (t) { return t.stepIndex === stepIdx; });
+            if (existing) {
+                if (existing.finished) {
+                    showRecipeToast('🔔 Dieser Timer ist bereits abgelaufen!');
+                } else {
+                    showRecipeToast('⏱️ Timer für "' + (existing.label || label) + '" läuft bereits (' + formatSeconds(existing.remainingSeconds) + ' verbleibend)');
+                }
+                if (timersDock) {
+                    timersDock.classList.remove('hidden');
+                    timersDock.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+                return;
+            }
+        }
+
         const totalSec = Math.max(10, Math.round(durationMinutes * 60));
         const timerObj = {
             id: timerSeq++,
             label: label || 'Küchen-Timer',
+            stepIndex: stepIdx,
+            nextStepIndex: nextIdx,
+            nextStepTitle: nextStepTitle || '',
             totalSeconds: totalSec,
             remainingSeconds: totalSec,
             paused: false,
@@ -408,14 +491,27 @@ document.addEventListener('DOMContentLoaded', function () {
         activeTimers.push(timerObj);
         if (timersDock) timersDock.classList.remove('hidden');
         renderTimersDock();
+        updateStepTimerButtons();
+        showRecipeToast('⏱️ Timer gestartet: ' + timerObj.label + ' (' + durationMinutes + ' Min.)');
     }
 
     function renderTimersDock() {
         if (!timersList) return;
+        const countBadge = document.getElementById('cook-timers-count');
+
         if (activeTimers.length === 0) {
             timersList.innerHTML = '';
             if (timersDock) timersDock.classList.add('hidden');
+            if (countBadge) {
+                countBadge.textContent = '0';
+                countBadge.classList.add('hidden');
+            }
             return;
+        }
+
+        if (countBadge) {
+            countBadge.textContent = String(activeTimers.length);
+            countBadge.classList.remove('hidden');
         }
 
         let html = '';
@@ -424,13 +520,25 @@ document.addEventListener('DOMContentLoaded', function () {
             const statusClass = t.finished ? 'is-finished' : (t.paused ? 'is-paused' : 'is-running');
             html += '<div class="recipe-timer-widget ' + statusClass + '" data-timer-id="' + t.id + '">' +
                 '<div class="recipe-timer-info">' +
-                    '<span class="recipe-timer-label">' + escape(t.label) + '</span>' +
-                    '<strong class="recipe-timer-clock">' + (t.finished ? '🔔 FERTIG!' : formatSeconds(t.remainingSeconds)) + '</strong>' +
+                    '<span class="recipe-timer-label">' + (t.finished ? '🔔 ' : '') + escape(t.label) + '</span>' +
+                    '<strong class="recipe-timer-clock">' + (t.finished ? 'FERTIG!' : formatSeconds(t.remainingSeconds)) + '</strong>' +
                 '</div>' +
-                '<div class="recipe-timer-bar-bg"><div class="recipe-timer-bar-fill" style="width:' + pct + '%"></div></div>' +
-                '<div class="recipe-timer-controls">' +
-                    (!t.finished ? '<button type="button" class="btn btn-sm btn-outline js-timer-toggle" data-timer-id="' + t.id + '" data-read-interactive="1">' + (t.paused ? '▶️ Weiter' : '⏸️ Pause') + '</button>' : '') +
-                    '<button type="button" class="btn btn-sm btn-outline js-timer-remove" data-timer-id="' + t.id + '" data-read-interactive="1">&times; Entfernen</button>' +
+                '<div class="recipe-timer-bar-bg"><div class="recipe-timer-bar-fill" style="width:' + pct + '%"></div></div>';
+
+            if (t.finished && t.nextStepTitle) {
+                html += '<div class="recipe-timer-next-info">' +
+                    '<span class="recipe-timer-next-label">👉 Als Nächstes:</span>' +
+                    '<strong class="recipe-timer-next-text">' + escape(t.nextStepTitle) + '</strong>' +
+                '</div>';
+            }
+
+            html += '<div class="recipe-timer-controls">';
+            if (t.finished && t.nextStepIndex !== null && t.nextStepIndex >= 0) {
+                html += '<button type="button" class="btn btn-sm btn-primary js-jump-to-step" data-step-index="' + t.nextStepIndex + '" data-read-interactive="1">Zu Schritt ' + (t.nextStepIndex + 1) + ' &rarr;</button>';
+            } else if (!t.finished) {
+                html += '<button type="button" class="btn btn-sm btn-outline js-timer-toggle" data-timer-id="' + t.id + '" data-read-interactive="1">' + (t.paused ? '▶️ Weiter' : '⏸️ Pause') + '</button>';
+            }
+            html += '<button type="button" class="btn btn-sm btn-outline js-timer-remove" data-timer-id="' + t.id + '" data-read-interactive="1">&times; ' + (t.finished ? 'Schließen' : 'Entfernen') + '</button>' +
                 '</div>' +
             '</div>';
         });
@@ -448,11 +556,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         t.remainingSeconds = 0;
                         t.finished = true;
                         playTimerAlarmSound();
+                        showRecipeToast('🔔 FERTIG: ' + t.label + (t.nextStepTitle ? ' → Weiter mit: ' + t.nextStepTitle : ''), 8000);
+                        if (timersDock) {
+                            timersDock.classList.remove('hidden');
+                        }
                     }
                 }
             });
             if (changed) {
                 renderTimersDock();
+                updateStepTimerButtons();
             }
         }, 1000);
     }
@@ -831,12 +944,33 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Timer starten
+        // Timer starten oder Folgeschritt anspringen
         const startTimerBtn = e.target.closest('.js-start-step-timer');
         if (startTimerBtn) {
+            const stepIdxStr = startTimerBtn.getAttribute('data-step-index');
+            const stepIdx = (stepIdxStr !== null && stepIdxStr !== '') ? parseInt(stepIdxStr, 10) : null;
             const mins = parseFloat(startTimerBtn.getAttribute('data-minutes') || '1') || 1;
             const label = startTimerBtn.getAttribute('data-label') || 'Kochschritt';
-            startKitchenTimer(label, mins);
+            const nextIdxStr = startTimerBtn.getAttribute('data-next-step-index');
+            const nextStepIdx = (nextIdxStr !== null && nextIdxStr !== '' && nextIdxStr !== '-1') ? parseInt(nextIdxStr, 10) : null;
+            const nextStepTitle = startTimerBtn.getAttribute('data-next-step-title') || '';
+
+            // Wenn Timer bereits abgelaufen ist: Klick springt direkt zum nächsten Schritt
+            if (stepIdx !== null) {
+                const finishedTimer = activeTimers.find(function (t) { return t.stepIndex === stepIdx && t.finished; });
+                if (finishedTimer) {
+                    if (finishedTimer.nextStepIndex !== null && finishedTimer.nextStepIndex >= 0) {
+                        const focusBtn = document.querySelector('.js-cook-view-btn[data-cook-view="focus"]');
+                        if (focusBtn) focusBtn.click();
+                        showFocusStep(finishedTimer.nextStepIndex);
+                    } else {
+                        showRecipeToast('🎉 Rezept abgeschlossen!');
+                    }
+                    return;
+                }
+            }
+
+            startKitchenTimer(label, mins, stepIdx, nextStepIdx, nextStepTitle);
             return;
         }
 
@@ -846,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const mins = parseFloat(minsStr.replace(',', '.'));
             if (isNaN(mins) || mins <= 0) return;
             const lbl = prompt('Bezeichnung für den Timer (z. B. Kartoffeln):', 'Eigener Timer') || 'Eigener Timer';
-            startKitchenTimer(lbl, mins);
+            startKitchenTimer(lbl, mins, null, null, '');
             return;
         }
 
@@ -857,6 +991,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (t.id === tid) t.paused = !t.paused;
             });
             renderTimersDock();
+            updateStepTimerButtons();
             return;
         }
 
@@ -865,6 +1000,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const tid = parseInt(removeTimerBtn.getAttribute('data-timer-id') || '0', 10);
             activeTimers = activeTimers.filter(function (t) { return t.id !== tid; });
             renderTimersDock();
+            updateStepTimerButtons();
+            return;
         }
     });
 
