@@ -43,12 +43,10 @@ class RecipeTimelineService
                 $text = mb_strtolower($title . ' ' . $instruction);
                 $hasStoveOrOven = ($step['stove_level'] ?? null) !== null || !empty($step['oven_setting']);
 
-                // Koch-Aktionen und Herd-Nutzung schließen Mise en Place (reine Schneide-/Vorbereitungsarbeit) aus
-                $isCookingAction = $hasStoveOrOven || preg_match('/\b(kochen|aufkochen|erhitzen|braten|anbraten|köcheln|garen|sieden|dünsten|schmoren|backen|ablöschen)\b/iu', $text);
-                $isPreheatAction = preg_match('/\b(aufkochen|wasser aufsetzen|wasser erhitzen|wasser zum kochen|vorheizen|topf erhitzen|ofen vorheizen)\b/iu', $text);
-
-                if ($isCookingAction) {
+                // Nur wenn ein Schritt tatsächlich Herd oder Ofen nutzt, darf er NICHT Mise en Place (reine Vorbereitung auf der Arbeitsfläche) sein!
+                if ($hasStoveOrOven) {
                     if ($phase === 'mise_en_place_pre' || $phase === 'mise_en_place_parallel') {
+                        $isPreheatAction = preg_match('/\b(aufkochen|wasser aufsetzen|wasser erhitzen|wasser zum kochen|vorheizen|topf erhitzen|ofen vorheizen)\b/iu', $text);
                         $phase = $isPreheatAction ? 'preheat' : 'cooking';
                         $step['phase'] = $phase;
                     }

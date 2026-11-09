@@ -397,7 +397,19 @@ if (!function_exists('formatRecipeInstruction')) {
                     <h3>1️⃣ Vor dem Einschalten des Herdes erledigen</h3>
                     <p class="text-muted">Damit am heißen Herd keine Hektik entsteht, das hier zuerst fertig hinstellen:</p>
                     <?php if (empty($timeline['mise_en_place_pre'])): ?>
-                        <p class="text-muted">Alle Zutaten direkt griffbereit stellen.</p>
+                        <?php $prepIngredients = array_filter($recipe['ingredients'] ?? [], fn($i) => !empty($i['prep_note'])); ?>
+                        <?php if (!empty($prepIngredients)): ?>
+                            <ul class="recipe-mise-step-list">
+                                <?php foreach ($prepIngredients as $pIng): ?>
+                                    <li>
+                                        <strong><?= htmlspecialchars((string)$pIng['scaled_display'], ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string)$pIng['ingredient_name'], ENT_QUOTES, 'UTF-8') ?>:</strong>
+                                        <?= htmlspecialchars((string)$pIng['prep_note'], ENT_QUOTES, 'UTF-8') ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <p class="text-muted">Alle Zutaten direkt griffbereit stellen.</p>
+                        <?php endif; ?>
                     <?php else: ?>
                         <ul class="recipe-mise-step-list">
                             <?php foreach ($timeline['mise_en_place_pre'] as $mStep): ?>
