@@ -119,3 +119,11 @@ CREATE TABLE IF NOT EXISTS `recipe_steps` (
     INDEX `idx_rs_component` (`component_id`),
     CONSTRAINT `fk_rs_component` FOREIGN KEY (`component_id`) REFERENCES `recipe_components`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `car_trip_ignored_charges` (
+    `trip_id` INT UNSIGNED NOT NULL,
+    `charge_id` INT NOT NULL,
+    PRIMARY KEY (`trip_id`, `charge_id`),
+    INDEX `idx_charge_id` (`charge_id`),
+    FOREIGN KEY (`trip_id`) REFERENCES `car_trips`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

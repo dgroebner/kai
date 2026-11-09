@@ -120,6 +120,9 @@ class TripRepository
 
     public function deleteTrip(int $id): bool
     {
+        $this->ensureIgnoredChargesTable();
+        $this->pdo->prepare("UPDATE vehicle_charges SET trip_id = NULL WHERE trip_id = :id")->execute([':id' => $id]);
+        $this->pdo->prepare("DELETE FROM car_trip_ignored_charges WHERE trip_id = :id")->execute([':id' => $id]);
         $stmt = $this->pdo->prepare("DELETE FROM car_trips WHERE id = :id");
         return $stmt->execute([':id' => $id]);
     }
@@ -446,7 +449,8 @@ class TripRepository
     // =========================================================================
 
     /**
-     * Verknüpft automatisch alle Unterwegs-Ladevorgänge (vehicle_charges) im Reisefenster mit der Reise.
+     * Verknüpft automatisch Unterwegs- und Vorbereitungsladevorgänge (vehicle_charges) im Reisefenster mit der Reise,
+     * sofern sie nicht vom Nutzer explizit für diese Reise ignoriert wurden.
      *
      * @return int Anzahl verknüpfter Ladevorgänge
      */
@@ -457,11 +461,12 @@ class TripRepository
             return 0;
         }
 
+        $this->ensureIgnoredChargesTable();
+
         $depTime = (string)$trip['departure_time'];
         $retTime = !empty($trip['return_time']) ? (string)$trip['return_time'] : null;
 
-        // Puffer: 30 Min vor Abfahrt bis 60 Min nach geplanter Rückkehr
-        $startWindowLocal = date('Y-m-d H:i:s', strtotime($depTime) - 1800);
+        // Puffer für Reiseende: 60 Min nach Rückkehr, bzw. 24h nach Abfahrt bei Einweg-Reisen
         if ($retTime !== null) {
             $endWindowLocal = date('Y-m-d H:i:s', strtotime($retTime) + 3600);
         } elseif ($trip['status'] === 'abgeschlossen') {
@@ -470,46 +475,48 @@ class TripRepository
             $endWindowLocal = date('Y-m-d H:i:s', time() + 3600);
         }
 
-        $startUtc = $this->toUtcString($startWindowLocal);
+        $depUtc = $this->toUtcString($depTime);
         $endUtc = $this->toUtcString($endWindowLocal);
 
-        // Alle öffentlichen/unterwegs Ladevorgänge im UTC-Fenster zuordnen
-        $stmt = $this->pdo->prepare("
+        // 1. Öffentliche / Unterwegs-Ladungen im Reisezeitraum (ab 30 Min vor Abfahrt bis Reiseende)
+        $startWindowLocal = date('Y-m-d H:i:s', strtotime($depTime) - 1800);
+        $startUtc = $this->toUtcString($startWindowLocal);
+
+        $stmtEnRoute = $this->pdo->prepare("
             UPDATE vehicle_charges
             SET trip_id = :trip_id
             WHERE (trip_id IS NULL OR trip_id = :trip_id2)
               AND (location_type IS NULL OR location_type != 'HOME')
               AND start_time >= :start_utc
               AND start_time <= :end_utc
+              AND id NOT IN (SELECT charge_id FROM car_trip_ignored_charges WHERE trip_id = :trip_id3)
         ");
-        $stmt->execute([
+        $stmtEnRoute->execute([
             ':trip_id' => $tripId,
             ':trip_id2' => $tripId,
             ':start_utc' => $startUtc,
             ':end_utc' => $endUtc,
+            ':trip_id3' => $tripId,
         ]);
-        $linkedCount = $stmt->rowCount();
+        $linkedCount = $stmtEnRoute->rowCount();
 
-        // 2. Letzte Heimladung vor der Abfahrt (im Zeitfenster 36h vor Abfahrt) als Vorabend-Ladung verknüpfen
-        $stmtHome = $this->pdo->prepare("
-            SELECT id FROM vehicle_charges
-            WHERE (trip_id IS NULL OR trip_id = :trip_id)
-              AND location_type = 'HOME'
-              AND start_time >= DATE_SUB(:start_utc, INTERVAL 36 HOUR)
-              AND start_time <= :start_utc2
-            ORDER BY start_time DESC
-            LIMIT 1
+        // 2. Vorbereitungsladungen im 36h-Vorfenster vor Abfahrt (alle Heimladungen & Vorbereitungs-Schnelllader)
+        $stmtPrep = $this->pdo->prepare("
+            UPDATE vehicle_charges
+            SET trip_id = :trip_id
+            WHERE (trip_id IS NULL OR trip_id = :trip_id2)
+              AND start_time >= DATE_SUB(:dep_utc, INTERVAL 36 HOUR)
+              AND start_time < :start_utc
+              AND id NOT IN (SELECT charge_id FROM car_trip_ignored_charges WHERE trip_id = :trip_id3)
         ");
-        $stmtHome->execute([
+        $stmtPrep->execute([
             ':trip_id' => $tripId,
+            ':trip_id2' => $tripId,
+            ':dep_utc' => $depUtc,
             ':start_utc' => $startUtc,
-            ':start_utc2' => $startUtc,
+            ':trip_id3' => $tripId,
         ]);
-        $homeChargeId = $stmtHome->fetchColumn();
-        if ($homeChargeId) {
-            $this->linkChargeToTrip((int)$homeChargeId, $tripId);
-            $linkedCount++;
-        }
+        $linkedCount += $stmtPrep->rowCount();
 
         return $linkedCount;
     }
@@ -538,8 +545,75 @@ class TripRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    /**
+     * Ermittelt Ladevorgänge im erweiterten Reiseumfeld (Vorbereitung ab 48h vor Abfahrt bis Reiseende),
+     * die dieser Reise zugeordnet werden können bzw. bereits zugeordnet sind.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCandidateCharges(int $tripId): array
+    {
+        $trip = $this->getTrip($tripId);
+        if (!$trip) {
+            return [];
+        }
+
+        $this->ensureIgnoredChargesTable();
+
+        $depTime = (string)$trip['departure_time'];
+        $retTime = !empty($trip['return_time']) ? (string)$trip['return_time'] : null;
+
+        // Vorbereitungsfenster: 48 Stunden vor Abfahrt bis 4 Stunden nach Rückkehr (bzw. +48h bei Einweg)
+        $startWindowLocal = date('Y-m-d H:i:s', strtotime($depTime) - (48 * 3600));
+        if ($retTime !== null) {
+            $endWindowLocal = date('Y-m-d H:i:s', strtotime($retTime) + (4 * 3600));
+        } elseif ($trip['status'] === 'abgeschlossen') {
+            $endWindowLocal = date('Y-m-d H:i:s', strtotime($depTime) + (48 * 3600));
+        } else {
+            $endWindowLocal = date('Y-m-d H:i:s', time() + (4 * 3600));
+        }
+
+        $startUtc = $this->toUtcString($startWindowLocal);
+        $endUtc = $this->toUtcString($endWindowLocal);
+
+        $stmt = $this->pdo->prepare("
+            SELECT vc.*,
+                   r.store AS receipt_store,
+                   r.purchase_date AS receipt_purchase_date,
+                   r.total AS receipt_total,
+                   r.bank_cc_transaction_id,
+                   r.bank_giro_transaction_id,
+                   (CASE WHEN vc.trip_id = :trip_id THEN 1 ELSE 0 END) AS is_linked
+            FROM vehicle_charges vc
+            LEFT JOIN kb_receipts r ON r.id = vc.receipt_id
+            WHERE (vc.trip_id IS NULL OR vc.trip_id = :trip_id2)
+              AND vc.start_time >= :start_utc
+              AND vc.start_time <= :end_utc
+            ORDER BY vc.start_time DESC
+        ");
+        $stmt->execute([
+            ':trip_id' => $tripId,
+            ':trip_id2' => $tripId,
+            ':start_utc' => $startUtc,
+            ':end_utc' => $endUtc,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
     public function linkChargeToTrip(int $chargeId, int $tripId): bool
     {
+        $this->ensureIgnoredChargesTable();
+
+        $stmtUnignore = $this->pdo->prepare("
+            DELETE FROM car_trip_ignored_charges
+            WHERE trip_id = :trip_id AND charge_id = :charge_id
+        ");
+        $stmtUnignore->execute([
+            ':trip_id' => $tripId,
+            ':charge_id' => $chargeId,
+        ]);
+
         $stmt = $this->pdo->prepare("
             UPDATE vehicle_charges
             SET trip_id = :trip_id
@@ -551,14 +625,45 @@ class TripRepository
         ]);
     }
 
-    public function unlinkChargeFromTrip(int $chargeId): bool
+    public function unlinkChargeFromTrip(int $chargeId, ?int $tripId = null): bool
     {
+        $this->ensureIgnoredChargesTable();
+
+        if ($tripId === null) {
+            $stmtGet = $this->pdo->prepare("SELECT trip_id FROM vehicle_charges WHERE id = :id");
+            $stmtGet->execute([':id' => $chargeId]);
+            $tripId = (int)$stmtGet->fetchColumn();
+        }
+
+        if ($tripId > 0) {
+            $stmtIgnore = $this->pdo->prepare("
+                INSERT IGNORE INTO car_trip_ignored_charges (trip_id, charge_id)
+                VALUES (:trip_id, :charge_id)
+            ");
+            $stmtIgnore->execute([
+                ':trip_id' => $tripId,
+                ':charge_id' => $chargeId,
+            ]);
+        }
+
         $stmt = $this->pdo->prepare("
             UPDATE vehicle_charges
             SET trip_id = NULL
             WHERE id = :charge_id
         ");
         return $stmt->execute([':charge_id' => $chargeId]);
+    }
+
+    private function ensureIgnoredChargesTable(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS `car_trip_ignored_charges` (
+                `trip_id` INT UNSIGNED NOT NULL,
+                `charge_id` INT NOT NULL,
+                PRIMARY KEY (`trip_id`, `charge_id`),
+                INDEX `idx_charge_id` (`charge_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
     }
 
     private function toUtcString(string $localTimeStr): string

@@ -222,6 +222,34 @@
                 return;
             }
 
+            // 8c. Ladevorgang mit Reise verknüpfen
+            if (btn.matches('.js-btn-link-charge')) {
+                e.preventDefault();
+                const tripId = btn.dataset.tripId;
+                const chargeId = btn.dataset.chargeId;
+
+                btn.disabled = true;
+
+                try {
+                    const res = await KaiHttp.postJson('trips_api.php', {
+                        action: 'link_charge',
+                        trip_id: parseInt(tripId, 10),
+                        charge_id: parseInt(chargeId, 10),
+                    });
+
+                    if (res && res.success) {
+                        await loadTripDetails(tripId);
+                    } else {
+                        alert(res?.error || 'Zuordnen des Ladevorgangs fehlgeschlagen');
+                    }
+                } catch (err) {
+                    alert('Fehler beim Zuordnen des Ladevorgangs');
+                } finally {
+                    btn.disabled = false;
+                }
+                return;
+            }
+
             // 9. Modals schließen
             if (btn.matches('.js-btn-close-modal')) {
                 e.preventDefault();
@@ -406,6 +434,7 @@
         const candidates = data.candidates || [];
         const subtrips = data.subtrips || [];
         const charges = data.charges || [];
+        const candidateCharges = data.candidate_charges || [];
 
         const totalCost = (parseFloat(trip.home_charge_cost || 0) + parseFloat(trip.en_route_charge_cost || 0) + parseFloat(trip.additional_cost || 0)).toFixed(2);
         const dist = parseFloat(trip.total_distance_km || 0);
@@ -627,17 +656,17 @@
                 <h3 style="margin-top:0; margin-bottom:0.75rem; font-size:1.1rem;">💳 Reale Reisekosten & Buchungs-Zuordnung</h3>
                 
                 <div style="display:flex; gap:1.5rem; margin-bottom:1rem; font-size:0.9rem; flex-wrap:wrap;">
-                    <div>🏠 <strong>Heimstrom Vorabend:</strong> ${parseFloat(trip.home_charge_cost || 0).toFixed(2)} €</div>
+                    <div>🏠 <strong>Heimstrom Vorbereitung:</strong> ${parseFloat(trip.home_charge_cost || 0).toFixed(2)} €</div>
                     <div>⚡ <strong>Unterwegs geladen:</strong> ${parseFloat(trip.en_route_charge_cost || 0).toFixed(2)} €</div>
                     <div>🅿️ <strong>Maut & Parken:</strong> ${parseFloat(trip.additional_cost || 0).toFixed(2)} €</div>
                     <div>💰 <strong>Bilanz:</strong> <span style="font-weight:bold; color:#10b981;">${totalCost} €</span></div>
                 </div>
 
-                <!-- Geladene Ladevorgänge & Belege unterwegs -->
+                <!-- Zugeordnete Ladevorgänge & Belege -->
                 <div style="margin-bottom:1.5rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
                         <h4 style="font-size:0.95rem; margin:0;">
-                            ⚡ Geladene Ladevorgänge &amp; Belege unterwegs (${charges.length})
+                            ⚡ Zugeordnete Ladevorgänge &amp; Belege (${charges.length})
                         </h4>
                         ${charges.length > 0 ? `
                             <span style="font-size:0.85rem; color:var(--text-muted);">
@@ -667,7 +696,7 @@
                                         const dateStr = startDt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                                         const timeStr = startDt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
                                         const isHome = c.location_type === 'HOME';
-                                        const locName = isHome ? '🏠 Zuhause (Vorabend)' : (c.station_name || c.station_operator || 'Unterwegs');
+                                        const locName = isHome ? '🏠 Zuhause (Vorbereitung)' : (c.station_name || c.station_operator || 'Unterwegs');
                                         const hasCost = c.cost_eur && parseFloat(c.cost_eur) > 0;
                                         const costFormatted = hasCost ? parseFloat(c.cost_eur).toFixed(2).replace('.', ',') + ' €' : '–';
                                         const receiptStore = c.receipt_store || c.tariff_category || '';
@@ -712,6 +741,80 @@
                         </div>
                     `}
                 </div>
+
+                <!-- Verfügbare Ladevorgänge im Reiseumfeld (Vorbereitung & Reisezeitraum) -->
+                ${candidateCharges && candidateCharges.length > 0 ? `
+                    <div style="margin-bottom:1.5rem; background:rgba(255,255,255,0.02); border:1px dashed var(--bg-surface-hover, #374151); border-radius:8px; padding:0.85rem 1rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h4 style="font-size:0.95rem; margin:0; color:var(--text-main);">
+                                🔍 Verfügbare Ladevorgänge (Vorbereitung &amp; Reisezeitraum) (${candidateCharges.length})
+                            </h4>
+                            <span style="font-size:0.8rem; color:var(--text-muted);">
+                                Nicht zugeordnet &bull; Klick auf <strong>+ Zuordnen</strong> übernimmt den Ladevorgang
+                            </span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table" style="width:100%; font-size:0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Zeitpunkt</th>
+                                        <th>Ladestation</th>
+                                        <th>Geladen</th>
+                                        <th>Kosten &amp; Beleg</th>
+                                        <th style="text-align:right;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${candidateCharges.map(c => {
+                                        const startDt = new Date(c.start_time.replace(' ', 'T') + 'Z');
+                                        const dateStr = startDt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                        const timeStr = startDt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                        const isHome = c.location_type === 'HOME';
+                                        const locName = isHome ? '🏠 Zuhause' : (c.station_name || c.station_operator || 'Öffentlich / Schnelllader');
+                                        const hasCost = c.cost_eur && parseFloat(c.cost_eur) > 0;
+                                        const costFormatted = hasCost ? parseFloat(c.cost_eur).toFixed(2).replace('.', ',') + ' €' : '–';
+                                        const receiptStore = c.receipt_store || c.tariff_category || '';
+
+                                        return `
+                                            <tr>
+                                                <td>
+                                                    <strong>${dateStr}</strong>
+                                                    <div style="font-size:0.75rem; color:var(--text-muted);">${timeStr} Uhr (${c.duration_min}m)</div>
+                                                </td>
+                                                <td>
+                                                    <strong>${KaiHtml.escape(locName)}</strong>
+                                                    <div style="font-size:0.75rem; color:var(--text-muted);">${isHome ? 'AC Wallbox' : (c.charge_mode || 'DC')} &bull; SoC ${c.soc_start_pct}% &rarr; ${c.soc_end_pct}%</div>
+                                                </td>
+                                                <td>
+                                                    <strong>${parseFloat(c.charged_net_kwh).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1})} kWh</strong>
+                                                    <div style="font-size:0.75rem; color:#10b981;">+${c.delta_soc_pct}%</div>
+                                                </td>
+                                                <td>
+                                                    ${isHome ? `
+                                                        <span class="badge badge-success" title="Netzstrom an der Wallbox">🏠 ${costFormatted} (Heimstrom)</span>
+                                                    ` : (c.receipt_id ? `
+                                                        <a href="../kassenbon/detail.php?id=${parseInt(c.receipt_id, 10)}" target="_blank" class="badge badge-success" style="text-decoration:none;" title="Ladebeleg im Kassenbon-Modul öffnen">
+                                                            📄 ${costFormatted} ${receiptStore ? `(${KaiHtml.escape(receiptStore)})` : ''}
+                                                        </a>
+                                                    ` : (hasCost ? `
+                                                        <span class="badge badge-neutral">⚡ ${costFormatted} (Tarif)</span>
+                                                    ` : `
+                                                        <span class="badge badge-warning" title="Noch kein Beleg oder Betrag hinterlegt">Ausstehend</span>
+                                                    `))}
+                                                </td>
+                                                <td style="text-align:right;">
+                                                    <button type="button" class="btn btn-outline btn-sm js-btn-link-charge" data-trip-id="${trip.id}" data-charge-id="${c.id}" title="Ladevorgang zur Reise hinzufügen" style="color:#10b981; border-color:#10b981;">
+                                                        + Zuordnen
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : ''}
 
                 <!-- Zugeordnete Buchungen -->
                 <h4 style="font-size:0.95rem; margin-bottom:0.5rem;">Zugeordnete Transaktionen (${transactions.length})</h4>
