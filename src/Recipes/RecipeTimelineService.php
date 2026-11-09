@@ -24,6 +24,7 @@ class RecipeTimelineService
 
         $miseEnPlacePre = [];
         $miseEnPlaceParallel = [];
+        $servingSteps = [];
         $cookingComponents = [];
 
         $prePrepDurationMin = 0;
@@ -43,8 +44,12 @@ class RecipeTimelineService
                 $text = mb_strtolower($title . ' ' . $instruction);
                 $hasStoveOrOven = ($step['stove_level'] ?? null) !== null || !empty($step['oven_setting']);
 
-                // Nur wenn ein Schritt tatsächlich Herd oder Ofen nutzt, darf er NICHT Mise en Place (reine Vorbereitung auf der Arbeitsfläche) sein!
-                if ($hasStoveOrOven) {
+                $isServingAction = ($phase === 'serving') || preg_match('/\b(servieren|anrichten|auf tellern|auf den tellern|anrichteweise|guten appetit)\b/iu', $text);
+
+                if ($isServingAction) {
+                    $phase = 'serving';
+                    $step['phase'] = 'serving';
+                } elseif ($hasStoveOrOven) {
                     if ($phase === 'mise_en_place_pre' || $phase === 'mise_en_place_parallel') {
                         $isPreheatAction = preg_match('/\b(aufkochen|wasser aufsetzen|wasser erhitzen|wasser zum kochen|vorheizen|topf erhitzen|ofen vorheizen)\b/iu', $text);
                         $phase = $isPreheatAction ? 'preheat' : 'cooking';
@@ -61,6 +66,10 @@ class RecipeTimelineService
                     $effectiveDur = $dur > 0 ? $dur : 5;
                     $step['effective_duration_min'] = $effectiveDur;
                     $miseEnPlaceParallel[] = $step;
+                } elseif ($phase === 'serving') {
+                    $effectiveDur = $dur > 0 ? $dur : 2;
+                    $step['effective_duration_min'] = $effectiveDur;
+                    $servingSteps[] = $step;
                 } else {
                     $effectiveDur = $dur > 0 ? $dur : 2;
                     $step['effective_duration_min'] = $effectiveDur;
@@ -183,6 +192,22 @@ class RecipeTimelineService
             $parallelCursor += $dur;
         }
         unset($parStep);
+
+        // 4. Phase 3: Servieren am Ende der Kochzeit (nachdem alle Töpfe fertig sind!)
+        $servingCursor = $prePrepDurationMin + $maxCookDurationMin;
+        foreach ($servingSteps as &$srvStep) {
+            $dur = (int)$srvStep['effective_duration_min'];
+            $srvStep['offset_from_start_min'] = $servingCursor;
+            $srvStep['offset_before_finish_min'] = 0;
+            $srvStep['relative_label'] = 'T + ' . $servingCursor . ' Min';
+            $srvStep['countdown_label'] = 'Fertig zum Essen';
+            $srvStep['clock_time'] = $serveTimestamp !== null ? date('H:i', $serveTimestamp) : ($startTimestamp !== null ? date('H:i', $startTimestamp + ($servingCursor * 60)) : null);
+            $srvStep['sync_badge'] = '🍽️ Servieren';
+
+            $synchronizedSteps[] = $srvStep;
+            $servingCursor += $dur;
+        }
+        unset($srvStep);
 
         // Chronologisch nach Start-Offset sortieren
         usort($synchronizedSteps, static function (array $a, array $b): int {

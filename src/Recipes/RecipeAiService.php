@@ -56,6 +56,7 @@ class RecipeAiService
         $kidPortionPct = $this->settings->getRecipeKidPortionPct();
         $defaultServings = round($defaultAdults + ($defaultKids * ($kidPortionPct / 100.0)), 2);
         $householdPrefs = $this->settings->getRecipeHouseholdPreferences();
+        $availableTools = $this->settings->getRecipeAvailableTools();
 
         $sourceContent = trim($textOrUrl);
         if ($sourceType === 'url') {
@@ -82,6 +83,28 @@ class RecipeAiService
         $customPrefBlock = $householdPrefs !== ''
             ? "WEITERE HAUSHALTS-VORLIEBEN & REGELN (unbedingt beim Import berücksichtigen!): {$householdPrefs}"
             : "";
+
+        $toolsRule = "";
+        if ($availableTools !== '') {
+            $toolsRule = "6. VORHANDENE KÜCHENWERKZEUGE & GERÄTE (IMMER BEI ZUBEREITUNGSSCHRITTEN & EQUIPMENT NUTZEN!):\n";
+            $toolsRule .= "   Der Haushalt besitzt folgende Spezialwerkzeuge/Geräte: {$availableTools}.\n";
+            if (preg_match('/(schneidmühle|seilzug|zerkleinerer)/iu', $availableTools)) {
+                $toolsRule .= "   - SCHNEIDMÜHLE MIT SEILZUG: Nutze dieses Werkzeug im Vorbereitungsschritt (Mise en Place) IMMER, um Zwiebeln/Schalotten und Knoblauch GEMEINSAM blitzschnell und tränenfrei zu zerkleinern (z. B. 'Schalotten schälen und halbieren, Knoblauchzehen schälen. Beides zusammen in die Schneidmühle mit Seilzug geben und mit 4–6 Zügen fein zerkleinern.'), statt mühsam einzeln mit dem Messer zu schneiden! Nimm 'Schneidmühle mit Seilzug' zwingend in `equipment_list` auf und setze die Schnibbel-Dauer auf 2–3 Minuten.\n";
+            }
+            if (preg_match('/knoblauchpresse/iu', $availableTools)) {
+                $toolsRule .= "   - KNOBLAUCHPRESSE: Knoblauch mit der Knoblauchpresse direkt hineinpressen lassen statt hacken. Nimm 'Knoblauchpresse' in `equipment_list` auf.\n";
+            }
+            if (preg_match('/(stabmixer|pürierstab)/iu', $availableTools)) {
+                $toolsRule .= "   - STABMIXER / PÜRIERSTAB: Bei Suppen/Soßen direkt im Topf pürieren lassen. Nimm 'Stabmixer' in `equipment_list` auf.\n";
+            }
+            if (preg_match('/(gemüsehobel|mandoline)/iu', $availableTools)) {
+                $toolsRule .= "   - GEMÜSEHOBEL: Feste Gemüse (Gurken, Zucchini, Karotten) in feine Scheiben hobeln lassen. Nimm 'Gemüsehobel' in `equipment_list` auf.\n";
+            }
+            if (preg_match('/(küchenmaschine|multizerkleinerer)/iu', $availableTools)) {
+                $toolsRule .= "   - KÜCHENMASCHINE: Für größere Mengen zerkleinern/raspeln nutzen. Nimm 'Küchenmaschine' in `equipment_list` auf.\n";
+            }
+            $toolsRule .= "   - Führe in `equipment_list` stets alle tatsächlich genutzten Werkzeuge namentlich auf!\n";
+        }
 
         $midLow = max(1, (int)round($stoveLevels * 0.2));
         $simmer = max(2, (int)round($stoveLevels * 0.38));
@@ -765,7 +788,11 @@ PROMPT;
                 $text = mb_strtolower($title . ' ' . $instruction);
                 $hasStoveOrOven = ($step['stove_level'] ?? null) !== null || !empty($step['oven_setting']);
 
-                if ($hasStoveOrOven) {
+                $isServingAction = ($phase === 'serving') || preg_match('/\b(servieren|anrichten|auf tellern|auf den tellern|anrichteweise|guten appetit)\b/iu', $text);
+
+                if ($isServingAction) {
+                    $step['phase'] = 'serving';
+                } elseif ($hasStoveOrOven) {
                     if ($phase === 'mise_en_place_pre' || $phase === 'mise_en_place_parallel') {
                         $isPreheatAction = preg_match('/\b(aufkochen|wasser aufsetzen|wasser erhitzen|wasser zum kochen|vorheizen|topf erhitzen|ofen vorheizen)\b/iu', $text);
                         $step['phase'] = $isPreheatAction ? 'preheat' : 'cooking';

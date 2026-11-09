@@ -96,6 +96,11 @@ class SystemSettingsService
         return trim((string)$this->repository->get('recipe_household_preferences', ''));
     }
 
+    public function getRecipeAvailableTools(): string
+    {
+        return trim((string)$this->repository->get('recipe_available_tools', 'Schneidmühle mit Seilzug'));
+    }
+
     /**
      * Speichert alle Parameter des Küchenprofils und der Haushalts-Präferenzen.
      *
@@ -122,6 +127,7 @@ class SystemSettingsService
         $defaultKids = max(0, min(20, (int)($data['recipe_default_kids'] ?? 2)));
         $kidPortionPct = max(30, min(100, (int)($data['recipe_kid_portion_pct'] ?? 80)));
         $householdPrefs = mb_substr(trim((string)($data['recipe_household_preferences'] ?? '')), 0, 1000);
+        $availableTools = mb_substr(trim((string)($data['recipe_available_tools'] ?? '')), 0, 1000);
 
         $this->repository->set('stove_type', $stoveType, 'Herd-Typ (z. B. Ceranfeld, Induktion, Gas)');
         $this->repository->set('stove_levels', (string)$stoveLevels, 'Anzahl Herdstufen (Skala z. B. 9 oder 12)');
@@ -131,5 +137,6 @@ class SystemSettingsService
         $this->repository->set('recipe_default_kids', (string)$defaultKids, 'Rezepte: Standard-Anzahl Kinder/Jugendliche');
         $this->repository->set('recipe_kid_portion_pct', (string)$kidPortionPct, 'Rezepte: Portionsfaktor Kinder in Prozent (z. B. 80)');
         $this->repository->set('recipe_household_preferences', $householdPrefs, 'Rezepte: Weitere Haushalts-Vorlieben & No-Gos');
+        $this->repository->set('recipe_available_tools', $availableTools, 'Rezepte: Vorhandene Küchenwerkzeuge & Helfer');
     }
 }

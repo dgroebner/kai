@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const kidPctEl = document.getElementById('prof-kid-pct');
                 const shallotsEl = document.getElementById('prof-prefer-shallots');
                 const prefsEl = document.getElementById('prof-household-prefs');
+                const toolsEl = document.getElementById('prof-available-tools');
 
                 const res = await window.KaiHttp.postJson('api.php', {
                     action: 'save_kitchen_profile',
@@ -183,7 +184,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     recipe_default_kids: kidsEl ? parseInt(kidsEl.value || '2', 10) : 2,
                     recipe_kid_portion_pct: kidPctEl ? parseInt(kidPctEl.value || '80', 10) : 80,
                     recipe_prefer_shallots: shallotsEl && shallotsEl.checked ? 1 : 0,
-                    recipe_household_preferences: prefsEl ? prefsEl.value.trim() : ''
+                    recipe_household_preferences: prefsEl ? prefsEl.value.trim() : '',
+                    recipe_available_tools: toolsEl ? toolsEl.value.trim() : ''
                 });
 
                 if (res && res.success) {
@@ -628,6 +630,28 @@ document.addEventListener('DOMContentLoaded', function () {
             if (res && res.success) {
                 favBtn.classList.toggle('is-fav');
                 favBtn.textContent = favBtn.classList.contains('is-fav') ? '⭐' : '☆';
+            }
+            return;
+        }
+
+        // Küchenwerkzeug-Preset Button im Profil-Modal toggeln
+        const toolPresetBtn = e.target.closest('.js-tool-preset');
+        if (toolPresetBtn) {
+            const tool = toolPresetBtn.getAttribute('data-tool');
+            const toolsInput = document.getElementById('prof-available-tools');
+            if (tool && toolsInput) {
+                let current = toolsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                const idx = current.indexOf(tool);
+                if (idx >= 0) {
+                    current.splice(idx, 1);
+                    toolPresetBtn.classList.remove('btn-primary');
+                    toolPresetBtn.classList.add('btn-outline');
+                } else {
+                    current.push(tool);
+                    toolPresetBtn.classList.remove('btn-outline');
+                    toolPresetBtn.classList.add('btn-primary');
+                }
+                toolsInput.value = current.join(', ');
             }
             return;
         }

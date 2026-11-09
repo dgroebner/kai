@@ -33,6 +33,7 @@ $defaultAdults = $settings->getRecipeDefaultAdults();
 $defaultKids = $settings->getRecipeDefaultKids();
 $kidPortionPct = $settings->getRecipeKidPortionPct();
 $householdPrefs = $settings->getRecipeHouseholdPreferences();
+$availableTools = $settings->getRecipeAvailableTools();
 
 $sourceIcons = [
     'url' => '🔗 Web-Rezept',
@@ -77,9 +78,14 @@ $sourceIcons = [
                     <?php if ($preferShallots): ?>
                         <span class="recipe-profile-pill recipe-profile-pill--highlight">🧅 Präferenz: <strong>Schalotten statt Zwiebeln</strong></span>
                     <?php endif; ?>
+                    <?php if ($availableTools !== ''): ?>
+                        <span class="recipe-profile-pill recipe-profile-pill--highlight" title="<?= htmlspecialchars($availableTools, ENT_QUOTES, 'UTF-8') ?>">
+                            🔪 Werkzeuge: <strong><?= htmlspecialchars(mb_strimwidth($availableTools, 0, 40, '…'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        </span>
+                    <?php endif; ?>
                     <?php if ($householdPrefs !== ''): ?>
                         <span class="recipe-profile-pill recipe-profile-pill--highlight" title="<?= htmlspecialchars($householdPrefs, ENT_QUOTES, 'UTF-8') ?>">
-                            ✨ Vorlieben: <strong><?= htmlspecialchars(mb_strimwidth($householdPrefs, 0, 45, '…'), ENT_QUOTES, 'UTF-8') ?></strong>
+                            ✨ Vorlieben: <strong><?= htmlspecialchars(mb_strimwidth($householdPrefs, 0, 40, '…'), ENT_QUOTES, 'UTF-8') ?></strong>
                         </span>
                     <?php endif; ?>
                 </div>
@@ -316,6 +322,18 @@ $sourceIcons = [
                     <div class="text-muted">Ersetzt beim Rezept-Import automatisch Speise-/Gemüsezwiebeln durch die passende Menge Schalotten.</div>
                 </div>
             </label>
+
+            <h4 class="recipe-modal-sec-title recipe-mt-sm">🔪 Vorhandene Küchenwerkzeuge &amp; Helfer</h4>
+            <p class="text-muted" style="margin-top:-6px; font-size: 0.85rem;">Kai passt Zubereitungsschritte (Mise en Place) und die Utensilienliste automatisch an diese Geräte an:</p>
+            <div class="recipe-tool-pills" id="recipe-tool-presets" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Schneidmühle mit Seilzug">🪢 Schneidmühle mit Seilzug</button>
+                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Knoblauchpresse">🧄 Knoblauchpresse</button>
+                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Stabmixer / Pürierstab">🌪️ Stabmixer</button>
+                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Gemüsehobel / Mandoline">🥕 Gemüsehobel</button>
+                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Küchenmaschine / Food Processor">🥣 Küchenmaschine</button>
+            </div>
+            <textarea id="prof-available-tools" class="form-control" rows="2"
+                      placeholder="z. B. Schneidmühle mit Seilzug, Stabmixer..."><?= htmlspecialchars($availableTools, ENT_QUOTES, 'UTF-8') ?></textarea>
 
             <div class="recipe-mt-sm">
                 <label class="form-label" for="prof-household-prefs">Weitere Haushalts-Vorlieben, Standard-Ersetzungen oder No-Gos (Freitext für die KI):</label>
