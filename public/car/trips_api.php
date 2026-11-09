@@ -68,7 +68,7 @@ try {
 
             $vehicleDashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
             $latestState = $vehicleDashboardRepo->getLatestState();
-            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']))
+            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']) && !in_array($trip['status'], ['abgeschlossen', 'abgebrochen'], true))
                 ? (int)$latestState['soc_percent']
                 : null;
 
@@ -192,7 +192,7 @@ try {
         if ($trip) {
             $vehicleDashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
             $latestState = $vehicleDashboardRepo->getLatestState();
-            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']))
+            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']) && !in_array($trip['status'], ['abgeschlossen', 'abgebrochen'], true))
                 ? (int)$latestState['soc_percent']
                 : null;
         }

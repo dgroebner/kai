@@ -575,12 +575,12 @@
                             Ziel-SoC: <strong>${parseInt(trip.actual_arrival_soc, 10)}%</strong>
                         </div>
                     ` : ''}
-                    ${trip.can_drive_without_charging && trip.min_departure_soc < trip.planned_departure_soc ? `
+                    ${trip.can_drive_without_charging && trip.min_departure_soc < trip.planned_departure_soc && trip.status !== 'abgeschlossen' && trip.status !== 'abgebrochen' ? `
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
                             Mindest-SoC: <strong style="color:var(--text-main);">${parseInt(trip.min_departure_soc, 10)}%</strong>
                         </div>
                     ` : ''}
-                    ${trip.current_vehicle_soc !== null && trip.current_vehicle_soc !== undefined ? `
+                    ${trip.status !== 'abgeschlossen' && trip.status !== 'abgebrochen' && trip.current_vehicle_soc !== null && trip.current_vehicle_soc !== undefined ? `
                         <div style="font-size:0.7rem; margin-top:0.35rem; font-weight:500; color:${trip.current_vehicle_soc >= trip.min_departure_soc ? '#10b981' : '#f59e0b'};">
                             ${trip.current_vehicle_soc >= trip.min_departure_soc 
                                 ? `✅ Ist-Stand (${trip.current_vehicle_soc}%) reicht ohne Nachladen` 
