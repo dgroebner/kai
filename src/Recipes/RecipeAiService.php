@@ -87,21 +87,21 @@ class RecipeAiService
         $toolsRule = "";
         if ($availableTools !== '') {
             $toolsRule = "6. VORHANDENE KÜCHENWERKZEUGE & GERÄTE (IMMER BEI ZUBEREITUNGSSCHRITTEN & EQUIPMENT NUTZEN!):\n";
-            $toolsRule .= "   Der Haushalt besitzt folgende Spezialwerkzeuge/Geräte: {$availableTools}.\n";
+            $toolsRule .= "   Der Haushalt besitzt und nutzt folgende Spezialwerkzeuge/Geräte: {$availableTools}.\n";
             if (preg_match('/(schneidmühle|seilzug|zerkleinerer)/iu', $availableTools)) {
-                $toolsRule .= "   - SCHNEIDMÜHLE MIT SEILZUG: Nutze dieses Werkzeug im Vorbereitungsschritt (Mise en Place) IMMER, um Zwiebeln/Schalotten und Knoblauch GEMEINSAM blitzschnell und tränenfrei zu zerkleinern (z. B. 'Schalotten schälen und halbieren, Knoblauchzehen schälen. Beides zusammen in die Schneidmühle mit Seilzug geben und mit 4–6 Zügen fein zerkleinern.'), statt mühsam einzeln mit dem Messer zu schneiden! Nimm 'Schneidmühle mit Seilzug' zwingend in `equipment_list` auf und setze die Schnibbel-Dauer auf 2–3 Minuten.\n";
+                $toolsRule .= "   - SCHNEIDMÜHLE MIT SEILZUG VORHANDEN: Zwiebeln/Schalotten und Knoblauchzehen werden im Haushalt IMMER zusammen mit der Schneidmühle mit Seilzug zerkleinert! Formuliere den Vorbereitungsschritt (Mise en Place) ZWINGEND so: 'Schalotten schälen und halbieren, Knoblauchzehen schälen. Beides zusammen in die Schneidmühle mit Seilzug geben und mit 4–6 Zügen fein zerkleinern.' (statt mühsam einzeln mit dem Messer zu schneiden). Nimm 'Schneidmühle mit Seilzug' zwingend in `equipment_list` auf und reduziere die Vorbereitungsdauer für diesen Schritt auf 2–3 Minuten!\n";
             }
             if (preg_match('/knoblauchpresse/iu', $availableTools)) {
-                $toolsRule .= "   - KNOBLAUCHPRESSE: Knoblauch mit der Knoblauchpresse direkt hineinpressen lassen statt hacken. Nimm 'Knoblauchpresse' in `equipment_list` auf.\n";
+                $toolsRule .= "   - KNOBLAUCHPRESSE VORHANDEN: Knoblauch mit der Knoblauchpresse direkt hineinpressen lassen statt hacken. Nimm 'Knoblauchpresse' in `equipment_list` auf.\n";
             }
             if (preg_match('/(stabmixer|pürierstab)/iu', $availableTools)) {
-                $toolsRule .= "   - STABMIXER / PÜRIERSTAB: Bei Suppen/Soßen direkt im Topf pürieren lassen. Nimm 'Stabmixer' in `equipment_list` auf.\n";
+                $toolsRule .= "   - STABMIXER / PÜRIERSTAB VORHANDEN: Bei Suppen/Soßen direkt im Topf pürieren lassen. Nimm 'Stabmixer' in `equipment_list` auf.\n";
             }
             if (preg_match('/(gemüsehobel|mandoline)/iu', $availableTools)) {
-                $toolsRule .= "   - GEMÜSEHOBEL: Feste Gemüse (Gurken, Zucchini, Karotten) in feine Scheiben hobeln lassen. Nimm 'Gemüsehobel' in `equipment_list` auf.\n";
+                $toolsRule .= "   - GEMÜSEHOBEL / MANDOLINE VORHANDEN: Feste Gemüse (Gurken, Zucchini, Karotten) in feine Scheiben hobeln lassen. Nimm 'Gemüsehobel' in `equipment_list` auf.\n";
             }
             if (preg_match('/(küchenmaschine|multizerkleinerer)/iu', $availableTools)) {
-                $toolsRule .= "   - KÜCHENMASCHINE: Für größere Mengen zerkleinern/raspeln nutzen. Nimm 'Küchenmaschine' in `equipment_list` auf.\n";
+                $toolsRule .= "   - KÜCHENMASCHINE VORHANDEN: Für größere Mengen zerkleinern/raspeln nutzen. Nimm 'Küchenmaschine' in `equipment_list` auf.\n";
             }
             $toolsRule .= "   - Führe in `equipment_list` stets alle tatsächlich genutzten Werkzeuge namentlich auf!\n";
         }
@@ -149,11 +149,14 @@ VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
      1. Schritt: Wasser aufsetzen & erhitzen (`phase = "preheat"`, Stufe {$stoveLevels}, ca. 6 Min).
      2. Schritt: Nudeln/Reis hineingeben & garen (`phase = "cooking"`, z. B. Stufe 5, 10 Min).
      Wasser muss IMMER vor dem Hineingeben der Nudeln kochen!
-6. VORRATSSCHRANK-FILTER & PACKUNGSGRÖSSEN:
+{$toolsRule}
+7. VORRATSSCHRANK-FILTER & PACKUNGSGRÖSSEN:
    - Setze `is_pantry_staple = 1` bei Vorrats- und Basis-Zutaten, die man normalerweise im Vorratsschrank hat und vor dem Einkauf nur kurz prüft (Salz, Pfeffer, Gewürze wie Currypulver/Paprikapulver, Speiseöl/Olivenöl, Essig, Brühe/Gemüsebrühe, Senf, Mehl/Speisestärke, Zucker, Schalotten, Zwiebeln, Knoblauch/Knoblauchzehen sowie Reis/Basmati-Reis).
    - WICHTIG: Frische Hauptzutaten, Kühlwaren und spezielle Konserven wie **Fleisch, Fisch, frisches oder TK-Gemüse (Paprika, Karotten, Erbsen), Dosen-Gemüse (Mais, Bohnen), Kokosmilch, Sahne, Schmand, Käse, Kartoffeln und Fruchtsäfte (Ananassaft)** erhalten IMMER `is_pantry_staple = 0`!
    - Gib bei verpackten Zutaten (z. B. Putenbrustfilet 400g, Kokosmilch 400ml, Schmand 200g, Sahne 200g) die übliche Supermarkt-Packungsgröße (`package_size`, `package_unit`) und einen kurzen `leftover_tip` zur Resteverwertung an.
    - Ordne `market` ('Rewe' oder 'Globus') und `shopping_category` (z. B. 'Obst & Gemüse', 'Frischetheke (Fleisch & Wurst, Käse)', 'Molkereiprodukte & Eier', 'Nudeln, Reis & Konserven', 'Gewürze, Öle & Fertiggerichte', 'Tiefkühlkost', 'Getränke', 'Brot & Backwaren', 'Sonstiges') zu.
+8. SERVIEREN & ANRICHTEN IMMER ALS ALLERLETZTER SCHRITT (`phase = "serving"`):
+   - Schritte wie "Servieren", "Anrichten", "Auf Tellern anrichten" oder "Nudeln zur Soße geben und vermengen" erhalten IMMER `phase = "serving"`. Sie stehen IMMER chronologisch als allerletzter Schritt ganz am Ende des Rezepts nach Beendigung aller Koch- und Vorbereitungsarbeiten!
 
 Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt in exakt dieser Struktur:
 {

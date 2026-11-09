@@ -80,7 +80,7 @@ $sourceIcons = [
                     <?php endif; ?>
                     <?php if ($availableTools !== ''): ?>
                         <span class="recipe-profile-pill recipe-profile-pill--highlight" title="<?= htmlspecialchars($availableTools, ENT_QUOTES, 'UTF-8') ?>">
-                            🔪 Werkzeuge: <strong><?= htmlspecialchars(mb_strimwidth($availableTools, 0, 40, '…'), ENT_QUOTES, 'UTF-8') ?></strong>
+                            🔪 Werkzeuge: <strong><?= htmlspecialchars(mb_strimwidth($availableTools, 0, 80, '…'), ENT_QUOTES, 'UTF-8') ?></strong>
                         </span>
                     <?php endif; ?>
                     <?php if ($householdPrefs !== ''): ?>
@@ -325,15 +325,39 @@ $sourceIcons = [
 
             <h4 class="recipe-modal-sec-title recipe-mt-sm">🔪 Vorhandene Küchenwerkzeuge &amp; Helfer</h4>
             <p class="text-muted" style="margin-top:-6px; font-size: 0.85rem;">Kai passt Zubereitungsschritte (Mise en Place) und die Utensilienliste automatisch an diese Geräte an:</p>
-            <div class="recipe-tool-pills" id="recipe-tool-presets" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Schneidmühle mit Seilzug">🪢 Schneidmühle mit Seilzug</button>
-                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Knoblauchpresse">🧄 Knoblauchpresse</button>
-                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Stabmixer / Pürierstab">🌪️ Stabmixer</button>
-                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Gemüsehobel / Mandoline">🥕 Gemüsehobel</button>
-                <button type="button" class="btn btn-xs btn-outline js-tool-preset" data-tool="Küchenmaschine / Food Processor">🥣 Küchenmaschine</button>
+            <?php
+            $presetToolsList = [
+                ['name' => 'Schneidmühle mit Seilzug', 'icon' => '🪢', 'label' => 'Schneidmühle mit Seilzug'],
+                ['name' => 'Knoblauchpresse', 'icon' => '🧄', 'label' => 'Knoblauchpresse'],
+                ['name' => 'Stabmixer / Pürierstab', 'icon' => '🌪️', 'label' => 'Stabmixer'],
+                ['name' => 'Gemüsehobel / Mandoline', 'icon' => '🥕', 'label' => 'Gemüsehobel'],
+                ['name' => 'Küchenmaschine / Food Processor', 'icon' => '🥣', 'label' => 'Küchenmaschine'],
+            ];
+            ?>
+            <div class="recipe-tool-selector">
+                <div class="recipe-tool-chips-grid" id="recipe-tool-presets">
+                    <?php foreach ($presetToolsList as $pTool):
+                        $toolLower = mb_strtolower($availableTools);
+                        $isActive = mb_stripos($availableTools, $pTool['name']) !== false
+                            || (str_contains($pTool['name'], '/') && (mb_stripos($availableTools, trim(explode('/', $pTool['name'])[0])) !== false || mb_stripos($availableTools, trim(explode('/', $pTool['name'])[1])) !== false));
+                    ?>
+                        <button type="button"
+                                class="recipe-tool-chip js-tool-preset <?= $isActive ? 'is-active' : '' ?>"
+                                data-tool="<?= htmlspecialchars($pTool['name'], ENT_QUOTES, 'UTF-8') ?>">
+                            <span class="chip-icon"><?= $pTool['icon'] ?></span>
+                            <span class="chip-label"><?= htmlspecialchars($pTool['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="chip-check">✓</span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+                <div class="recipe-tool-custom-box">
+                    <label class="form-label" for="prof-available-tools" style="font-size: 0.82rem; margin-bottom: 4px; display: block; color: var(--text-muted);">
+                        Ausgewählte &amp; zusätzliche eigene Werkzeuge (kommagetrennt):
+                    </label>
+                    <textarea id="prof-available-tools" class="form-control" rows="2"
+                              placeholder="z. B. Schneidmühle mit Seilzug, Knoblauchpresse..."><?= htmlspecialchars($availableTools, ENT_QUOTES, 'UTF-8') ?></textarea>
+                </div>
             </div>
-            <textarea id="prof-available-tools" class="form-control" rows="2"
-                      placeholder="z. B. Schneidmühle mit Seilzug, Stabmixer..."><?= htmlspecialchars($availableTools, ENT_QUOTES, 'UTF-8') ?></textarea>
 
             <div class="recipe-mt-sm">
                 <label class="form-label" for="prof-household-prefs">Weitere Haushalts-Vorlieben, Standard-Ersetzungen oder No-Gos (Freitext für die KI):</label>

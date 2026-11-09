@@ -148,8 +148,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const profileModal = document.getElementById('modal-kitchen-profile');
     const profileForm = document.getElementById('form-kitchen-profile');
 
+    function syncToolChips() {
+        const toolsInput = document.getElementById('prof-available-tools');
+        if (!toolsInput) return;
+        const val = toolsInput.value.toLowerCase();
+        document.querySelectorAll('#recipe-tool-presets .js-tool-preset').forEach(btn => {
+            const toolName = (btn.getAttribute('data-tool') || '').toLowerCase();
+            const parts = toolName.split('/').map(p => p.trim());
+            const isActive = parts.some(p => p && val.includes(p));
+            btn.classList.toggle('is-active', isActive);
+        });
+    }
+
+    const toolsInputEl = document.getElementById('prof-available-tools');
+    if (toolsInputEl) {
+        toolsInputEl.addEventListener('input', syncToolChips);
+    }
+
     function openProfileModal() {
         if (!profileModal) return;
+        syncToolChips();
         profileModal.classList.remove('hidden');
     }
 
@@ -640,18 +658,28 @@ document.addEventListener('DOMContentLoaded', function () {
             const tool = toolPresetBtn.getAttribute('data-tool');
             const toolsInput = document.getElementById('prof-available-tools');
             if (tool && toolsInput) {
-                let current = toolsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-                const idx = current.indexOf(tool);
-                if (idx >= 0) {
-                    current.splice(idx, 1);
-                    toolPresetBtn.classList.remove('btn-primary');
-                    toolPresetBtn.classList.add('btn-outline');
-                } else {
-                    current.push(tool);
-                    toolPresetBtn.classList.remove('btn-outline');
-                    toolPresetBtn.classList.add('btn-primary');
-                }
-                toolsInput.value = current.join(', ');
+                toolPresetBtn.classList.toggle('is-active');
+
+                // Aktive Presets sammeln
+                const activePresets = Array.from(document.querySelectorAll('#recipe-tool-presets .js-tool-preset.is-active'))
+                    .map(b => b.getAttribute('data-tool'))
+                    .filter(Boolean);
+
+                // Alle Preset-Namen / Fragmente ermitteln, um Custom-Tools zu unterscheiden
+                const allPresetKeys = Array.from(document.querySelectorAll('#recipe-tool-presets .js-tool-preset'))
+                    .flatMap(b => (b.getAttribute('data-tool') || '').split('/').map(s => s.trim().toLowerCase()))
+                    .filter(Boolean);
+
+                // Bestehende Einträge filtern, die benutzerdefinierte Zusätze sind
+                const currentEntries = toolsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                const customTools = currentEntries.filter(entry => {
+                    const entryLower = entry.toLowerCase();
+                    return !allPresetKeys.some(k => entryLower.includes(k) || k.includes(entryLower));
+                });
+
+                const allTools = [...activePresets, ...customTools];
+                const unique = allTools.filter((item, idx) => allTools.indexOf(item) === idx);
+                toolsInput.value = unique.join(', ');
             }
             return;
         }
