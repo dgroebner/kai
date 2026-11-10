@@ -564,6 +564,20 @@ try {
         exit;
     }
 
+    // Giro-Umsatz von Vertrag trennen
+    if ($action === 'unlink_contract_transaction') {
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$txId) {
+            Auth::sendJsonError(400, 'Ungültige Transaktions-ID');
+        }
+
+        (new BankTransactionRepository())->assignContract($txId, null);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     // KI-Finanzreport neu generieren / aktualisieren
     if ($action === 'generate_financial_report') {
         $periodType = trim((string)($data['period_type'] ?? 'month'));

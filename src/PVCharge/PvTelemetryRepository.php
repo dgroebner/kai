@@ -69,8 +69,8 @@ class PvTelemetryRepository
     {
         $stmt = $this->pdo->query("
             SELECT
-                SUM(CASE WHEN grid_total_w > 0 THEN grid_total_w ELSE 0 END) AS sum_import_w,
-                SUM(CASE WHEN grid_total_w < 0 THEN ABS(grid_total_w) ELSE 0 END) AS sum_export_w
+                SUM(CASE WHEN grid_total_w > 0 AND grid_total_w <= 50000 THEN grid_total_w ELSE 0 END) AS sum_import_w,
+                SUM(CASE WHEN grid_total_w < 0 AND ABS(grid_total_w) <= 50000 THEN ABS(grid_total_w) ELSE 0 END) AS sum_export_w
             FROM pv_telemetry
             WHERE last_update >= CURDATE()
         ");
@@ -101,8 +101,26 @@ class PvTelemetryRepository
     /**
      * Zählt die Telemetrie-Datensätze im gewählten Zeitfenster.
      */
+    /**
+     * Bereinigt unplausible Messwert-Ausreißer (z. B. 1 MW Sentinel-Werte oder Modbus-Fehler).
+     */
+    public function cleanupOutliers(): int
+    {
+        $stmt = $this->pdo->prepare("
+            DELETE FROM pv_telemetry
+            WHERE house_load_w > 50000
+               OR ABS(grid_total_w) > 50000
+               OR pv_power_w > 50000
+        ");
+        $stmt->execute();
+
+        return (int)$stmt->rowCount();
+    }
+
     public function countRecords(string $filter): int
     {
+        $this->cleanupOutliers();
+
         $stmt = $this->pdo->query(
             "SELECT COUNT(*) FROM pv_telemetry WHERE " . $this->conditionFor($filter)
         );
@@ -156,6 +174,8 @@ class PvTelemetryRepository
             SELECT last_update, pv_power_w, house_load_w, grid_total_w, battery_soc_pct, battery_power_w
             FROM pv_telemetry
             WHERE " . $this->conditionFor($filter) . "
+              AND (house_load_w IS NULL OR house_load_w <= 50000)
+              AND (grid_total_w IS NULL OR ABS(grid_total_w) <= 50000)
             ORDER BY last_update ASC
         ");
         $stmt->execute();
@@ -193,6 +213,8 @@ class PvTelemetryRepository
                     SUM(house_load_w) / 12000 AS house_load_kwh
                 FROM pv_telemetry
                 WHERE DATE(last_update) < CURDATE()
+                  AND (house_load_w IS NULL OR house_load_w <= 50000)
+                  AND (grid_total_w IS NULL OR ABS(grid_total_w) <= 50000)
                 GROUP BY DATE(last_update)
             ) AS daily
             GROUP BY {$groupExpr}

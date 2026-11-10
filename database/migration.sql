@@ -135,3 +135,5 @@ CREATE TABLE IF NOT EXISTS `car_trip_ignored_charges` (
 UPDATE IGNORE `group_permissions` SET `permission` = 'recipes_read' WHERE `permission` = 'recipe_read';
 UPDATE IGNORE `group_permissions` SET `permission` = 'recipes_write' WHERE `permission` = 'recipe_write';
 DELETE FROM `group_permissions` WHERE `permission` IN ('recipe_read', 'recipe_write');
+-- Bereinigung fehlerhafter Sensorausreißer (z.B. 1.000.000 W Sentinel-Werte / Glitches)
+DELETE FROM `pv_telemetry` WHERE `house_load_w` > 50000 OR ABS(`grid_total_w`) > 50000 OR `pv_power_w` > 50000;
