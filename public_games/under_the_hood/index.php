@@ -220,8 +220,9 @@ $csrfToken = Auth::csrfToken();
             
             <!-- Formular: Raum neu anlegen -->
             <div id="lobby-create-form">
-                <div class="hood-modal-header">
+                <div class="hood-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h2 class="hood-modal-title">🏎️ Under the Hood</h2>
+                    <a href="../index.php" class="hood-btn-icon" title="Zurück zu Quarxl" style="text-decoration: none; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">◀</a>
                 </div>
 
                 <!-- Modus-Auswahl: Hot-Seat vs. Online -->
@@ -271,13 +272,19 @@ $csrfToken = Auth::csrfToken();
                 <button type="button" class="hood-btn-primary" id="btn-create-room" style="margin-top: 1rem;">
                     🏁 SPIEL ERSTELLEN
                 </button>
+                <a href="../index.php" class="hood-btn-primary hood-btn-secondary" style="margin-top: 0.5rem; text-decoration: none; text-align: center; display: block;">
+                    🚪 ZURÜCK ZU QUARXL
+                </a>
             </div>
 
             <!-- Formular: Raum beitreten (Gast / Spieler 2+) -->
             <div id="lobby-join-form" style="display: none;">
-                <div class="hood-modal-header">
-                    <h2 class="hood-modal-title">🏎️ Spiel beitreten</h2>
-                    <div class="hood-badge" id="join-room-code-badge">---</div>
+                <div class="hood-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <h2 class="hood-modal-title">🏎️ Spiel beitreten</h2>
+                        <div class="hood-badge" id="join-room-code-badge">---</div>
+                    </div>
+                    <a href="../index.php" class="hood-btn-icon" title="Zurück zu Quarxl" style="text-decoration: none; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">◀</a>
                 </div>
 
                 <div class="hood-form-group">
@@ -311,13 +318,19 @@ $csrfToken = Auth::csrfToken();
                 <button type="button" class="hood-btn-primary js-btn-confirm-join" id="btn-confirm-join" style="margin-top: 1rem;">
                     🏁 DEM RENNEN BEITRETEN
                 </button>
+                <a href="../index.php" class="hood-btn-primary hood-btn-secondary" style="margin-top: 0.5rem; text-decoration: none; text-align: center; display: block;">
+                    🚪 ZURÜCK ZU QUARXL
+                </a>
             </div>
 
             <!-- Warteraum / Vor dem Start -->
             <div id="lobby-waiting-room" style="display: none;">
-                <div class="hood-modal-header">
-                    <h2 class="hood-modal-title">🏎️ Startaufstellung</h2>
-                    <div class="hood-badge" id="lobby-room-code">---</div>
+                <div class="hood-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <h2 class="hood-modal-title">🏎️ Startaufstellung</h2>
+                        <div class="hood-badge" id="lobby-room-code">---</div>
+                    </div>
+                    <a href="../index.php" class="hood-btn-icon" title="Zurück zu Quarxl" style="text-decoration: none; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">◀</a>
                 </div>
                 <p style="font-size: 0.85rem; color: var(--hood-muted); margin-bottom: 1rem;" id="lobby-room-info">
                     Füge weitere Mitspieler oder KI-Fahrer hinzu.
@@ -340,6 +353,9 @@ $csrfToken = Auth::csrfToken();
                     <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-start-game">
                         🚦 MOTOREN STARTEN!
                     </button>
+                    <a href="../index.php" class="hood-btn-primary hood-btn-secondary" style="margin-top: 0.25rem; text-decoration: none; text-align: center; display: block;">
+                        🚪 WARTERAUM VERLASSEN (QUARXL)
+                    </a>
                     <div id="lobby-min-player-hint" style="display: none; font-size: 0.8rem; color: #f59e0b; text-align: center; margin-top: 0.25rem; font-weight: 600;">
                         ⚠️ Mindestens 2 Fahrer benötigt (Füge Mitspieler oder KI-Fahrer hinzu)
                     </div>
@@ -515,14 +531,17 @@ $csrfToken = Auth::csrfToken();
             <div style="font-size: 2.5rem; margin-bottom: 0.3rem;">🚪</div>
             <h2 class="hood-modal-title" style="margin-bottom: 0.5rem;">PARTIE ABBRECHEN?</h2>
             <p style="font-size: 0.9rem; color: var(--hood-muted); margin-bottom: 1.25rem;">
-                Möchtest du dieses Rennen wirklich verlassen und zurück zur Lobby bzw. Hauptübersicht zurückkehren?
+                Möchtest du dieses Rennen wirklich verlassen?
             </p>
-            <div style="display: flex; gap: 0.5rem;">
-                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-confirm-leave" style="flex: 1;">
-                    🚪 JA, VERLASSEN
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-confirm-leave" style="width: 100%;">
+                    🚪 ZURÜCK ZU QUARXL (SPIELE)
                 </button>
-                <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-cancel-leave" style="flex: 1;">
-                    NEIN, WEITERFAHREN
+                <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-leave-to-lobby" style="width: 100%;">
+                    🔄 ZUR LOBBY (NEUES RENNEN)
+                </button>
+                <button type="button" class="hood-btn-primary" id="btn-cancel-leave" style="width: 100%; background: #334155;">
+                    WEITERFAHREN
                 </button>
             </div>
         </div>

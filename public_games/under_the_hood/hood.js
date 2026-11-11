@@ -4163,6 +4163,15 @@
                     if (this.roomCode) {
                         localStorage.removeItem('quarxl_hood_token_' + this.roomCode);
                     }
+                    window.location.href = '../index.php';
+                });
+            }
+            const btnLeaveToLobby = document.getElementById('btn-leave-to-lobby');
+            if (btnLeaveToLobby) {
+                btnLeaveToLobby.addEventListener('click', () => {
+                    if (this.roomCode) {
+                        localStorage.removeItem('quarxl_hood_token_' + this.roomCode);
+                    }
                     window.location.href = './index.php';
                 });
             }
