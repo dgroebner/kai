@@ -614,14 +614,76 @@
                 this.scene.add(cloudGroup);
             }
 
-            // 4. Schattige Laubbäume & Palmen entlang der Küste
-            for (let i = 0; i < 70; i++) {
-                const angle = (i / 70) * Math.PI * 2;
-                const dist = 95 + Math.sin(i * 3) * 65 + (Math.random() - 0.5) * 35;
-                const tx = Math.cos(angle) * dist;
-                const tz = Math.sin(angle) * dist;
+            // 4. Schattige Laubbäume & Palmen entlang der Landschaft & Küste
+            // ZWINGEND: Strenge Kollisions- und Abstandsüberprüfung gegen Straße, Gehweg & Grundstücke!
+            const trackSamples = [];
+            for (let s = 0; s < 240; s++) {
+                trackSamples.push(this.trackCurve.getPointAt(s / 240));
+            }
 
-                this.addStylizedTree(tx, tz, i % 3 === 0);
+            const plotCenters = [];
+            for (let p = 0; p < this.trackPoints.length; p++) {
+                const tp = this.trackPoints[p];
+                plotCenters.push(tp.pos.clone().add(tp.normal.clone().multiplyScalar(22)));
+            }
+
+            // Prüffunktion: Garantiert absolut freien Sicherheitskorridor für Straße und Grundstücke
+            const isTreePositionSafe = (x, z) => {
+                // 1. Mindestens 22m Abstand zur Fahrbahn-Mittellinie (Fahrbahn ±6.5m, Gehweg bis 13m + Puffer)
+                for (let s = 0; s < trackSamples.length; s++) {
+                    const dx = x - trackSamples[s].x;
+                    const dz = z - trackSamples[s].z;
+                    if (dx * dx + dz * dz < 22 * 22) {
+                        return false;
+                    }
+                }
+
+                // 2. Mindestens 18m Abstand zu allen Grundstückszentren
+                for (let p = 0; p < plotCenters.length; p++) {
+                    const dx = x - plotCenters[p].x;
+                    const dz = z - plotCenters[p].z;
+                    if (dx * dx + dz * dz < 18 * 18) {
+                        return false;
+                    }
+                }
+
+                // 3. Nicht mitten auf den Spitzen der sanften Innenhügel
+                if ((x - 20) ** 2 + (z - (-15)) ** 2 < 14 * 14) return false;
+                if ((x - (-20)) ** 2 + (z - 15) ** 2 < 14 * 14) return false;
+
+                return true;
+            };
+
+            // A. Zentraler Stadtpark im Insel-Inneren (Laubbäume & Palmen)
+            let innerCount = 0;
+            for (let i = 0; i < 45; i++) {
+                for (let attempt = 0; attempt < 30; attempt++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = 25 + Math.random() * 95;
+                    const tx = Math.cos(angle) * r;
+                    const tz = Math.sin(angle) * r;
+                    if (isTreePositionSafe(tx, tz)) {
+                        this.addStylizedTree(tx, tz, (innerCount % 3 === 0));
+                        innerCount++;
+                        break;
+                    }
+                }
+            }
+
+            // B. Weitläufiges Küsten- & Hügelpanorama (hinter den Grundstücken am Meer)
+            let outerCount = 0;
+            for (let i = 0; i < 65; i++) {
+                for (let attempt = 0; attempt < 30; attempt++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = 230 + Math.random() * 115;
+                    const tx = Math.cos(angle) * r;
+                    const tz = Math.sin(angle) * r;
+                    if (isTreePositionSafe(tx, tz)) {
+                        this.addStylizedTree(tx, tz, (outerCount % 2 === 0));
+                        outerCount++;
+                        break;
+                    }
+                }
             }
         }
 
@@ -2652,30 +2714,30 @@
                         new THREE.BoxGeometry(4.6, 0.15, 3.4),
                         new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 })
                     );
-                    poolBasin.position.set(-4.2, 0.15, -2.8);
+                    poolBasin.position.set(-2.8, 0.15, -2.8);
                     group.add(poolBasin);
 
                     const poolWater = new THREE.Mesh(
                         new THREE.BoxGeometry(4.2, 0.2, 3.0),
                         new THREE.MeshBasicMaterial({ color: 0x06b6d4 })
                     );
-                    poolWater.position.set(-4.2, 0.2, -2.8);
+                    poolWater.position.set(-2.8, 0.2, -2.8);
                     group.add(poolWater);
 
-                    // Palmen am Pool
+                    // Palmen am Pool (sicher hinter dem Zaun im Garten, leicht nach innen geneigt)
                     const palmTrunk = new THREE.Mesh(
                         new THREE.CylinderGeometry(0.14, 0.2, 3.6, 8),
                         new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 })
                     );
-                    palmTrunk.position.set(-4.2, 1.8, -4.8);
-                    palmTrunk.rotation.z = -0.12;
+                    palmTrunk.position.set(-2.8, 1.8, -4.8);
+                    palmTrunk.rotation.z = 0.10;
                     group.add(palmTrunk);
 
                     const palmCrown = new THREE.Mesh(
                         new THREE.SphereGeometry(1.6, 8, 8),
                         new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.7 })
                     );
-                    palmCrown.position.set(-4.4, 3.6, -4.8);
+                    palmCrown.position.set(-2.6, 3.6, -4.8);
                     palmCrown.scale.set(1.4, 0.5, 1.4);
                     group.add(palmCrown);
 
@@ -2740,21 +2802,21 @@
                         new THREE.CylinderGeometry(1.9, 2.1, 0.4, 16),
                         new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
                     );
-                    fountainBasin.position.set(-4.5, 0.2, 0);
+                    fountainBasin.position.set(-3.6, 0.2, 0);
                     group.add(fountainBasin);
 
                     const fountainWater = new THREE.Mesh(
                         new THREE.CylinderGeometry(1.7, 1.7, 0.45, 16),
                         new THREE.MeshBasicMaterial({ color: 0x0284c7 })
                     );
-                    fountainWater.position.set(-4.5, 0.22, 0);
+                    fountainWater.position.set(-3.6, 0.22, 0);
                     group.add(fountainWater);
 
                     const fountainJet = new THREE.Mesh(
                         new THREE.CylinderGeometry(0.12, 0.35, 1.6, 8),
                         new THREE.MeshBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.85 })
                     );
-                    fountainJet.position.set(-4.5, 1.0, 0);
+                    fountainJet.position.set(-3.6, 1.0, 0);
                     group.add(fountainJet);
 
                     // Buchsbaum-Rondelle
@@ -2763,7 +2825,7 @@
                             new THREE.CylinderGeometry(0.7, 0.7, 0.6, 12),
                             new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 })
                         );
-                        hedge.position.set(-4.5, 0.3, bz);
+                        hedge.position.set(-3.6, 0.3, bz);
                         group.add(hedge);
                     });
 
