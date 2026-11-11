@@ -4153,6 +4153,10 @@
             });
 
             document.getElementById('btn-start-game').addEventListener('click', async () => {
+                if (this.state && this.state.players && this.state.players.length < 2) {
+                    alert('Mindestens 2 Spieler oder KI-Fahrer erforderlich, um zu starten!');
+                    return;
+                }
                 this.audio.playHorn();
                 const res = await this.apiPost('start');
                 if (res.success) {
@@ -4201,7 +4205,25 @@
             });
 
             document.getElementById('btn-add-bot').style.display = this.isHost ? 'block' : 'none';
-            document.getElementById('btn-start-game').style.display = this.isHost ? 'block' : 'none';
+            
+            const btnStart = document.getElementById('btn-start-game');
+            const hintMin = document.getElementById('lobby-min-player-hint');
+            const hasEnoughPlayers = (state.players && state.players.length >= 2);
+            if (btnStart) {
+                btnStart.style.display = this.isHost ? 'block' : 'none';
+                btnStart.disabled = !hasEnoughPlayers;
+                btnStart.style.opacity = hasEnoughPlayers ? '1' : '0.45';
+                btnStart.style.cursor = hasEnoughPlayers ? 'pointer' : 'not-allowed';
+                btnStart.title = hasEnoughPlayers
+                    ? `Partie mit ${state.players.length} Fahrern starten`
+                    : 'Mindestens 2 Fahrer (Spieler oder KI) erforderlich';
+                btnStart.textContent = hasEnoughPlayers
+                    ? `🚦 MOTOREN STARTEN (${state.players.length} Fahrer)`
+                    : '🚦 MINDESTENS 2 FAHRER NÖTIG';
+            }
+            if (hintMin) {
+                hintMin.style.display = (this.isHost && !hasEnoughPlayers) ? 'block' : 'none';
+            }
         }
 
         showJoinModal(state) {

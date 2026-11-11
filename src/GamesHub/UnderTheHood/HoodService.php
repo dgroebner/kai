@@ -74,8 +74,8 @@ class HoodService
             return ['success' => false, 'message' => 'Raum nicht gefunden'];
         }
         $state = $room['state'];
-        if (count($state['players']) < 1) {
-            return ['success' => false, 'message' => 'Mindestens 1 Spieler erforderlich'];
+        if (count($state['players']) < 2) {
+            return ['success' => false, 'message' => 'Mindestens 2 Spieler oder KI-Fahrer erforderlich, um zu starten!'];
         }
 
         $state['status'] = 'active';
@@ -114,6 +114,34 @@ class HoodService
 
         if (count($state['players']) >= 6) {
             return ['success' => false, 'message' => 'Maximale Spieleranzahl (6) erreicht'];
+        }
+
+        // Automatische Zuweisung einer noch freien Farbe
+        $colors = HoodConfig::PLAYER_COLORS;
+        $usedColors = array_column($state['players'], 'color');
+        if (empty($color) || in_array($color, $usedColors, true)) {
+            $chosenColor = $colors[count($state['players']) % count($colors)];
+            foreach ($colors as $c) {
+                if (!in_array($c, $usedColors, true)) {
+                    $chosenColor = $c;
+                    break;
+                }
+            }
+            $color = $chosenColor;
+        }
+
+        // Automatische Zuweisung eines noch freien Fahrzeugs
+        $vehicles = array_keys(HoodConfig::VEHICLES);
+        $usedVehicles = array_column($state['players'], 'vehicle');
+        if (empty($vehicle) || in_array($vehicle, $usedVehicles, true)) {
+            $chosenVehicle = $vehicles[count($state['players']) % count($vehicles)];
+            foreach ($vehicles as $v) {
+                if (!in_array($v, $usedVehicles, true)) {
+                    $chosenVehicle = $v;
+                    break;
+                }
+            }
+            $vehicle = $chosenVehicle;
         }
 
         $playerId = count($state['players']) + 1;
@@ -156,6 +184,34 @@ class HoodService
 
         if (count($state['players']) >= 6) {
             return ['success' => false, 'message' => 'Maximale Spieleranzahl (6) erreicht'];
+        }
+
+        // Automatische Zuweisung einer noch freien Farbe
+        $colors = HoodConfig::PLAYER_COLORS;
+        $usedColors = array_column($state['players'], 'color');
+        if (empty($color) || in_array($color, $usedColors, true)) {
+            $chosenColor = $colors[count($state['players']) % count($colors)];
+            foreach ($colors as $c) {
+                if (!in_array($c, $usedColors, true)) {
+                    $chosenColor = $c;
+                    break;
+                }
+            }
+            $color = $chosenColor;
+        }
+
+        // Automatische Zuweisung eines noch freien Fahrzeugs
+        $vehicles = array_keys(HoodConfig::VEHICLES);
+        $usedVehicles = array_column($state['players'], 'vehicle');
+        if (empty($vehicle) || in_array($vehicle, $usedVehicles, true)) {
+            $chosenVehicle = $vehicles[count($state['players']) % count($vehicles)];
+            foreach ($vehicles as $v) {
+                if (!in_array($v, $usedVehicles, true)) {
+                    $chosenVehicle = $v;
+                    break;
+                }
+            }
+            $vehicle = $chosenVehicle;
         }
 
         $playerId = count($state['players']) + 1;

@@ -188,10 +188,12 @@ try {
         if (!$currentPlayer || empty($currentPlayer['is_host'])) {
             hoodRespond(403, ['success' => false, 'message' => 'Nur der Host kann Spieler hinzufügen']);
         }
-        $localName = mb_substr(trim((string)($input['player_name'] ?? 'Spieler 2')), 0, 25);
-        if ($localName === '') $localName = 'Spieler 2';
-        $localVeh = trim((string)($input['vehicle'] ?? 'camper'));
-        $localColor = trim((string)($input['color'] ?? '#3b82f6'));
+        $localName = mb_substr(trim((string)($input['player_name'] ?? ('Spieler ' . (count($state['players']) + 1)))), 0, 25);
+        if ($localName === '') {
+            $localName = 'Spieler ' . (count($state['players']) + 1);
+        }
+        $localVeh = trim((string)($input['vehicle'] ?? ''));
+        $localColor = trim((string)($input['color'] ?? ''));
         $res = $service->addLocalPlayer($roomId, $localName, $localVeh, $localColor);
         hoodRespond(200, $res);
     }

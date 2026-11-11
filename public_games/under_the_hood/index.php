@@ -324,6 +324,9 @@ $csrfToken = Auth::csrfToken();
                     <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-start-game">
                         🚦 MOTOREN STARTEN!
                     </button>
+                    <div id="lobby-min-player-hint" style="display: none; font-size: 0.8rem; color: #f59e0b; text-align: center; margin-top: 0.25rem; font-weight: 600;">
+                        ⚠️ Mindestens 2 Fahrer benötigt (Füge Mitspieler oder KI-Fahrer hinzu)
+                    </div>
                 </div>
             </div>
 
