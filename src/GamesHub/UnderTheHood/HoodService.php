@@ -30,6 +30,7 @@ class HoodService
                 'group'      => $t['group'] ?? null,
                 'price'      => $t['price'] ?? 0,
                 'house_cost' => $t['house_cost'] ?? 100,
+                'rent'       => $t['rent'] ?? null,
                 'owner'      => null, // Player ID
                 'level'      => 0,    // 0 = unberührt, 1 = erschlossen, 2..4 = 1..3 Häuser, 5 = Hotel
                 'mortgaged'  => false,

@@ -356,11 +356,11 @@ $csrfToken = Auth::csrfToken();
     <div class="hood-modal-backdrop" id="modal-trade">
         <div class="hood-modal" style="max-width: 650px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 1.25rem;">
             <div class="hood-modal-header" style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <h2 class="hood-modal-title" style="margin: 0; font-size: 1.25rem;">🤝 Handel vorschlagen</h2>
+                <h2 class="hood-modal-title" id="trade-modal-title" style="margin: 0; font-size: 1.25rem;">🤝 Handel vorschlagen</h2>
                 <button type="button" class="hood-btn-icon" id="trade-close">✕</button>
             </div>
             
-            <p style="font-size: 0.8rem; color: var(--hood-muted); margin-bottom: 0.75rem;">
+            <p id="trade-modal-desc" style="font-size: 0.8rem; color: var(--hood-muted); margin-bottom: 0.75rem;">
                 Tausche Grundstücke und Geld mit Mitspielern oder KI-Fahrern, um Monopole zu vervollständigen!
             </p>
 
@@ -376,12 +376,12 @@ $csrfToken = Auth::csrfToken();
                 <!-- Linke Spalte: Dein Angebot -->
                 <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; display: flex; flex-direction: column;">
                     <div style="font-weight: 700; font-size: 0.85rem; color: #10b981; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
-                        <span>🎁</span> Dein Angebot
+                        <span>🎁</span> <span id="trade-offer-label">Dein Angebot</span>
                     </div>
                     <div id="trade-my-tiles" style="display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.5rem; flex: 1; max-height: 180px; overflow-y: auto;">
                         <span style="font-size: 0.75rem; color: var(--hood-muted);">Keine Grundstücke</span>
                     </div>
-                    <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Zusätzliches Geld bieten:</label>
+                    <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Zusätzliches Geld bieten <span id="trade-offer-available-cash" style="color:var(--hood-gold); font-weight:600;"></span>:</label>
                     <div style="display: flex; align-items: center; gap: 0.3rem;">
                         <input type="number" id="trade-offer-cash" class="hood-input" style="padding: 0.4rem; font-size: 0.85rem;" min="0" value="0">
                         <span style="font-size: 0.85rem; font-weight: 700;">$</span>
@@ -391,12 +391,12 @@ $csrfToken = Auth::csrfToken();
                 <!-- Rechte Spalte: Deine Gegenforderung -->
                 <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; display: flex; flex-direction: column;">
                     <div style="font-weight: 700; font-size: 0.85rem; color: var(--hood-gold); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
-                        <span>📥</span> Seine Gegenleistung
+                        <span>📥</span> <span id="trade-request-label">Gegenleistung</span>
                     </div>
                     <div id="trade-their-tiles" style="display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.5rem; flex: 1; max-height: 180px; overflow-y: auto;">
                         <span style="font-size: 0.75rem; color: var(--hood-muted);">Partner auswählen...</span>
                     </div>
-                    <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Geld fordern:</label>
+                    <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Geld fordern <span id="trade-request-available-cash" style="color:var(--hood-gold); font-weight:600;"></span>:</label>
                     <div style="display: flex; align-items: center; gap: 0.3rem;">
                         <input type="number" id="trade-request-cash" class="hood-input" style="padding: 0.4rem; font-size: 0.85rem;" min="0" value="0">
                         <span style="font-size: 0.85rem; font-weight: 700;">$</span>
@@ -420,10 +420,10 @@ $csrfToken = Auth::csrfToken();
             <p id="incoming-trade-subtitle" style="font-size: 0.85rem; color: var(--hood-muted); margin-bottom: 1rem;"></p>
 
             <div style="background: rgba(15, 23, 42, 0.7); border-radius: 10px; padding: 0.85rem; text-align: left; font-size: 0.85rem; margin-bottom: 1.25rem;">
-                <div style="color: #10b981; font-weight: 700; margin-bottom: 0.25rem;">Du erhältst:</div>
+                <div id="incoming-trade-receive-label" style="color: #10b981; font-weight: 700; margin-bottom: 0.25rem;">Du erhältst:</div>
                 <div id="incoming-trade-receive" style="margin-bottom: 0.75rem; padding-left: 0.5rem;"></div>
 
-                <div style="color: #ef4444; font-weight: 700; margin-bottom: 0.25rem;">Du gibst ab:</div>
+                <div id="incoming-trade-give-label" style="color: #ef4444; font-weight: 700; margin-bottom: 0.25rem;">Du gibst ab:</div>
                 <div id="incoming-trade-give" style="padding-left: 0.5rem;"></div>
             </div>
 
