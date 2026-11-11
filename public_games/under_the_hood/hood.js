@@ -4460,10 +4460,11 @@
             }
         }
 
-        async actionMortgage() {
-            if (this.selectedTileIndex === null) return;
+        async actionMortgage(tileIndex = null) {
+            const idx = (tileIndex !== null) ? tileIndex : this.selectedTileIndex;
+            if (idx === null || idx === undefined) return;
             this.audio.playCash();
-            const res = await this.apiPost('mortgage', { tile_index: this.selectedTileIndex });
+            const res = await this.apiPost('mortgage', { tile_index: idx });
             if (res.success) {
                 this.closePropertySheet();
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
@@ -4819,6 +4820,23 @@
                                     }
                                 });
                                 actDiv.appendChild(btnS);
+                            } else if (isMyTurn && curLvl <= 1) {
+                                const mortgageVal = Math.floor(tile.price / 2);
+                                const repayCost = Math.ceil(mortgageVal * 1.10);
+                                const btnM = document.createElement('button');
+                                btnM.type = 'button';
+                                btnM.className = 'hood-btn-primary hood-btn-secondary';
+                                btnM.style.fontSize = '0.72rem';
+                                btnM.style.padding = '0.25rem 0.45rem';
+                                if (isMortgaged) {
+                                    btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                                    btnM.style.borderColor = '#38bdf8';
+                                    btnM.style.color = '#38bdf8';
+                                } else {
+                                    btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                                }
+                                btnM.addEventListener('click', () => this.actionMortgage(tile.index));
+                                actDiv.appendChild(btnM);
                             }
                         } else {
                             const uncompleteNote = document.createElement('div');
@@ -4828,6 +4846,26 @@
                             const myCount = gInfo.ownerCounts[activeId] || 0;
                             uncompleteNote.textContent = `⚠️ Viertel unvollständig (${myCount}/${gInfo.total})`;
                             actDiv.appendChild(uncompleteNote);
+
+                            if (isMyTurn && curLvl <= 1) {
+                                const mortgageVal = Math.floor(tile.price / 2);
+                                const repayCost = Math.ceil(mortgageVal * 1.10);
+                                const btnM = document.createElement('button');
+                                btnM.type = 'button';
+                                btnM.className = 'hood-btn-primary hood-btn-secondary';
+                                btnM.style.fontSize = '0.72rem';
+                                btnM.style.padding = '0.25rem 0.45rem';
+                                btnM.style.marginTop = '0.25rem';
+                                if (isMortgaged) {
+                                    btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                                    btnM.style.borderColor = '#38bdf8';
+                                    btnM.style.color = '#38bdf8';
+                                } else {
+                                    btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                                }
+                                btnM.addEventListener('click', () => this.actionMortgage(tile.index));
+                                actDiv.appendChild(btnM);
+                            }
                         }
                     } else if (owner && (!activeId || owner.id !== activeId)) {
                         // Gehört einem Mitspieler -> Angebot machen Button
@@ -4935,7 +4973,28 @@
                         </div>
                     `;
 
-                    if (owner && (!activeId || owner.id !== activeId)) {
+                    if (owner && activeId && owner.id === activeId && isMyTurn) {
+                        const actB = document.createElement('div');
+                        actB.style.marginTop = '0.35rem';
+                        const mortgageVal = Math.floor(tile.price / 2);
+                        const repayCost = Math.ceil(mortgageVal * 1.10);
+                        const btnM = document.createElement('button');
+                        btnM.type = 'button';
+                        btnM.className = 'hood-btn-primary hood-btn-secondary';
+                        btnM.style.fontSize = '0.72rem';
+                        btnM.style.padding = '0.25rem 0.45rem';
+                        btnM.style.width = '100%';
+                        if (tile.mortgaged) {
+                            btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                            btnM.style.borderColor = '#38bdf8';
+                            btnM.style.color = '#38bdf8';
+                        } else {
+                            btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                        }
+                        btnM.addEventListener('click', () => this.actionMortgage(tile.index));
+                        actB.appendChild(btnM);
+                        itemB.appendChild(actB);
+                    } else if (owner && (!activeId || owner.id !== activeId)) {
                         const actB = document.createElement('div');
                         actB.style.marginTop = '0.35rem';
                         const btnT = document.createElement('button');
@@ -5037,7 +5096,28 @@
                         </div>
                     `;
 
-                    if (owner && (!activeId || owner.id !== activeId)) {
+                    if (owner && activeId && owner.id === activeId && isMyTurn) {
+                        const actB = document.createElement('div');
+                        actB.style.marginTop = '0.35rem';
+                        const mortgageVal = Math.floor(tile.price / 2);
+                        const repayCost = Math.ceil(mortgageVal * 1.10);
+                        const btnM = document.createElement('button');
+                        btnM.type = 'button';
+                        btnM.className = 'hood-btn-primary hood-btn-secondary';
+                        btnM.style.fontSize = '0.72rem';
+                        btnM.style.padding = '0.25rem 0.45rem';
+                        btnM.style.width = '100%';
+                        if (tile.mortgaged) {
+                            btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                            btnM.style.borderColor = '#38bdf8';
+                            btnM.style.color = '#38bdf8';
+                        } else {
+                            btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                        }
+                        btnM.addEventListener('click', () => this.actionMortgage(tile.index));
+                        actB.appendChild(btnM);
+                        itemB.appendChild(actB);
+                    } else if (owner && (!activeId || owner.id !== activeId)) {
                         const actC = document.createElement('div');
                         actC.style.marginTop = '0.35rem';
                         const btnT = document.createElement('button');
