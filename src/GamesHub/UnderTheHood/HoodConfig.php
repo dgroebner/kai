@@ -51,7 +51,7 @@ class HoodConfig
                 'name'  => 'Start & Ziel',
                 'type'  => 'start',
                 'icon'  => '🏁',
-                'desc'  => 'Ziehe 200 $ beim Passieren oder Landen ein.',
+                'desc'  => '200 $ beim Passieren – Punktlandung auf Start bringt doppeltes Gehalt (400 $)!',
             ],
             // 1: Docks 1
             1 => [
@@ -464,7 +464,7 @@ class HoodConfig
             ['text' => '🚨 Blitzer auf der Strandpromenade! Zahle 50 $ Strafe.', 'action' => 'cash', 'amount' => -50],
             ['text' => '⛽ Tankstellen-Gutschein gewonnen! Ziehe 100 $ ein.', 'action' => 'cash', 'amount' => 100],
             ['text' => '🔨 Werkstatt-Inspektion fällig: Zahle 25 $ pro Haus und 100 $ pro Hotel.', 'action' => 'repairs', 'per_house' => 25, 'per_hotel' => 100],
-            ['text' => '🏁 Gib Vollgas: Fahre direkt auf START & ZIEL (kassiere 200 $).', 'action' => 'teleport', 'tile' => 0],
+            ['text' => '🏁 Gib Vollgas: Fahre direkt auf START & ZIEL (kassiere 400 $ Bonus).', 'action' => 'teleport', 'tile' => 0],
             ['text' => '🏖️ Abkühlung gefällig? Fahre vor zum nächsten Strand.', 'action' => 'nearest_beach'],
             ['text' => '🚓 Polizeikontrolle: Alkoholfahrt! Fahre sofort in die Verwahrstelle.', 'action' => 'go_to_jail'],
             ['text' => '🎉 Geburtstags-Cruising: Jeder Mitspieler schenkt dir 20 $.', 'action' => 'collect_from_all', 'amount' => 20],

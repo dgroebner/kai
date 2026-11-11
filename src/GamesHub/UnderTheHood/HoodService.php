@@ -403,12 +403,20 @@ class HoodService
         $newPos = ($oldPos + $steps) % 40;
         $player['position'] = $newPos;
 
-        // Startfeld passiert?
-        if ($newPos < $oldPos) {
+        // Startfeld passiert oder genau gelandet?
+        if ($newPos === 0) {
+            // Punktlandung auf START & ZIEL: Doppeltes Gehalt (400 $)
+            $doubleReward = HoodConfig::GO_REWARD * 2;
+            $player['cash'] += $doubleReward;
+            $state['log'][] = [
+                'time' => date('H:i'),
+                'text' => "🎯🎯 Punktlandung auf START & ZIEL! {$player['name']} kassiert den doppelten Bonus von {$doubleReward} $!"
+            ];
+        } elseif ($newPos < $oldPos) {
             $player['cash'] += HoodConfig::GO_REWARD;
             $state['log'][] = [
                 'time' => date('H:i'),
-                'text' => "🏁 {$player['name']} passiert START & ZIEL und streicht 200 $ Prämie ein!"
+                'text' => "🏁 {$player['name']} passiert START & ZIEL und streicht " . HoodConfig::GO_REWARD . " $ Prämie ein!"
             ];
         }
 
@@ -912,7 +920,12 @@ class HoodService
             case 'teleport':
                 $player['position'] = $card['tile'];
                 if ($card['tile'] === 0) {
-                    $player['cash'] += HoodConfig::GO_REWARD;
+                    $doubleReward = HoodConfig::GO_REWARD * 2;
+                    $player['cash'] += $doubleReward;
+                    $state['log'][] = [
+                        'time' => date('H:i'),
+                        'text' => "🎯🎯 Direktfahrt auf START & ZIEL! {$player['name']} kassiert {$doubleReward} $ Bonus!"
+                    ];
                 }
                 break;
 
