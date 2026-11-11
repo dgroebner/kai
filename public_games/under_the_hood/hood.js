@@ -168,9 +168,26 @@
                 sheetBtnSellProperty: document.getElementById('sheet-btn-sell-property'),
                 winnerModal: document.getElementById('modal-winner'),
                 winnerText: document.getElementById('winner-text'),
+                potBadgeAmount: document.getElementById('pot-badge-amount'),
+                btnTrade: document.getElementById('btn-trade'),
+                modalTrade: document.getElementById('modal-trade'),
+                tradeClose: document.getElementById('trade-close'),
+                btnSubmitTrade: document.getElementById('btn-submit-trade'),
+                modalTradeIncoming: document.getElementById('modal-trade-incoming'),
+                btnAcceptTrade: document.getElementById('btn-accept-trade'),
+                btnRejectTrade: document.getElementById('btn-reject-trade'),
+                modalJailAlert: document.getElementById('modal-jail-alert'),
+                jailAlertReason: document.getElementById('jail-alert-reason'),
+                btnCloseJailAlert: document.getElementById('btn-close-jail-alert'),
+                modalLeaveConfirm: document.getElementById('modal-leave-confirm'),
+                btnConfirmLeave: document.getElementById('btn-confirm-leave'),
+                btnCancelLeave: document.getElementById('btn-cancel-leave'),
             };
 
             this.selectedTileIndex = null;
+            this.selectedTradePartnerId = null;
+            this.lastSeenJailAlert = null;
+            this.lastSeenTradeId = null;
         }
 
         init() {
@@ -3239,14 +3256,55 @@
                 this.ui.naviHeaderClickable.addEventListener('click', () => this.openPortfolioModal());
             }
 
+            if (this.ui.btnTrade) {
+                this.ui.btnTrade.addEventListener('click', () => this.openTradeModal());
+            }
+            if (this.ui.tradeClose) {
+                this.ui.tradeClose.addEventListener('click', () => this.closeTradeModal());
+            }
+            if (this.ui.btnSubmitTrade) {
+                this.ui.btnSubmitTrade.addEventListener('click', () => this.submitTrade());
+            }
+            if (this.ui.btnAcceptTrade) {
+                this.ui.btnAcceptTrade.addEventListener('click', () => this.respondTrade(true));
+            }
+            if (this.ui.btnRejectTrade) {
+                this.ui.btnRejectTrade.addEventListener('click', () => this.respondTrade(false));
+            }
+            if (this.ui.btnCloseJailAlert) {
+                this.ui.btnCloseJailAlert.addEventListener('click', () => {
+                    if (this.ui.modalJailAlert) this.ui.modalJailAlert.classList.remove('open');
+                });
+            }
+
             document.getElementById('btn-audio-toggle').addEventListener('click', (e) => {
                 this.audio.enabled = !this.audio.enabled;
                 e.currentTarget.textContent = this.audio.enabled ? '🔊' : '🔇';
             });
 
-            document.getElementById('btn-leave').addEventListener('click', () => {
-                window.location.href = '../index.php';
-            });
+            const btnLeave = document.getElementById('btn-leave');
+            if (btnLeave) {
+                btnLeave.addEventListener('click', () => {
+                    if (this.ui.modalLeaveConfirm) {
+                        this.ui.modalLeaveConfirm.classList.add('open');
+                    } else {
+                        window.location.href = '../index.php';
+                    }
+                });
+            }
+            if (this.ui.btnCancelLeave) {
+                this.ui.btnCancelLeave.addEventListener('click', () => {
+                    if (this.ui.modalLeaveConfirm) this.ui.modalLeaveConfirm.classList.remove('open');
+                });
+            }
+            if (this.ui.btnConfirmLeave) {
+                this.ui.btnConfirmLeave.addEventListener('click', () => {
+                    if (this.roomCode) {
+                        localStorage.removeItem('quarxl_hood_token_' + this.roomCode);
+                    }
+                    window.location.href = './index.php';
+                });
+            }
 
             const btnRestart = document.getElementById('btn-restart-game');
             if (btnRestart) {
@@ -3315,6 +3373,10 @@
                 }
             }
 
+            if (this.ui.potBadgeAmount) {
+                this.ui.potBadgeAmount.textContent = `${newState.parking_pot ?? 0} $`;
+            }
+
             this.ui.roomBadge.textContent = this.roomCode;
 
             if (newState.log && newState.log.length > 0) {
@@ -3362,21 +3424,37 @@
                 }
             }
 
-            // Würfelanzeige aktualisieren (inkl. Animation bei neuem Wurf)
+            // Würfelanzeige aktualisieren (ohne blockierende Animation bei Fremd-/Bot-Zügen!)
             if (newState.last_dice && Array.isArray(newState.last_dice)) {
-                const isNewDice = !this.lastRenderedDice ||
-                    this.lastRenderedDice[0] !== newState.last_dice[0] ||
-                    this.lastRenderedDice[1] !== newState.last_dice[1];
+                this.lastRenderedDice = [...newState.last_dice];
+                const d1 = document.getElementById('die-1');
+                const d2 = document.getElementById('die-2');
+                if (d1 && !this.isRollingAnimation) d1.textContent = newState.last_dice[0];
+                if (d2 && !this.isRollingAnimation) d2.textContent = newState.last_dice[1];
+            }
 
-                if (isNewDice && !this.isRollingAnimation) {
-                    this.lastRenderedDice = [...newState.last_dice];
-                    this.playDiceRollAnimation(newState.last_dice);
-                } else if (!this.isRollingAnimation) {
-                    const d1 = document.getElementById('die-1');
-                    const d2 = document.getElementById('die-2');
-                    if (d1) d1.textContent = newState.last_dice[0];
-                    if (d2) d2.textContent = newState.last_dice[1];
+            // Werkstatt / Gefängnis Alert prüfen
+            if (newState.jail_alert) {
+                const isMe = (activePlayer && activePlayer.id === this.myPlayerId) || !!newState.is_hotseat;
+                if (isMe && this.ui.modalJailAlert && this.lastSeenJailAlert !== newState.jail_alert.reason) {
+                    this.lastSeenJailAlert = newState.jail_alert.reason;
+                    if (this.ui.jailAlertReason) {
+                        this.ui.jailAlertReason.textContent = newState.jail_alert.reason;
+                    }
+                    this.ui.modalJailAlert.classList.add('open');
                 }
+            }
+
+            // Eingehendes Handelsangebot prüfen
+            if (newState.active_trade && this.ui.modalTradeIncoming) {
+                const isTarget = (newState.active_trade.to_id === this.myPlayerId) ||
+                    (!!newState.is_hotseat && this.isHost);
+                if (isTarget && this.lastSeenTradeId !== newState.active_trade.id) {
+                    this.lastSeenTradeId = newState.active_trade.id;
+                    this.renderIncomingTradeModal(newState.active_trade);
+                }
+            } else if (!newState.active_trade && this.ui.modalTradeIncoming) {
+                this.ui.modalTradeIncoming.classList.remove('open');
             }
 
             if (newState.status === 'finished' && newState.winner_id) {
@@ -3573,7 +3651,6 @@
                 if (ticks >= maxTicks) {
                     clearInterval(timer);
                     cluster.classList.remove('is-rolling');
-                    this.isRollingAnimation = false;
 
                     if (targetDice && targetDice.length >= 2) {
                         d1.textContent = targetDice[0];
@@ -3590,6 +3667,7 @@
                     setTimeout(() => {
                         d1.classList.remove('landing');
                         d2.classList.remove('landing');
+                        this.isRollingAnimation = false;
                         if (onComplete) onComplete();
                     }, 350);
                 }
@@ -3598,21 +3676,25 @@
 
         async actionRoll() {
             if (this.isRollingAnimation) return;
+            this.isRollingAnimation = true;
             this.ui.btnRoll.disabled = true;
 
             const res = await this.apiPost('roll');
-            this.ui.btnRoll.disabled = false;
-
             if (res.success && res.state) {
                 if (res.state.last_dice) {
                     this.lastRenderedDice = [...res.state.last_dice];
                     this.playDiceRollAnimation(res.state.last_dice, () => {
+                        this.ui.btnRoll.disabled = false;
                         this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                     });
                 } else {
+                    this.isRollingAnimation = false;
+                    this.ui.btnRoll.disabled = false;
                     this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 }
             } else {
+                this.isRollingAnimation = false;
+                this.ui.btnRoll.disabled = false;
                 alert(res.message || 'Würfeln fehlgeschlagen');
             }
         }
@@ -3984,6 +4066,231 @@
                 card.appendChild(grid);
                 groupsContainer.appendChild(card);
             });
+        }
+
+        // ---------------------------------------------------------------------
+        // 11b. HANDELSSYSTEM (SPIELER-ZU-SPIELER / KI-HANDEL)
+        // ---------------------------------------------------------------------
+        openTradeModal(partnerId = null) {
+            if (!this.state || !this.state.players) return;
+            this.selectedTradePartnerId = partnerId;
+            this.renderTradePartners();
+            this.renderTradeTiles();
+            if (this.ui.modalTrade) {
+                this.ui.modalTrade.classList.add('open');
+            }
+        }
+
+        closeTradeModal() {
+            if (this.ui.modalTrade) {
+                this.ui.modalTrade.classList.remove('open');
+            }
+        }
+
+        renderTradePartners() {
+            const container = document.getElementById('trade-partners-list');
+            if (!container || !this.state) return;
+            container.innerHTML = '';
+
+            const partners = this.state.players.filter(p => p.id !== this.myPlayerId && !p.bankrupt);
+            if (partners.length === 0) {
+                container.innerHTML = '<span style="font-size:0.8rem; color:var(--hood-muted);">Keine Handelspartner verfügbar.</span>';
+                return;
+            }
+
+            if (!this.selectedTradePartnerId && partners.length > 0) {
+                this.selectedTradePartnerId = partners[0].id;
+            }
+
+            partners.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const isSelected = (p.id === this.selectedTradePartnerId);
+                btn.className = isSelected ? 'hood-btn-primary hood-btn-gold' : 'hood-btn-primary hood-btn-secondary';
+                btn.style.fontSize = '0.78rem';
+                btn.style.padding = '0.35rem 0.65rem';
+                btn.style.borderRadius = '9999px';
+                btn.innerHTML = `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${p.color};"></span> ${p.name} ${p.is_bot ? '(KI)' : ''}`;
+                btn.addEventListener('click', () => {
+                    this.selectedTradePartnerId = p.id;
+                    this.renderTradePartners();
+                    this.renderTradeTiles();
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        renderTradeTiles() {
+            const myTilesContainer = document.getElementById('trade-my-tiles');
+            const theirTilesContainer = document.getElementById('trade-their-tiles');
+            if (!myTilesContainer || !theirTilesContainer || !this.state) return;
+
+            // Meine Grundstücke (ohne Häuser)
+            myTilesContainer.innerHTML = '';
+            const myTiles = this.state.tiles.filter(t => t.owner === this.myPlayerId && (t.level || 0) <= 1);
+            if (myTiles.length === 0) {
+                myTilesContainer.innerHTML = '<span style="font-size:0.75rem; color:var(--hood-muted);">Keine handelbaren Grundstücke</span>';
+            } else {
+                myTiles.forEach(t => {
+                    const row = document.createElement('label');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '0.4rem';
+                    row.style.fontSize = '0.78rem';
+                    row.style.cursor = 'pointer';
+                    const gData = this.getGroupData(t.group);
+                    row.innerHTML = `
+                        <input type="checkbox" class="trade-offer-chk" value="${t.index}">
+                        <span style="color: ${gData ? gData.color : '#fff'};">●</span>
+                        <span style="color:#fff;">${t.name}</span>
+                        <span style="color:var(--hood-muted); font-size:0.7rem;">(${t.price} $)</span>
+                    `;
+                    myTilesContainer.appendChild(row);
+                });
+            }
+
+            // Partner-Grundstücke
+            theirTilesContainer.innerHTML = '';
+            const partner = this.state.players.find(p => p.id === this.selectedTradePartnerId);
+            if (!partner) {
+                theirTilesContainer.innerHTML = '<span style="font-size:0.75rem; color:var(--hood-muted);">Partner auswählen...</span>';
+                return;
+            }
+
+            const theirTiles = this.state.tiles.filter(t => t.owner === partner.id && (t.level || 0) <= 1);
+            if (theirTiles.length === 0) {
+                theirTilesContainer.innerHTML = `<span style="font-size:0.75rem; color:var(--hood-muted);">${partner.name} besitzt keine handelbaren Grundstücke</span>`;
+            } else {
+                theirTiles.forEach(t => {
+                    const row = document.createElement('label');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '0.4rem';
+                    row.style.fontSize = '0.78rem';
+                    row.style.cursor = 'pointer';
+                    const gData = this.getGroupData(t.group);
+                    row.innerHTML = `
+                        <input type="checkbox" class="trade-request-chk" value="${t.index}">
+                        <span style="color: ${gData ? gData.color : '#fff'};">●</span>
+                        <span style="color:#fff;">${t.name}</span>
+                        <span style="color:var(--hood-muted); font-size:0.7rem;">(${t.price} $)</span>
+                    `;
+                    theirTilesContainer.appendChild(row);
+                });
+            }
+        }
+
+        async submitTrade() {
+            if (!this.selectedTradePartnerId) {
+                alert('Bitte wähle zuerst einen Handelspartner aus.');
+                return;
+            }
+
+            const offerChks = document.querySelectorAll('.trade-offer-chk:checked');
+            const offerTiles = Array.from(offerChks).map(c => parseInt(c.value, 10));
+            const offerCashInput = document.getElementById('trade-offer-cash');
+            const offerCash = offerCashInput ? parseInt(offerCashInput.value, 10) || 0 : 0;
+
+            const requestChks = document.querySelectorAll('.trade-request-chk:checked');
+            const requestTiles = Array.from(requestChks).map(c => parseInt(c.value, 10));
+            const requestCashInput = document.getElementById('trade-request-cash');
+            const requestCash = requestCashInput ? parseInt(requestCashInput.value, 10) || 0 : 0;
+
+            if (offerTiles.length === 0 && offerCash <= 0) {
+                alert('Du musst mindestens ein Grundstück oder Bargeld anbieten.');
+                return;
+            }
+            if (requestTiles.length === 0 && requestCash <= 0) {
+                alert('Du musst mindestens ein Grundstück oder Bargeld als Gegenleistung fordern.');
+                return;
+            }
+
+            const res = await this.apiPost('propose_trade', {
+                to_player_id: this.selectedTradePartnerId,
+                offer_tiles: offerTiles,
+                offer_cash: offerCash,
+                request_tiles: requestTiles,
+                request_cash: requestCash
+            });
+
+            if (res.success) {
+                this.closeTradeModal();
+                alert(res.message || 'Handelsangebot übermittelt!');
+                if (res.state) {
+                    this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+                }
+            } else {
+                alert(res.message || 'Handel konnte nicht vorgeschlagen werden.');
+            }
+        }
+
+        renderIncomingTradeModal(trade) {
+            if (!trade || !this.state) return;
+            const fromPlayer = this.state.players.find(p => p.id === trade.from_id);
+
+            const title = document.getElementById('incoming-trade-title');
+            const subtitle = document.getElementById('incoming-trade-subtitle');
+            const recContainer = document.getElementById('incoming-trade-receive');
+            const giveContainer = document.getElementById('incoming-trade-give');
+
+            if (title) title.textContent = `🤝 Angebot von ${fromPlayer ? fromPlayer.name : 'Mitspieler'}`;
+            if (subtitle) subtitle.textContent = `${fromPlayer ? fromPlayer.name : 'Ein Fahrer'} bietet dir folgenden Deal an:`;
+
+            if (recContainer) {
+                recContainer.innerHTML = '';
+                if (trade.offer_cash > 0) {
+                    const cDiv = document.createElement('div');
+                    cDiv.innerHTML = `💵 <strong>${trade.offer_cash} $</strong> Bargeld`;
+                    recContainer.appendChild(cDiv);
+                }
+                trade.offer_tiles.forEach(tIdx => {
+                    const t = this.state.tiles[tIdx];
+                    if (!t) return;
+                    const gData = this.getGroupData(t.group);
+                    const div = document.createElement('div');
+                    div.innerHTML = `🏡 <span style="color:${gData ? gData.color : '#fff'}; font-weight:700;">${t.name}</span> (${t.price} $)`;
+                    recContainer.appendChild(div);
+                });
+                if (trade.offer_tiles.length === 0 && trade.offer_cash <= 0) {
+                    recContainer.textContent = 'Nichts';
+                }
+            }
+
+            if (giveContainer) {
+                giveContainer.innerHTML = '';
+                if (trade.request_cash > 0) {
+                    const cDiv = document.createElement('div');
+                    cDiv.innerHTML = `💵 <strong>${trade.request_cash} $</strong> Bargeld`;
+                    giveContainer.appendChild(cDiv);
+                }
+                trade.request_tiles.forEach(tIdx => {
+                    const t = this.state.tiles[tIdx];
+                    if (!t) return;
+                    const gData = this.getGroupData(t.group);
+                    const div = document.createElement('div');
+                    div.innerHTML = `🏡 <span style="color:${gData ? gData.color : '#fff'}; font-weight:700;">${t.name}</span> (${t.price} $)`;
+                    giveContainer.appendChild(div);
+                });
+                if (trade.request_tiles.length === 0 && trade.request_cash <= 0) {
+                    giveContainer.textContent = 'Nichts';
+                }
+            }
+
+            if (this.ui.modalTradeIncoming) {
+                this.ui.modalTradeIncoming.classList.add('open');
+            }
+        }
+
+        async respondTrade(accept) {
+            const res = await this.apiPost('respond_trade', { accept: !!accept });
+            if (this.ui.modalTradeIncoming) {
+                this.ui.modalTradeIncoming.classList.remove('open');
+            }
+            if (res.success && res.state) {
+                this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+            } else if (!res.success) {
+                alert(res.message || 'Antwort fehlgeschlagen');
+            }
         }
 
         // ---------------------------------------------------------------------

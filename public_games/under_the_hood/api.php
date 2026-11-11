@@ -289,6 +289,42 @@ try {
         hoodRespond(200, $res);
     }
 
+    // 13. HANDEL VORSCHLAGEN
+    if ($action === 'propose_trade') {
+        hoodRequirePost();
+        $toPlayerId = (int)($input['to_player_id'] ?? 0);
+        $offerTiles = array_map('intval', (array)($input['offer_tiles'] ?? []));
+        $offerCash = (int)($input['offer_cash'] ?? 0);
+        $requestTiles = array_map('intval', (array)($input['request_tiles'] ?? []));
+        $requestCash = (int)($input['request_cash'] ?? 0);
+        $fromPlayerId = (int)($input['from_player_id'] ?? $actingPlayerId);
+        $res = $service->proposeTrade($roomId, $fromPlayerId, $toPlayerId, $offerTiles, $offerCash, $requestTiles, $requestCash);
+        hoodRespond(200, $res);
+    }
+
+    // 14. HANDELSANGEBOT BEANTWORTEN
+    if ($action === 'respond_trade') {
+        hoodRequirePost();
+        $accept = !empty($input['accept']);
+        $actingToId = $actingPlayerId;
+        if (!empty($state['is_hotseat']) && !empty($currentPlayer['is_host']) && !empty($state['active_trade']['to_id'])) {
+            $actingToId = (int)$state['active_trade']['to_id'];
+        }
+        $res = $service->respondTrade($roomId, $actingToId, $accept);
+        hoodRespond(200, $res);
+    }
+
+    // 15. HANDELSANGEBOT ABBRECHEN
+    if ($action === 'cancel_trade') {
+        hoodRequirePost();
+        $actingFromId = $actingPlayerId;
+        if (!empty($state['is_hotseat']) && !empty($currentPlayer['is_host']) && !empty($state['active_trade']['from_id'])) {
+            $actingFromId = (int)$state['active_trade']['from_id'];
+        }
+        $res = $service->cancelTrade($roomId, $actingFromId);
+        hoodRespond(200, $res);
+    }
+
     hoodRespond(400, ['success' => false, 'message' => 'Unbekannte Aktion']);
 
 } catch (\Throwable $e) {

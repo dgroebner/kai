@@ -57,6 +57,9 @@ class HoodService
             'glovebox_deck'        => $gloveboxIndices,
             'last_card'            => null,
             'last_action'          => null,
+            'parking_pot'          => 100,
+            'active_trade'         => null,
+            'jail_alert'           => null,
             'log'                  => [
                 ['time' => date('H:i'), 'text' => '🏎️ Willkommen in der Hood! Erstelle dein Fahrzeug und lade Mitspieler ein.']
             ],
@@ -350,11 +353,12 @@ class HoodService
             if ($player['jail_turns'] >= HoodConfig::MAX_JAIL_TURNS) {
                 // Zwangs-Auslöse
                 $player['cash'] -= HoodConfig::BAIL_COST;
+                $state['parking_pot'] = ($state['parking_pot'] ?? 0) + HoodConfig::BAIL_COST;
                 $player['in_jail'] = false;
                 $player['jail_turns'] = 0;
                 $state['log'][] = [
                     'time' => date('H:i'),
-                    'text' => "🔧 {$player['name']} zahlt 50 $ Reparatur-Kaution nach 3 Runden und fährt weiter."
+                    'text' => "🔧 {$player['name']} zahlt 50 $ Reparatur-Kaution nach 3 Runden (wandert in den Jackpot) und fährt weiter."
                 ];
                 return $this->advancePlayer($roomId, $state, $player, $roll, false);
             }
@@ -377,7 +381,12 @@ class HoodService
                 $player['in_jail'] = true;
                 $player['jail_turns'] = 0;
                 $state['doubles_count'] = 0;
+                $state['can_roll_again'] = false;
                 $state['phase'] = 'TURN_END';
+                $state['jail_alert'] = [
+                    'player_name' => $player['name'],
+                    'reason'      => '🚨 3x Pasch hintereinander gewürfelt! Radarfalle! Du wirst sofort auf die Hebebühne geschleppt!'
+                ];
                 $state['log'][] = [
                     'time' => date('H:i'),
                     'text' => "🚨 3x Pasch! {$player['name']} raste mit Überschall und wird sofort in die Werkstatt abgeschleppt!"
@@ -432,17 +441,35 @@ class HoodService
         switch ($tileConfig['type']) {
             case 'start':
             case 'jail':
+                $state['phase'] = 'TURN_END';
+                break;
+
             case 'parking':
+                $pot = (int)($state['parking_pot'] ?? 0);
+                if ($pot > 0) {
+                    $player['cash'] += $pot;
+                    $state['parking_pot'] = 0;
+                    $state['log'][] = [
+                        'time' => date('H:i'),
+                        'text' => "🎰 FREI PARKEN JACKPOT! {$player['name']} räumt den gesamten Jackpot von {$pot} $ ab!"
+                    ];
+                } else {
+                    $state['log'][] = [
+                        'time' => date('H:i'),
+                        'text' => "🎬 {$player['name']} entspannt am Autokino (Frei Parken). Der Jackpot ist aktuell leer."
+                    ];
+                }
                 $state['phase'] = 'TURN_END';
                 break;
 
             case 'tax':
                 $tax = $tileConfig['tax'];
                 $player['cash'] -= $tax;
+                $state['parking_pot'] = ($state['parking_pot'] ?? 0) + $tax;
                 $state['phase'] = 'TURN_END';
                 $state['log'][] = [
                     'time' => date('H:i'),
-                    'text' => "🛑 {$player['name']} zahlt {$tax} $ {$tileConfig['name']}."
+                    'text' => "🛑 {$player['name']} zahlt {$tax} $ {$tileConfig['name']} (wandert in den Frei-Parken-Jackpot)."
                 ];
                 $this->checkBankruptcy($state, $player);
                 break;
@@ -454,9 +481,13 @@ class HoodService
                 $state['doubles_count'] = 0;
                 $state['can_roll_again'] = false;
                 $state['phase'] = 'TURN_END';
+                $state['jail_alert'] = [
+                    'player_name' => $player['name'],
+                    'reason'      => "🚓 Radarfalle auf Feld 30 ('Gehe in die Werkstatt')! Du wirst direkt auf die Hebebühne geschleppt!"
+                ];
                 $state['log'][] = [
                     'time' => date('H:i'),
-                    'text' => "🚓 Radarfalle! {$player['name']} wird direkt in die Werkstatt geschleppt!"
+                    'text' => "🚓 Radarfalle auf Feld 30! {$player['name']} wird direkt in die Werkstatt geschleppt!"
                 ];
                 break;
 
@@ -808,11 +839,12 @@ class HoodService
         }
 
         $player['cash'] -= HoodConfig::BAIL_COST;
+        $state['parking_pot'] = ($state['parking_pot'] ?? 0) + HoodConfig::BAIL_COST;
         $player['in_jail'] = false;
         $player['jail_turns'] = 0;
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "💸 {$player['name']} zahlt 50 $ Reparaturkaution und darf sofort wieder mitfahren!"
+            'text' => "💸 {$player['name']} zahlt 50 $ Reparaturkaution (wandert in den Jackpot) und darf sofort wieder mitfahren!"
         ];
 
         $this->repo->updateRoomState($roomId, $state);
@@ -914,7 +946,15 @@ class HoodService
         switch ($card['action']) {
             case 'cash':
                 $player['cash'] += $card['amount'];
-                $this->checkBankruptcy($state, $player);
+                if ($card['amount'] < 0) {
+                    $penalty = abs($card['amount']);
+                    $state['parking_pot'] = ($state['parking_pot'] ?? 0) + $penalty;
+                    $state['log'][] = [
+                        'time' => date('H:i'),
+                        'text' => "💸 Strafe von {$penalty} $ wandert in den Frei-Parken-Jackpot!"
+                    ];
+                    $this->checkBankruptcy($state, $player);
+                }
                 break;
 
             case 'teleport':
@@ -956,6 +996,10 @@ class HoodService
                 $player['jail_turns'] = 0;
                 $state['doubles_count'] = 0;
                 $state['can_roll_again'] = false;
+                $state['jail_alert'] = [
+                    'player_name' => $player['name'],
+                    'reason'      => '🚓 Karte gezogen: Polizeikontrolle / Werkstatt! Du wirst sofort auf die Hebebühne geschleppt!'
+                ];
                 break;
 
             case 'repairs':
@@ -971,9 +1015,10 @@ class HoodService
                 }
                 if ($totalRepairs > 0) {
                     $player['cash'] -= $totalRepairs;
+                    $state['parking_pot'] = ($state['parking_pot'] ?? 0) + $totalRepairs;
                     $state['log'][] = [
                         'time' => date('H:i'),
-                        'text' => "🔨 {$player['name']} zahlt insgesamt {$totalRepairs} $ Reparaturkosten für alle Gebäude."
+                        'text' => "🔨 {$player['name']} zahlt insgesamt {$totalRepairs} $ Reparaturkosten (wandert in den Frei-Parken-Jackpot)."
                     ];
                     $this->checkBankruptcy($state, $player);
                 }
@@ -1127,5 +1172,298 @@ class HoodService
             }
         }
         return null;
+    }
+
+    /**
+     * Unterbreitet einem anderen Spieler oder KI-Fahrer ein Handelsangebot.
+     */
+    public function proposeTrade(int $roomId, int $fromPlayerId, int $toPlayerId, array $offerTiles, int $offerCash, array $requestTiles, int $requestCash): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+
+        if (($state['status'] ?? '') !== 'active') {
+            return ['success' => false, 'message' => 'Spiel ist nicht aktiv'];
+        }
+        if ($fromPlayerId === $toPlayerId) {
+            return ['success' => false, 'message' => 'Du kannst nicht mit dir selbst handeln'];
+        }
+
+        $fromIdx = $this->getPlayerIndexById($state, $fromPlayerId);
+        $toIdx = $this->getPlayerIndexById($state, $toPlayerId);
+        if ($fromIdx === null || $toIdx === null) {
+            return ['success' => false, 'message' => 'Spieler nicht gefunden'];
+        }
+
+        $fromPlayer = &$state['players'][$fromIdx];
+        $toPlayer = &$state['players'][$toIdx];
+
+        if ($fromPlayer['bankrupt'] || $toPlayer['bankrupt']) {
+            return ['success' => false, 'message' => 'Bankrotte Spieler können nicht handeln'];
+        }
+
+        $offerCash = max(0, (int)$offerCash);
+        $requestCash = max(0, (int)$requestCash);
+
+        if ($offerCash > $fromPlayer['cash']) {
+            return ['success' => false, 'message' => 'Du hast nicht genügend Geld für dieses Angebot'];
+        }
+        if ($requestCash > $toPlayer['cash']) {
+            return ['success' => false, 'message' => "{$toPlayer['name']} hat nicht genügend Geld"];
+        }
+
+        if (empty($offerTiles) && $offerCash === 0) {
+            return ['success' => false, 'message' => 'Du musst mindestens ein Grundstück oder Geld anbieten'];
+        }
+        if (empty($requestTiles) && $requestCash === 0) {
+            return ['success' => false, 'message' => 'Du musst mindestens ein Grundstück oder Geld fordern'];
+        }
+
+        // Grundstücke validieren
+        foreach ($offerTiles as $tIdx) {
+            $tile = $state['tiles'][$tIdx] ?? null;
+            if (!$tile || $tile['owner'] !== $fromPlayerId) {
+                return ['success' => false, 'message' => 'Eines der angebotenen Grundstücke gehört dir nicht'];
+            }
+            if (($tile['level'] ?? 0) > 1) {
+                return ['success' => false, 'message' => 'Bebaute Grundstücke können nicht gehandelt werden (zuerst Häuser verkaufen)'];
+            }
+        }
+
+        foreach ($requestTiles as $tIdx) {
+            $tile = $state['tiles'][$tIdx] ?? null;
+            if (!$tile || $tile['owner'] !== $toPlayerId) {
+                return ['success' => false, 'message' => "Eines der geforderten Grundstücke gehört {$toPlayer['name']} nicht"];
+            }
+            if (($tile['level'] ?? 0) > 1) {
+                return ['success' => false, 'message' => 'Bebaute Grundstücke können nicht gehandelt werden'];
+            }
+        }
+
+        // Falls toPlayer ein KI-Bot ist: sofort bewerten!
+        if (!empty($toPlayer['is_bot'])) {
+            $accept = $this->evaluateBotTrade($state, $toPlayer, $fromPlayer, $offerTiles, $offerCash, $requestTiles, $requestCash);
+            if ($accept) {
+                $fromPlayer['cash'] = $fromPlayer['cash'] - $offerCash + $requestCash;
+                $toPlayer['cash'] = $toPlayer['cash'] + $offerCash - $requestCash;
+                foreach ($offerTiles as $tIdx) {
+                    $state['tiles'][$tIdx]['owner'] = $toPlayerId;
+                }
+                foreach ($requestTiles as $tIdx) {
+                    $state['tiles'][$tIdx]['owner'] = $fromPlayerId;
+                }
+                $state['log'][] = [
+                    'time' => date('H:i'),
+                    'text' => "🤝 DEAL! {$toPlayer['name']} (KI) akzeptiert das Handelsangebot von {$fromPlayer['name']}!"
+                ];
+                $this->repo->updateRoomState($roomId, $state);
+                return ['success' => true, 'deal' => true, 'accepted' => true, 'state' => $state, 'message' => "{$toPlayer['name']} hat das Angebot angenommen! 🎉"];
+            } else {
+                $state['log'][] = [
+                    'time' => date('H:i'),
+                    'text' => "❌ {$toPlayer['name']} (KI) lehnt das Handelsangebot von {$fromPlayer['name']} ab."
+                ];
+                $this->repo->updateRoomState($roomId, $state);
+                return ['success' => true, 'deal' => false, 'accepted' => false, 'state' => $state, 'message' => "{$toPlayer['name']} hat das Angebot abgelehnt."];
+            }
+        }
+
+        // Menschlicher Mitspieler: Handelsangebot im Spielstatus hinterlegen
+        $state['active_trade'] = [
+            'id'            => 'tr_' . bin2hex(random_bytes(4)),
+            'from_id'       => $fromPlayerId,
+            'to_id'         => $toPlayerId,
+            'offer_tiles'   => $offerTiles,
+            'offer_cash'    => $offerCash,
+            'request_tiles' => $requestTiles,
+            'request_cash'  => $requestCash,
+        ];
+        $state['log'][] = [
+            'time' => date('H:i'),
+            'text' => "🤝 {$fromPlayer['name']} bietet {$toPlayer['name']} einen Grundstücks-Handel an."
+        ];
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'pending' => true, 'state' => $state, 'message' => "Handelsangebot an {$toPlayer['name']} gesendet!"];
+    }
+
+    /**
+     * KI-Entscheidungslogik für Handelsangebote.
+     */
+    public function evaluateBotTrade(array $state, array $bot, array $proposer, array $offerTiles, int $offerCash, array $requestTiles, int $requestCash): bool
+    {
+        // Kosten für den Bot (was er abgibt)
+        $cost = $requestCash;
+        foreach ($requestTiles as $tileIdx) {
+            $tileCfg = HoodConfig::getTiles()[$tileIdx] ?? null;
+            if (!$tileCfg) continue;
+            $price = $tileCfg['price'] ?? 100;
+            $group = $tileCfg['group'] ?? '';
+
+            $botOwnsInGroup = 0;
+            $groupTotal = 0;
+            foreach ($state['tiles'] as $t) {
+                if (($t['group'] ?? '') === $group) {
+                    $groupTotal++;
+                    if ($t['owner'] === $bot['id']) {
+                        $botOwnsInGroup++;
+                    }
+                }
+            }
+
+            if ($botOwnsInGroup === $groupTotal) {
+                $cost += $price * 3.5;
+            } elseif ($botOwnsInGroup > 1) {
+                $cost += $price * 2.0;
+            } else {
+                $cost += $price * 1.2;
+            }
+
+            // Bringt dieser Tausch dem Gegner ein Monopol?
+            $proposerOwnsInGroup = 0;
+            foreach ($state['tiles'] as $t) {
+                if (($t['group'] ?? '') === $group && $t['owner'] === $proposer['id']) {
+                    $proposerOwnsInGroup++;
+                }
+            }
+            if ($proposerOwnsInGroup + 1 === $groupTotal) {
+                $cost += $price * 1.8;
+            }
+        }
+
+        // Nutzen für den Bot (was er bekommt)
+        $gain = $offerCash;
+        foreach ($offerTiles as $tileIdx) {
+            $tileCfg = HoodConfig::getTiles()[$tileIdx] ?? null;
+            if (!$tileCfg) continue;
+            $price = $tileCfg['price'] ?? 100;
+            $group = $tileCfg['group'] ?? '';
+
+            $botOwnsInGroup = 0;
+            $groupTotal = 0;
+            foreach ($state['tiles'] as $t) {
+                if (($t['group'] ?? '') === $group) {
+                    $groupTotal++;
+                    if ($t['owner'] === $bot['id']) {
+                        $botOwnsInGroup++;
+                    }
+                }
+            }
+
+            if ($botOwnsInGroup + 1 === $groupTotal) {
+                $gain += $price * 3.5; // Monopol vollendet!
+            } elseif ($botOwnsInGroup >= 1) {
+                $gain += $price * 1.8;
+            } else {
+                $gain += $price * 1.1;
+            }
+        }
+
+        // Hoher Geldbedarf bei knappem Cash
+        if ($bot['cash'] < 150 && $offerCash >= 150) {
+            $gain += 120;
+        }
+
+        return ($gain >= $cost);
+    }
+
+    /**
+     * Antwort auf ein Handelsangebot (Annehmen / Ablehnen).
+     */
+    public function respondTrade(int $roomId, int $playerId, bool $accept): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+        $trade = $state['active_trade'] ?? null;
+        if (!$trade) {
+            return ['success' => false, 'message' => 'Kein aktives Handelsangebot vorhanden'];
+        }
+        if ($trade['to_id'] !== $playerId) {
+            return ['success' => false, 'message' => 'Du bist nicht der Empfänger dieses Angebots'];
+        }
+
+        $fromIdx = $this->getPlayerIndexById($state, $trade['from_id']);
+        $toIdx = $this->getPlayerIndexById($state, $trade['to_id']);
+        if ($fromIdx === null || $toIdx === null) {
+            $state['active_trade'] = null;
+            $this->repo->updateRoomState($roomId, $state);
+            return ['success' => false, 'message' => 'Beteiligte Spieler nicht mehr verfügbar'];
+        }
+
+        $fromPlayer = &$state['players'][$fromIdx];
+        $toPlayer = &$state['players'][$toIdx];
+
+        if ($accept) {
+            if ($fromPlayer['cash'] < $trade['offer_cash'] || $toPlayer['cash'] < $trade['request_cash']) {
+                $state['active_trade'] = null;
+                $this->repo->updateRoomState($roomId, $state);
+                return ['success' => false, 'message' => 'Handel fehlgeschlagen: Zu wenig Guthaben'];
+            }
+            foreach ($trade['offer_tiles'] as $tIdx) {
+                if (($state['tiles'][$tIdx]['owner'] ?? null) !== $trade['from_id']) {
+                    $state['active_trade'] = null;
+                    $this->repo->updateRoomState($roomId, $state);
+                    return ['success' => false, 'message' => 'Handel ungültig: Besitzverhältnisse haben sich geändert'];
+                }
+            }
+            foreach ($trade['request_tiles'] as $tIdx) {
+                if (($state['tiles'][$tIdx]['owner'] ?? null) !== $trade['to_id']) {
+                    $state['active_trade'] = null;
+                    $this->repo->updateRoomState($roomId, $state);
+                    return ['success' => false, 'message' => 'Handel ungültig: Besitzverhältnisse haben sich geändert'];
+                }
+            }
+
+            $fromPlayer['cash'] = $fromPlayer['cash'] - $trade['offer_cash'] + $trade['request_cash'];
+            $toPlayer['cash'] = $toPlayer['cash'] + $trade['offer_cash'] - $trade['request_cash'];
+            foreach ($trade['offer_tiles'] as $tIdx) {
+                $state['tiles'][$tIdx]['owner'] = $trade['to_id'];
+            }
+            foreach ($trade['request_tiles'] as $tIdx) {
+                $state['tiles'][$tIdx]['owner'] = $trade['from_id'];
+            }
+
+            $state['log'][] = [
+                'time' => date('H:i'),
+                'text' => "🤝 DEAL! {$toPlayer['name']} nimmt den Handel von {$fromPlayer['name']} an!"
+            ];
+        } else {
+            $state['log'][] = [
+                'time' => date('H:i'),
+                'text' => "❌ {$toPlayer['name']} lehnt den Handel von {$fromPlayer['name']} ab."
+            ];
+        }
+
+        $state['active_trade'] = null;
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'state' => $state];
+    }
+
+    /**
+     * Zieht ein eigenes offenes Handelsangebot zurück.
+     */
+    public function cancelTrade(int $roomId, int $playerId): array
+    {
+        $room = $this->repo->getRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+        $trade = $state['active_trade'] ?? null;
+        if (!$trade || $trade['from_id'] !== $playerId) {
+            return ['success' => false, 'message' => 'Kein eigenes Angebot zum Abbrechen'];
+        }
+        $state['active_trade'] = null;
+        $state['log'][] = [
+            'time' => date('H:i'),
+            'text' => "↩️ Handelsangebot wurde zurückgezogen."
+        ];
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'state' => $state];
     }
 }

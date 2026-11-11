@@ -47,9 +47,16 @@ $csrfToken = Auth::csrfToken();
                 <span id="cash-badge-amount">1.500 $</span>
             </div>
 
-            <!-- Blick-Steuerung, Grundbuch & Ton -->
+            <!-- Frei-Parken Jackpot Badge -->
+            <div class="hood-badge hood-pot-badge" id="pot-badge" title="Frei-Parken Jackpot (wird bei Landung auf Feld 20 gewonnen)" style="background: rgba(5, 150, 105, 0.85); border: 1px solid #10b981; font-weight: 700;">
+                <span>🎰</span>
+                <span id="pot-badge-amount">100 $</span>
+            </div>
+
+            <!-- Blick-Steuerung, Grundbuch, Handel & Ton -->
             <div class="hood-view-controls">
                 <button type="button" class="hood-btn-icon" id="btn-portfolio" title="Grundbuch &amp; Viertel-Übersicht" style="width: auto; padding: 0 0.65rem; font-size: 0.8rem; font-weight: 700; border-radius: 9999px; gap: 0.3rem;">📋 Viertel</button>
+                <button type="button" class="hood-btn-icon" id="btn-trade" title="Grundstücke &amp; Geld mit Mitspielern handeln" style="width: auto; padding: 0 0.65rem; font-size: 0.8rem; font-weight: 700; border-radius: 9999px; gap: 0.3rem;">🤝 Handeln</button>
                 <button type="button" class="hood-btn-icon" id="btn-look-road" title="Blick nach vorn auf die Straße">🛣️</button>
                 <button type="button" class="hood-btn-icon" id="btn-look-plot" title="Blick aus dem Fenster aufs Grundstück">🏡</button>
                 <button type="button" class="hood-btn-icon" id="btn-audio-toggle" title="Ton an/aus">🔊</button>
@@ -342,6 +349,123 @@ $csrfToken = Auth::csrfToken();
             <button type="button" class="hood-btn-primary" id="btn-restart-game">
                 🔄 NOCHMAL SPIELEN
             </button>
+        </div>
+    </div>
+
+    <!-- Handels-Modal (Spieler-zu-Spieler / KI-Handel) -->
+    <div class="hood-modal-backdrop" id="modal-trade">
+        <div class="hood-modal" style="max-width: 650px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 1.25rem;">
+            <div class="hood-modal-header" style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="hood-modal-title" style="margin: 0; font-size: 1.25rem;">🤝 Handel vorschlagen</h2>
+                <button type="button" class="hood-btn-icon" id="trade-close">✕</button>
+            </div>
+            
+            <p style="font-size: 0.8rem; color: var(--hood-muted); margin-bottom: 0.75rem;">
+                Tausche Grundstücke und Geld mit Mitspielern oder KI-Fahrern, um Monopole zu vervollständigen!
+            </p>
+
+            <!-- 1. Handelspartner wählen -->
+            <div style="margin-bottom: 0.75rem;">
+                <label style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--hood-gold); display: block; margin-bottom: 0.25rem;">Handelspartner:</label>
+                <div id="trade-partners-list" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+            </div>
+
+            <!-- 2. Die beiden Handelsseiten: Angebot vs Gegenleistung -->
+            <div style="overflow-y: auto; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; padding-right: 0.25rem;">
+                
+                <!-- Linke Spalte: Dein Angebot -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; display: flex; flex-direction: column;">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: #10b981; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
+                        <span>🎁</span> Dein Angebot
+                    </div>
+                    <div id="trade-my-tiles" style="display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.5rem; flex: 1; max-height: 180px; overflow-y: auto;">
+                        <span style="font-size: 0.75rem; color: var(--hood-muted);">Keine Grundstücke</span>
+                    </div>
+                    <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Zusätzliches Geld bieten:</label>
+                    <div style="display: flex; align-items: center; gap: 0.3rem;">
+                        <input type="number" id="trade-offer-cash" class="hood-input" style="padding: 0.4rem; font-size: 0.85rem;" min="0" value="0">
+                        <span style="font-size: 0.85rem; font-weight: 700;">$</span>
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte: Deine Gegenforderung -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; display: flex; flex-direction: column;">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--hood-gold); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
+                        <span>📥</span> Seine Gegenleistung
+                    </div>
+                    <div id="trade-their-tiles" style="display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.5rem; flex: 1; max-height: 180px; overflow-y: auto;">
+                        <span style="font-size: 0.75rem; color: var(--hood-muted);">Partner auswählen...</span>
+                    </div>
+                    <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Geld fordern:</label>
+                    <div style="display: flex; align-items: center; gap: 0.3rem;">
+                        <input type="number" id="trade-request-cash" class="hood-input" style="padding: 0.4rem; font-size: 0.85rem;" min="0" value="0">
+                        <span style="font-size: 0.85rem; font-weight: 700;">$</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Absenden Button -->
+            <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-submit-trade" style="padding: 0.75rem;">
+                🤝 HANDELSANGEBOT ABSENDEN
+            </button>
+        </div>
+    </div>
+
+    <!-- Eingehendes Handels-Modal -->
+    <div class="hood-modal-backdrop" id="modal-trade-incoming">
+        <div class="hood-modal" style="max-width: 500px; width: 95%; text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 0.3rem;">🤝</div>
+            <h2 class="hood-modal-title" id="incoming-trade-title" style="margin-bottom: 0.5rem;">Neues Handelsangebot!</h2>
+            <p id="incoming-trade-subtitle" style="font-size: 0.85rem; color: var(--hood-muted); margin-bottom: 1rem;"></p>
+
+            <div style="background: rgba(15, 23, 42, 0.7); border-radius: 10px; padding: 0.85rem; text-align: left; font-size: 0.85rem; margin-bottom: 1.25rem;">
+                <div style="color: #10b981; font-weight: 700; margin-bottom: 0.25rem;">Du erhältst:</div>
+                <div id="incoming-trade-receive" style="margin-bottom: 0.75rem; padding-left: 0.5rem;"></div>
+
+                <div style="color: #ef4444; font-weight: 700; margin-bottom: 0.25rem;">Du gibst ab:</div>
+                <div id="incoming-trade-give" style="padding-left: 0.5rem;"></div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-accept-trade" style="flex: 1;">
+                    ✅ ANNEHMEN
+                </button>
+                <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-reject-trade" style="flex: 1;">
+                    ❌ ABLEHNEN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Werkstatt / Gefängnis Alert Modal -->
+    <div class="hood-modal-backdrop" id="modal-jail-alert">
+        <div class="hood-modal" style="max-width: 450px; width: 95%; text-align: center; padding: 1.5rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.3rem;">🚓</div>
+            <h2 class="hood-modal-title" style="margin-bottom: 0.5rem; color: #ef4444;">AB IN DIE WERKSTATT!</h2>
+            <p id="jail-alert-reason" style="font-size: 0.95rem; line-height: 1.4; color: #f1f5f9; margin-bottom: 1.25rem; font-weight: 600;"></p>
+            <button type="button" class="hood-btn-primary" id="btn-close-jail-alert" style="width: 100%;">
+                🔧 ALLES KLAR
+            </button>
+        </div>
+    </div>
+
+    <!-- Spiel verlassen / Abbrechen Bestätigung -->
+    <div class="hood-modal-backdrop" id="modal-leave-confirm">
+        <div class="hood-modal" style="max-width: 440px; width: 95%; text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 0.3rem;">🚪</div>
+            <h2 class="hood-modal-title" style="margin-bottom: 0.5rem;">PARTIE ABBRECHEN?</h2>
+            <p style="font-size: 0.9rem; color: var(--hood-muted); margin-bottom: 1.25rem;">
+                Möchtest du dieses Rennen wirklich verlassen und zurück zur Lobby bzw. Hauptübersicht zurückkehren?
+            </p>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-confirm-leave" style="flex: 1;">
+                    🚪 JA, VERLASSEN
+                </button>
+                <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-cancel-leave" style="flex: 1;">
+                    NEIN, WEITERFAHREN
+                </button>
+            </div>
         </div>
     </div>
 

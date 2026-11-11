@@ -254,7 +254,7 @@ class HoodConfig
                 'name'  => 'Autokino & Sunset Point',
                 'type'  => 'parking',
                 'icon'  => '🎬',
-                'desc'  => 'Kostenlose Rast mit Meerblick – keine Miete.',
+                'desc'  => 'Frei Parken & Autokino: Wer hier landet, räumt den Jackpot aus allen Strafgeldern ab!',
             ],
             // 21: Downtown 1
             21 => [
