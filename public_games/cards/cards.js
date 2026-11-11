@@ -16,6 +16,8 @@
     let lastRenderedTopCardId = null;
     let lastProcessedDrawEventTime = 0;
     let lastProcessedUnoEventKey = '';
+    const UNO_SKIN_STORAGE_KEY = 'quarxl_uno_skin';
+    let unoSkin = (localStorage.getItem(UNO_SKIN_STORAGE_KEY) === 'stitch') ? 'stitch' : 'classic';
 
     // Web Audio Synthesizer (Keine externen MP3-Dateien nötig)
     const AudioEngine = {
@@ -26,6 +28,11 @@
             }
         },
         playCardSound() {
+            if (window.QuarxlCards && window.QuarxlCards.SoundFx) {
+                window.QuarxlCards.SoundFx.cardWhoosh();
+                window.QuarxlCards.SoundFx.cardPlace();
+                return;
+            }
             this.init();
             if (!this.ctx) return;
             const osc = this.ctx.createOscillator();
@@ -41,6 +48,10 @@
             osc.stop(this.ctx.currentTime + 0.09);
         },
         playDrawSound() {
+            if (window.QuarxlCards && window.QuarxlCards.SoundFx) {
+                window.QuarxlCards.SoundFx.cardWhoosh();
+                return;
+            }
             this.init();
             if (!this.ctx) return;
             const now = this.ctx.currentTime;
@@ -154,6 +165,32 @@
                 if (newName && newName.trim() !== '') {
                     localStorage.setItem('kai_gh_player_name', newName.trim());
                     document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = newName.trim());
+                }
+            });
+        });
+
+        // Uno-Skin Umschalter (Normal / Stitch)
+        const syncSkinButtons = () => {
+            document.querySelectorAll('.js-uno-skin-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.skin === unoSkin);
+            });
+            const isStitchActive = (unoSkin === 'stitch' && (!currentRoomData || currentRoomData.game_mode !== 'mau_mau'));
+            document.body.classList.toggle('uno-skin-stitch', isStitchActive);
+        };
+        syncSkinButtons();
+
+        document.querySelectorAll('.js-uno-skin-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetSkin = btn.dataset.skin === 'stitch' ? 'stitch' : 'classic';
+                if (targetSkin === unoSkin) return;
+                unoSkin = targetSkin;
+                try {
+                    localStorage.setItem(UNO_SKIN_STORAGE_KEY, unoSkin);
+                } catch (_) {}
+                syncSkinButtons();
+                AudioEngine.playDrawSound();
+                if (currentRoomData) {
+                    renderState(currentRoomData);
                 }
             });
         });
@@ -306,6 +343,13 @@
         if (modeBadge) {
             const modeNames = { 'uno': 'Uno Klassik', 'uno_extreme': 'Uno Extreme', 'mau_mau': 'Mau-Mau' };
             modeBadge.textContent = modeNames[data.game_mode] || 'Mau-Mau / Uno';
+        }
+        const skinToggleWrap = document.getElementById('uno-skin-toggle-wrap');
+        if (skinToggleWrap) {
+            skinToggleWrap.classList.toggle('hidden', data.game_mode === 'mau_mau');
+        }
+        document.body.classList.toggle('uno-skin-stitch', unoSkin === 'stitch' && data.game_mode !== 'mau_mau');
+        if (true) {
         }
 
         // Uno-Button Label anpassen
@@ -527,7 +571,7 @@
             } else {
                 drawCont.innerHTML = `
                     <div class="draw-deck-card" id="deck-draw-btn" role="button" title="Karte ziehen">
-                        <span style="font-size: 1.5rem;">🂠</span>
+                        <span class="draw-deck-logo">${(unoSkin === 'stitch' && data.game_mode !== 'mau_mau') ? '🌺 STITCH' : '🂠'}</span>
                         <span class="draw-deck-count">${data.draw_pile_count}</span>
                     </div>
                 `;
@@ -836,6 +880,24 @@
 
         // Uno / Uno Extreme
         const isWild = (card.color === 'wild');
+        const isStitch = (unoSkin === 'stitch');
+        if (isStitch) {
+            const rowMap = { 'yellow': 0, 'green': 1, 'blue': 2, 'red': 3, 'wild': 2 };
+            const stitchRow = (rowMap[card.color] !== undefined) ? rowMap[card.color] : 2;
+            let stitchCol = 0;
+            if (card.type === 'reverse') stitchCol = 5;
+            else if (card.type === 'skip' || card.type === 'draw2') stitchCol = 6;
+            else if (card.type === 'hit2' || card.type === 'discard_all') stitchCol = 4;
+            else if (!isWild) {
+                const val = Number(card.value) || 0;
+                if (val === 2 || val === 7) stitchCol = 1;
+                else if (val === 3 || val === 8) stitchCol = 2;
+                else if (val === 4 || val === 9) stitchCol = 3;
+                else if (val === 5) stitchCol = 4;
+                else stitchCol = 0;
+            }
+            styleParts.push(`--stitch-col: ${stitchCol}`, `--stitch-row: ${stitchRow}`);
+        }
         let centerInnerHtml = '';
 
         if (isWild) {
@@ -866,10 +928,19 @@
             `;
         }
 
-        const cornerDisplay = HubHtml.escape(card.label || card.rank || '');
+        let rawCorner = card.label || card.rank || '';
+        if (card.type === 'reverse') rawCorner = '⇄';
+        else if (card.type === 'skip') rawCorner = '⊘';
+        else if (card.type === 'draw2') rawCorner = '+2';
+        else if (card.type === 'wild_draw4') rawCorner = '+4';
+        else if (card.type === 'wild') rawCorner = '★';
+        else if (card.type === 'extreme_hit') rawCorner = '⚡★';
+        const cornerDisplay = HubHtml.escape(rawCorner);
+        const stitchClass = isStitch ? 'card-stitch' : '';
+        const rebuiltStyleAttr = styleParts.length > 0 ? `style="${styleParts.join('; ')}"` : '';
         return `
-            <div class="game-card card-uno ${colorClass} ${finalClass}" 
-                 ${styleAttr}
+            <div class="game-card card-uno ${stitchClass} ${colorClass} ${finalClass}"
+                 ${rebuiltStyleAttr}
                  data-card-id="${card.id}" 
                  data-card-type="${card.type}"
                  data-card-color="${card.color}">
@@ -971,7 +1042,7 @@
         const fromRect = sourceEl.getBoundingClientRect();
         const toRect = targetEl.getBoundingClientRect();
         const isFrench = (gameMode === 'mau_mau');
-        const cardBackContent = isFrench ? '🂠' : 'UNO';
+        const cardBackContent = isFrench ? '🂠' : (unoSkin === 'stitch' ? '🌺 STITCH' : 'UNO');
         const cardBackClass = isFrench ? 'card-back-french' : 'card-back-uno';
 
         // Bis zu 8 Karten animieren

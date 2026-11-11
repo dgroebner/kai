@@ -15,6 +15,16 @@
         if (nameInput && savedName) {
             nameInput.value = savedName;
         }
+        if (nameInput) {
+            const saveName = () => {
+                const val = nameInput.value.trim();
+                if (val) {
+                    localStorage.setItem('kai_gh_player_name', val);
+                }
+            };
+            nameInput.addEventListener('input', saveName);
+            nameInput.addEventListener('change', saveName);
+        }
 
         const modal = document.getElementById('modal-create-room');
         const modalTitle = document.getElementById('create-modal-title');
@@ -23,6 +33,8 @@
         const cardGroup = document.getElementById('group-card-modes');
         const loch6Group = document.getElementById('group-loch6-modes');
         const skipboGroup = document.getElementById('group-skipbo-modes');
+        const schnauzerGroup = document.getElementById('group-schnauzer-modes');
+        const labyrinthGroup = document.getElementById('group-labyrinth-modes');
         const pinInput = document.getElementById('quarxl-table-access-code') || document.getElementById('create-room-pin');
         const pinBadge = document.getElementById('pin-saved-badge');
 
@@ -53,13 +65,15 @@
 
         updateSavedPinField();
 
-        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false) {
+        function openCreateModal(gameType, title, showDice, showCards, showLoch6 = false, showSkipBo = false, showSchnauzer = false, showLabyrinth = false) {
             if (gameTypeInput) gameTypeInput.value = gameType;
             if (modalTitle) modalTitle.textContent = title;
             if (diceGroup) diceGroup.classList.toggle('hidden', !showDice);
             if (cardGroup) cardGroup.classList.toggle('hidden', !showCards);
             if (loch6Group) loch6Group.classList.toggle('hidden', !showLoch6);
             if (skipboGroup) skipboGroup.classList.toggle('hidden', !showSkipBo);
+            if (schnauzerGroup) schnauzerGroup.classList.toggle('hidden', !showSchnauzer);
+            if (labyrinthGroup) labyrinthGroup.classList.toggle('hidden', !showLabyrinth);
             updateSavedPinField();
             modal.classList.remove('hidden');
             if (pinInput && !pinInput.value) {
@@ -115,6 +129,30 @@
             });
         }
 
+        // Kachel-Klick auf Schnauzer
+        const schnauzerCard = document.getElementById('card-schnauzer');
+        if (schnauzerCard && modal) {
+            schnauzerCard.addEventListener('click', () => {
+                openCreateModal('schnauzer', 'Neues Schnauzer (31) Spiel erstellen', false, false, false, false, true);
+            });
+        }
+
+        // Kachel-Klick auf Texas Hold'em Poker
+        const pokerCard = document.getElementById('card-poker');
+        if (pokerCard && modal) {
+            pokerCard.addEventListener('click', () => {
+                openCreateModal('poker', 'Neues Texas Hold\'em Poker Spiel erstellen', false, false, false, false, false);
+            });
+        }
+
+        // Kachel-Klick auf Das verrückte Labyrinth
+        const labyrinthCard = document.getElementById('card-labyrinth');
+        if (labyrinthCard && modal) {
+            labyrinthCard.addEventListener('click', () => {
+                openCreateModal('labyrinth', 'Neues Labyrinth-Spiel erstellen', false, false, false, false, false, true);
+            });
+        }
+
         // Modal schließen
         document.querySelectorAll('.js-close-modal').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -144,6 +182,18 @@
                     payload.game_mode = mode;
                 } else if (gameType === 'skipbo') {
                     mode = document.querySelector('input[name="skipbo_mode"]:checked')?.value || 'standard';
+                    payload.game_mode = mode;
+                } else if (gameType === 'schnauzer') {
+                    mode = document.querySelector('input[name="schnauzer_rules_mode"]:checked')?.value || 'standard';
+                    payload.game_mode = mode;
+                    payload.rules_mode = mode;
+                    payload.gelenauer_regeln = (mode === 'gelenau');
+                    payload.three_aces_33 = (mode === 'gelenau');
+                } else if (gameType === 'poker') {
+                    mode = 'standard';
+                    payload.game_mode = mode;
+                } else if (gameType === 'labyrinth') {
+                    mode = document.querySelector('input[name="labyrinth_mode"]:checked')?.value || 'standard';
                     payload.game_mode = mode;
                 } else if (gameType === 'loch6') {
                     const stonesVal = document.querySelector('input[name="loch6_stones"]:checked')?.value || 'auto';
@@ -202,6 +252,56 @@
                 } else {
                     await HubDialog.alert('Raum nicht gefunden', 'Der eingegebene Raum-Code existiert nicht. Bitte prüfe deine Eingabe.', '🔍');
                 }
+            });
+        }
+
+        // =====================================================================
+        // FEATURE-FLAG: UNDER THE HOOD (3x schnelles Tippen auf Versionsnummer)
+        // =====================================================================
+        const versionTrigger = document.getElementById('quarxl-version-trigger');
+        const hoodCard = document.getElementById('card-under-the-hood');
+        const HOOD_FLAG_KEY = 'quarxl_flag_under_the_hood';
+
+        const updateHoodVisibility = () => {
+            if (!hoodCard) return;
+            const isUnlocked = localStorage.getItem(HOOD_FLAG_KEY) === 'true';
+            hoodCard.style.display = isUnlocked ? 'flex' : 'none';
+        };
+        updateHoodVisibility();
+
+        if (versionTrigger) {
+            let tapCount = 0;
+            let lastTapTime = 0;
+
+            versionTrigger.addEventListener('click', async () => {
+                const now = Date.now();
+                if (now - lastTapTime < 500) {
+                    tapCount++;
+                } else {
+                    tapCount = 1;
+                }
+                lastTapTime = now;
+
+                if (tapCount === 3) {
+                    tapCount = 0;
+                    const currentlyUnlocked = localStorage.getItem(HOOD_FLAG_KEY) === 'true';
+                    const newState = !currentlyUnlocked;
+                    localStorage.setItem(HOOD_FLAG_KEY, newState ? 'true' : 'false');
+                    updateHoodVisibility();
+
+                    if (newState) {
+                        if (hoodCard) hoodCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        await HubDialog.alert('🏎️ Under the Hood freigeschaltet!', 'Das neue 3D-Monopoly-Browsergame ist jetzt in deiner Spieleauswahl aktiv.', '🎉');
+                    } else {
+                        await HubDialog.alert('Under the Hood verborgen', 'Das Spiel wurde wieder ausgeblendet.', '🔒');
+                    }
+                }
+            });
+        }
+
+        if (hoodCard) {
+            hoodCard.addEventListener('click', () => {
+                window.location.href = './under_the_hood/index.php';
             });
         }
     });

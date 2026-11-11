@@ -361,7 +361,7 @@
             // 2. Reaktions-Button in Headerleiste einbinden (falls noch nicht vorhanden)
             let existingBtn = document.querySelector('.js-btn-reactions');
             if (!existingBtn) {
-                const headerActions = document.querySelector('.qwixx-top-actions, .cards-header-actions, .stb-header-actions, .loch6-header-actions');
+                const headerActions = document.querySelector('.qwixx-top-actions, .cards-header-actions, .stb-header-actions, .loch6-header-actions, .hub-header-right, .schnauzer-header-right');
                 if (headerActions) {
                     const btn = document.createElement('button');
                     btn.type = 'button';
@@ -552,7 +552,7 @@
             try {
                 const payload = { room_code: this.roomCode, emoji: emoji };
                 let res = await HubHttp.postJson('./api.php?action=react', payload);
-                if (!res.ok && res.status === 404) {
+                if (!res.ok && (res.status === 404 || res.status === 400)) {
                     // Fallback auf Root-Hub
                     res = await HubHttp.postJson('../api.php?action=react', payload);
                 }
@@ -666,7 +666,7 @@
             try {
                 let url = `./api.php?action=reactions&room=${encodeURIComponent(this.roomCode)}&since=${this.lastSeenId}`;
                 let res = await HubHttp.getJson(url);
-                if (!res.ok && res.status === 404) {
+                if (!res.ok && (res.status === 404 || res.status === 400)) {
                     url = `../api.php?action=reactions&room=${encodeURIComponent(this.roomCode)}&since=${this.lastSeenId}`;
                     res = await HubHttp.getJson(url);
                 }

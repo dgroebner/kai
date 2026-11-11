@@ -1999,8 +1999,6 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             ];
 
                             $todayTs = strtotime('today');
-                            $curMonth = (int)date('n');
-                            $curYear = (int)date('Y');
 
                             foreach ($activeMeteorShowers as &$ashower) {
                                 if (isset($ashower['intensity'])) {
@@ -2008,7 +2006,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     continue;
                                 }
                                 $sKey = $ashower['key'] ?? '';
-                                if (!isset($knownShowers[$sKey])) {
+                                if (!isset($knownShowers[$sKey]) || empty($astronomyService)) {
                                     $isPeak = !empty($ashower['is_peak']);
                                     $ashower['intensity'] = $isPeak ? 1.0 : 0.3;
                                     $ashower['intensity_pct'] = (int)round($ashower['intensity'] * 100);
@@ -2018,32 +2016,21 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 }
 
                                 $info = $knownShowers[$sKey];
-                                $pYear = ($info['peak'][0] < $curMonth) ? $curYear + 1 : $curYear;
-                                $peakTs = strtotime(sprintf('%04d-%02d-%02d', $pYear, $info['peak'][0], $info['peak'][1]));
-                                $sYear = ($info['start'][0] <= $info['peak'][0]) ? $pYear : $pYear - 1;
-                                $startTs = strtotime(sprintf('%04d-%02d-%02d', $sYear, $info['start'][0], $info['start'][1]));
-                                $eYear = ($info['end'][0] >= $info['peak'][0]) ? $pYear : $pYear + 1;
-                                $endTs = strtotime(sprintf('%04d-%02d-%02d', $eYear, $info['end'][0], $info['end'][1]));
+                                $win = $astronomyService->resolveShowerWindow(
+                                    $info['start'][0],
+                                    $info['start'][1],
+                                    $info['peak'][0],
+                                    $info['peak'][1],
+                                    $info['end'][0],
+                                    $info['end'][1],
+                                    $todayTs
+                                );
 
-                                $isPeak = (abs($todayTs - $peakTs) <= 86400);
-                                $ashower['is_peak'] = $isPeak;
-
-                                if ($todayTs <= $peakTs) {
-                                    $riseDays = max(1, ($peakTs - $startTs) / 86400);
-                                    $prog = min(1.0, max(0.0, ($todayTs - $startTs) / ($riseDays * 86400)));
-                                    $intVal = $isPeak ? 1.0 : round(0.15 + 0.85 * $prog, 2);
-                                    $trend = $isPeak ? 'peak' : 'rising';
-                                } else {
-                                    $fallDays = max(1, ($endTs - $peakTs) / 86400);
-                                    $prog = min(1.0, max(0.0, ($todayTs - $peakTs) / ($fallDays * 86400)));
-                                    $intVal = $isPeak ? 1.0 : round(max(0.15, 1.0 - 0.85 * $prog), 2);
-                                    $trend = $isPeak ? 'peak' : 'falling';
-                                }
-
-                                $ashower['intensity'] = $intVal;
-                                $ashower['intensity_pct'] = (int)round($intVal * 100);
-                                $ashower['trend'] = $trend;
-                                $maxMeteorIntensity = max($maxMeteorIntensity, $intVal);
+                                $ashower['is_peak'] = $win['is_peak'];
+                                $ashower['intensity'] = $win['intensity'];
+                                $ashower['intensity_pct'] = $win['intensity_pct'];
+                                $ashower['trend'] = $win['trend'];
+                                $maxMeteorIntensity = max($maxMeteorIntensity, $win['intensity']);
                             }
                             unset($ashower);
 
@@ -2391,8 +2378,8 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <div>Untergang: <strong><?= htmlspecialchars($moonInfo['set_time'] ?? '--:--') ?></strong></div>
                                 <?php if (!empty($moonInfo['is_visible']) && !empty($moonInfo['visibility_window'])): ?>
                                     <div class="astronomy-planet-visibility">
-                                        <span>Sichtbarkeitszeitraum:</span>
-                                        <strong><?= htmlspecialchars($moonInfo['visibility_window']) ?></strong>
+                                        <span>Sichtbarkeitszeitraum (Tag &amp; Nacht):</span>
+                                        <strong style="color: #34d399;"><?= htmlspecialchars($moonInfo['visibility_window']) ?></strong>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -2400,14 +2387,28 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                     <?php endif; ?>
 
                     <?php foreach (($astroState['visible_planets'] ?? []) as $planet): ?>
+                        <?php
+                        $isVisTonight = !empty($planet['is_visible']);
+                        $isDaylightOnly = !empty($planet['is_daylight_only']);
+                        if ($isVisTonight) {
+                            $pBadgeClass = 'badge-success';
+                            $pBadgeLabel = 'Nachts sichtbar';
+                        } elseif ($isDaylightOnly) {
+                            $pBadgeClass = 'badge-warning';
+                            $pBadgeLabel = 'Taghimmel (überstrahlt)';
+                        } else {
+                            $pBadgeClass = 'badge-neutral';
+                            $pBadgeLabel = 'Unter Horizont';
+                        }
+                        ?>
                         <div class="astronomy-planet-card">
                             <div class="astronomy-planet-header">
                                 <div class="astronomy-planet-title">
                                     <span class="planet-dot" style="color: <?= htmlspecialchars($planet['color'] ?? '#ffffff') ?>; background: <?= htmlspecialchars($planet['color'] ?? '#ffffff') ?>;"></span>
                                     <span><?= htmlspecialchars($planet['name_de'] ?? $planet['name']) ?></span>
                                 </div>
-                                <span class="badge <?= !empty($planet['is_visible']) ? 'badge-success' : 'badge-neutral' ?>" style="font-size: 0.75rem;">
-                                    <?= !empty($planet['is_visible']) ? 'Sichtbar' : 'Unter Horizont' ?>
+                                <span class="badge <?= $pBadgeClass ?>" style="font-size: 0.75rem;">
+                                    <?= $pBadgeLabel ?>
                                 </span>
                             </div>
 
@@ -2420,12 +2421,29 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 <div>Richtung: <strong><?= htmlspecialchars($planet['direction'] ?? 'S') ?></strong></div>
                                 <div>Helligkeit: <strong><?= htmlspecialchars((string)($planet['magnitude'] ?? '0.0')) ?> mag</strong></div>
                                 <div>Beste Zeit: <strong><?= htmlspecialchars($planet['best_time'] ?? 'Nacht') ?></strong></div>
-                                <?php if (!empty($planet['is_visible']) && !empty($planet['visibility_window'])): ?>
-                                    <div class="astronomy-planet-visibility">
-                                        <span>Sichtbarkeitszeitraum:</span>
-                                        <strong><?= htmlspecialchars($planet['visibility_window']) ?></strong>
+                                <?php if (!empty($planet['astronomical_best_time'])): ?>
+                                    <div style="grid-column: span 2; font-size: 0.78rem; color: var(--text-muted);">
+                                        Astron. Höchststand: <strong><?= htmlspecialchars($planet['astronomical_best_time']) ?></strong>
                                     </div>
                                 <?php endif; ?>
+                                <?php if (!empty($planet['astronomical_window'])): ?>
+                                    <div class="astronomy-planet-visibility" style="opacity: 0.85;">
+                                        <span>Astron. über Horizont:</span>
+                                        <strong><?= htmlspecialchars($planet['astronomical_window']) ?></strong>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="astronomy-planet-visibility">
+                                    <span>Tatsächliche Sichtbarkeit:</span>
+                                    <strong style="color: <?= $isVisTonight ? '#34d399' : 'var(--text-muted)' ?>;">
+                                        <?php if ($isVisTonight && !empty($planet['visibility_window'])): ?>
+                                            <?= htmlspecialchars($planet['visibility_window']) ?>
+                                        <?php elseif ($isDaylightOnly): ?>
+                                            Nicht sichtbar (Tageslicht)
+                                        <?php else: ?>
+                                            Unter dem Horizont
+                                        <?php endif; ?>
+                                    </strong>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -2444,7 +2462,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                         <?php foreach ($astroEvents as $event): ?>
                             <?php
                             $evtDate = strtotime((string)($event['event_date'] ?? ''));
-                            $daysUntil = (int)ceil(($evtDate - strtotime('today')) / 86400);
+                            $daysUntil = (int)round(($evtDate - strtotime('today')) / 86400);
                             $isMeteorShower = (($event['event_type'] ?? '') === 'meteor_shower');
                             $details = (isset($event['details']) && is_array($event['details'])) ? $event['details'] : [];
 
@@ -2466,9 +2484,9 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                             $peakDateStr = $details['peak_date'] ?? ($fallbackInfo['peak'] ?? date('d.m.', $evtDate));
                             $isActive = !empty($details['is_active']);
 
-                            // Ein Event kann nur aktiv sein, wenn sein Höhepunkt zeitnah liegt (-20 bis +40 Tage).
+                            // Ein Event kann nur aktiv sein, wenn sein Höhepunkt zeitnah liegt (-40 bis +45 Tage).
                             // Liegt das Event weiter in der Zukunft (z. B. im Folgejahr), ist es keinesfalls aktuell aktiv.
-                            if ($daysUntil < -20 || $daysUntil > 40) {
+                            if ($daysUntil < -40 || $daysUntil > 45) {
                                 $isActive = false;
                             } elseif (!$isActive && $isMeteorShower && !empty($activityPeriod)) {
                                 $parts = explode('–', str_replace(' ', '', $activityPeriod));
@@ -2490,18 +2508,26 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 }
                             }
 
+                            $endFormatted = $details['end_date_formatted'] ?? null;
+                            if ($endFormatted === null && !empty($activityPeriod)) {
+                                $pParts = explode('–', str_replace(' ', '', $activityPeriod));
+                                if (count($pParts) === 2) {
+                                    $endFormatted = trim($pParts[1]);
+                                }
+                            }
+
                             $evtIntensityPct = null;
                             $evtTrendText = null;
                             if ($isMeteorShower && $isActive) {
                                 if (isset($details['intensity_pct']) && $details['intensity_pct'] > 0) {
                                     $evtIntensityPct = (int)$details['intensity_pct'];
-                                    $tr = $details['trend'] ?? 'rising';
+                                    $tr = $details['trend'] ?? ($daysUntil < 0 ? 'falling' : 'rising');
                                     $evtTrendText = $tr === 'peak' ? 'Maximum' : ($tr === 'rising' ? 'zunehmend' : 'abnehmend');
                                 } else {
                                     foreach ($activeMeteorShowers as $ashower) {
-                                        if (($ashower['key'] ?? '') === $eventKeyPrefix) {
+                                        if (($ashower['key'] ?? '') === $eventKeyPrefix || str_contains((string)($ashower['key'] ?? ''), $eventKeyPrefix)) {
                                             $evtIntensityPct = (int)($ashower['intensity_pct'] ?? 30);
-                                            $tr = $ashower['trend'] ?? 'rising';
+                                            $tr = $ashower['trend'] ?? ($daysUntil < 0 ? 'falling' : 'rising');
                                             $evtTrendText = $tr === 'peak' ? 'Maximum' : ($tr === 'rising' ? 'zunehmend' : 'abnehmend');
                                             break;
                                         }
@@ -2513,12 +2539,15 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                 $badgeText = $isMeteorShower ? '🔥 Maximum heute!' : 'Heute!';
                                 $badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
                             } elseif ($daysUntil === 1) {
-                                $badgeText = $isMeteorShower ? 'Morgen (Maximum)' : 'Morgen';
+                                $badgeText = $isMeteorShower ? 'Aktiv · Morgen Maximum' : 'Morgen';
                                 $badgeStyle = 'background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);';
-                            } elseif ($isActive) {
+                            } elseif ($isActive && $daysUntil > 1) {
                                 $badgeText = "Aktiv · Peak in {$daysUntil} T.";
                                 $badgeStyle = 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);';
-                            } elseif ($daysUntil <= 14) {
+                            } elseif ($isActive && $daysUntil < 0) {
+                                $badgeText = !empty($endFormatted) ? "Aktiv · bis {$endFormatted}" : 'Aktiv (abnehmend)';
+                                $badgeStyle = 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);';
+                            } elseif ($daysUntil <= 14 && $daysUntil > 0) {
                                 $badgeText = "In {$daysUntil} Tagen";
                                 $badgeStyle = 'background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);';
                             } else {
@@ -2558,7 +2587,7 @@ $skyColor = ($currentWeatherCode <= 3) ? '#87CEEB' : '#A9A9A9';
                                     <div style="margin-top: 0.85rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.75rem; flex-wrap: wrap;">
                                         <?php if ($isMeteorShower && !empty($activityPeriod)): ?>
                                             <span>Zeitraum: <strong style="color: var(--text-primary);"><?= htmlspecialchars($activityPeriod) ?></strong></span>
-                                            <span>Maximum: <strong style="color: #38bdf8;"><?= htmlspecialchars($peakDateStr) ?></strong></span>
+                                            <span>Maximum: <strong style="color: #38bdf8;"><?= htmlspecialchars($peakDateStr) ?><?= ($isActive && $daysUntil < 0) ? ' (überschritten)' : '' ?></strong></span>
                                             <?php if ($isActive && $evtIntensityPct !== null): ?>
                                                 <span>Intensität: <strong style="color: <?= $evtIntensityPct >= 75 ? '#f87171' : ($evtIntensityPct >= 40 ? '#fbbf24' : '#34d399') ?>;"><?= $evtIntensityPct ?>% (<?= $evtTrendText ?>)</strong></span>
                                             <?php endif; ?>

@@ -110,7 +110,7 @@ $metricTypeMap = [
     <section id="tab-approvals" class="gamif-tab-content">
 
         <!-- Übersicht: Laufende Aufgaben aller Kinder -->
-        <?php if (!empty($activeTasksByProfile)): ?>
+        <?php if (!empty($childProfiles) || !empty($allBounties)): ?>
             <div class="gamif-active-overview">
                 <h3 class="gamif-section-title">📋 Laufende Aufgaben der Kinder</h3>
                 <div class="gamif-active-grid">

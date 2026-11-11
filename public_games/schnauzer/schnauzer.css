@@ -1,0 +1,728 @@
+/* ==========================================================================
+   Quarxl Schnauzer (31 / Schwimmen) CSS
+   ========================================================================== */
+
+body.games-hub-body.schnauzer-viewport,
+.schnauzer-viewport {
+    width: 100%;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    max-height: 100dvh;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 50% 40%, #173824 0%, #0c2316 65%, #06140d 100%);
+    color: #f8fafc;
+}
+
+/* --------------------------------------------------------------------------
+   HEADER
+   -------------------------------------------------------------------------- */
+.schnauzer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    padding: 0.5rem 0.85rem;
+    background: rgba(10, 26, 17, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 50;
+    flex-shrink: 0;
+}
+
+.schnauzer-header-left,
+.schnauzer-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    flex-shrink: 1;
+    white-space: nowrap;
+}
+
+.schnauzer-my-name {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: bottom;
+}
+
+.schnauzer-back-btn {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.schnauzer-back-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
+}
+
+.schnauzer-room-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .schnauzer-header {
+        padding: 0.3rem 0.45rem;
+        gap: 0.25rem;
+    }
+    .schnauzer-header-left,
+    .schnauzer-header-right {
+        gap: 0.25rem;
+    }
+    .schnauzer-back-btn {
+        font-size: 0.78rem;
+        padding: 0.15rem 0.3rem;
+    }
+    .schnauzer-room-badge {
+        font-size: 0.68rem;
+        padding: 0.14rem 0.4rem;
+    }
+    .schnauzer-btn-label {
+        display: none;
+    }
+    .schnauzer-my-name {
+        max-width: 52px;
+    }
+    .schnauzer-header .btn-sm {
+        padding: 0.22rem 0.42rem;
+        font-size: 0.76rem;
+    }
+    .schnauzer-header .quarxl-deck-toggle {
+        font-size: 0.68rem;
+        padding: 1px;
+    }
+    .schnauzer-header .quarxl-deck-btn {
+        padding: 2px 5px;
+        gap: 2px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   LOBBY
+   -------------------------------------------------------------------------- */
+.schnauzer-lobby-box {
+    max-width: 460px;
+    width: 90%;
+    margin: auto;
+    background: rgba(15, 30, 22, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+
+.schnauzer-lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.schnauzer-lobby-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+/* --------------------------------------------------------------------------
+   ARENA
+   -------------------------------------------------------------------------- */
+.schnauzer-arena {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    position: relative;
+    padding: 0.45rem 0.5rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+}
+
+/* GEGNER-LEISTE */
+.schnauzer-opponents-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    overflow-x: auto;
+    padding: 0.25rem 0;
+    flex-shrink: 0;
+}
+
+.schnauzer-opponent-card {
+    background: rgba(15, 32, 22, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0.45rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 90px;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.schnauzer-opponent-card.is-active {
+    border-color: #f59e0b;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.12);
+}
+
+.schnauzer-opponent-card.is-out {
+    opacity: 0.4;
+    filter: grayscale(1);
+}
+
+.opponent-avatar-wrap {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.opponent-name-text {
+    font-size: 0.78rem;
+    font-weight: 700;
+    max-width: 85px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opponent-lives-bar {
+    display: flex;
+    gap: 2px;
+    font-size: 0.85rem;
+}
+
+.opponent-cards-fan {
+    display: flex;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+.opponent-mini-back {
+    width: 14px;
+    height: 22px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 2px;
+}
+
+/* TISCHMITTE */
+.schnauzer-table-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    position: relative;
+    margin: 0.25rem 0;
+}
+
+.table-turn-banner {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fef08a;
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    text-align: center;
+    max-width: 90%;
+}
+
+.table-turn-banner.knocked-alert {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    border-color: #ef4444;
+    color: #ffffff;
+    animation: pulseKnock 1.2s infinite;
+}
+
+@keyframes pulseKnock {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+    50% { transform: scale(1.03); box-shadow: 0 0 22px rgba(239, 68, 68, 0.7); }
+}
+
+.schnauzer-table-cards {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    perspective: 800px;
+}
+
+.table-instruction {
+    font-size: 0.76rem;
+    color: #94a3b8;
+    margin-top: 0.55rem;
+    text-align: center;
+}
+
+/* EIGENER BEREICH */
+.schnauzer-my-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+}
+
+.schnauzer-my-status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+    padding: 0 0.5rem;
+    box-sizing: border-box;
+}
+
+.my-lives-display {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1.15rem;
+}
+
+.my-score-badge {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #f59e0b;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.my-score-badge.is-schnauzer {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #0f172a;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.8);
+    font-weight: 900;
+    animation: pulseSchnauzer 1s infinite alternate;
+}
+
+@keyframes pulseSchnauzer {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
+}
+
+.schnauzer-my-hand {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    perspective: 800px;
+}
+
+/* AKTIONEN-LEISTE */
+.schnauzer-action-bar {
+    display: flex;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.schnauzer-action-bar .btn {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    border-radius: 8px;
+    flex: 1 1 auto;
+    min-width: 95px;
+}
+
+.schnauzer-action-bar .btn:disabled,
+.schnauzer-action-bar .btn.is-disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    filter: grayscale(60%) !important;
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVES DESIGN FÜR MOBILGERÄTE & KOMPAKTE BILDSCHIRME
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px), (max-height: 760px) {
+    .schnauzer-viewport {
+        --card-width: 66px;
+        --card-height: 98px;
+        --card-radius: 7px;
+    }
+
+    .schnauzer-arena {
+        padding: 0.25rem 0.35rem calc(1.1rem + env(safe-area-inset-bottom, 0px)) 0.35rem;
+        gap: 0.2rem;
+    }
+
+    .schnauzer-opponents-row {
+        gap: 0.35rem;
+        padding: 0.15rem 0;
+    }
+
+    .schnauzer-opponent-card {
+        padding: 0.25rem 0.45rem;
+        min-width: 72px;
+        gap: 0.15rem;
+        border-radius: 8px;
+    }
+
+    .opponent-avatar-wrap {
+        font-size: 1.1rem;
+    }
+
+    .opponent-name-text {
+        font-size: 0.72rem;
+        max-width: 68px;
+    }
+
+    .opponent-lives-bar {
+        font-size: 0.75rem;
+    }
+
+    .opponent-mini-back {
+        width: 11px;
+        height: 17px;
+    }
+
+    .schnauzer-table-center {
+        margin: 0.15rem 0;
+    }
+
+    .table-turn-banner {
+        padding: 0.2rem 0.65rem;
+        font-size: 0.76rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .table-instruction {
+        font-size: 0.7rem;
+        margin-top: 0.25rem;
+    }
+
+    .schnauzer-table-cards,
+    .schnauzer-my-hand {
+        gap: 0.45rem;
+    }
+
+    /* Kartengrößen in Spielfeld & Hand */
+    .schnauzer-table-cards .quarxl-card,
+    .schnauzer-my-hand .quarxl-card {
+        padding: 3px 4px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-card-rank,
+    .schnauzer-my-hand .quarxl-card .quarxl-card-rank {
+        font-size: 0.88rem;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-card-mini-suit,
+    .schnauzer-my-hand .quarxl-card .quarxl-card-mini-suit {
+        width: 12px;
+        height: 14px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-card-center,
+    .schnauzer-my-hand .quarxl-card .quarxl-card-center {
+        inset: 8px 6px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-figure-rank-huge,
+    .schnauzer-table-cards .quarxl-card .quarxl-number-value-big,
+    .schnauzer-my-hand .quarxl-card .quarxl-figure-rank-huge,
+    .schnauzer-my-hand .quarxl-card .quarxl-number-value-big {
+        font-size: 1.45rem;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-figure-suit-icon,
+    .schnauzer-my-hand .quarxl-card .quarxl-figure-suit-icon {
+        width: 20px;
+        height: 25px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-daus-symbol,
+    .schnauzer-my-hand .quarxl-card .quarxl-daus-symbol {
+        width: 22px;
+        height: 28px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-daus-garland,
+    .schnauzer-my-hand .quarxl-card .quarxl-daus-garland {
+        width: 24px;
+        height: 12px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-king-crown,
+    .schnauzer-my-hand .quarxl-card .quarxl-king-crown {
+        width: 18px;
+        height: 13px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-king-symbol,
+    .schnauzer-my-hand .quarxl-card .quarxl-king-symbol {
+        width: 20px;
+        height: 20px;
+    }
+
+    .schnauzer-table-cards .quarxl-card .quarxl-number-suit-medium,
+    .schnauzer-my-hand .quarxl-card .quarxl-number-suit-medium {
+        width: 22px;
+        height: 28px;
+    }
+
+    .schnauzer-my-area {
+        gap: 0.25rem;
+        width: 100%;
+    }
+
+    .schnauzer-my-status-bar {
+        padding: 0 0.35rem;
+    }
+
+    .my-lives-display {
+        font-size: 0.95rem;
+    }
+
+    .my-score-badge {
+        font-size: 0.78rem;
+        padding: 0.2rem 0.55rem;
+    }
+
+    /* Kompakte, zuverlässig sichtbare Aktions-Buttons */
+    .schnauzer-action-bar {
+        gap: 0.3rem;
+        margin-top: 0.15rem;
+        width: 100%;
+        max-width: 430px;
+        padding: 0 0.25rem;
+        box-sizing: border-box;
+    }
+
+    .schnauzer-action-bar .btn {
+        padding: 0.46rem 0.45rem;
+        font-size: 0.78rem;
+        min-width: 0;
+        flex: 1 1 calc(50% - 0.3rem);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   SHOWDOWN-LISTE
+   -------------------------------------------------------------------------- */
+.showdown-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-height: 52vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+.showdown-player-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.showdown-player-card.is-loser {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.showdown-player-card.is-winner {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
+.showdown-player-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.showdown-player-name {
+    font-weight: 800;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.showdown-player-score {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* Showdown-Handkarten: echte kompakte Kartengröße ohne transform-Overflow */
+.showdown-player-hand {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.showdown-player-hand .quarxl-card {
+    width: 52px;
+    height: 78px;
+    border-radius: 5px;
+    padding: 3px 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.showdown-player-hand .quarxl-card .quarxl-card-rank {
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-card-mini-suit {
+    width: 10px;
+    height: 12px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-card-center {
+    inset: 7px 5px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-figure-rank-huge {
+    font-size: 1.3rem;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-figure-suit-icon {
+    width: 18px;
+    height: 22px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-daus-symbol {
+    width: 20px;
+    height: 26px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-daus-garland {
+    width: 22px;
+    height: 10px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-king-crown {
+    width: 16px;
+    height: 11px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-king-symbol {
+    width: 18px;
+    height: 18px;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-number-center-val {
+    font-size: 1.3rem;
+}
+
+.showdown-player-hand .quarxl-card .quarxl-number-suit-icon {
+    width: 16px;
+    height: 20px;
+}
+
+/* GEBER-PREVIEW */
+.dealer-cards-preview {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.dealer-cards-preview .quarxl-card {
+    width: 72px;
+    height: 108px;
+    padding: 4px 5px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-card-rank {
+    font-size: 1rem;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-card-mini-suit {
+    width: 13px;
+    height: 16px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-card-center {
+    inset: 10px 8px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-figure-rank-huge {
+    font-size: 1.7rem;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-figure-suit-icon {
+    width: 24px;
+    height: 30px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-daus-symbol {
+    width: 28px;
+    height: 36px;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-number-center-val {
+    font-size: 1.7rem;
+}
+
+.dealer-cards-preview .quarxl-card .quarxl-number-suit-icon {
+    width: 22px;
+    height: 27px;
+}
+
+/* Modal Overlay Backdrop Blur */
+.hub-modal-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}

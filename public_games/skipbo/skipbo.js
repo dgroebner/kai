@@ -9,6 +9,8 @@
     // -------------------------------------------------------------------------
     const SoundFx = {
         ctx: null,
+        noiseBuffer: null,
+
         init() {
             if (!this.ctx) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -19,23 +21,64 @@
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume();
             }
+            if (!this.noiseBuffer && this.ctx) {
+                // 1 Sekunde Rauschen als Synthese-Basis für authentische Papier- & Kartengeräusche
+                const bufferSize = Math.floor(this.ctx.sampleRate * 1.0);
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                this.noiseBuffer = buffer;
+            }
         },
+
+        /**
+         * Echtes Karten-Klacken / Aufschlagen ("snap / tapp")
+         * Ersetzt das synthetische "Plopp" durch ein authentisches Karton-Aufschlag-Geräusch.
+         */
         playCard() {
             this.init();
-            if (!this.ctx) return;
+            if (!this.ctx || !this.noiseBuffer) return;
             const now = this.ctx.currentTime;
+
+            // 1. Karton-Klick (Bandpass-gefiltertes Rauschen mit steilem Abfall)
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.noiseBuffer;
+
+            const bandpass = this.ctx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.setValueAtTime(2800, now);
+            bandpass.Q.setValueAtTime(1.9, now);
+
+            const noiseGain = this.ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.24, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+            noise.connect(bandpass);
+            bandpass.connect(noiseGain);
+            noiseGain.connect(this.ctx.destination);
+
+            noise.start(now);
+            noise.stop(now + 0.045);
+
+            // 2. Subtiler Filztisch-Body (sehr leiser, tiefer Impuls 130Hz -> 50Hz)
             const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(420, now);
-            osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            const oscGain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(130, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.035);
+
+            oscGain.gain.setValueAtTime(0.12, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+            osc.connect(oscGain);
+            oscGain.connect(this.ctx.destination);
+
             osc.start(now);
-            osc.stop(now + 0.08);
+            osc.stop(now + 0.04);
         },
+
         pileCompleted() {
             this.init();
             if (!this.ctx) return;
@@ -55,6 +98,7 @@
                 osc.stop(start + 0.2);
             });
         },
+
         gameWon() {
             this.init();
             if (!this.ctx) return;
@@ -73,6 +117,7 @@
                 osc.stop(start + 0.4);
             });
         },
+
         error() {
             this.init();
             if (!this.ctx) return;
@@ -88,21 +133,38 @@
             osc.start(now);
             osc.stop(now + 0.15);
         },
+
+        /**
+         * Reales Kartenziehen & Gleiten ("fsscht / shhh-wip")
+         * Papier-Reibung beim Gleiten vom Nachziehstapel.
+         */
         cardWhoosh() {
             this.init();
-            if (!this.ctx) return;
+            if (!this.ctx || !this.noiseBuffer) return;
             const now = this.ctx.currentTime;
-            const osc = this.ctx.createOscillator();
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = this.noiseBuffer;
+
+            // Frequenzsweep für das charakteristische Reiben einer Spielkarte
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.Q.setValueAtTime(2.2, now);
+            filter.frequency.setValueAtTime(1700, now);
+            filter.frequency.exponentialRampToValueAtTime(3200, now + 0.045);
+            filter.frequency.exponentialRampToValueAtTime(1900, now + 0.12);
+
             const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(440, now + 0.12);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.connect(gain);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.22, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+
+            noise.connect(filter);
+            filter.connect(gain);
             gain.connect(this.ctx.destination);
-            osc.start(now);
-            osc.stop(now + 0.15);
+
+            noise.start(now);
+            noise.stop(now + 0.14);
         }
     };
 
@@ -121,6 +183,10 @@
         isPolling: false,
         lastAnimatedEventId: null,
         isAnimatingFlight: false,
+        renderedHandCardIds: null,
+        lastStockTopCardId: null,
+        lastOpponentHandCounts: {},
+        lastLocalFlightCardId: null,
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -399,6 +465,9 @@
         if (data.status === 'lobby') {
             paneLobby.classList.remove('hidden');
             paneGame.classList.add('hidden');
+            state.renderedHandCardIds = [];
+            state.lastStockTopCardId = null;
+            state.lastOpponentHandCounts = {};
             renderLobby(data);
             return;
         }
@@ -411,13 +480,17 @@
         const canAnimate = evt && evt.event_id && evt.card && evt.event_id !== state.lastAnimatedEventId &&
             (evt.type === 'card_played' || evt.type === 'turn_ended' || evt.type === 'game_won');
 
-        if (canAnimate && !state.isAnimatingFlight) {
+        // Wenn wir diese Aktion gerade lokal animiert haben, nicht noch einmal abspielen
+        const isMyRecentLocalFlight = (evt && evt.card && evt.player_id === state.myPlayerId && evt.card.id === state.lastLocalFlightCardId);
+
+        if (canAnimate && !isMyRecentLocalFlight && !state.isAnimatingFlight) {
             state.lastAnimatedEventId = evt.event_id;
             triggerFlyingCardAnimation(evt, data, myPlayer);
         } else {
             if (evt && evt.event_id) {
                 state.lastAnimatedEventId = evt.event_id;
             }
+            state.lastLocalFlightCardId = null;
             renderTable(data, myPlayer);
         }
 
@@ -446,11 +519,21 @@
         // 1. Start-Element lokalisieren
         if (isMe) {
             if (evt.source === 'hand') {
-                startEl = document.getElementById('my-hand-cards-rack');
+                const specificCard = document.querySelector(`#my-hand-cards-rack [data-card-id="${evt.card.id}"]`);
+                if (specificCard) {
+                    startEl = specificCard;
+                    specificCard.style.opacity = '0';
+                } else {
+                    startEl = document.getElementById('my-hand-cards-rack');
+                }
             } else if (evt.source === 'stock') {
-                startEl = document.getElementById('my-stockpile-box');
+                startEl = document.getElementById('my-stock-card-slot') || document.getElementById('my-stockpile-box');
+                const stockCard = startEl ? startEl.querySelector('.skipbo-card') : null;
+                if (stockCard) stockCard.style.opacity = '0';
             } else if (evt.source === 'discard') {
                 startEl = document.getElementById(`my-discard-slot-${evt.source_index}`);
+                const discardCard = startEl ? startEl.querySelector('.skipbo-card') : null;
+                if (discardCard) discardCard.style.opacity = '0';
             }
         } else {
             const oppSlot = document.getElementById(`opponent-slot-${evt.player_id}`);
@@ -531,14 +614,148 @@
             void targetEl.offsetWidth;
             targetEl.classList.add('card-land-pulse');
 
-            // Sound für vollendeten 12er-Stapel
+            // Sound & Sweep für vollendeten 12er-Stapel
             if (evt.target_type === 'building' && (evt.card.value === 12 || evt.card.played_as === 12)) {
                 SoundFx.pileCompleted();
+                targetEl.classList.add('pile-completed-sweep');
+                setTimeout(() => {
+                    targetEl.classList.remove('pile-completed-sweep');
+                }, 720);
             }
 
             state.isAnimatingFlight = false;
             renderTable(data, myPlayer);
         }, 480);
+    }
+
+    /**
+     * Zieht Handkarten flüssig aus dem Nachziehstapel in das Handkarten-Rack.
+     */
+    function animateDrawnCards(newItems) {
+        if (!newItems || newItems.length === 0) return;
+
+        const drawDeckSlot = document.getElementById('draw-deck-slot') || document.body;
+        const drawRect = drawDeckSlot.getBoundingClientRect();
+
+        // 1. Zunächst alle neuen Karten im Rack unsichtbar schalten
+        newItems.forEach(item => {
+            item.el.style.opacity = '0';
+        });
+
+        // Sicherheits-Timeout: Verhindert, dass Karten bei Tab-Wechsel oder Reflow unsichtbar bleiben
+        setTimeout(() => {
+            newItems.forEach(item => {
+                if (item.el) item.el.style.opacity = '1';
+            });
+            state.isAnimatingFlight = false;
+        }, 1200);
+
+        state.isAnimatingFlight = true;
+
+        newItems.forEach((item, i) => {
+            const targetRect = item.el.getBoundingClientRect();
+            const w = targetRect.width > 20 ? targetRect.width : 78;
+            const h = targetRect.height > 20 ? targetRect.height : 116;
+
+            const flightEl = document.createElement('div');
+            flightEl.className = 'skipbo-flying-card';
+            flightEl.innerHTML = `
+                <div class="skipbo-deck-back" style="width:100%;height:100%;border-radius:var(--card-radius);box-sizing:border-box;">
+                    <div class="skipbo-deck-logo">SKIP-BO</div>
+                </div>
+            `;
+            document.body.appendChild(flightEl);
+
+            flightEl.style.width = `${w}px`;
+            flightEl.style.height = `${h}px`;
+            flightEl.style.left = `${drawRect.left + (drawRect.width - w) / 2}px`;
+            flightEl.style.top = `${drawRect.top + (drawRect.height - h) / 2}px`;
+            flightEl.style.transform = 'scale(0.85) rotate(14deg)';
+            flightEl.style.opacity = '0';
+
+            void flightEl.offsetHeight;
+
+            setTimeout(() => {
+                SoundFx.cardWhoosh();
+                flightEl.style.opacity = '1';
+
+                requestAnimationFrame(() => {
+                    flightEl.style.left = `${targetRect.left}px`;
+                    flightEl.style.top = `${targetRect.top}px`;
+                    flightEl.style.transform = 'scale(1.04) rotate(0deg)';
+                });
+
+                // Nach halber Flugzeit: Karte aufdecken
+                setTimeout(() => {
+                    flightEl.innerHTML = renderCardHtml(item.card);
+                }, 210);
+
+                // Landung
+                setTimeout(() => {
+                    SoundFx.playCard();
+                    flightEl.remove();
+                    item.el.style.opacity = '1';
+                    item.el.classList.remove('card-land-pulse');
+                    void item.el.offsetWidth;
+                    item.el.classList.add('card-land-pulse');
+
+                    if (i === newItems.length - 1) {
+                        state.isAnimatingFlight = false;
+                    }
+                }, 440);
+            }, i * 90);
+        });
+    }
+
+    /**
+     * Animiert das Nachziehen von Karten gegnerischer Spieler.
+     */
+    function animateOpponentDrawnCards(oppId, count) {
+        const oppSlot = document.getElementById(`opponent-slot-${oppId}`);
+        const drawDeckSlot = document.getElementById('draw-deck-slot');
+        if (!oppSlot || !drawDeckSlot) return;
+
+        const drawRect = drawDeckSlot.getBoundingClientRect();
+        const targetRect = (oppSlot.querySelector('.js-opp-hand') || oppSlot).getBoundingClientRect();
+
+        const numCards = Math.min(count, 5);
+        for (let i = 0; i < numCards; i++) {
+            const flightEl = document.createElement('div');
+            flightEl.className = 'skipbo-flying-card';
+            flightEl.innerHTML = `
+                <div class="skipbo-deck-back" style="width:46px;height:68px;border-width:2px;box-sizing:border-box;">
+                    <span style="font-size:0.6rem;font-weight:900;">SKIP-BO</span>
+                </div>
+            `;
+            document.body.appendChild(flightEl);
+
+            flightEl.style.width = '46px';
+            flightEl.style.height = '68px';
+            flightEl.style.left = `${drawRect.left + (drawRect.width - 46) / 2}px`;
+            flightEl.style.top = `${drawRect.top + (drawRect.height - 68) / 2}px`;
+            flightEl.style.transform = 'scale(0.8) rotate(12deg)';
+            flightEl.style.opacity = '0';
+
+            void flightEl.offsetHeight;
+
+            setTimeout(() => {
+                SoundFx.cardWhoosh();
+                flightEl.style.opacity = '1';
+
+                requestAnimationFrame(() => {
+                    flightEl.style.left = `${targetRect.left + (targetRect.width - 46) / 2}px`;
+                    flightEl.style.top = `${targetRect.top + (targetRect.height - 68) / 2}px`;
+                    flightEl.style.transform = 'scale(0.9) rotate(0deg)';
+                });
+
+                setTimeout(() => {
+                    flightEl.remove();
+                    oppSlot.classList.remove('card-land-pulse');
+                    void oppSlot.offsetWidth;
+                    oppSlot.classList.add('card-land-pulse');
+                }, 420);
+            }, i * 80);
+        }
     }
 
     function renderLobby(data) {
@@ -674,6 +891,14 @@
         container.innerHTML = '';
 
         opponents.forEach(opp => {
+            const prevCount = state.lastOpponentHandCounts[opp.id];
+            const currentCount = opp.hand_count;
+            state.lastOpponentHandCounts[opp.id] = currentCount;
+
+            if (typeof prevCount === 'number' && currentCount > prevCount && state.gameStatus === 'active') {
+                animateOpponentDrawnCards(opp.id, currentCount - prevCount);
+            }
+
             const slot = document.createElement('div');
             slot.className = `opponent-slot ${opp.is_active ? 'active-turn' : ''}`;
             slot.id = `opponent-slot-${opp.id}`;
@@ -718,19 +943,43 @@
         piles.forEach((pile, idx) => {
             const slot = document.getElementById(`building-pile-${idx}`);
             if (!slot) return;
+            slot.style.opacity = '1';
 
             const neededNumSpan = slot.querySelector('.skipbo-slot-needed-num');
             const targetContainer = slot.querySelector('.js-slot-card-target');
+            const labelEl = slot.querySelector('.skipbo-building-label');
+            if (targetContainer) targetContainer.style.opacity = '1';
 
             const needed = pile.needed_value;
             if (neededNumSpan) {
                 neededNumSpan.textContent = needed > 12 ? '✓' : needed;
             }
 
+            if (labelEl) {
+                if (pile.top_value > 0) {
+                    const displayVal = needed > 12 ? '✓' : needed;
+                    labelEl.innerHTML = `
+                        <div class="skipbo-next-pill">
+                            <span class="next-pill-label">Nächste:</span>
+                            <span class="next-pill-val">${displayVal}</span>
+                        </div>
+                    `;
+                } else {
+                    labelEl.innerHTML = `
+                        <div class="skipbo-next-pill is-start">
+                            <span class="next-pill-label">Start:</span>
+                            <span class="next-pill-val">1</span>
+                        </div>
+                    `;
+                }
+            }
+
             // Top-Karte anzeigen
             targetContainer.innerHTML = '';
             if (pile.top_card) {
-                targetContainer.innerHTML = renderCardHtml(pile.top_card);
+                targetContainer.innerHTML = renderCardHtml(pile.top_card, {
+                    playedAs: pile.top_value || pile.top_card.played_as,
+                });
             }
 
             // Highlight für legale Zielstapel wenn Karte selektiert ist
@@ -744,17 +993,37 @@
         const countBadge = document.getElementById('my-stock-count-badge');
         const box = document.getElementById('my-stockpile-box');
 
+        if (slot) slot.style.opacity = '1';
+        if (box) box.style.opacity = '1';
+
         if (countBadge) countBadge.textContent = `Ziel: Noch ${count}`;
 
-        slot.innerHTML = '';
-        if (topCard) {
-            const isPlayable = isMyTurn && (topCard.can_play_to || []).length > 0;
-            const isSelected = state.selectedCard && state.selectedCard.source === 'stock';
+        const prevTopId = state.lastStockTopCardId;
+        const currentTopId = topCard ? topCard.id : null;
+        const isNewTop = currentTopId && currentTopId !== prevTopId;
+        state.lastStockTopCardId = currentTopId;
 
-            slot.innerHTML = renderCardHtml(topCard, {
-                playable: isPlayable,
-                selected: isSelected,
-            });
+        if (slot) {
+            slot.innerHTML = '';
+            if (topCard) {
+                const isPlayable = isMyTurn && (topCard.can_play_to || []).length > 0;
+                const isSelected = state.selectedCard && state.selectedCard.source === 'stock';
+
+                slot.innerHTML = renderCardHtml(topCard, {
+                    playable: isPlayable,
+                    selected: isSelected,
+                });
+
+                if (isNewTop && prevTopId !== null) {
+                    const cardEl = slot.querySelector('.skipbo-card');
+                    if (cardEl) {
+                        cardEl.classList.add('card-flip-reveal');
+                        setTimeout(() => {
+                            if (cardEl) cardEl.classList.remove('card-flip-reveal');
+                        }, 450);
+                    }
+                }
+            }
         }
     }
 
@@ -764,9 +1033,11 @@
         discardPiles.forEach((dp, idx) => {
             const slot = document.getElementById(`my-discard-slot-${idx}`);
             if (!slot) return;
+            slot.style.opacity = '1';
 
             const target = slot.querySelector('.js-discard-card-target');
             const countBadge = slot.querySelector('.js-discard-count');
+            if (target) target.style.opacity = '1';
 
             if (countBadge) countBadge.textContent = dp.count;
 
@@ -788,11 +1059,16 @@
 
     function renderMyHand(handCards, isMyTurn) {
         const rack = document.getElementById('my-hand-cards-rack');
+        if (rack) rack.style.opacity = '1';
         const countIndicator = document.getElementById('hand-count-indicator');
         if (countIndicator) countIndicator.textContent = `${handCards.length} / 5`;
 
+        const prevIds = state.renderedHandCardIds;
+        const currentIds = handCards.map(c => c.id);
+
         rack.innerHTML = '';
 
+        const cardItems = [];
         handCards.forEach((card, idx) => {
             const isPlayable = isMyTurn && (card.can_play_to || []).length > 0;
             const isSelected = state.selectedCard && state.selectedCard.source === 'hand' && state.selectedCard.card.id === card.id;
@@ -801,13 +1077,22 @@
                 playable: isPlayable,
                 selected: isSelected,
             });
+            cardEl.dataset.cardId = card.id;
 
             cardEl.addEventListener('click', () => {
                 handleHandCardClick(card, idx);
             });
 
             rack.appendChild(cardEl);
+            cardItems.push({ card, el: cardEl, isNew: prevIds !== null && !prevIds.includes(card.id) });
         });
+
+        const shouldAnimate = prevIds !== null && cardItems.some(i => i.isNew) && state.gameStatus === 'active';
+        state.renderedHandCardIds = currentIds;
+
+        if (shouldAnimate) {
+            animateDrawnCards(cardItems.filter(i => i.isNew));
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -823,18 +1108,20 @@
         const scaleStyle = isMini ? 'width:46px;height:68px;border-width:2px;padding:0.15rem;' : '';
 
         if (isSkipBo) {
+            const playedAs = opts.playedAs || card.played_as || null;
             const cornerSize = isMini ? 'font-size:0.5rem;' : '';
             return `
                 <div class="skipbo-card ${colorClass} ${isPlayable ? 'is-playable' : ''} ${isSelected ? 'is-selected' : ''}" style="${scaleStyle}">
                     <div class="card-corner card-corner-top-left" style="${cornerSize}">
-                        <span class="card-corner-wild-text">SKIP</span>
+                        ${playedAs ? `<span class="card-corner-wild-val">${playedAs}</span>` : `<span class="card-corner-wild-text">SKIP</span>`}
                     </div>
-                    <div class="card-center-skipbo-banner" style="${isMini ? 'transform:translate(-50%,-50%) scale(0.65);' : ''}">
+                    <div class="card-center-skipbo-banner ${playedAs ? 'has-played-as' : ''}" style="${isMini ? 'transform:translate(-50%,-50%) scale(0.65);' : ''}">
                         <span class="skipbo-logo-text">SKIP-BO</span>
                         <span class="skipbo-star-icon">★</span>
+                        ${playedAs ? `<div class="skipbo-played-as-pill"><span class="pill-label">GILT ALS</span><span class="pill-val">${playedAs}</span></div>` : ''}
                     </div>
                     <div class="card-corner card-corner-bottom-right" style="${cornerSize}">
-                        <span class="card-corner-wild-text">BO</span>
+                        ${playedAs ? `<span class="card-corner-wild-val">${playedAs}</span>` : `<span class="card-corner-wild-text">BO</span>`}
                     </div>
                 </div>
             `;
@@ -842,7 +1129,7 @@
 
         // Zahlenkarte 1 bis 12
         const textColorClass = `text-color-${card.color || 'blue'}`;
-        const val = card.played_as || card.value;
+        const val = opts.playedAs || card.played_as || card.value;
         const cornerSize = isMini ? 'font-size:0.65rem;' : '';
         const medSize = isMini ? 'transform:translate(-50%,-50%) scale(0.65);' : '';
 
@@ -987,12 +1274,112 @@
         executePlayCard(state.selectedCard.source, state.selectedCard.sourceIndex, pileIdx);
     }
 
+    /**
+     * Führt eine sofortige lokale Fluganimation durch (z.B. Hand -> Hilfsstapel oder Hand/Stock/Discard -> Baustapel).
+     */
+    function animateLocalCardFlight(card, startEl, targetEl, onComplete) {
+        if (!startEl || !targetEl) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        state.isAnimatingFlight = true;
+        state.lastLocalFlightCardId = card.id;
+        SoundFx.cardWhoosh();
+
+        const startRect = startEl.getBoundingClientRect();
+        const targetRect = targetEl.getBoundingClientRect();
+
+        // Nur die eigentliche Karte (nie den Container-Slot!) optisch ausblenden
+        const cardToHide = startEl.classList.contains('skipbo-card')
+            ? startEl
+            : startEl.querySelector('.skipbo-card');
+        if (cardToHide) {
+            cardToHide.style.opacity = '0';
+        }
+
+        const cardW = targetRect.width > 30 ? targetRect.width : 78;
+        const cardH = targetRect.height > 40 ? targetRect.height : 116;
+
+        const flightEl = document.createElement('div');
+        flightEl.className = 'skipbo-flying-card';
+        flightEl.innerHTML = renderCardHtml(card);
+        document.body.appendChild(flightEl);
+
+        flightEl.style.width = `${cardW}px`;
+        flightEl.style.height = `${cardH}px`;
+        flightEl.style.left = `${startRect.left + (startRect.width - cardW) / 2}px`;
+        flightEl.style.top = `${startRect.top + (startRect.height - cardH) / 2}px`;
+        flightEl.style.transform = 'scale(0.88) rotate(-6deg)';
+        flightEl.style.opacity = '0.95';
+
+        void flightEl.offsetHeight;
+
+        requestAnimationFrame(() => {
+            flightEl.style.left = `${targetRect.left + (targetRect.width - cardW) / 2}px`;
+            flightEl.style.top = `${targetRect.top + (targetRect.height - cardH) / 2}px`;
+            flightEl.style.transform = 'scale(1.03) rotate(0deg)';
+            flightEl.style.opacity = '1';
+        });
+
+        setTimeout(() => {
+            if (startEl) startEl.style.opacity = '1';
+            if (cardToHide) cardToHide.style.opacity = '1';
+            SoundFx.playCard();
+            flightEl.remove();
+
+            targetEl.classList.remove('card-land-pulse');
+            void targetEl.offsetWidth;
+            targetEl.classList.add('card-land-pulse');
+
+            state.isAnimatingFlight = false;
+            if (onComplete) onComplete();
+        }, 440);
+    }
+
     // -------------------------------------------------------------------------
     // API-AKTIONEN: ZÜGE AN DEN SERVER SENDEN
     // -------------------------------------------------------------------------
     async function executePlayCard(source, sourceIndex, targetPile) {
         state.selectedCard = null; // Selektion aufheben
-        SoundFx.playCard();
+
+        const myPlayer = state.lastServerState ? state.lastServerState.players.find(p => p.is_me) : null;
+        let card = null;
+        let startEl = null;
+
+        if (myPlayer) {
+            if (source === 'hand') {
+                card = (myPlayer.hand || []).find(c => c.id === sourceIndex);
+                startEl = document.querySelector(`#my-hand-cards-rack [data-card-id="${sourceIndex}"]`);
+            } else if (source === 'stock') {
+                card = myPlayer.stock_top_card;
+                startEl = document.getElementById('my-stock-card-slot') || document.getElementById('my-stockpile-box');
+            } else if (source === 'discard') {
+                const dp = (myPlayer.discard_piles || [])[sourceIndex];
+                card = dp ? dp.top_card : null;
+                startEl = document.getElementById(`my-discard-slot-${sourceIndex}`);
+            }
+        }
+
+        const targetSlot = document.getElementById(`building-pile-${targetPile}`);
+
+        let flightFinished = false;
+        let responseReceived = false;
+
+        const checkFinish = () => {
+            if (flightFinished && responseReceived) {
+                pollState();
+            }
+        };
+
+        if (card && targetSlot) {
+            animateLocalCardFlight(card, startEl, targetSlot, () => {
+                flightFinished = true;
+                checkFinish();
+            });
+        } else {
+            flightFinished = true;
+        }
 
         const res = await HubHttp.postJson('./api.php?action=play_card', {
             room_code: state.roomCode,
@@ -1006,7 +1393,8 @@
             if (res.data.game_finished) {
                 SoundFx.gameWon();
             }
-            pollState();
+            responseReceived = true;
+            checkFinish();
         } else {
             SoundFx.error();
             alert(res.data?.message || 'Zug ungültig');
@@ -1016,7 +1404,29 @@
 
     async function executeDiscardCard(cardId, targetDiscardIndex) {
         state.selectedCard = null;
-        SoundFx.playCard();
+
+        const myPlayer = state.lastServerState ? state.lastServerState.players.find(p => p.is_me) : null;
+        const card = myPlayer && myPlayer.hand ? myPlayer.hand.find(c => c.id === cardId) : null;
+        const cardEl = document.querySelector(`#my-hand-cards-rack [data-card-id="${cardId}"]`);
+        const targetSlot = document.getElementById(`my-discard-slot-${targetDiscardIndex}`);
+
+        let flightFinished = false;
+        let responseReceived = false;
+
+        const checkFinish = () => {
+            if (flightFinished && responseReceived) {
+                pollState();
+            }
+        };
+
+        if (card && targetSlot) {
+            animateLocalCardFlight(card, cardEl || document.getElementById('my-hand-cards-rack'), targetSlot, () => {
+                flightFinished = true;
+                checkFinish();
+            });
+        } else {
+            flightFinished = true;
+        }
 
         const res = await HubHttp.postJson('./api.php?action=discard', {
             room_code: state.roomCode,
@@ -1025,7 +1435,8 @@
         });
 
         if (res.ok && res.data && res.data.success) {
-            pollState();
+            responseReceived = true;
+            checkFinish();
         } else {
             SoundFx.error();
             alert(res.data?.message || 'Abwerfen fehlgeschlagen');

@@ -64,14 +64,8 @@ class PvIngestService
             return;
         }
 
-        // --- Messfehler-Prüfung: Hauslast < 10 W ignorieren ---
-        $houseIndex = array_search('house_load_w', $columns, true);
-        if ($houseIndex !== false) {
-            $houseLoad = (float)$values[$houseIndex];
-            if ($houseLoad < 10) {
-                $this->logger->warn("PvIngestService: Telemetrie-Messfehler ignoriert (Hauslast zu gering: $houseLoad W).");
-                return;
-            }
+        if (!$this->isPayloadPlausible($columns, $values, 'Telemetrie-Messwert')) {
+            return;
         }
 
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
@@ -226,6 +220,10 @@ class PvIngestService
             return;
         }
 
+        if (!$this->isPayloadPlausible($columns, $values, 'Live-Daten')) {
+            return;
+        }
+
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
         $colNames = implode(', ', $columns);
 
@@ -235,5 +233,39 @@ class PvIngestService
         $stmt = $this->dbCon->prepare($sql);
 
         $stmt->execute($values);
+    }
+/**
+     * Prüft Telemetriedaten auf Plausibilität (Filterung von Sensor-Glitches oder 1 MW Sentinel-Werten).
+     */
+    private function isPayloadPlausible(array $columns, array $values, string $context): bool
+    {
+        $houseIndex = array_search('house_load_w', $columns, true);
+        if ($houseIndex !== false && isset($values[$houseIndex])) {
+            $houseLoad = (float)$values[$houseIndex];
+            if ($houseLoad < 10 || $houseLoad > 50000) {
+                $this->logger->warn("PvIngestService: $context ignoriert (Hauslast unplausibel: $houseLoad W).");
+                return false;
+            }
+        }
+
+        $gridIndex = array_search('grid_total_w', $columns, true);
+        if ($gridIndex !== false && isset($values[$gridIndex])) {
+            $gridTotal = (float)$values[$gridIndex];
+            if (abs($gridTotal) > 50000) {
+                $this->logger->warn("PvIngestService: $context ignoriert (Netzleistung unplausibel: $gridTotal W).");
+                return false;
+            }
+        }
+
+        $pvIndex = array_search('pv_power_w', $columns, true);
+        if ($pvIndex !== false && isset($values[$pvIndex])) {
+            $pvPower = (float)$values[$pvIndex];
+            if ($pvPower > 50000) {
+                $this->logger->warn("PvIngestService: $context ignoriert (PV-Leistung unplausibel: $pvPower W).");
+                return false;
+            }
+        }
+
+        return true;
     }
 }

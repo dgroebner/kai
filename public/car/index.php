@@ -1339,7 +1339,7 @@ if ($tab === 'trips') {
                                             <div style="font-size: 0.7rem; color: var(--color-green); margin-top: 0.15rem;" title="Realer Ankunfts-SoC laut TRONITY">
                                                 Ziel-SoC: <strong><?= (int)$t['actual_arrival_soc'] ?>%</strong>
                                             </div>
-                                        <?php elseif (!empty($t['can_drive_without_charging']) && (int)($t['min_departure_soc'] ?? 0) < (int)$t['planned_departure_soc']): ?>
+                                        <?php elseif (!in_array($t['status'], ['abgeschlossen', 'abgebrochen'], true) && !empty($t['can_drive_without_charging']) && (int)($t['min_departure_soc'] ?? 0) < (int)$t['planned_departure_soc']): ?>
                                             <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;" title="Mindest-Akkustand um die Fahrt ohne Ladestopp zu schaffen">
                                                 Min: <strong style="color: <?= ($currentVehicleSoc !== null && $currentVehicleSoc >= (int)$t['min_departure_soc']) ? 'var(--color-green)' : 'var(--text-main)' ?>;"><?= (int)$t['min_departure_soc'] ?>%</strong>
                                                 <?php if ($currentVehicleSoc !== null): ?>

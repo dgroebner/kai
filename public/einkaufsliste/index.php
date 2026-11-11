@@ -25,7 +25,7 @@ if (!Auth::hasPermission('shopping_master') && in_array($activeTab, ['inbox', 'a
 if ($activeTab === 'suggestions' && !Auth::hasPermission('suggestions_read') && !Auth::hasPermission('suggestions_write')) {
     $activeTab = 'list';
 }
-if ($activeTab === 'recipe' && !Auth::hasPermission('recipe_read') && !Auth::hasPermission('recipe_write')) {
+if ($activeTab === 'recipe' && !Auth::hasPermission('recipes_read') && !Auth::hasPermission('recipes_write')) {
     $activeTab = 'list';
 }
 if ($activeTab === 'history' && !Auth::hasPermission('history_read') && !Auth::hasPermission('history_write')) {
@@ -154,7 +154,7 @@ try {
                 <?php endif; ?>
             </button>
         <?php endif; ?>
-        <?php if (Auth::hasPermission('recipe_read') || Auth::hasPermission('recipe_write')): ?>
+        <?php if (Auth::hasPermission('recipes_read') || Auth::hasPermission('recipes_write')): ?>
             <button type="button" class="btn <?= $activeTab === 'recipe' ? '' : 'btn-outline' ?> js-tab-btn"
                     data-tab="recipe">
                 🧑‍🍳 Rezept & KI
@@ -697,7 +697,7 @@ try {
         <!-- ============================================================== -->
         <!-- TAB 3: REZEPT & FREITEXT (GEMINI KI-ASSISTENT)                 -->
         <!-- ============================================================== -->
-        <?php if (Auth::hasPermission('recipe_read') || Auth::hasPermission('recipe_write')): ?>
+        <?php if (Auth::hasPermission('recipes_read') || Auth::hasPermission('recipes_write')): ?>
             <section id="tab-recipe" class="shopping-tab-pane <?= $activeTab === 'recipe' ? '' : 'hidden' ?>">
                 <div class="card">
                     <h3>🧑‍🍳 Rezept- & Freitext-Assistent (Google Gemini)</h3>
@@ -708,7 +708,7 @@ try {
                         Globus und den korrekten Gängen zu.
                     </p>
 
-                    <?php if (Auth::hasPermission('recipe_write')): ?>
+                    <?php if (Auth::hasPermission('recipes_write')): ?>
                         <form id="form-recipe-ai" class="recipe-form">
                             <div class="form-group">
                         <textarea id="recipe-input-text" class="form-control" rows="6" placeholder="z. B. Spaghetti Bolognese für 4 Personen:
@@ -761,7 +761,7 @@ Olivenöl, Salz, Pfeffer, Oregano"></textarea>
                         </div>
                     <?php else: ?>
                         <p class="text-muted">Du hast nur Leserechte für diesen Bereich. Für die KI-Analyse wird
-                            <strong>recipe_write</strong> benötigt.</p>
+                            <strong>recipes_write</strong> benötigt.</p>
                     <?php endif; ?>
                 </div>
             </section>

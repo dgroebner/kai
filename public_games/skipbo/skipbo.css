@@ -225,6 +225,15 @@
     color: #fef08a;
 }
 
+.card-corner-wild-val {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #fef08a;
+    line-height: 1;
+    font-family: "Arial Black", Impact, sans-serif;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), -1px -1px 0 #7f1d1d, 1px -1px 0 #7f1d1d, -1px 1px 0 #7f1d1d, 1px 1px 0 #7f1d1d;
+}
+
 /* Das zentrale Medaillon der Zahlenkarten (Weißer Kreis mit fetter Farbzahl) */
 .card-center-medallion {
     position: absolute;
@@ -288,6 +297,41 @@
     color: #fef08a;
     line-height: 1;
     margin-top: 1px;
+}
+
+.card-center-skipbo-banner.has-played-as {
+    width: 68px;
+    padding: 0.22rem 0.35rem;
+}
+
+.skipbo-played-as-pill {
+    margin-top: 2px;
+    background: #ffffff;
+    border: 1.5px solid #b91c1c;
+    border-radius: 4px;
+    padding: 1px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+    white-space: nowrap;
+}
+
+.skipbo-played-as-pill .pill-label {
+    font-size: 0.46rem;
+    font-weight: 900;
+    color: #7f1d1d;
+    letter-spacing: 0.03em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.skipbo-played-as-pill .pill-val {
+    font-size: 0.95rem;
+    font-weight: 900;
+    color: #dc2626;
+    line-height: 1;
+    font-family: "Arial Black", Impact, sans-serif;
 }
 
 /* SKIP-BO KARTENRÜCKSEITE */
@@ -470,7 +514,7 @@
     justify-content: center;
     gap: 1.25rem;
     flex-wrap: wrap;
-    padding: 0.25rem 0;
+    padding: 0.25rem 0 1.85rem 0;
 }
 
 /* Nachziehstapel-Slot */
@@ -567,11 +611,57 @@
 
 .skipbo-building-label {
     position: absolute;
-    bottom: -18px;
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.65);
-    font-weight: 600;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     white-space: nowrap;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.skipbo-next-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1.5px solid #fbbf24;
+    border-radius: 12px;
+    padding: 1.5px 8px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+    line-height: 1;
+}
+
+.skipbo-next-pill.is-start {
+    border-color: rgba(251, 191, 36, 0.6);
+    background: rgba(15, 23, 42, 0.88);
+}
+
+.skipbo-next-pill .next-pill-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #cbd5e1;
+    letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.skipbo-next-pill .next-pill-val {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #fef08a;
+    font-family: "Arial Black", Impact, sans-serif;
+    line-height: 1;
+}
+
+.skipbo-building-slot.target-highlight .skipbo-next-pill {
+    border-color: #34d399;
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.85);
+}
+
+.skipbo-building-slot.target-highlight .skipbo-next-pill .next-pill-val {
+    color: #34d399;
 }
 
 .skipbo-sequence-indicator {
@@ -837,12 +927,47 @@
         padding: 0.2rem 0.35rem;
     }
 
+    .card-center-skipbo-banner.has-played-as {
+        width: 56px;
+        padding: 0.15rem 0.25rem;
+    }
+
+    .card-corner-wild-val {
+        font-size: 1rem;
+    }
+
+    .skipbo-played-as-pill .pill-label {
+        font-size: 0.4rem;
+    }
+
+    .skipbo-played-as-pill .pill-val {
+        font-size: 0.8rem;
+    }
+
     .skipbo-logo-text {
         font-size: 0.68rem;
     }
 
     .skipbo-building-grid {
         gap: 0.45rem;
+    }
+
+    .skipbo-building-label {
+        bottom: -22px;
+    }
+
+    .skipbo-next-pill {
+        padding: 1px 5px;
+        gap: 3px;
+        border-radius: 10px;
+    }
+
+    .skipbo-next-pill .next-pill-label {
+        font-size: 0.62rem;
+    }
+
+    .skipbo-next-pill .next-pill-val {
+        font-size: 0.85rem;
     }
 
     .skipbo-discard-grid {
@@ -891,4 +1016,47 @@
 
 .card-land-pulse {
     animation: slotLandPulse 0.45s ease-out forwards;
+}
+
+/* Karten-Flip & Reveal Animation für aufgedeckte Karten */
+@keyframes cardFlipReveal {
+    0% {
+        transform: scale(0.6) rotate(-6deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.08) rotate(2deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+.card-flip-reveal {
+    animation: cardFlipReveal 0.38s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+/* Abräumen vollendeter 12er-Stapel */
+@keyframes pileCompletedSweep {
+    0% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1) drop-shadow(0 0 0px #fbbf24);
+        opacity: 1;
+    }
+    35% {
+        transform: scale(1.15) rotate(-6deg);
+        filter: brightness(1.6) drop-shadow(0 0 22px #fbbf24);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.2) rotate(220deg) translateY(-140px);
+        filter: brightness(2) drop-shadow(0 0 35px #f59e0b);
+        opacity: 0;
+    }
+}
+
+.pile-completed-sweep {
+    animation: pileCompletedSweep 0.72s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
 }

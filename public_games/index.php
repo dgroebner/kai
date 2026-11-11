@@ -106,10 +106,50 @@ require_once __DIR__ . '/../bootstrap.php';
                 </div>
                 <span class="game-kachel-badge">2–6 Spieler</span>
             </div>
+
+            <!-- Schnauzer Kachel -->
+            <div class="game-kachel" id="card-schnauzer" role="button" tabindex="0">
+                <div class="game-kachel-icon">🪙</div>
+                <div class="game-kachel-content">
+                    <h2>Schnauzer (31)</h2>
+                    <p>Der traditionsreiche Kartenspiel-Klassiker (Schwimmen / Knack). Tausche Karten, schiebe oder klopfe – mit 3 Leben und wahlweise deutschem oder französischem Blatt!</p>
+                </div>
+                <span class="game-kachel-badge">2–8 Spieler</span>
+            </div>
+
+            <!-- Texas Hold'em Poker Kachel -->
+            <div class="game-kachel" id="card-poker" role="button" tabindex="0">
+                <div class="game-kachel-icon">♠️</div>
+                <div class="game-kachel-content">
+                    <h2>Texas Hold'em Poker</h2>
+                    <p>No-Limit Hold'em am grünen Filztisch. Hole Cards, Flop, Turn &amp; River mit Chip-Pots, All-Ins und Showdown!</p>
+                </div>
+                <span class="game-kachel-badge">2–8 Spieler</span>
+            </div>
+
+            <!-- Das verrückte Labyrinth Kachel -->
+            <div class="game-kachel" id="card-labyrinth" role="button" tabindex="0">
+                <div class="game-kachel-icon">🧭</div>
+                <div class="game-kachel-content">
+                    <h2>Das verrückte Labyrinth</h2>
+                    <p>Schiebe Gänge, öffne Wege und sammle als Erster deine geheimen Schätze ein – auch gegen clevere KI-Bots!</p>
+                </div>
+                <span class="game-kachel-badge">2–4 Spieler</span>
+            </div>
+
+            <!-- Under the Hood Kachel (3D Monopoly — Feature-Flag / Easter-Egg) -->
+            <div class="game-kachel" id="card-under-the-hood" role="button" tabindex="0" style="display: none;">
+                <div class="game-kachel-icon">🏎️</div>
+                <div class="game-kachel-content">
+                    <h2>Under the Hood <span style="font-size: 0.72rem; background: var(--color-blue); color: #fff; padding: 0.15rem 0.45rem; border-radius: 9999px; margin-left: 0.35rem; vertical-align: middle;">3D</span></h2>
+                    <p>Cruist mit euren Karren durch die Küstenmetropole, erschließt verwilderte Grundstücke und baut Luxushotels!</p>
+                </div>
+                <span class="game-kachel-badge">1–6 Spieler &bull; 3D</span>
+            </div>
         </div>
 
         <footer style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">
-            games.agent-smith.de &bull; v<?= APP_VERSION ?>
+            games.agent-smith.de &bull; <span id="quarxl-version-trigger" style="cursor: pointer; user-select: none;">v<?= APP_VERSION ?></span>
         </footer>
     </div>
 
@@ -206,6 +246,44 @@ require_once __DIR__ . '/../bootstrap.php';
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                             <input type="radio" name="skipbo_mode" value="classic">
                             <span><strong>Klassisch lang (30 Karten):</strong> Das originale Skip-Bo Turnier-Erlebnis</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Labyrinth Optionen -->
+                <div class="form-group hidden" id="group-labyrinth-modes">
+                    <label>Anzahl Schätze pro Spieler:</label>
+                    <div class="hub-radio-list">
+                        <label class="hub-radio-option">
+                            <input type="radio" name="labyrinth_mode" value="standard" checked>
+                            <span><strong>Standard (5 Schätze):</strong> Ausgewogene Spieldauer, ca. 10–15 Minuten</span>
+                        </label>
+                        <label class="hub-radio-option">
+                            <input type="radio" name="labyrinth_mode" value="fast">
+                            <span><strong>Schnelle Runde (3 Schätze):</strong> Perfekt für zwischendurch</span>
+                        </label>
+                        <label class="hub-radio-option">
+                            <input type="radio" name="labyrinth_mode" value="classic">
+                            <span><strong>Klassisch (alle 24 Schätze):</strong> Gleichmäßig auf alle Spieler verteilt</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Schnauzer Optionen -->
+                <div class="form-group hidden" id="group-schnauzer-modes">
+                    <label>Regelwerk &amp; Variante:</label>
+                    <div class="hub-radio-list">
+                        <label class="hub-radio-option">
+                            <input type="radio" name="schnauzer_rules_mode" value="standard" checked>
+                            <span>
+                                <strong>Standard-Regeln:</strong> 31 Punkte = Schnauzer (sofortiges Rundenende), 3 Asse = 30,5 Punkte (Drilling), mit Schieben &amp; Klopfsperre im 1. Umlauf
+                            </span>
+                        </label>
+                        <label class="hub-radio-option">
+                            <input type="radio" name="schnauzer_rules_mode" value="gelenau">
+                            <span>
+                                <strong>Gelenauer Regeln:</strong> Schnauzer = 3 Asse (+1 Leben), 31 Punkte werden sofort ausgelegt, kein Schieben (1/3 Karten tauschen oder direkt zumachen)
+                            </span>
                         </label>
                     </div>
                 </div>

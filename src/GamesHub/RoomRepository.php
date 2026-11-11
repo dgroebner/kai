@@ -158,6 +158,42 @@ class RoomRepository
         return $this->getPlayerById($playerId);
     }
 
+    /**
+     * Optimistisches Update: schreibt den Zustand nur, wenn die state_version unverändert ist.
+     * Verhindert doppelte Züge bei gleichzeitigen Requests (z. B. parallel pollende Clients).
+     */
+    public function updateRoomStateIfVersion(int $roomId, array $newState, int $expectedVersion, ?string $status = null): bool
+    {
+        $sql = '
+            UPDATE games_hub_rooms
+            SET state_json = :state_json,
+                state_version = state_version + 1,
+                updated_at = NOW()' . ($status !== null ? ', status = :status' : '') . '
+            WHERE id = :id AND state_version = :version
+        ';
+        $params = [
+            ':id' => $roomId,
+            ':version' => $expectedVersion,
+            ':state_json' => json_encode($newState, JSON_UNESCAPED_UNICODE),
+        ];
+        if ($status !== null) {
+            $params[':status'] = $status;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount() === 1;
+    }
+
+    /**
+     * Entfernt einen Spieler aus dem Raum (z. B. Bot in der Lobby).
+     */
+    public function removePlayer(int $roomId, int $playerId): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM games_hub_players WHERE id = :id AND room_id = :room_id');
+        return $stmt->execute([':id' => $playerId, ':room_id' => $roomId]);
+    }
+
     public function getPlayerByToken(int $roomId, string $playerTokenHash): ?array
     {
         $stmt = $this->pdo->prepare('
@@ -213,7 +249,7 @@ class RoomRepository
     /**
      * Aktualisiert den Spielzettel und Punktestand eines Spielers.
      */
-    public function updatePlayerSheet(int $playerId, array $sheet, int $totalScore): bool
+    public function updatePlayerSheet(int $playerId, array $sheet, int $totalScore = 0): bool
     {
         $stmt = $this->pdo->prepare('
             UPDATE games_hub_players

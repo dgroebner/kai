@@ -76,8 +76,8 @@ final class Auth
                             }
                         }
 
-                        // Formular-Elemente für Schüler-Selbstverwaltung eigener Fächer explizit freigeben
-                        if (stripos($attrs, 'data-student-self-edit="1"') !== false) {
+                        // Formular-Elemente für Schüler-Selbstverwaltung eigener Fächer oder reine Lese-Interaktionen (z.B. Portionen-Skalierer, Timer) explizit freigeben
+                        if (stripos($attrs, 'data-student-self-edit="1"') !== false || stripos($attrs, 'data-read-interactive="1"') !== false) {
                             return $matches[0];
                         }
 
@@ -126,7 +126,25 @@ final class Auth
         }
 
         $permissions = $_SESSION['permissions'] ?? [];
-        return in_array($permission, $permissions, true);
+        if (in_array($permission, $permissions, true)) {
+            return true;
+        }
+
+        // Abwärtskompatibilitäts-Aliasse für konsolidierte Rechte (recipes_* deckt auch altes recipe_* ab)
+        if ($permission === 'recipes_read' && in_array('recipe_read', $permissions, true)) {
+            return true;
+        }
+        if ($permission === 'recipes_write' && in_array('recipe_write', $permissions, true)) {
+            return true;
+        }
+        if ($permission === 'recipe_read' && in_array('recipes_read', $permissions, true)) {
+            return true;
+        }
+        if ($permission === 'recipe_write' && in_array('recipes_write', $permissions, true)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

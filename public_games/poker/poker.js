@@ -1,0 +1,1191 @@
+/**
+ * poker.js - Texas Hold'em Poker für Quarxl Games
+ * Integriert mit QuarxlCards (Französisches 52er Blatt), HubHttp und SoundFx
+ */
+(function () {
+    'use strict';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = (urlParams.get('room') || document.body.dataset.room || '').toUpperCase().trim();
+
+    let myPlayerId = null;
+    let isHost = false;
+    let isPolling = false;
+    let isJoining = false;
+    let currentData = null;
+    let lastEventKey = '';
+    let renderedBoardCardKeys = [null, null, null, null, null];
+    let renderedHoleCardKeys = [];
+    let revealInfoLockedUntil = 0;
+    let revealInfoTimer = null;
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getPokerDeck() {
+        return 'french';
+    }
+
+    // -------------------------------------------------------------------------
+    // INITIALISIERUNG
+    // -------------------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!roomCode) {
+            alert('Kein Raum-Code angegeben.');
+            window.location.href = '../index.php';
+            return;
+        }
+
+        setupHeader();
+        setupJoinModal();
+        setupActionControls();
+        setupLobbyControls();
+        setupShowdownControls();
+        setupAbortControls();
+
+        // Gespeicherten Spielernamen in Top-Bar anzeigen
+        const savedName = localStorage.getItem('kai_gh_player_name') || '';
+        if (savedName) {
+            document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = savedName);
+        }
+
+        startPolling();
+    });
+
+    // -------------------------------------------------------------------------
+    // HEADER & METADATEN
+    // -------------------------------------------------------------------------
+    function setupHeader() {
+        const copyBtn = document.getElementById('btn-copy-code');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(roomCode);
+                    const oldText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = 'Kopiert! ✓';
+                    setTimeout(() => { copyBtn.innerHTML = oldText; }, 1800);
+                } catch (_) {}
+            });
+        }
+
+        const shareBtn = document.querySelector('.js-share-whatsapp');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                const url = window.location.href;
+                const text = `Komm an den Pokertisch! Wir spielen Texas Hold'em No-Limit auf Quarxl.\nTisch: ${roomCode}\n${url}`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+            });
+        }
+
+        const editNameBtn = document.querySelector('.js-btn-edit-name');
+        if (editNameBtn) {
+            editNameBtn.addEventListener('click', async () => {
+                const currentName = localStorage.getItem('kai_gh_player_name') || 'Ich';
+                const newName = await HubDialog.prompt(
+                    'Spielername ändern',
+                    'Wie möchtest du am Pokertisch heißen?',
+                    currentName,
+                    {
+                        icon: '✏️',
+                        confirmText: 'Speichern',
+                        placeholder: 'Dein Name...',
+                    }
+                );
+                if (newName && newName.trim() && newName.trim() !== currentName) {
+                    const trimmed = newName.trim().substring(0, 25);
+                    try {
+                        const res = await HubHttp.postJson(`./api.php?action=rename&room=${encodeURIComponent(roomCode)}`, {
+                            name: trimmed,
+                            player_name: trimmed,
+                        });
+                        if (res.ok && res.data && res.data.success) {
+                            localStorage.setItem('kai_gh_player_name', trimmed);
+                            document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = trimmed);
+                            pollStatus();
+                        } else if (res.data?.message) {
+                            await HubDialog.alert('Hinweis', res.data.message, '⚠️');
+                        }
+                    } catch (_) {}
+                }
+            });
+        }
+
+        // Spielhilfe / Blätter-Modal
+        const helpModal = document.getElementById('modal-poker-help');
+        document.getElementById('btn-poker-help')?.addEventListener('click', () => {
+            helpModal?.classList.remove('hidden');
+        });
+        document.querySelectorAll('.js-close-poker-help').forEach(btn => {
+            btn.addEventListener('click', () => {
+                helpModal?.classList.add('hidden');
+            });
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // BEITRITT-MODAL & RECONNECT
+    // -------------------------------------------------------------------------
+    function setupJoinModal() {
+        const joinInput = document.getElementById('join-player-name');
+        const confirmBtn = document.querySelector('.js-btn-confirm-join');
+
+        const savedName = localStorage.getItem('kai_gh_player_name') || '';
+        if (joinInput && savedName) joinInput.value = savedName;
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                const name = (joinInput?.value || '').trim() || 'Gast';
+                joinRoom(name);
+            });
+        }
+
+        if (joinInput) {
+            joinInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const name = (joinInput.value || '').trim() || 'Gast';
+                    joinRoom(name);
+                }
+            });
+        }
+    }
+
+    function showJoinModal() {
+        const modal = document.getElementById('join-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            const input = document.getElementById('join-player-name');
+            if (input) {
+                const savedName = localStorage.getItem('kai_gh_player_name') || '';
+                if (savedName) input.value = savedName;
+                input.focus();
+            }
+        }
+    }
+
+    function showJoinError(msg) {
+        const err = document.getElementById('join-error');
+        if (err) {
+            err.textContent = msg;
+            err.classList.remove('hidden');
+        }
+    }
+
+    async function handleNotJoined() {
+        const savedName = (localStorage.getItem('kai_gh_player_name') || '').trim();
+        if (savedName && !isJoining) {
+            await joinRoom(savedName);
+        } else {
+            showJoinModal();
+        }
+    }
+
+    async function joinRoom(name) {
+        if (isJoining) return;
+        isJoining = true;
+
+        try {
+            const res = await HubHttp.postJson('./api.php?action=join', {
+                room_code: roomCode,
+                player_name: name,
+            });
+
+            if (res.ok && res.data && res.data.success) {
+                if (res.data.player_token) {
+                    localStorage.setItem('kai_gh_player_token', res.data.player_token);
+                }
+                localStorage.setItem('kai_gh_player_name', name);
+                document.getElementById('join-modal')?.classList.add('hidden');
+                document.querySelectorAll('.js-my-name-display').forEach(el => el.textContent = name);
+                isJoining = false;
+                pollStatus();
+            } else {
+                isJoining = false;
+                showJoinError(res.data?.message || 'Beitritt fehlgeschlagen');
+                showJoinModal();
+            }
+        } catch (_) {
+            isJoining = false;
+            showJoinError('Verbindungsfehler beim Beitritt');
+            showJoinModal();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // POLLING SCHLEIFE
+    // -------------------------------------------------------------------------
+    function startPolling() {
+        pollStatus();
+        setInterval(pollStatus, 1200);
+    }
+
+    async function pollStatus() {
+        if (isPolling || isJoining) return;
+        isPolling = true;
+
+        try {
+            const res = await HubHttp.getJson(`./api.php?action=state&room=${encodeURIComponent(roomCode)}`);
+
+            if (res.status === 401) {
+                handleNotJoined();
+                return;
+            }
+
+            if (res.ok && res.data && res.data.success && res.data.data) {
+                const data = res.data.data;
+                currentData = data;
+
+                myPlayerId = res.data.my_player_id;
+                const me = data.players.find(p => p.id === myPlayerId);
+                isHost = Boolean(res.data.is_host || me?.is_host || data.players.length === 1);
+
+                document.getElementById('join-modal')?.classList.add('hidden');
+                renderGame(data);
+                handleAudioEvents(data.last_event);
+            }
+        } catch (_) {
+        } finally {
+            isPolling = false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // AUDIO- & EVENT-FEEDBACK
+    // -------------------------------------------------------------------------
+    function handleAudioEvents(lastEvt) {
+        if (!lastEvt || !lastEvt.time) return;
+        const key = `${lastEvt.time}_${lastEvt.type}`;
+        if (key === lastEventKey) return;
+        lastEventKey = key;
+
+        if (window.QuarxlCards && window.QuarxlCards.SoundFx) {
+            const fx = window.QuarxlCards.SoundFx;
+            if (lastEvt.type === 'bet' || lastEvt.type === 'raise' || lastEvt.type === 'call') {
+                fx.cardPlace();
+            } else if (lastEvt.type === 'fold') {
+                fx.cardWhoosh();
+            } else if (lastEvt.type === 'showdown' || lastEvt.type === 'game_over') {
+                fx.shuffle();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // RENDERING HAUPTROUTINE
+    // -------------------------------------------------------------------------
+    function renderGame(data) {
+        const phase = data.phase || 'lobby';
+        const myPlayer = data.players.find(p => p.id === myPlayerId);
+
+        // Name in Top-Bar
+        if (myPlayer) {
+            const nameEl = document.querySelector('.js-my-name-display');
+            if (nameEl) nameEl.textContent = myPlayer.name;
+        }
+
+        // Abbruch-Button in der Top-Bar steuern
+        const abortBtn = document.getElementById('btn-abort-game');
+        if (abortBtn) {
+            abortBtn.classList.toggle('hidden', phase === 'lobby');
+        }
+
+        // Abbruch-Banner steuern
+        renderAbortBanner(data);
+
+        // Ansichten umschalten (Lobby vs. Arena)
+        const paneLobby = document.getElementById('pane-lobby');
+        const paneArena = document.getElementById('pane-arena');
+
+        if (phase === 'lobby') {
+            paneLobby?.classList.remove('hidden');
+            paneArena?.classList.add('hidden');
+            document.getElementById('modal-poker-showdown')?.classList.add('hidden');
+            renderedBoardCardKeys = [null, null, null, null, null];
+            renderedHoleCardKeys = [];
+            renderLobby(data);
+            return;
+        }
+
+        paneLobby?.classList.add('hidden');
+        paneArena?.classList.remove('hidden');
+
+        // Showdown Modal
+        const showdownModal = document.getElementById('modal-poker-showdown');
+        if (phase === 'showdown' || phase === 'game_over') {
+            showdownModal?.classList.remove('hidden');
+            renderShowdown(data);
+        } else {
+            showdownModal?.classList.add('hidden');
+        }
+
+        renderArena(data, myPlayer);
+    }
+
+    // -------------------------------------------------------------------------
+    // LOBBY RENDERING
+    // -------------------------------------------------------------------------
+    function renderLobby(data) {
+        const listEl = document.getElementById('lobby-players-list');
+        if (!listEl) return;
+
+        listEl.innerHTML = data.players.map(p => `
+            <div class="poker-lobby-player-row">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span>${p.is_bot ? '🤖' : (p.is_host ? '👑' : '👤')}</span>
+                    <strong>${escapeHtml(p.name)}</strong>
+                    ${p.id === myPlayerId ? '<span style="color: #94a3b8; font-size: 0.8rem;">(Du)</span>' : ''}
+                </div>
+                <div>
+                    ${(isHost && p.is_bot) ? `<button type="button" class="btn btn-sm btn-outline js-btn-kick-bot" data-bot-id="${p.id}">Entfernen</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+
+        // Bot-Kicken Event-Delegation
+        listEl.querySelectorAll('.js-btn-kick-bot').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const botId = parseInt(btn.dataset.botId, 10);
+                await HubHttp.postJson(`./api.php?action=kick_bot&room=${encodeURIComponent(roomCode)}`, { bot_id: botId });
+                pollStatus();
+            });
+        });
+
+        // Host-Buttons
+        const btnStart = document.getElementById('btn-start-game');
+        const btnAddBot = document.getElementById('btn-add-bot');
+
+        if (btnStart) {
+            btnStart.classList.toggle('hidden', !isHost);
+            btnStart.disabled = data.players.length < 2;
+            btnStart.textContent = data.players.length < 2
+                ? 'Warte auf mindestens 2 Spieler oder Bots...'
+                : `🚀 Spiel mit ${data.players.length} Spielern starten`;
+        }
+
+        if (btnAddBot) {
+            btnAddBot.classList.toggle('hidden', !isHost || data.players.length >= 8);
+        }
+    }
+
+    function setupLobbyControls() {
+        const addBotBtn = document.getElementById('btn-add-bot');
+        if (addBotBtn) {
+            addBotBtn.addEventListener('click', async () => {
+                addBotBtn.disabled = true;
+                try {
+                    await HubHttp.postJson(`./api.php?action=add_bot&room=${encodeURIComponent(roomCode)}`, {});
+                    pollStatus();
+                } finally {
+                    addBotBtn.disabled = false;
+                }
+            });
+        }
+
+        const startBtn = document.getElementById('btn-start-game');
+        if (startBtn) {
+            startBtn.addEventListener('click', async () => {
+                startBtn.disabled = true;
+                try {
+                    const res = await HubHttp.postJson(`./api.php?action=start&room=${encodeURIComponent(roomCode)}`, {});
+                    if (!res.ok || !res.data?.success) {
+                        await HubDialog.alert('Hinweis', res.data?.message || 'Spiel konnte nicht gestartet werden.', '⚠️');
+                    }
+                    pollStatus();
+                } finally {
+                    startBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ARENA RENDERING
+    // -------------------------------------------------------------------------
+    function renderArena(data, myPlayer) {
+        // Pot & Street
+        const potEl = document.getElementById('poker-pot-amount');
+        if (potEl) potEl.textContent = data.pot.toLocaleString('de-DE');
+
+        const streetEl = document.getElementById('poker-street-indicator');
+        if (streetEl) {
+            const streetMap = {
+                preflop: 'Pre-Flop',
+                flop: 'Flop',
+                turn: 'Turn',
+                river: 'River',
+                showdown: 'Showdown',
+                game_over: 'Spielende'
+            };
+            streetEl.textContent = streetMap[data.phase] || data.phase;
+        }
+
+        // 5 Community Cards
+        renderCommunityCards(data.community_cards || []);
+
+        // Turn Indicator Banner
+        renderTurnBanner(data, myPlayer);
+
+        // Gegner-Sitze um den Tisch
+        renderSeats(data);
+
+        // Mein Spielerbereich unten
+        renderMyArea(data, myPlayer);
+
+        // Aktionsleiste & Slider
+        renderActionBar(data, myPlayer);
+    }
+
+    /**
+     * Animiert das Austeilen einer Karte:
+     * 1. Fliegt verdeckt vom Dealer/Pot in den Ziel-Slot
+     * 2. Landet verdeckt auf dem Filz (Spannungsmoment)
+     * 3. Dreht sich erst vor Ort im Slot um (Flip-Reveal)
+     */
+    function animatePokerCardDeal(flipperEl, cardData, flyDelayMs = 0, flipDelayMs = 550) {
+        if (!flipperEl || !window.QuarxlCards) return;
+
+        const finalCardHtml = window.QuarxlCards.renderCardHtml(cardData, {
+            deck: getPokerDeck(),
+            usePokerRanks: true
+        });
+        const backCardHtml = window.QuarxlCards.renderCardBackHtml();
+
+        const sourceEl = document.getElementById('poker-pot-badge') || document.getElementById('poker-table');
+        if (!sourceEl) {
+            flipperEl.innerHTML = finalCardHtml;
+            flipperEl.style.opacity = '1';
+            return;
+        }
+
+        // Zunächst verdeckt im Ziel-Slot anlegen (während des Flugs noch unsichtbar)
+        flipperEl.innerHTML = backCardHtml;
+        flipperEl.style.opacity = '0';
+
+        // Sicherheits-Fallback, falls Tab im Hintergrund ist
+        const safetyTimer = setTimeout(() => {
+            if (flipperEl) {
+                flipperEl.classList.remove('is-flipping-in', 'is-flipping-out');
+                flipperEl.innerHTML = finalCardHtml;
+                flipperEl.style.opacity = '1';
+            }
+        }, flipDelayMs + 750);
+
+        // PHASE 1: Verdeckter Anflug zum Ziel-Slot
+        setTimeout(() => {
+            const startRect = sourceEl.getBoundingClientRect();
+            const targetRect = flipperEl.getBoundingClientRect();
+
+            if (targetRect.width === 0 && targetRect.height === 0) {
+                flipperEl.innerHTML = finalCardHtml;
+                flipperEl.style.opacity = '1';
+                clearTimeout(safetyTimer);
+                return;
+            }
+
+            const w = targetRect.width || 56;
+            const h = targetRect.height || 80;
+
+            const flightEl = document.createElement('div');
+            flightEl.className = 'quarxl-flying-card poker-flying-card';
+            flightEl.innerHTML = backCardHtml;
+
+            flightEl.style.width = `${w}px`;
+            flightEl.style.height = `${h}px`;
+            flightEl.style.left = `${startRect.left + (startRect.width - w) / 2}px`;
+            flightEl.style.top = `${startRect.top + (startRect.height - h) / 2}px`;
+            flightEl.style.transform = 'scale(0.65) rotate(-14deg)';
+            flightEl.style.opacity = '0.95';
+
+            document.body.appendChild(flightEl);
+
+            if (window.QuarxlCards.SoundFx) {
+                window.QuarxlCards.SoundFx.cardWhoosh();
+            }
+
+            void flightEl.offsetHeight;
+
+            requestAnimationFrame(() => {
+                flightEl.style.left = `${targetRect.left}px`;
+                flightEl.style.top = `${targetRect.top}px`;
+                flightEl.style.transform = 'scale(1) rotate(0deg)';
+                flightEl.style.opacity = '1';
+            });
+
+            // PHASE 2: Landung verdeckt im Ziel-Slot
+            setTimeout(() => {
+                if (window.QuarxlCards.SoundFx) {
+                    window.QuarxlCards.SoundFx.cardPlace();
+                }
+                flightEl.remove();
+                if (flipperEl) {
+                    flipperEl.style.opacity = '1';
+                    flipperEl.classList.remove('poker-card-land');
+                    void flipperEl.offsetWidth;
+                    flipperEl.classList.add('poker-card-land');
+                }
+            }, 370);
+        }, flyDelayMs);
+
+        // PHASE 3: Spannungs-Flip vor Ort auf dem Tisch / in der Hand
+        setTimeout(() => {
+            if (!flipperEl) return;
+            flipperEl.classList.remove('poker-card-land');
+            flipperEl.classList.add('is-flipping-in');
+
+            // Genau an der Kante (scaleX = 0): Vorderseite einsetzen & aufklappen
+            setTimeout(() => {
+                if (!flipperEl) return;
+                flipperEl.innerHTML = finalCardHtml;
+                if (window.QuarxlCards.SoundFx) {
+                    window.QuarxlCards.SoundFx.cardWhoosh();
+                }
+                flipperEl.classList.remove('is-flipping-in');
+                flipperEl.classList.add('is-flipping-out');
+
+                setTimeout(() => {
+                    clearTimeout(safetyTimer);
+                    if (flipperEl) {
+                        flipperEl.classList.remove('is-flipping-out');
+                        flipperEl.style.opacity = '1';
+                    }
+                }, 190);
+            }, 145);
+        }, flipDelayMs);
+    }
+
+    function lockRevealInfoUntil(delayMs) {
+        const unlockAt = Date.now() + delayMs;
+        if (unlockAt > revealInfoLockedUntil) {
+            revealInfoLockedUntil = unlockAt;
+        }
+        if (revealInfoTimer) {
+            clearTimeout(revealInfoTimer);
+        }
+        const waitMs = Math.max(20, revealInfoLockedUntil - Date.now() + 25);
+        revealInfoTimer = setTimeout(() => {
+            if (currentData) {
+                const me = (currentData.players || []).find(p => p.id === myPlayerId);
+                if (me) renderHandEvaluationAndAssistant(currentData, me);
+            }
+        }, waitMs);
+    }
+
+    function renderCommunityCards(commCards) {
+        const container = document.getElementById('community-cards-container');
+        if (!container) return;
+
+        const slotIds = ['card-flop-1', 'card-flop-2', 'card-flop-3', 'card-turn', 'card-river'];
+        const newlyDealt = [];
+
+        slotIds.forEach((slotId, index) => {
+            const slot = document.getElementById(slotId);
+            if (!slot) return;
+            slot.style.opacity = '1';
+
+            const card = commCards[index];
+            const cardKey = card ? `${card.suit}_${card.rank}` : null;
+
+            if (card && window.QuarxlCards) {
+                if (renderedBoardCardKeys[index] !== cardKey) {
+                    renderedBoardCardKeys[index] = cardKey;
+                    slot.innerHTML = '<div class="poker-card-flipper"></div>';
+                    const flipperEl = slot.querySelector('.poker-card-flipper');
+                    if (flipperEl) {
+                        newlyDealt.push({ flipperEl, card });
+                    }
+                }
+            } else {
+                renderedBoardCardKeys[index] = null;
+                slot.innerHTML = '';
+            }
+        });
+
+        if (newlyDealt.length > 0) {
+            const totalDeals = newlyDealt.length;
+            const allLandedMs = (totalDeals - 1) * 135 + 370;
+            const baseFlipStartMs = allLandedMs + 210;
+
+            newlyDealt.forEach((item, i) => {
+                const flyDelay = i * 135;
+                const flipDelay = baseFlipStartMs + i * 210;
+                animatePokerCardDeal(item.flipperEl, item.card, flyDelay, flipDelay);
+            });
+
+            // Hand-Auswertung erst aktualisieren, wenn die letzte Tischkarte umgedreht wird
+            const lastFlipMidpoint = baseFlipStartMs + (totalDeals - 1) * 210 + 145;
+            lockRevealInfoUntil(lastFlipMidpoint);
+        }
+    }
+
+    function renderTurnBanner(data, myPlayer) {
+        const banner = document.getElementById('poker-turn-banner');
+        const textEl = document.getElementById('poker-turn-indicator-text');
+        if (!banner || !textEl) return;
+
+        if (data.phase === 'showdown' || data.phase === 'game_over') {
+            banner.classList.remove('my-turn');
+            textEl.textContent = '🃏 Showdown: Karten werden ausgewertet';
+            return;
+        }
+
+        const isMyTurn = (data.current_player_id === myPlayerId);
+        banner.classList.toggle('my-turn', isMyTurn);
+
+        if (isMyTurn) {
+            textEl.textContent = '👉 Du bist am Zug!';
+        } else {
+            const activePlayer = data.players.find(p => p.id === data.current_player_id);
+            const activeName = activePlayer ? activePlayer.name : 'Anderer Spieler';
+            textEl.textContent = `⏳ ${activeName} ist am Zug...`;
+        }
+    }
+
+    function renderSeats(data) {
+        const container = document.getElementById('poker-seats-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const opponents = data.players.filter(p => p.id !== myPlayerId);
+
+        opponents.forEach(p => {
+            const seat = document.createElement('div');
+            seat.className = 'poker-seat';
+
+            if (data.current_player_id === p.id && data.phase !== 'showdown') {
+                seat.classList.add('is-active-turn');
+            }
+            if (p.is_folded) seat.classList.add('is-folded');
+            if (p.is_all_in) seat.classList.add('is-all-in');
+
+            // Name & Role Badge
+            let roleHtml = '';
+            if (p.id === data.dealer_id) roleHtml = '<span class="poker-role-badge role-d" title="Dealer Button">D</span>';
+            else if (p.id === data.sb_player_id) roleHtml = '<span class="poker-role-badge role-sb" title="Small Blind">SB</span>';
+            else if (p.id === data.bb_player_id) roleHtml = '<span class="poker-role-badge role-bb" title="Big Blind">BB</span>';
+
+            const nameRow = document.createElement('div');
+            nameRow.style.display = 'flex';
+            nameRow.style.alignItems = 'center';
+            nameRow.style.gap = '0.2rem';
+            nameRow.innerHTML = `<span class="seat-player-name">${escapeHtml(p.name)}</span> ${roleHtml}`;
+            seat.appendChild(nameRow);
+
+            // Chips & Current Bet (kompakt in einer Zeile)
+            const metaRow = document.createElement('div');
+            metaRow.className = 'seat-meta-row';
+
+            const chipsEl = document.createElement('span');
+            chipsEl.className = 'seat-chips';
+            chipsEl.innerHTML = `🟡 ${p.chips.toLocaleString('de-DE')}`;
+            metaRow.appendChild(chipsEl);
+
+            if (p.current_bet > 0) {
+                const betEl = document.createElement('span');
+                betEl.className = 'seat-bet-badge';
+                betEl.textContent = `Bet: ${p.current_bet.toLocaleString('de-DE')}`;
+                metaRow.appendChild(betEl);
+            } else if (p.is_folded) {
+                const foldEl = document.createElement('span');
+                foldEl.className = 'seat-status-tag';
+                foldEl.textContent = 'Fold';
+                metaRow.appendChild(foldEl);
+            }
+
+            seat.appendChild(metaRow);
+
+            container.appendChild(seat);
+        });
+    }
+
+    function renderMyArea(data, myPlayer) {
+        if (!myPlayer) return;
+
+        // Eigene Chips
+        const chipsEl = document.getElementById('my-chips-val');
+        if (chipsEl) chipsEl.textContent = myPlayer.chips.toLocaleString('de-DE');
+
+        // Eigene Rolle (D, SB, BB)
+        const roleBadge = document.getElementById('my-role-badge');
+        if (roleBadge) {
+            roleBadge.className = 'poker-role-badge';
+            if (myPlayer.id === data.dealer_id) {
+                roleBadge.textContent = 'D';
+                roleBadge.classList.add('role-d');
+                roleBadge.classList.remove('hidden');
+                roleBadge.title = 'Dealer Button';
+            } else if (myPlayer.id === data.sb_player_id) {
+                roleBadge.textContent = 'SB';
+                roleBadge.classList.add('role-sb');
+                roleBadge.classList.remove('hidden');
+                roleBadge.title = 'Small Blind';
+            } else if (myPlayer.id === data.bb_player_id) {
+                roleBadge.textContent = 'BB';
+                roleBadge.classList.add('role-bb');
+                roleBadge.classList.remove('hidden');
+                roleBadge.title = 'Big Blind';
+            } else {
+                roleBadge.classList.add('hidden');
+            }
+        }
+
+        // Eigene Handkarten
+        const holeContainer = document.getElementById('my-hole-cards');
+        if (holeContainer) {
+            const hand = myPlayer.hand || [];
+            const newHoleKeys = hand.map(c => `${c.suit}_${c.rank}`);
+            const hasChanged = newHoleKeys.join('|') !== renderedHoleCardKeys.join('|');
+
+            if (hasChanged) {
+                renderedHoleCardKeys = newHoleKeys;
+                holeContainer.innerHTML = '';
+
+                if (hand.length > 0) {
+                    const totalCards = hand.length;
+                    const allLandedMs = (totalCards - 1) * 140 + 370;
+                    const baseFlipStartMs = allLandedMs + 220;
+
+                    // Während die neuen Starthandkarten noch verdeckt sind, Berater kurz ausblenden (kein Spoiler!)
+                    document.getElementById('my-hand-strength-badge')?.classList.add('hidden');
+                    document.getElementById('my-poker-assistant')?.classList.add('hidden');
+
+                    hand.forEach((c, idx) => {
+                        if (window.QuarxlCards) {
+                            const flipperEl = document.createElement('div');
+                            flipperEl.className = 'poker-card-flipper';
+                            holeContainer.appendChild(flipperEl);
+
+                            const flyDelay = idx * 140;
+                            const flipDelay = baseFlipStartMs + idx * 220;
+                            animatePokerCardDeal(flipperEl, c, flyDelay, flipDelay);
+                        }
+                    });
+
+                    const lastFlipMidpoint = baseFlipStartMs + (totalCards - 1) * 220 + 145;
+                    lockRevealInfoUntil(lastFlipMidpoint);
+                }
+            }
+            holeContainer.style.opacity = myPlayer.is_folded ? '0.4' : '1';
+        }
+
+        // Wenn gerade Karten verdeckt angeflogen/gedreht werden, Hand-Auswertung noch zurückhalten
+        if (Date.now() >= revealInfoLockedUntil) {
+            renderHandEvaluationAndAssistant(data, myPlayer);
+        }
+    }
+
+    function renderHandEvaluationAndAssistant(data, myPlayer) {
+        if (!myPlayer) return;
+
+        // Hand-Stärke Badge
+        const strengthBadge = document.getElementById('my-hand-strength-badge');
+        if (strengthBadge) {
+            if (data.my_score && !myPlayer.is_folded) {
+                strengthBadge.textContent = data.my_score.description || data.my_score.label || '';
+                strengthBadge.classList.remove('hidden');
+            } else {
+                strengthBadge.classList.add('hidden');
+            }
+        }
+
+        // Live Spielhilfe / Hand-Berater
+        const assistantBox = document.getElementById('my-poker-assistant');
+        if (assistantBox) {
+            const ast = data.my_assistant;
+            if (ast && !myPlayer.is_folded && data.phase !== 'showdown' && data.phase !== 'game_over') {
+                const starsHtml = '⭐'.repeat(Math.max(1, Math.min(5, Number(ast.stars || 1))));
+                const color = ast.strength_color || '#38bdf8';
+                const possList = (ast.possibilities || [])
+                    .map(item => `<div>${escapeHtml(item)}</div>`)
+                    .join('');
+
+                assistantBox.innerHTML = `
+                    <div class="assistant-header-row">
+                        <span class="assistant-title">🧠 ${escapeHtml(ast.title)}</span>
+                        <span class="assistant-strength-pill" style="color: ${escapeHtml(color)}; border-color: ${escapeHtml(color)}55;">
+                            ${starsHtml} ${escapeHtml(ast.strength_text)}
+                        </span>
+                    </div>
+                    <div class="assistant-possibilities">${possList}</div>
+                    ${ast.advice ? `<div class="assistant-advice">💡 Tipp: ${escapeHtml(ast.advice)}</div>` : ''}
+                `;
+                assistantBox.classList.remove('hidden');
+            } else {
+                assistantBox.classList.add('hidden');
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // AKTIONEN & SETZ-SLIDER
+    // -------------------------------------------------------------------------
+    function renderActionBar(data, myPlayer) {
+        const isMyTurn = (
+            data.current_player_id === myPlayerId &&
+            data.phase !== 'showdown' &&
+            data.phase !== 'game_over' &&
+            myPlayer &&
+            !myPlayer.is_folded &&
+            !myPlayer.is_all_in &&
+            !myPlayer.is_out
+        );
+
+        const foldBtn = document.getElementById('btn-poker-fold');
+        const checkCallBtn = document.getElementById('btn-poker-check-call');
+        const betRaiseBtn = document.getElementById('btn-poker-bet-raise');
+        const sliderRow = document.getElementById('poker-bet-slider-row');
+        const slider = document.getElementById('poker-bet-slider');
+        const sliderVal = document.getElementById('poker-bet-slider-val');
+
+        if (foldBtn) foldBtn.disabled = !isMyTurn;
+        if (checkCallBtn) checkCallBtn.disabled = !isMyTurn;
+
+        // Check vs. Call
+        if (checkCallBtn) {
+            if (data.can_check) {
+                checkCallBtn.textContent = '✋ Check';
+                checkCallBtn.dataset.action = 'check';
+                checkCallBtn.dataset.amount = '0';
+            } else {
+                checkCallBtn.textContent = `💸 Call ${data.call_amount.toLocaleString('de-DE')}`;
+                checkCallBtn.dataset.action = 'call';
+                checkCallBtn.dataset.amount = String(data.call_amount);
+            }
+        }
+
+        // Bet vs. Raise & Slider-Grenzen
+        const minBet = Number(data.min_bet_amount || 20);
+        const maxBet = Number(data.max_bet_amount || 1000);
+        const canBetOrRaise = isMyTurn && maxBet >= minBet && (myPlayer?.chips || 0) > 0;
+
+        if (sliderRow) {
+            sliderRow.style.opacity = canBetOrRaise ? '1' : '0.4';
+            sliderRow.style.pointerEvents = canBetOrRaise ? 'auto' : 'none';
+        }
+
+        if (slider) {
+            slider.min = String(minBet);
+            slider.max = String(maxBet);
+            slider.step = '10';
+
+            // Wert anpassen falls außerhalb der Schranken
+            let curVal = parseInt(slider.value, 10);
+            if (isNaN(curVal) || curVal < minBet) curVal = minBet;
+            if (curVal > maxBet) curVal = maxBet;
+            slider.value = String(curVal);
+
+            if (sliderVal) sliderVal.textContent = curVal.toLocaleString('de-DE');
+        }
+
+        if (betRaiseBtn) {
+            betRaiseBtn.disabled = !canBetOrRaise;
+            updateBetRaiseButtonText(data);
+        }
+    }
+
+    function updateBetRaiseButtonText(data) {
+        const betRaiseBtn = document.getElementById('btn-poker-bet-raise');
+        const slider = document.getElementById('poker-bet-slider');
+        if (!betRaiseBtn || !slider) return;
+
+        const val = parseInt(slider.value, 10) || 0;
+        const highestBet = data?.current_highest_bet || 0;
+
+        if (highestBet === 0) {
+            betRaiseBtn.textContent = `🚀 Bet ${val.toLocaleString('de-DE')}`;
+            betRaiseBtn.dataset.action = 'bet';
+        } else {
+            betRaiseBtn.textContent = `🚀 Raise auf ${val.toLocaleString('de-DE')}`;
+            betRaiseBtn.dataset.action = 'raise';
+        }
+        betRaiseBtn.dataset.amount = String(val);
+    }
+
+    function setupActionControls() {
+        const foldBtn = document.getElementById('btn-poker-fold');
+        const checkCallBtn = document.getElementById('btn-poker-check-call');
+        const betRaiseBtn = document.getElementById('btn-poker-bet-raise');
+        const slider = document.getElementById('poker-bet-slider');
+        const sliderVal = document.getElementById('poker-bet-slider-val');
+
+        if (slider && sliderVal) {
+            slider.addEventListener('input', () => {
+                sliderVal.textContent = parseInt(slider.value, 10).toLocaleString('de-DE');
+                if (currentData) updateBetRaiseButtonText(currentData);
+            });
+        }
+
+        // Quick Bet Buttons (Min, 1/2 Pot, Pot, All-In)
+        document.querySelectorAll('.js-btn-quick-bet').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!slider || !currentData) return;
+                const frac = btn.dataset.fraction;
+                const minBet = Number(slider.min);
+                const maxBet = Number(slider.max);
+                const pot = currentData.pot || 0;
+
+                let target = minBet;
+                if (frac === 'min') {
+                    target = minBet;
+                } else if (frac === 'half') {
+                    target = Math.max(minBet, Math.min(maxBet, Math.floor(pot / 2)));
+                } else if (frac === 'pot') {
+                    target = Math.max(minBet, Math.min(maxBet, pot));
+                } else if (frac === 'allin') {
+                    target = maxBet;
+                }
+
+                // Runden auf Vielfaches von 10
+                target = Math.round(target / 10) * 10;
+                target = Math.max(minBet, Math.min(maxBet, target));
+
+                slider.value = String(target);
+                if (sliderVal) sliderVal.textContent = target.toLocaleString('de-DE');
+                updateBetRaiseButtonText(currentData);
+            });
+        });
+
+        // Fold Action
+        if (foldBtn) {
+            foldBtn.addEventListener('click', async () => {
+                foldBtn.disabled = true;
+                try {
+                    await HubHttp.postJson(`./api.php?action=play_turn&room=${encodeURIComponent(roomCode)}`, {
+                        action_type: 'fold',
+                        amount: 0,
+                    });
+                    pollStatus();
+                } finally {
+                    foldBtn.disabled = false;
+                }
+            });
+        }
+
+        // Check / Call Action
+        if (checkCallBtn) {
+            checkCallBtn.addEventListener('click', async () => {
+                const act = checkCallBtn.dataset.action || 'check';
+                const amt = parseInt(checkCallBtn.dataset.amount, 10) || 0;
+                checkCallBtn.disabled = true;
+                try {
+                    await HubHttp.postJson(`./api.php?action=play_turn&room=${encodeURIComponent(roomCode)}`, {
+                        action_type: act,
+                        amount: amt,
+                    });
+                    pollStatus();
+                } finally {
+                    checkCallBtn.disabled = false;
+                }
+            });
+        }
+
+        // Bet / Raise Action
+        if (betRaiseBtn) {
+            betRaiseBtn.addEventListener('click', async () => {
+                const act = betRaiseBtn.dataset.action || 'bet';
+                const amt = parseInt(betRaiseBtn.dataset.amount, 10) || 0;
+                betRaiseBtn.disabled = true;
+                try {
+                    await HubHttp.postJson(`./api.php?action=play_turn&room=${encodeURIComponent(roomCode)}`, {
+                        action_type: act,
+                        amount: amt,
+                    });
+                    pollStatus();
+                } finally {
+                    betRaiseBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SHOWDOWN MODAL RENDERING
+    // -------------------------------------------------------------------------
+    function renderShowdown(data) {
+        const res = data.round_result;
+        if (!res) return;
+
+        const titleEl = document.getElementById('poker-showdown-title');
+        const summaryEl = document.getElementById('poker-showdown-summary');
+        const listEl = document.getElementById('poker-showdown-results-list');
+        const nextBtn = document.getElementById('btn-next-hand');
+
+        if (titleEl) {
+            titleEl.textContent = res.is_game_over ? '🏆 Gesamtsieg!' : '🃏 Hand-Ergebnis';
+        }
+
+        if (summaryEl) {
+            if (res.won_by_fold) {
+                summaryEl.innerHTML = `<strong>${escapeHtml(res.winner_name || 'Ein Spieler')}</strong> gewinnt kampflos, da alle anderen gefoldet haben.`;
+            } else if (res.pot_resolutions && res.pot_resolutions.length > 0) {
+                // Wenn alle Pots von denselben Spielern gewonnen wurden: zu einer sauberen Zeile zusammenfassen
+                const allSameWinners = res.pot_resolutions.every(pot =>
+                    JSON.stringify(pot.winner_ids) === JSON.stringify(res.pot_resolutions[0].winner_ids)
+                );
+
+                if (allSameWinners && res.pot_resolutions.length > 1) {
+                    const firstPot = res.pot_resolutions[0];
+                    const names = (firstPot.winner_names || []).map(escapeHtml).join(', ');
+                    const totalAmount = res.pot_resolutions.reduce((sum, p) => sum + (p.amount || 0), 0);
+                    summaryEl.innerHTML = `<strong>${names}</strong> gewinnt mit <em>${escapeHtml(firstPot.hand_desc)}</em> (${totalAmount.toLocaleString('de-DE')} Chips)`;
+                } else {
+                    const parts = res.pot_resolutions.map(pot => {
+                        const names = (pot.winner_names || []).map(escapeHtml).join(', ');
+                        const potLabel = res.pot_resolutions.length > 1 ? ` (${escapeHtml(pot.pot_name)})` : '';
+                        return `<strong>${names}</strong> gewinnt${potLabel} mit <em>${escapeHtml(pot.hand_desc)}</em> (${pot.amount.toLocaleString('de-DE')} Chips)`;
+                    });
+                    summaryEl.innerHTML = parts.join('<br>');
+                }
+            } else {
+                summaryEl.textContent = 'Showdown ausgewertet.';
+            }
+        }
+
+        if (listEl) {
+            listEl.innerHTML = '';
+            data.players.forEach(p => {
+                if (p.is_folded || !p.hand || p.hand.length === 0) return;
+
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'showdown-player-card';
+
+                const isWinner = (res.payouts && (res.payouts[p.id] || 0) > 0);
+                if (isWinner) cardDiv.classList.add('is-winner');
+
+                const left = document.createElement('div');
+                left.style.display = 'flex';
+                left.style.flexDirection = 'column';
+                left.style.gap = '0.2rem';
+
+                const evalInfo = res.evaluations ? res.evaluations[p.id] : null;
+                const handDesc = evalInfo ? (evalInfo.description || evalInfo.label || '') : '';
+
+                left.innerHTML = `
+                    <div style="font-weight: 800; font-size: 0.95rem;">${escapeHtml(p.name)}</div>
+                    <div style="font-size: 0.8rem; color: #38bdf8;">${escapeHtml(handDesc)}</div>
+                `;
+
+                if (isWinner) {
+                    const wonAmount = res.payouts[p.id];
+                    left.innerHTML += `<div style="font-size: 0.82rem; color: #22c55e; font-weight: 800;">+ ${wonAmount.toLocaleString('de-DE')} Chips gewonnen! 🏆</div>`;
+                }
+
+                const right = document.createElement('div');
+                right.style.display = 'flex';
+                right.style.gap = '0.25rem';
+
+                p.hand.forEach(c => {
+                    if (window.QuarxlCards) {
+                        right.innerHTML += window.QuarxlCards.renderCardHtml(c, { deck: getPokerDeck(), usePokerRanks: true });
+                    }
+                });
+
+                cardDiv.appendChild(left);
+                cardDiv.appendChild(right);
+                listEl.appendChild(cardDiv);
+            });
+        }
+
+        if (nextBtn) {
+            if (res.is_game_over) {
+                nextBtn.textContent = '🔄 Neues Spiel starten';
+                nextBtn.dataset.action = 'restart';
+            } else {
+                nextBtn.textContent = '➡️ Nächste Hand starten';
+                nextBtn.dataset.action = 'next_hand';
+            }
+        }
+    }
+
+    function setupShowdownControls() {
+        const nextBtn = document.getElementById('btn-next-hand');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', async () => {
+                const act = nextBtn.dataset.action || 'next_hand';
+                nextBtn.disabled = true;
+                try {
+                    const res = await HubHttp.postJson(`./api.php?action=${act}&room=${encodeURIComponent(roomCode)}`, {});
+                    if (res.ok && res.data.success) {
+                        const modal = document.getElementById('modal-poker-showdown');
+                        if (modal) modal.classList.add('hidden');
+                        pollStatus();
+                    } else if (res.data?.message) {
+                        HubDialog.alert(res.data.message, 'Fehler');
+                    }
+                } finally {
+                    nextBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SPIELABBRUCH (VOTE TO ABORT)
+    // -------------------------------------------------------------------------
+    function renderAbortBanner(data) {
+        const banner = document.getElementById('abort-vote-banner');
+        const textEl = document.getElementById('abort-banner-text');
+        const confirmBtn = document.getElementById('btn-confirm-abort');
+        if (!banner) return;
+
+        const votes = data.abort_votes || [];
+        const humanPlayers = data.players.filter(p => !p.is_bot && p.is_connected);
+
+        if (votes.length > 0 && data.phase !== 'lobby') {
+            banner.classList.remove('hidden');
+            if (textEl) {
+                textEl.textContent = `🏳️ Spielabbruch vorgeschlagen: ${votes.length} von ${humanPlayers.length} Spielern haben zugestimmt.`;
+            }
+            if (confirmBtn) {
+                const hasVoted = votes.includes(myPlayerId);
+                confirmBtn.disabled = hasVoted;
+                confirmBtn.textContent = hasVoted ? '✓ Zugestimmt' : 'Zustimmen';
+            }
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
+    function setupAbortControls() {
+        const abortBtn = document.getElementById('btn-abort-game');
+        if (abortBtn) {
+            abortBtn.addEventListener('click', async () => {
+                const ok = await HubDialog.confirm(
+                    'Spiel vorzeitig abbrechen?',
+                    'Möchtest du den Spielabbruch vorschlagen? Sobald alle Mitspieler zustimmen, wird das Spiel sauber in die Lobby zurückgesetzt.',
+                    {
+                        icon: '🏳️',
+                        confirmText: 'Abbruch vorschlagen',
+                        cancelText: 'Weiterspielen',
+                    }
+                );
+                if (ok) {
+                    try {
+                        const res = await HubHttp.postJson(`./api.php?action=vote_abort&room=${encodeURIComponent(roomCode)}`, {});
+                        if (res.ok && res.data && res.data.success) {
+                            pollStatus();
+                        }
+                    } catch (_) {}
+                }
+            });
+        }
+
+        const confirmAbortBtn = document.getElementById('btn-confirm-abort');
+        if (confirmAbortBtn) {
+            confirmAbortBtn.addEventListener('click', async () => {
+                confirmAbortBtn.disabled = true;
+                try {
+                    await HubHttp.postJson(`./api.php?action=vote_abort&room=${encodeURIComponent(roomCode)}`, {});
+                    pollStatus();
+                } finally {
+                    confirmAbortBtn.disabled = false;
+                }
+            });
+        }
+    }
+})();

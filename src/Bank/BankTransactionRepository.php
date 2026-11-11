@@ -142,7 +142,7 @@ class BankTransactionRepository
     public function getTransactionById(int $transactionId): ?array
     {
         $stmt = $this->pdo->prepare("
-            SELECT id, remittance_info, remitter, creditor, debitor, dc_mandate_id, dc_creditor_id, amount
+            SELECT id, booking_date, remittance_info, remitter, creditor, debitor, dc_mandate_id, dc_creditor_id, amount
             FROM bank_giro_transactions
             WHERE id = :id
         ");
@@ -214,37 +214,8 @@ class BankTransactionRepository
         ?string $textPattern = null
     ): int
     {
-        $conditions = [];
-        $params = [];
-
-        if ($mandateId !== null && $mandateId !== '') {
-            $conditions[] = "dc_mandate_id = :mandate_id";
-            $params[':mandate_id'] = $mandateId;
-        }
-        if ($creditorId !== null && $creditorId !== '') {
-            $conditions[] = "dc_creditor_id = :creditor_id";
-            $params[':creditor_id'] = $creditorId;
-        }
-        if ($payee !== null && $payee !== '') {
-            $conditions[] = "(remitter LIKE :payee_remitter OR creditor LIKE :payee_creditor)";
-            $params[':payee_remitter'] = '%' . $payee . '%';
-            $params[':payee_creditor'] = '%' . $payee . '%';
-        }
-        if ($textPattern !== null && $textPattern !== '') {
-            $conditions[] = "remittance_info REGEXP :text_pattern";
-            $params[':text_pattern'] = $textPattern;
-        }
-
-        if ($conditions === []) {
-            return 0;
-        }
-
-        $stmt = $this->pdo->prepare(
-            "SELECT COUNT(*) FROM bank_giro_transactions WHERE " . implode(' AND ', $conditions)
-        );
-        $stmt->execute($params);
-
-        return (int)$stmt->fetchColumn();
+        $matcher = new ContractRuleMatcher($this->pdo);
+        return $matcher->countMatchingTransactions($mandateId, $creditorId, $payee, $textPattern);
     }
 
     /**

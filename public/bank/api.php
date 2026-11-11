@@ -535,6 +535,20 @@ try {
         exit;
     }
 
+    // Einzelne Vertragsregel löschen
+    if ($action === 'delete_contract_rule') {
+        $ruleId = filter_var($data['rule_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$ruleId) {
+            Auth::sendJsonError(400, 'Ungültige Regel-ID');
+        }
+
+        (new BankContractRepository())->deleteRule($ruleId);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     // Beleg von Vertrag trennen
     if ($action === 'unlink_receipt') {
         $receiptId = filter_var($data['receipt_id'] ?? null, FILTER_VALIDATE_INT);
@@ -545,6 +559,20 @@ try {
         }
 
         (new BankContractRepository())->unlinkReceipt($receiptId, $contractId ?: null);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // Giro-Umsatz von Vertrag trennen
+    if ($action === 'unlink_contract_transaction') {
+        $txId = filter_var($data['tx_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$txId) {
+            Auth::sendJsonError(400, 'Ungültige Transaktions-ID');
+        }
+
+        (new BankTransactionRepository())->assignContract($txId, null);
 
         echo json_encode(['success' => true]);
         exit;

@@ -1605,6 +1605,7 @@ async function openContractRuleBuilderModal(btn) {
     const creditor = btn.dataset.creditor || '';
     const mandateId = btn.dataset.mandateId || '';
     const creditorId = btn.dataset.creditorId || '';
+    const existingContractId = btn.dataset.contractId || '';
 
     const overlay = document.createElement('div');
     overlay.className = 'rule-modal-overlay';
@@ -1621,6 +1622,7 @@ async function openContractRuleBuilderModal(btn) {
                 <div style="margin-bottom: 0.5rem;">
                     <label class="chart-label rule-group-label">Ziel-Vertrag:</label>
                     <select id="modal-contract-select" class="tag-search-input" style="width: 100%; padding: 0.6rem;">
+                        ${existingContractId ? '<option value="__unlink__">❌ Keine Zuordnung (Vertrag lösen)</option>' : ''}
                         <option value="">-- Neuen Vertrag aus Buchung erstellen --</option>
                     </select>
                 </div>
@@ -1687,16 +1689,21 @@ async function openContractRuleBuilderModal(btn) {
                 </details>
             </div>
 
-            <div class="rule-modal-footer">
-                <button type="button" class="btn btn-outline js-close-modal">Abbrechen</button>
-                <button type="button" class="btn js-save-contract-rule">Speichern & Zuordnen</button>
+            <div class="rule-modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                ${existingContractId ? `
+                    <button type="button" class="btn btn-outline btn-danger-outline js-unlink-contract-direct" style="padding: 0.45rem 0.85rem; font-size: 0.85rem;">
+                        ❌ Vertrag lösen
+                    </button>
+                ` : '<div></div>'}
+                <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                    <button type="button" class="btn btn-outline js-close-modal">Abbrechen</button>
+                    <button type="button" class="btn js-save-contract-rule">Speichern & Zuordnen</button>
+                </div>
             </div>
         </div>
     `;
 
     document.body.appendChild(overlay);
-
-    const existingContractId = btn.dataset.contractId || '';
 
     // Verträge async laden und Select befüllen
     try {
@@ -1749,9 +1756,38 @@ async function openContractRuleBuilderModal(btn) {
 
     overlay.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', () => overlay.remove()));
 
+    const handleUnlinkContract = async () => {
+        if (!confirm('Möchtest du die Verknüpfung zu diesem Vertrag wirklich aufheben?')) {
+            return;
+        }
+        try {
+            const res = await KaiHttp.postJson('api.php', {
+                action: 'unlink_contract_transaction',
+                tx_id: parseInt(txId, 10)
+            });
+            if (res && res.success) {
+                overlay.remove();
+                window.location.reload();
+            } else {
+                alert(res?.error || 'Fehler beim Lösen des Vertrags.');
+            }
+        } catch (err) {
+            alert('Netzwerk- oder Serverfehler.');
+        }
+    };
+
+    const unlinkDirectBtn = overlay.querySelector('.js-unlink-contract-direct');
+    if (unlinkDirectBtn) {
+        unlinkDirectBtn.addEventListener('click', handleUnlinkContract);
+    }
+
     // Speichern-Button Logik
     overlay.querySelector('.js-save-contract-rule').addEventListener('click', async () => {
         const contractId = overlay.querySelector('#modal-contract-select').value;
+        if (contractId === '__unlink__') {
+            await handleUnlinkContract();
+            return;
+        }
         const assignOnly = overlay.querySelector('#modal-assign-only')?.checked || false;
         const useMandate = overlay.querySelector('#modal-use-mandate')?.checked || false;
         const useCreditorId = overlay.querySelector('#modal-use-creditor-id')?.checked || false;
@@ -1929,6 +1965,19 @@ async function openContractModal(contract) {
                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
                         ${contract.laufzeit_monate ? (contract.laufzeit_monate + ' Monate') : 'Keine Mindestlaufzeit'}
                     </div>
+                </div>
+            </div>
+
+            <!-- Sektion: Erkennungsregeln (UND-verknüpft) -->
+            <div style="border-top: 1px solid var(--bg-surface-hover); padding-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <label class="chart-label" style="font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                        ⚡ Hinterlegte Erkennungsregeln (UND-Verknüpfung)
+                    </label>
+                    <span class="js-rules-count text-muted" style="font-size: 0.78rem;">Lade Regeln...</span>
+                </div>
+                <div class="js-modal-contract-rules" style="font-size: 0.85rem;">
+                    <div style="padding: 0.75rem; text-align: center; color: var(--text-muted);">Lade Regeln...</div>
                 </div>
             </div>
 
@@ -2171,6 +2220,58 @@ async function openContractModal(contract) {
                 limit: 10
             });
 
+            // 0. Erkennungsregeln rendern
+            const rulesContainer = overlay.querySelector('.js-modal-contract-rules');
+            const rulesCountEl = overlay.querySelector('.js-rules-count');
+            if (rulesContainer && historyRes && historyRes.success) {
+                const rules = historyRes.contract?.rules || [];
+                if (rulesCountEl) {
+                    rulesCountEl.textContent = `${rules.length} ${rules.length === 1 ? 'Regel' : 'Regeln'} aktiv`;
+                }
+
+                if (rules.length > 0) {
+                    rulesContainer.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+                            ${rules.map(rule => {
+                                const badges = [];
+                                if (rule.mandate_pattern) {
+                                    badges.push(`<span class="badge" style="font-size: 0.75rem; font-family: monospace;">Mandat: ${escapeHtml(rule.mandate_pattern)}</span>`);
+                                }
+                                if (rule.creditor_id_pattern) {
+                                    badges.push(`<span class="badge" style="font-size: 0.75rem; font-family: monospace;">Gläubiger-ID: ${escapeHtml(rule.creditor_id_pattern)}</span>`);
+                                }
+                                if (rule.payee_pattern) {
+                                    badges.push(`<span class="badge" style="font-size: 0.75rem;">Beteiligter: ${escapeHtml(rule.payee_pattern)}</span>`);
+                                }
+                                if (rule.text_pattern) {
+                                    badges.push(`<span class="badge" style="font-size: 0.75rem; font-family: monospace;">Text: ${escapeHtml(rule.text_pattern)}</span>`);
+                                }
+                                if (badges.length === 0 && rule.pattern_value) {
+                                    badges.push(`<span class="badge" style="font-size: 0.75rem;">${escapeHtml(rule.pattern_type || 'Muster')}: ${escapeHtml(rule.pattern_value)}</span>`);
+                                }
+
+                                return `
+                                    <div class="js-contract-rule-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--bg-surface-hover); padding: 0.45rem 0.75rem; border-radius: 6px; flex-wrap: wrap; gap: 0.5rem;">
+                                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem;">
+                                            ${badges.join('<span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">UND</span>')}
+                                        </div>
+                                        <button type="button" class="btn btn-outline btn-sm btn-danger-outline js-delete-contract-rule-btn" data-rule-id="${rule.id}" style="padding: 0.15rem 0.5rem; font-size: 0.74rem;" title="Diese Erkennungsregel löschen">
+                                            🗑 Löschen
+                                        </button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                } else {
+                    rulesContainer.innerHTML = `
+                        <div style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px dashed var(--bg-surface-hover); border-radius: var(--border-radius); text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+                            Keine automatischen Erkennungsregeln hinterlegt. Du kannst Regeln direkt aus einer Girokonto-Buchung über das 📑-Symbol anlegen.
+                        </div>
+                    `;
+                }
+            }
+
             // 1. Rechnungen & Belege rendern
             const receiptsContainer = overlay.querySelector('.js-modal-recent-receipts');
             const receiptsCountEl = overlay.querySelector('.js-receipts-count');
@@ -2243,14 +2344,19 @@ async function openContractModal(contract) {
                                 const partnerText = tx.creditor || tx.remitter || tx.remittance_info || 'Girokonto-Buchung';
                                 const isExpense = parseFloat(tx.amount) < 0;
                                 return `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.82rem;">
-                                        <div style="display: flex; gap: 0.6rem; align-items: center;">
-                                            <span style="color: var(--text-muted); font-family: monospace;">${formatDateDe(tx.booking_date)}</span>
-                                            <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 380px;">${escapeHtml(partnerText)}</span>
+                                    <div class="js-contract-tx-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.82rem; gap: 0.5rem; flex-wrap: wrap;">
+                                        <div style="display: flex; gap: 0.6rem; align-items: center; min-width: 0;">
+                                            <span style="color: var(--text-muted); font-family: monospace; white-space: nowrap;">${formatDateDe(tx.booking_date)}</span>
+                                            <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 320px;">${escapeHtml(partnerText)}</span>
                                         </div>
-                                        <strong class="amount-bold ${isExpense ? 'text-danger' : 'text-success'}">
-                                            ${isExpense ? '-' : '+'}${formatMoney(tx.amount)} €
-                                        </strong>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                                            <strong class="amount-bold ${isExpense ? 'text-danger' : 'text-success'}">
+                                                ${isExpense ? '-' : '+'}${formatMoney(tx.amount)} €
+                                            </strong>
+                                            <button type="button" class="btn btn-outline btn-sm btn-danger-outline js-unlink-contract-tx-btn" data-tx-id="${tx.id}" style="padding: 0.15rem 0.45rem; font-size: 0.74rem;" title="Buchung von diesem Vertrag trennen">
+                                                &times; Trennen
+                                            </button>
+                                        </div>
                                     </div>
                                 `;
                             }).join('')}
@@ -2346,6 +2452,56 @@ async function openContractModal(contract) {
     }
 }
 
+// Globales Event-Delegation für das Löschen einer Vertragsregel aus dem Vertragsmodal
+document.addEventListener('click', async (e) => {
+    const delRuleBtn = e.target.closest('.js-delete-contract-rule-btn');
+    if (!delRuleBtn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const ruleId = delRuleBtn.dataset.ruleId;
+    if (!ruleId) return;
+
+    if (!confirm('Möchtest du diese Erkennungsregel wirklich löschen?')) {
+        return;
+    }
+
+    try {
+        delRuleBtn.disabled = true;
+        const res = await KaiHttp.postJson('api.php', {
+            action: 'delete_contract_rule',
+            rule_id: parseInt(ruleId, 10)
+        });
+
+        if (res && res.success) {
+            const row = delRuleBtn.closest('.js-contract-rule-row');
+            if (row) {
+                row.remove();
+            }
+            const countEl = document.querySelector('.js-rules-count');
+            const container = document.querySelector('.js-modal-contract-rules');
+            if (container && countEl) {
+                const remaining = container.querySelectorAll('.js-delete-contract-rule-btn').length;
+                countEl.textContent = `${remaining} ${remaining === 1 ? 'Regel' : 'Regeln'} aktiv`;
+                if (remaining === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px dashed var(--bg-surface-hover); border-radius: var(--border-radius); text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+                            Keine automatischen Erkennungsregeln hinterlegt. Du kannst Regeln direkt aus einer Girokonto-Buchung über das 📑-Symbol anlegen.
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            alert(res?.error || 'Fehler beim Löschen der Regel.');
+            delRuleBtn.disabled = false;
+        }
+    } catch (err) {
+        alert('Netzwerk- oder Serverfehler.');
+        delRuleBtn.disabled = false;
+    }
+});
+
 // Globales Event-Delegation für das Trennen von Belegen aus dem Vertragsmodal
 document.addEventListener('click', async (e) => {
     const unlinkBtn = e.target.closest('.js-unlink-contract-receipt-btn');
@@ -2391,6 +2547,52 @@ document.addEventListener('click', async (e) => {
             }
         } else {
             alert(res?.error || 'Fehler beim Trennen des Belegs.');
+            unlinkBtn.disabled = false;
+        }
+    } catch (err) {
+        alert('Netzwerk- oder Serverfehler.');
+        unlinkBtn.disabled = false;
+    }
+});
+
+// Globales Event-Delegation für das Trennen von Giro-Buchungen aus dem Vertragsmodal
+document.addEventListener('click', async (e) => {
+    const unlinkBtn = e.target.closest('.js-unlink-contract-tx-btn');
+    if (!unlinkBtn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const txId = unlinkBtn.dataset.txId;
+    if (!txId) return;
+
+    if (!confirm('Möchtest du diese Buchung wirklich von diesem Vertrag trennen?')) {
+        return;
+    }
+
+    try {
+        unlinkBtn.disabled = true;
+        const res = await KaiHttp.postJson('api.php', {
+            action: 'unlink_contract_transaction',
+            tx_id: parseInt(txId, 10)
+        });
+
+        if (res && res.success) {
+            const row = unlinkBtn.closest('.js-contract-tx-row');
+            if (row) {
+                row.remove();
+            }
+            const countEl = document.querySelector('.js-txs-count');
+            const container = document.querySelector('.js-modal-recent-txs');
+            if (container && countEl) {
+                const remaining = container.querySelectorAll('.js-unlink-contract-tx-btn').length;
+                countEl.textContent = `${remaining} ${remaining === 1 ? 'Buchung' : 'Buchungen'}`;
+                if (remaining === 0) {
+                    container.innerHTML = '<div style="padding: 0.75rem; color: var(--text-muted); font-size: 0.82rem;">Keine zugeordneten Girokonto-Buchungen vorhanden.</div>';
+                }
+            }
+        } else {
+            alert(res?.error || 'Fehler beim Trennen der Buchung.');
             unlinkBtn.disabled = false;
         }
     } catch (err) {

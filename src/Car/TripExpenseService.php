@@ -68,8 +68,8 @@ class TripExpenseService
         $depDate = substr($trip['departure_time'], 0, 10);
         $retDate = !empty($trip['return_time']) ? substr($trip['return_time'], 0, 10) : $depDate;
 
-        // Puffer: 1 Tag vor Abfahrt (z.B. Vorab-Maut) bis 4 Tage nach Rückkehr (Wertstellung Kreditkarte)
-        $dateFrom = date('Y-m-d', strtotime("{$depDate} -1 day"));
+        // Puffer: 2 Tage vor Abfahrt (z.B. Vorbereitungsladung/Vorab-Maut) bis 4 Tage nach Rückkehr (Wertstellung Kreditkarte)
+        $dateFrom = date('Y-m-d', strtotime("{$depDate} -2 days"));
         $dateTo = date('Y-m-d', strtotime("{$retDate} +4 days"));
 
         // Bereits dieser Reise zugeordnete Transaktionen ermitteln
@@ -236,7 +236,8 @@ class TripExpenseService
         // 2. Alle verknüpften Ladevorgänge abrufen
         $charges = $this->tripRepo->getTripCharges($tripId);
 
-        $homeChargeCost = (float)$trip['home_charge_cost'];
+        $hasHomeCharges = false;
+        $actualHomeChargeCost = 0.0;
         $enRouteKwh = 0.0;
         $enRouteCostFromCharges = 0.0;
         $coveredCcTxIds = [];
@@ -247,12 +248,13 @@ class TripExpenseService
             $isHome = ($c['location_type'] ?? '') === 'HOME';
 
             if ($isHome) {
-                // Vorabend-Heimladung aus vehicle_charges übernehmen
+                $hasHomeCharges = true;
+                // Vorbereitung- & Vorabend-Heimladungen aus vehicle_charges aufsummieren
                 if (!empty($c['cost_eur']) && (float)$c['cost_eur'] > 0) {
-                    $homeChargeCost = round((float)$c['cost_eur'], 2);
+                    $actualHomeChargeCost += round((float)$c['cost_eur'], 2);
                 } elseif (!empty($c['home_grid_kwh']) && (float)$c['home_grid_kwh'] > 0) {
                     $settingsService = new \Kai\Tools\System\SystemSettingsService($this->pdo);
-                    $homeChargeCost = round((float)$c['home_grid_kwh'] * $settingsService->getGridImportPrice(), 2);
+                    $actualHomeChargeCost += round((float)$c['home_grid_kwh'] * $settingsService->getGridImportPrice(), 2);
                 }
                 continue;
             }
@@ -272,6 +274,13 @@ class TripExpenseService
             if (!empty($c['bank_giro_transaction_id'])) {
                 $coveredGiroTxIds[] = (int)$c['bank_giro_transaction_id'];
             }
+        }
+
+        if ($hasHomeCharges) {
+            $homeChargeCost = round($actualHomeChargeCost, 2);
+        } else {
+            // Falls noch keine realen Heimladungen existieren, aber eine Vorplanung vorlag:
+            $homeChargeCost = ($trip['status'] === 'geplant') ? (float)$trip['home_charge_cost'] : 0.0;
         }
 
         // 3. Manuell/automatisch zugeordnete Bank- und Kreditkartentransaktionen

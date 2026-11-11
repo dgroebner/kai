@@ -68,7 +68,7 @@ try {
 
             $vehicleDashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
             $latestState = $vehicleDashboardRepo->getLatestState();
-            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']))
+            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']) && !in_array($trip['status'], ['abgeschlossen', 'abgebrochen'], true))
                 ? (int)$latestState['soc_percent']
                 : null;
 
@@ -77,6 +77,10 @@ try {
             $subtrips = $tripRepo->getSubTrips($id);
             $candidates = $expenseService->getCandidateTransactions($id);
             $charges = $tripRepo->getTripCharges($id);
+            $candidateCharges = array_values(array_filter(
+                $tripRepo->getCandidateCharges($id),
+                static fn($c) => empty($c['is_linked'])
+            ));
 
             echo json_encode([
                 'success' => true,
@@ -87,6 +91,7 @@ try {
                     'subtrips' => $subtrips,
                     'candidates' => $candidates,
                     'charges' => $charges,
+                    'candidate_charges' => $candidateCharges,
                 ]
             ]);
             exit;
@@ -187,7 +192,7 @@ try {
         if ($trip) {
             $vehicleDashboardRepo = new \Kai\Tools\Car\VehicleDashboardRepository();
             $latestState = $vehicleDashboardRepo->getLatestState();
-            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']))
+            $trip['current_vehicle_soc'] = ($latestState && isset($latestState['soc_percent']) && !in_array($trip['status'], ['abgeschlossen', 'abgebrochen'], true))
                 ? (int)$latestState['soc_percent']
                 : null;
         }
@@ -289,7 +294,7 @@ try {
             Auth::sendJsonError(400, 'Ungültige Parameter für Ladevorgang');
         }
 
-        $tripRepo->unlinkChargeFromTrip($chargeId);
+        $tripRepo->unlinkChargeFromTrip($chargeId, $tripId);
         $costs = $expenseService->recalculateTripCosts($tripId);
 
         echo json_encode([
@@ -297,6 +302,10 @@ try {
             'data' => [
                 'costs' => $costs,
                 'charges' => $tripRepo->getTripCharges($tripId),
+                'candidate_charges' => array_values(array_filter(
+                    $tripRepo->getCandidateCharges($tripId),
+                    static fn($c) => empty($c['is_linked'])
+                )),
             ]
         ]);
         exit;
@@ -318,6 +327,10 @@ try {
             'data' => [
                 'costs' => $costs,
                 'charges' => $tripRepo->getTripCharges($tripId),
+                'candidate_charges' => array_values(array_filter(
+                    $tripRepo->getCandidateCharges($tripId),
+                    static fn($c) => empty($c['is_linked'])
+                )),
             ]
         ]);
         exit;

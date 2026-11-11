@@ -1,0 +1,358 @@
+/* ==========================================================================
+   Quarxl Playing Cards Design System
+   Zentrales CSS für Deutsches (Altenburger Art) & Französisches Blatt
+   ========================================================================== */
+
+:root {
+    --card-width: 86px;
+    --card-height: 128px;
+    --card-radius: 9px;
+    
+    /* Farben Deutsches Blatt */
+    --c-german-acorns: #1e293b;    /* Eichel: Edles Anthrazit für Indizes, da das Eichelmuster selbst rot-gold-grün ist */
+    --c-german-leaves: #166534;    /* Blatt/Grün Smaragd */
+    --c-german-hearts: #b91c1c;    /* Herz Rot */
+    --c-german-bells: #b45309;     /* Schellen Gold/Bernstein */
+    
+    /* Farben Französisches Blatt */
+    --c-french-black: #0f172a;
+    --c-french-red: #dc2626;
+}
+
+/* Basis-Spielkarte */
+.quarxl-card {
+    position: relative;
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    user-select: none;
+    -webkit-user-select: none;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5px 6px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Georgia", serif;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    cursor: default;
+    transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.16s ease;
+    will-change: transform;
+}
+
+/* Interaktive Karten (auf der Hand oder tauschbar) */
+.quarxl-card.is-playable,
+.quarxl-card.is-selectable {
+    cursor: pointer;
+}
+
+.quarxl-card.is-playable:hover,
+.quarxl-card.is-selectable:hover {
+    transform: translateY(-8px) scale(1.04);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(245, 158, 11, 0.6);
+    z-index: 10 !important;
+}
+
+.quarxl-card.is-selected {
+    transform: translateY(-12px) scale(1.06) !important;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55), 0 0 0 3px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.7) !important;
+    z-index: 20 !important;
+}
+
+/* --------------------------------------------------------------------------
+   DEUTSCHES BLATT (Altenburger Art)
+   -------------------------------------------------------------------------- */
+.quarxl-card.deck-german {
+    background: linear-gradient(175deg, #fffdf8 0%, #fbf5e8 100%);
+    border: 1px solid #d4c5a9;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(212, 197, 169, 0.45);
+}
+
+/* Zarter traditioneller Zierrahmen im Deutschen Blatt */
+.quarxl-card.deck-german::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgba(180, 150, 100, 0.3);
+    border-radius: calc(var(--card-radius) - 3px);
+    pointer-events: none;
+}
+
+.quarxl-card.deck-german.suit-acorns { color: var(--c-german-acorns); }
+.quarxl-card.deck-german.suit-leaves { color: var(--c-german-leaves); }
+.quarxl-card.deck-german.suit-hearts { color: var(--c-german-hearts); }
+.quarxl-card.deck-german.suit-bells  { color: var(--c-german-bells); }
+
+/* --------------------------------------------------------------------------
+   FRANZÖSISCHES BLATT
+   -------------------------------------------------------------------------- */
+.quarxl-card.deck-french {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+}
+
+.quarxl-card.deck-french.suit-clubs,
+.quarxl-card.deck-french.suit-spades {
+    color: var(--c-french-black);
+}
+
+.quarxl-card.deck-french.suit-hearts,
+.quarxl-card.deck-french.suit-diamonds {
+    color: var(--c-french-red);
+}
+
+/* --------------------------------------------------------------------------
+   KARTEN-ECKEN (Rank + Mini-Suit)
+   -------------------------------------------------------------------------- */
+.quarxl-card-corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    z-index: 2;
+}
+
+.quarxl-card-corner.corner-top {
+    align-self: flex-start;
+}
+
+.quarxl-card-corner.corner-bottom {
+    align-self: flex-end;
+    transform: rotate(180deg);
+}
+
+.quarxl-card-rank {
+    font-size: 1.15rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+}
+
+.quarxl-card-mini-suit {
+    width: 15px;
+    height: 19px;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quarxl-card-mini-suit svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   KARTENZENTRUM (Illustration / Symbole)
+   -------------------------------------------------------------------------- */
+.quarxl-card-center {
+    position: absolute;
+    inset: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Majestätisches Altenburger Daus / Ass */
+.quarxl-daus-composition {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    padding: 4px 0;
+    box-sizing: border-box;
+}
+
+.quarxl-daus-symbol {
+    width: 36px;
+    height: 46px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.quarxl-daus-garland {
+    width: 44px;
+    height: 20px;
+    opacity: 0.65;
+}
+
+/* Bildkarten Unter & Ober (Farbsymbol-Positionierung) */
+.quarxl-figure-composition {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    padding: 6px 0;
+    box-sizing: border-box;
+}
+
+.quarxl-figure-rank-huge {
+    font-size: 2.1rem;
+    font-weight: 900;
+    line-height: 1;
+    font-family: inherit;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.quarxl-figure-suit-icon {
+    width: 30px;
+    height: 38px;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+}
+
+/* Beim Unter: Farbsymbol UNTEN im Kartenbild */
+.quarxl-card.is-unter .quarxl-figure-composition {
+    justify-content: space-between;
+}
+.quarxl-card.is-unter .quarxl-figure-suit-icon {
+    margin-bottom: 2px;
+}
+
+/* Beim Ober: Farbsymbol OBEN im Kartenbild */
+.quarxl-card.is-ober .quarxl-figure-composition {
+    flex-direction: column-reverse;
+    justify-content: space-between;
+}
+.quarxl-card.is-ober .quarxl-figure-suit-icon {
+    margin-top: 2px;
+}
+
+/* König: Krone + zentrales Symbol */
+.quarxl-king-composition {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.quarxl-king-crown {
+    width: 26px;
+    height: 18px;
+    color: #eab308;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.quarxl-king-symbol {
+    width: 32px;
+    height: 32px;
+}
+
+/* Zahlenkarten (7, 8, 9, 10) */
+.quarxl-number-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.quarxl-number-value-big {
+    font-size: 1.95rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.quarxl-number-suit-medium {
+    width: 32px;
+    height: 40px;
+}
+
+/* --------------------------------------------------------------------------
+   KARTEN-RÜCKSEITE (Deck Back)
+   -------------------------------------------------------------------------- */
+.quarxl-card-back {
+    position: relative;
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: var(--card-radius);
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 2px solid #334155;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.quarxl-card-back::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: calc(var(--card-radius) - 4px);
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.03),
+        rgba(255, 255, 255, 0.03) 6px,
+        transparent 6px,
+        transparent 12px
+    );
+}
+
+.quarxl-card-back-ornament {
+    font-size: 1.4rem;
+    opacity: 0.7;
+    z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   FLIEGENDE KARTE (Fluganimation)
+   -------------------------------------------------------------------------- */
+.quarxl-flying-card {
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    will-change: transform, left, top, opacity;
+    filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.75));
+    transition: all 0.44s cubic-bezier(0.2, 0.85, 0.3, 1.02);
+}
+
+/* --------------------------------------------------------------------------
+   DECK-UMSCHALTER (Header-Pill)
+   -------------------------------------------------------------------------- */
+.quarxl-deck-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    padding: 2px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    user-select: none;
+}
+
+.quarxl-deck-btn {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.quarxl-deck-btn:hover {
+    color: #f1f5f9;
+}
+
+.quarxl-deck-btn.active {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #0f172a;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}

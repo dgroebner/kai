@@ -1,0 +1,751 @@
+/* ==========================================================================
+   UNDER THE HOOD 🏎️ — PWA 3D First-Person Cockpit Stylesheet
+   ========================================================================== */
+
+:root {
+    --hood-bg: #090d16;
+    --hood-surface: rgba(15, 23, 42, 0.92);
+    --hood-surface-hover: rgba(30, 41, 59, 0.98);
+    --hood-border: rgba(255, 255, 255, 0.15);
+    --hood-accent: #3b82f6;
+    --hood-accent-glow: rgba(59, 130, 246, 0.5);
+    --hood-gold: #f59e0b;
+    --hood-green: #10b981;
+    --hood-red: #ef4444;
+    --hood-text: #f8fafc;
+    --hood-muted: #94a3b8;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.hood-body {
+    background-color: var(--hood-bg);
+    color: var(--hood-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    touch-action: none;
+    user-select: none;
+}
+
+/* 3D Canvas (Ego-Perspektive Straße & Cockpit) */
+#hood-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#hood-canvas-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* UI Overlay Layer */
+.hood-ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.hood-interactive {
+    pointer-events: auto;
+}
+
+/* Top Navigation Bar */
+.hood-topbar {
+    padding: calc(0.5rem + var(--safe-top)) 0.75rem 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: linear-gradient(180deg, rgba(9, 13, 22, 0.9) 0%, rgba(9, 13, 22, 0) 100%);
+}
+
+.hood-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    background: var(--hood-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--hood-border);
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.hood-cash-badge {
+    color: var(--hood-gold);
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+}
+
+.hood-btn-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--hood-surface);
+    border: 1px solid var(--hood-border);
+    color: var(--hood-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: transform 0.15s, background 0.15s;
+}
+
+.hood-btn-icon:active {
+    transform: scale(0.92);
+    background: var(--hood-surface-hover);
+}
+
+/* Blick-Steuerung Quick-Buttons (oben rechts) */
+.hood-view-controls {
+    display: flex;
+    gap: 0.4rem;
+}
+
+/* Ticker Bar */
+.hood-ticker-bar {
+    margin: 0.25rem 0.75rem auto 0.75rem;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--hood-border);
+    border-radius: 12px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hood-ticker-text {
+    flex: 1;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   DAS ARMATURENBRETT & DAS MITTEL-NAVI (Cockpit-Console)
+   ========================================================================== */
+.hood-cockpit-console {
+    padding: 0.5rem 0.75rem calc(0.75rem + var(--safe-bottom)) 0.75rem;
+    background: linear-gradient(0deg, rgba(9, 13, 22, 0.98) 0%, rgba(15, 23, 42, 0.9) 75%, rgba(9, 13, 22, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Der Infotainment / Navi Tablet-Screen */
+.hood-navi-screen {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 2px solid rgba(59, 130, 246, 0.35);
+    border-radius: 18px;
+    padding: 0.85rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(14px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* Navi Header: GPS Ort & Farbgruppe */
+.hood-navi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.4rem;
+}
+
+.hood-navi-location {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.hood-navi-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.01em;
+}
+
+.hood-navi-zone-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+/* Tacho & GPS Infozeile */
+.hood-navi-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.35rem;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+.hood-navi-stat-box .label {
+    color: var(--hood-muted);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+}
+
+.hood-navi-stat-box .val {
+    font-weight: 800;
+    color: #ffffff;
+    font-size: 0.95rem;
+}
+
+.hood-navi-stat-box .val.gold {
+    color: var(--hood-gold);
+}
+
+/* Event- / Karten- / Sonderfeld-Anzeige auf dem Navi */
+.hood-navi-event-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    backdrop-filter: blur(8px);
+}
+
+.hood-navi-event-icon {
+    font-size: 1.85rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+}
+
+.hood-navi-event-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.hood-navi-event-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #fef08a;
+    line-height: 1.2;
+    margin-bottom: 0.15rem;
+}
+
+.hood-navi-event-desc {
+    font-size: 0.78rem;
+    color: #e2e8f0;
+    line-height: 1.3;
+}
+
+/* Aktions-Buttons auf dem Navi */
+.hood-btn-primary {
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 4px 16px var(--hood-accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.hood-btn-primary:active {
+    transform: scale(0.97);
+}
+
+.hood-btn-primary.pulse {
+    animation: hoodPulse 1.8s infinite;
+}
+
+@keyframes hoodPulse {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.hood-btn-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+}
+
+.hood-btn-secondary {
+    background: var(--hood-surface);
+    border: 1px solid var(--hood-border);
+    color: var(--hood-text);
+}
+
+.hood-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.hood-btn-group .hood-btn-primary {
+    flex: 1;
+}
+
+/* Würfelanzeige im Cockpit */
+.hood-dice-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    perspective: 400px;
+}
+
+.hood-die {
+    width: 44px;
+    height: 44px;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    font-weight: 900;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+    user-select: none;
+    transition: transform 0.12s ease;
+}
+
+.hood-dice-cluster.is-rolling .hood-die {
+    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.65), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.hood-dice-cluster.is-rolling #die-1 {
+    animation: hood-die-roll-1 0.14s infinite alternate ease-in-out;
+}
+
+.hood-dice-cluster.is-rolling #die-2 {
+    animation: hood-die-roll-2 0.14s infinite alternate ease-in-out;
+}
+
+.hood-die.landing {
+    animation: hood-die-land 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes hood-die-roll-1 {
+    0% {
+        transform: translate(-4px, -6px) rotate(-14deg) scale(1.08);
+    }
+    100% {
+        transform: translate(5px, 3px) rotate(12deg) scale(0.92);
+    }
+}
+
+@keyframes hood-die-roll-2 {
+    0% {
+        transform: translate(4px, -5px) rotate(15deg) scale(0.92);
+    }
+    100% {
+        transform: translate(-5px, 4px) rotate(-13deg) scale(1.08);
+    }
+}
+
+@keyframes hood-die-land {
+    0% {
+        transform: scale(1.32) rotate(8deg);
+    }
+    50% {
+        transform: scale(0.9) rotate(-3deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* Modals & Overlays */
+.hood-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.hood-modal-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hood-modal {
+    background: #0f172a;
+    border: 1px solid var(--hood-border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    transform: scale(0.95);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hood-modal-backdrop.open .hood-modal {
+    transform: scale(1);
+}
+
+.hood-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.hood-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* Property Inspection Bottom Sheet */
+.hood-sheet-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+}
+
+.hood-sheet-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hood-sheet {
+    background: #0f172a;
+    border-top: 1px solid var(--hood-border);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 1.25rem 1.25rem calc(1.5rem + var(--safe-bottom)) 1.25rem;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.hood-sheet-backdrop.open .hood-sheet {
+    transform: translateY(0);
+}
+
+.hood-sheet-handle {
+    width: 40px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    margin: 0 auto 1rem auto;
+}
+
+/* Form Controls */
+.hood-form-group {
+    margin-bottom: 1rem;
+}
+
+.hood-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--hood-muted);
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+}
+
+.hood-input {
+    width: 100%;
+    padding: 0.75rem;
+    background: #1e293b;
+    border: 1px solid var(--hood-border);
+    border-radius: 10px;
+    color: var(--hood-text);
+    font-size: 0.95rem;
+}
+
+.hood-color-picker {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.hood-color-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+.hood-color-swatch.selected {
+    transform: scale(1.15);
+    border-color: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.hood-vehicle-picker {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.hood-vehicle-card {
+    background: #1e293b;
+    border: 1px solid var(--hood-border);
+    border-radius: 10px;
+    padding: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.hood-vehicle-card.selected {
+    border-color: var(--hood-accent);
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.hood-vehicle-card .icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.hood-vehicle-card .name {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+    .hood-sheet {
+        max-width: 480px;
+        margin: 0 auto 2rem auto;
+        border-radius: 20px;
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Grundbuch & Viertel-Übersicht */
+.hood-group-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 0.75rem;
+    border-left: 6px solid var(--group-color, #38bdf8);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hood-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.hood-group-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.hood-group-monopoly-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--hood-gold);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.hood-group-tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.5rem;
+}
+
+.hood-group-tile-item {
+    background: rgba(15, 23, 42, 0.75);
+    border-radius: 8px;
+    padding: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    position: relative;
+}
+
+.hood-group-tile-owner {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+}
+
+.hood-group-tile-actions {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.35rem;
+}
+
+.hood-group-tile-actions button {
+    flex: 1;
+    padding: 0.35rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   IN-GAME TOAST NOTIFICATIONS & FEEDBACK SYSTEM
+   ========================================================================== */
+.hood-toast-container {
+    position: fixed;
+    top: 4.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+    width: 90%;
+    max-width: 440px;
+}
+
+.hood-toast {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    color: #f8fafc;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    pointer-events: auto;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: hoodToastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hood-toast.toast-error {
+    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.hood-toast.toast-warning {
+    border-color: rgba(245, 158, 11, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.hood-toast.toast-success {
+    border-color: rgba(16, 185, 129, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.hood-toast.toast-info {
+    border-color: rgba(56, 189, 248, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.3);
+}
+
+.hood-toast-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.hood-toast-msg {
+    flex: 1;
+    line-height: 1.35;
+}
+
+.hood-toast.fade-out {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+}
+
+@keyframes hoodToastIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-15px) scale(0.92);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

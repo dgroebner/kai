@@ -1,161 +1,139 @@
 -- ==========================================================================
--- DOMAIN: TRANSIT (ÖPNV & Pendler-Monitor)
+-- MIGRATION v1.36.0: DOMAIN RECIPES (Kochrezept-Assistent & Küchenbegleiter)
 -- ==========================================================================
 
-CREATE TABLE IF NOT EXISTS `transit_profiles` (
-    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `user_email` VARCHAR(191) NULL,
-    `student_id` INT UNSIGNED NULL,
-    `profile_name` VARCHAR(100) NOT NULL,
-    `origin_station_name` VARCHAR(100) NOT NULL,
-    `origin_station_id` VARCHAR(50) NOT NULL,
-    `destination_station_name` VARCHAR(100) NOT NULL,
-    `destination_station_id` VARCHAR(50) NOT NULL,
-    `via_station_name` VARCHAR(100) NULL,
-    `via_station_id` VARCHAR(50) NULL,
-    `preferred_lines` VARCHAR(100) NULL,
-    `transport_modes` VARCHAR(50) NULL DEFAULT 'all',
-    `active_days` VARCHAR(50) NOT NULL DEFAULT '[1,2,3,4,5]',
-    `morning_window_start` TIME NOT NULL DEFAULT '06:30:00',
-    `morning_window_end` TIME NOT NULL DEFAULT '09:00:00',
-    `evening_window_start` TIME NOT NULL DEFAULT '15:00:00',
-    `evening_window_end` TIME NOT NULL DEFAULT '19:00:00',
-    `only_school_days` TINYINT(1) NOT NULL DEFAULT 0,
-    `min_transfer_minutes` INT UNSIGNED NOT NULL DEFAULT 4,
-    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
-    `sort_order` INT NOT NULL DEFAULT 0,
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_transit_user` (`user_email`),
-    INDEX `idx_transit_active` (`is_active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `label`) VALUES
+('stove_type', 'Ceranfeld', 'Herd-Typ (z. B. Ceranfeld, Induktion, Gas)'),
+('stove_levels', '12', 'Anzahl Herdstufen (Skala z. B. 9 oder 12)'),
+('oven_default_mode', 'Umluft', 'Bevorzugte Backofen-Beheizungsart'),
+('recipe_prefer_shallots', '1', 'Rezepte: Schalotten statt Zwiebeln bevorzugen (1/0)'),
+('recipe_default_adults', '2', 'Rezepte: Standard-Anzahl Erwachsene'),
+('recipe_default_kids', '2', 'Rezepte: Standard-Anzahl Kinder / Jugendliche'),
+('recipe_kid_portion_pct', '80', 'Rezepte: Portionsgröße pro Kind in % (z. B. 80)'),
+('recipe_household_preferences', '', 'Rezepte: Freitext-Haushaltspräferenzen & No-Gos für KI');
 
-CREATE TABLE IF NOT EXISTS `transit_cache` (
-    `cache_key` VARCHAR(191) PRIMARY KEY,
-    `payload` LONGTEXT NOT NULL,
-    `expires_at` DATETIME NOT NULL,
-    INDEX `idx_transit_cache_expires` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Standardberechtigungen für Admin-Gruppe zuweisen, falls vorhanden
+-- Initiale Rechte ausschließlich für die Gruppe 'Admin' vergeben
 INSERT IGNORE INTO `group_permissions` (`group_id`, `permission`)
-SELECT `id`, 'transit_read' FROM `groups` WHERE `name` = 'Admin';
+SELECT `id`, 'recipes_read' FROM `groups` WHERE `name` = 'Admin';
 
 INSERT IGNORE INTO `group_permissions` (`group_id`, `permission`)
-SELECT `id`, 'transit_write' FROM `groups` WHERE `name` = 'Admin';
+SELECT `id`, 'recipes_write' FROM `groups` WHERE `name` = 'Admin';
 
-
--- ==========================================================================
--- DOMAIN: EINKAUFSLISTE (Supermarkt-Angebote via Marktguru API)
--- ==========================================================================
-
-ALTER TABLE `product_master`
-    ADD COLUMN IF NOT EXISTS `offer_search_term` VARCHAR(150) NULL DEFAULT NULL AFTER `is_ignored`,
-    ADD COLUMN IF NOT EXISTS `offers_checked_at` DATETIME NULL DEFAULT NULL AFTER `offer_search_term`;
-
-CREATE TABLE IF NOT EXISTS `shopping_product_offers` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `product_master_id` INT NOT NULL,
-    `external_offer_id` VARCHAR(64) NOT NULL COMMENT 'Eindeutige Angebots-ID von Marktguru',
-    `leaflet_flight_id` VARCHAR(64) NULL COMMENT 'Prospekt-Ausgabe-ID zur Filial-Verifikation',
-    `market` ENUM('Rewe', 'Globus') NOT NULL DEFAULT 'Rewe' COMMENT 'Normalisierter Markt',
-    `brand_name` VARCHAR(150) NULL COMMENT 'Marke aus brand.name (z.B. Meggle)',
-    `product_title` VARCHAR(255) NOT NULL COMMENT 'Produktname aus product.name',
-    `description` VARCHAR(500) NULL COMMENT 'Mengen/Sorten-Details aus description',
-    `unit_size` VARCHAR(60) NULL COMMENT 'Extrahierte Packungsgröße (z.B. 250 g)',
-    `price` DECIMAL(8, 2) NOT NULL COMMENT 'Aktueller Angebotspreis',
-    `old_price` DECIMAL(8, 2) NULL COMMENT 'Streichpreis / UVP falls vorhanden',
-    `reference_price` VARCHAR(100) NULL COMMENT 'Grundpreis (z.B. 1 kg = 7,16 €)',
-    `normalized_ref_price` DECIMAL(8, 2) NULL COMMENT 'Numerischer Grundpreis zum Vergleich',
-    `is_preferred_brand` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Marke aus eBon-Historie bekannt',
-    `valid_from` DATE NULL,
-    `valid_to` DATE NOT NULL,
-    `is_dismissed` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Vom Nutzer als unpassend markiert',
-    `fetched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY `uk_product_offer_market` (`product_master_id`, `external_offer_id`, `market`),
-    FOREIGN KEY (`product_master_id`) REFERENCES `product_master`(`id`) ON DELETE CASCADE,
-    INDEX `idx_valid_to` (`valid_to`),
-    INDEX `idx_product_valid` (`product_master_id`, `is_dismissed`, `valid_to`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ==========================================================================
--- DOMAIN: GAMES HUB (games.agent-smith.de & Qwixx Multiplayer)
--- ==========================================================================
-
-CREATE TABLE IF NOT EXISTS `games_hub_rooms` (
+CREATE TABLE IF NOT EXISTS `recipes` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `room_code` VARCHAR(8) NOT NULL,
-    `game_type` VARCHAR(32) NOT NULL DEFAULT 'qwixx',
-    `game_mode` VARCHAR(32) NOT NULL DEFAULT 'digital_dice',
-    `status` ENUM('lobby', 'active', 'finished') NOT NULL DEFAULT 'lobby',
-    `host_token_hash` CHAR(64) NOT NULL,
-    `state_json` LONGTEXT NULL,
-    `state_version` INT UNSIGNED NOT NULL DEFAULT 1,
+    `title` VARCHAR(191) NOT NULL,
+    `description` TEXT NULL,
+    `category` VARCHAR(80) NOT NULL DEFAULT 'Hauptgericht',
+    `source_type` ENUM('url', 'photo', 'pdf', 'manual', 'text') NOT NULL DEFAULT 'manual',
+    `source_url` VARCHAR(500) NULL,
+    `prep_time_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `cook_time_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `total_time_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `default_adults` INT UNSIGNED NOT NULL DEFAULT 2,
+    `default_kids` INT UNSIGNED NOT NULL DEFAULT 2,
+    `default_servings` DECIMAL(5,2) NOT NULL DEFAULT 3.60,
+    `calories_per_serving` INT UNSIGNED NULL,
+    `protein_per_serving` DECIMAL(6,1) NULL,
+    `carbs_per_serving` DECIMAL(6,1) NULL,
+    `fat_per_serving` DECIMAL(6,1) NULL,
+    `equipment_list` TEXT NULL,
+    `is_favorite` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_by` VARCHAR(191) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY `uk_room_code` (`room_code`),
-    INDEX `idx_room_status_updated` (`status`, `updated_at`)
+    INDEX `idx_recipes_title` (`title`),
+    INDEX `idx_recipes_category` (`category`),
+    INDEX `idx_recipes_fav` (`is_favorite`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `games_hub_players` (
+CREATE TABLE IF NOT EXISTS `recipe_variants` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `room_id` INT UNSIGNED NOT NULL,
-    `player_token_hash` CHAR(64) NOT NULL,
-    `player_name` VARCHAR(40) NOT NULL,
-    `seat_order` INT NOT NULL DEFAULT 0,
-    `is_host` TINYINT(1) NOT NULL DEFAULT 0,
-    `is_connected` TINYINT(1) NOT NULL DEFAULT 1,
-    `sheet_json` LONGTEXT NULL,
-    `total_score` INT NOT NULL DEFAULT 0,
+    `recipe_id` INT UNSIGNED NOT NULL,
+    `variant_name` VARCHAR(120) NOT NULL DEFAULT 'Standard (Familien-Variante)',
+    `is_default` TINYINT(1) NOT NULL DEFAULT 1,
+    `notes` TEXT NULL,
+    `calories_per_serving` INT UNSIGNED NULL,
+    `protein_per_serving` DECIMAL(6,1) NULL,
+    `carbs_per_serving` DECIMAL(6,1) NULL,
+    `fat_per_serving` DECIMAL(6,1) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY `uk_room_player_token` (`room_id`, `player_token_hash`),
-    INDEX `idx_player_room_order` (`room_id`, `seat_order`),
-    CONSTRAINT `fk_gh_players_room` FOREIGN KEY (`room_id`) REFERENCES `games_hub_rooms`(`id`) ON DELETE CASCADE
+    INDEX `idx_rv_recipe` (`recipe_id`),
+    CONSTRAINT `fk_rv_recipe` FOREIGN KEY (`recipe_id`) REFERENCES `recipes`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `games_hub_rate_limits` (
+ALTER TABLE `recipe_variants`
+    ADD COLUMN IF NOT EXISTS `calories_per_serving` INT UNSIGNED NULL AFTER `notes`,
+    ADD COLUMN IF NOT EXISTS `protein_per_serving` DECIMAL(6,1) NULL AFTER `calories_per_serving`,
+    ADD COLUMN IF NOT EXISTS `carbs_per_serving` DECIMAL(6,1) NULL AFTER `protein_per_serving`,
+    ADD COLUMN IF NOT EXISTS `fat_per_serving` DECIMAL(6,1) NULL AFTER `carbs_per_serving`;
+
+CREATE TABLE IF NOT EXISTS `recipe_ingredients` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `action_key` VARCHAR(64) NOT NULL,
-    `ip_hash` CHAR(64) NOT NULL,
-    `failed_attempts` INT UNSIGNED NOT NULL DEFAULT 1,
-    `locked_until` DATETIME NULL DEFAULT NULL,
-    `first_attempt_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `last_attempt_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY `uk_rate_action_ip` (`action_key`, `ip_hash`),
-    INDEX `idx_rate_locked` (`locked_until`)
+    `variant_id` INT UNSIGNED NOT NULL,
+    `ingredient_name` VARCHAR(150) NOT NULL,
+    `quantity` DECIMAL(8,2) NOT NULL DEFAULT 1.00,
+    `unit` VARCHAR(50) NOT NULL DEFAULT 'Stück',
+    `package_size` DECIMAL(8,2) NULL,
+    `package_unit` VARCHAR(50) NULL,
+    `leftover_tip` VARCHAR(255) NULL,
+    `market` VARCHAR(50) NOT NULL DEFAULT 'Rewe',
+    `shopping_category` VARCHAR(100) NOT NULL DEFAULT 'Sonstiges',
+    `is_pantry_staple` TINYINT(1) NOT NULL DEFAULT 0,
+    `prep_note` VARCHAR(150) NULL,
+    `component_name` VARCHAR(100) NULL,
+    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0,
+    INDEX `idx_ri_variant` (`variant_id`),
+    INDEX `idx_ri_name` (`ingredient_name`),
+    CONSTRAINT `fk_ri_variant` FOREIGN KEY (`variant_id`) REFERENCES `recipe_variants`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- --------------------------------------------------------------------------
--- Ergänzung v1.31.0: games_hub_rooms und games_hub_players unterstützen nun
--- polymorph auch Kartenspiele (game_type = 'cards', game_mode in ('uno', 'uno_extreme', 'mau_mau')).
--- Bestehende Schema-Definitionen sind vollkommen kompatibel (keine DDL-Änderung erforderlich).
--- --------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS `games_hub_reactions` (
+CREATE TABLE IF NOT EXISTS `recipe_components` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `room_id` INT UNSIGNED NOT NULL,
-    `player_id` INT UNSIGNED NOT NULL,
-    `player_name` VARCHAR(40) NOT NULL,
-    `emoji` VARCHAR(32) NOT NULL,
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_gh_reactions_room_id` (`room_id`, `id`),
-    INDEX `idx_gh_reactions_player_time` (`room_id`, `player_id`, `created_at`),
-    CONSTRAINT `fk_gh_reactions_room` FOREIGN KEY (`room_id`) REFERENCES `games_hub_rooms`(`id`) ON DELETE CASCADE
+    `variant_id` INT UNSIGNED NOT NULL,
+    `component_name` VARCHAR(100) NOT NULL,
+    `pot_or_appliance` VARCHAR(100) NULL,
+    `preheat_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `active_cook_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `passive_cook_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `rest_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0,
+    INDEX `idx_rc_variant` (`variant_id`),
+    CONSTRAINT `fk_rc_variant` FOREIGN KEY (`variant_id`) REFERENCES `recipe_variants`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `recipe_steps` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `component_id` INT UNSIGNED NOT NULL,
+    `step_number` INT UNSIGNED NOT NULL,
+    `phase` ENUM('mise_en_place_pre', 'preheat', 'cooking', 'mise_en_place_parallel', 'resting', 'serving') NOT NULL DEFAULT 'cooking',
+    `title` VARCHAR(150) NULL,
+    `instruction` TEXT NOT NULL,
+    `ingredients_inline` TEXT NULL,
+    `stove_level` VARCHAR(30) NULL,
+    `oven_setting` VARCHAR(80) NULL,
+    `duration_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `is_passive_wait` TINYINT(1) NOT NULL DEFAULT 0,
+    `parallel_hint` VARCHAR(255) NULL,
+    `start_offset_before_finish_min` INT UNSIGNED NULL,
+    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0,
+    INDEX `idx_rs_component` (`component_id`),
+    CONSTRAINT `fk_rs_component` FOREIGN KEY (`component_id`) REFERENCES `recipe_components`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `car_trip_ignored_charges` (
+    `trip_id` INT UNSIGNED NOT NULL,
+    `charge_id` INT NOT NULL,
+    PRIMARY KEY (`trip_id`, `charge_id`),
+    INDEX `idx_charge_id` (`charge_id`),
+    FOREIGN KEY (`trip_id`) REFERENCES `car_trips`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ==========================================================================
--- DOMAIN: CAR (Reise-Ladekosten & Beleg-Verknüpfung)
+-- MIGRATION v1.36.36: BERECHTIGUNGEN KONSOLIDIEREN (recipe_* -> recipes_*)
 -- ==========================================================================
-
-ALTER TABLE `car_trips`
-    ADD COLUMN IF NOT EXISTS `actual_en_route_charge_kwh` DECIMAL(8, 2) NULL DEFAULT NULL AFTER `en_route_charge_kwh`;
-
-ALTER TABLE `vehicle_charges`
-    ADD COLUMN IF NOT EXISTS `trip_id` INT UNSIGNED NULL DEFAULT NULL AFTER `receipt_item_id`;
-
-ALTER TABLE `vehicle_charges`
-    ADD INDEX IF NOT EXISTS `idx_vc_trip_id` (`trip_id`);
-
-
+UPDATE IGNORE `group_permissions` SET `permission` = 'recipes_read' WHERE `permission` = 'recipe_read';
+UPDATE IGNORE `group_permissions` SET `permission` = 'recipes_write' WHERE `permission` = 'recipe_write';
+DELETE FROM `group_permissions` WHERE `permission` IN ('recipe_read', 'recipe_write');
+-- Bereinigung fehlerhafter Sensorausreißer (z.B. 1.000.000 W Sentinel-Werte / Glitches)
+DELETE FROM `pv_telemetry` WHERE `house_load_w` > 50000 OR ABS(`grid_total_w`) > 50000 OR `pv_power_w` > 50000;

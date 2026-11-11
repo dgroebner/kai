@@ -1372,3 +1372,20 @@ body.games-hub-body {
 }
 
 
+
+/* Radio-Auswahl im Raum-Erstellen-Modal (z. B. Labyrinth) */
+.hub-radio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.hub-radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+    cursor: pointer;
+}
+

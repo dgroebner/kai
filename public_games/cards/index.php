@@ -13,6 +13,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <link rel="apple-touch-icon" href="../apple-touch-icon.png">
     <meta name="theme-color" content="#0f172a">
     <link rel="stylesheet" href="../css/games-hub.css?v=<?= APP_VERSION ?>">
+    <link rel="stylesheet" href="../css/playing-cards.css?v=<?= APP_VERSION ?>">
     <link rel="stylesheet" href="./cards.css?v=<?= APP_VERSION ?>">
 </head>
 <body class="games-hub-body cards-viewport" data-room="<?= $roomCode ?>">
@@ -23,6 +24,16 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
             <a href="../index.php" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">&larr; Hub</a>
             <span class="cards-room-badge" id="room-code-display">RAUM: <?= $roomCode ?: '...' ?></span>
             <span id="game-mode-badge" style="font-size: 0.8rem; color: #94a3b8; font-weight: normal;"></span>
+            <div id="uno-skin-toggle-wrap" class="uno-skin-toggle-wrap">
+                <div class="quarxl-deck-toggle" role="group" aria-label="Uno-Skin wählen">
+                    <button type="button" class="quarxl-deck-btn js-uno-skin-btn active" data-skin="classic" title="Klassisches Uno-Design">
+                        <span>🎴</span> Normal
+                    </button>
+                    <button type="button" class="quarxl-deck-btn js-uno-skin-btn" data-skin="stitch" title="Lilo &amp; Stitch Hawaii-Skin">
+                        <span>🌺</span> Stitch
+                    </button>
+                </div>
+            </div>
         </div>
         <div style="display: flex; gap: 0.4rem; align-items: center;">
             <button type="button" class="btn btn-sm btn-outline js-btn-reactions" title="Reaktion senden" style="display: flex; align-items: center; gap: 0.25rem;">
@@ -169,6 +180,7 @@ $roomCode = htmlspecialchars(strtoupper(trim($_GET['room'] ?? '')), ENT_QUOTES, 
     <!-- Scripts -->
     <script src="../js/http-hub.js?v=<?= APP_VERSION ?>"></script>
     <script src="../js/reactions.js?v=<?= APP_VERSION ?>" defer></script>
+    <script src="../js/playing-cards.js?v=<?= APP_VERSION ?>" defer></script>
     <script src="./cards.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>
