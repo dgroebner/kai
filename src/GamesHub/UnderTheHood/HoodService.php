@@ -657,10 +657,10 @@ class HoodService
         $tileState['level']++;
 
         $levelNames = [
-            2 => 'das 1. Haus',
-            3 => 'das 2. Haus',
-            4 => 'das 3. Haus',
-            5 => 'ein Luxus-Hotel 🏨',
+            2 => 'ein Einfamilienhaus 🏡',
+            3 => 'eine gehobene Stadtvilla 🏛️',
+            4 => 'eine Luxus-Designer-Residenz mit Pool 🏰',
+            5 => 'ein prachtvolles Grand Schloss & Palais 👑',
         ];
         $stufenText = $levelNames[$tileState['level']] ?? 'eine Ausbaustufe';
 
@@ -764,9 +764,17 @@ class HoodService
         $tileState['level']--;
         $player['cash'] += $refund;
 
+        $targetNames = [
+            1 => 'die Holzhütte 🏕️',
+            2 => 'das Einfamilienhaus 🏡',
+            3 => 'die Stadtvilla 🏛️',
+            4 => 'die Luxus-Residenz 🏰',
+        ];
+        $targetText = $targetNames[$tileState['level']] ?? 'die Vorstufe';
+
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "🏚️ {$player['name']} reißt ein Gebäude auf '{$tileConfig['name']}' ab und erhält {$refund} $ von der Bank."
+            'text' => "🏚️ {$player['name']} baut auf '{$tileConfig['name']}' zurück auf {$targetText} und erhält {$refund} $ von der Bank."
         ];
 
         $this->repo->updateRoomState($roomId, $state);

@@ -2463,71 +2463,311 @@
                 group.add(tidyCrown);
 
                 // =============================================================
-                // 3. WENN HÄUSER GEBAUT SIND (Level 1–4: Villen, Level 5: Luxus-Resort)
+                // 3. ARCHITEKTONISCHE EVOLUTION (Level 1 bis 5)
                 // =============================================================
-                if (level >= 1 && level <= 4) {
-                    const houseCount = level;
-                    const offsetsZ = houseCount === 1 ? [0] : houseCount === 2 ? [-3.8, 3.8] : houseCount === 3 ? [-5.0, 0, 5.0] : [-5.5, -1.8, 1.8, 5.5];
+                if (level === 1) {
+                    // --- LEVEL 1: ERSCHLOSSENES GARTENGRUNDSTÜCK MIT HOLZHÜTTE / BLOCKHAUS ---
+                    const cabin = new THREE.Group();
+                    cabin.position.set(3.2, 0, -1.8);
 
-                    offsetsZ.forEach(oz => {
-                        const houseGroup = new THREE.Group();
-                        houseGroup.position.set(2.5, 0, oz);
-
-                        const body = new THREE.Mesh(
-                            new THREE.BoxGeometry(6.5, 3.8, 3.6),
-                            new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 })
-                        );
-                        body.position.set(0, 2.1, 0);
-                        body.castShadow = true;
-                        houseGroup.add(body);
-
-                        // Pultdach mit Kategorie-Farb-Akzent & Spielerfarbe
-                        const roof = new THREE.Mesh(
-                            new THREE.BoxGeometry(7.2, 0.45, 4.2),
-                            new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 })
-                        );
-                        roof.position.set(0, 4.1, 0);
-                        houseGroup.add(roof);
-
-                        // Glasfenster
-                        const win = new THREE.Mesh(
-                            new THREE.BoxGeometry(0.1, 2.0, 2.4),
-                            new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.7 })
-                        );
-                        win.position.set(-3.3, 2.0, 0);
-                        houseGroup.add(win);
-
-                        group.add(houseGroup);
-                    });
-                } else if (level === 5) {
-                    // Level 5: Großes Luxus-Hotel
-                    const hotelGroup = new THREE.Group();
-                    hotelGroup.position.set(2.5, 0, 0);
-
-                    const hotelBody = new THREE.Mesh(
-                        new THREE.BoxGeometry(9.5, 7.5, 10.5),
-                        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 })
+                    // Blockhaus-Korpus aus rustikalem Holz
+                    const walls = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.2, 2.6, 3.6),
+                        new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.9 })
                     );
-                    hotelBody.position.set(0, 3.9, 0);
-                    hotelBody.castShadow = true;
-                    hotelGroup.add(hotelBody);
+                    walls.position.set(0, 1.3, 0);
+                    cabin.add(walls);
 
-                    const hotelRoof = new THREE.Mesh(
-                        new THREE.BoxGeometry(10.5, 0.5, 11.5),
+                    // Schräges Satteldach aus Holzschindeln
+                    const roof = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.6, 0.45, 4.2),
+                        new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 })
+                    );
+                    roof.position.set(0, 2.7, 0);
+                    cabin.add(roof);
+
+                    // Holzveranda & Vordach mit Pfosten
+                    const porch = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.6, 0.15, 2.4),
+                        new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.8 })
+                    );
+                    porch.position.set(-2.5, 0.2, 0);
+                    cabin.add(porch);
+
+                    [-0.9, 0.9].forEach(pz => {
+                        const post = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.08, 0.08, 2.0, 6),
+                            new THREE.MeshStandardMaterial({ color: 0x713f12 })
+                        );
+                        post.position.set(-3.1, 1.1, pz);
+                        cabin.add(post);
+                    });
+
+                    // Trittsteine zum Tor
+                    [-4.5, -3.2, -1.8, -0.6].forEach(px => {
+                        const step = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.35, 0.38, 0.08, 8),
+                            new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 })
+                        );
+                        step.position.set(px, 0.15, 0.2);
+                        group.add(step);
+                    });
+
+                    group.add(cabin);
+
+                } else if (level === 2) {
+                    // --- LEVEL 2: MODERNES EINFAMILIENHAUS / BUNGALOW ---
+                    const house = new THREE.Group();
+                    house.position.set(3.2, 0, 0);
+
+                    // Heller Massivbau
+                    const body = new THREE.Mesh(
+                        new THREE.BoxGeometry(6.8, 3.8, 5.4),
+                        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 })
+                    );
+                    body.position.set(0, 1.9, 0);
+                    house.add(body);
+
+                    // Anthrazitfarbenes Schieferdach
+                    const roof = new THREE.Mesh(
+                        new THREE.BoxGeometry(7.4, 0.55, 6.0),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+                    );
+                    roof.position.set(0, 4.0, 0);
+                    house.add(roof);
+
+                    // Großes Panorama-Fenster zur Straße
+                    const win = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.1, 2.0, 2.8),
+                        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.7, roughness: 0.1 })
+                    );
+                    win.position.set(-3.45, 2.0, 0.8);
+                    house.add(win);
+
+                    // Eingangstür mit Überdachung in Spielerfarbe
+                    const doorRoof = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.6, 0.15, 1.8),
                         new THREE.MeshStandardMaterial({ color: ownerHex })
                     );
-                    hotelRoof.position.set(0, 7.8, 0);
-                    hotelGroup.add(hotelRoof);
+                    doorRoof.position.set(-3.8, 2.8, -1.5);
+                    house.add(doorRoof);
 
-                    // Pool im Garten
-                    const pool = new THREE.Mesh(
-                        new THREE.BoxGeometry(4.5, 0.2, 6.5),
+                    // Gepflasterter Gartenweg
+                    const path = new THREE.Mesh(
+                        new THREE.BoxGeometry(3.5, 0.08, 1.4),
+                        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 })
+                    );
+                    path.position.set(-4.5, 0.15, 0);
+                    group.add(path);
+
+                    group.add(house);
+
+                } else if (level === 3) {
+                    // --- LEVEL 3: GEHOBENE STADTVILLA MIT 2 VOLLGESCHOSSEN ---
+                    const villa = new THREE.Group();
+                    villa.position.set(3.5, 0, 0);
+
+                    // Erdgeschoss
+                    const groundFloor = new THREE.Mesh(
+                        new THREE.BoxGeometry(8.2, 3.4, 7.2),
+                        new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 })
+                    );
+                    groundFloor.position.set(0, 1.7, 0);
+                    villa.add(groundFloor);
+
+                    // Obergeschoss
+                    const upperFloor = new THREE.Mesh(
+                        new THREE.BoxGeometry(7.4, 3.0, 6.4),
+                        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 })
+                    );
+                    upperFloor.position.set(0.3, 4.9, 0);
+                    villa.add(upperFloor);
+
+                    // Akzent-Dachabschluss in Spielerfarbe
+                    const attika = new THREE.Mesh(
+                        new THREE.BoxGeometry(7.8, 0.4, 6.8),
+                        new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.3 })
+                    );
+                    attika.position.set(0.3, 6.5, 0);
+                    villa.add(attika);
+
+                    // Großer Balkon mit Glasgeländer im OG
+                    const balcony = new THREE.Mesh(
+                        new THREE.BoxGeometry(2.0, 0.2, 3.8),
+                        new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })
+                    );
+                    balcony.position.set(-3.7, 3.4, 0);
+                    villa.add(balcony);
+
+                    const glassRailing = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.08, 0.9, 3.8),
+                        new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7, roughness: 0.1 })
+                    );
+                    glassRailing.position.set(-4.7, 3.9, 0);
+                    villa.add(glassRailing);
+
+                    // Säulen-Portal am Eingang
+                    [-1.2, 1.2].forEach(pz => {
+                        const col = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.18, 0.18, 3.4, 12),
+                            new THREE.MeshStandardMaterial({ color: 0xffffff })
+                        );
+                        col.position.set(-4.2, 1.7, pz);
+                        villa.add(col);
+                    });
+
+                    group.add(villa);
+
+                } else if (level === 4) {
+                    // --- LEVEL 4: LUXUS-DESIGNER-RESIDENZ MIT POOL ---
+                    const luxury = new THREE.Group();
+                    luxury.position.set(3.5, 0, 0);
+
+                    // Weißer Designer-Kubus
+                    const cube1 = new THREE.Mesh(
+                        new THREE.BoxGeometry(8.5, 6.0, 6.5),
+                        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+                    );
+                    cube1.position.set(0, 3.0, 1.5);
+                    luxury.add(cube1);
+
+                    // Querriegel mit Holz-/Anthrazit-Lamellen
+                    const cube2 = new THREE.Mesh(
+                        new THREE.BoxGeometry(6.8, 3.0, 8.2),
+                        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 })
+                    );
+                    cube2.position.set(-0.6, 4.6, -1.0);
+                    luxury.add(cube2);
+
+                    // Panorama-Glasfronten
+                    const glassFront = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.1, 4.8, 4.2),
+                        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8, roughness: 0.1 })
+                    );
+                    glassFront.position.set(-4.3, 3.0, 1.5);
+                    luxury.add(glassFront);
+
+                    // SWIMMING-POOL im Garten
+                    const poolBasin = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.6, 0.15, 3.4),
+                        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 })
+                    );
+                    poolBasin.position.set(-4.2, 0.15, -2.8);
+                    group.add(poolBasin);
+
+                    const poolWater = new THREE.Mesh(
+                        new THREE.BoxGeometry(4.2, 0.2, 3.0),
                         new THREE.MeshBasicMaterial({ color: 0x06b6d4 })
                     );
-                    pool.position.set(-4.5, 0.4, 0);
-                    hotelGroup.add(pool);
+                    poolWater.position.set(-4.2, 0.2, -2.8);
+                    group.add(poolWater);
 
-                    group.add(hotelGroup);
+                    // Palmen am Pool
+                    const palmTrunk = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.14, 0.2, 3.6, 8),
+                        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 })
+                    );
+                    palmTrunk.position.set(-4.2, 1.8, -4.8);
+                    palmTrunk.rotation.z = -0.12;
+                    group.add(palmTrunk);
+
+                    const palmCrown = new THREE.Mesh(
+                        new THREE.SphereGeometry(1.6, 8, 8),
+                        new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.7 })
+                    );
+                    palmCrown.position.set(-4.4, 3.6, -4.8);
+                    palmCrown.scale.set(1.4, 0.5, 1.4);
+                    group.add(palmCrown);
+
+                    group.add(luxury);
+
+                } else if (level === 5) {
+                    // --- LEVEL 5: GRAND SCHLOSS / PALAIS MIT ECKTÜRMEN & SPRINGBRUNNEN ---
+                    const castle = new THREE.Group();
+                    castle.position.set(4.0, 0, 0);
+
+                    // Zentraler Palasttrakt (Monumentaler Sandstein)
+                    const palace = new THREE.Mesh(
+                        new THREE.BoxGeometry(9.6, 8.2, 8.5),
+                        new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.4 })
+                    );
+                    palace.position.set(0, 4.1, 0);
+                    castle.add(palace);
+
+                    // Mansard-Dach
+                    const roof = new THREE.Mesh(
+                        new THREE.BoxGeometry(10.2, 1.2, 9.2),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+                    );
+                    roof.position.set(0, 8.6, 0);
+                    castle.add(roof);
+
+                    // 2 Majestätische Ecktürme an den Fronten
+                    [-4.5, 4.5].forEach(tz => {
+                        const tower = new THREE.Mesh(
+                            new THREE.CylinderGeometry(1.4, 1.5, 10.5, 16),
+                            new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.4 })
+                        );
+                        tower.position.set(-3.5, 5.25, tz);
+                        castle.add(tower);
+
+                        // Kegeldach in Spielerfarbe mit Goldspitze
+                        const towerCone = new THREE.Mesh(
+                            new THREE.ConeGeometry(1.8, 3.2, 16),
+                            new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.3, metalness: 0.4 })
+                        );
+                        towerCone.position.set(-3.5, 12.0, tz);
+                        castle.add(towerCone);
+
+                        const goldTip = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.3, 8, 8),
+                            new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 })
+                        );
+                        goldTip.position.set(-3.5, 13.8, tz);
+                        castle.add(goldTip);
+                    });
+
+                    // Zierbalkon am Mitteltrakt
+                    const grandBalcony = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.6, 0.4, 4.2),
+                        new THREE.MeshStandardMaterial({ color: 0xfef08a })
+                    );
+                    grandBalcony.position.set(-5.2, 4.8, 0);
+                    castle.add(grandBalcony);
+
+                    // PRUNKVOLLER SPRINGBRUNNEN im Vorgarten
+                    const fountainBasin = new THREE.Mesh(
+                        new THREE.CylinderGeometry(1.9, 2.1, 0.4, 16),
+                        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
+                    );
+                    fountainBasin.position.set(-4.5, 0.2, 0);
+                    group.add(fountainBasin);
+
+                    const fountainWater = new THREE.Mesh(
+                        new THREE.CylinderGeometry(1.7, 1.7, 0.45, 16),
+                        new THREE.MeshBasicMaterial({ color: 0x0284c7 })
+                    );
+                    fountainWater.position.set(-4.5, 0.22, 0);
+                    group.add(fountainWater);
+
+                    const fountainJet = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12, 0.35, 1.6, 8),
+                        new THREE.MeshBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.85 })
+                    );
+                    fountainJet.position.set(-4.5, 1.0, 0);
+                    group.add(fountainJet);
+
+                    // Buchsbaum-Rondelle
+                    [-2.2, 2.2].forEach(bz => {
+                        const hedge = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.7, 0.7, 0.6, 12),
+                            new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 })
+                        );
+                        hedge.position.set(-4.5, 0.3, bz);
+                        group.add(hedge);
+                    });
+
+                    group.add(castle);
                 }
             }
         }
@@ -3846,20 +4086,39 @@
             if (this.ui.sheetMonopolyInfo) {
                 if (tile.type === 'street') {
                     const houseCost = tile.house_cost || 100;
-                    const levelNames = ['Unbebaut', '1 Haus 🏡', '2 Häuser 🏡🏡', '3 Häuser 🏡🏡🏡', 'Luxus-Hotel 🏨'];
-                    const curLevelName = levelNames[Math.min(tile.level || 0, 4)];
+                    const levelNames = [
+                        'Unbebaut (Wildnis)',
+                        'Garten & Holzhütte 🏕️',
+                        'Einfamilienhaus 🏡',
+                        'Gehobene Stadtvilla 🏛️',
+                        'Luxus-Designer-Residenz 🏰',
+                        'Grand Schloss & Palais 👑'
+                    ];
+                    const nextUpgrades = [
+                        'Erschließen & Holzhütte 🏕️',
+                        'Einfamilienhaus 🏡',
+                        'Stadtvilla 🏛️',
+                        'Luxus-Residenz 🏰',
+                        'Grand Schloss 👑'
+                    ];
+                    const curLevelName = levelNames[Math.min(tile.level || 0, 5)];
+                    const nextUpgradeName = nextUpgrades[Math.min(tile.level || 0, 4)];
 
                     if (isMine) {
                         if (groupInfo && groupInfo.isFullMonopoly) {
-                            this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #22c55e;">Vollständiges Viertel!</strong> Miete ist verdoppelt.<br>Aktuell: <em>${curLevelName}</em> (Ausbau: ${houseCost} $)`;
+                            if ((tile.level || 0) < 5) {
+                                this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #22c55e;">Vollständiges Viertel!</strong> Miete verdoppelt.<br>Aktuell: <em>${curLevelName}</em><br>Nächste Stufe: <strong>${nextUpgradeName}</strong> (${houseCost} $)`;
+                            } else {
+                                this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #f59e0b;">MAXIMAL-STUFE ERREICHT!</strong><br>Aktuell: <em>${curLevelName}</em> (Höchste Mietstufe!)`;
+                            }
                         } else {
                             const myCount = groupInfo ? (groupInfo.ownerCounts[this.myPlayerId] || 0) : 0;
                             const total = groupInfo ? groupInfo.total : 3;
-                            this.ui.sheetMonopolyInfo.innerHTML = `⚠️ <strong style="color: #f59e0b;">Viertel unvollständig (${myCount}/${total})</strong><br>Zum Bauen von Häusern musst du alle ${total} Straßen dieses Viertels besitzen.`;
+                            this.ui.sheetMonopolyInfo.innerHTML = `⚠️ <strong style="color: #f59e0b;">Viertel unvollständig (${myCount}/${total})</strong><br>Aktuell: <em>${curLevelName}</em><br>Zum Ausbauen musst du alle ${total} Straßen dieses Viertels besitzen.`;
                         }
                     } else if (owner) {
                         if (groupInfo && groupInfo.isFullMonopoly) {
-                            this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #ef4444;">Vollständiges Viertel von ${owner.name}!</strong><br>Miete verdoppelt! Aktuell: <em>${curLevelName}</em>`;
+                            this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #ef4444;">Viertel-Monopol von ${owner.name}!</strong><br>Miete verdoppelt! Aktuell: <em>${curLevelName}</em>`;
                         } else {
                             this.ui.sheetMonopolyInfo.innerHTML = `🏠 Im Besitz von ${owner.name}. Aktuell: <em>${curLevelName}</em>`;
                         }
@@ -3875,14 +4134,22 @@
             const canBuild = (isMine && tile.type === 'street' && groupInfo && groupInfo.isFullMonopoly && (tile.level || 0) < 5 && !tile.mortgaged);
             this.ui.sheetBtnBuild.style.display = canBuild ? 'block' : 'none';
             if (canBuild) {
-                this.ui.sheetBtnBuild.textContent = `🏗️ HAUS / HOTEL BAUEN (${tile.house_cost || 100} $)`;
+                const upgradeNames = [
+                    'HOLZHÜTTE BAUEN',
+                    'EINFAMILIENHAUS BAUEN',
+                    'STADTVILLA BAUEN',
+                    'LUXUS-RESIDENZ BAUEN',
+                    'GRAND SCHLOSS ERRICHTEN'
+                ];
+                const nextText = upgradeNames[Math.min(tile.level || 0, 4)];
+                this.ui.sheetBtnBuild.textContent = `🏗️ ${nextText} (${tile.house_cost || 100} $)`;
             }
 
             const canSellBuilding = (isMine && tile.type === 'street' && (tile.level || 0) > 1);
             if (this.ui.sheetBtnSellBuilding) {
                 this.ui.sheetBtnSellBuilding.style.display = canSellBuilding ? 'block' : 'none';
                 if (canSellBuilding) {
-                    this.ui.sheetBtnSellBuilding.textContent = `🏚️ HAUS VERKAUFEN (+${Math.round((tile.house_cost || 100) / 2)} $)`;
+                    this.ui.sheetBtnSellBuilding.textContent = `🏚️ STUFE RÜCKBAUEN (+${Math.round((tile.house_cost || 100) / 2)} $)`;
                 }
             }
 
@@ -3996,10 +4263,11 @@
                     item.className = 'hood-group-tile-item';
 
                     let levelText = '';
-                    if (tile.level === 2) levelText = '🏡 1 Haus';
-                    else if (tile.level === 3) levelText = '🏡🏡 2 Häuser';
-                    else if (tile.level === 4) levelText = '🏡🏡🏡 3 Häuser';
-                    else if (tile.level === 5) levelText = '🏨 Hotel';
+                    if (tile.level === 1) levelText = '🏕️ Holzhütte';
+                    else if (tile.level === 2) levelText = '🏡 Einfamilienhaus';
+                    else if (tile.level === 3) levelText = '🏛️ Stadtvilla';
+                    else if (tile.level === 4) levelText = '🏰 Luxus-Residenz';
+                    else if (tile.level === 5) levelText = '👑 Grand Schloss';
 
                     item.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -4025,9 +4293,11 @@
                             actDiv.className = 'hood-group-tile-actions';
 
                             if (canBuild) {
+                                const nextNames = ['', '🏕️ Holzhütte', '🏡 Einfamilienhaus', '🏛️ Stadtvilla', '🏰 Luxus-Residenz', '👑 Grand Schloss'];
+                                const nextTitle = nextNames[(tile.level || 0) + 1] || 'Ausbau';
                                 const btnB = document.createElement('button');
                                 btnB.className = 'hood-btn-primary hood-btn-gold';
-                                btnB.textContent = `🏗️ +1 Haus (${tile.house_cost || 100} $)`;
+                                btnB.textContent = `🏗️ +${nextTitle} (${tile.house_cost || 100} $)`;
                                 btnB.addEventListener('click', async () => {
                                     const res = await this.apiPost('build', { tile_index: tile.index });
                                     if (res.success) {
@@ -4043,7 +4313,7 @@
                             if (canSellBuilding) {
                                 const btnS = document.createElement('button');
                                 btnS.className = 'hood-btn-primary hood-btn-secondary';
-                                btnS.textContent = `🏚️ -1 Haus`;
+                                btnS.textContent = `🏚️ Rückbau (-50%)`;
                                 btnS.addEventListener('click', async () => {
                                     const res = await this.apiPost('sell_building', { tile_index: tile.index });
                                     if (res.success) {
