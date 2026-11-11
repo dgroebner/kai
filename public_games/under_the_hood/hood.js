@@ -138,6 +138,7 @@
                 naviOwner: document.getElementById('navi-owner'),
                 naviPrice: document.getElementById('navi-price'),
                 naviRent: document.getElementById('navi-rent'),
+                naviLevel: document.getElementById('navi-level'),
                 statsPurchasable: document.getElementById('navi-stats-purchasable'),
                 eventBox: document.getElementById('navi-event-box'),
                 eventIcon: document.getElementById('navi-event-icon'),
@@ -148,7 +149,9 @@
                 btnBuy: document.getElementById('btn-buy'),
                 btnPass: document.getElementById('btn-pass'),
                 btnEndTurn: document.getElementById('btn-end-turn'),
+                btnGroupJail: document.getElementById('btn-group-jail'),
                 btnBail: document.getElementById('btn-bail'),
+                btnUseJailCard: document.getElementById('btn-use-jail-card'),
                 btnLookPlot: document.getElementById('btn-look-plot'),
                 btnLookRoad: document.getElementById('btn-look-road'),
                 lobbyModal: document.getElementById('modal-lobby'),
@@ -180,6 +183,13 @@
                 modalJailAlert: document.getElementById('modal-jail-alert'),
                 jailAlertReason: document.getElementById('jail-alert-reason'),
                 btnCloseJailAlert: document.getElementById('btn-close-jail-alert'),
+                modalCardAlert: document.getElementById('modal-card-alert'),
+                cardAlertIcon: document.getElementById('card-alert-icon'),
+                cardAlertBadge: document.getElementById('card-alert-badge'),
+                cardAlertTitle: document.getElementById('card-alert-title'),
+                cardAlertText: document.getElementById('card-alert-text'),
+                cardAlertSub: document.getElementById('card-alert-sub'),
+                btnCloseCardAlert: document.getElementById('btn-close-card-alert'),
                 modalLeaveConfirm: document.getElementById('modal-leave-confirm'),
                 btnConfirmLeave: document.getElementById('btn-confirm-leave'),
                 btnCancelLeave: document.getElementById('btn-cancel-leave'),
@@ -189,6 +199,7 @@
             this.selectedTradePartnerId = null;
             this.lastSeenJailAlert = null;
             this.lastSeenTradeId = null;
+            this.lastSeenCardId = null;
         }
 
         init() {
@@ -3611,6 +3622,16 @@
                 });
             }
 
+            if (this.ui.btnCloseCardAlert) {
+                this.ui.btnCloseCardAlert.addEventListener('click', () => {
+                    if (this.ui.modalCardAlert) this.ui.modalCardAlert.classList.remove('open');
+                });
+            }
+
+            if (this.ui.btnUseJailCard) {
+                this.ui.btnUseJailCard.addEventListener('click', () => this.actionUseJailCard());
+            }
+
             document.getElementById('btn-audio-toggle').addEventListener('click', (e) => {
                 this.audio.enabled = !this.audio.enabled;
                 e.currentTarget.textContent = this.audio.enabled ? '🔊' : '🔇';
@@ -3642,7 +3663,12 @@
 
             const btnRestart = document.getElementById('btn-restart-game');
             if (btnRestart) {
-                btnRestart.addEventListener('click', () => window.location.reload());
+                btnRestart.addEventListener('click', () => {
+                    if (this.roomCode) {
+                        localStorage.removeItem('quarxl_hood_token_' + this.roomCode);
+                    }
+                    window.location.href = './index.php';
+                });
             }
         }
 
@@ -3679,7 +3705,7 @@
                         this.showJoinModal(data.state);
                     }
                 } else if (res.status === 404) {
-                    alert('Dieser Spielraum existiert nicht oder wurde beendet.');
+                    await this.showAlert('Dieser Spielraum existiert nicht oder wurde beendet.', 'RAUM BEENDET', '🏁');
                     window.location.href = './index.php';
                 }
             } catch (e) {}
@@ -3710,6 +3736,133 @@
                 return this.state.players[this.state.current_player_index] || null;
             }
             return this.state.players.find(p => p.id === this.myPlayerId) || null;
+        }
+
+        escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        /**
+         * Zeigt eine stylische In-Game Toast-Benachrichtigung anstelle eines nativen Browser-Alerts
+         * @param {string} message
+         * @param {'info'|'warning'|'error'|'success'} type
+         * @param {number} duration In Millisekunden
+         */
+        showToast(message, type = 'info', duration = 3200) {
+            const container = document.getElementById('hood-toast-container') || document.body;
+            const toast = document.createElement('div');
+            toast.className = `hood-toast toast-${type}`;
+
+            const icons = {
+                info: '🏎️',
+                warning: '⚠️',
+                error: '🛑',
+                success: '✅'
+            };
+            const icon = icons[type] || '🏎️';
+
+            toast.innerHTML = `
+                <span class="hood-toast-icon">${icon}</span>
+                <span class="hood-toast-msg">${this.escapeHtml(message)}</span>
+            `;
+
+            toast.addEventListener('click', () => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 250);
+            });
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.classList.add('fade-out');
+                    setTimeout(() => toast.remove(), 250);
+                }
+            }, duration);
+        }
+
+        /**
+         * Öffnet ein stilvolles modales Bestätigungsfenster (Ersatz für window.confirm)
+         * @param {string} message
+         * @param {string} title
+         * @param {string} icon
+         * @returns {Promise<boolean>}
+         */
+        showConfirm(message, title = 'BESTÄTIGUNG', icon = '⚠️') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal-custom-confirm');
+                const titleEl = document.getElementById('custom-confirm-title');
+                const textEl = document.getElementById('custom-confirm-text');
+                const iconEl = document.getElementById('custom-confirm-icon');
+                const btnOk = document.getElementById('btn-custom-confirm-ok');
+                const btnCancel = document.getElementById('btn-custom-confirm-cancel');
+
+                if (!modal || !btnOk || !btnCancel) {
+                    resolve(window.confirm(message));
+                    return;
+                }
+
+                if (titleEl) titleEl.textContent = title;
+                if (textEl) textEl.textContent = message;
+                if (iconEl) iconEl.textContent = icon;
+
+                const cleanup = (val) => {
+                    modal.classList.remove('open');
+                    btnOk.removeEventListener('click', onOk);
+                    btnCancel.removeEventListener('click', onCancel);
+                    resolve(val);
+                };
+
+                const onOk = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+
+                btnOk.addEventListener('click', onOk);
+                btnCancel.addEventListener('click', onCancel);
+
+                modal.classList.add('open');
+            });
+        }
+
+        /**
+         * Öffnet ein modales Hinweisfenster (Ersatz für blockierende alerts)
+         * @param {string} message
+         * @param {string} title
+         * @param {string} icon
+         * @returns {Promise<void>}
+         */
+        showAlert(message, title = 'HINWEIS', icon = '🏁') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal-custom-alert');
+                const titleEl = document.getElementById('custom-alert-title');
+                const textEl = document.getElementById('custom-alert-text');
+                const iconEl = document.getElementById('custom-alert-icon');
+                const btnOk = document.getElementById('btn-custom-alert-ok');
+
+                if (!modal || !btnOk) {
+                    window.alert(message);
+                    resolve();
+                    return;
+                }
+
+                if (titleEl) titleEl.textContent = title;
+                if (textEl) textEl.textContent = message;
+                if (iconEl) iconEl.textContent = icon;
+
+                const onOk = () => {
+                    modal.classList.remove('open');
+                    btnOk.removeEventListener('click', onOk);
+                    resolve();
+                };
+
+                btnOk.addEventListener('click', onOk);
+                modal.classList.add('open');
+            });
         }
 
         applyState(newState, me) {
@@ -3785,6 +3938,18 @@
                 if (d2 && !this.isRollingAnimation) d2.textContent = newState.last_dice[1];
             }
 
+            // Prüfen ob Spiel beendet ist -> Nur Sieger-Modal anzeigen, keine Werkstatt-Alerts
+            if (newState.status === 'finished' && newState.winner_id) {
+                if (this.ui.modalJailAlert) this.ui.modalJailAlert.classList.remove('open');
+                if (this.ui.modalCardAlert) this.ui.modalCardAlert.classList.remove('open');
+                const winner = newState.players.find(p => p.id === newState.winner_id);
+                if (winner) {
+                    this.ui.winnerText.textContent = `👑 ${winner.name} gewinnt die Hood!`;
+                    this.ui.winnerModal.classList.add('open');
+                }
+                return;
+            }
+
             // Werkstatt / Gefängnis Alert prüfen
             if (newState.jail_alert) {
                 const isMe = (activePlayer && activePlayer.id === this.myPlayerId) || !!newState.is_hotseat;
@@ -3794,6 +3959,36 @@
                         this.ui.jailAlertReason.textContent = newState.jail_alert.reason;
                     }
                     this.ui.modalJailAlert.classList.add('open');
+                }
+            } else if (!newState.jail_alert && this.ui.modalJailAlert) {
+                this.ui.modalJailAlert.classList.remove('open');
+            }
+
+            // Prominentes Ereigniskarten-Modal prüfen (Radio Ticker & Handschuhfach)
+            if (newState.last_card && newState.last_card.text) {
+                const card = newState.last_card;
+                const cardId = card.draw_id || card.text;
+                const isMe = (activePlayer && activePlayer.id === this.myPlayerId) || !!newState.is_hotseat;
+                if (isMe && this.lastSeenCardId !== cardId && this.ui.modalCardAlert) {
+                    this.lastSeenCardId = cardId;
+                    const isRadio = (card.deck === 'radio');
+                    if (this.ui.cardAlertIcon) this.ui.cardAlertIcon.textContent = isRadio ? '📻' : '🗃️';
+                    if (this.ui.cardAlertBadge) this.ui.cardAlertBadge.textContent = isRadio ? 'RADIO TICKER' : 'HANDSCHUHFACH';
+                    if (this.ui.cardAlertTitle) this.ui.cardAlertTitle.textContent = isRadio ? 'NEUE MELDUNG AUS DER HOOD' : 'AUS DEM FACH GEZOGEN';
+                    if (this.ui.cardAlertText) this.ui.cardAlertText.textContent = card.text;
+
+                    if (this.ui.cardAlertSub) {
+                        if (card.action === 'get_out_of_jail_free') {
+                            this.ui.cardAlertSub.innerHTML = '<span style="color: #38bdf8;">🔑 Notfall-Schlüsselkarte in dein Inventar gelegt!</span>';
+                        } else if (card.amount > 0) {
+                            this.ui.cardAlertSub.innerHTML = `<span style="color: #10b981;">💰 +${card.amount} $ gutgeschrieben!</span>`;
+                        } else if (card.amount < 0) {
+                            this.ui.cardAlertSub.innerHTML = `<span style="color: #ef4444;">💸 ${card.amount} $ an die Kasse gezahlt!</span>`;
+                        } else {
+                            this.ui.cardAlertSub.innerHTML = '';
+                        }
+                    }
+                    this.ui.modalCardAlert.classList.add('open');
                 }
             }
 
@@ -3807,14 +4002,6 @@
                 }
             } else if (!newState.active_trade && this.ui.modalTradeIncoming) {
                 this.ui.modalTradeIncoming.classList.remove('open');
-            }
-
-            if (newState.status === 'finished' && newState.winner_id) {
-                const winner = newState.players.find(p => p.id === newState.winner_id);
-                if (winner) {
-                    this.ui.winnerText.textContent = `👑 ${winner.name} gewinnt die Hood!`;
-                    this.ui.winnerModal.classList.add('open');
-                }
             }
 
             if (newState.status === 'lobby') {
@@ -3842,7 +4029,38 @@
                     const owner = state.players.find(p => p.id === tile.owner);
                     this.ui.naviOwner.textContent = owner ? owner.name : 'Frei';
                     this.ui.naviPrice.textContent = `${tile.price || 0} $`;
-                    this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
+
+                    const curRent = this.getTileRent(tile);
+                    if (tile.type === 'club') {
+                        const ownerClubCount = owner ? state.tiles.filter(t => t.type === 'club' && t.owner === owner.id).length : 0;
+                        this.ui.naviRent.textContent = (ownerClubCount >= 2) ? '10x Wurf' : '4x Wurf';
+                    } else {
+                        this.ui.naviRent.textContent = `${curRent} $`;
+                    }
+
+                    if (this.ui.naviLevel) {
+                        if (tile.type === 'street') {
+                            const curLvl = tile.level || 0;
+                            const levelNames = ['Unbebaut', 'Holzhütte', 'Einfamilienhaus', 'Stadtvilla', 'Residenz', 'Schloss'];
+                            const levelIcons = ['0/5', '🏕️ 1/5', '🏡 2/5', '🏛️ 3/5', '🏰 4/5', '👑 5/5'];
+                            this.ui.naviLevel.textContent = tile.mortgaged ? 'Hypothek' : (levelIcons[curLvl] || `${curLvl}/5`);
+                            this.ui.naviLevel.style.color = tile.mortgaged ? '#ef4444' : (curLvl === 5 ? '#f59e0b' : '#38bdf8');
+                            this.ui.naviLevel.title = `Stufe ${curLvl}/5: ${levelNames[curLvl] || ''}`;
+                        } else if (tile.type === 'beach') {
+                            const ownerBeachCount = owner ? state.tiles.filter(t => t.type === 'beach' && t.owner === owner.id).length : 0;
+                            this.ui.naviLevel.textContent = `${ownerBeachCount}/4`;
+                            this.ui.naviLevel.style.color = '#38bdf8';
+                            this.ui.naviLevel.title = `${ownerBeachCount} von 4 Stränden im Besitz`;
+                        } else if (tile.type === 'club') {
+                            const ownerClubCount = owner ? state.tiles.filter(t => t.type === 'club' && t.owner === owner.id).length : 0;
+                            this.ui.naviLevel.textContent = `${ownerClubCount}/2`;
+                            this.ui.naviLevel.style.color = '#c084fc';
+                            this.ui.naviLevel.title = `${ownerClubCount} von 2 Clubs im Besitz`;
+                        } else {
+                            this.ui.naviLevel.textContent = '-';
+                            this.ui.naviLevel.style.color = 'var(--hood-muted)';
+                        }
+                    }
                 } else {
                     this.ui.statsPurchasable.style.display = 'none';
                     this.ui.eventBox.style.display = 'flex';
@@ -3953,14 +4171,22 @@
             this.ui.btnRoll.style.display = 'none';
             this.ui.btnGroupBuy.style.display = 'none';
             this.ui.btnEndTurn.style.display = 'none';
-            this.ui.btnBail.style.display = 'none';
+            if (this.ui.btnGroupJail) this.ui.btnGroupJail.style.display = 'none';
+            if (this.ui.btnBail) this.ui.btnBail.style.display = 'none';
+            if (this.ui.btnUseJailCard) this.ui.btnUseJailCard.style.display = 'none';
 
             if (!isMyTurn) return;
 
             if (state.phase === 'ROLL') {
                 this.ui.btnRoll.style.display = 'flex';
-                if (activePlayer.in_jail && activePlayer.cash >= 50) {
-                    this.ui.btnBail.style.display = 'flex';
+                if (activePlayer.in_jail) {
+                    if (this.ui.btnGroupJail) this.ui.btnGroupJail.style.display = 'flex';
+                    if ((activePlayer.jail_free_cards || 0) > 0 && this.ui.btnUseJailCard) {
+                        this.ui.btnUseJailCard.style.display = 'flex';
+                    }
+                    if (activePlayer.cash >= 50 && this.ui.btnBail) {
+                        this.ui.btnBail.style.display = 'flex';
+                    }
                 }
             } else if (state.phase === 'BUY_DECISION') {
                 this.ui.btnGroupBuy.style.display = 'flex';
@@ -4047,7 +4273,7 @@
             } else {
                 this.isRollingAnimation = false;
                 this.ui.btnRoll.disabled = false;
-                alert(res.message || 'Würfeln fehlgeschlagen');
+                this.showToast(res.message || 'Würfeln fehlgeschlagen', 'error');
             }
         }
 
@@ -4078,6 +4304,19 @@
             const res = await this.apiPost('pay_bail');
             if (res.success) {
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+            } else {
+                this.showToast(res.message || 'Kaution konnte nicht gezahlt werden', 'error');
+            }
+        }
+
+        async actionUseJailCard() {
+            this.audio.playHorn();
+            const res = await this.apiPost('use_jail_free_card');
+            if (res.success) {
+                this.showToast('Notfall-Schlüsselkarte eingesetzt! Hebebühne kostenlos verlassen.', 'success');
+                this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
+            } else {
+                this.showToast(res.message || 'Konnte Schlüsselkarte nicht einsetzen', 'error');
             }
         }
 
@@ -4187,7 +4426,7 @@
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 this.renderPortfolioModal();
             } else {
-                alert(res.message || 'Ausbau nicht möglich');
+                this.showToast(res.message || 'Ausbau nicht möglich', 'error');
             }
         }
 
@@ -4200,13 +4439,14 @@
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 this.renderPortfolioModal();
             } else {
-                alert(res.message || 'Verkauf nicht möglich');
+                this.showToast(res.message || 'Verkauf nicht möglich', 'error');
             }
         }
 
         async actionSellProperty() {
             if (this.selectedTileIndex === null) return;
-            if (!confirm('Möchtest du dieses Grundstück wirklich an die Bank verkaufen? Es ist danach wieder für alle frei.')) {
+            const ok = await this.showConfirm('Möchtest du dieses Grundstück wirklich an die Bank verkaufen? Es ist danach wieder für alle frei.', 'VERKAUF AN DIE BANK', '💰');
+            if (!ok) {
                 return;
             }
             this.audio.playCash();
@@ -4216,7 +4456,7 @@
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 this.renderPortfolioModal();
             } else {
-                alert(res.message || 'Verkauf nicht möglich');
+                this.showToast(res.message || 'Verkauf nicht möglich', 'error');
             }
         }
 
@@ -4229,7 +4469,7 @@
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 this.renderPortfolioModal();
             } else {
-                alert(res.message || 'Aktion nicht möglich');
+                this.showToast(res.message || 'Aktion nicht möglich', 'error');
             }
         }
 
@@ -4462,13 +4702,13 @@
                     const curRent = this.getTileRent(tile);
                     let rentInfoHtml = '';
                     if (!owner) {
-                        rentInfoHtml = `<span style="color: var(--hood-muted);">Miete bei Landung: <strong>0 $</strong> (Frei)</span>`;
+                        rentInfoHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0 $</strong> (Frei)</span>`;
                     } else if (isMortgaged) {
-                        rentInfoHtml = `<span style="color: #ef4444;">Miete bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
+                        rentInfoHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
                     } else if (isMine) {
                         rentInfoHtml = `<span style="color: #22c55e;">Dein Feld (Gegner zahlen <strong>${curRent} $</strong>)</span>`;
                     } else {
-                        rentInfoHtml = `<span style="color: #f59e0b;">Fällige Miete bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curRent} $</strong></span>`;
+                        rentInfoHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curRent} $</strong></span>`;
                     }
 
                     item.innerHTML = `
@@ -4485,9 +4725,8 @@
                             ${isMortgaged ? '<span style="color:#ef4444; font-size:0.68rem; margin-left:0.3rem;">[Hypothek]</span>' : ''}
                         </div>
 
-                        <!-- FÄLLIGE MIETE BEI LANDUNG -->
+                        <!-- FÄLLIGER BETRAG BEI LANDUNG -->
                         <div style="font-size: 0.72rem; padding: 0.2rem 0.45rem; background: rgba(0, 0, 0, 0.28); border-radius: 4px; margin: 0.3rem 0; display: flex; align-items: center; justify-content: space-between;">
-                            <span style="color: var(--hood-muted);">💸 Miete:</span>
                             ${rentInfoHtml}
                         </div>
 
@@ -4532,7 +4771,7 @@
                                             this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                                             this.renderPortfolioModal();
                                         } else {
-                                            alert(res.message || 'Ausbau nicht möglich');
+                                            this.showToast(res.message || 'Ausbau nicht möglich', 'error');
                                         }
                                     });
                                 } else {
@@ -4576,7 +4815,7 @@
                                         this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                                         this.renderPortfolioModal();
                                     } else {
-                                        alert(res.message || 'Verkauf nicht möglich');
+                                        this.showToast(res.message || 'Verkauf nicht möglich', 'error');
                                     }
                                 });
                                 actDiv.appendChild(btnS);
@@ -4666,13 +4905,13 @@
                     const curBeachRent = this.getTileRent(tile);
                     let rentBeachHtml = '';
                     if (!owner) {
-                        rentBeachHtml = `<span style="color: var(--hood-muted);">Miete bei Landung: <strong>0 $</strong> (Frei)</span>`;
+                        rentBeachHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0 $</strong> (Frei)</span>`;
                     } else if (tile.mortgaged) {
-                        rentBeachHtml = `<span style="color: #ef4444;">Miete bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
+                        rentBeachHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
                     } else if (owner.id === activeId) {
                         rentBeachHtml = `<span style="color: #22c55e;">Dein Strand (Gegner zahlen <strong>${curBeachRent} $</strong>)</span>`;
                     } else {
-                        rentBeachHtml = `<span style="color: #f59e0b;">Fällige Miete bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curBeachRent} $</strong></span>`;
+                        rentBeachHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curBeachRent} $</strong></span>`;
                     }
 
                     const itemB = document.createElement('div');
@@ -4692,7 +4931,6 @@
                             ${tile.mortgaged ? '<span style="color:#ef4444; font-size:0.68rem; margin-left:0.3rem;">[Hypothek]</span>' : ''}
                         </div>
                         <div style="font-size: 0.72rem; padding: 0.2rem 0.45rem; background: rgba(0, 0, 0, 0.28); border-radius: 4px; margin: 0.35rem 0; display: flex; align-items: center; justify-content: space-between;">
-                            <span style="color: var(--hood-muted);">💸 Miete:</span>
                             ${rentBeachHtml}
                         </div>
                     `;
@@ -4769,13 +5007,13 @@
 
                     let rentClubHtml = '';
                     if (!owner) {
-                        rentClubHtml = `<span style="color: var(--hood-muted);">Miete bei Landung: <strong>0 $</strong> (Frei)</span>`;
+                        rentClubHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0 $</strong> (Frei)</span>`;
                     } else if (tile.mortgaged) {
-                        rentClubHtml = `<span style="color: #ef4444;">Miete bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
+                        rentClubHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
                     } else if (owner.id === activeId) {
                         rentClubHtml = `<span style="color: #22c55e;">Dein Club (Gegner zahlen <strong>${multiplierText}</strong>)</span>`;
                     } else {
-                        rentClubHtml = `<span style="color: #f59e0b;">Fällige Miete: <strong style="color: #ef4444; font-size: 0.82rem;">${multiplierText}</strong></span>`;
+                        rentClubHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${multiplierText}</strong></span>`;
                     }
 
                     const itemC = document.createElement('div');
@@ -4795,7 +5033,6 @@
                             ${tile.mortgaged ? '<span style="color:#ef4444; font-size:0.68rem; margin-left:0.3rem;">[Hypothek]</span>' : ''}
                         </div>
                         <div style="font-size: 0.72rem; padding: 0.2rem 0.45rem; background: rgba(0, 0, 0, 0.28); border-radius: 4px; margin: 0.35rem 0; display: flex; align-items: center; justify-content: space-between;">
-                            <span style="color: var(--hood-muted);">💸 Miete:</span>
                             ${rentClubHtml}
                         </div>
                     `;
@@ -5002,7 +5239,7 @@
 
         async submitTrade() {
             if (!this.selectedTradePartnerId) {
-                alert('Bitte wähle zuerst einen Handelspartner aus.');
+                this.showToast('Bitte wähle zuerst einen Handelspartner aus.', 'warning');
                 return;
             }
 
@@ -5021,20 +5258,20 @@
             const requestCash = requestCashInput ? parseInt(requestCashInput.value, 10) || 0 : 0;
 
             if (offerTiles.length === 0 && offerCash <= 0) {
-                alert('Du musst mindestens ein Grundstück oder Bargeld anbieten.');
+                this.showToast('Du musst mindestens ein Grundstück oder Bargeld anbieten.', 'warning');
                 return;
             }
             if (requestTiles.length === 0 && requestCash <= 0) {
-                alert('Du musst mindestens ein Grundstück oder Bargeld als Gegenleistung fordern.');
+                this.showToast('Du musst mindestens ein Grundstück oder Bargeld als Gegenleistung fordern.', 'warning');
                 return;
             }
 
             if (offerCash > (sender ? sender.cash : 0)) {
-                alert(`${sender ? sender.name : 'Du'} hast nur ${sender ? sender.cash : 0} $ Bargeld zur Verfügung.`);
+                this.showToast(`${sender ? sender.name : 'Du'} hast nur ${sender ? sender.cash : 0} $ Bargeld zur Verfügung.`, 'warning');
                 return;
             }
             if (requestCash > (partner ? partner.cash : 0)) {
-                alert(`${partner ? partner.name : 'Der Partner'} hat nur ${partner ? partner.cash : 0} $ Bargeld zur Verfügung.`);
+                this.showToast(`${partner ? partner.name : 'Der Partner'} hat nur ${partner ? partner.cash : 0} $ Bargeld zur Verfügung.`, 'warning');
                 return;
             }
 
@@ -5049,12 +5286,12 @@
 
             if (res.success) {
                 this.closeTradeModal();
-                alert(res.message || 'Handelsangebot übermittelt!');
+                this.showToast(res.message || 'Handelsangebot übermittelt!', 'success');
                 if (res.state) {
                     this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 }
             } else {
-                alert(res.message || 'Handel konnte nicht vorgeschlagen werden.');
+                this.showToast(res.message || 'Handel konnte nicht vorgeschlagen werden.', 'error');
             }
         }
 
@@ -5158,7 +5395,7 @@
             if (res.success && res.state) {
                 this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
             } else if (!res.success) {
-                alert(res.message || 'Antwort fehlgeschlagen');
+                this.showToast(res.message || 'Antwort fehlgeschlagen', 'error');
             }
         }
 
@@ -5302,7 +5539,7 @@
                             localStorage.removeItem('kai_gh_host_pin');
                             updateSavedPinField();
                         }
-                        alert(data.message || 'Konnte Raum nicht anlegen');
+                        this.showToast(data.message || 'Konnte Raum nicht anlegen', 'error');
                     }
                 });
             }
@@ -5330,7 +5567,7 @@
 
             document.getElementById('btn-start-game').addEventListener('click', async () => {
                 if (this.state && this.state.players && this.state.players.length < 2) {
-                    alert('Mindestens 2 Spieler oder KI-Fahrer erforderlich, um zu starten!');
+                    this.showToast('Mindestens 2 Spieler oder KI-Fahrer erforderlich, um zu starten!', 'warning');
                     return;
                 }
                 this.audio.playHorn();
@@ -5338,7 +5575,7 @@
                 if (res.success) {
                     this.applyState(res.state, res.state.players.find(p => p.id === this.myPlayerId));
                 } else {
-                    alert(res.message || 'Start fehlgeschlagen');
+                    this.showToast(res.message || 'Start fehlgeschlagen', 'error');
                 }
             });
         }
@@ -5483,7 +5720,7 @@
                                 errBox.textContent = data.message || 'Beitritt fehlgeschlagen.';
                                 errBox.classList.remove('hidden');
                             } else {
-                                alert(data.message || 'Beitritt fehlgeschlagen.');
+                                this.showToast(data.message || 'Beitritt fehlgeschlagen.', 'error');
                             }
                         }
                     } catch (e) {

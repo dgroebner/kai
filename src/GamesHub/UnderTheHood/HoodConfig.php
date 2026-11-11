@@ -469,6 +469,7 @@ class HoodConfig
             ['text' => '🚓 Polizeikontrolle: Alkoholfahrt! Fahre sofort in die Verwahrstelle.', 'action' => 'go_to_jail'],
             ['text' => '🎉 Geburtstags-Cruising: Jeder Mitspieler schenkt dir 20 $.', 'action' => 'collect_from_all', 'amount' => 20],
             ['text' => '🏎️ Luxus-Tuning: Deine Autoserie gewinnt den Best-of-Show. Erhalte 100 $.', 'action' => 'cash', 'amount' => 100],
+            ['text' => '🔑 Notfall-Schlüsselkarte: Du kommst kostenlos aus der Verwahrstelle frei.', 'action' => 'get_out_of_jail_free'],
             ['text' => '🚧 Mautgebühr auf dem Ocean-Highway: Zahle 30 $.', 'action' => 'cash', 'amount' => -30],
         ];
     }

@@ -337,6 +337,7 @@ class HoodService
         $isDoubles = ($d1 === $d2);
         $state['last_dice'] = [$d1, $d2];
         $state['last_card'] = null;
+        $state['jail_alert'] = null;
 
         // Fall A: Spieler sitzt in der Verwahrstelle / Werkstatt
         if ($player['in_jail']) {
@@ -861,6 +862,37 @@ class HoodService
     }
 
     /**
+     * Setzt eine Notfall-Schlüsselkarte ein, um kostenlos aus der Verwahrstelle/Hebebühne zu kommen.
+     */
+    public function useJailFreeCard(int $roomId, int $playerId): array
+    {
+        $room = $this->repo->findRoomById($roomId);
+        if (!$room) {
+            return ['success' => false, 'message' => 'Raum nicht gefunden'];
+        }
+        $state = $room['state'];
+        $player = &$state['players'][$this->getPlayerIndexById($state, $playerId)];
+
+        if (!$player['in_jail']) {
+            return ['success' => false, 'message' => 'Du bist nicht auf der Hebebühne'];
+        }
+        if (($player['jail_free_cards'] ?? 0) < 1) {
+            return ['success' => false, 'message' => 'Du besitzt keine Notfall-Schlüsselkarte'];
+        }
+
+        $player['jail_free_cards']--;
+        $player['in_jail'] = false;
+        $player['jail_turns'] = 0;
+        $state['log'][] = [
+            'time' => date('H:i'),
+            'text' => "🔑 {$player['name']} setzt eine Notfall-Schlüsselkarte ein und verlässt die Hebebühne kostenlos!"
+        ];
+
+        $this->repo->updateRoomState($roomId, $state);
+        return ['success' => true, 'state' => $state];
+    }
+
+    /**
      * Beendet den Zug und schaltet zum nächsten aktiven Spieler weiter.
      */
     public function endTurn(int $roomId, int $playerId, int $depth = 0): array
@@ -910,6 +942,8 @@ class HoodService
 
         $state['current_player_index'] = $nextIdx;
         $state['phase'] = 'ROLL';
+        $state['jail_alert'] = null;
+        $state['last_card'] = null;
         $nextPlayer = $state['players'][$nextIdx];
 
         $state['log'][] = [
@@ -943,6 +977,9 @@ class HoodService
 
         $cardIdx = array_shift($state[$deckKey]);
         $card = $cards[$cardIdx];
+        $card['deck'] = $deck;
+        $state['card_draw_counter'] = ($state['card_draw_counter'] ?? 0) + 1;
+        $card['draw_id'] = $state['card_draw_counter'];
         $state['last_card'] = $card;
         $state['phase'] = 'TURN_END';
 
@@ -1166,6 +1203,8 @@ class HoodService
             $winner = reset($activePlayers);
             $state['status'] = 'finished';
             $state['winner_id'] = $winner['id'];
+            $state['jail_alert'] = null;
+            $state['last_card'] = null;
             $state['log'][] = [
                 'time' => date('H:i'),
                 'text' => "👑 {$winner['name']} beherrscht die gesamte Hood und gewinnt das Spiel!"

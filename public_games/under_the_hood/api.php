@@ -282,6 +282,13 @@ try {
         hoodRespond(200, $res);
     }
 
+    // 11b. NOTFALL-SCHLÜSSELKARTE EINLÖSEN
+    if ($action === 'use_jail_free_card') {
+        hoodRequirePost();
+        $res = $service->useJailFreeCard($roomId, $actingPlayerId);
+        hoodRespond(200, $res);
+    }
+
     // 12. ZUG BEENDEN
     if ($action === 'end_turn') {
         hoodRequirePost();

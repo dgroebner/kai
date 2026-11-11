@@ -99,8 +99,12 @@ $csrfToken = Auth::csrfToken();
                         <div class="val" id="navi-rent">0 $</div>
                     </div>
                     <div class="hood-navi-stat-box">
+                        <div class="label">Stufe</div>
+                        <div class="val" id="navi-level" style="font-size: 0.8rem; color: #38bdf8; font-weight: 700;">0/5</div>
+                    </div>
+                    <div class="hood-navi-stat-box">
                         <div class="label">Besitzer</div>
-                        <div class="val" id="navi-owner" style="font-size: 0.85rem;">Frei</div>
+                        <div class="val" id="navi-owner" style="font-size: 0.82rem;">Frei</div>
                     </div>
                 </div>
 
@@ -134,10 +138,15 @@ $csrfToken = Auth::csrfToken();
                     </button>
                 </div>
 
-                <!-- 3. Kaution zahlen -->
-                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-bail" style="display: none;">
-                    <span>💸</span> KAUTION ZAHLEN (50 $)
-                </button>
+                <!-- 3. Kaution zahlen & Notfall-Schlüsselkarte einlösen -->
+                <div id="btn-group-jail" style="display: none; flex-direction: column; gap: 0.4rem; width: 100%;">
+                    <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-use-jail-card" style="display: none; background: #0284c7; border-color: #38bdf8;">
+                        <span>🔑</span> SCHLÜSSELKARTE NUTZEN (Kostenlos)
+                    </button>
+                    <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-bail" style="display: none;">
+                        <span>💸</span> KAUTION ZAHLEN (50 $)
+                    </button>
+                </div>
 
                 <!-- 4. Zug beenden -->
                 <button type="button" class="hood-btn-primary" id="btn-end-turn" style="display: none;">
@@ -438,6 +447,24 @@ $csrfToken = Auth::csrfToken();
         </div>
     </div>
 
+    <!-- Prominentes Ereigniskarten Modal (Radio Ticker / Handschuhfach) -->
+    <div class="hood-modal-backdrop" id="modal-card-alert">
+        <div class="hood-modal" style="max-width: 480px; width: 95%; text-align: center; padding: 1.6rem; border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: 0 0 35px rgba(245, 158, 11, 0.25);">
+            <div id="card-alert-icon" style="font-size: 3.2rem; margin-bottom: 0.4rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));">📻</div>
+            <div id="card-alert-badge" style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hood-gold); margin-bottom: 0.35rem;">EREIGNISKARTE</div>
+            <h2 class="hood-modal-title" id="card-alert-title" style="margin-bottom: 0.85rem; font-size: 1.35rem; color: #f8fafc;">RADIO TICKER</h2>
+            
+            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+                <p id="card-alert-text" style="font-size: 1.05rem; line-height: 1.45; color: #ffffff; margin: 0; font-weight: 600;"></p>
+                <div id="card-alert-sub" style="margin-top: 0.5rem; font-size: 0.85rem; font-weight: 700;"></div>
+            </div>
+
+            <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-close-card-alert" style="width: 100%; padding: 0.8rem; font-size: 0.95rem;">
+                🏁 WEITERFAHREN
+            </button>
+        </div>
+    </div>
+
     <!-- Werkstatt / Gefängnis Alert Modal -->
     <div class="hood-modal-backdrop" id="modal-jail-alert">
         <div class="hood-modal" style="max-width: 450px; width: 95%; text-align: center; padding: 1.5rem;">
@@ -446,6 +473,38 @@ $csrfToken = Auth::csrfToken();
             <p id="jail-alert-reason" style="font-size: 0.95rem; line-height: 1.4; color: #f1f5f9; margin-bottom: 1.25rem; font-weight: 600;"></p>
             <button type="button" class="hood-btn-primary" id="btn-close-jail-alert" style="width: 100%;">
                 🔧 ALLES KLAR
+            </button>
+        </div>
+    </div>
+
+    <!-- In-Game Toast Notifications -->
+    <div class="hood-toast-container" id="hood-toast-container"></div>
+
+    <!-- Universelles Spiel-Bestätigungsmodal (Ersatz für window.confirm) -->
+    <div class="hood-modal-backdrop" id="modal-custom-confirm">
+        <div class="hood-modal" style="max-width: 440px; width: 95%; text-align: center; padding: 1.5rem;">
+            <div id="custom-confirm-icon" style="font-size: 2.5rem; margin-bottom: 0.3rem;">⚠️</div>
+            <h2 class="hood-modal-title" id="custom-confirm-title" style="margin-bottom: 0.5rem;">BESTÄTIGUNG</h2>
+            <p id="custom-confirm-text" style="font-size: 0.9rem; color: var(--hood-muted); margin-bottom: 1.25rem; line-height: 1.4;"></p>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-custom-confirm-ok" style="flex: 1;">
+                    BESTÄTIGEN
+                </button>
+                <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-custom-confirm-cancel" style="flex: 1;">
+                    ABBRECHEN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universelles Spiel-Hinweismodal (Ersatz für blockierende alerts) -->
+    <div class="hood-modal-backdrop" id="modal-custom-alert">
+        <div class="hood-modal" style="max-width: 440px; width: 95%; text-align: center; padding: 1.5rem;">
+            <div id="custom-alert-icon" style="font-size: 2.5rem; margin-bottom: 0.3rem;">🏁</div>
+            <h2 class="hood-modal-title" id="custom-alert-title" style="margin-bottom: 0.5rem;">HINWEIS</h2>
+            <p id="custom-alert-text" style="font-size: 0.9rem; color: #f1f5f9; margin-bottom: 1.25rem; line-height: 1.4; font-weight: 600;"></p>
+            <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-custom-alert-ok" style="width: 100%;">
+                VERSTANDEN
             </button>
         </div>
     </div>

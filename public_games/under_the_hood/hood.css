@@ -214,8 +214,8 @@ body.hood-body {
 /* Tacho & GPS Infozeile */
 .hood-navi-stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.4rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.35rem;
     background: rgba(0, 0, 0, 0.35);
     border-radius: 10px;
     padding: 0.4rem 0.5rem;
@@ -664,4 +664,88 @@ body.hood-body {
     padding: 0.35rem 0.45rem;
     font-size: 0.72rem;
     font-weight: 700;
+}
+
+/* ==========================================================================
+   IN-GAME TOAST NOTIFICATIONS & FEEDBACK SYSTEM
+   ========================================================================== */
+.hood-toast-container {
+    position: fixed;
+    top: 4.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+    width: 90%;
+    max-width: 440px;
+}
+
+.hood-toast {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    color: #f8fafc;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    pointer-events: auto;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: hoodToastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hood-toast.toast-error {
+    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.hood-toast.toast-warning {
+    border-color: rgba(245, 158, 11, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.hood-toast.toast-success {
+    border-color: rgba(16, 185, 129, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.hood-toast.toast-info {
+    border-color: rgba(56, 189, 248, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.3);
+}
+
+.hood-toast-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.hood-toast-msg {
+    flex: 1;
+    line-height: 1.35;
+}
+
+.hood-toast.fade-out {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+}
+
+@keyframes hoodToastIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-15px) scale(0.92);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
