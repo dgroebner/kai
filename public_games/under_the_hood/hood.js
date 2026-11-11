@@ -268,10 +268,10 @@
             const ambient = new THREE.AmbientLight(0xe0f2fe, 0.7);
             this.scene.add(ambient);
 
-            // Ozean rund um die Küste
+            // Ozean rund um die Küste (mit tropischer Kaustik-Wassertextur)
             const oceanGeo = new THREE.PlaneGeometry(2800, 2800);
             const oceanMat = new THREE.MeshStandardMaterial({
-                color: 0x0284c7,
+                map: this.getOceanTexture(),
                 roughness: 0.15,
                 metalness: 0.35,
             });
@@ -280,10 +280,10 @@
             ocean.position.y = -2;
             this.scene.add(ocean);
 
-            // Stabile grüne Insel-Landschaft (Ebene Basis bei y = -0.05, garantiert kein Durchdrücken durch die Straße bei y = 0.25!)
+            // Stabile grüne Insel-Landschaft (Ebene Basis bei y = -0.05 mit mehrschichtiger Wiesentextur)
             const islandGeo = new THREE.PlaneGeometry(1200, 1200);
             const islandMat = new THREE.MeshStandardMaterial({
-                color: 0x16a34a,
+                map: this.getGrassTexture(),
                 roughness: 0.85,
             });
             const island = new THREE.Mesh(islandGeo, islandMat);
@@ -389,6 +389,10 @@
             const yellowLinePositions = [];
             const whiteLinePositions = [];
 
+            const roadUVs = [];
+            const walkUVs = [];
+            const curbUVs = [];
+
             const roadIndices = [];
             const walkIndices = [];
             const curbIndices = [];
@@ -410,17 +414,29 @@
                 roadPositions.push(rL.x, 0.25, rL.z);
                 roadPositions.push(rR.x, 0.25, rR.z);
 
+                const uCoordRoad = i * 0.45;
+                roadUVs.push(0, uCoordRoad);
+                roadUVs.push(1, uCoordRoad);
+
                 // 2. Bordsteinkante aus Granit (Höhe y = 0.32, Breite 0.6)
                 const cL = rR.clone();
                 const cR = p.clone().add(n.clone().multiplyScalar(roadWidth / 2 + 0.6));
                 curbPositions.push(cL.x, 0.32, cL.z);
                 curbPositions.push(cR.x, 0.32, cR.z);
 
+                const uCoordCurb = i * 1.5;
+                curbUVs.push(0, uCoordCurb);
+                curbUVs.push(1, uCoordCurb);
+
                 // 3. Gehwegband rechts (Höhe y = 0.38 aus Naturstein)
                 const wL = cR.clone();
                 const wR = p.clone().add(n.clone().multiplyScalar(roadWidth / 2 + walkWidth));
                 walkPositions.push(wL.x, 0.38, wL.z);
                 walkPositions.push(wR.x, 0.38, wR.z);
+
+                const uCoordWalk = i * 0.6;
+                walkUVs.push(0, uCoordWalk);
+                walkUVs.push(1, uCoordWalk);
 
                 // 4. Fahrbahnmarkierungen: Durchgezogene weiße Außenlinie rechts & gestrichelte gelbe Mittellinie
                 if (i < SAMPLES) {
@@ -463,38 +479,45 @@
                 }
             }
 
-            // Nahtlose Asphalt-Straße
+            // Nahtlose Asphalt-Straße (mit prozeduraler Tarmac-Textur & Reifenspuren)
             const roadGeo = new THREE.BufferGeometry();
             roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(roadPositions, 3));
+            roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(roadUVs, 2));
             roadGeo.setIndex(roadIndices);
             roadGeo.computeVertexNormals();
 
             const roadMat = new THREE.MeshStandardMaterial({
-                color: 0x22262e,
-                roughness: 0.88,
+                map: this.getAsphaltTexture(),
+                roughness: 0.85,
+                metalness: 0.1,
             });
             const roadMesh = new THREE.Mesh(roadGeo, roadMat);
             roadMesh.receiveShadow = true;
             this.scene.add(roadMesh);
 
-            // Bordstein aus Granit
+            // Bordstein aus Granit (mit Block-Fugen-Textur)
             const curbGeo = new THREE.BufferGeometry();
             curbGeo.setAttribute('position', new THREE.Float32BufferAttribute(curbPositions, 3));
+            curbGeo.setAttribute('uv', new THREE.Float32BufferAttribute(curbUVs, 2));
             curbGeo.setIndex(curbIndices);
             curbGeo.computeVertexNormals();
-            const curbMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+            const curbMat = new THREE.MeshStandardMaterial({
+                map: this.getCurbTexture(),
+                roughness: 0.75,
+            });
             const curbMesh = new THREE.Mesh(curbGeo, curbMat);
             this.scene.add(curbMesh);
 
-            // Nahtloser Gehweg aus hellem Naturstein
+            // Nahtloser Gehweg aus hellem Naturstein (mit Pflasterplatten-Textur)
             const walkGeo = new THREE.BufferGeometry();
             walkGeo.setAttribute('position', new THREE.Float32BufferAttribute(walkPositions, 3));
+            walkGeo.setAttribute('uv', new THREE.Float32BufferAttribute(walkUVs, 2));
             walkGeo.setIndex(walkIndices);
             walkGeo.computeVertexNormals();
 
             const walkMat = new THREE.MeshStandardMaterial({
-                color: 0xe2e8f0,
-                roughness: 0.75,
+                map: this.getSidewalkTexture(),
+                roughness: 0.78,
             });
             const walkMesh = new THREE.Mesh(walkGeo, walkMat);
             walkMesh.receiveShadow = true;
@@ -804,16 +827,22 @@
             this.carHoodMesh.castShadow = true;
             this.cockpitRig.add(this.carHoodMesh);
 
-            // 2. Sportlich abgesenktes Armaturenbrett (dezentes schwarzes Nappaleder, blockiert nicht das Sichtfeld!)
+            // 2. Sportlich abgesenktes Armaturenbrett (hochwertige Carbon-Fiber-Webstruktur, blockiert nicht das Sichtfeld!)
             const dashGeo = new THREE.BoxGeometry(3.5, 0.3, 1.1);
-            const dashMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+            const dashMat = new THREE.MeshStandardMaterial({
+                map: this.getCarbonFiberTexture(),
+                roughness: 0.65,
+                metalness: 0.35,
+            });
             const dash = new THREE.Mesh(dashGeo, dashMat);
             dash.position.set(0, 0.52, -0.85);
             this.cockpitRig.add(dash);
 
-            // 3. Digitales Tacho-Kombiinstrument vor dem Fahrer (strahlt dezent in Cyan)
+            // 3. Digitales Tacho-Kombiinstrument vor dem Fahrer (fotorealistisches digitales OLED-Cockpit mit Speedo & RPM)
             const clusterGeo = new THREE.BoxGeometry(0.72, 0.2, 0.04);
-            const clusterMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+            const clusterMat = new THREE.MeshBasicMaterial({
+                map: this.getDashboardDisplayTexture(),
+            });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
             cluster.position.set(-0.7, 0.78, -0.7);
             cluster.rotation.x = -0.25;
@@ -965,6 +994,483 @@
             } else {
                 this.renderSpecialPlot(group, tileType, tileName, tileIndex);
             }
+        }
+
+        // ---------------------------------------------------------------------
+        // TEXTUR-GENERATOREN (FOTOREALISTISCHE PROCEDURAL-TEXTUREN FÜR THREE.JS)
+        // ---------------------------------------------------------------------
+        getAsphaltTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['asphalt']) return this._texCache['asphalt'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Grundton: Authentischer dunkler Asphalt / Tarmac
+            ctx.fillStyle = '#1e2229';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Feines Splitt-/Gesteins-Rauschen (helle und dunkle Körner)
+            const imgData = ctx.getImageData(0, 0, 512, 512);
+            const d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+                const noise = (Math.random() - 0.5) * 36;
+                d[i] = Math.min(255, Math.max(0, d[i] + noise));
+                d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + noise));
+                d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + noise));
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            // Reifenspuren / Reifenabrieb (zwei leicht dunklere Spurrillen in Längsrichtung)
+            const tireTrack1 = ctx.createLinearGradient(80, 0, 200, 0);
+            tireTrack1.addColorStop(0, 'rgba(15, 17, 21, 0)');
+            tireTrack1.addColorStop(0.5, 'rgba(15, 17, 21, 0.28)');
+            tireTrack1.addColorStop(1, 'rgba(15, 17, 21, 0)');
+            ctx.fillStyle = tireTrack1;
+            ctx.fillRect(80, 0, 120, 512);
+
+            const tireTrack2 = ctx.createLinearGradient(312, 0, 432, 0);
+            tireTrack2.addColorStop(0, 'rgba(15, 17, 21, 0)');
+            tireTrack2.addColorStop(0.5, 'rgba(15, 17, 21, 0.28)');
+            tireTrack2.addColorStop(1, 'rgba(15, 17, 21, 0)');
+            ctx.fillStyle = tireTrack2;
+            ctx.fillRect(312, 0, 120, 512);
+
+            // Subtile Teernaht / Asphalt-Längsfuge
+            ctx.strokeStyle = 'rgba(10, 12, 16, 0.35)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(256, 0);
+            ctx.lineTo(256, 512);
+            ctx.stroke();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['asphalt'] = tex;
+            return tex;
+        }
+
+        getSidewalkTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['sidewalk']) return this._texCache['sidewalk'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Gehweg-Platten aus hellem Naturstein / Betonpflaster (8x8 Platten im Quadrat)
+            ctx.fillStyle = '#64748b'; // Fugenfarbe (dunkler Mörtel)
+            ctx.fillRect(0, 0, 512, 512);
+
+            const tiles = 8;
+            const size = 512 / tiles;
+            for (let r = 0; r < tiles; r++) {
+                for (let c = 0; c < tiles; c++) {
+                    const x = c * size;
+                    const y = r * size;
+                    const v = Math.floor((Math.random() - 0.5) * 18);
+                    const red = 226 + v;
+                    const green = 232 + v;
+                    const blue = 240 + v;
+                    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.fillRect(x + 2, y + 2, size - 4, size - 4);
+
+                    // Subtile Lichtkante oben/links
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                    ctx.fillRect(x + 2, y + 2, size - 4, 2);
+                    ctx.fillRect(x + 2, y + 2, 2, size - 4);
+
+                    // Subtiler Schatten unten/rechts an Fugenrand
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
+                    ctx.fillRect(x + 2, y + size - 4, size - 4, 2);
+                    ctx.fillRect(x + size - 4, y + 2, 2, size - 4);
+                }
+            }
+
+            // Gesteinskörnung
+            const imgData = ctx.getImageData(0, 0, 512, 512);
+            const d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+                const grain = (Math.random() - 0.5) * 16;
+                d[i] = Math.min(255, Math.max(0, d[i] + grain));
+                d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + grain));
+                d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + grain));
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['sidewalk'] = tex;
+            return tex;
+        }
+
+        getCurbTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['curb']) return this._texCache['curb'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(0, 0, 256, 64);
+
+            for (let x = 0; x < 256; x += 32) {
+                const shade = Math.floor((Math.random() - 0.5) * 20);
+                ctx.fillStyle = `rgb(${155 + shade}, ${168 + shade}, ${185 + shade})`;
+                ctx.fillRect(x + 1, 0, 30, 64);
+
+                // Lichtkante oben
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.fillRect(x + 1, 0, 30, 4);
+
+                // Fuge
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(x, 0, 2, 64);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['curb'] = tex;
+            return tex;
+        }
+
+        getGrassTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['grass']) return this._texCache['grass'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Satter grüner Wiesengrund
+            ctx.fillStyle = '#15803d';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Organische Flecken (Multi-Frequenz-Nuancen)
+            const colors = ['#16a34a', '#14532d', '#15803d', '#166534', '#1e3a1e', '#22c55e'];
+            for (let i = 0; i < 400; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const r = 8 + Math.random() * 28;
+                ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                ctx.globalAlpha = 0.25;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            // Feine Grashalm-Sprenkel
+            for (let i = 0; i < 1500; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                ctx.fillStyle = Math.random() > 0.4 ? '#22c55e' : '#14532d';
+                ctx.fillRect(x, y, 1.5, 3 + Math.random() * 3);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(50, 50);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['grass'] = tex;
+            return tex;
+        }
+
+        getOceanTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['ocean']) return this._texCache['ocean'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Tiefes tropisches Türkisblau
+            const grad = ctx.createLinearGradient(0, 0, 512, 512);
+            grad.addColorStop(0, '#0369a1');
+            grad.addColorStop(0.5, '#0284c7');
+            grad.addColorStop(1, '#0ea5e9');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Kaustik-Netzwerk / Wellenkräuseln
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+            ctx.lineWidth = 2.5;
+            for (let i = 0; i < 40; i++) {
+                ctx.beginPath();
+                const y = i * 14;
+                for (let x = 0; x <= 512; x += 16) {
+                    const waveY = y + Math.sin((x + i * 25) * 0.05) * 6 + Math.cos(x * 0.08) * 4;
+                    if (x === 0) ctx.moveTo(x, waveY);
+                    else ctx.lineTo(x, waveY);
+                }
+                ctx.stroke();
+            }
+
+            // Gischt- & Schaumakzente
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            for (let j = 0; j < 80; j++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(70, 70);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['ocean'] = tex;
+            return tex;
+        }
+
+        getModernFacadeTexture(colorHex = '#f8fafc') {
+            const key = `facade_${colorHex}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = colorHex;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Horizontale Geschoss-Fugen
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.12)';
+            ctx.lineWidth = 3;
+            for (let y = 128; y < 512; y += 128) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(512, y);
+                ctx.stroke();
+            }
+
+            // Große moderne Panorama-Fensterreihen
+            for (let row = 0; row < 3; row++) {
+                const py = 35 + row * 135;
+                for (let col = 0; col < 3; col++) {
+                    const px = 30 + col * 155;
+                    const winGrad = ctx.createLinearGradient(px, py, px + 130, py + 90);
+                    winGrad.addColorStop(0, '#0a1020');
+                    winGrad.addColorStop(0.5, '#1e293b');
+                    winGrad.addColorStop(1, '#0f172a');
+                    ctx.fillStyle = winGrad;
+                    ctx.fillRect(px, py, 130, 90);
+
+                    ctx.strokeStyle = '#020617';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(px, py, 130, 90);
+
+                    // Innere Beleuchtungs-Atmosphäre
+                    if ((row + col) % 2 === 0) {
+                        ctx.fillStyle = 'rgba(254, 240, 138, 0.22)';
+                        ctx.fillRect(px + 10, py + 40, 110, 42);
+                    }
+
+                    // Schräge Lichtreflexion über das Glas
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                    ctx.beginPath();
+                    ctx.moveTo(px + 15, py);
+                    ctx.lineTo(px + 45, py);
+                    ctx.lineTo(px + 20, py + 90);
+                    ctx.lineTo(px, py + 90);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getRoofTilesTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['roof_tiles']) return this._texCache['roof_tiles'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, 256, 256);
+
+            const rowH = 16;
+            const tileW = 32;
+            for (let y = 0; y < 256; y += rowH) {
+                const shift = ((y / rowH) % 2) * (tileW / 2);
+                for (let x = -tileW; x < 256 + tileW; x += tileW) {
+                    const tx = x + shift;
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(tx + 1, y + 1, tileW - 2, rowH - 2);
+
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(tx + 1, y + rowH - 3, tileW - 2, 2);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.fillRect(tx + 1, y + 1, tileW - 2, 1);
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(3, 3);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['roof_tiles'] = tex;
+            return tex;
+        }
+
+        getCarbonFiberTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['carbon']) return this._texCache['carbon'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#18181b';
+            ctx.fillRect(0, 0, 64, 64);
+
+            const s = 16;
+            for (let y = 0; y < 64; y += s) {
+                for (let x = 0; x < 64; x += s) {
+                    const isDiag = ((x / s) + (y / s)) % 2 === 0;
+                    const grad = ctx.createLinearGradient(x, y, x + s, y + s);
+                    if (isDiag) {
+                        grad.addColorStop(0, '#27272a');
+                        grad.addColorStop(0.5, '#3f3f46');
+                        grad.addColorStop(1, '#18181b');
+                    } else {
+                        grad.addColorStop(0, '#18181b');
+                        grad.addColorStop(0.5, '#09090b');
+                        grad.addColorStop(1, '#27272a');
+                    }
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x, y, s, s);
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(16, 6);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['carbon'] = tex;
+            return tex;
+        }
+
+        getDashboardDisplayTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['cluster']) return this._texCache['cluster'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 140;
+            const ctx = canvas.getContext('2d');
+
+            // OLED Tiefschwarz
+            ctx.fillStyle = '#060913';
+            ctx.fillRect(0, 0, 512, 140);
+
+            // Cyan Rahmen
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(2, 2, 508, 136);
+
+            // LINKS: DREHZAHL-BOGEN
+            ctx.save();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(95, 75, 48, Math.PI * 0.75, Math.PI * 2.25);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#00f5ff';
+            ctx.shadowColor = '#00f5ff';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(95, 75, 48, Math.PI * 0.75, Math.PI * 1.7);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ef4444';
+            ctx.shadowColor = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(95, 75, 48, Math.PI * 1.7, Math.PI * 2.15);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('SPORT', 95, 80);
+
+            // MITTE: SPEEDOMETER & GANG
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText('D 5', 256, 32);
+
+            ctx.shadowColor = '#00f5ff';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '900 58px "Arial Black", sans-serif';
+            ctx.fillText('124', 256, 75);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText('KM / H', 256, 115);
+            ctx.restore();
+
+            // RECHTS: REICHWEITE & AKKU
+            ctx.fillStyle = '#10b981';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('BATTERY', 420, 38);
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(360, 52, 120, 14);
+            ctx.fillStyle = '#10b981';
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(362, 54, 98, 10);
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText('420 KM', 420, 95);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '11px sans-serif';
+            ctx.fillText('RANGE', 420, 116);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['cluster'] = tex;
+            return tex;
         }
 
         // ---------------------------------------------------------------------
@@ -2392,7 +2898,7 @@
                 // 1. UNBEBAUT / ZU VERKAUFEN (EXAKT WIE IM REFERENZBILD 1!)
                 // =============================================================
                 // Verwilderter Boden mit Erdflecken, hohem Unkraut und Gestrüpp
-                const wildGroundMat = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.95 });
+                const wildGroundMat = new THREE.MeshStandardMaterial({ map: this.getGrassTexture(), roughness: 0.95 });
                 const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), wildGroundMat);
                 plot.position.set(0, 0.18, 0);
                 plot.receiveShadow = true;
@@ -2479,7 +2985,7 @@
                 // 2. GEKAUFT: GEPFLEGTER ZIERRASEN & METALLZAUN (BILD 2)
                 // =============================================================
                 // Perfekt gemähter, satter englischer Rasen
-                const lawnMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.75 });
+                const lawnMat = new THREE.MeshStandardMaterial({ map: this.getGrassTexture(), roughness: 0.75 });
                 const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), lawnMat);
                 plot.position.set(0, 0.18, 0);
                 plot.receiveShadow = true;
@@ -2536,7 +3042,7 @@
                 group.add(gate);
 
                 // Gepflasterter Gartenweg durch das Tor
-                const pathMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.8 });
+                const pathMat = new THREE.MeshStandardMaterial({ map: this.getSidewalkTexture(), roughness: 0.8 });
                 const gardenPath = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 2.2), pathMat);
                 gardenPath.position.set(-2.5, 0.38, 0);
                 group.add(gardenPath);
@@ -2625,18 +3131,18 @@
                     const house = new THREE.Group();
                     house.position.set(3.2, 0, 0);
 
-                    // Heller Massivbau
+                    // Heller Massivbau mit moderner Fassadentextur
                     const body = new THREE.Mesh(
                         new THREE.BoxGeometry(6.8, 3.8, 5.4),
-                        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 })
+                        new THREE.MeshStandardMaterial({ map: this.getModernFacadeTexture('#f8fafc'), roughness: 0.35 })
                     );
                     body.position.set(0, 1.9, 0);
                     house.add(body);
 
-                    // Anthrazitfarbenes Schieferdach
+                    // Anthrazitfarbenes Schieferdach mit Ziegeltextur
                     const roof = new THREE.Mesh(
                         new THREE.BoxGeometry(7.4, 0.55, 6.0),
-                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+                        new THREE.MeshStandardMaterial({ map: this.getRoofTilesTexture(), roughness: 0.4 })
                     );
                     roof.position.set(0, 4.0, 0);
                     house.add(roof);
@@ -2660,7 +3166,7 @@
                     // Gepflasterter Gartenweg
                     const path = new THREE.Mesh(
                         new THREE.BoxGeometry(3.5, 0.08, 1.4),
-                        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 })
+                        new THREE.MeshStandardMaterial({ map: this.getSidewalkTexture(), roughness: 0.8 })
                     );
                     path.position.set(-4.5, 0.15, 0);
                     group.add(path);
@@ -2672,18 +3178,18 @@
                     const villa = new THREE.Group();
                     villa.position.set(3.5, 0, 0);
 
-                    // Erdgeschoss
+                    // Erdgeschoss mit Fassadentextur
                     const groundFloor = new THREE.Mesh(
                         new THREE.BoxGeometry(8.2, 3.4, 7.2),
-                        new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 })
+                        new THREE.MeshStandardMaterial({ map: this.getModernFacadeTexture('#f1f5f9'), roughness: 0.3 })
                     );
                     groundFloor.position.set(0, 1.7, 0);
                     villa.add(groundFloor);
 
-                    // Obergeschoss
+                    // Obergeschoss mit Fassadentextur
                     const upperFloor = new THREE.Mesh(
                         new THREE.BoxGeometry(7.4, 3.0, 6.4),
-                        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 })
+                        new THREE.MeshStandardMaterial({ map: this.getModernFacadeTexture('#ffffff'), roughness: 0.25 })
                     );
                     upperFloor.position.set(0.3, 4.9, 0);
                     villa.add(upperFloor);
@@ -2728,10 +3234,10 @@
                     const luxury = new THREE.Group();
                     luxury.position.set(3.5, 0, 0);
 
-                    // Weißer Designer-Kubus
+                    // Weißer Designer-Kubus mit Fassadentextur
                     const cube1 = new THREE.Mesh(
                         new THREE.BoxGeometry(8.5, 6.0, 6.5),
-                        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+                        new THREE.MeshStandardMaterial({ map: this.getModernFacadeTexture('#ffffff'), roughness: 0.2 })
                     );
                     cube1.position.set(0, 3.0, 1.5);
                     luxury.add(cube1);
@@ -2762,7 +3268,7 @@
 
                     const poolWater = new THREE.Mesh(
                         new THREE.BoxGeometry(4.2, 0.2, 3.0),
-                        new THREE.MeshBasicMaterial({ color: 0x06b6d4 })
+                        new THREE.MeshBasicMaterial({ map: this.getOceanTexture() })
                     );
                     poolWater.position.set(-2.8, 0.2, -2.8);
                     group.add(poolWater);
@@ -2791,18 +3297,18 @@
                     const castle = new THREE.Group();
                     castle.position.set(4.0, 0, 0);
 
-                    // Zentraler Palasttrakt (Monumentaler Sandstein)
+                    // Zentraler Palasttrakt (Monumentaler Sandstein mit Textur)
                     const palace = new THREE.Mesh(
                         new THREE.BoxGeometry(9.6, 8.2, 8.5),
-                        new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.4 })
+                        new THREE.MeshStandardMaterial({ map: this.getModernFacadeTexture('#fef08a'), roughness: 0.4 })
                     );
                     palace.position.set(0, 4.1, 0);
                     castle.add(palace);
 
-                    // Mansard-Dach
+                    // Mansard-Dach mit Ziegeltextur
                     const roof = new THREE.Mesh(
                         new THREE.BoxGeometry(10.2, 1.2, 9.2),
-                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+                        new THREE.MeshStandardMaterial({ map: this.getRoofTilesTexture(), roughness: 0.4 })
                     );
                     roof.position.set(0, 8.6, 0);
                     castle.add(roof);
