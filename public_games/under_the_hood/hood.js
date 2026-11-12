@@ -479,7 +479,7 @@
                 }
             }
 
-            // Nahtlose Asphalt-Straße (mit prozeduraler Tarmac-Textur & Reifenspuren)
+            // Nahtlose Asphalt-Straße (mit echter ComfyUI PBR-Textur + Normal-Map)
             const roadGeo = new THREE.BufferGeometry();
             roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(roadPositions, 3));
             roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(roadUVs, 2));
@@ -487,7 +487,9 @@
             roadGeo.computeVertexNormals();
 
             const roadMat = new THREE.MeshStandardMaterial({
-                map: this.getAsphaltTexture(),
+                map: this.loadSeamlessTexture('./textures/asphalt_diffuse.webp', true, 2, 2),
+                normalMap: this.loadSeamlessTexture('./textures/asphalt_normal.webp', false, 2, 2),
+                normalScale: new THREE.Vector2(1.2, 1.2),
                 roughness: 0.85,
                 metalness: 0.1,
             });
@@ -997,8 +999,27 @@
         }
 
         // ---------------------------------------------------------------------
-        // TEXTUR-GENERATOREN (FOTOREALISTISCHE PROCEDURAL-TEXTUREN FÜR THREE.JS)
+        // TEXTUR-GENERATOREN & PBR-LOADER FÜR THREE.JS
         // ---------------------------------------------------------------------
+        loadSeamlessTexture(filePath, isSRGB = true, repeatX = 1, repeatY = 1) {
+            const key = `pbr_${filePath}_${repeatX}_${repeatY}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const loader = new THREE.TextureLoader();
+            const tex = loader.load(filePath);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            if (repeatX !== 1 || repeatY !== 1) {
+                tex.repeat.set(repeatX, repeatY);
+            }
+            if (isSRGB) {
+                tex.colorSpace = THREE.SRGBColorSpace;
+            }
+            this._texCache[key] = tex;
+            return tex;
+        }
+
         getAsphaltTexture() {
             if (!this._texCache) this._texCache = {};
             if (this._texCache['asphalt']) return this._texCache['asphalt'];
