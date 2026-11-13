@@ -625,20 +625,28 @@
             ];
 
             hillConfigs.forEach(hc => {
-                const hillGeo = new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.52);
+                const size = hc.r * 2.2;
+                const hillGeo = new THREE.PlaneGeometry(size, size, 28, 28);
+                hillGeo.rotateX(-Math.PI / 2);
                 const pos = hillGeo.attributes.position;
                 for (let i = 0; i < pos.count; i++) {
                     const vx = pos.getX(i);
-                    const vy = pos.getY(i);
                     const vz = pos.getZ(i);
-                    const ridge = 1.0
-                        + 0.16 * Math.sin(vx * 2.8 + hc.seed) * Math.cos(vz * 2.4 - hc.seed)
-                        + 0.08 * Math.cos(vx * 5.1 - vz * 3.9 + hc.seed);
-                    pos.setXYZ(i, vx * hc.r * ridge, Math.max(0, vy) * hc.h * (0.9 + 0.15 * ridge), vz * hc.r * ridge);
+                    const nx = vx / hc.r;
+                    const nz = vz / hc.r;
+                    const distSq = nx * nx + nz * nz;
+                    // Sanfte Glockenkurve: läuft flach auf y=0 aus (keine steilen Pfannkuchen-Ränder!)
+                    const bell = Math.exp(-2.6 * distSq);
+                    // Mehrgipfelige, unregelmäßige Hügelkette statt runder Kuppel
+                    const ridge = 0.78
+                        + 0.28 * Math.sin(nx * 2.4 + hc.seed) * Math.cos(nz * 2.1 - hc.seed)
+                        + 0.14 * Math.cos(nx * 4.2 - nz * 3.5 + hc.seed * 1.7);
+                    const y = Math.max(0, bell * ridge * hc.h - 0.15);
+                    pos.setY(i, y);
                 }
                 hillGeo.computeVertexNormals();
                 const hill = new THREE.Mesh(hillGeo, hillMat);
-                hill.position.set(hc.x, -0.5, hc.z);
+                hill.position.set(hc.x, 0, hc.z);
                 hill.receiveShadow = true;
                 this.scene.add(hill);
             });
