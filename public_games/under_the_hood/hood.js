@@ -3690,32 +3690,48 @@
                     roughness: 0.9,
                 });
 
-                // Ungepflegter, natürlicher Sandboden
-                const plot = new THREE.Mesh(new THREE.BoxGeometry(22, 0.35, 19), sandMat);
-                plot.position.set(0, 0.18, 0);
+                // Ungepflegter, natürlicher Sandboden + Küstenwasser dahinter
+                const plot = new THREE.Mesh(new THREE.BoxGeometry(17.5, 0.35, 19), sandMat);
+                plot.position.set(-2.25, 0.18, 0);
                 plot.receiveShadow = true;
                 group.add(plot);
 
+                const ruinWaterMat = new THREE.MeshStandardMaterial({
+                    map: this.getOceanTexture(),
+                    color: 0x0e7490,
+                    roughness: 0.25,
+                    metalness: 0.2,
+                });
+                const ruinWater = new THREE.Mesh(new THREE.BoxGeometry(28, 0.32, 24), ruinWaterMat);
+                ruinWater.position.set(20.5, 0.14, 0);
+                ruinWater.receiveShadow = true;
+                group.add(ruinWater);
+
+                const foamMat = new THREE.MeshStandardMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.65, roughness: 0.4 });
+                const ruinFoam = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 19), foamMat);
+                ruinFoam.position.set(6.7, 0.16, 0);
+                group.add(ruinFoam);
+
                 // Verstreute Küstenfelsen & wildes Strandgestrüpp
-                [[-5.2, 5.5, 0.7], [6.2, -5.0, 0.9], [1.4, 5.8, 0.55]].forEach(([rx, rz, rs], ri) => {
+                [[-5.2, 5.5, 0.7], [5.8, -5.0, 0.9], [1.4, 5.8, 0.55]].forEach(([rx, rz, rs], ri) => {
                     const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rs, 0), rockMat);
                     rock.position.set(rx, 0.35, rz);
                     rock.rotation.set(ri * 0.7, ri * 1.1, 0);
                     group.add(rock);
                 });
-                [[-4.8, -6.2], [5.8, 5.2], [6.5, -2.5]].forEach(([bx, bz], bi) => {
+                [[-4.8, -6.2], [4.8, 5.2], [5.4, -2.5]].forEach(([bx, bz], bi) => {
                     this.buildLeafyBush(group, bx, 0.35, bz, 0.75 + bi * 0.12);
                 });
 
-                // Morsche, schiefe Pfähle eines alten Holzstegs + halb vergrabene Stegplanken
+                // Morsche, schiefe Pfähle eines alten Holzstegs bis ins Wasser hinaus
                 for (let p = 0; p < 4; p++) {
                     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 1.8, 7), woodRuinMat);
-                    post.position.set(-2.5 + p * 2.1, 0.95, -4.2);
+                    post.position.set(2.0 + p * 2.2, 0.95, -4.2);
                     post.rotation.z = ((p % 2) - 0.5) * 0.22;
                     group.add(post);
                 }
-                const brokenPlank = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.12, 1.3), plankRuinMat);
-                brokenPlank.position.set(0.2, 0.38, -4.1);
+                const brokenPlank = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.12, 1.3), plankRuinMat);
+                brokenPlank.position.set(4.5, 0.48, -4.1);
                 brokenPlank.rotation.set(0.05, 0.12, -0.04);
                 group.add(brokenPlank);
 
@@ -3772,20 +3788,32 @@
                     normalScale: new THREE.Vector2(0.45, 0.45),
                     roughness: 0.9,
                 });
-                const seaEdgeMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.2, metalness: 0.3 });
+                const seaEdgeMat = new THREE.MeshStandardMaterial({
+                    map: this.getOceanTexture(),
+                    color: 0x06b6d4,
+                    roughness: 0.18,
+                    metalness: 0.25,
+                });
                 const bambooMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 });
                 const thatchMat = new THREE.MeshStandardMaterial({ map: this.getThatchTexture(), roughness: 0.95 });
                 const playerMat = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4 });
 
-                // Feiner goldener Sandstrand mit türkisem Brandungssaum
-                const sand = new THREE.Mesh(new THREE.BoxGeometry(22, 0.35, 19), goldSandMat);
-                sand.position.set(0, 0.18, 0);
+                // Feiner goldener Sandstrand mit türkiser Meeresbucht & Brandungssaum
+                const sand = new THREE.Mesh(new THREE.BoxGeometry(17.5, 0.35, 19), goldSandMat);
+                sand.position.set(-2.25, 0.18, 0);
                 sand.receiveShadow = true;
                 group.add(sand);
 
-                const seaEdge = new THREE.Mesh(new THREE.BoxGeometry(4, 0.38, 19), seaEdgeMat);
-                seaEdge.position.set(9, 0.19, 0);
+                const seaEdge = new THREE.Mesh(new THREE.BoxGeometry(28, 0.32, 24), seaEdgeMat);
+                seaEdge.position.set(20.5, 0.14, 0);
                 group.add(seaEdge);
+
+                const cleanFoam = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.9, 0.34, 19),
+                    new THREE.MeshStandardMaterial({ color: 0xf0f9ff, transparent: true, opacity: 0.75, roughness: 0.35 })
+                );
+                cleanFoam.position.set(6.7, 0.16, 0);
+                group.add(cleanFoam);
 
                 // Karibische Tiki-Cocktailbar
                 const barCounter = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.2, 4.5), bambooMat);
