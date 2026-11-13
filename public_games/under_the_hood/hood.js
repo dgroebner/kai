@@ -3009,13 +3009,13 @@
 
             // Linkes Fenster
             const winLeft = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 3.2), winMat);
-            winLeft.position.set(-6.02, 3.0 + 0.35, -4.8);
+            winLeft.position.set(-5.98, 3.0 + 0.35, -4.8);
             winLeft.rotation.y = -Math.PI / 2;
             bldGroup.add(winLeft);
 
             // Rechtes Fenster
             const winRight = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 3.2), winMat);
-            winRight.position.set(-6.02, 3.0 + 0.35, 4.8);
+            winRight.position.set(-5.98, 3.0 + 0.35, 4.8);
             winRight.rotation.y = -Math.PI / 2;
             bldGroup.add(winRight);
 
@@ -3074,7 +3074,7 @@
                 map: this.getNeonFasciaTexture(tileName, isOwned, hex),
             });
             const fascia = new THREE.Mesh(new THREE.PlaneGeometry(18.2, 1.9), fasciaMat);
-            fascia.position.set(-6.02, 5.25 + 0.35, 0);
+            fascia.position.set(-6.08, 5.25 + 0.35, 0);
             fascia.rotation.y = -Math.PI / 2;
             bldGroup.add(fascia);
 
