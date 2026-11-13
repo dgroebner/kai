@@ -3165,8 +3165,8 @@
                     });
                 }
                 const gMat = this._matCache['graffiti_no_future'];
-                const gFront = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.8), gMat);
-                gFront.position.set(-6.11, 5.15, -5.6);
+                const gFront = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.5), gMat);
+                gFront.position.set(-6.11, 5.50, -5.6);
                 gFront.rotation.y = -Math.PI / 2;
                 bldGroup.add(gFront);
 
@@ -3189,8 +3189,8 @@
                     });
                 }
                 const vMat = this._matCache['graffiti_void'];
-                const vFront = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.8), vMat);
-                vFront.position.set(-6.11, 5.15, 5.5);
+                const vFront = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.45), vMat);
+                vFront.position.set(-6.11, 5.55, 5.5);
                 vFront.rotation.y = -Math.PI / 2;
                 bldGroup.add(vFront);
 
