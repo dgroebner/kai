@@ -886,7 +886,7 @@
 
                 const mirrorPivot = new THREE.Group();
                 mirrorPivot.position.set(isLeft ? sideX - 0.30 : sideX + 0.30, 1.03, -0.84);
-                mirrorPivot.rotation.y = isLeft ? -0.22 : 0.22;
+                mirrorPivot.rotation.y = isLeft ? 0.28 : -0.32;
 
                 const mirrorCap = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.17, 0.16), this.carHoodMat);
                 mirrorPivot.add(mirrorCap);
