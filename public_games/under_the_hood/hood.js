@@ -602,29 +602,43 @@
         // 5. NATÜRLICHE UMGEBUNG: 3D-WOLKEN, KÜSTEN-HÜGEL, BÄUME & PALMEN
         // ---------------------------------------------------------------------
         buildNaturalEnvironment() {
-            // 1. Sanfte Panoramahügel im Hintergrund für organische Landschaft
+            // 1. Sanfte, organisch gewellte Panoramahügel mit Gras-Textur (keine spitzen Kegel-Pyramiden)
             const hillMat = new THREE.MeshStandardMaterial({
-                color: 0x15803d,
-                roughness: 0.9,
+                map: this.loadSeamlessTexture('./textures/grass_diffuse.webp', true, 10, 6),
+                normalMap: this.loadSeamlessTexture('./textures/grass_normal.webp', false, 10, 6),
+                normalScale: new THREE.Vector2(0.8, 0.8),
+                color: 0xa3e635,
+                roughness: 0.94,
             });
 
             // Sanfte Panoramahügel im Hintergrund (mit sicherem Sicherheitsabstand von mindestens 35m zu allen Streckenabschnitten und Grundstücken!)
             const hillConfigs = [
-                { x: 0, z: -360, r: 85, h: 45 },
-                { x: 310, z: -200, r: 80, h: 40 },
-                { x: 340, z: 120, r: 85, h: 42 },
-                { x: 0, z: 360, r: 85, h: 46 },
-                { x: -320, z: 140, r: 80, h: 40 },
-                { x: -330, z: -200, r: 80, h: 44 },
+                { x: 0, z: -360, r: 105, h: 36, seed: 1.1 },
+                { x: 310, z: -200, r: 95, h: 32, seed: 2.3 },
+                { x: 340, z: 120, r: 100, h: 34, seed: 3.7 },
+                { x: 0, z: 360, r: 105, h: 38, seed: 4.5 },
+                { x: -320, z: 140, r: 95, h: 32, seed: 5.2 },
+                { x: -330, z: -200, r: 95, h: 35, seed: 6.4 },
                 // Insel-Innere sanfte Hügel (strenger Abstand zur Fahrbahn innen bei dist=145!)
-                { x: 20, z: -15, r: 45, h: 16 },
-                { x: -20, z: 15, r: 40, h: 14 },
+                { x: 20, z: -15, r: 48, h: 13, seed: 7.1 },
+                { x: -20, z: 15, r: 42, h: 11, seed: 8.3 },
             ];
 
             hillConfigs.forEach(hc => {
-                const hillGeo = new THREE.ConeGeometry(hc.r, hc.h, 24);
+                const hillGeo = new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.52);
+                const pos = hillGeo.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const vx = pos.getX(i);
+                    const vy = pos.getY(i);
+                    const vz = pos.getZ(i);
+                    const ridge = 1.0
+                        + 0.16 * Math.sin(vx * 2.8 + hc.seed) * Math.cos(vz * 2.4 - hc.seed)
+                        + 0.08 * Math.cos(vx * 5.1 - vz * 3.9 + hc.seed);
+                    pos.setXYZ(i, vx * hc.r * ridge, Math.max(0, vy) * hc.h * (0.9 + 0.15 * ridge), vz * hc.r * ridge);
+                }
+                hillGeo.computeVertexNormals();
                 const hill = new THREE.Mesh(hillGeo, hillMat);
-                hill.position.set(hc.x, hc.h / 2 - 1, hc.z);
+                hill.position.set(hc.x, -0.5, hc.z);
                 hill.receiveShadow = true;
                 this.scene.add(hill);
             });
