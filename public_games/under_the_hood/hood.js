@@ -733,7 +733,31 @@
             }
         }
 
-        // Erzeugt natürliche Bäume (geschwungene Palmen oder weiche Laubbäume)
+        getOrganicFoliageGeo(variant = 0) {
+            if (!this._geoCache) this._geoCache = {};
+            const key = `foliage_${variant}`;
+            if (this._geoCache[key]) return this._geoCache[key];
+
+            const geo = new THREE.IcosahedronGeometry(1.0, 2);
+            const pos = geo.attributes.position;
+            const s = (variant + 1) * 1.73;
+            for (let i = 0; i < pos.count; i++) {
+                const vx = pos.getX(i);
+                const vy = pos.getY(i);
+                const vz = pos.getZ(i);
+                const noise = 0.84
+                    + 0.16 * Math.sin(vx * 3.1 + s) * Math.cos(vz * 2.7 - s)
+                    + 0.10 * Math.cos(vy * 4.3 + vx * 2.1 + s);
+                // Unten leicht abgeflacht, seitlich etwas breiter
+                const yScale = vy < 0 ? 0.78 : 0.96;
+                pos.setXYZ(i, vx * noise * 1.08, vy * noise * yScale, vz * noise * 1.08);
+            }
+            geo.computeVertexNormals();
+            this._geoCache[key] = geo;
+            return geo;
+        }
+
+        // Erzeugt natürliche Bäume (geschwungene Palmen mit hängenden Wedeln oder organische Laubbäume)
         addStylizedTree(x, z, isPalm = false) {
             const tree = new THREE.Group();
             tree.position.set(x, 0, z);
@@ -745,10 +769,10 @@
                 const segHeights = [2.2, 2.0, 1.8];
                 let curY = 0;
                 let curTilt = 0;
-                const tiltAngle = (Math.random() - 0.5) * 0.15;
+                const tiltAngle = (Math.random() - 0.5) * 0.18;
 
                 segHeights.forEach((h, idx) => {
-                    const segGeo = new THREE.CylinderGeometry(0.22 - idx * 0.03, 0.28 - idx * 0.03, h, 10);
+                    const segGeo = new THREE.CylinderGeometry(0.20 - idx * 0.03, 0.28 - idx * 0.03, h, 10);
                     const seg = new THREE.Mesh(segGeo, trunkMat);
                     seg.position.set(curTilt, curY + h / 2, 0);
                     seg.rotation.z = tiltAngle * idx;
@@ -759,62 +783,83 @@
                 });
                 tree.add(trunkGroup);
 
-                // 8 geschwungene Palmwedel
-                const frondMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.8 });
-                for (let f = 0; f < 8; f++) {
-                    const frondGroup = new THREE.Group();
-                    frondGroup.position.set(curTilt, curY, 0);
-                    frondGroup.rotation.y = (f / 8) * Math.PI * 2;
-                    frondGroup.rotation.z = 0.55; // Nach unten geschwungen
+                // 9 bogenförmig herabhängende Palmwedel (rotation.x neigt entlang +Z nach oben/unten!)
+                const frondMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.78, side: THREE.DoubleSide });
+                const frondDarkMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.82, side: THREE.DoubleSide });
+                for (let f = 0; f < 9; f++) {
+                    const frondRoot = new THREE.Group();
+                    frondRoot.position.set(curTilt, curY - 0.05, 0);
+                    frondRoot.rotation.y = (f / 9) * Math.PI * 2 + (f % 2) * 0.15;
 
-                    const leafGeo = new THREE.BoxGeometry(0.5, 0.06, 3.2);
-                    const leaf = new THREE.Mesh(leafGeo, frondMat);
-                    leaf.position.set(0, -0.2, 1.6);
-                    leaf.castShadow = true;
-                    frondGroup.add(leaf);
-                    tree.add(frondGroup);
+                    const mat = (f % 2 === 0) ? frondMat : frondDarkMat;
+                    // Segment 1: Steigt leicht nach außen an
+                    const seg1 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 1.35), mat);
+                    seg1.position.set(0, 0.18, 0.65);
+                    seg1.rotation.x = -0.26;
+                    frondRoot.add(seg1);
+
+                    // Segment 2: Biegt sich elegant nach unten
+                    const seg2 = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.04, 1.40), mat);
+                    seg2.position.set(0, 0.02, 1.85);
+                    seg2.rotation.x = 0.48;
+                    frondRoot.add(seg2);
+
+                    // Segment 3: Spitze hängt herab
+                    const seg3 = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.05, 4), mat);
+                    seg3.rotation.x = Math.PI / 2 + 0.92;
+                    seg3.scale.set(1.0, 1.0, 0.25);
+                    seg3.position.set(0, -0.62, 2.75);
+                    frondRoot.add(seg3);
+
+                    tree.add(frondRoot);
                 }
 
-                // 3 Coconuts
+                // 3 Kokosnüsse unter der Krone
                 const coconutMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
                 for (let c = 0; c < 3; c++) {
-                    const coco = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), coconutMat);
-                    coco.position.set(curTilt + (c - 1) * 0.2, curY - 0.2, (c % 2) * 0.2);
+                    const coco = new THREE.Mesh(new THREE.SphereGeometry(0.20, 8, 8), coconutMat);
+                    coco.position.set(curTilt + (c - 1) * 0.18, curY - 0.25, (c % 2) * 0.18);
                     tree.add(coco);
                 }
             } else {
-                // Schöner Laubbaum mit weicher, natürlicher Kugelkrone (keine harten Dodekaeder!)
-                const trunkGeo = new THREE.CylinderGeometry(0.32, 0.52, 3.8, 10);
-                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3817, roughness: 0.9 });
+                // Organischer Laubbaum mit Ästen & unregelmäßigen Blattpolstern
+                const trunkGeo = new THREE.CylinderGeometry(0.30, 0.52, 3.8, 10);
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3817, roughness: 0.92 });
                 const trunk = new THREE.Mesh(trunkGeo, trunkMat);
                 trunk.position.y = 1.9;
                 trunk.castShadow = true;
                 tree.add(trunk);
 
-                // Natürliche Krone aus 4 überlappenden weichen Kugeln mit Farbabstufungen
-                const leafMat1 = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 });
-                const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.85 });
-                const leafMat3 = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.85 });
+                [
+                    { rx: 0.45, rz: -0.35, px: 0.5, pz: 0.4 },
+                    { rx: -0.4, rz: 0.42, px: -0.5, pz: -0.35 },
+                ].forEach(br => {
+                    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.18, 2.0, 7), trunkMat);
+                    branch.position.set(br.px, 3.4, br.pz);
+                    branch.rotation.set(br.rx, 0, br.rz);
+                    tree.add(branch);
+                });
 
-                const c1 = new THREE.Mesh(new THREE.SphereGeometry(2.6, 14, 12), leafMat1);
-                c1.position.set(0, 4.8, 0);
-                c1.castShadow = true;
-                tree.add(c1);
-
-                const c2 = new THREE.Mesh(new THREE.SphereGeometry(2.1, 14, 12), leafMat2);
-                c2.position.set(1.1, 5.2, -0.5);
-                c2.castShadow = true;
-                tree.add(c2);
-
-                const c3 = new THREE.Mesh(new THREE.SphereGeometry(1.9, 14, 12), leafMat3);
-                c3.position.set(-0.9, 5.1, 0.6);
-                c3.castShadow = true;
-                tree.add(c3);
-
-                const c4 = new THREE.Mesh(new THREE.SphereGeometry(1.8, 14, 12), leafMat2);
-                c4.position.set(0.2, 6.2, 0.2);
-                c4.castShadow = true;
-                tree.add(c4);
+                const leafMats = [
+                    new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.88 }),
+                    new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.86 }),
+                    new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 }),
+                ];
+                const clusters = [
+                    { x: 0, y: 4.9, z: 0, sx: 2.5, sy: 1.9, sz: 2.4, v: 0, m: 0 },
+                    { x: 1.35, y: 4.5, z: -0.6, sx: 1.9, sy: 1.5, sz: 1.8, v: 1, m: 1 },
+                    { x: -1.25, y: 4.6, z: 0.75, sx: 1.8, sy: 1.45, sz: 1.9, v: 2, m: 2 },
+                    { x: 0.3, y: 6.1, z: 0.25, sx: 1.75, sy: 1.4, sz: 1.7, v: 3, m: 1 },
+                    { x: -0.4, y: 4.3, z: -1.1, sx: 1.6, sy: 1.3, sz: 1.6, v: 1, m: 0 },
+                ];
+                clusters.forEach(cl => {
+                    const mesh = new THREE.Mesh(this.getOrganicFoliageGeo(cl.v), leafMats[cl.m]);
+                    mesh.position.set(cl.x, cl.y, cl.z);
+                    mesh.scale.set(cl.sx, cl.sy, cl.sz);
+                    mesh.rotation.y = cl.v * 1.1;
+                    mesh.castShadow = true;
+                    tree.add(mesh);
+                });
             }
 
             this.scene.add(tree);
@@ -3255,22 +3300,38 @@
                     group.add(tire);
                 }
 
-                // Wildes Gestrüpp & Disteln
-                const bushMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 });
+                // Wildes Gestrüpp & Sträucher (organische Cluster statt Kugeln)
+                const bushMat1 = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.92 });
+                const bushMat2 = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.90 });
                 for (let b = 0; b < 6; b++) {
-                    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.7 + (b % 3) * 0.3, 6, 6), bushMat);
-                    bush.position.set(2 + (b % 2) * 2, 0.8, -4 + b * 1.6);
-                    bush.scale.set(1.2, 0.8, 1.1);
+                    const bx = 2 + (b % 2) * 2.1;
+                    const bz = -4 + b * 1.6;
+                    const r = 0.65 + (b % 3) * 0.22;
+                    const bush = new THREE.Mesh(this.getOrganicFoliageGeo(b % 4), (b % 2 === 0) ? bushMat1 : bushMat2);
+                    bush.position.set(bx, 0.58, bz);
+                    bush.scale.set(r * 1.25, r * 0.65, r * 1.15);
+                    bush.rotation.y = b * 1.3;
                     group.add(bush);
                 }
 
-                // Verwilderter Baum im Hintergrund
-                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4.5, 8), woodPostMat);
-                trunk.position.set(4, 2.4, 2);
+                // Verwilderter Baum im Hintergrund (organische mehrteilige Krone mit Ästen)
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.36, 4.4, 8), woodPostMat);
+                trunk.position.set(4, 2.3, 2);
+                trunk.rotation.z = 0.05;
                 group.add(trunk);
-                const crown = new THREE.Mesh(new THREE.SphereGeometry(2.6, 8, 8), bushMat);
-                crown.position.set(4, 5.2, 2);
-                group.add(crown);
+
+                [
+                    { dx: 0, dy: 4.8, dz: 0, s: [2.3, 1.7, 2.2], v: 0, m: bushMat1 },
+                    { dx: -1.1, dy: 4.4, dz: 0.8, s: [1.6, 1.3, 1.5], v: 1, m: bushMat2 },
+                    { dx: 1.0, dy: 4.6, dz: -0.7, s: [1.7, 1.35, 1.6], v: 2, m: bushMat1 },
+                    { dx: 0.1, dy: 5.7, dz: 0.2, s: [1.5, 1.2, 1.5], v: 3, m: bushMat2 },
+                ].forEach(cl => {
+                    const crownPart = new THREE.Mesh(this.getOrganicFoliageGeo(cl.v), cl.m);
+                    crownPart.position.set(4 + cl.dx, cl.dy, 2 + cl.dz);
+                    crownPart.scale.set(cl.s[0], cl.s[1], cl.s[2]);
+                    crownPart.rotation.y = cl.v * 1.2;
+                    group.add(crownPart);
+                });
 
             } else {
                 // =============================================================
@@ -4232,15 +4293,20 @@
                 sunsetRail.position.set(10.8, 1.0, 0);
                 cinemaGroup.add(sunsetRail);
 
-                // Schattenspendende Kiefern im Hintergrund
-                [ { x: 7.5, z: 6.8 }, { x: 8.5, z: -6.5 } ].forEach(tree => {
+                // Schattenspendende Bäume im Hintergrund (organisch)
+                [ { x: 7.5, z: 6.8, v: 0 }, { x: 8.5, z: -6.5, v: 2 } ].forEach(tree => {
                     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.5, 8), shedMat);
                     trunk.position.set(tree.x, 2.2, tree.z);
                     cinemaGroup.add(trunk);
-                    const foliage = new THREE.Mesh(new THREE.SphereGeometry(2.4, 8, 8), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 }));
-                    foliage.position.set(tree.x, 4.8, tree.z);
-                    foliage.scale.set(1.2, 0.8, 1.2);
-                    cinemaGroup.add(foliage);
+                    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.88 });
+                    const f1 = new THREE.Mesh(this.getOrganicFoliageGeo(tree.v), foliageMat);
+                    f1.position.set(tree.x, 4.7, tree.z);
+                    f1.scale.set(2.4, 1.7, 2.4);
+                    cinemaGroup.add(f1);
+                    const f2 = new THREE.Mesh(this.getOrganicFoliageGeo(tree.v + 1), foliageMat);
+                    f2.position.set(tree.x - 0.8, 5.2, tree.z + 0.6);
+                    f2.scale.set(1.6, 1.3, 1.6);
+                    cinemaGroup.add(f2);
                 });
 
                 group.add(cinemaGroup);
