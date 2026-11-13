@@ -2525,7 +2525,7 @@
             ctx.fillText(tileName.toUpperCase(), 256, 94);
 
             ctx.fillStyle = '#ef4444';
-            ctx.font = 'bold 42px sans-serif';
+            ctx.font = 'bold 36px sans-serif';
             ctx.fillText('STRAND GESCHLOSSEN', 256, 150);
 
             ctx.fillStyle = '#cbd5e1';
@@ -3764,20 +3764,22 @@
                 barrel.rotation.set(0.12, 0.5, Math.PI / 2);
                 group.add(barrel);
 
-                // Verankertes Holzschild auf zwei Pfosten "STRAND GESCHLOSSEN • SANIERUNGSBEDÜRFTIG"
+                // Verankertes Holzschild auf zwei Pfosten (Pfosten sauber hinter dem Schild)
+                const signGroup = new THREE.Group();
+                signGroup.position.set(-6.5, 0, 0);
+                signGroup.rotation.z = 0.07;
                 [-0.85, 0.85].forEach(sz => {
-                    const sPost = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 2.1, 6), woodRuinMat);
-                    sPost.position.set(-6.5, 1.15, sz);
-                    sPost.rotation.z = 0.06;
-                    group.add(sPost);
+                    const sPost = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 2.2, 6), woodRuinMat);
+                    sPost.position.set(0.09, 1.15, sz);
+                    signGroup.add(sPost);
                 });
                 const sign = new THREE.Mesh(
                     new THREE.BoxGeometry(0.08, 1.1, 2.3),
                     new THREE.MeshStandardMaterial({ map: this.getBeachClosedSignTexture(tileName), roughness: 0.78 })
                 );
-                sign.position.set(-6.55, 1.85, 0);
-                sign.rotation.z = 0.08;
-                group.add(sign);
+                sign.position.set(-0.03, 1.85, 0);
+                signGroup.add(sign);
+                group.add(signGroup);
 
             } else {
                 // 2. DAS WIEDERHERGESTELLTE, AKTIVE LUXUS-STRANDBAD
