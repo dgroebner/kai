@@ -1194,10 +1194,12 @@
                 ? tileData.name
                 : `Feld ${tileIndex}`;
 
+            const tilePrice = (typeof tileData === 'object' && tileData.price) ? tileData.price : '';
+
             // PERFORMANCE & RAM-OPTIMIERUNG:
             // Verhindert das ununterbrochene Neugenerieren von 1.600 3D-Meshes alle 1.5s im Polling-Zyklus!
             if (!this.renderedPlotSignatures) this.renderedPlotSignatures = {};
-            const sig = `${ownerColor}_${isMortgaged ? 1 : 0}_${level}_${ownerName || ''}`;
+            const sig = `${ownerColor}_${isMortgaged ? 1 : 0}_${level}_${ownerName || ''}_${tileName}_${tilePrice}`;
             if (!force && this.renderedPlotSignatures[tileIndex] === sig && group.children.length > 0) {
                 return;
             }
@@ -2675,7 +2677,7 @@
             ctx.fillStyle = '#ffffff';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
             ctx.shadowBlur = 6;
-            ctx.fillText(`${groupName.toUpperCase()} • ${price}k €`, 256, 35);
+            ctx.fillText(`${tileName.toUpperCase()} • ${price}k €`, 256, 35);
             ctx.shadowBlur = 0;
 
             // HAUPTZEILE "ZU VERKAUFEN" in fetter markanter schwarzer Schrift
@@ -2683,10 +2685,10 @@
             ctx.fillStyle = '#0f172a';
             ctx.fillText('ZU VERKAUFEN', 256, 125);
 
-            // Straßenname & Details
+            // Viertelname & Details
             ctx.font = '700 22px sans-serif';
             ctx.fillStyle = '#334155';
-            ctx.fillText(`Objekt: ${tileName}`, 256, 175);
+            ctx.fillText(`Viertel: ${groupName}`, 256, 175);
 
             // Makler- / Privatverkaufs-Hinweis
             ctx.font = 'italic 16px sans-serif';
