@@ -2967,22 +2967,28 @@
             const bldGroup = new THREE.Group();
             bldGroup.position.set(4.0, 0, 0);
 
-            // Unterer Mauerwerk-Sockel mit Ziegeltextur
+            // Unterer Mauerwerk-Sockel & Hauptfassade mit echter Backstein-PBR-Textur
             const brickMat = new THREE.MeshStandardMaterial({
-                map: this.getBrickTexture(!isOwned),
-                roughness: 0.9,
+                map: this.loadSeamlessTexture('./textures/brick_diffuse.webp', true, 5, 1),
+                normalMap: this.loadSeamlessTexture('./textures/brick_normal.webp', false, 5, 1),
+                normalScale: new THREE.Vector2(1.0, 1.0),
+                color: isOwned ? 0xffffff : 0xd4d4d8,
+                roughness: 0.88,
             });
             const brickBase = new THREE.Mesh(new THREE.BoxGeometry(11.8, 1.8, 18), brickMat);
             brickBase.position.set(0, 0.9 + 0.35, 0);
             brickBase.castShadow = true;
             bldGroup.add(brickBase);
 
-            // Oberer Beton-/Fassadenkörper
-            const concreteMat = new THREE.MeshStandardMaterial({
-                color: isOwned ? 0x22262f : 0x272c35,
-                roughness: 0.85,
+            // Oberer Backstein-Fassadenkörper
+            const wallBrickMat = new THREE.MeshStandardMaterial({
+                map: this.loadSeamlessTexture('./textures/brick_diffuse.webp', true, 5, 2),
+                normalMap: this.loadSeamlessTexture('./textures/brick_normal.webp', false, 5, 2),
+                normalScale: new THREE.Vector2(1.1, 1.1),
+                color: isOwned ? 0xf1f5f9 : 0xcbd5e1,
+                roughness: 0.88,
             });
-            const mainBody = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.4, 18), concreteMat);
+            const mainBody = new THREE.Mesh(new THREE.BoxGeometry(11.8, 4.4, 18), wallBrickMat);
             mainBody.position.set(0, 4.0 + 0.35, 0);
             mainBody.castShadow = true;
             bldGroup.add(mainBody);
@@ -3131,20 +3137,28 @@
                     });
                 });
             } else {
-                // Ruine: Trümmer, Schutt und wildes Gras auf dem Gehweg
-                const weedMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 });
-                for (let w = 0; w < 16; w++) {
-                    const weed = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 6, 6), weedMat);
-                    weed.scale.set(0.6, 1.4, 0.6);
-                    weed.position.set(-7.5 + (Math.random() - 0.5) * 3, 0.5, (Math.random() - 0.5) * 16);
-                    bldGroup.add(weed);
+                // Ruine: Trümmer, Schutt (Stein-Textur) und wildes Unkraut (Zweig-Sprites) auf dem Vorplatz
+                for (let w = 0; w < 8; w++) {
+                    this.buildLeafyBush(
+                        bldGroup,
+                        -7.5 + (Math.random() - 0.5) * 3.2,
+                        0.38,
+                        (Math.random() - 0.5) * 15,
+                        0.45 + Math.random() * 0.25
+                    );
                 }
 
-                // Betontrümmer
-                const rubbleMat = new THREE.MeshStandardMaterial({ color: 0x71717a, roughness: 0.95 });
+                // Steintrümmer mit Naturstein-PBR-Textur
+                const rubbleMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/rock_diffuse.webp', true, 1, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/rock_normal.webp', false, 1, 1),
+                    normalScale: new THREE.Vector2(1.0, 1.0),
+                    roughness: 0.92,
+                });
                 for (let rb = 0; rb < 8; rb++) {
-                    const chunk = new THREE.Mesh(new THREE.BoxGeometry(0.4 + Math.random() * 0.5, 0.25, 0.4 + Math.random() * 0.5), rubbleMat);
-                    chunk.position.set(-6.5 + (Math.random() - 0.5) * 4, 0.5, (Math.random() - 0.5) * 12);
+                    const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28 + Math.random() * 0.22, 0), rubbleMat);
+                    chunk.position.set(-6.5 + (Math.random() - 0.5) * 4, 0.48, (Math.random() - 0.5) * 12);
+                    chunk.scale.set(1.2, 0.65, 1.0);
                     chunk.rotation.set(Math.random() * 0.4, Math.random() * 3, Math.random() * 0.4);
                     bldGroup.add(chunk);
                 }
