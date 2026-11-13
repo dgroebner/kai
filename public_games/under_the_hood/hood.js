@@ -1973,18 +1973,6 @@
                 ctx.bezierCurveTo(860, 130, 840, 170, 850, 220);
                 ctx.stroke();
 
-                // Grüner Efeu & Moos, der vom Dach über den Schriftzug wuchert
-                ctx.fillStyle = '#1e3a1e';
-                for (let ix = 0; ix < 1024; ix += 18) {
-                    const drop = 20 + Math.sin(ix * 0.2) * 25 + (Math.cos(ix * 0.05) + 1) * 20;
-                    ctx.beginPath();
-                    ctx.arc(ix, drop * 0.6, 12, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(ix + 6, drop, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
                 ctx.restore();
             }
 
@@ -3215,6 +3203,29 @@
                 sDoor.position.set(-5.88, 2.15, 0);
                 sDoor.rotation.y = -Math.PI / 2;
                 bldGroup.add(sDoor);
+
+                // Echte 3D-Efeuranken entlang der oberen Dachkante
+                if (!this._matCache['ivy_vine']) {
+                    const ivyTex = new THREE.TextureLoader().load('./textures/ivy_vine.webp');
+                    ivyTex.colorSpace = THREE.SRGBColorSpace;
+                    this._matCache['ivy_vine'] = new THREE.MeshStandardMaterial({
+                        map: ivyTex,
+                        alphaTest: 0.45,
+                        side: THREE.DoubleSide,
+                        roughness: 0.85,
+                        emissive: new THREE.Color(0x163010),
+                        emissiveIntensity: 0.22,
+                    });
+                }
+                const ivyMat = this._matCache['ivy_vine'];
+                [-7.0, -4.2, -1.3, 1.8, 4.6, 7.1].forEach((iz, idx) => {
+                    const h = 1.65 + (idx % 3) * 0.25;
+                    const ivy = new THREE.Mesh(new THREE.PlaneGeometry(2.6, h), ivyMat);
+                    ivy.position.set(-6.13 - (idx % 2) * 0.02, 6.55 - h * 0.46, iz);
+                    ivy.rotation.y = -Math.PI / 2;
+                    if (idx % 2 === 1) ivy.scale.x = -1; // Spiegeln für natürliche Abwechslung
+                    bldGroup.add(ivy);
+                });
 
                 // Ruine: Trümmer, Schutt (Stein-Textur) und wildes Unkraut (Zweig-Sprites) auf dem Vorplatz
                 for (let w = 0; w < 8; w++) {
