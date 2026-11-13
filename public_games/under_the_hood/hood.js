@@ -787,6 +787,69 @@
             return mat;
         }
 
+        getBranchCardMaterial() {
+            if (!this._matCache) this._matCache = {};
+            if (this._matCache['branch_card']) return this._matCache['branch_card'];
+            const tex = new THREE.TextureLoader().load('./textures/branch_card.webp');
+            tex.colorSpace = THREE.SRGBColorSpace;
+            const mat = new THREE.MeshStandardMaterial({
+                map: tex,
+                alphaTest: 0.45,
+                side: THREE.DoubleSide,
+                roughness: 0.85,
+                emissive: new THREE.Color(0x163010),
+                emissiveIntensity: 0.18,
+            });
+            this._matCache['branch_card'] = mat;
+            return mat;
+        }
+
+        getBranchCardGeo() {
+            if (!this._geoCache) this._geoCache = {};
+            if (this._geoCache['branch_card']) return this._geoCache['branch_card'];
+            const geo = new THREE.PlaneGeometry(4.2, 4.2);
+            // Verschiebe Stiel-Ansatz (unten links) in den Ursprung (0,0,0)
+            geo.translate(1.15, 1.65, 0);
+            this._geoCache['branch_card'] = geo;
+            return geo;
+        }
+
+        buildLeafyCanopy(parent, x, y, z, scale = 1.0) {
+            const mat = this.getBranchCardMaterial();
+            const geo = this.getBranchCardGeo();
+            // 6 radial aus dem Stamm fächernde Hauptäste + 3 obere Kronenzweige
+            for (let i = 0; i < 6; i++) {
+                const card = new THREE.Mesh(geo, mat);
+                card.position.set(x, y - 0.35 * scale, z);
+                card.rotation.y = (i / 6) * Math.PI * 2 + (i % 2) * 0.22;
+                card.rotation.x = ((i % 3) - 1) * 0.14;
+                card.rotation.z = -0.08 + (i % 2) * 0.12;
+                card.scale.setScalar(scale * (0.92 + (i % 3) * 0.08));
+                parent.add(card);
+            }
+            for (let j = 0; j < 3; j++) {
+                const topCard = new THREE.Mesh(geo, mat);
+                topCard.position.set(x, y + 0.55 * scale, z);
+                topCard.rotation.y = (j / 3) * Math.PI * 2 + 0.5;
+                topCard.rotation.z = 0.25;
+                topCard.scale.setScalar(scale * 0.78);
+                parent.add(topCard);
+            }
+        }
+
+        buildLeafyBush(parent, x, y, z, scale = 1.0) {
+            const mat = this.getBranchCardMaterial();
+            const geo = this.getBranchCardGeo();
+            for (let i = 0; i < 3; i++) {
+                const card = new THREE.Mesh(geo, mat);
+                card.position.set(x, y - 0.15 * scale, z);
+                card.rotation.y = (i / 3) * Math.PI * 2 + 0.4;
+                card.rotation.z = -0.18;
+                card.scale.setScalar(scale * 0.42);
+                parent.add(card);
+            }
+        }
+
         // Erzeugt natürliche Bäume (geschwungene Palmen mit hängenden Wedeln oder organische Laubbäume)
         addStylizedTree(x, z, isPalm = false) {
             const tree = new THREE.Group();
@@ -852,44 +915,15 @@
                     tree.add(coco);
                 }
             } else {
-                // Organischer Laubbaum mit Ästen & unregelmäßigen Blattpolstern
-                const trunkGeo = new THREE.CylinderGeometry(0.30, 0.52, 3.8, 10);
+                // Natürlicher Laubbaum mit Rinden-Stamm & freigestellten Blätterzweigen
+                const trunkGeo = new THREE.CylinderGeometry(0.28, 0.50, 3.8, 10);
                 const trunkMat = this.getBarkMaterial(1, 2);
                 const trunk = new THREE.Mesh(trunkGeo, trunkMat);
                 trunk.position.y = 1.9;
                 trunk.castShadow = true;
                 tree.add(trunk);
 
-                [
-                    { rx: 0.45, rz: -0.35, px: 0.5, pz: 0.4 },
-                    { rx: -0.4, rz: 0.42, px: -0.5, pz: -0.35 },
-                ].forEach(br => {
-                    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.18, 2.0, 7), trunkMat);
-                    branch.position.set(br.px, 3.4, br.pz);
-                    branch.rotation.set(br.rx, 0, br.rz);
-                    tree.add(branch);
-                });
-
-                const leafMats = [
-                    this.getFoliageMaterial(0xffffff, 2),
-                    this.getFoliageMaterial(0xd9f99d, 2),
-                    this.getFoliageMaterial(0xbef264, 2),
-                ];
-                const clusters = [
-                    { x: 0, y: 4.9, z: 0, sx: 2.5, sy: 1.9, sz: 2.4, v: 0, m: 0 },
-                    { x: 1.35, y: 4.5, z: -0.6, sx: 1.9, sy: 1.5, sz: 1.8, v: 1, m: 1 },
-                    { x: -1.25, y: 4.6, z: 0.75, sx: 1.8, sy: 1.45, sz: 1.9, v: 2, m: 2 },
-                    { x: 0.3, y: 6.1, z: 0.25, sx: 1.75, sy: 1.4, sz: 1.7, v: 3, m: 1 },
-                    { x: -0.4, y: 4.3, z: -1.1, sx: 1.6, sy: 1.3, sz: 1.6, v: 1, m: 0 },
-                ];
-                clusters.forEach(cl => {
-                    const mesh = new THREE.Mesh(this.getOrganicFoliageGeo(cl.v), leafMats[cl.m]);
-                    mesh.position.set(cl.x, cl.y, cl.z);
-                    mesh.scale.set(cl.sx, cl.sy, cl.sz);
-                    mesh.rotation.y = cl.v * 1.1;
-                    mesh.castShadow = true;
-                    tree.add(mesh);
-                });
+                this.buildLeafyCanopy(tree, 0, 3.3, 0, 1.08);
             }
 
             this.scene.add(tree);
@@ -3330,38 +3364,20 @@
                     group.add(tire);
                 }
 
-                // Wildes Gestrüpp & Sträucher (Laub-PBR-Textur auf organischen Clustern)
-                const bushMat1 = this.getFoliageMaterial(0xeef6d8, 2);
-                const bushMat2 = this.getFoliageMaterial(0xd9f99d, 2);
+                // Wildes Gestrüpp & Sträucher (freigestellte Blätterzweige)
                 for (let b = 0; b < 6; b++) {
                     const bx = 2 + (b % 2) * 2.1;
                     const bz = -4 + b * 1.6;
-                    const r = 0.65 + (b % 3) * 0.22;
-                    const bush = new THREE.Mesh(this.getOrganicFoliageGeo(b % 4), (b % 2 === 0) ? bushMat1 : bushMat2);
-                    bush.position.set(bx, 0.58, bz);
-                    bush.scale.set(r * 1.25, r * 0.65, r * 1.15);
-                    bush.rotation.y = b * 1.3;
-                    group.add(bush);
+                    this.buildLeafyBush(group, bx, 0.35, bz, 0.85 + (b % 3) * 0.2);
                 }
 
-                // Verwilderter Baum im Hintergrund (organische mehrteilige Krone mit Ästen)
+                // Verwilderter Baum im Hintergrund (Rinden-Stamm + Blätterzweige)
                 const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.36, 4.4, 8), woodPostMat);
                 trunk.position.set(4, 2.3, 2);
                 trunk.rotation.z = 0.05;
                 group.add(trunk);
 
-                [
-                    { dx: 0, dy: 4.8, dz: 0, s: [2.3, 1.7, 2.2], v: 0, m: bushMat1 },
-                    { dx: -1.1, dy: 4.4, dz: 0.8, s: [1.6, 1.3, 1.5], v: 1, m: bushMat2 },
-                    { dx: 1.0, dy: 4.6, dz: -0.7, s: [1.7, 1.35, 1.6], v: 2, m: bushMat1 },
-                    { dx: 0.1, dy: 5.7, dz: 0.2, s: [1.5, 1.2, 1.5], v: 3, m: bushMat2 },
-                ].forEach(cl => {
-                    const crownPart = new THREE.Mesh(this.getOrganicFoliageGeo(cl.v), cl.m);
-                    crownPart.position.set(4 + cl.dx, cl.dy, 2 + cl.dz);
-                    crownPart.scale.set(cl.s[0], cl.s[1], cl.s[2]);
-                    crownPart.rotation.y = cl.v * 1.2;
-                    group.add(crownPart);
-                });
+                this.buildLeafyCanopy(group, 4, 3.8, 2, 1.0);
 
             } else {
                 // =============================================================
@@ -4323,20 +4339,12 @@
                 sunsetRail.position.set(10.8, 1.0, 0);
                 cinemaGroup.add(sunsetRail);
 
-                // Schattenspendende Bäume im Hintergrund (organisch)
-                [ { x: 7.5, z: 6.8, v: 0 }, { x: 8.5, z: -6.5, v: 2 } ].forEach(tree => {
+                // Schattenspendende Bäume im Hintergrund (natürliche Blätterzweige)
+                [ { x: 7.5, z: 6.8 }, { x: 8.5, z: -6.5 } ].forEach(tree => {
                     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.5, 8), this.getBarkMaterial(1, 2));
                     trunk.position.set(tree.x, 2.2, tree.z);
                     cinemaGroup.add(trunk);
-                    const foliageMat = this.getFoliageMaterial(0xffffff, 2);
-                    const f1 = new THREE.Mesh(this.getOrganicFoliageGeo(tree.v), foliageMat);
-                    f1.position.set(tree.x, 4.7, tree.z);
-                    f1.scale.set(2.4, 1.7, 2.4);
-                    cinemaGroup.add(f1);
-                    const f2 = new THREE.Mesh(this.getOrganicFoliageGeo(tree.v + 1), foliageMat);
-                    f2.position.set(tree.x - 0.8, 5.2, tree.z + 0.6);
-                    f2.scale.set(1.6, 1.3, 1.6);
-                    cinemaGroup.add(f2);
+                    this.buildLeafyCanopy(cinemaGroup, tree.x, 3.5, tree.z, 0.95);
                 });
 
                 group.add(cinemaGroup);
