@@ -2163,6 +2163,97 @@
             return tex;
         }
 
+        getClubDoorTexture(isOwned = false) {
+            const key = `club_door_${isOwned ? 'owned' : 'ruin'}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Dunkle Metall-/Holz-Doppeltür
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, 512);
+            bgGrad.addColorStop(0, isOwned ? '#1e293b' : '#181c24');
+            bgGrad.addColorStop(1, isOwned ? '#0f172a' : '#0d1016');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Dezente vertikale Oberflächenstruktur
+            for (let x = 0; x < 512; x += 4) {
+                ctx.fillStyle = x % 8 === 0 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.08)';
+                ctx.fillRect(x, 0, 2, 512);
+            }
+
+            // Zwei Türflügel (links & rechts)
+            [0, 256].forEach(ox => {
+                // Außenrahmen jedes Flügels
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(ox + 12, 12, 232, 488);
+
+                // Oberes Türfenster (Glaseinsatz)
+                ctx.fillStyle = isOwned ? '#1e3a5f' : '#090c10';
+                ctx.fillRect(ox + 44, 46, 168, 180);
+                ctx.strokeStyle = 'rgba(100, 116, 139, 0.35)';
+                ctx.lineWidth = 5;
+                ctx.strokeRect(ox + 44, 46, 168, 180);
+
+                if (isOwned) {
+                    const g = ctx.createLinearGradient(ox + 44, 46, ox + 212, 226);
+                    g.addColorStop(0, 'rgba(34, 211, 238, 0.25)');
+                    g.addColorStop(1, 'rgba(217, 70, 239, 0.20)');
+                    ctx.fillStyle = g;
+                    ctx.fillRect(ox + 48, 50, 160, 172);
+                } else {
+                    // Gesprungene / staubige Scheibe
+                    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(ox + 44, 90);
+                    ctx.lineTo(ox + 125, 138);
+                    ctx.lineTo(ox + 190, 110);
+                    ctx.moveTo(ox + 125, 138);
+                    ctx.lineTo(ox + 100, 226);
+                    ctx.stroke();
+                }
+
+                // Unteres Kassettenfeld
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+                ctx.fillRect(ox + 44, 260, 168, 135);
+                ctx.strokeStyle = 'rgba(71, 85, 105, 0.28)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(ox + 44, 260, 168, 135);
+
+                // Metall-Trittschutz unten (Kickplate)
+                ctx.fillStyle = isOwned ? '#334155' : '#262b33';
+                ctx.fillRect(ox + 18, 432, 220, 62);
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(ox + 18, 432, 220, 62);
+            });
+
+            // Mittlere Türfuge
+            ctx.fillStyle = '#05070a';
+            ctx.fillRect(253, 0, 6, 512);
+
+            if (!isOwned) {
+                // Schmutz- & Rostschlieren an der verlassenen Tür
+                ctx.fillStyle = 'rgba(15, 12, 8, 0.35)';
+                for (let i = 0; i < 16; i++) {
+                    ctx.beginPath();
+                    ctx.arc(Math.random() * 512, 340 + Math.random() * 170, 20 + Math.random() * 28, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
         getClubCornerSignTexture(isOwned = false) {
             const key = `cornersign_${isOwned ? 'on' : 'off'}`;
             if (!this._texCache) this._texCache = {};
@@ -3023,12 +3114,21 @@
             bldGroup.add(winRight);
 
             // 4. HAUPTEINGANG (liegt sauber vor der Ziegelwand bei x=-5.90)
-            const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 });
+            const doorFrameMat = new THREE.MeshStandardMaterial({
+                map: this.loadSeamlessTexture('./textures/concrete_diffuse.webp', true, 1, 2),
+                normalMap: this.loadSeamlessTexture('./textures/concrete_normal.webp', false, 1, 2),
+                color: 0x334155,
+                roughness: 0.72,
+            });
             const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.55, 3.10), doorFrameMat);
             doorFrame.position.set(-5.94, 1.77 + 0.35, 0);
             bldGroup.add(doorFrame);
 
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+            const doorMat = new THREE.MeshStandardMaterial({
+                map: this.getClubDoorTexture(isOwned),
+                roughness: isOwned ? 0.45 : 0.78,
+                metalness: 0.15,
+            });
             const doors = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.35, 2.75), doorMat);
             doors.position.set(-5.98, 1.70 + 0.35, 0);
             bldGroup.add(doors);
@@ -3041,15 +3141,23 @@
                 bldGroup.add(handle);
             });
 
-            // Wenn Ruine: 3 Holzbretter schräg über die Türen genagelt!
+            // Wenn Ruine: vernagelte Holzbretter-Barrikade flächig vor der Tür
             if (!isOwned) {
-                const woodBoardMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
-                [-0.45, 0.0, 0.45].forEach((yo, bIdx) => {
-                    const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 3.2), woodBoardMat);
-                    board.position.set(-6.11, 1.80 + yo + 0.35, 0);
-                    board.rotation.x = (bIdx - 1) * 0.12;
-                    bldGroup.add(board);
-                });
+                if (!this._matCache['boarded_door']) {
+                    const bDiff = new THREE.TextureLoader().load('./textures/boarded_door.jpg');
+                    bDiff.colorSpace = THREE.SRGBColorSpace;
+                    const bNorm = new THREE.TextureLoader().load('./textures/boarded_door_normal.png');
+                    this._matCache['boarded_door'] = new THREE.MeshStandardMaterial({
+                        map: bDiff,
+                        normalMap: bNorm,
+                        normalScale: new THREE.Vector2(0.85, 0.85),
+                        roughness: 0.88,
+                    });
+                }
+                const barricade = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.40, 3.00), this._matCache['boarded_door']);
+                barricade.position.set(-6.11, 1.95, 0);
+                barricade.castShadow = true;
+                bldGroup.add(barricade);
             }
 
             // 5. DAS VORDACH / BALDACHIN ÜBER DEM EINGANG
@@ -3212,8 +3320,8 @@
                     });
                 }
                 const sMat = this._matCache['graffiti_stay_out'];
-                const sDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), sMat);
-                sDoor.position.set(-6.17, 2.15, 0);
+                const sDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.65, 1.65), sMat);
+                sDoor.position.set(-6.17, 2.05, 0);
                 sDoor.rotation.y = -Math.PI / 2;
                 bldGroup.add(sDoor);
 
