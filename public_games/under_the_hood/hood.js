@@ -2397,6 +2397,147 @@
             return tex;
         }
 
+        getSandTexture(isRuin = false) {
+            const key = `sand_${isRuin ? 'ruin' : 'clean'}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = isRuin ? '#9a8462' : '#d8c38a';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Sanfte Windrippel im Sand
+            for (let y = 0; y < 512; y += 6) {
+                ctx.strokeStyle = isRuin ? 'rgba(68, 55, 36, 0.14)' : 'rgba(180, 152, 92, 0.16)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                for (let x = 0; x <= 512; x += 64) {
+                    ctx.lineTo(x, y + Math.sin(x * 0.03 + y * 0.05) * 3);
+                }
+                ctx.stroke();
+            }
+
+            // Sandkörner, Muschelsplitter & bei Ruine Seegras-/Schmutzflecken
+            for (let i = 0; i < 900; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                ctx.fillStyle = i % 3 === 0
+                    ? (isRuin ? 'rgba(65, 53, 35, 0.35)' : 'rgba(165, 138, 82, 0.28)')
+                    : (isRuin ? 'rgba(190, 172, 140, 0.25)' : 'rgba(248, 238, 205, 0.32)');
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            if (isRuin) {
+                for (let i = 0; i < 22; i++) {
+                    ctx.fillStyle = i % 2 === 0 ? 'rgba(58, 66, 38, 0.28)' : 'rgba(72, 58, 38, 0.26)';
+                    ctx.beginPath();
+                    ctx.ellipse(Math.random() * 512, Math.random() * 512, 16 + Math.random() * 34, 8 + Math.random() * 18, Math.random() * Math.PI, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(4, 4);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getThatchTexture() {
+            const key = 'beach_thatch';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#6b4f26';
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let i = 0; i < 1200; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const len = 18 + Math.random() * 28;
+                ctx.strokeStyle = i % 3 === 0 ? '#423015' : (i % 3 === 1 ? '#8c6b36' : '#a88649');
+                ctx.lineWidth = 1.5 + Math.random() * 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + (Math.random() - 0.5) * 8, y + len);
+                ctx.stroke();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 2);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getBeachClosedSignTexture(tileName = 'Strand') {
+            const key = `beach_closed_${tileName}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Verwittertes Holzbrett
+            const g = ctx.createLinearGradient(0, 0, 0, 256);
+            g.addColorStop(0, '#5c4022');
+            g.addColorStop(1, '#3b2814');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, 512, 256);
+
+            ctx.strokeStyle = '#1f140a';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(5, 5, 502, 246);
+
+            // Gelb-schwarzes Warnband oben & unten
+            ctx.fillStyle = '#ca8a04';
+            ctx.fillRect(14, 14, 484, 24);
+            ctx.fillRect(14, 218, 484, 24);
+            ctx.fillStyle = '#111827';
+            for (let sx = 0; sx < 520; sx += 36) {
+                ctx.beginPath();
+                ctx.moveTo(sx, 14); ctx.lineTo(sx + 18, 14); ctx.lineTo(sx + 6, 38); ctx.lineTo(sx - 12, 38);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(sx, 218); ctx.lineTo(sx + 18, 218); ctx.lineTo(sx + 6, 242); ctx.lineTo(sx - 12, 242);
+                ctx.fill();
+            }
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fef3c7';
+            ctx.font = 'bold 34px sans-serif';
+            ctx.fillText(tileName.toUpperCase(), 256, 94);
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 42px sans-serif';
+            ctx.fillText('STRAND GESCHLOSSEN', 256, 150);
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText('SANIERUNGSBEDÜRFTIG', 256, 192);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
         getClubCornerSignTexture(isOwned = false) {
             const key = `cornersign_${isOwned ? 'on' : 'off'}`;
             if (!this._texCache) this._texCache = {};
@@ -3526,67 +3667,114 @@
             const isOwned = !!ownerColor;
 
             if (!isOwned) {
-                // 1. DIE STRAND-BAURUINE (Verfallener Steg, eingestürzte Strandbude, Treibgut & Absperrung)
-                const sandMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.95 });
-                const woodRuinMat = new THREE.MeshStandardMaterial({ color: 0x573a08, roughness: 0.9 });
-                const strawMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.95 });
+                // 1. DIE STRAND-BAURUINE (Ungepflegter Sand, verfallener Steg, eingestürzte Bude, Treibgut & Schild)
+                const sandMat = new THREE.MeshStandardMaterial({
+                    map: this.getSandTexture(true),
+                    normalMap: this.loadSeamlessTexture('./textures/dirt_normal.webp', false, 4, 4),
+                    normalScale: new THREE.Vector2(0.75, 0.75),
+                    roughness: 0.94,
+                });
+                const woodRuinMat = this.getBarkMaterial(1, 2);
+                const plankRuinMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/boarded_door.jpg', true, 1, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/boarded_door_normal.png', false, 1, 1),
+                    roughness: 0.9,
+                });
+                const strawMat = new THREE.MeshStandardMaterial({
+                    map: this.getThatchTexture(),
+                    roughness: 0.96,
+                });
+                const rockMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/rock_diffuse.webp', true, 1, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/rock_normal.webp', false, 1, 1),
+                    roughness: 0.9,
+                });
 
-                // Verwilderter Sandboden mit Gestrüpp
+                // Ungepflegter, natürlicher Sandboden
                 const plot = new THREE.Mesh(new THREE.BoxGeometry(22, 0.35, 19), sandMat);
                 plot.position.set(0, 0.18, 0);
                 plot.receiveShadow = true;
                 group.add(plot);
 
-                // Morsche, schiefe Pfähle eines alten Holzstegs
+                // Verstreute Küstenfelsen & wildes Strandgestrüpp
+                [[-5.2, 5.5, 0.7], [6.2, -5.0, 0.9], [1.4, 5.8, 0.55]].forEach(([rx, rz, rs], ri) => {
+                    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rs, 0), rockMat);
+                    rock.position.set(rx, 0.35, rz);
+                    rock.rotation.set(ri * 0.7, ri * 1.1, 0);
+                    group.add(rock);
+                });
+                [[-4.8, -6.2], [5.8, 5.2], [6.5, -2.5]].forEach(([bx, bz], bi) => {
+                    this.buildLeafyBush(group, bx, 0.35, bz, 0.75 + bi * 0.12);
+                });
+
+                // Morsche, schiefe Pfähle eines alten Holzstegs + halb vergrabene Stegplanken
                 for (let p = 0; p < 4; p++) {
-                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.2, 6), woodRuinMat);
-                    post.position.set(-2 + p * 2.2, 1.0, -4);
-                    post.rotation.z = (Math.random() - 0.5) * 0.3;
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 1.8, 7), woodRuinMat);
+                    post.position.set(-2.5 + p * 2.1, 0.95, -4.2);
+                    post.rotation.z = ((p % 2) - 0.5) * 0.22;
                     group.add(post);
                 }
+                const brokenPlank = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.12, 1.3), plankRuinMat);
+                brokenPlank.position.set(0.2, 0.38, -4.1);
+                brokenPlank.rotation.set(0.05, 0.12, -0.04);
+                group.add(brokenPlank);
 
-                // Eingestürzte Tiki-Strandbude: Schiefe Pfähle & halb herabgefallenes Strohdach
-                const hutPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.2, 8), woodRuinMat);
-                hutPost1.position.set(2, 1.6, 2);
-                hutPost1.rotation.z = 0.2;
+                // Eingestürzte Tiki-Strandbude: Schiefe Pfähle & abgesacktes Strohdach (liegt geerdet auf)
+                const hutPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 2.7, 8), woodRuinMat);
+                hutPost1.position.set(2.0, 1.45, 2.2);
+                hutPost1.rotation.z = 0.14;
                 group.add(hutPost1);
 
-                const hutPost2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.2, 8), woodRuinMat);
-                hutPost2.position.set(5, 1.1, 2);
-                hutPost2.rotation.z = -0.3;
+                const hutPost2 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 1.4, 8), woodRuinMat);
+                hutPost2.position.set(5.2, 0.85, 2.2);
+                hutPost2.rotation.z = -0.25;
                 group.add(hutPost2);
 
-                // Eingestürztes, schiefes Strohdach
-                const collapsedRoof = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.3, 4.5), strawMat);
-                collapsedRoof.position.set(3.5, 2.2, 2);
-                collapsedRoof.rotation.set(0.2, 0.1, -0.45);
+                const collapsedRoof = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.28, 4.2), strawMat);
+                collapsedRoof.position.set(3.6, 1.65, 2.1);
+                collapsedRoof.rotation.set(0.14, 0.08, -0.34);
                 collapsedRoof.castShadow = true;
                 group.add(collapsedRoof);
 
-                // Angespülte Kiste & rostiges Ölfass im Sand
-                const crate = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 1.2), woodRuinMat);
-                crate.position.set(-1, 0.5, 1);
-                crate.rotation.y = 0.4;
+                // Angespülte Holzkiste & verrostetes Ölfass im Sand
+                const crate = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.95, 1.15), plankRuinMat);
+                crate.position.set(-1.2, 0.68, 1.4);
+                crate.rotation.set(0.05, 0.42, -0.06);
                 group.add(crate);
 
-                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.1, 8), new THREE.MeshStandardMaterial({ color: 0x9a3412 }));
-                barrel.position.set(0.8, 0.55, 3.5);
-                barrel.rotation.z = Math.PI / 2;
+                const barrelMat = new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.88, metalness: 0.35 });
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.1, 12), barrelMat);
+                barrel.position.set(0.8, 0.62, 3.6);
+                barrel.rotation.set(0.12, 0.5, Math.PI / 2);
                 group.add(barrel);
 
-                // Schiefes Holzschild "STRAND GESCHLOSSEN • SANIERUNGSBEDÜRFTIG"
-                const sign = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, 2.4), new THREE.MeshStandardMaterial({ color: 0xca8a04 }));
-                sign.position.set(-6.5, 1.8, 0);
-                sign.rotation.z = 0.15;
+                // Verankertes Holzschild auf zwei Pfosten "STRAND GESCHLOSSEN • SANIERUNGSBEDÜRFTIG"
+                [-0.85, 0.85].forEach(sz => {
+                    const sPost = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 2.1, 6), woodRuinMat);
+                    sPost.position.set(-6.5, 1.15, sz);
+                    sPost.rotation.z = 0.06;
+                    group.add(sPost);
+                });
+                const sign = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.08, 1.1, 2.3),
+                    new THREE.MeshStandardMaterial({ map: this.getBeachClosedSignTexture(tileName), roughness: 0.78 })
+                );
+                sign.position.set(-6.55, 1.85, 0);
+                sign.rotation.z = 0.08;
                 group.add(sign);
 
             } else {
                 // 2. DAS WIEDERHERGESTELLTE, AKTIVE LUXUS-STRANDBAD
                 const hex = ownerColor;
-                const goldSandMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.9 });
+                const goldSandMat = new THREE.MeshStandardMaterial({
+                    map: this.getSandTexture(false),
+                    normalMap: this.loadSeamlessTexture('./textures/dirt_normal.webp', false, 4, 4),
+                    normalScale: new THREE.Vector2(0.45, 0.45),
+                    roughness: 0.9,
+                });
                 const seaEdgeMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.2, metalness: 0.3 });
                 const bambooMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 });
-                const thatchMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.95 });
+                const thatchMat = new THREE.MeshStandardMaterial({ map: this.getThatchTexture(), roughness: 0.95 });
                 const playerMat = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4 });
 
                 // Feiner goldener Sandstrand mit türkisem Brandungssaum
