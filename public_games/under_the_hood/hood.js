@@ -1000,7 +1000,7 @@
             // 8. Konturierte Sport-Schalensitze Fahrer & Beifahrer (sitzen bündig auf Bodenwanne y=0.43!)
             const buildBucketSeat = (seatX) => {
                 const seatGroup = new THREE.Group();
-                seatGroup.position.set(seatX, 0.43, 0.45);
+                seatGroup.position.set(seatX, 0.43, 0.52);
 
                 const seatCushion = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.16, 0.66), leatherMat);
                 seatCushion.position.set(0, 0.08, 0);
@@ -1013,9 +1013,10 @@
                     seatGroup.add(bolster);
                 });
 
+                // Lehne bequem nach hinten (+Z) geneigt!
                 const backGroup = new THREE.Group();
-                backGroup.position.set(0, 0.16, 0.28);
-                backGroup.rotation.x = -0.2;
+                backGroup.position.set(0, 0.16, 0.26);
+                backGroup.rotation.x = 0.22;
 
                 const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.14), leatherMat);
                 seatBack.position.set(0, 0.31, 0);
@@ -1027,10 +1028,19 @@
                     backGroup.add(backBolster);
                 });
 
-                const headrest = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.22, 12), leatherMat);
-                headrest.position.set(0, 0.72, 0);
-                headrest.scale.set(1.1, 1.0, 0.75);
-                backGroup.add(headrest);
+                // Konturierte Sport-Kopfstütze mit Chrom-Streben (nicht zylindrisch)
+                [-0.07, 0.07].forEach(rx => {
+                    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.10, 8), chromeMat);
+                    rod.position.set(rx, 0.65, 0);
+                    backGroup.add(rod);
+                });
+                const headrestPad = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.11), leatherMat);
+                headrestPad.position.set(0, 0.74, -0.01);
+                backGroup.add(headrestPad);
+                const headrestTop = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.26, 12), leatherMat);
+                headrestTop.rotation.z = Math.PI / 2;
+                headrestTop.position.set(0, 0.82, -0.01);
+                backGroup.add(headrestTop);
 
                 seatGroup.add(backGroup);
                 this.cockpitRig.add(seatGroup);
