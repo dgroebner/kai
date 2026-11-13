@@ -852,86 +852,103 @@
                 metalness: 0.88,
             });
 
-            // 1. Bodenwanne / Teppich (verhindert, dass Sitze über dem Asphalt schweben!)
-            const floorGeo = new THREE.BoxGeometry(3.45, 0.14, 3.8);
+            // 1. Bodenwanne / Teppich (liegt bei y=0.36..0.43 deutlich über dem Asphalt y=0.25!)
+            const floorGeo = new THREE.BoxGeometry(3.40, 0.14, 3.60);
             const floorPan = new THREE.Mesh(floorGeo, carpetMat);
-            floorPan.position.set(0, 0.08, 0.55);
+            floorPan.position.set(0, 0.36, 0.65);
             this.cockpitRig.add(floorPan);
 
-            // 2. Cabrio-Seitenwände & Türen links/rechts (Lackierte Außenseite + dunkle Armlehne innen)
+            // 2. Cabrio-Seitenwände, Türen & gut erkennbare Sport-Außenspiegel links/rechts
+            const mirrorGlassMat = new THREE.MeshStandardMaterial({
+                color: 0xbae6fd,
+                emissive: 0x38bdf8,
+                emissiveIntensity: 0.22,
+                roughness: 0.08,
+                metalness: 0.92,
+            });
             [-1.68, 1.68].forEach(sideX => {
                 const isLeft = sideX < 0;
-                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.58, 3.4), this.carHoodMat);
-                doorOuter.position.set(sideX, 0.42, 0.4);
+                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 3.60), this.carHoodMat);
+                doorOuter.position.set(sideX, 0.62, 0.65);
                 this.cockpitRig.add(doorOuter);
 
-                const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 2.7), leatherMat);
-                doorTrim.position.set(isLeft ? sideX + 0.08 : sideX - 0.08, 0.62, 0.25);
+                const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 2.80), leatherMat);
+                doorTrim.position.set(isLeft ? sideX + 0.10 : sideX - 0.10, 0.78, 0.35);
                 this.cockpitRig.add(doorTrim);
 
-                // Außenspiegel (Sport-Spiegel in Wagenfarbe)
-                const mirrorArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.1), leatherMat);
-                mirrorArm.position.set(isLeft ? sideX - 0.08 : sideX + 0.08, 0.78, -0.95);
+                // Außenspiegel-Arm + Gehäuse + Spiegelglas (deutlich sichtbar neben der A-Säule)
+                const mirrorArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.07, 0.10), leatherMat);
+                mirrorArm.position.set(isLeft ? sideX - 0.14 : sideX + 0.14, 0.97, -0.82);
+                mirrorArm.rotation.z = isLeft ? -0.25 : 0.25;
                 this.cockpitRig.add(mirrorArm);
 
-                const mirrorCap = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.14, 0.14), this.carHoodMat);
-                mirrorCap.position.set(isLeft ? sideX - 0.18 : sideX + 0.18, 0.82, -0.98);
-                this.cockpitRig.add(mirrorCap);
+                const mirrorPivot = new THREE.Group();
+                mirrorPivot.position.set(isLeft ? sideX - 0.30 : sideX + 0.30, 1.03, -0.84);
+                mirrorPivot.rotation.y = isLeft ? -0.22 : 0.22;
+
+                const mirrorCap = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.17, 0.16), this.carHoodMat);
+                mirrorPivot.add(mirrorCap);
+
+                const mirrorGlass = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.13, 0.02), mirrorGlassMat);
+                mirrorGlass.position.set(0, 0, 0.082);
+                mirrorPivot.add(mirrorGlass);
+
+                this.cockpitRig.add(mirrorPivot);
             });
 
             // 3. Geschwungene Sport-Cabrio Motorhaube mit Kotflügeln & Powerdome
-            const hoodBaseGeo = new THREE.BoxGeometry(2.65, 0.22, 3.15);
+            const hoodBaseGeo = new THREE.BoxGeometry(2.65, 0.24, 3.15);
             this.carHoodMesh = new THREE.Mesh(hoodBaseGeo, this.carHoodMat);
-            this.carHoodMesh.position.set(0, 0.43, -2.55);
+            this.carHoodMesh.position.set(0, 0.64, -2.55);
             this.carHoodMesh.rotation.x = 0.06; // Leicht abfallende Sport-Front
             this.carHoodMesh.castShadow = true;
             this.cockpitRig.add(this.carHoodMesh);
 
             // Abgerundete Kotflügel links & rechts neben der Haube
             [-1.46, 1.46].forEach(fX => {
-                const fenderGeo = new THREE.CylinderGeometry(0.18, 0.2, 3.15, 14);
+                const fenderGeo = new THREE.CylinderGeometry(0.20, 0.22, 3.15, 14);
                 fenderGeo.rotateX(Math.PI / 2);
                 const fender = new THREE.Mesh(fenderGeo, this.carHoodMat);
-                fender.position.set(fX, 0.44, -2.55);
+                fender.position.set(fX, 0.65, -2.55);
                 fender.rotation.x = 0.06;
                 this.cockpitRig.add(fender);
             });
 
             // Carbon Power-Dome in der Haubenmitte
-            const powerDome = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.09, 2.3), dashMat);
-            powerDome.position.set(0, 0.56, -2.45);
+            const powerDome = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.10, 2.30), dashMat);
+            powerDome.position.set(0, 0.78, -2.45);
             powerDome.rotation.x = 0.06;
             this.cockpitRig.add(powerDome);
 
-            // 4. Mittelkonsole mit Schalthebel (verbindet Armaturenbrett mit Fahrgastraum)
-            const consoleGeo = new THREE.BoxGeometry(0.56, 0.36, 2.75);
+            // 4. Mittelkonsole mit Schalthebel (sitzt bündig auf Bodenwanne y=0.43)
+            const consoleGeo = new THREE.BoxGeometry(0.56, 0.36, 2.15);
             const centerConsole = new THREE.Mesh(consoleGeo, leatherMat);
-            centerConsole.position.set(0, 0.30, 0.42);
+            centerConsole.position.set(0, 0.56, 0.05);
             this.cockpitRig.add(centerConsole);
 
-            const consoleTrim = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 2.2), dashMat);
-            consoleTrim.position.set(0, 0.49, 0.25);
+            const consoleTrim = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 1.85), dashMat);
+            consoleTrim.position.set(0, 0.75, 0.0);
             this.cockpitRig.add(consoleTrim);
 
             // Sport-Schalthebel
             const shifterShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.24, 10), chromeMat);
-            shifterShaft.position.set(0, 0.60, -0.05);
+            shifterShaft.position.set(0, 0.86, -0.15);
             shifterShaft.rotation.x = 0.15;
             this.cockpitRig.add(shifterShaft);
 
             const shifterKnob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 12), leatherMat);
-            shifterKnob.position.set(0, 0.72, -0.03);
+            shifterKnob.position.set(0, 0.98, -0.12);
             this.cockpitRig.add(shifterKnob);
 
             // 5. Abgerundetes Carbon-Armaturenbrett (kein eckiger Kasten)
-            const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.34, 0.95), leatherMat);
-            dashBase.position.set(0, 0.50, -0.88);
+            const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.40, 0.42, 0.90), leatherMat);
+            dashBase.position.set(0, 0.64, -0.88);
             this.cockpitRig.add(dashBase);
 
-            const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.45, 16);
+            const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.40, 16);
             dashTopRollGeo.rotateZ(Math.PI / 2);
             const dashTopRoll = new THREE.Mesh(dashTopRollGeo, dashMat);
-            dashTopRoll.position.set(0, 0.67, -0.82);
+            dashTopRoll.position.set(0, 0.84, -0.82);
             this.cockpitRig.add(dashTopRoll);
 
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
@@ -940,7 +957,7 @@
                 map: this.getDashboardDisplayTexture(),
             });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 0.85, -0.72);
+            cluster.position.set(-0.7, 0.98, -0.70);
             cluster.rotation.x = -0.22;
             this.cockpitRig.add(cluster);
 
@@ -948,13 +965,13 @@
             const cowlGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.28, 16, 1, false, -Math.PI / 2, Math.PI);
             cowlGeo.rotateX(Math.PI / 2);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 0.74, -0.78);
+            cowl.position.set(-0.7, 0.88, -0.76);
             cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
             // 7. Sportlenkrad (Links auf Fahrerseite)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.79, -0.4);
+            wheelGroup.position.set(-0.7, 0.88, -0.42);
             wheelGroup.rotation.x = 0.35;
 
             const ringGeo = new THREE.TorusGeometry(0.36, 0.038, 12, 28);
@@ -978,62 +995,136 @@
             this.cockpitRig.add(wheelGroup);
             this.steeringWheel = wheelGroup;
 
-            // 8. Konturierter Sport-Schalensitz rechts (sitzt fest auf der Bodenwanne!)
-            const seatGroup = new THREE.Group();
-            seatGroup.position.set(0.95, 0.16, 0.45);
+            // 8. Konturierte Sport-Schalensitze Fahrer & Beifahrer (sitzen bündig auf Bodenwanne y=0.43!)
+            const buildBucketSeat = (seatX) => {
+                const seatGroup = new THREE.Group();
+                seatGroup.position.set(seatX, 0.43, 0.45);
 
-            // Sitzfläche + Seitenwangen
-            const seatCushion = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.16, 0.66), leatherMat);
-            seatCushion.position.set(0, 0.1, 0);
-            seatGroup.add(seatCushion);
+                const seatCushion = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.16, 0.66), leatherMat);
+                seatCushion.position.set(0, 0.08, 0);
+                seatGroup.add(seatCushion);
 
-            [-0.28, 0.28].forEach(bx => {
-                const bolster = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.64, 10), leatherMat);
-                bolster.rotation.x = Math.PI / 2;
-                bolster.position.set(bx, 0.16, 0);
-                seatGroup.add(bolster);
+                [-0.28, 0.28].forEach(bx => {
+                    const bolster = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.64, 10), leatherMat);
+                    bolster.rotation.x = Math.PI / 2;
+                    bolster.position.set(bx, 0.14, 0);
+                    seatGroup.add(bolster);
+                });
+
+                const backGroup = new THREE.Group();
+                backGroup.position.set(0, 0.16, 0.28);
+                backGroup.rotation.x = -0.2;
+
+                const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.14), leatherMat);
+                seatBack.position.set(0, 0.31, 0);
+                backGroup.add(seatBack);
+
+                [-0.25, 0.25].forEach(bx => {
+                    const backBolster = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.58, 10), leatherMat);
+                    backBolster.position.set(bx, 0.31, -0.04);
+                    backGroup.add(backBolster);
+                });
+
+                const headrest = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.22, 12), leatherMat);
+                headrest.position.set(0, 0.72, 0);
+                headrest.scale.set(1.1, 1.0, 0.75);
+                backGroup.add(headrest);
+
+                seatGroup.add(backGroup);
+                this.cockpitRig.add(seatGroup);
+            };
+            buildBucketSeat(0.95);
+            buildBucketSeat(-0.70);
+
+            // 9. Sport-Cabrio Heck (Rückwand, Kofferraumdeckel, hintere Kotflügel, Spoiler & Überrollbügel)
+            const rearBulkhead = new THREE.Mesh(new THREE.BoxGeometry(3.36, 0.58, 0.22), leatherMat);
+            rearBulkhead.position.set(0, 0.70, 1.08);
+            this.cockpitRig.add(rearBulkhead);
+
+            const rearDeck = new THREE.Mesh(new THREE.BoxGeometry(2.72, 0.34, 1.40), this.carHoodMat);
+            rearDeck.position.set(0, 0.84, 1.78);
+            rearDeck.rotation.x = -0.04;
+            this.cockpitRig.add(rearDeck);
+
+            [-1.48, 1.48].forEach(rfX => {
+                const rearFenderGeo = new THREE.CylinderGeometry(0.20, 0.20, 1.45, 14);
+                rearFenderGeo.rotateX(Math.PI / 2);
+                const rearFender = new THREE.Mesh(rearFenderGeo, this.carHoodMat);
+                rearFender.position.set(rfX, 0.85, 1.78);
+                rearFender.rotation.x = -0.04;
+                this.cockpitRig.add(rearFender);
             });
 
-            // Angelehnte Rückenlehne + Seitenwangen
-            const backGroup = new THREE.Group();
-            backGroup.position.set(0, 0.18, 0.28);
-            backGroup.rotation.x = -0.2;
+            const rearSpoiler = new THREE.Mesh(new THREE.BoxGeometry(2.88, 0.08, 0.20), dashMat);
+            rearSpoiler.position.set(0, 1.00, 2.40);
+            this.cockpitRig.add(rearSpoiler);
 
-            const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.14), leatherMat);
-            seatBack.position.set(0, 0.31, 0);
-            backGroup.add(seatBack);
-
-            [-0.25, 0.25].forEach(bx => {
-                const backBolster = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.58, 10), leatherMat);
-                backBolster.position.set(bx, 0.31, -0.04);
-                backGroup.add(backBolster);
+            [-0.70, 0.95].forEach(hoopX => {
+                const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.042, 10, 20, Math.PI), chromeMat);
+                hoop.position.set(hoopX, 0.98, 1.08);
+                this.cockpitRig.add(hoop);
             });
 
-            // Integrierte Kopfstütze mit Metall-Akzent
-            const headrest = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.22, 12), leatherMat);
-            headrest.position.set(0, 0.72, 0);
-            headrest.scale.set(1.1, 1.0, 0.75);
-            backGroup.add(headrest);
+            // 10. Nahtloser Cabrio-Windschutzscheibenrahmen (A-Säulen exakt mit Querträger verbunden)
+            const connectPillar = (p1, p2, rBottom, rTop, mat) => {
+                const dir = new THREE.Vector3().subVectors(p2, p1);
+                const len = dir.length();
+                const geo = new THREE.CylinderGeometry(rTop, rBottom, len, 12);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(p1).addScaledVector(dir, 0.5);
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                this.cockpitRig.add(mesh);
+            };
 
-            seatGroup.add(backGroup);
-            this.cockpitRig.add(seatGroup);
+            const headerY = 1.94;
+            const headerZ = -0.44;
+            const cowlY = 0.90;
+            const cowlZ = -1.04;
 
-            // 9. Cabrio-Windschutzscheibenrahmen (schlanke A-Säulen außen, stören nicht die Sicht!)
-            [-1.65, 1.65].forEach(pillarX => {
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 1.38, 10), chromeMat);
-                pillar.position.set(pillarX, 1.28, -0.82);
-                pillar.rotation.x = -0.45;
-                this.cockpitRig.add(pillar);
+            [-1, 1].forEach(sign => {
+                const pBottom = new THREE.Vector3(sign * 1.65, cowlY, cowlZ);
+                const pTop = new THREE.Vector3(sign * 1.56, headerY, headerZ);
+                connectPillar(pBottom, pTop, 0.055, 0.045, chromeMat);
+
+                const topJoint = new THREE.Mesh(new THREE.SphereGeometry(0.052, 12, 12), chromeMat);
+                topJoint.position.copy(pTop);
+                this.cockpitRig.add(topJoint);
+
+                const botJoint = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), chromeMat);
+                botJoint.position.copy(pBottom);
+                this.cockpitRig.add(botJoint);
             });
 
-            const headerBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.36, 12), chromeMat);
+            const headerBar = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.046, 3.12, 12), chromeMat);
             headerBar.rotation.z = Math.PI / 2;
-            headerBar.position.set(0, 1.88, -0.52);
+            headerBar.position.set(0, headerY, headerZ);
             this.cockpitRig.add(headerBar);
 
-            // 10. Rückspiegel am oberen Cabrio-Rahmen
+            // Dezente getönte Frontscheibe zwischen A-Säulen
+            const glassDir = new THREE.Vector3(0, headerY - cowlY, headerZ - cowlZ);
+            const glassLen = glassDir.length();
+            const windshieldGlass = new THREE.Mesh(
+                new THREE.BoxGeometry(3.14, glassLen, 0.015),
+                new THREE.MeshStandardMaterial({
+                    color: 0xbae6fd,
+                    transparent: true,
+                    opacity: 0.11,
+                    roughness: 0.05,
+                    metalness: 0.2,
+                    depthWrite: false,
+                })
+            );
+            windshieldGlass.position.set(0, (cowlY + headerY) * 0.5, (cowlZ + headerZ) * 0.5);
+            windshieldGlass.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), glassDir.clone().normalize());
+            this.cockpitRig.add(windshieldGlass);
+
+            // 11. Rückspiegel am oberen Cabrio-Rahmen (mit Halterung am Querträger)
+            const mirrorStem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.12, 8), leatherMat);
+            mirrorStem.position.set(0, headerY - 0.06, headerZ);
+            this.cockpitRig.add(mirrorStem);
+
             const mirrorGroup = new THREE.Group();
-            mirrorGroup.position.set(0, 1.78, -0.52);
+            mirrorGroup.position.set(0, headerY - 0.14, headerZ + 0.02);
 
             const mirrorCase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.05), leatherMat);
             mirrorGroup.add(mirrorCase);
@@ -1044,8 +1135,8 @@
 
             this.cockpitRig.add(mirrorGroup);
 
-            // 11. Fahrer-Kamera: Sitzt am Steuer mit Panorama-Blick
-            this.camera.position.set(-0.7, 1.35, 0.1);
+            // 12. Fahrer-Kamera: Sitzt am Steuer mit Panorama-Blick
+            this.camera.position.set(-0.7, 1.44, 0.10);
             this.cockpitRig.add(this.camera);
 
             this.scene.add(this.cockpitRig);
