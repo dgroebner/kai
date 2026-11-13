@@ -280,11 +280,13 @@
             ocean.position.y = -2;
             this.scene.add(ocean);
 
-            // Stabile grüne Insel-Landschaft (Ebene Basis bei y = -0.05 mit mehrschichtiger Wiesentextur)
+            // Stabile grüne Insel-Landschaft (Ebene Basis bei y = -0.05 mit ComfyUI PBR-Rasentextur)
             const islandGeo = new THREE.PlaneGeometry(1200, 1200);
             const islandMat = new THREE.MeshStandardMaterial({
-                map: this.getGrassTexture(),
-                roughness: 0.85,
+                map: this.loadSeamlessTexture('./textures/grass_diffuse.webp', true, 160, 160),
+                normalMap: this.loadSeamlessTexture('./textures/grass_normal.webp', false, 160, 160),
+                normalScale: new THREE.Vector2(1.0, 1.0),
+                roughness: 0.88,
             });
             const island = new THREE.Mesh(islandGeo, islandMat);
             island.rotation.x = -Math.PI / 2;
@@ -2919,7 +2921,12 @@
                 // 1. UNBEBAUT / ZU VERKAUFEN (EXAKT WIE IM REFERENZBILD 1!)
                 // =============================================================
                 // Verwilderter Boden mit Erdflecken, hohem Unkraut und Gestrüpp
-                const wildGroundMat = new THREE.MeshStandardMaterial({ map: this.getGrassTexture(), roughness: 0.95 });
+                const wildGroundMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/grass_diffuse.webp', true, 4, 4),
+                    normalMap: this.loadSeamlessTexture('./textures/grass_normal.webp', false, 4, 4),
+                    color: 0xa3e635,
+                    roughness: 0.95,
+                });
                 const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), wildGroundMat);
                 plot.position.set(0, 0.18, 0);
                 plot.receiveShadow = true;
@@ -3006,7 +3013,11 @@
                 // 2. GEKAUFT: GEPFLEGTER ZIERRASEN & METALLZAUN (BILD 2)
                 // =============================================================
                 // Perfekt gemähter, satter englischer Rasen
-                const lawnMat = new THREE.MeshStandardMaterial({ map: this.getGrassTexture(), roughness: 0.75 });
+                const lawnMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/grass_diffuse.webp', true, 4, 4),
+                    normalMap: this.loadSeamlessTexture('./textures/grass_normal.webp', false, 4, 4),
+                    roughness: 0.78,
+                });
                 const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), lawnMat);
                 plot.position.set(0, 0.18, 0);
                 plot.receiveShadow = true;
