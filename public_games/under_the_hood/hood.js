@@ -735,26 +735,40 @@
 
         getOrganicFoliageGeo(variant = 0) {
             if (!this._geoCache) this._geoCache = {};
-            const key = `foliage_${variant}`;
+            const key = `foliage_smooth_${variant}`;
             if (this._geoCache[key]) return this._geoCache[key];
 
-            const geo = new THREE.IcosahedronGeometry(1.0, 2);
+            const geo = new THREE.SphereGeometry(1.0, 20, 16);
             const pos = geo.attributes.position;
             const s = (variant + 1) * 1.73;
             for (let i = 0; i < pos.count; i++) {
                 const vx = pos.getX(i);
                 const vy = pos.getY(i);
                 const vz = pos.getZ(i);
-                const noise = 0.84
-                    + 0.16 * Math.sin(vx * 3.1 + s) * Math.cos(vz * 2.7 - s)
-                    + 0.10 * Math.cos(vy * 4.3 + vx * 2.1 + s);
-                // Unten leicht abgeflacht, seitlich etwas breiter
-                const yScale = vy < 0 ? 0.78 : 0.96;
-                pos.setXYZ(i, vx * noise * 1.08, vy * noise * yScale, vz * noise * 1.08);
+                const noise = 0.88
+                    + 0.12 * Math.sin(vx * 3.1 + s) * Math.cos(vz * 2.7 - s)
+                    + 0.08 * Math.cos(vy * 4.3 + vx * 2.1 + s);
+                const yScale = vy < 0 ? 0.80 : 0.96;
+                pos.setXYZ(i, vx * noise * 1.06, vy * noise * yScale, vz * noise * 1.06);
             }
             geo.computeVertexNormals();
             this._geoCache[key] = geo;
             return geo;
+        }
+
+        getFoliageMaterial(tintHex = 0xffffff, repeat = 2) {
+            if (!this._matCache) this._matCache = {};
+            const key = `foliage_${tintHex}_${repeat}`;
+            if (this._matCache[key]) return this._matCache[key];
+            const mat = new THREE.MeshStandardMaterial({
+                map: this.loadSeamlessTexture('./textures/foliage_diffuse.webp', true, repeat, repeat),
+                normalMap: this.loadSeamlessTexture('./textures/foliage_normal.webp', false, repeat, repeat),
+                normalScale: new THREE.Vector2(1.1, 1.1),
+                color: tintHex,
+                roughness: 0.88,
+            });
+            this._matCache[key] = mat;
+            return mat;
         }
 
         // Erzeugt natürliche Bäume (geschwungene Palmen mit hängenden Wedeln oder organische Laubbäume)
@@ -841,9 +855,9 @@
                 });
 
                 const leafMats = [
-                    new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.88 }),
-                    new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.86 }),
-                    new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 }),
+                    this.getFoliageMaterial(0xffffff, 2),
+                    this.getFoliageMaterial(0xd9f99d, 2),
+                    this.getFoliageMaterial(0xbef264, 2),
                 ];
                 const clusters = [
                     { x: 0, y: 4.9, z: 0, sx: 2.5, sy: 1.9, sz: 2.4, v: 0, m: 0 },
@@ -3300,9 +3314,9 @@
                     group.add(tire);
                 }
 
-                // Wildes Gestrüpp & Sträucher (organische Cluster statt Kugeln)
-                const bushMat1 = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.92 });
-                const bushMat2 = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.90 });
+                // Wildes Gestrüpp & Sträucher (Laub-PBR-Textur auf organischen Clustern)
+                const bushMat1 = this.getFoliageMaterial(0xeef6d8, 2);
+                const bushMat2 = this.getFoliageMaterial(0xd9f99d, 2);
                 for (let b = 0; b < 6; b++) {
                     const bx = 2 + (b % 2) * 2.1;
                     const bz = -4 + b * 1.6;
@@ -4298,7 +4312,7 @@
                     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.5, 8), shedMat);
                     trunk.position.set(tree.x, 2.2, tree.z);
                     cinemaGroup.add(trunk);
-                    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.88 });
+                    const foliageMat = this.getFoliageMaterial(0xffffff, 2);
                     const f1 = new THREE.Mesh(this.getOrganicFoliageGeo(tree.v), foliageMat);
                     f1.position.set(tree.x, 4.7, tree.z);
                     f1.scale.set(2.4, 1.7, 2.4);
