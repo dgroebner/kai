@@ -773,6 +773,20 @@
             return mat;
         }
 
+        getBarkMaterial(repeatX = 1, repeatY = 2) {
+            if (!this._matCache) this._matCache = {};
+            const key = `bark_${repeatX}_${repeatY}`;
+            if (this._matCache[key]) return this._matCache[key];
+            const mat = new THREE.MeshStandardMaterial({
+                map: this.loadSeamlessTexture('./textures/bark_diffuse.webp', true, repeatX, repeatY),
+                normalMap: this.loadSeamlessTexture('./textures/bark_normal.webp', false, repeatX, repeatY),
+                normalScale: new THREE.Vector2(1.1, 1.1),
+                roughness: 0.92,
+            });
+            this._matCache[key] = mat;
+            return mat;
+        }
+
         // Erzeugt natürliche Bäume (geschwungene Palmen mit hängenden Wedeln oder organische Laubbäume)
         addStylizedTree(x, z, isPalm = false) {
             const tree = new THREE.Group();
@@ -781,7 +795,7 @@
             if (isPalm) {
                 // Tropische Kokospalme mit geschwungenem Stamm
                 const trunkGroup = new THREE.Group();
-                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+                const trunkMat = this.getBarkMaterial(1, 1);
                 const segHeights = [2.2, 2.0, 1.8];
                 let curY = 0;
                 let curTilt = 0;
@@ -840,7 +854,7 @@
             } else {
                 // Organischer Laubbaum mit Ästen & unregelmäßigen Blattpolstern
                 const trunkGeo = new THREE.CylinderGeometry(0.30, 0.52, 3.8, 10);
-                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3817, roughness: 0.92 });
+                const trunkMat = this.getBarkMaterial(1, 2);
                 const trunk = new THREE.Mesh(trunkGeo, trunkMat);
                 trunk.position.y = 1.9;
                 trunk.castShadow = true;
@@ -3256,7 +3270,7 @@
                 group.add(d1);
 
                 // Schiefer, alter Maschendrahtzaun entlang der Grundstücksgrenze (durchsichtig!)
-                const woodPostMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
+                const woodPostMat = this.getBarkMaterial(1, 2);
                 const fenceWireMat = new THREE.MeshStandardMaterial({
                     map: this.getChainLinkTexture(),
                     transparent: true,
@@ -4311,7 +4325,7 @@
 
                 // Schattenspendende Bäume im Hintergrund (organisch)
                 [ { x: 7.5, z: 6.8, v: 0 }, { x: 8.5, z: -6.5, v: 2 } ].forEach(tree => {
-                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.5, 8), shedMat);
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.5, 8), this.getBarkMaterial(1, 2));
                     trunk.position.set(tree.x, 2.2, tree.z);
                     cinemaGroup.add(trunk);
                     const foliageMat = this.getFoliageMaterial(0xffffff, 2);
@@ -5099,7 +5113,7 @@
                 }
             } else if (state.phase === 'BUY_DECISION') {
                 this.ui.btnGroupBuy.style.display = 'flex';
-                this.ui.btnBuy.textContent = `🏡 KAUFEN (${tile.price}k €)`;
+                this.ui.btnBuy.textContent = '🏡 KAUFEN';
             } else if (state.phase === 'TURN_END') {
                 this.ui.btnEndTurn.style.display = 'flex';
             }
