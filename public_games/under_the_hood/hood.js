@@ -2991,10 +2991,24 @@
                 bldGroup.add(pil);
             });
 
-            // 3. FENSTER LINKS & RECHTS
-            const winMat = new THREE.MeshBasicMaterial({
-                map: this.getBarWindowTexture(isOwned, hex),
-            });
+            // 3. FENSTER LINKS & RECHTS (eingeschlagene Scheiben mit Brettern bei Ruine, Neon-Fenster bei Besitz)
+            let winMat;
+            if (isOwned) {
+                winMat = new THREE.MeshBasicMaterial({
+                    map: this.getBarWindowTexture(true, hex),
+                });
+            } else {
+                const bwTex = new THREE.TextureLoader().load('./textures/broken_window.webp');
+                bwTex.colorSpace = THREE.SRGBColorSpace;
+                const bwNorm = new THREE.TextureLoader().load('./textures/broken_window_normal.webp');
+                winMat = new THREE.MeshStandardMaterial({
+                    map: bwTex,
+                    normalMap: bwNorm,
+                    normalScale: new THREE.Vector2(1.0, 1.0),
+                    roughness: 0.7,
+                    metalness: 0.18,
+                });
+            }
 
             // Linkes Fenster
             const winLeft = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 3.2), winMat);
@@ -3193,10 +3207,11 @@
                     });
                 }
                 const sMat = this._matCache['graffiti_stay_out'];
-                [-3.1, 6.5].forEach(sz => {
-                    const sWin = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), sMat);
+                [-4.8, 4.8].forEach((sz, idx) => {
+                    const sWin = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), sMat);
                     sWin.position.set(-6.02, 3.25, sz);
                     sWin.rotation.y = -Math.PI / 2;
+                    if (idx === 1) sWin.rotation.x = 0.05;
                     bldGroup.add(sWin);
                 });
                 const sDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), sMat);
