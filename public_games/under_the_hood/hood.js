@@ -1985,10 +1985,6 @@
                     ctx.fill();
                 }
 
-                // Graffiti-Tags (VOID bleibt vorerst auf Canvas; NO FUTURE kommt als echtes Sprüh-Decal!)
-                ctx.font = 'bold 36px sans-serif';
-                ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
-                ctx.fillText('VOID', 740, 210);
                 ctx.restore();
             }
 
@@ -3176,6 +3172,29 @@
                 gSide.position.set(-1.2, 3.0, -9.04);
                 gSide.rotation.y = Math.PI;
                 bldGroup.add(gSide);
+
+                // Echtes "VOID" Neon-Pink/Lila Graffiti-Decal (Fassade rechts & rechte Backstein-Seitenwand)
+                if (!this._matCache['graffiti_void']) {
+                    const vTex = new THREE.TextureLoader().load('./textures/graffiti_void.webp');
+                    vTex.colorSpace = THREE.SRGBColorSpace;
+                    this._matCache['graffiti_void'] = new THREE.MeshBasicMaterial({
+                        map: vTex,
+                        transparent: true,
+                        opacity: 0.92,
+                        depthWrite: false,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1,
+                    });
+                }
+                const vMat = this._matCache['graffiti_void'];
+                const vFront = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.8), vMat);
+                vFront.position.set(-6.11, 5.15, 5.5);
+                vFront.rotation.y = -Math.PI / 2;
+                bldGroup.add(vFront);
+
+                const vSide = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.0), vMat);
+                vSide.position.set(-1.2, 3.0, 9.04);
+                bldGroup.add(vSide);
 
                 // Ruine: Trümmer, Schutt (Stein-Textur) und wildes Unkraut (Zweig-Sprites) auf dem Vorplatz
                 for (let w = 0; w < 8; w++) {
