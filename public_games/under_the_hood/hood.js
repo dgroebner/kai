@@ -2941,22 +2941,28 @@
             const isOwned = !!ownerColor;
             const hex = ownerColor || '#00f5ff';
 
-            // 1. FUNDAMENT & BÜRGERSTEIG
+            // 1. FUNDAMENT & BÜRGERSTEIG (verwitterte Betonplatten)
             const baseGeo = new THREE.BoxGeometry(22, 0.35, 19);
             const baseMat = new THREE.MeshStandardMaterial({
-                color: isOwned ? 0x181e29 : 0x141820,
-                roughness: 0.8,
+                map: this.loadSeamlessTexture('./textures/concrete_diffuse.webp', true, 4, 4),
+                normalMap: this.loadSeamlessTexture('./textures/concrete_normal.webp', false, 4, 4),
+                normalScale: new THREE.Vector2(0.9, 0.9),
+                color: isOwned ? 0x94a3b8 : 0x64748b,
+                roughness: 0.85,
             });
             const base = new THREE.Mesh(baseGeo, baseMat);
             base.position.set(0, 0.18, 0);
             base.receiveShadow = true;
             group.add(base);
 
-            // Bürgersteig vor dem Gebäude
+            // Bürgersteig / Vorplatz vor dem Gebäude (Betonplatten)
             const walkGeo = new THREE.BoxGeometry(7, 0.08, 18);
             const walkMat = new THREE.MeshStandardMaterial({
-                color: isOwned ? 0x94a3b8 : 0x475569,
-                roughness: isOwned ? 0.65 : 0.95,
+                map: this.loadSeamlessTexture('./textures/concrete_diffuse.webp', true, 2, 4),
+                normalMap: this.loadSeamlessTexture('./textures/concrete_normal.webp', false, 2, 4),
+                normalScale: new THREE.Vector2(1.0, 1.0),
+                color: isOwned ? 0xe2e8f0 : 0x94a3b8,
+                roughness: isOwned ? 0.72 : 0.92,
             });
             const walk = new THREE.Mesh(walkGeo, walkMat);
             walk.position.set(-5.5, 0.4, 0);
@@ -2993,8 +2999,14 @@
             mainBody.castShadow = true;
             bldGroup.add(mainBody);
 
-            // Beton-Pfeiler an den Ecken
-            const pillarMat = new THREE.MeshStandardMaterial({ color: isOwned ? 0x333b49 : 0x3f4654, roughness: 0.75 });
+            // Beton-Pfeiler an den Ecken (Sichtbeton-Platten)
+            const pillarMat = new THREE.MeshStandardMaterial({
+                map: this.loadSeamlessTexture('./textures/concrete_diffuse.webp', true, 1, 3),
+                normalMap: this.loadSeamlessTexture('./textures/concrete_normal.webp', false, 1, 3),
+                normalScale: new THREE.Vector2(1.0, 1.0),
+                color: isOwned ? 0xcbd5e1 : 0x94a3b8,
+                roughness: 0.82,
+            });
             [-8.9, 8.9].forEach(pz => {
                 const pil = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.4, 0.8), pillarMat);
                 pil.position.set(-5.8, 3.2 + 0.35, pz);
@@ -3045,7 +3057,12 @@
             }
 
             // 5. DAS VORDACH / BALDACHIN ÜBER DEM EINGANG
-            const canopyMat = new THREE.MeshStandardMaterial({ color: 0x181b22, roughness: 0.6 });
+            const canopyMat = new THREE.MeshStandardMaterial({
+                map: this.loadSeamlessTexture('./textures/concrete_diffuse.webp', true, 1, 2),
+                normalMap: this.loadSeamlessTexture('./textures/concrete_normal.webp', false, 1, 2),
+                color: 0x64748b,
+                roughness: 0.78,
+            });
             const canopy = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 4.2), canopyMat);
             canopy.position.set(-7.1, 3.8 + 0.35, 0);
             canopy.castShadow = true;
