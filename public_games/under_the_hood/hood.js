@@ -838,8 +838,10 @@
                 metalness: 0.35,
             });
             const leatherMat = new THREE.MeshStandardMaterial({
-                color: 0x18181b,
-                roughness: 0.82,
+                map: this.loadSeamlessTexture('./textures/leather_diffuse.webp', true, 3, 3),
+                normalMap: this.loadSeamlessTexture('./textures/leather_normal.webp', false, 3, 3),
+                normalScale: new THREE.Vector2(0.75, 0.75),
+                roughness: 0.72,
                 metalness: 0.08,
             });
             const carpetMat = new THREE.MeshStandardMaterial({
