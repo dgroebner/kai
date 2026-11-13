@@ -3022,26 +3022,31 @@
             winRight.rotation.y = -Math.PI / 2;
             bldGroup.add(winRight);
 
-            // 4. HAUPTEINGANG
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.6 });
-            const doors = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.4, 2.8), doorMat);
-            doors.position.set(-5.6, 1.7 + 0.35, 0);
+            // 4. HAUPTEINGANG (liegt sauber vor der Ziegelwand bei x=-5.90)
+            const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 });
+            const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.55, 3.10), doorFrameMat);
+            doorFrame.position.set(-5.94, 1.77 + 0.35, 0);
+            bldGroup.add(doorFrame);
+
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+            const doors = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.35, 2.75), doorMat);
+            doors.position.set(-5.98, 1.70 + 0.35, 0);
             bldGroup.add(doors);
 
             // Türgriffe aus gebürstetem Edelstahl
             const handleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
-            [-0.15, 0.15].forEach(dz => {
-                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 8), handleMat);
-                handle.position.set(-5.75, 1.7 + 0.35, dz);
+            [-0.18, 0.18].forEach(dz => {
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 8), handleMat);
+                handle.position.set(-6.09, 1.70 + 0.35, dz);
                 bldGroup.add(handle);
             });
 
             // Wenn Ruine: 3 Holzbretter schräg über die Türen genagelt!
             if (!isOwned) {
                 const woodBoardMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
-                [-0.4, 0.0, 0.4].forEach((yo, bIdx) => {
+                [-0.45, 0.0, 0.45].forEach((yo, bIdx) => {
                     const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 3.2), woodBoardMat);
-                    board.position.set(-5.8, 1.8 + yo + 0.35, 0);
+                    board.position.set(-6.11, 1.80 + yo + 0.35, 0);
                     board.rotation.x = (bIdx - 1) * 0.12;
                     bldGroup.add(board);
                 });
@@ -3215,7 +3220,7 @@
                     bldGroup.add(sWin);
                 });
                 const sDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), sMat);
-                sDoor.position.set(-5.88, 2.15, 0);
+                sDoor.position.set(-6.17, 2.15, 0);
                 sDoor.rotation.y = -Math.PI / 2;
                 bldGroup.add(sDoor);
 
