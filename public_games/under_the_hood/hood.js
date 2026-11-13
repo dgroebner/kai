@@ -3212,13 +3212,6 @@
                     });
                 }
                 const sMat = this._matCache['graffiti_stay_out'];
-                [-4.8, 4.8].forEach((sz, idx) => {
-                    const sWin = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), sMat);
-                    sWin.position.set(-6.02, 3.25, sz);
-                    sWin.rotation.y = -Math.PI / 2;
-                    if (idx === 1) sWin.rotation.x = 0.05;
-                    bldGroup.add(sWin);
-                });
                 const sDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), sMat);
                 sDoor.position.set(-6.17, 2.15, 0);
                 sDoor.rotation.y = -Math.PI / 2;
