@@ -2965,17 +2965,6 @@
                 }
             }
 
-            // 10. HINTERGRUND: SKYLINE-HOCHHÄUSER MIT LEUCHTENDEN FENSTERN
-            const skylineMat = new THREE.MeshBasicMaterial({
-                map: this.getSkylineTexture(),
-                transparent: true,
-                opacity: 0.75,
-            });
-            const skylineMesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 16), skylineMat);
-            skylineMesh.position.set(11.0, 10.0, 0);
-            skylineMesh.rotation.y = -Math.PI / 2;
-            bldGroup.add(skylineMesh);
-
             group.add(bldGroup);
         }
 
