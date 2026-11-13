@@ -763,9 +763,11 @@
             const mat = new THREE.MeshStandardMaterial({
                 map: this.loadSeamlessTexture('./textures/foliage_diffuse.webp', true, repeat, repeat),
                 normalMap: this.loadSeamlessTexture('./textures/foliage_normal.webp', false, repeat, repeat),
-                normalScale: new THREE.Vector2(1.1, 1.1),
+                normalScale: new THREE.Vector2(1.0, 1.0),
                 color: tintHex,
-                roughness: 0.88,
+                emissive: new THREE.Color(0x1e4016),
+                emissiveIntensity: 0.28,
+                roughness: 0.85,
             });
             this._matCache[key] = mat;
             return mat;
