@@ -1985,10 +1985,8 @@
                     ctx.fill();
                 }
 
-                // Graffiti-Tags
+                // Graffiti-Tags (VOID bleibt vorerst auf Canvas; NO FUTURE kommt als echtes Sprüh-Decal!)
                 ctx.font = 'bold 36px sans-serif';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-                ctx.fillText('NO FUTURE', 220, 210);
                 ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
                 ctx.fillText('VOID', 740, 210);
                 ctx.restore();
@@ -3154,6 +3152,31 @@
                     });
                 });
             } else {
+                // Echtes "NO FUTURE" Graffiti-Decal (Sprühlack-Weiß auf Fassade & Backstein-Seitenwand)
+                if (!this._matCache) this._matCache = {};
+                if (!this._matCache['graffiti_no_future']) {
+                    const gTex = new THREE.TextureLoader().load('./textures/graffiti_no_future.webp');
+                    gTex.colorSpace = THREE.SRGBColorSpace;
+                    this._matCache['graffiti_no_future'] = new THREE.MeshBasicMaterial({
+                        map: gTex,
+                        transparent: true,
+                        opacity: 0.86,
+                        depthWrite: false,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1,
+                    });
+                }
+                const gMat = this._matCache['graffiti_no_future'];
+                const gFront = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.8), gMat);
+                gFront.position.set(-6.11, 5.15, -5.6);
+                gFront.rotation.y = -Math.PI / 2;
+                bldGroup.add(gFront);
+
+                const gSide = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.0), gMat);
+                gSide.position.set(-1.2, 3.0, -9.04);
+                gSide.rotation.y = Math.PI;
+                bldGroup.add(gSide);
+
                 // Ruine: Trümmer, Schutt (Stein-Textur) und wildes Unkraut (Zweig-Sprites) auf dem Vorplatz
                 for (let w = 0; w < 8; w++) {
                     this.buildLeafyBush(
