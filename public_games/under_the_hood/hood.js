@@ -314,6 +314,30 @@
                     this.steeringWheel.rotation.z = Math.sin(Date.now() * 0.005) * 0.25;
                 }
 
+                if (this._wavingFlags && this._wavingFlags.length > 0) {
+                    const t = performance.now() * 0.0042;
+                    for (let fi = this._wavingFlags.length - 1; fi >= 0; fi--) {
+                        const fl = this._wavingFlags[fi];
+                        if (!fl.mesh.parent) {
+                            this._wavingFlags.splice(fi, 1);
+                            continue;
+                        }
+                        const pos = fl.mesh.geometry.attributes.position;
+                        const base = fl.basePos;
+                        for (let vi = 0; vi < pos.count; vi++) {
+                            const bx = base[vi * 3];
+                            const by = base[vi * 3 + 1];
+                            const u = Math.max(0, bx / 1.4);
+                            const wave1 = Math.sin(u * 5.2 - t + fl.phase) * 0.14 * u;
+                            const wave2 = Math.cos(u * 9.0 - t * 1.45 + by * 1.8 + fl.phase) * 0.045 * u;
+                            pos.setZ(vi, wave1 + wave2);
+                            pos.setY(vi, by + Math.sin(u * 3.5 - t * 0.9 + fl.phase) * 0.03 * u);
+                        }
+                        pos.needsUpdate = true;
+                        fl.mesh.geometry.computeVertexNormals();
+                    }
+                }
+
                 this.renderer.render(this.scene, this.camera);
             };
             animate();
@@ -2254,6 +2278,125 @@
             return tex;
         }
 
+        getFenceMeshTexture(repeatX = 14, repeatY = 3) {
+            const key = `fence_mesh_${repeatX}_${repeatY}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+
+            // Vertikale Stäbe (Doppelstabmatte)
+            [16, 48, 80, 112].forEach(x => {
+                ctx.fillStyle = '#14532d';
+                ctx.fillRect(x - 2, 0, 4, 128);
+                ctx.fillStyle = 'rgba(134, 239, 172, 0.28)';
+                ctx.fillRect(x - 1, 0, 1, 128);
+            });
+
+            // Horizontale Doppelstäbe
+            [24, 64, 104].forEach(y => {
+                ctx.fillStyle = '#14532d';
+                ctx.fillRect(0, y - 4, 128, 3);
+                ctx.fillRect(0, y + 1, 128, 3);
+                ctx.fillStyle = 'rgba(134, 239, 172, 0.24)';
+                ctx.fillRect(0, y - 4, 128, 1);
+            });
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(repeatX, repeatY);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getLogCabinWallTexture() {
+            const key = 'log_cabin_wall';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            const logs = 8;
+            const logH = 512 / logs;
+            for (let i = 0; i < logs; i++) {
+                const y = i * logH;
+                const g = ctx.createLinearGradient(0, y, 0, y + logH);
+                g.addColorStop(0, '#4a2c13');
+                g.addColorStop(0.22, '#7c4a21');
+                g.addColorStop(0.55, '#8f5829');
+                g.addColorStop(0.88, '#5c3616');
+                g.addColorStop(1, '#2d1809');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, y, 512, logH);
+
+                for (let s = 0; s < 14; s++) {
+                    const sy = y + 6 + Math.random() * (logH - 12);
+                    ctx.strokeStyle = s % 2 === 0 ? 'rgba(40, 20, 6, 0.32)' : 'rgba(180, 125, 72, 0.18)';
+                    ctx.lineWidth = 1 + Math.random() * 1.4;
+                    ctx.beginPath();
+                    ctx.moveTo(0, sy);
+                    ctx.bezierCurveTo(170, sy + (Math.random() - 0.5) * 6, 340, sy + (Math.random() - 0.5) * 6, 512, sy);
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = '#211206';
+                ctx.fillRect(0, y + logH - 3, 512, 3);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getCabinShingleTexture() {
+            const key = 'cabin_shingle_roof';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#2d180a';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const rows = 12;
+            const rowH = 512 / rows;
+            const shW = 48;
+            for (let r = 0; r < rows; r++) {
+                const y = r * rowH;
+                const off = (r % 2) * (shW / 2);
+                for (let x = -shW; x < 512 + shW; x += shW) {
+                    const shade = 48 + Math.floor(Math.random() * 26);
+                    ctx.fillStyle = `rgb(${shade + 24}, ${Math.floor(shade * 0.72)}, ${Math.floor(shade * 0.45)})`;
+                    ctx.fillRect(x + off + 1, y + 1, shW - 2, rowH - 3);
+                }
+                ctx.fillStyle = 'rgba(15, 8, 3, 0.55)';
+                ctx.fillRect(0, y + rowH - 3, 512, 3);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 2);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
         getClubCornerSignTexture(isOwned = false) {
             const key = `cornersign_${isOwned ? 'on' : 'off'}`;
             if (!this._texCache) this._texCache = {};
@@ -3683,36 +3826,57 @@
                     group.add(flower);
                 }
 
-                // Moderner moosgrüner Doppelstabmattenzaun (wie im Foto!)
-                const fenceMat = new THREE.MeshStandardMaterial({ color: 0x14532d, metalness: 0.5, roughness: 0.4 });
-                const capMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(groupColorHex) });
+                // Moderner moosgrüner Doppelstabmattenzaun (durchsichtig mit Stahlgittern)
+                const fencePostMat = new THREE.MeshStandardMaterial({ color: 0x14532d, metalness: 0.55, roughness: 0.42 });
+                const fenceMeshMat = new THREE.MeshStandardMaterial({
+                    map: this.getFenceMeshTexture(14, 3),
+                    alphaTest: 0.45,
+                    side: THREE.DoubleSide,
+                    metalness: 0.5,
+                    roughness: 0.42,
+                });
+                const gateMeshMat = new THREE.MeshStandardMaterial({
+                    map: this.getFenceMeshTexture(4, 3),
+                    alphaTest: 0.45,
+                    side: THREE.DoubleSide,
+                    metalness: 0.5,
+                    roughness: 0.42,
+                });
+                const capMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.65, roughness: 0.38 });
 
                 // Linker Zaunflügel
-                const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.3, 7.0), fenceMat);
+                const fLeft = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 1.3), fenceMeshMat);
                 fLeft.position.set(-6.5, 1.0, -4.5);
+                fLeft.rotation.y = Math.PI / 2;
                 group.add(fLeft);
 
                 // Rechter Zaunflügel
-                const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.3, 7.0), fenceMat);
+                const fRight = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 1.3), fenceMeshMat);
                 fRight.position.set(-6.5, 1.0, 4.5);
+                fRight.rotation.y = Math.PI / 2;
                 group.add(fRight);
 
-                // Zaunpfosten mit Kategorie-Farb-Kappen!
+                // Zaunpfosten mit dunklen Metall-Abdeckkappen
                 [-8.0, -4.5, -1.2, 1.2, 4.5, 8.0].forEach(pz => {
-                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.5, 0.12), fenceMat);
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.5, 0.11), fencePostMat);
                     post.position.set(-6.5, 1.05, pz);
                     group.add(post);
 
-                    // Pfostenkappe in KATEGORIE-FARBE
-                    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.16), capMat);
-                    cap.position.set(-6.5, 1.82, pz);
+                    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.14), capMat);
+                    cap.position.set(-6.5, 1.81, pz);
                     group.add(cap);
                 });
 
-                // Gartentor in der Mitte (2.4m Durchgang)
-                const gate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 2.2), fenceMat);
+                // Gartentor in der Mitte (2.2m Gittertor mit Rahmen)
+                const gate = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.2), gateMeshMat);
                 gate.position.set(-6.5, 0.95, 0);
+                gate.rotation.y = Math.PI / 2;
                 group.add(gate);
+                [-0.58, 0.58].forEach(ry => {
+                    const gateRail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 2.2), fencePostMat);
+                    gateRail.position.set(-6.5, 0.95 + ry, 0);
+                    group.add(gateRail);
+                });
 
                 // Gepflasterter Gartenweg durch das Tor
                 const pathMat = new THREE.MeshStandardMaterial({
@@ -3733,22 +3897,32 @@
                 gateSign.position.set(-6.45, 1.5, 1.4);
                 group.add(gateSign);
 
-                // BESITZER-FLAGGE am Eingang in SPIELERFARBE!
+                // BESITZER-FLAGGE am Eingang in SPIELERFARBE (im Wind wehend!)
                 const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.5, 8), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8 }));
                 flagPole.position.set(-6.4, 2.4, -1.4);
                 group.add(flagPole);
 
-                const ownerFlag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.9, 1.4), new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 }));
-                ownerFlag.position.set(-6.4, 4.1, -2.1);
+                const flagGeo = new THREE.PlaneGeometry(1.4, 0.9, 14, 6);
+                flagGeo.translate(0.7, 0, 0);
+                const ownerFlag = new THREE.Mesh(
+                    flagGeo,
+                    new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.55, side: THREE.DoubleSide })
+                );
+                ownerFlag.position.set(-6.4, 4.1, -1.4);
+                ownerFlag.rotation.y = Math.PI / 2;
                 group.add(ownerFlag);
+                if (!this._wavingFlags) this._wavingFlags = [];
+                this._wavingFlags.push({
+                    mesh: ownerFlag,
+                    basePos: Float32Array.from(flagGeo.attributes.position.array),
+                    phase: Math.random() * Math.PI * 2,
+                });
 
-                // Gepflegte Solitärbäume & Formgehölze
-                const tidyTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 3.8, 8), new THREE.MeshStandardMaterial({ color: 0x573a08 }));
+                // Gepflegter Solitärbaum (Rinden-Stamm + natürliche Blätterkrone)
+                const tidyTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.30, 3.8, 8), this.getBarkMaterial(1, 2));
                 tidyTrunk.position.set(3.5, 2.0, 3.5);
                 group.add(tidyTrunk);
-                const tidyCrown = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 10), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }));
-                tidyCrown.position.set(3.5, 4.5, 3.5);
-                group.add(tidyCrown);
+                this.buildLeafyCanopy(group, 3.5, 3.6, 3.5, 0.95);
 
                 // =============================================================
                 // 3. ARCHITEKTONISCHE EVOLUTION (Level 1 bis 5)
@@ -3758,44 +3932,76 @@
                     const cabin = new THREE.Group();
                     cabin.position.set(3.2, 0, -1.8);
 
-                    // Blockhaus-Korpus aus rustikalem Holz
+                    // Blockhaus-Korpus aus rustikalen Holzbohlen
                     const walls = new THREE.Mesh(
                         new THREE.BoxGeometry(4.2, 2.6, 3.6),
-                        new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.9 })
+                        new THREE.MeshStandardMaterial({
+                            map: this.getLogCabinWallTexture(),
+                            normalMap: this.loadSeamlessTexture('./textures/bark_normal.webp', false, 2, 2),
+                            normalScale: new THREE.Vector2(0.4, 0.4),
+                            roughness: 0.88,
+                        })
                     );
                     walls.position.set(0, 1.3, 0);
                     cabin.add(walls);
 
-                    // Schräges Satteldach aus Holzschindeln
+                    // Hüttentür & warm beleuchtetes Fenster zur Veranda
+                    const cabinDoor = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.08, 1.85, 0.9),
+                        new THREE.MeshStandardMaterial({ map: this.loadSeamlessTexture('./textures/boarded_door.jpg', true, 1, 1), roughness: 0.85 })
+                    );
+                    cabinDoor.position.set(-2.12, 1.12, -0.55);
+                    cabin.add(cabinDoor);
+
+                    const cabinWin = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.08, 0.85, 0.95),
+                        new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 0.55, roughness: 0.25 })
+                    );
+                    cabinWin.position.set(-2.12, 1.55, 0.75);
+                    cabin.add(cabinWin);
+
+                    // Satteldach aus Holzschindeln
                     const roof = new THREE.Mesh(
                         new THREE.BoxGeometry(4.6, 0.45, 4.2),
-                        new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 })
+                        new THREE.MeshStandardMaterial({
+                            map: this.getCabinShingleTexture(),
+                            roughness: 0.78,
+                        })
                     );
                     roof.position.set(0, 2.7, 0);
                     cabin.add(roof);
 
-                    // Holzveranda & Vordach mit Pfosten
+                    // Holzveranda & Vordach mit Rinden-Pfosten
                     const porch = new THREE.Mesh(
                         new THREE.BoxGeometry(1.6, 0.15, 2.4),
-                        new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.8 })
+                        new THREE.MeshStandardMaterial({
+                            map: this.getLogCabinWallTexture(),
+                            roughness: 0.82,
+                        })
                     );
                     porch.position.set(-2.5, 0.2, 0);
                     cabin.add(porch);
 
+                    const cabinPostMat = this.getBarkMaterial(1, 2);
                     [-0.9, 0.9].forEach(pz => {
                         const post = new THREE.Mesh(
                             new THREE.CylinderGeometry(0.08, 0.08, 2.0, 6),
-                            new THREE.MeshStandardMaterial({ color: 0x713f12 })
+                            cabinPostMat
                         );
                         post.position.set(-3.1, 1.1, pz);
                         cabin.add(post);
                     });
 
-                    // Trittsteine zum Tor
+                    // Naturstein-Trittplatten zum Tor
+                    const stepMat = new THREE.MeshStandardMaterial({
+                        map: this.loadSeamlessTexture('./textures/rock_diffuse.webp', true, 1, 1),
+                        normalMap: this.loadSeamlessTexture('./textures/rock_normal.webp', false, 1, 1),
+                        roughness: 0.88,
+                    });
                     [-4.5, -3.2, -1.8, -0.6].forEach(px => {
                         const step = new THREE.Mesh(
                             new THREE.CylinderGeometry(0.35, 0.38, 0.08, 8),
-                            new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 })
+                            stepMat
                         );
                         step.position.set(px, 0.15, 0.2);
                         group.add(step);
