@@ -898,11 +898,11 @@
                 this.cockpitRig.add(mirrorPivot);
             });
 
-            // 3. Geschwungene Sport-Cabrio Motorhaube mit Kotflügeln & Powerdome
+            // 3. Geschwungene Sport-Cabrio Motorhaube mit Kotflügeln & Powerdome (neigt sich nach vorn ab)
             const hoodBaseGeo = new THREE.BoxGeometry(2.65, 0.24, 3.15);
             this.carHoodMesh = new THREE.Mesh(hoodBaseGeo, this.carHoodMat);
-            this.carHoodMesh.position.set(0, 0.64, -2.55);
-            this.carHoodMesh.rotation.x = 0.06; // Leicht abfallende Sport-Front
+            this.carHoodMesh.position.set(0, 0.68, -2.55);
+            this.carHoodMesh.rotation.x = -0.05; // Leicht nach vorn abfallende Sport-Front
             this.carHoodMesh.castShadow = true;
             this.cockpitRig.add(this.carHoodMesh);
 
@@ -911,15 +911,15 @@
                 const fenderGeo = new THREE.CylinderGeometry(0.20, 0.22, 3.15, 14);
                 fenderGeo.rotateX(Math.PI / 2);
                 const fender = new THREE.Mesh(fenderGeo, this.carHoodMat);
-                fender.position.set(fX, 0.65, -2.55);
-                fender.rotation.x = 0.06;
+                fender.position.set(fX, 0.69, -2.55);
+                fender.rotation.x = -0.05;
                 this.cockpitRig.add(fender);
             });
 
             // Carbon Power-Dome in der Haubenmitte
             const powerDome = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.10, 2.30), dashMat);
-            powerDome.position.set(0, 0.78, -2.45);
-            powerDome.rotation.x = 0.06;
+            powerDome.position.set(0, 0.81, -2.45);
+            powerDome.rotation.x = -0.05;
             this.cockpitRig.add(powerDome);
 
             // 4. Mittelkonsole mit Schalthebel (sitzt bündig auf Bodenwanne y=0.43)
@@ -1054,21 +1054,21 @@
             this.cockpitRig.add(rearBulkhead);
 
             const rearDeck = new THREE.Mesh(new THREE.BoxGeometry(2.72, 0.34, 1.40), this.carHoodMat);
-            rearDeck.position.set(0, 0.84, 1.78);
-            rearDeck.rotation.x = -0.04;
+            rearDeck.position.set(0, 0.86, 1.78);
+            rearDeck.rotation.x = 0.04;
             this.cockpitRig.add(rearDeck);
 
             [-1.48, 1.48].forEach(rfX => {
                 const rearFenderGeo = new THREE.CylinderGeometry(0.20, 0.20, 1.45, 14);
                 rearFenderGeo.rotateX(Math.PI / 2);
                 const rearFender = new THREE.Mesh(rearFenderGeo, this.carHoodMat);
-                rearFender.position.set(rfX, 0.85, 1.78);
-                rearFender.rotation.x = -0.04;
+                rearFender.position.set(rfX, 0.87, 1.78);
+                rearFender.rotation.x = 0.04;
                 this.cockpitRig.add(rearFender);
             });
 
             const rearSpoiler = new THREE.Mesh(new THREE.BoxGeometry(2.88, 0.08, 0.20), dashMat);
-            rearSpoiler.position.set(0, 1.00, 2.40);
+            rearSpoiler.position.set(0, 1.01, 2.40);
             this.cockpitRig.add(rearSpoiler);
 
             [-0.70, 0.95].forEach(hoopX => {
