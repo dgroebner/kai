@@ -119,10 +119,11 @@
             this.steeringWheel = null;
             this.carHoodMat = null;
             this.carHoodMesh = null;
-            this.cockpitYaw = -0.7; // Standard: Blick schräg rechts zum Grundstück
+            this.cockpitYaw = -Math.PI / 2; // Standard: 90° Blick rechts direkt zum Grundstück
             this.cockpitPitch = 0.0;
-            this.targetYaw = -0.7;
+            this.targetYaw = -Math.PI / 2;
             this.targetPitch = 0.0;
+            this.targetFov = 65; // Standard-Weitwinkel, per Mausrad zoombar wie Street View
 
             // Touch Drag für freies Umsehen
             this.isDragging = false;
@@ -303,6 +304,10 @@
 
                 if (this.camera) {
                     this.camera.rotation.set(this.cockpitPitch, this.cockpitYaw, 0, 'YXZ');
+                    if (Math.abs(this.camera.fov - this.targetFov) > 0.05) {
+                        this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, this.targetFov, 0.14);
+                        this.camera.updateProjectionMatrix();
+                    }
                 }
 
                 if (this.steeringWheel && this.isDriving) {
@@ -512,7 +517,7 @@
             const curbMesh = new THREE.Mesh(curbGeo, curbMat);
             this.scene.add(curbMesh);
 
-            // Nahtloser Gehweg aus hellem Naturstein (mit Pflasterplatten-Textur)
+            // Nahtloser Gehweg aus Granit-Pflaster (mit ComfyUI PBR-Textur + Normal-Map)
             const walkGeo = new THREE.BufferGeometry();
             walkGeo.setAttribute('position', new THREE.Float32BufferAttribute(walkPositions, 3));
             walkGeo.setAttribute('uv', new THREE.Float32BufferAttribute(walkUVs, 2));
@@ -520,7 +525,9 @@
             walkGeo.computeVertexNormals();
 
             const walkMat = new THREE.MeshStandardMaterial({
-                map: this.getSidewalkTexture(),
+                map: this.loadSeamlessTexture('./textures/sidewalk_diffuse.webp', true, 3, 3),
+                normalMap: this.loadSeamlessTexture('./textures/sidewalk_normal.webp', false, 3, 3),
+                normalScale: new THREE.Vector2(1.1, 1.1),
                 roughness: 0.78,
             });
             const walkMesh = new THREE.Mesh(walkGeo, walkMat);
@@ -819,113 +826,225 @@
         buildPanoramacockpit() {
             this.cockpitRig = new THREE.Group();
 
-            // 1. Aerodynamische flache Motorhaube vorn (in Fahrtrichtung -Z!)
-            const hoodGeo = new THREE.BoxGeometry(3.0, 0.28, 3.2);
+            // Shared Materials
             this.carHoodMat = new THREE.MeshStandardMaterial({
                 color: 0xef4444,
-                roughness: 0.22,
-                metalness: 0.7,
+                roughness: 0.18,
+                metalness: 0.72,
             });
-            this.carHoodMesh = new THREE.Mesh(hoodGeo, this.carHoodMat);
-            this.carHoodMesh.position.set(0, 0.42, -2.5);
+            const dashMat = new THREE.MeshStandardMaterial({
+                map: this.getCarbonFiberTexture(),
+                roughness: 0.6,
+                metalness: 0.35,
+            });
+            const leatherMat = new THREE.MeshStandardMaterial({
+                color: 0x18181b,
+                roughness: 0.82,
+                metalness: 0.08,
+            });
+            const carpetMat = new THREE.MeshStandardMaterial({
+                color: 0x090d16,
+                roughness: 0.96,
+            });
+            const chromeMat = new THREE.MeshStandardMaterial({
+                color: 0xe2e8f0,
+                roughness: 0.22,
+                metalness: 0.88,
+            });
+
+            // 1. Bodenwanne / Teppich (verhindert, dass Sitze über dem Asphalt schweben!)
+            const floorGeo = new THREE.BoxGeometry(3.45, 0.14, 3.8);
+            const floorPan = new THREE.Mesh(floorGeo, carpetMat);
+            floorPan.position.set(0, 0.08, 0.55);
+            this.cockpitRig.add(floorPan);
+
+            // 2. Cabrio-Seitenwände & Türen links/rechts (Lackierte Außenseite + dunkle Armlehne innen)
+            [-1.68, 1.68].forEach(sideX => {
+                const isLeft = sideX < 0;
+                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.58, 3.4), this.carHoodMat);
+                doorOuter.position.set(sideX, 0.42, 0.4);
+                this.cockpitRig.add(doorOuter);
+
+                const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 2.7), leatherMat);
+                doorTrim.position.set(isLeft ? sideX + 0.08 : sideX - 0.08, 0.62, 0.25);
+                this.cockpitRig.add(doorTrim);
+
+                // Außenspiegel (Sport-Spiegel in Wagenfarbe)
+                const mirrorArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.1), leatherMat);
+                mirrorArm.position.set(isLeft ? sideX - 0.08 : sideX + 0.08, 0.78, -0.95);
+                this.cockpitRig.add(mirrorArm);
+
+                const mirrorCap = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.14, 0.14), this.carHoodMat);
+                mirrorCap.position.set(isLeft ? sideX - 0.18 : sideX + 0.18, 0.82, -0.98);
+                this.cockpitRig.add(mirrorCap);
+            });
+
+            // 3. Geschwungene Sport-Cabrio Motorhaube mit Kotflügeln & Powerdome
+            const hoodBaseGeo = new THREE.BoxGeometry(2.65, 0.22, 3.15);
+            this.carHoodMesh = new THREE.Mesh(hoodBaseGeo, this.carHoodMat);
+            this.carHoodMesh.position.set(0, 0.43, -2.55);
+            this.carHoodMesh.rotation.x = 0.06; // Leicht abfallende Sport-Front
             this.carHoodMesh.castShadow = true;
             this.cockpitRig.add(this.carHoodMesh);
 
-            // 2. Sportlich abgesenktes Armaturenbrett (hochwertige Carbon-Fiber-Webstruktur, blockiert nicht das Sichtfeld!)
-            const dashGeo = new THREE.BoxGeometry(3.5, 0.3, 1.1);
-            const dashMat = new THREE.MeshStandardMaterial({
-                map: this.getCarbonFiberTexture(),
-                roughness: 0.65,
-                metalness: 0.35,
+            // Abgerundete Kotflügel links & rechts neben der Haube
+            [-1.46, 1.46].forEach(fX => {
+                const fenderGeo = new THREE.CylinderGeometry(0.18, 0.2, 3.15, 14);
+                fenderGeo.rotateX(Math.PI / 2);
+                const fender = new THREE.Mesh(fenderGeo, this.carHoodMat);
+                fender.position.set(fX, 0.44, -2.55);
+                fender.rotation.x = 0.06;
+                this.cockpitRig.add(fender);
             });
-            const dash = new THREE.Mesh(dashGeo, dashMat);
-            dash.position.set(0, 0.52, -0.85);
-            this.cockpitRig.add(dash);
 
-            // 3. Digitales Tacho-Kombiinstrument vor dem Fahrer (fotorealistisches digitales OLED-Cockpit mit Speedo & RPM)
-            const clusterGeo = new THREE.BoxGeometry(0.72, 0.2, 0.04);
+            // Carbon Power-Dome in der Haubenmitte
+            const powerDome = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.09, 2.3), dashMat);
+            powerDome.position.set(0, 0.56, -2.45);
+            powerDome.rotation.x = 0.06;
+            this.cockpitRig.add(powerDome);
+
+            // 4. Mittelkonsole mit Schalthebel (verbindet Armaturenbrett mit Fahrgastraum)
+            const consoleGeo = new THREE.BoxGeometry(0.56, 0.36, 2.75);
+            const centerConsole = new THREE.Mesh(consoleGeo, leatherMat);
+            centerConsole.position.set(0, 0.30, 0.42);
+            this.cockpitRig.add(centerConsole);
+
+            const consoleTrim = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 2.2), dashMat);
+            consoleTrim.position.set(0, 0.49, 0.25);
+            this.cockpitRig.add(consoleTrim);
+
+            // Sport-Schalthebel
+            const shifterShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.24, 10), chromeMat);
+            shifterShaft.position.set(0, 0.60, -0.05);
+            shifterShaft.rotation.x = 0.15;
+            this.cockpitRig.add(shifterShaft);
+
+            const shifterKnob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 12), leatherMat);
+            shifterKnob.position.set(0, 0.72, -0.03);
+            this.cockpitRig.add(shifterKnob);
+
+            // 5. Abgerundetes Carbon-Armaturenbrett (kein eckiger Kasten)
+            const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.34, 0.95), leatherMat);
+            dashBase.position.set(0, 0.50, -0.88);
+            this.cockpitRig.add(dashBase);
+
+            const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.45, 16);
+            dashTopRollGeo.rotateZ(Math.PI / 2);
+            const dashTopRoll = new THREE.Mesh(dashTopRollGeo, dashMat);
+            dashTopRoll.position.set(0, 0.67, -0.82);
+            this.cockpitRig.add(dashTopRoll);
+
+            // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
+            const clusterGeo = new THREE.BoxGeometry(0.76, 0.22, 0.04);
             const clusterMat = new THREE.MeshBasicMaterial({
                 map: this.getDashboardDisplayTexture(),
             });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 0.78, -0.7);
-            cluster.rotation.x = -0.25;
+            cluster.position.set(-0.7, 0.85, -0.72);
+            cluster.rotation.x = -0.22;
             this.cockpitRig.add(cluster);
 
-            // Schlanke Tacho-Hutze über dem Display (flach integriert)
-            const cowlGeo = new THREE.BoxGeometry(0.8, 0.08, 0.25);
+            // Abgerundete Tacho-Hutze
+            const cowlGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.28, 16, 1, false, -Math.PI / 2, Math.PI);
+            cowlGeo.rotateX(Math.PI / 2);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 0.9, -0.78);
+            cowl.position.set(-0.7, 0.74, -0.78);
+            cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
-            // 4. Sportlenkrad (Links auf Fahrerseite)
+            // 7. Sportlenkrad (Links auf Fahrerseite)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.8, -0.4);
+            wheelGroup.position.set(-0.7, 0.79, -0.4);
             wheelGroup.rotation.x = 0.35;
 
-            const ringGeo = new THREE.TorusGeometry(0.38, 0.04, 10, 24);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.6 });
-            const ring = new THREE.Mesh(ringGeo, wheelMat);
+            const ringGeo = new THREE.TorusGeometry(0.36, 0.038, 12, 28);
+            const ring = new THREE.Mesh(ringGeo, leatherMat);
             wheelGroup.add(ring);
 
-            const hubGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12);
+            const hubGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.05, 14);
             hubGeo.rotateX(Math.PI / 2);
-            const hub = new THREE.Mesh(hubGeo, wheelMat);
+            const hub = new THREE.Mesh(hubGeo, leatherMat);
             wheelGroup.add(hub);
 
-            // 3 Lenkradspeichen
             for (let s = 0; s < 3; s++) {
-                const spokeGeo = new THREE.BoxGeometry(0.04, 0.28, 0.02);
-                const spoke = new THREE.Mesh(spokeGeo, new THREE.MeshStandardMaterial({ color: 0x71717a }));
+                const spokeGeo = new THREE.BoxGeometry(0.038, 0.26, 0.02);
+                const spoke = new THREE.Mesh(spokeGeo, chromeMat);
                 spoke.rotation.z = (s * Math.PI * 2) / 3;
-                spoke.position.y = -0.14 * Math.cos(spoke.rotation.z);
-                spoke.position.x = 0.14 * Math.sin(spoke.rotation.z);
+                spoke.position.y = -0.13 * Math.cos(spoke.rotation.z);
+                spoke.position.x = 0.13 * Math.sin(spoke.rotation.z);
                 wheelGroup.add(spoke);
             }
 
             this.cockpitRig.add(wheelGroup);
             this.steeringWheel = wheelGroup;
 
-            // 5. Beifahrersitz rechts (dezent und tief platziert, blockiert niemals den Blick auf die Grundstücke!)
+            // 8. Konturierter Sport-Schalensitz rechts (sitzt fest auf der Bodenwanne!)
             const seatGroup = new THREE.Group();
-            seatGroup.position.set(0.95, 0.35, 0.5);
+            seatGroup.position.set(0.95, 0.16, 0.45);
 
-            const seatBaseGeo = new THREE.BoxGeometry(0.65, 0.25, 0.65);
-            const seatMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.8 });
-            const seatBase = new THREE.Mesh(seatBaseGeo, seatMat);
-            seatGroup.add(seatBase);
+            // Sitzfläche + Seitenwangen
+            const seatCushion = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.16, 0.66), leatherMat);
+            seatCushion.position.set(0, 0.1, 0);
+            seatGroup.add(seatCushion);
 
-            const seatBackGeo = new THREE.BoxGeometry(0.55, 0.45, 0.15);
-            const seatBack = new THREE.Mesh(seatBackGeo, seatMat);
-            seatBack.position.set(0, 0.3, 0.15);
-            seatBack.rotation.x = -0.15;
-            seatGroup.add(seatBack);
+            [-0.28, 0.28].forEach(bx => {
+                const bolster = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.64, 10), leatherMat);
+                bolster.rotation.x = Math.PI / 2;
+                bolster.position.set(bx, 0.16, 0);
+                seatGroup.add(bolster);
+            });
 
-            const headrestGeo = new THREE.BoxGeometry(0.28, 0.16, 0.1);
-            const headrest = new THREE.Mesh(headrestGeo, seatMat);
-            headrest.position.set(0, 0.62, 0.2);
-            seatGroup.add(headrest);
+            // Angelehnte Rückenlehne + Seitenwangen
+            const backGroup = new THREE.Group();
+            backGroup.position.set(0, 0.18, 0.28);
+            backGroup.rotation.x = -0.2;
 
+            const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.14), leatherMat);
+            seatBack.position.set(0, 0.31, 0);
+            backGroup.add(seatBack);
+
+            [-0.25, 0.25].forEach(bx => {
+                const backBolster = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.58, 10), leatherMat);
+                backBolster.position.set(bx, 0.31, -0.04);
+                backGroup.add(backBolster);
+            });
+
+            // Integrierte Kopfstütze mit Metall-Akzent
+            const headrest = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.22, 12), leatherMat);
+            headrest.position.set(0, 0.72, 0);
+            headrest.scale.set(1.1, 1.0, 0.75);
+            backGroup.add(headrest);
+
+            seatGroup.add(backGroup);
             this.cockpitRig.add(seatGroup);
 
-            // 6. Rückspiegel oben in der Mitte
-            const mirrorGroup = new THREE.Group();
-            mirrorGroup.position.set(0, 1.85, -0.6);
+            // 9. Cabrio-Windschutzscheibenrahmen (schlanke A-Säulen außen, stören nicht die Sicht!)
+            [-1.65, 1.65].forEach(pillarX => {
+                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 1.38, 10), chromeMat);
+                pillar.position.set(pillarX, 1.28, -0.82);
+                pillar.rotation.x = -0.45;
+                this.cockpitRig.add(pillar);
+            });
 
-            const mirrorCaseGeo = new THREE.BoxGeometry(0.7, 0.22, 0.06);
-            const mirrorCase = new THREE.Mesh(mirrorCaseGeo, dashMat);
+            const headerBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.36, 12), chromeMat);
+            headerBar.rotation.z = Math.PI / 2;
+            headerBar.position.set(0, 1.88, -0.52);
+            this.cockpitRig.add(headerBar);
+
+            // 10. Rückspiegel am oberen Cabrio-Rahmen
+            const mirrorGroup = new THREE.Group();
+            mirrorGroup.position.set(0, 1.78, -0.52);
+
+            const mirrorCase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.05), leatherMat);
             mirrorGroup.add(mirrorCase);
 
-            const mirrorGlassGeo = new THREE.BoxGeometry(0.66, 0.18, 0.02);
-            const mirrorGlassMat = new THREE.MeshBasicMaterial({ color: 0x93c5fd });
-            const mirrorGlass = new THREE.Mesh(mirrorGlassGeo, mirrorGlassMat);
-            mirrorGlass.position.set(0, 0, 0.03);
+            const mirrorGlass = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.14, 0.02), new THREE.MeshBasicMaterial({ color: 0x93c5fd }));
+            mirrorGlass.position.set(0, 0, 0.025);
             mirrorGroup.add(mirrorGlass);
 
             this.cockpitRig.add(mirrorGroup);
 
-            // 7. Fahrer-Kamera: Sitzt am Steuer und blickt ungehindert nach vorn und rechts!
-            // Absolut keine störenden A-Säulen im Sichtfeld!
+            // 11. Fahrer-Kamera: Sitzt am Steuer mit Panorama-Blick
             this.camera.position.set(-0.7, 1.35, 0.1);
             this.cockpitRig.add(this.camera);
 
@@ -1381,13 +1500,13 @@
                     const isDiag = ((x / s) + (y / s)) % 2 === 0;
                     const grad = ctx.createLinearGradient(x, y, x + s, y + s);
                     if (isDiag) {
-                        grad.addColorStop(0, '#27272a');
-                        grad.addColorStop(0.5, '#3f3f46');
-                        grad.addColorStop(1, '#18181b');
+                        grad.addColorStop(0, '#1e1e24');
+                        grad.addColorStop(0.5, '#2c2c34');
+                        grad.addColorStop(1, '#141418');
                     } else {
-                        grad.addColorStop(0, '#18181b');
-                        grad.addColorStop(0.5, '#09090b');
-                        grad.addColorStop(1, '#27272a');
+                        grad.addColorStop(0, '#141418');
+                        grad.addColorStop(0.5, '#09090d');
+                        grad.addColorStop(1, '#1e1e24');
                     }
                     ctx.fillStyle = grad;
                     ctx.fillRect(x, y, s, s);
@@ -1397,7 +1516,7 @@
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(16, 6);
+            tex.repeat.set(36, 14);
             tex.colorSpace = THREE.SRGBColorSpace;
             this._texCache['carbon'] = tex;
             return tex;
@@ -2453,7 +2572,7 @@
             ctx.fillStyle = '#ffffff';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
             ctx.shadowBlur = 6;
-            ctx.fillText(`${groupName.toUpperCase()} • ${price} $`, 256, 35);
+            ctx.fillText(`${groupName.toUpperCase()} • ${price}k €`, 256, 35);
             ctx.shadowBlur = 0;
 
             // HAUPTZEILE "ZU VERKAUFEN" in fetter markanter schwarzer Schrift
@@ -3074,7 +3193,11 @@
                 group.add(gate);
 
                 // Gepflasterter Gartenweg durch das Tor
-                const pathMat = new THREE.MeshStandardMaterial({ map: this.getSidewalkTexture(), roughness: 0.8 });
+                const pathMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/sidewalk_diffuse.webp', true, 3, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/sidewalk_normal.webp', false, 3, 1),
+                    roughness: 0.8,
+                });
                 const gardenPath = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 2.2), pathMat);
                 gardenPath.position.set(-2.5, 0.38, 0);
                 group.add(gardenPath);
@@ -3198,7 +3321,11 @@
                     // Gepflasterter Gartenweg
                     const path = new THREE.Mesh(
                         new THREE.BoxGeometry(3.5, 0.08, 1.4),
-                        new THREE.MeshStandardMaterial({ map: this.getSidewalkTexture(), roughness: 0.8 })
+                        new THREE.MeshStandardMaterial({
+                            map: this.loadSeamlessTexture('./textures/sidewalk_diffuse.webp', true, 2, 1),
+                            normalMap: this.loadSeamlessTexture('./textures/sidewalk_normal.webp', false, 2, 1),
+                            roughness: 0.8,
+                        })
                     );
                     path.position.set(-4.5, 0.15, 0);
                     group.add(path);
@@ -4026,6 +4153,7 @@
             // Während der Fahrt: Blick exakt geradeaus auf die Straße!
             this.targetYaw = 0.0;
             this.targetPitch = 0.0;
+            this.targetFov = 65;
 
             const totalDuration = Math.max(1400, steps * 280);
             const startTime = performance.now();
@@ -4067,8 +4195,8 @@
                     requestAnimationFrame(stepLoop);
                 } else {
                     this.isDriving = false;
-                    // Am Ziel sanft nach rechts zum Grundstück blicken
-                    this.targetYaw = -0.7;
+                    // Am Ziel im 90°-Winkel direkt zum Grundstück blicken
+                    this.targetYaw = -Math.PI / 2;
                     this.targetPitch = -0.05;
                     if (onComplete) onComplete();
                 }
@@ -4103,14 +4231,21 @@
                 this.isDragging = false;
             });
 
+            // Google Street View Zoom per Mausrad
+            c.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                this.targetFov = THREE.MathUtils.clamp(this.targetFov + e.deltaY * 0.04, 20, 75);
+            }, { passive: false });
+
             this.ui.btnLookPlot.addEventListener('click', () => {
-                this.targetYaw = -0.85; // Zum Grundstück schauen
+                this.targetYaw = -Math.PI / 2; // Im 90°-Winkel direkt zum Grundstück schauen
                 this.targetPitch = -0.05;
             });
 
             this.ui.btnLookRoad.addEventListener('click', () => {
                 this.targetYaw = 0.0; // Geradeaus nach vorn schauen
                 this.targetPitch = 0.0;
+                this.targetFov = 65; // Zoom zurücksetzen
             });
 
             this.ui.btnRoll.addEventListener('click', () => this.actionRoll());
@@ -4418,7 +4553,7 @@
             if (me) {
                 this.myPlayerId = me.id;
                 this.isHost = !!me.is_host;
-                this.ui.cashBadge.textContent = `${me.cash} $`;
+                this.ui.cashBadge.textContent = `${me.cash}k €`;
 
                 if (this.carHoodMat && me.color) {
                     this.carHoodMat.color.set(me.color);
@@ -4426,7 +4561,7 @@
             }
 
             if (this.ui.potBadgeAmount) {
-                this.ui.potBadgeAmount.textContent = `${newState.parking_pot ?? 0} $`;
+                this.ui.potBadgeAmount.textContent = `${newState.parking_pot ?? 0}k €`;
             }
 
             this.ui.roomBadge.textContent = this.roomCode;
@@ -4528,9 +4663,9 @@
                         if (card.action === 'get_out_of_jail_free') {
                             this.ui.cardAlertSub.innerHTML = '<span style="color: #38bdf8;">🔑 Notfall-Schlüsselkarte in dein Inventar gelegt!</span>';
                         } else if (card.amount > 0) {
-                            this.ui.cardAlertSub.innerHTML = `<span style="color: #10b981;">💰 +${card.amount} $ gutgeschrieben!</span>`;
+                            this.ui.cardAlertSub.innerHTML = `<span style="color: #10b981;">💰 +${card.amount}k € gutgeschrieben!</span>`;
                         } else if (card.amount < 0) {
-                            this.ui.cardAlertSub.innerHTML = `<span style="color: #ef4444;">💸 ${card.amount} $ an die Kasse gezahlt!</span>`;
+                            this.ui.cardAlertSub.innerHTML = `<span style="color: #ef4444;">💸 ${card.amount}k € an die Kasse gezahlt!</span>`;
                         } else {
                             this.ui.cardAlertSub.innerHTML = '';
                         }
@@ -4575,14 +4710,14 @@
 
                     const owner = state.players.find(p => p.id === tile.owner);
                     this.ui.naviOwner.textContent = owner ? owner.name : 'Frei';
-                    this.ui.naviPrice.textContent = `${tile.price || 0} $`;
+                    this.ui.naviPrice.textContent = `${tile.price || 0}k €`;
 
                     const curRent = this.getTileRent(tile);
                     if (tile.type === 'club') {
                         const ownerClubCount = owner ? state.tiles.filter(t => t.type === 'club' && t.owner === owner.id).length : 0;
                         this.ui.naviRent.textContent = (ownerClubCount >= 2) ? '10x Wurf' : '4x Wurf';
                     } else {
-                        this.ui.naviRent.textContent = `${curRent} $`;
+                        this.ui.naviRent.textContent = `${curRent}k €`;
                     }
 
                     if (this.ui.naviLevel) {
@@ -4629,7 +4764,7 @@
                     } else if (tile.type === 'tax') {
                         icon = '🛑';
                         eventTitle = tile.name;
-                        desc = 'Fällige Abgabe: 200 $ an die Stadtkasse entrichtet.';
+                        desc = 'Fällige Abgabe: 200k € an die Stadtkasse entrichtet.';
                     } else if (tile.type === 'go_to_jail') {
                         icon = '📸';
                         eventTitle = 'Radarfalle ausgelöst!';
@@ -4638,7 +4773,7 @@
                         icon = '🔧';
                         eventTitle = tile.name;
                         desc = activePlayer.in_jail
-                            ? `Wagen auf der Hebebühne (${activePlayer.jail_turns || 1}/3). 50 $ Kaution zahlen.`
+                            ? `Wagen auf der Hebebühne (${activePlayer.jail_turns || 1}/3). 50k € Kaution zahlen.`
                             : 'Nur zu Besuch. Freie Weiterfahrt!';
                     } else if (tile.type === 'parking') {
                         icon = '☕';
@@ -4647,7 +4782,7 @@
                     } else if (tile.type === 'start') {
                         icon = '🏁';
                         eventTitle = tile.name;
-                        desc = 'Ziehe 200 $ Prämie ein beim Passieren oder Landen!';
+                        desc = 'Ziehe 200k € Prämie ein beim Passieren oder Landen!';
                     }
 
                     this.ui.eventIcon.textContent = icon;
@@ -4657,8 +4792,8 @@
             } else {
                 const owner = state.players.find(p => p.id === tile.owner);
                 this.ui.naviOwner.textContent = owner ? owner.name : 'Frei';
-                this.ui.naviPrice.textContent = `${tile.price || 0} $`;
-                this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0} $`;
+                this.ui.naviPrice.textContent = `${tile.price || 0}k €`;
+                this.ui.naviRent.textContent = `${tile.price ? Math.round(tile.price * 0.1) : 0}k €`;
             }
 
             const groupData = this.getGroupData(tile.group);
@@ -4702,7 +4837,7 @@
             }
 
             if (activePlayer) {
-                this.ui.cashBadge.textContent = `${activePlayer.cash} $`;
+                this.ui.cashBadge.textContent = `${activePlayer.cash}k €`;
                 if (this.carHoodMat && activePlayer.color) {
                     this.carHoodMat.color.set(activePlayer.color);
                 }
@@ -4737,7 +4872,7 @@
                 }
             } else if (state.phase === 'BUY_DECISION') {
                 this.ui.btnGroupBuy.style.display = 'flex';
-                this.ui.btnBuy.textContent = `🏡 KAUFEN (${tile.price} $)`;
+                this.ui.btnBuy.textContent = `🏡 KAUFEN (${tile.price}k €)`;
             } else if (state.phase === 'TURN_END') {
                 this.ui.btnEndTurn.style.display = 'flex';
             }
@@ -5027,7 +5162,7 @@
             if (!tile) return;
 
             this.ui.sheetTitle.textContent = tile.name;
-            this.ui.sheetPrice.textContent = `${tile.price} $`;
+            this.ui.sheetPrice.textContent = `${tile.price}k €`;
 
             const owner = this.state.players.find(p => p.id === tile.owner);
             this.ui.sheetOwner.textContent = owner ? `Besitzer: ${owner.name}` : 'Frei / Zu verkaufen';
@@ -5065,7 +5200,7 @@
                     if (isMine) {
                         if (groupInfo && groupInfo.isFullMonopoly) {
                             if ((tile.level || 0) < 5) {
-                                this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #22c55e;">Vollständiges Viertel!</strong> Miete verdoppelt.<br>Aktuell: <em>${curLevelName}</em><br>Nächste Stufe: <strong>${nextUpgradeName}</strong> (${houseCost} $)`;
+                                this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #22c55e;">Vollständiges Viertel!</strong> Miete verdoppelt.<br>Aktuell: <em>${curLevelName}</em><br>Nächste Stufe: <strong>${nextUpgradeName}</strong> (${houseCost}k €)`;
                             } else {
                                 this.ui.sheetMonopolyInfo.innerHTML = `👑 <strong style="color: #f59e0b;">MAXIMAL-STUFE ERREICHT!</strong><br>Aktuell: <em>${curLevelName}</em> (Höchste Mietstufe!)`;
                             }
@@ -5100,14 +5235,14 @@
                     'GRAND SCHLOSS ERRICHTEN'
                 ];
                 const nextText = upgradeNames[Math.min(tile.level || 0, 4)];
-                this.ui.sheetBtnBuild.textContent = `🏗️ ${nextText} (${tile.house_cost || 100} $)`;
+                this.ui.sheetBtnBuild.textContent = `🏗️ ${nextText} (${tile.house_cost || 100}k €)`;
             }
 
             const canSellBuilding = (isMine && tile.type === 'street' && (tile.level || 0) > 1);
             if (this.ui.sheetBtnSellBuilding) {
                 this.ui.sheetBtnSellBuilding.style.display = canSellBuilding ? 'block' : 'none';
                 if (canSellBuilding) {
-                    this.ui.sheetBtnSellBuilding.textContent = `🏚️ STUFE RÜCKBAUEN (+${Math.round((tile.house_cost || 100) / 2)} $)`;
+                    this.ui.sheetBtnSellBuilding.textContent = `🏚️ STUFE RÜCKBAUEN (+${Math.round((tile.house_cost || 100) / 2)}k €)`;
                 }
             }
 
@@ -5116,7 +5251,7 @@
                 this.ui.sheetBtnSellProperty.style.display = canSellProperty ? 'block' : 'none';
                 if (canSellProperty) {
                     const refund = tile.mortgaged ? Math.round(tile.price / 2) : tile.price;
-                    this.ui.sheetBtnSellProperty.textContent = `💰 AN BANK VERKAUFEN (+${refund} $)`;
+                    this.ui.sheetBtnSellProperty.textContent = `💰 AN BANK VERKAUFEN (+${refund}k €)`;
                 }
             }
 
@@ -5168,7 +5303,7 @@
                 badge.style.fontSize = '0.8rem';
                 badge.innerHTML = `
                     <div style="width: 10px; height: 10px; border-radius: 50%; background: ${p.color};"></div>
-                    <strong>${p.name}</strong>: ${p.cash} $
+                    <strong>${p.name}</strong>: ${p.cash}k €
                     <span style="color: var(--hood-muted);">(${ownedTiles.length} Grundstücke${monopolies > 0 ? `, 👑 ${monopolies}` : ''})</span>
                 `;
                 sumContainer.appendChild(badge);
@@ -5250,19 +5385,19 @@
                     const curRent = this.getTileRent(tile);
                     let rentInfoHtml = '';
                     if (!owner) {
-                        rentInfoHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0 $</strong> (Frei)</span>`;
+                        rentInfoHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0k €</strong> (Frei)</span>`;
                     } else if (isMortgaged) {
-                        rentInfoHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
+                        rentInfoHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0k €</strong> (Hypothek)</span>`;
                     } else if (isMine) {
-                        rentInfoHtml = `<span style="color: #22c55e;">Dein Feld (Gegner zahlen <strong>${curRent} $</strong>)</span>`;
+                        rentInfoHtml = `<span style="color: #22c55e;">Dein Feld (Gegner zahlen <strong>${curRent}k €</strong>)</span>`;
                     } else {
-                        rentInfoHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curRent} $</strong></span>`;
+                        rentInfoHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curRent}k €</strong></span>`;
                     }
 
                     item.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <strong style="color: #fff;">${tile.name}</strong>
-                            <span style="color: var(--hood-gold); font-weight:700;">${tile.price} $</span>
+                            <span style="color: var(--hood-gold); font-weight:700;">${tile.price}k €</span>
                         </div>
                         <div class="hood-group-tile-owner" style="margin-top: 0.15rem;">
                             ${owner
@@ -5312,7 +5447,7 @@
                                     btnB.className = 'hood-btn-primary hood-btn-gold';
                                     btnB.style.fontSize = '0.74rem';
                                     btnB.style.padding = '0.35rem 0.5rem';
-                                    btnB.textContent = `🏗️ +${nextTitle} (${houseCost} $)`;
+                                    btnB.textContent = `🏗️ +${nextTitle} (${houseCost}k €)`;
                                     btnB.addEventListener('click', async () => {
                                         const res = await this.apiPost('build', { tile_index: tile.index });
                                         if (res.success) {
@@ -5331,9 +5466,9 @@
                                     btnB.style.padding = '0.3rem 0.45rem';
 
                                     if (!isMyTurn) {
-                                        btnB.textContent = `🏗️ +${nextTitle} (${houseCost} $) • Nicht am Zug`;
+                                        btnB.textContent = `🏗️ +${nextTitle} (${houseCost}k €) • Nicht am Zug`;
                                     } else if (!hasCash) {
-                                        btnB.textContent = `🏗️ +${nextTitle} (${houseCost} $) • Zu wenig Geld`;
+                                        btnB.textContent = `🏗️ +${nextTitle} (${houseCost}k €) • Zu wenig Geld`;
                                     } else if (isMortgaged) {
                                         btnB.textContent = `⚠️ Hypothek aktiv`;
                                     }
@@ -5376,11 +5511,11 @@
                                 btnM.style.fontSize = '0.72rem';
                                 btnM.style.padding = '0.25rem 0.45rem';
                                 if (isMortgaged) {
-                                    btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                                    btnM.textContent = `🏦 Ablösen (${repayCost}k €)`;
                                     btnM.style.borderColor = '#38bdf8';
                                     btnM.style.color = '#38bdf8';
                                 } else {
-                                    btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                                    btnM.textContent = `🏦 Beleihen (+${mortgageVal}k €)`;
                                 }
                                 btnM.addEventListener('click', () => this.actionMortgage(tile.index));
                                 actDiv.appendChild(btnM);
@@ -5404,11 +5539,11 @@
                                 btnM.style.padding = '0.25rem 0.45rem';
                                 btnM.style.marginTop = '0.25rem';
                                 if (isMortgaged) {
-                                    btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                                    btnM.textContent = `🏦 Ablösen (${repayCost}k €)`;
                                     btnM.style.borderColor = '#38bdf8';
                                     btnM.style.color = '#38bdf8';
                                 } else {
-                                    btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                                    btnM.textContent = `🏦 Beleihen (+${mortgageVal}k €)`;
                                 }
                                 btnM.addEventListener('click', () => this.actionMortgage(tile.index));
                                 actDiv.appendChild(btnM);
@@ -5467,7 +5602,7 @@
                 if (monopolyBeachOwnerId) {
                     const mOwner = this.state.players.find(p => p.id === parseInt(monopolyBeachOwnerId, 10));
                     badgeB.className = 'hood-group-monopoly-badge';
-                    badgeB.innerHTML = `👑 Alle 4 Strände: <span style="color: ${mOwner ? mOwner.color : '#fff'}; font-weight: 800;">${mOwner ? mOwner.name : ''}</span> (200 $)`;
+                    badgeB.innerHTML = `👑 Alle 4 Strände: <span style="color: ${mOwner ? mOwner.color : '#fff'}; font-weight: 800;">${mOwner ? mOwner.name : ''}</span> (200k €)`;
                 } else {
                     badgeB.style.fontSize = '0.75rem';
                     badgeB.style.color = 'var(--hood-muted)';
@@ -5490,13 +5625,13 @@
                     const curBeachRent = this.getTileRent(tile);
                     let rentBeachHtml = '';
                     if (!owner) {
-                        rentBeachHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0 $</strong> (Frei)</span>`;
+                        rentBeachHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0k €</strong> (Frei)</span>`;
                     } else if (tile.mortgaged) {
-                        rentBeachHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
+                        rentBeachHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0k €</strong> (Hypothek)</span>`;
                     } else if (owner.id === activeId) {
-                        rentBeachHtml = `<span style="color: #22c55e;">Dein Strand (Gegner zahlen <strong>${curBeachRent} $</strong>)</span>`;
+                        rentBeachHtml = `<span style="color: #22c55e;">Dein Strand (Gegner zahlen <strong>${curBeachRent}k €</strong>)</span>`;
                     } else {
-                        rentBeachHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curBeachRent} $</strong></span>`;
+                        rentBeachHtml = `<span style="color: #f59e0b;">Bei Landung: <strong style="color: #ef4444; font-size: 0.82rem;">${curBeachRent}k €</strong></span>`;
                     }
 
                     const itemB = document.createElement('div');
@@ -5505,7 +5640,7 @@
                     itemB.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <strong style="color: #fff;">🏖️ ${tile.name}</strong>
-                            <span style="color: var(--hood-gold); font-weight:700;">${tile.price} $</span>
+                            <span style="color: var(--hood-gold); font-weight:700;">${tile.price}k €</span>
                         </div>
                         <div class="hood-group-tile-owner" style="margin-top: 0.15rem;">
                             ${owner
@@ -5532,11 +5667,11 @@
                         btnM.style.padding = '0.25rem 0.45rem';
                         btnM.style.width = '100%';
                         if (tile.mortgaged) {
-                            btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                            btnM.textContent = `🏦 Ablösen (${repayCost}k €)`;
                             btnM.style.borderColor = '#38bdf8';
                             btnM.style.color = '#38bdf8';
                         } else {
-                            btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                            btnM.textContent = `🏦 Beleihen (+${mortgageVal}k €)`;
                         }
                         btnM.addEventListener('click', () => this.actionMortgage(tile.index));
                         actB.appendChild(btnM);
@@ -5613,9 +5748,9 @@
 
                     let rentClubHtml = '';
                     if (!owner) {
-                        rentClubHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0 $</strong> (Frei)</span>`;
+                        rentClubHtml = `<span style="color: var(--hood-muted);">Bei Landung: <strong>0k €</strong> (Frei)</span>`;
                     } else if (tile.mortgaged) {
-                        rentClubHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0 $</strong> (Hypothek)</span>`;
+                        rentClubHtml = `<span style="color: #ef4444;">Bei Landung: <strong>0k €</strong> (Hypothek)</span>`;
                     } else if (owner.id === activeId) {
                         rentClubHtml = `<span style="color: #22c55e;">Dein Club (Gegner zahlen <strong>${multiplierText}</strong>)</span>`;
                     } else {
@@ -5628,7 +5763,7 @@
                     itemC.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <strong style="color: #fff;">🍸 ${tile.name}</strong>
-                            <span style="color: var(--hood-gold); font-weight:700;">${tile.price} $</span>
+                            <span style="color: var(--hood-gold); font-weight:700;">${tile.price}k €</span>
                         </div>
                         <div class="hood-group-tile-owner" style="margin-top: 0.15rem;">
                             ${owner
@@ -5655,11 +5790,11 @@
                         btnM.style.padding = '0.25rem 0.45rem';
                         btnM.style.width = '100%';
                         if (tile.mortgaged) {
-                            btnM.textContent = `🏦 Ablösen (${repayCost} $)`;
+                            btnM.textContent = `🏦 Ablösen (${repayCost}k €)`;
                             btnM.style.borderColor = '#38bdf8';
                             btnM.style.color = '#38bdf8';
                         } else {
-                            btnM.textContent = `🏦 Beleihen (+${mortgageVal} $)`;
+                            btnM.textContent = `🏦 Beleihen (+${mortgageVal}k €)`;
                         }
                         btnM.addEventListener('click', () => this.actionMortgage(tile.index));
                         actB.appendChild(btnM);
@@ -5780,10 +5915,10 @@
 
             // Bargeld-Limits anzeigen
             if (offerCashMax && sender) {
-                offerCashMax.textContent = `(max. ${sender.cash} $)`;
+                offerCashMax.textContent = `(max. ${sender.cash}k €)`;
             }
             if (requestCashMax && partner) {
-                requestCashMax.textContent = `(max. ${partner.cash} $)`;
+                requestCashMax.textContent = `(max. ${partner.cash}k €)`;
             }
 
             const offerCashInput = document.getElementById('trade-offer-cash');
@@ -5831,7 +5966,7 @@
                     <input type="checkbox" class="${chkClass}" value="${t.index}">
                     <span style="font-size: 0.95rem;">${badgeIcon}</span>
                     <span style="color:#fff; font-weight: 600;">${t.name}</span>
-                    <span style="font-size: 0.68rem; color: ${badgeColor}; margin-left: auto;">${typeBadge} (${t.price} $)</span>
+                    <span style="font-size: 0.68rem; color: ${badgeColor}; margin-left: auto;">${typeBadge} (${t.price}k €)</span>
                 `;
                 return row;
             };
@@ -5894,11 +6029,11 @@
             }
 
             if (offerCash > (sender ? sender.cash : 0)) {
-                this.showToast(`${sender ? sender.name : 'Du'} hast nur ${sender ? sender.cash : 0} $ Bargeld zur Verfügung.`, 'warning');
+                this.showToast(`${sender ? sender.name : 'Du'} hast nur ${sender ? sender.cash : 0}k € Bargeld zur Verfügung.`, 'warning');
                 return;
             }
             if (requestCash > (partner ? partner.cash : 0)) {
-                this.showToast(`${partner ? partner.name : 'Der Partner'} hat nur ${partner ? partner.cash : 0} $ Bargeld zur Verfügung.`, 'warning');
+                this.showToast(`${partner ? partner.name : 'Der Partner'} hat nur ${partner ? partner.cash : 0}k € Bargeld zur Verfügung.`, 'warning');
                 return;
             }
 
@@ -5973,7 +6108,7 @@
                 recContainer.innerHTML = '';
                 if (trade.offer_cash > 0) {
                     const cDiv = document.createElement('div');
-                    cDiv.innerHTML = `💵 <strong>${trade.offer_cash} $</strong> Bargeld`;
+                    cDiv.innerHTML = `💵 <strong>${trade.offer_cash}k €</strong> Bargeld`;
                     recContainer.appendChild(cDiv);
                 }
                 trade.offer_tiles.forEach(tIdx => {
@@ -5981,7 +6116,7 @@
                     if (!t) return;
                     const gData = this.getGroupData(t.group);
                     const div = document.createElement('div');
-                    div.innerHTML = `🏡 <span style="color:${gData ? gData.color : '#fff'}; font-weight:700;">${t.name}</span> (${t.price} $)`;
+                    div.innerHTML = `🏡 <span style="color:${gData ? gData.color : '#fff'}; font-weight:700;">${t.name}</span> (${t.price}k €)`;
                     recContainer.appendChild(div);
                 });
                 if (trade.offer_tiles.length === 0 && trade.offer_cash <= 0) {
@@ -5993,7 +6128,7 @@
                 giveContainer.innerHTML = '';
                 if (trade.request_cash > 0) {
                     const cDiv = document.createElement('div');
-                    cDiv.innerHTML = `💵 <strong>${trade.request_cash} $</strong> Bargeld`;
+                    cDiv.innerHTML = `💵 <strong>${trade.request_cash}k €</strong> Bargeld`;
                     giveContainer.appendChild(cDiv);
                 }
                 trade.request_tiles.forEach(tIdx => {
@@ -6001,7 +6136,7 @@
                     if (!t) return;
                     const gData = this.getGroupData(t.group);
                     const div = document.createElement('div');
-                    div.innerHTML = `🏡 <span style="color:${gData ? gData.color : '#fff'}; font-weight:700;">${t.name}</span> (${t.price} $)`;
+                    div.innerHTML = `🏡 <span style="color:${gData ? gData.color : '#fff'}; font-weight:700;">${t.name}</span> (${t.price}k €)`;
                     giveContainer.appendChild(div);
                 });
                 if (trade.request_tiles.length === 0 && trade.request_cash <= 0) {

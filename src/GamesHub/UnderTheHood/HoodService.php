@@ -360,7 +360,7 @@ class HoodService
                 $player['jail_turns'] = 0;
                 $state['log'][] = [
                     'time' => date('H:i'),
-                    'text' => "🔧 {$player['name']} zahlt 50 $ Reparatur-Kaution nach 3 Runden (wandert in den Jackpot) und fährt weiter."
+                    'text' => "🔧 {$player['name']} zahlt 50k € Reparatur-Kaution nach 3 Runden (wandert in den Jackpot) und fährt weiter."
                 ];
                 return $this->advancePlayer($roomId, $state, $player, $roll, false);
             }
@@ -416,18 +416,18 @@ class HoodService
 
         // Startfeld passiert oder genau gelandet?
         if ($newPos === 0) {
-            // Punktlandung auf START & ZIEL: Doppeltes Gehalt (400 $)
+            // Punktlandung auf START & ZIEL: Doppeltes Gehalt (400k €)
             $doubleReward = HoodConfig::GO_REWARD * 2;
             $player['cash'] += $doubleReward;
             $state['log'][] = [
                 'time' => date('H:i'),
-                'text' => "🎯🎯 Punktlandung auf START & ZIEL! {$player['name']} kassiert den doppelten Bonus von {$doubleReward} $!"
+                'text' => "🎯🎯 Punktlandung auf START & ZIEL! {$player['name']} kassiert den doppelten Bonus von {$doubleReward}k €!"
             ];
         } elseif ($newPos < $oldPos) {
             $player['cash'] += HoodConfig::GO_REWARD;
             $state['log'][] = [
                 'time' => date('H:i'),
-                'text' => "🏁 {$player['name']} passiert START & ZIEL und streicht " . HoodConfig::GO_REWARD . " $ Prämie ein!"
+                'text' => "🏁 {$player['name']} passiert START & ZIEL und streicht " . HoodConfig::GO_REWARD . "k € Prämie ein!"
             ];
         }
 
@@ -453,7 +453,7 @@ class HoodService
                     $state['parking_pot'] = 0;
                     $state['log'][] = [
                         'time' => date('H:i'),
-                        'text' => "🎰 FREI PARKEN JACKPOT! {$player['name']} räumt den gesamten Jackpot von {$pot} $ ab!"
+                        'text' => "🎰 FREI PARKEN JACKPOT! {$player['name']} räumt den gesamten Jackpot von {$pot}k € ab!"
                     ];
                 } else {
                     $state['log'][] = [
@@ -471,7 +471,7 @@ class HoodService
                 $state['phase'] = 'TURN_END';
                 $state['log'][] = [
                     'time' => date('H:i'),
-                    'text' => "🛑 {$player['name']} zahlt {$tax} $ {$tileConfig['name']} (wandert in den Frei-Parken-Jackpot)."
+                    'text' => "🛑 {$player['name']} zahlt {$tax}k € {$tileConfig['name']} (wandert in den Frei-Parken-Jackpot)."
                 ];
                 $this->checkBankruptcy($state, $player);
                 break;
@@ -519,7 +519,7 @@ class HoodService
 
                         $state['log'][] = [
                             'time' => date('H:i'),
-                            'text' => "💸 {$player['name']} zahlt {$rent} $ Miete an {$owner['name']} für {$tileConfig['name']}!"
+                            'text' => "💸 {$player['name']} zahlt {$rent}k € Miete an {$owner['name']} für {$tileConfig['name']}!"
                         ];
 
                         $this->checkBankruptcy($state, $player, $owner);
@@ -572,7 +572,7 @@ class HoodService
 
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "🏡 {$player['name']} kauft '{$tileConfig['name']}' für {$price} $! Grundstück wird erschlossen."
+            'text' => "🏡 {$player['name']} kauft '{$tileConfig['name']}' für {$price}k €! Grundstück wird erschlossen."
         ];
 
         $this->repo->updateRoomState($roomId, $state);
@@ -645,7 +645,7 @@ class HoodService
 
         $cost = $tileConfig['house_cost'] ?? 100;
         if ($player['cash'] < $cost) {
-            return ['success' => false, 'message' => "Zu wenig Cash ({$cost} $ benötigt)"];
+            return ['success' => false, 'message' => "Zu wenig Cash ({$cost}k € benötigt)"];
         }
 
         // Gleichmäßiges Bauen prüfen
@@ -668,7 +668,7 @@ class HoodService
 
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "🏗️ {$player['name']} investiert {$cost} $ und baut {$stufenText} auf '{$tileConfig['name']}'!"
+            'text' => "🏗️ {$player['name']} investiert {$cost}k € und baut {$stufenText} auf '{$tileConfig['name']}'!"
         ];
 
         $this->repo->updateRoomState($roomId, $state);
@@ -699,13 +699,13 @@ class HoodService
             // Ablösen: 10% Zinsen
             $repayCost = (int)ceil($mortgageVal * 1.10);
             if ($player['cash'] < $repayCost) {
-                return ['success' => false, 'message' => "Zu wenig Cash zum Auslösen ({$repayCost} $ fällig)"];
+                return ['success' => false, 'message' => "Zu wenig Cash zum Auslösen ({$repayCost}k € fällig)"];
             }
             $player['cash'] -= $repayCost;
             $tileState['mortgaged'] = false;
             $state['log'][] = [
                 'time' => date('H:i'),
-                'text' => "🏦 {$player['name']} löst Hypothek auf '{$tileConfig['name']}' für {$repayCost} $ ab."
+                'text' => "🏦 {$player['name']} löst Hypothek auf '{$tileConfig['name']}' für {$repayCost}k € ab."
             ];
         } else {
             // Beleihen: Nur wenn keine Häuser auf der Gruppe stehen
@@ -716,7 +716,7 @@ class HoodService
             $tileState['mortgaged'] = true;
             $state['log'][] = [
                 'time' => date('H:i'),
-                'text' => "📉 {$player['name']} beleiht '{$tileConfig['name']}' und erhält {$mortgageVal} $ Notfall-Cash."
+                'text' => "📉 {$player['name']} beleiht '{$tileConfig['name']}' und erhält {$mortgageVal}k € Notfall-Cash."
             ];
         }
 
@@ -776,7 +776,7 @@ class HoodService
 
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "🏚️ {$player['name']} baut auf '{$tileConfig['name']}' zurück auf {$targetText} und erhält {$refund} $ von der Bank."
+            'text' => "🏚️ {$player['name']} baut auf '{$tileConfig['name']}' zurück auf {$targetText} und erhält {$refund}k € von der Bank."
         ];
 
         $this->repo->updateRoomState($roomId, $state);
@@ -822,7 +822,7 @@ class HoodService
 
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "🏷️ {$player['name']} verkauft '{$tileConfig['name']}' an die Bank zurück (+{$refund} $). Das Grundstück ist wieder frei!"
+            'text' => "🏷️ {$player['name']} verkauft '{$tileConfig['name']}' an die Bank zurück (+{$refund}k €). Das Grundstück ist wieder frei!"
         ];
 
         $this->repo->updateRoomState($roomId, $state);
@@ -830,7 +830,7 @@ class HoodService
     }
 
     /**
-     * Zahlt 50 $ Kaution, um sofort aus der Werkstatt frei zu kommen.
+     * Zahlt 50k € Kaution, um sofort aus der Werkstatt frei zu kommen.
      */
     public function payBail(int $roomId, int $playerId): array
     {
@@ -854,7 +854,7 @@ class HoodService
         $player['jail_turns'] = 0;
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => "💸 {$player['name']} zahlt 50 $ Reparaturkaution (wandert in den Jackpot) und darf sofort wieder mitfahren!"
+            'text' => "💸 {$player['name']} zahlt 50k € Reparaturkaution (wandert in den Jackpot) und darf sofort wieder mitfahren!"
         ];
 
         $this->repo->updateRoomState($roomId, $state);
@@ -997,7 +997,7 @@ class HoodService
                     $state['parking_pot'] = ($state['parking_pot'] ?? 0) + $penalty;
                     $state['log'][] = [
                         'time' => date('H:i'),
-                        'text' => "💸 Strafe von {$penalty} $ wandert in den Frei-Parken-Jackpot!"
+                        'text' => "💸 Strafe von {$penalty}k € wandert in den Frei-Parken-Jackpot!"
                     ];
                     $this->checkBankruptcy($state, $player);
                 }
@@ -1010,7 +1010,7 @@ class HoodService
                     $player['cash'] += $doubleReward;
                     $state['log'][] = [
                         'time' => date('H:i'),
-                        'text' => "🎯🎯 Direktfahrt auf START & ZIEL! {$player['name']} kassiert {$doubleReward} $ Bonus!"
+                        'text' => "🎯🎯 Direktfahrt auf START & ZIEL! {$player['name']} kassiert {$doubleReward}k € Bonus!"
                     ];
                 }
                 break;
@@ -1064,7 +1064,7 @@ class HoodService
                     $state['parking_pot'] = ($state['parking_pot'] ?? 0) + $totalRepairs;
                     $state['log'][] = [
                         'time' => date('H:i'),
-                        'text' => "🔨 {$player['name']} zahlt insgesamt {$totalRepairs} $ Reparaturkosten (wandert in den Frei-Parken-Jackpot)."
+                        'text' => "🔨 {$player['name']} zahlt insgesamt {$totalRepairs}k € Reparaturkosten (wandert in den Frei-Parken-Jackpot)."
                     ];
                     $this->checkBankruptcy($state, $player);
                 }

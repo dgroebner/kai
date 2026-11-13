@@ -51,7 +51,7 @@ class HoodConfig
                 'name'  => 'Start & Ziel',
                 'type'  => 'start',
                 'icon'  => '🏁',
-                'desc'  => '200 $ beim Passieren – Punktlandung auf Start bringt doppeltes Gehalt (400 $)!',
+                'desc'  => '200k € beim Passieren – Punktlandung auf Start bringt doppeltes Gehalt (400k €)!',
             ],
             // 1: Docks 1
             1 => [
@@ -91,7 +91,7 @@ class HoodConfig
                 'type'  => 'tax',
                 'tax'   => 200,
                 'icon'  => '🛑',
-                'desc'  => 'Fällige Abgabe: Zahle 200 $ an die Stadtkasse.',
+                'desc'  => 'Fällige Abgabe: Zahle 200k € an die Stadtkasse.',
             ],
             // 5: Strand 1
             5 => [
@@ -438,7 +438,7 @@ class HoodConfig
                 'type'  => 'tax',
                 'tax'   => 100,
                 'icon'  => '💎',
-                'desc'  => 'Luxusabgabe: Zahle 100 $ an die Stadtkasse.',
+                'desc'  => 'Luxusabgabe: Zahle 100k € an die Stadtkasse.',
             ],
             // 39: Millionaires 2 (Schlossallee)
             39 => [
@@ -460,17 +460,17 @@ class HoodConfig
     public static function getRadioCards(): array
     {
         return [
-            ['text' => '🏆 Du gewinnst das Street-Race! Kassiere 150 $.', 'action' => 'cash', 'amount' => 150],
-            ['text' => '🚨 Blitzer auf der Strandpromenade! Zahle 50 $ Strafe.', 'action' => 'cash', 'amount' => -50],
-            ['text' => '⛽ Tankstellen-Gutschein gewonnen! Ziehe 100 $ ein.', 'action' => 'cash', 'amount' => 100],
-            ['text' => '🔨 Werkstatt-Inspektion fällig: Zahle 25 $ pro Haus und 100 $ pro Hotel.', 'action' => 'repairs', 'per_house' => 25, 'per_hotel' => 100],
-            ['text' => '🏁 Gib Vollgas: Fahre direkt auf START & ZIEL (kassiere 400 $ Bonus).', 'action' => 'teleport', 'tile' => 0],
+            ['text' => '🏆 Du gewinnst das Street-Race! Kassiere 150k €.', 'action' => 'cash', 'amount' => 150],
+            ['text' => '🚨 Blitzer auf der Strandpromenade! Zahle 50k € Strafe.', 'action' => 'cash', 'amount' => -50],
+            ['text' => '⛽ Tankstellen-Gutschein gewonnen! Ziehe 100k € ein.', 'action' => 'cash', 'amount' => 100],
+            ['text' => '🔨 Werkstatt-Inspektion fällig: Zahle 25k € pro Haus und 100k € pro Hotel.', 'action' => 'repairs', 'per_house' => 25, 'per_hotel' => 100],
+            ['text' => '🏁 Gib Vollgas: Fahre direkt auf START & ZIEL (kassiere 400k € Bonus).', 'action' => 'teleport', 'tile' => 0],
             ['text' => '🏖️ Abkühlung gefällig? Fahre vor zum nächsten Strand.', 'action' => 'nearest_beach'],
             ['text' => '🚓 Polizeikontrolle: Alkoholfahrt! Fahre sofort in die Verwahrstelle.', 'action' => 'go_to_jail'],
-            ['text' => '🎉 Geburtstags-Cruising: Jeder Mitspieler schenkt dir 20 $.', 'action' => 'collect_from_all', 'amount' => 20],
-            ['text' => '🏎️ Luxus-Tuning: Deine Autoserie gewinnt den Best-of-Show. Erhalte 100 $.', 'action' => 'cash', 'amount' => 100],
+            ['text' => '🎉 Geburtstags-Cruising: Jeder Mitspieler schenkt dir 20k €.', 'action' => 'collect_from_all', 'amount' => 20],
+            ['text' => '🏎️ Luxus-Tuning: Deine Autoserie gewinnt den Best-of-Show. Erhalte 100k €.', 'action' => 'cash', 'amount' => 100],
             ['text' => '🔑 Notfall-Schlüsselkarte: Du kommst kostenlos aus der Verwahrstelle frei.', 'action' => 'get_out_of_jail_free'],
-            ['text' => '🚧 Mautgebühr auf dem Ocean-Highway: Zahle 30 $.', 'action' => 'cash', 'amount' => -30],
+            ['text' => '🚧 Mautgebühr auf dem Ocean-Highway: Zahle 30k €.', 'action' => 'cash', 'amount' => -30],
         ];
     }
 
@@ -480,16 +480,16 @@ class HoodConfig
     public static function getGloveboxCards(): array
     {
         return [
-            ['text' => '💰 Steuerrückerstattung für deinen Oldtimer! Erhalte 100 $.', 'action' => 'cash', 'amount' => 100],
-            ['text' => '🎫 Parkschein abgelaufen: Zahle 50 $ Verwarngeld.', 'action' => 'cash', 'amount' => -50],
-            ['text' => '🩺 Kfz-Haftpflicht-Bonus ausgeschüttet: Ziehe 50 $ ein.', 'action' => 'cash', 'amount' => 50],
+            ['text' => '💰 Steuerrückerstattung für deinen Oldtimer! Erhalte 100k €.', 'action' => 'cash', 'amount' => 100],
+            ['text' => '🎫 Parkschein abgelaufen: Zahle 50k € Verwarngeld.', 'action' => 'cash', 'amount' => -50],
+            ['text' => '🩺 Kfz-Haftpflicht-Bonus ausgeschüttet: Ziehe 50k € ein.', 'action' => 'cash', 'amount' => 50],
             ['text' => '🔑 Notfall-Schlüsselkarte: Du kommst kostenlos aus der Verwahrstelle frei.', 'action' => 'get_out_of_jail_free'],
-            ['text' => '🏠 Straßen-Erneuerung: Zahle 40 $ pro Haus und 115 $ pro Hotel.', 'action' => 'repairs', 'per_house' => 40, 'per_hotel' => 115],
-            ['text' => '📦 Verschollenen Geldbeutel im Fach gefunden: +25 $!', 'action' => 'cash', 'amount' => 25],
-            ['text' => '🍸 Club-Abend gesponsert: Erhalte 45 $ Promo-Prämie.', 'action' => 'cash', 'amount' => 45],
-            ['text' => '⚡ Mautstraße verstopft: Zahle 20 $ Umleitungsgebühr.', 'action' => 'cash', 'amount' => -20],
+            ['text' => '🏠 Straßen-Erneuerung: Zahle 40k € pro Haus und 115k € pro Hotel.', 'action' => 'repairs', 'per_house' => 40, 'per_hotel' => 115],
+            ['text' => '📦 Verschollenen Geldbeutel im Fach gefunden: +25k €!', 'action' => 'cash', 'amount' => 25],
+            ['text' => '🍸 Club-Abend gesponsert: Erhalte 45k € Promo-Prämie.', 'action' => 'cash', 'amount' => 45],
+            ['text' => '⚡ Mautstraße verstopft: Zahle 20k € Umleitungsgebühr.', 'action' => 'cash', 'amount' => -20],
             ['text' => '🏖️ Einladung ins Strand-Resort: Reise direkt zur Palm Bay.', 'action' => 'teleport', 'tile' => 15],
-            ['text' => '🎂 Du spendierst der ganzen Hood einen Drink: Jeder erhält 10 $ von dir.', 'action' => 'pay_to_all', 'amount' => 10],
+            ['text' => '🎂 Du spendierst der ganzen Hood einen Drink: Jeder erhält 10k € von dir.', 'action' => 'pay_to_all', 'amount' => 10],
         ];
     }
 }

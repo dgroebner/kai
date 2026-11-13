@@ -44,13 +44,13 @@ $csrfToken = Auth::csrfToken();
 
             <div class="hood-badge hood-cash-badge">
                 <span>💰</span>
-                <span id="cash-badge-amount">1.500 $</span>
+                <span id="cash-badge-amount">1.500k €</span>
             </div>
 
             <!-- Frei-Parken Jackpot Badge -->
             <div class="hood-badge hood-pot-badge" id="pot-badge" title="Frei-Parken Jackpot (wird bei Landung auf Feld 20 gewonnen)" style="background: rgba(5, 150, 105, 0.85); border: 1px solid #10b981; font-weight: 700;">
                 <span>🎰</span>
-                <span id="pot-badge-amount">100 $</span>
+                <span id="pot-badge-amount">100k €</span>
             </div>
 
             <!-- Blick-Steuerung, Grundbuch, Handel & Ton -->
@@ -92,11 +92,11 @@ $csrfToken = Auth::csrfToken();
                 <div class="hood-navi-stats" id="navi-stats-purchasable">
                     <div class="hood-navi-stat-box">
                         <div class="label">Kaufpreis</div>
-                        <div class="val gold" id="navi-price">0 $</div>
+                        <div class="val gold" id="navi-price">0k €</div>
                     </div>
                     <div class="hood-navi-stat-box">
                         <div class="label">Miete</div>
-                        <div class="val" id="navi-rent">0 $</div>
+                        <div class="val" id="navi-rent">0k €</div>
                     </div>
                     <div class="hood-navi-stat-box">
                         <div class="label">Stufe</div>
@@ -144,7 +144,7 @@ $csrfToken = Auth::csrfToken();
                         <span>🔑</span> SCHLÜSSELKARTE NUTZEN (Kostenlos)
                     </button>
                     <button type="button" class="hood-btn-primary hood-btn-gold" id="btn-bail" style="display: none;">
-                        <span>💸</span> KAUTION ZAHLEN (50 $)
+                        <span>💸</span> KAUTION ZAHLEN (50k €)
                     </button>
                 </div>
 
@@ -175,7 +175,7 @@ $csrfToken = Auth::csrfToken();
             <div id="sheet-monopoly-info" style="font-size: 0.8rem; font-weight: 600; margin: 0.6rem 0; padding: 0.45rem 0.65rem; border-radius: 8px; background: rgba(15, 23, 42, 0.7); line-height: 1.35;"></div>
 
             <div class="hood-sheet-price-tag">
-                <span class="amount" id="sheet-price">0 $</span>
+                <span class="amount" id="sheet-price">0k €</span>
                 <span style="font-size: 0.8rem; color: var(--hood-muted);">Kaufpreis</span>
             </div>
 
@@ -257,18 +257,6 @@ $csrfToken = Auth::csrfToken();
                     </div>
                 </div>
 
-                <div class="hood-form-group">
-                    <label class="hood-label">Fahrzeug-Klasse</label>
-                    <div class="hood-vehicle-picker">
-                        <?php foreach (HoodConfig::VEHICLES as $key => $v): ?>
-                            <div class="hood-vehicle-card <?= $key === 'sportscar' ? 'selected' : '' ?>" data-vehicle="<?= $key ?>">
-                                <div class="icon"><?= $v['icon'] ?></div>
-                                <div class="name"><?= $v['name'] ?></div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
                 <button type="button" class="hood-btn-primary" id="btn-create-room" style="margin-top: 1rem;">
                     🏁 SPIEL ERSTELLEN
                 </button>
@@ -297,18 +285,6 @@ $csrfToken = Auth::csrfToken();
                     <div class="hood-color-picker" id="join-color-picker">
                         <?php foreach (HoodConfig::PLAYER_COLORS as $idx => $c): ?>
                             <div class="hood-color-swatch <?= $idx === 1 ? 'selected' : '' ?>" style="background-color: <?= $c ?>;" data-color="<?= $c ?>"></div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <div class="hood-form-group">
-                    <label class="hood-label">Fahrzeug-Klasse</label>
-                    <div class="hood-vehicle-picker" id="join-vehicle-picker">
-                        <?php foreach (HoodConfig::VEHICLES as $key => $v): ?>
-                            <div class="hood-vehicle-card <?= $key === 'muscle' ? 'selected' : '' ?>" data-vehicle="<?= $key ?>">
-                                <div class="icon"><?= $v['icon'] ?></div>
-                                <div class="name"><?= $v['name'] ?></div>
-                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -409,7 +385,7 @@ $csrfToken = Auth::csrfToken();
                     <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Zusätzliches Geld bieten <span id="trade-offer-available-cash" style="color:var(--hood-gold); font-weight:600;"></span>:</label>
                     <div style="display: flex; align-items: center; gap: 0.3rem;">
                         <input type="number" id="trade-offer-cash" class="hood-input" style="padding: 0.4rem; font-size: 0.85rem;" min="0" value="0">
-                        <span style="font-size: 0.85rem; font-weight: 700;">$</span>
+                        <span style="font-size: 0.85rem; font-weight: 700;">k €</span>
                     </div>
                 </div>
 
@@ -424,7 +400,7 @@ $csrfToken = Auth::csrfToken();
                     <label style="font-size: 0.7rem; color: var(--hood-muted); margin-top: auto;">Geld fordern <span id="trade-request-available-cash" style="color:var(--hood-gold); font-weight:600;"></span>:</label>
                     <div style="display: flex; align-items: center; gap: 0.3rem;">
                         <input type="number" id="trade-request-cash" class="hood-input" style="padding: 0.4rem; font-size: 0.85rem;" min="0" value="0">
-                        <span style="font-size: 0.85rem; font-weight: 700;">$</span>
+                        <span style="font-size: 0.85rem; font-weight: 700;">k €</span>
                     </div>
                 </div>
 
