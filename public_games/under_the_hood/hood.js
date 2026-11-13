@@ -3297,11 +3297,24 @@
                 plot.receiveShadow = true;
                 group.add(plot);
 
-                // Erdflecken
-                const dirtMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.95 });
-                const d1 = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 7), dirtMat);
-                d1.position.set(-1, 0.37, 2);
+                // Organische Erdflecken (PBR-Erde mit Steinchen, keine eckige Platte)
+                const dirtMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/dirt_diffuse.webp', true, 3, 3),
+                    normalMap: this.loadSeamlessTexture('./textures/dirt_normal.webp', false, 3, 3),
+                    normalScale: new THREE.Vector2(1.0, 1.0),
+                    roughness: 0.96,
+                });
+                const d1 = new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.9, 0.05, 18), dirtMat);
+                d1.position.set(-1.0, 0.36, 1.8);
+                d1.scale.set(1.15, 1.0, 0.85);
+                d1.rotation.y = 0.35;
                 group.add(d1);
+
+                const d2 = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.3, 0.05, 14), dirtMat);
+                d2.position.set(-2.6, 0.36, -1.8);
+                d2.scale.set(1.1, 1.0, 0.8);
+                d2.rotation.y = -0.45;
+                group.add(d2);
 
                 // Schiefer, alter Maschendrahtzaun entlang der Grundstücksgrenze (durchsichtig!)
                 const woodPostMat = this.getBarkMaterial(1, 2);
@@ -3355,14 +3368,19 @@
                     group.add(stone);
                 }
 
-                // Altreifen-Stapel im Unkraut (wie im Foto!)
-                const tireMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.95 });
-                for (let t = 0; t < 3; t++) {
-                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.28, 12), tireMat);
-                    tire.position.set(-2.0, 0.45 + t * 0.26, 1.2);
-                    tire.rotation.x = Math.PI / 2 + (t === 2 ? 0.3 : 0);
+                // Altreifen-Stapel im Unkraut (echte hohle Reifenringe!)
+                const tireMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.92 });
+                const tireGeo = new THREE.TorusGeometry(0.32, 0.13, 10, 18);
+                for (let t = 0; t < 2; t++) {
+                    const tire = new THREE.Mesh(tireGeo, tireMat);
+                    tire.position.set(-2.0 + t * 0.06, 0.50 + t * 0.24, 1.2);
+                    tire.rotation.x = Math.PI / 2;
                     group.add(tire);
                 }
+                const leaningTire = new THREE.Mesh(tireGeo, tireMat);
+                leaningTire.position.set(-1.45, 0.66, 1.35);
+                leaningTire.rotation.set(0.35, 0.4, 0.25);
+                group.add(leaningTire);
 
                 // Wildes Gestrüpp & Sträucher (freigestellte Blätterzweige)
                 for (let b = 0; b < 6; b++) {
