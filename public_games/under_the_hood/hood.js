@@ -845,8 +845,10 @@
                 metalness: 0.08,
             });
             const carpetMat = new THREE.MeshStandardMaterial({
-                color: 0x090d16,
-                roughness: 0.96,
+                map: this.loadSeamlessTexture('./textures/carpet_diffuse.webp', true, 6, 6),
+                normalMap: this.loadSeamlessTexture('./textures/carpet_normal.webp', false, 6, 6),
+                normalScale: new THREE.Vector2(0.8, 0.8),
+                roughness: 0.94,
             });
             const chromeMat = new THREE.MeshStandardMaterial({
                 color: 0xe2e8f0,
