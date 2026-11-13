@@ -3894,7 +3894,7 @@
                     roughness: 0.3
                 });
                 const gateSign = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 1.6), signMat);
-                gateSign.position.set(-6.45, 1.5, 1.4);
+                gateSign.position.set(-6.56, 1.25, 2.25);
                 group.add(gateSign);
 
                 // BESITZER-FLAGGE am Eingang in SPIELERFARBE (im Wind wehend!)
