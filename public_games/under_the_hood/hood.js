@@ -2108,11 +2108,6 @@
                     ctx.fillRect(475, py + 12, 5, 5);
                     ctx.fillStyle = '#5c3a21';
                 }
-
-                ctx.font = 'bold 42px sans-serif';
-                ctx.fillStyle = 'rgba(236, 72, 153, 0.7)';
-                ctx.fillText('STAY', 360, 220);
-                ctx.fillText('OUT', 370, 275);
             }
 
             // Metall-Sprossen
@@ -3195,6 +3190,31 @@
                 const vSide = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.0), vMat);
                 vSide.position.set(-1.2, 3.0, 9.04);
                 bldGroup.add(vSide);
+
+                // Echtes "STAY OUT" Schablonen-Graffiti auf den vernagelten Fensterbrettern & der Eingangstür
+                if (!this._matCache['graffiti_stay_out']) {
+                    const sTex = new THREE.TextureLoader().load('./textures/graffiti_stay_out.webp');
+                    sTex.colorSpace = THREE.SRGBColorSpace;
+                    this._matCache['graffiti_stay_out'] = new THREE.MeshBasicMaterial({
+                        map: sTex,
+                        transparent: true,
+                        opacity: 0.92,
+                        depthWrite: false,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1,
+                    });
+                }
+                const sMat = this._matCache['graffiti_stay_out'];
+                [-3.1, 6.5].forEach(sz => {
+                    const sWin = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), sMat);
+                    sWin.position.set(-6.02, 3.25, sz);
+                    sWin.rotation.y = -Math.PI / 2;
+                    bldGroup.add(sWin);
+                });
+                const sDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), sMat);
+                sDoor.position.set(-5.88, 2.15, 0);
+                sDoor.rotation.y = -Math.PI / 2;
+                bldGroup.add(sDoor);
 
                 // Ruine: Trümmer, Schutt (Stein-Textur) und wildes Unkraut (Zweig-Sprites) auf dem Vorplatz
                 for (let w = 0; w < 8; w++) {
