@@ -3359,8 +3359,13 @@
                 forSaleSign.rotation.z = -0.06;
                 group.add(forSaleSign);
 
-                // Geröllhaufen / Schotterberge (wie im Foto!)
-                const rockMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 });
+                // Geröllhaufen / Schotterberge (PBR Naturstein-Textur)
+                const rockMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/rock_diffuse.webp', true, 1, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/rock_normal.webp', false, 1, 1),
+                    normalScale: new THREE.Vector2(1.15, 1.15),
+                    roughness: 0.90,
+                });
                 for (let r = 0; r < 7; r++) {
                     const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4 + (r % 3) * 0.2, 0), rockMat);
                     stone.position.set(-3.5 + (r % 3) * 0.6, 0.5 + Math.floor(r / 3) * 0.3, -3.5 + (r % 2) * 0.8);
