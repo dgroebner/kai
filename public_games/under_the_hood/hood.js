@@ -1869,6 +1869,7 @@
             return tex;
         }
 
+
         getBarWindowTexture(isOwned = false, colorHex = '#00f5ff') {
             const key = `window_${isOwned ? colorHex : 'ruin'}`;
             if (!this._texCache) this._texCache = {};
@@ -2004,6 +2005,7 @@
             return tex;
         }
 
+
         getBrickTexture(isRuin = false) {
             const key = `brick_${isRuin ? 'ruin' : 'clean'}`;
             if (!this._texCache) this._texCache = {};
@@ -2108,6 +2110,7 @@
             this._texCache[key] = tex;
             return tex;
         }
+
 
         getSkylineTexture() {
             if (!this._texCache) this._texCache = {};
@@ -2703,6 +2706,52 @@
             return tex;
         }
 
+        getChainLinkTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['chainlink']) return this._texCache['chainlink'];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+
+            // Rautenförmiger Maschendraht (transparent zwischen den Drähten)
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            const step = 32;
+            for (let x = -128; x <= 256; x += step) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x + 128, 128);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x + 128, 0);
+                ctx.lineTo(x, 128);
+                ctx.stroke();
+            }
+            // Feines Glanzlicht auf den Drähten
+            ctx.strokeStyle = 'rgba(226, 232, 240, 0.55)';
+            ctx.lineWidth = 2;
+            for (let x = -128; x <= 256; x += step) {
+                ctx.beginPath();
+                ctx.moveTo(x - 1, 0);
+                ctx.lineTo(x + 127, 128);
+                ctx.stroke();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(8, 4);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['chainlink'] = tex;
+            return tex;
+        }
+
+
         getOwnedGardenSignTexture(tileName, groupName, groupColorHex, ownerName, ownerColorHex) {
             const key = `owned_garden_${tileName}_${groupColorHex}_${ownerName}`;
             if (!this._texCache) this._texCache = {};
@@ -2754,6 +2803,7 @@
             this._texCache[key] = tex;
             return tex;
         }
+
 
         // --- A. BARS & CLUBS (Exakte 1:1 Umsetzung der fotorealistischen Referenzbilder!) ---
         renderClubPlot(group, ownerColor, isMortgaged, tileName) {
@@ -3122,15 +3172,6 @@
             const groupName = this.getGroupName(groupKey);
             const ownerHex = ownerColor || '#3b82f6';
 
-            // Gehweg vor dem Grundstück mit integriertem KATEGORIE-FARB-BORDSTEIN!
-            // So sieht der Fahrer schon auf der Straße sofort die zusammenhängenden Farbabschnitte!
-            const curbStrip = new THREE.Mesh(
-                new THREE.BoxGeometry(0.35, 0.12, 18),
-                new THREE.MeshBasicMaterial({ color: new THREE.Color(groupColorHex) })
-            );
-            curbStrip.position.set(-5.6, 0.44, 0);
-            group.add(curbStrip);
-
             if (!isOwned) {
                 // =============================================================
                 // 1. UNBEBAUT / ZU VERKAUFEN (EXAKT WIE IM REFERENZBILD 1!)
@@ -3153,9 +3194,16 @@
                 d1.position.set(-1, 0.37, 2);
                 group.add(d1);
 
-                // Schiefer, alter Maschendrahtzaun entlang der Grundstücksgrenze (wie im Foto!)
+                // Schiefer, alter Maschendrahtzaun entlang der Grundstücksgrenze (durchsichtig!)
                 const woodPostMat = new THREE.MeshStandardMaterial({ color: 0x713f12, roughness: 0.9 });
-                const fenceWireMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+                const fenceWireMat = new THREE.MeshStandardMaterial({
+                    map: this.getChainLinkTexture(),
+                    transparent: true,
+                    alphaTest: 0.35,
+                    side: THREE.DoubleSide,
+                    roughness: 0.45,
+                    metalness: 0.65,
+                });
 
                 for (let z = -8; z <= 8; z += 2.6) {
                     // Schiefe Holzpfosten
@@ -3165,12 +3213,13 @@
                     post.rotation.x = (Math.cos(z * 1.8)) * 0.1;
                     group.add(post);
 
-                    // Maschendraht-Feld
+                    // Durchsichtiges Maschendraht-Feld
                     if (z < 8) {
-                        const wireGeo = new THREE.BoxGeometry(0.04, 1.4, 2.6);
+                        const wireGeo = new THREE.PlaneGeometry(2.6, 1.4);
                         const wire = new THREE.Mesh(wireGeo, fenceWireMat);
-                        wire.position.set(-6.5, 0.9, z + 1.3);
-                        wire.rotation.z = (Math.sin(z)) * 0.08;
+                        wire.position.set(-6.5, 0.95, z + 1.3);
+                        wire.rotation.y = Math.PI / 2;
+                        wire.rotation.x = (Math.sin(z)) * 0.04;
                         group.add(wire);
                     }
                 }
