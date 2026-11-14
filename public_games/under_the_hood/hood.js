@@ -2806,7 +2806,7 @@
 
         applyTintedCarTexture(sp, cacheKey, colorHex, carMesh) {
             if (!this._texCache) this._texCache = {};
-            const fullKey = `${cacheKey}_${colorHex}_v1373`;
+            const fullKey = `${cacheKey}_${colorHex}_v1374`;
             const cached = this._texCache[fullKey];
             if (cached && cached.tex) {
                 carMesh.material.map = cached.tex;
@@ -2845,24 +2845,28 @@
                         const i = (y * w + x) * 4;
                         if (d[i + 3] === 0) continue;
 
+                        const r = d[i], g = d[i + 1], b = d[i + 2];
+                        const max = Math.max(r, g, b);
+                        const min = Math.min(r, g, b);
+
                         let preserve = false;
                         if (zones.length > 0) {
                             const nx = x / w;
                             for (let z = 0; z < zones.length; z++) {
-                                const [cx, cy, rx, ry] = zones[z];
+                                const [cx, cy, rx, ry, isFur] = zones[z];
                                 const dx = (nx - cx) / rx;
                                 const dy = (ny - cy) / ry;
                                 if (dx * dx + dy * dy <= 1.0) {
-                                    preserve = true;
-                                    break;
+                                    // Felgen sind silbergrau (<212) statt strahlend weiß; Fell wird immer geschützt
+                                    if (isFur || max < 212) {
+                                        preserve = true;
+                                        break;
+                                    }
                                 }
                             }
                         }
                         if (preserve) continue;
 
-                        const r = d[i], g = d[i + 1], b = d[i + 2];
-                        const max = Math.max(r, g, b);
-                        const min = Math.min(r, g, b);
                         // Nur weiße/neutrale Karosserie einfärben; braune Sitze, Blinker & dunkle Reifen bleiben natürlich
                         if ((max - min) < 28 && max > 105) {
                             d[i]     = Math.round(r * tr);
@@ -2885,7 +2889,7 @@
                 });
                 entry.waiters = [];
             };
-            img.src = `${sp.file}?v=1.37.3`;
+            img.src = `${sp.file}?v=1.37.4`;
         }
 
         buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0) {
@@ -2922,18 +2926,18 @@
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
                 sportscar: {
-                    file: './textures/car_parked_white.png', w: 3.4, h: 1.46, y: 0.68,
-                    preserveZones: [[0.60, 0.70, 0.08, 0.22], [0.91, 0.65, 0.06, 0.18]],
+                    file: './textures/car_parked_white.png', w: 3.4, h: 1.46, y: 0.64,
+                    preserveZones: [[0.615, 0.70, 0.055, 0.17, false], [0.925, 0.65, 0.045, 0.15, false]],
                 },
                 monster: {
-                    file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.03,
+                    file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 0.99,
                 },
                 buggy: {
-                    file: './textures/car_parked_buggy.png', w: 3.4, h: 1.92, y: 0.89,
+                    file: './textures/car_parked_buggy.png', w: 3.4, h: 1.92, y: 0.85,
                 },
                 dogcar: {
-                    file: './textures/car_parked_dogcar.png', w: 3.3, h: 1.81, y: 0.83,
-                    preserveZones: [[0.58, 0.76, 0.085, 0.18], [0.92, 0.67, 0.06, 0.15], [0.17, 0.54, 0.12, 0.20]],
+                    file: './textures/car_parked_dogcar.png', w: 3.3, h: 1.81, y: 0.79,
+                    preserveZones: [[0.59, 0.76, 0.06, 0.15, false], [0.925, 0.67, 0.045, 0.13, false], [0.165, 0.54, 0.095, 0.165, true]],
                 },
             };
             const sp = specs[vehicle] || specs.sportscar;
@@ -2944,7 +2948,7 @@
             const specs = {
                 sportscar: {
                     file: './textures/car_rear_white.png', w: 3.2, h: 1.52, y: 0.68,
-                    preserveZones: [[0.08, 0.54, 0.06, 0.17], [0.37, 0.66, 0.08, 0.23]],
+                    preserveZones: [[0.08, 0.54, 0.05, 0.15, false], [0.37, 0.66, 0.065, 0.19, false]],
                 },
                 monster: {
                     file: './textures/car_rear_monster.png', w: 3.5, h: 2.21, y: 1.02,
@@ -2954,7 +2958,7 @@
                 },
                 dogcar: {
                     file: './textures/car_rear_dogcar.png', w: 3.1, h: 2.14, y: 0.98,
-                    preserveZones: [[0.08, 0.66, 0.06, 0.15], [0.42, 0.76, 0.08, 0.18], [0.78, 0.36, 0.16, 0.28], [0.11, 0.30, 0.10, 0.12]],
+                    preserveZones: [[0.08, 0.66, 0.05, 0.13, false], [0.42, 0.76, 0.065, 0.16, false], [0.78, 0.36, 0.15, 0.27, true], [0.11, 0.30, 0.09, 0.11, true]],
                 },
             };
             const sp = specs[vehicle] || specs.sportscar;
