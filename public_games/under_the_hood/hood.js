@@ -2847,10 +2847,10 @@
 
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
-                sportscar: { file: './textures/car_parked_white.png', w: 3.4, h: 1.91, y: 0.78 },
-                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.95, y: 1.24 },
-                buggy:     { file: './textures/car_parked_buggy.png', w: 3.4, h: 2.79, y: 1.18 },
-                dogcar:    { file: './textures/car_parked_dogcar.png', w: 3.4, h: 2.46, y: 1.04 },
+                sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.67 },
+                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.03 },
+                buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.89 },
+                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 2.39, y: 1.08 },
             };
             const sp = specs[vehicle] || specs.sportscar;
             return this.buildCutoutCarSprite(sp, `car_parked_${vehicle}`, colorHex, 1.45, -Math.PI / 2 + 0.14);
@@ -5459,12 +5459,12 @@
                 plaza.receiveShadow = true;
                 group.add(plaza);
 
-                // Weiße Parkbuchten hinter dem Portal (leicht ansteigende Park-Terrasse für natürliche Perspektive)
+                // Weiße Schrägparkbuchten hinter dem Portal (passend zur 3/4-Perspektive der Cabrios)
                 const parkingGroup = new THREE.Group();
                 parkingGroup.position.set(3.5, 0.36, 0);
                 parkingGroup.rotation.z = 0.05;
 
-                const rampDeck = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.16, 15.6), lotMat);
+                const rampDeck = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.16, 17.6), lotMat);
                 rampDeck.position.set(0, 0.05, 0);
                 rampDeck.receiveShadow = true;
                 parkingGroup.add(rampDeck);
@@ -5472,12 +5472,13 @@
                 const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
                 const bayZ = [-5.4, -1.8, 1.8, 5.4];
                 [-7.2, -3.6, 0.0, 3.6, 7.2].forEach(lz => {
-                    const divLine = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.02, 0.12), lineMat);
+                    const divLine = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.02, 0.12), lineMat);
                     divLine.position.set(0, 0.14, lz);
+                    divLine.rotation.y = -0.35;
                     parkingGroup.add(divLine);
                 });
-                const backLine = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 14.5), lineMat);
-                backLine.position.set(2.8, 0.14, 0);
+                const backLine = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 16.4), lineMat);
+                backLine.position.set(2.9, 0.14, 0.95);
                 parkingGroup.add(backLine);
 
                 // Geparkte Autos der anderen Spieler auf Feld 0 (verschwinden beim Losfahren)
@@ -5487,8 +5488,7 @@
                     : [];
                 waitingPlayers.slice(0, 4).forEach((p, idx) => {
                     const parkedCar = this.buildParkedPlayerCar(p.color || '#3b82f6', p.vehicle || 'sportscar');
-                    parkedCar.position.set(-0.1, 0.14, bayZ[idx]);
-                    parkedCar.rotation.y = ((idx % 2) - 0.5) * 0.05;
+                    parkedCar.position.set(-0.05, 0.14, bayZ[idx]);
                     parkingGroup.add(parkedCar);
                 });
                 group.add(parkingGroup);
