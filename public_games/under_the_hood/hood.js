@@ -1393,7 +1393,7 @@
 
             const mirrorGroup = new THREE.Group();
             mirrorGroup.position.set(0, headerY - 0.14, headerZ + 0.02);
-            mirrorGroup.rotation.y = 0.22;
+            mirrorGroup.rotation.y = -0.22;
 
             const mirrorCase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.05), leatherMat);
             mirrorGroup.add(mirrorCase);
