@@ -2827,18 +2827,17 @@
 
             // Freigestelltes Krea-Cabrio, in der Spielerfarbe eingefärbt
             const carMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(3.4, 2.12),
+                new THREE.PlaneGeometry(3.4, 1.91),
                 new THREE.MeshStandardMaterial({
                     map: carTex,
                     color: tint,
-                    transparent: true,
-                    alphaTest: 0.25,
+                    alphaTest: 0.4,
                     side: THREE.DoubleSide,
                     roughness: 0.42,
                     metalness: 0.15,
                 })
             );
-            carMesh.position.set(0, 1.06, 0);
+            carMesh.position.set(0, 0.90, 0);
             carMesh.rotation.y = -Math.PI / 2 + 0.14;
             car.add(carMesh);
 
