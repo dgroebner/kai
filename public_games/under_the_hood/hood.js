@@ -1367,6 +1367,11 @@
             dashTopRoll.position.set(0, 0.90, -0.94);
             this.cockpitRig.add(dashTopRoll);
 
+            // Blickdichte Spritzwand / Windlauf zwischen Armaturenbrett und Motorhaube
+            const cowlApron = new THREE.Mesh(new THREE.BoxGeometry(3.32, 0.36, 0.48), dashMat);
+            cowlApron.position.set(0, 0.78, -1.12);
+            this.cockpitRig.add(cowlApron);
+
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
             const clusterGeo = new THREE.BoxGeometry(0.76, 0.22, 0.04);
             const clusterMat = new THREE.MeshBasicMaterial({
