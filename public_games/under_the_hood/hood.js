@@ -418,6 +418,14 @@
                     }
                 }
 
+                if (this.dogTailGroup && this.dogTailGroup.visible) {
+                    const wagSpeed = this.isMoving ? 11.0 : 6.8;
+                    this.dogTailGroup.rotation.z = Math.sin(t * wagSpeed) * 0.46;
+                    if (this.dogTailTip) {
+                        this.dogTailTip.rotation.z = Math.sin(t * wagSpeed - 0.55) * 0.34;
+                    }
+                }
+
                 if (this.mirrorRenderTarget && this.mirrorCamera) {
                     const prevTarget = this.renderer.getRenderTarget();
                     this.renderer.setRenderTarget(this.mirrorRenderTarget);
@@ -1484,6 +1492,36 @@
             const rearSpoiler = new THREE.Mesh(new THREE.BoxGeometry(2.88, 0.08, 0.20), dashMat);
             rearSpoiler.position.set(0, 1.01, 2.40);
             this.cockpitRig.add(rearSpoiler);
+
+            // Gimmick fürs Labrador-Cabrio: Wedelnder Labrador-Schwanz mittig auf dem Kofferraumdeckel
+            const dogFurMat = new THREE.MeshStandardMaterial({
+                color: 0xf3cf88,
+                roughness: 0.72,
+                metalness: 0.04,
+            });
+            this.dogTailGroup = new THREE.Group();
+            this.dogTailGroup.position.set(0, 1.03, 2.08);
+            this.dogTailGroup.rotation.x = 0.55; // Schräg nach hinten-oben abstehend
+            this.dogTailGroup.visible = false;
+
+            const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.095, 0.36, 12), dogFurMat);
+            tailBase.position.set(0, 0.18, 0);
+            this.dogTailGroup.add(tailBase);
+
+            this.dogTailTip = new THREE.Group();
+            this.dogTailTip.position.set(0, 0.35, 0);
+            this.dogTailTip.rotation.x = -0.24; // Leichte natürliche Ruten-Krümmung
+
+            const tailMid = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.065, 0.34, 12), dogFurMat);
+            tailMid.position.set(0, 0.17, 0);
+            this.dogTailTip.add(tailMid);
+
+            const tailEnd = new THREE.Mesh(new THREE.SphereGeometry(0.036, 10, 8), dogFurMat);
+            tailEnd.position.set(0, 0.34, 0);
+            this.dogTailTip.add(tailEnd);
+
+            this.dogTailGroup.add(this.dogTailTip);
+            this.cockpitRig.add(this.dogTailGroup);
 
             [-0.70, 0.95].forEach(hoopX => {
                 const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.042, 10, 20, Math.PI), chromeMat);
@@ -3134,6 +3172,9 @@
                 Object.keys(this.hoodVariants).forEach(k => {
                     this.hoodVariants[k].visible = (k === activeKey);
                 });
+                if (this.dogTailGroup) {
+                    this.dogTailGroup.visible = (activeKey === 'dogcar');
+                }
             }
         }
 
