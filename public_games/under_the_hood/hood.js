@@ -1123,8 +1123,8 @@
             });
             [-1.68, 1.68].forEach(sideX => {
                 const isLeft = sideX < 0;
-                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 3.60), this.carHoodMat);
-                doorOuter.position.set(sideX, 0.62, 0.65);
+                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 2.90), this.carHoodMat);
+                doorOuter.position.set(sideX, 0.62, 0.50);
                 this.cockpitRig.add(doorOuter);
 
                 const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 2.80), leatherMat);
@@ -2944,10 +2944,10 @@
 
             if (!this.cockpitHoodMesh) return;
             const specs = {
-                sportscar: { file: './textures/hood_sportscar.png', w: 3.55, h: 0.58, x: -0.22, y: 0.80, z: -1.20, rotX: -0.18, maxChroma: 90, minLum: 65 },
-                monster:   { file: './textures/hood_monster.png',   w: 3.65, h: 0.68, x: -0.22, y: 0.80, z: -1.20, rotX: -0.16, maxChroma: 90, minLum: 65 },
-                buggy:     { file: './textures/hood_buggy.png',     w: 3.45, h: 0.46, x: -0.22, y: 0.88, z: -1.20, rotX: -0.12, maxChroma: 90, minLum: 65 },
-                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.55, h: 0.58, x: -0.22, y: 0.80, z: -1.20, rotX: -0.18, maxChroma: 90, minLum: 65 },
+                sportscar: { file: './textures/hood_sportscar.png', w: 4.10, h: 0.64, x: -0.05, y: 0.74, z: -1.08, rotX: -0.18, maxChroma: 90, minLum: 65 },
+                monster:   { file: './textures/hood_monster.png',   w: 4.20, h: 0.72, x: -0.05, y: 0.76, z: -1.08, rotX: -0.16, maxChroma: 90, minLum: 65 },
+                buggy:     { file: './textures/hood_buggy.png',     w: 3.85, h: 0.48, x: -0.05, y: 0.88, z: -1.08, rotX: -0.12, maxChroma: 90, minLum: 65 },
+                dogcar:    { file: './textures/hood_dogcar.png',    w: 4.10, h: 0.64, x: -0.05, y: 0.74, z: -1.08, rotX: -0.18, maxChroma: 90, minLum: 65 },
             };
             const sp = specs[safeVehicle] || specs.sportscar;
             this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
