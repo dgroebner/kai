@@ -249,6 +249,16 @@ $csrfToken = Auth::csrfToken();
                 </div>
 
                 <div class="hood-form-group">
+                    <label class="hood-label">Dein Cabrio-Modell</label>
+                    <div class="hood-vehicle-picker">
+                        <div class="hood-vehicle-card selected" data-vehicle="sportscar"><span class="icon">🏎️</span><span class="name">Sport-Cabrio</span></div>
+                        <div class="hood-vehicle-card" data-vehicle="monster"><span class="icon">🛻</span><span class="name">Monstertruck</span></div>
+                        <div class="hood-vehicle-card" data-vehicle="buggy"><span class="icon">🏖️</span><span class="name">Strand-Buggy</span></div>
+                        <div class="hood-vehicle-card" data-vehicle="dogcar"><span class="icon">🐶</span><span class="name">Labrador</span></div>
+                    </div>
+                </div>
+
+                <div class="hood-form-group">
                     <label class="hood-label">Farbe deines Wagens &amp; Zäune</label>
                     <div class="hood-color-picker">
                         <?php foreach (HoodConfig::PLAYER_COLORS as $idx => $c): ?>
@@ -278,6 +288,16 @@ $csrfToken = Auth::csrfToken();
                 <div class="hood-form-group">
                     <label class="hood-label" for="join-player-name">Dein Fahrer-Name</label>
                     <input type="text" id="join-player-name" class="hood-input" placeholder="Dein Spielername" maxlength="20">
+                </div>
+
+                <div class="hood-form-group">
+                    <label class="hood-label">Dein Cabrio-Modell</label>
+                    <div class="hood-vehicle-picker" id="join-vehicle-picker">
+                        <div class="hood-vehicle-card selected" data-vehicle="sportscar"><span class="icon">🏎️</span><span class="name">Sport-Cabrio</span></div>
+                        <div class="hood-vehicle-card" data-vehicle="monster"><span class="icon">🛻</span><span class="name">Monstertruck</span></div>
+                        <div class="hood-vehicle-card" data-vehicle="buggy"><span class="icon">🏖️</span><span class="name">Strand-Buggy</span></div>
+                        <div class="hood-vehicle-card" data-vehicle="dogcar"><span class="icon">🐶</span><span class="name">Labrador</span></div>
+                    </div>
                 </div>
 
                 <div class="hood-form-group">
@@ -318,6 +338,12 @@ $csrfToken = Auth::csrfToken();
                     <!-- Hot-Seat Spieler hinzufügen -->
                     <div id="hotseat-add-box" style="display: none; background: #1e293b; padding: 0.75rem; border-radius: 12px; margin-bottom: 0.5rem;">
                         <input type="text" id="input-local-name" class="hood-input" placeholder="Name Mitspieler (z.B. Anna)" style="margin-bottom: 0.5rem;">
+                        <select id="input-local-vehicle" class="hood-input" style="margin-bottom: 0.5rem;">
+                            <option value="sportscar">🏎️ Sport-Cabrio</option>
+                            <option value="monster">🛻 Monstertruck-Cabrio</option>
+                            <option value="buggy">🏖️ Strand-Buggy</option>
+                            <option value="dogcar">🐶 Labrador-Cabrio</option>
+                        </select>
                         <button type="button" class="hood-btn-primary hood-btn-secondary" id="btn-add-local" style="padding: 0.6rem;">
                             ➕ Weiteren lokalen Spieler hinzufügen
                         </button>

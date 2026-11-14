@@ -1451,7 +1451,7 @@
             const startCarsSig = (tileIndex === 0 && this.state && Array.isArray(this.state.players))
                 ? this.state.players
                     .filter(p => p.id !== this.getActivePlayerId() && (p.position || 0) === 0)
-                    .map(p => `${p.id}:${p.color || ''}`)
+                    .map(p => `${p.id}:${p.color || ''}:${p.vehicle || 'sportscar'}`)
                     .join(',')
                 : '';
             const sig = `${ownerColor}_${isMortgaged ? 1 : 0}_${level}_${ownerName || ''}_${tileName}_${tilePrice}_${startCarsSig}`;
@@ -2804,15 +2804,24 @@
             return tex;
         }
 
-        buildParkedPlayerCar(colorHex = '#3b82f6') {
+        buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const car = new THREE.Group();
             if (!this._texCache) this._texCache = {};
-            if (!this._texCache['car_parked_white']) {
-                const tex = new THREE.TextureLoader().load('./textures/car_parked_white.png');
+
+            const specs = {
+                sportscar: { file: './textures/car_parked_white.png', w: 3.4, h: 1.91, y: 0.78 },
+                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.95, y: 1.24 },
+                buggy:     { file: './textures/car_parked_buggy.png', w: 3.4, h: 2.79, y: 1.18 },
+                dogcar:    { file: './textures/car_parked_dogcar.png', w: 3.4, h: 2.46, y: 1.04 },
+            };
+            const sp = specs[vehicle] || specs.sportscar;
+            const cacheKey = `car_parked_${vehicle}`;
+            if (!this._texCache[cacheKey]) {
+                const tex = new THREE.TextureLoader().load(sp.file);
                 tex.colorSpace = THREE.SRGBColorSpace;
-                this._texCache['car_parked_white'] = tex;
+                this._texCache[cacheKey] = tex;
             }
-            const carTex = this._texCache['car_parked_white'];
+            const carTex = this._texCache[cacheKey];
             const tint = new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.14);
 
             // Weicher dunkler Bodenschatten auf dem Asphalt
@@ -2827,7 +2836,7 @@
 
             // Freigestelltes Krea-Cabrio, in der Spielerfarbe eingefärbt
             const carMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(3.4, 1.91),
+                new THREE.PlaneGeometry(sp.w, sp.h),
                 new THREE.MeshStandardMaterial({
                     map: carTex,
                     color: tint,
@@ -2837,7 +2846,7 @@
                     metalness: 0.15,
                 })
             );
-            carMesh.position.set(0, 0.90, 0);
+            carMesh.position.set(0, sp.y, 0);
             carMesh.rotation.y = -Math.PI / 2 + 0.14;
             car.add(carMesh);
 
@@ -5386,17 +5395,26 @@
                 plaza.receiveShadow = true;
                 group.add(plaza);
 
-                // Weiße Parkbuchten hinter dem Portal (4 Plätze für wartende Spieler-Autos)
+                // Weiße Parkbuchten hinter dem Portal (leicht ansteigende Park-Terrasse für natürliche Perspektive)
+                const parkingGroup = new THREE.Group();
+                parkingGroup.position.set(3.5, 0.36, 0);
+                parkingGroup.rotation.z = 0.05;
+
+                const rampDeck = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.16, 15.6), lotMat);
+                rampDeck.position.set(0, 0.05, 0);
+                rampDeck.receiveShadow = true;
+                parkingGroup.add(rampDeck);
+
                 const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
                 const bayZ = [-5.4, -1.8, 1.8, 5.4];
                 [-7.2, -3.6, 0.0, 3.6, 7.2].forEach(lz => {
                     const divLine = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.02, 0.12), lineMat);
-                    divLine.position.set(3.5, 0.37, lz);
-                    group.add(divLine);
+                    divLine.position.set(0, 0.14, lz);
+                    parkingGroup.add(divLine);
                 });
                 const backLine = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 14.5), lineMat);
-                backLine.position.set(6.3, 0.37, 0);
-                group.add(backLine);
+                backLine.position.set(2.8, 0.14, 0);
+                parkingGroup.add(backLine);
 
                 // Geparkte Autos der anderen Spieler auf Feld 0 (verschwinden beim Losfahren)
                 const activeId = this.getActivePlayerId();
@@ -5404,11 +5422,12 @@
                     ? this.state.players.filter(p => p.id !== activeId && (p.position || 0) === 0)
                     : [];
                 waitingPlayers.slice(0, 4).forEach((p, idx) => {
-                    const parkedCar = this.buildParkedPlayerCar(p.color || '#3b82f6');
-                    parkedCar.position.set(3.4, 0.36, bayZ[idx]);
+                    const parkedCar = this.buildParkedPlayerCar(p.color || '#3b82f6', p.vehicle || 'sportscar');
+                    parkedCar.position.set(-0.1, 0.14, bayZ[idx]);
                     parkedCar.rotation.y = ((idx % 2) - 0.5) * 0.05;
-                    group.add(parkedCar);
+                    parkingGroup.add(parkedCar);
                 });
+                group.add(parkingGroup);
 
                 // Holz-Portal (texturiert mit Holzbohlen + Rinden-Normal-Map)
                 const woodPortalMat = new THREE.MeshStandardMaterial({
@@ -7667,7 +7686,9 @@
                     const inputLocal = document.getElementById('input-local-name');
                     const name = inputLocal ? inputLocal.value.trim() : 'Spieler';
                     if (!name) return;
-                    const res = await this.apiPost('add_local', { player_name: name });
+                    const vehEl = document.getElementById('input-local-vehicle');
+                    const vehicle = vehEl ? vehEl.value : 'sportscar';
+                    const res = await this.apiPost('add_local', { player_name: name, vehicle: vehicle });
                     if (res.success) {
                         if (inputLocal) inputLocal.value = '';
                         this.applyState(res.state, res.state.players[0]);
