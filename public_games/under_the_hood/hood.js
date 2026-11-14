@@ -2397,59 +2397,6 @@
             return tex;
         }
 
-        getSandTexture(isRuin = false) {
-            const key = `sand_${isRuin ? 'ruin' : 'clean'}`;
-            if (!this._texCache) this._texCache = {};
-            if (this._texCache[key]) return this._texCache[key];
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-
-            ctx.fillStyle = isRuin ? '#9a8462' : '#d8c38a';
-            ctx.fillRect(0, 0, 512, 512);
-
-            // Sanfte Windrippel im Sand
-            for (let y = 0; y < 512; y += 6) {
-                ctx.strokeStyle = isRuin ? 'rgba(68, 55, 36, 0.14)' : 'rgba(180, 152, 92, 0.16)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                for (let x = 0; x <= 512; x += 64) {
-                    ctx.lineTo(x, y + Math.sin(x * 0.03 + y * 0.05) * 3);
-                }
-                ctx.stroke();
-            }
-
-            // Sandkörner, Muschelsplitter & bei Ruine Seegras-/Schmutzflecken
-            for (let i = 0; i < 900; i++) {
-                const x = Math.random() * 512;
-                const y = Math.random() * 512;
-                ctx.fillStyle = i % 3 === 0
-                    ? (isRuin ? 'rgba(65, 53, 35, 0.35)' : 'rgba(165, 138, 82, 0.28)')
-                    : (isRuin ? 'rgba(190, 172, 140, 0.25)' : 'rgba(248, 238, 205, 0.32)');
-                ctx.fillRect(x, y, 2, 2);
-            }
-
-            if (isRuin) {
-                for (let i = 0; i < 22; i++) {
-                    ctx.fillStyle = i % 2 === 0 ? 'rgba(58, 66, 38, 0.28)' : 'rgba(72, 58, 38, 0.26)';
-                    ctx.beginPath();
-                    ctx.ellipse(Math.random() * 512, Math.random() * 512, 16 + Math.random() * 34, 8 + Math.random() * 18, Math.random() * Math.PI, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(4, 4);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            this._texCache[key] = tex;
-            return tex;
-        }
-
         getThatchTexture() {
             const key = 'beach_thatch';
             if (!this._texCache) this._texCache = {};
@@ -3669,9 +3616,9 @@
             if (!isOwned) {
                 // 1. DIE STRAND-BAURUINE (Ungepflegter Sand, verfallener Steg, eingestürzte Bude, Treibgut & Schild)
                 const sandMat = new THREE.MeshStandardMaterial({
-                    map: this.getSandTexture(true),
-                    normalMap: this.loadSeamlessTexture('./textures/dirt_normal.webp', false, 4, 4),
-                    normalScale: new THREE.Vector2(0.75, 0.75),
+                    map: this.loadSeamlessTexture('./textures/sand_ruin.jpg', true, 4, 4),
+                    normalMap: this.loadSeamlessTexture('./textures/sand_ruin_normal.png', false, 4, 4),
+                    normalScale: new THREE.Vector2(0.85, 0.85),
                     roughness: 0.94,
                 });
                 const woodRuinMat = this.getBarkMaterial(1, 2);
@@ -3696,14 +3643,19 @@
                 plot.receiveShadow = true;
                 group.add(plot);
 
+                const ruinWaterGeo = new THREE.PlaneGeometry(24, 28);
+                ruinWaterGeo.rotateX(-Math.PI / 2);
+                ruinWaterGeo.rotateY(-Math.PI / 2);
                 const ruinWaterMat = new THREE.MeshStandardMaterial({
-                    map: this.getOceanTexture(),
-                    color: 0x0e7490,
-                    roughness: 0.25,
-                    metalness: 0.2,
+                    map: this.loadSeamlessTexture('./textures/ocean_water.jpg', true, 2, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/ocean_water_normal.png', false, 2, 1),
+                    normalScale: new THREE.Vector2(0.5, 0.5),
+                    color: 0xbae6fd,
+                    roughness: 0.24,
+                    metalness: 0.18,
                 });
-                const ruinWater = new THREE.Mesh(new THREE.BoxGeometry(28, 0.32, 24), ruinWaterMat);
-                ruinWater.position.set(20.5, 0.14, 0);
+                const ruinWater = new THREE.Mesh(ruinWaterGeo, ruinWaterMat);
+                ruinWater.position.set(20.5, 0.31, 0);
                 ruinWater.receiveShadow = true;
                 group.add(ruinWater);
 
@@ -3785,16 +3737,17 @@
                 // 2. DAS WIEDERHERGESTELLTE, AKTIVE LUXUS-STRANDBAD
                 const hex = ownerColor;
                 const goldSandMat = new THREE.MeshStandardMaterial({
-                    map: this.getSandTexture(false),
-                    normalMap: this.loadSeamlessTexture('./textures/dirt_normal.webp', false, 4, 4),
-                    normalScale: new THREE.Vector2(0.45, 0.45),
-                    roughness: 0.9,
+                    map: this.loadSeamlessTexture('./textures/sand_clean.jpg', true, 4, 4),
+                    normalMap: this.loadSeamlessTexture('./textures/sand_clean_normal.png', false, 4, 4),
+                    normalScale: new THREE.Vector2(0.7, 0.7),
+                    roughness: 0.88,
                 });
                 const seaEdgeMat = new THREE.MeshStandardMaterial({
-                    map: this.getOceanTexture(),
-                    color: 0x06b6d4,
+                    map: this.loadSeamlessTexture('./textures/ocean_water.jpg', true, 2, 1),
+                    normalMap: this.loadSeamlessTexture('./textures/ocean_water_normal.png', false, 2, 1),
+                    normalScale: new THREE.Vector2(0.5, 0.5),
                     roughness: 0.18,
-                    metalness: 0.25,
+                    metalness: 0.22,
                 });
                 const bambooMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 });
                 const thatchMat = new THREE.MeshStandardMaterial({ map: this.getThatchTexture(), roughness: 0.95 });
@@ -3806,8 +3759,11 @@
                 sand.receiveShadow = true;
                 group.add(sand);
 
-                const seaEdge = new THREE.Mesh(new THREE.BoxGeometry(28, 0.32, 24), seaEdgeMat);
-                seaEdge.position.set(20.5, 0.14, 0);
+                const seaEdgeGeo = new THREE.PlaneGeometry(24, 28);
+                seaEdgeGeo.rotateX(-Math.PI / 2);
+                seaEdgeGeo.rotateY(-Math.PI / 2);
+                const seaEdge = new THREE.Mesh(seaEdgeGeo, seaEdgeMat);
+                seaEdge.position.set(20.5, 0.31, 0);
                 group.add(seaEdge);
 
                 const cleanFoam = new THREE.Mesh(
