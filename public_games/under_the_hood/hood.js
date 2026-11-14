@@ -1263,30 +1263,22 @@
             this.hoodGroup.add(monsterGroup);
             this.hoodVariants.monster = monsterGroup;
 
-            // 3c. Strand-Buggy: schmale Nase, ausgestellte Schutzbleche & runde Einzelscheinwerfer
+            // 3c. Strand-Buggy: durchgehende GFK-Front mit erhabener Nase, Senken, Kotflügel-Wölbungen & runden Scheinwerfern
             const buggyGroup = new THREE.Group();
-            const buggyNose = buildSculptedSurface(1.55, 2.40, 18, 16, (nx, nz) => {
+            const buggyBody = buildSculptedSurface(3.36, 2.40, 32, 18, (nx, nz) => {
                 const absX = Math.abs(nx);
-                const slope = 0.28 * nz;
-                const arch = -0.08 * Math.pow(absX, 2.0);
-                return 0.58 + slope + arch;
+                const slope = 0.24 * nz;
+                const nose = 0.14 * Math.exp(-Math.pow(absX / 0.32, 2));
+                const fenderArch = 0.16 * Math.exp(-Math.pow((absX - 0.80) / 0.19, 2)) * (0.55 + 0.45 * (1 - nz * 0.5));
+                const outerDrop = -0.06 * Math.pow(Math.max(0, (absX - 0.88) / 0.12), 2) * (1 - nz * 0.85);
+                return 0.54 + slope + nose + fenderArch + outerDrop;
             }, this.carHoodMat);
-            buggyNose.position.set(0, 0, -2.14);
-            buggyGroup.add(buggyNose);
-
-            [-1.32, 1.32].forEach(fx => {
-                const fenderArch = buildSculptedSurface(0.68, 1.45, 12, 12, (nx, nz) => {
-                    const archZ = -0.14 * Math.pow((nz - 0.5) * 2, 2);
-                    const archX = -0.04 * Math.pow(nx, 2);
-                    return 0.80 + archZ + archX;
-                }, this.carHoodMat);
-                fenderArch.position.set(fx, 0, -2.35);
-                buggyGroup.add(fenderArch);
-            });
+            buggyBody.position.set(0, 0, -2.04);
+            buggyGroup.add(buggyBody);
 
             [-0.78, 0.78].forEach(lx => {
-                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.20, 8), chromeMat);
-                stalk.position.set(lx, 0.78, -2.65);
+                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.24, 8), chromeMat);
+                stalk.position.set(lx, 0.76, -2.65);
                 buggyGroup.add(stalk);
 
                 const lampBack = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), this.carHoodMat);
