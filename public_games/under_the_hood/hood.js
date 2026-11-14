@@ -5588,11 +5588,6 @@
                 graffitiWall.position.set(-2.8, 2.8, 0);
                 radioGroup.add(graffitiWall);
 
-                // Obere Studiofenster mit warmem ON-AIR Schein
-                const winOnAir = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 4.5), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-                winOnAir.position.set(-2.82, 4.2, 1.5);
-                radioGroup.add(winOnAir);
-
                 // Dach-Ausrüstung: 2 weiße Satellitenschüsseln
                 const dishMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5, roughness: 0.3 });
                 [ -1.8, 1.8 ].forEach(dz => {
@@ -5646,13 +5641,56 @@
                 beaconLight.position.set(towerX, 17.5, towerZ);
                 radioGroup.add(beaconLight);
 
-                // HOOD FM Übertragungswagen im Hof geparkt
-                const van = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 4.2), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }));
-                van.position.set(-2.2, 0.9, -3.2);
-                radioGroup.add(van);
-                const vanDecal = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 2.6), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
-                vanDecal.position.set(-3.32, 0.9, -3.2);
-                radioGroup.add(vanDecal);
+                // HOOD FM Übertragungswagen im Hof geparkt (mit Rädern, Kabine, Windschutzscheibe & Dach-Antenne)
+                const vanGroup = new THREE.Group();
+                vanGroup.position.set(-2.4, 0, -3.7);
+                vanGroup.rotation.y = 0.18;
+
+                const vanBodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.2 });
+                const vanBody = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.15, 3.2), vanBodyMat);
+                vanBody.position.set(0, 0.88, -0.2);
+                vanBody.castShadow = true;
+                vanGroup.add(vanBody);
+
+                // Abgesetzte Front-Schnauze / Motorhaube
+                const vanHood = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.72, 0.85), vanBodyMat);
+                vanHood.position.set(0, 0.66, 1.75);
+                vanHood.castShadow = true;
+                vanGroup.add(vanHood);
+
+                // Windschutzscheibe
+                const vanGlassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.15, metalness: 0.8 });
+                const vanWindshield = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.52, 0.08), vanGlassMat);
+                vanWindshield.position.set(0, 1.15, 1.42);
+                vanWindshield.rotation.x = -0.32;
+                vanGroup.add(vanWindshield);
+
+                // Oranger Zierstreifen entlang der Seite
+                const stripeMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.35 });
+                const vanStripeL = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.16, 2.9), stripeMat);
+                vanStripeL.position.set(0, 0.72, -0.15);
+                vanGroup.add(vanStripeL);
+
+                // 4 Räder
+                const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 14);
+                wheelGeo.rotateZ(Math.PI / 2);
+                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85 });
+                [[-0.86, 1.35], [0.86, 1.35], [-0.86, -1.05], [0.86, -1.05]].forEach(([wx, wz]) => {
+                    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                    wheel.position.set(wx, 0.32, wz);
+                    vanGroup.add(wheel);
+                });
+
+                // Kleine Dach-Satellitenschüssel auf dem Ü-Wagen
+                const vanDishPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8), dishMat);
+                vanDishPole.position.set(0, 1.65, -0.5);
+                vanGroup.add(vanDishPole);
+                const vanDish = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.2, 12), dishMat);
+                vanDish.position.set(0, 1.92, -0.5);
+                vanDish.rotation.x = -0.65;
+                vanGroup.add(vanDish);
+
+                radioGroup.add(vanGroup);
 
                 group.add(radioGroup);
 
