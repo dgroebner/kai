@@ -2804,17 +2804,76 @@
             return tex;
         }
 
+        getTintedCarTexture(sp, cacheKey, colorHex = '#3b82f6') {
+            if (!this._texCache) this._texCache = {};
+            const fullKey = `${cacheKey}_${colorHex}_v1372`;
+            if (this._texCache[fullKey]) return this._texCache[fullKey];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 2;
+            canvas.height = 2;
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[fullKey] = tex;
+
+            const tint = new THREE.Color(colorHex);
+            const tr = tint.r, tg = tint.g, tb = tint.b;
+            const zones = sp.preserveZones || [];
+
+            const img = new Image();
+            img.onload = () => {
+                const w = img.naturalWidth || img.width;
+                const h = img.naturalHeight || img.height;
+                if (!w || !h) return;
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const d = imgData.data;
+
+                for (let y = 0; y < h; y++) {
+                    const ny = y / h;
+                    for (let x = 0; x < w; x++) {
+                        const i = (y * w + x) * 4;
+                        if (d[i + 3] === 0) continue;
+
+                        let preserve = false;
+                        if (zones.length > 0) {
+                            const nx = x / w;
+                            for (let z = 0; z < zones.length; z++) {
+                                const [cx, cy, rx, ry] = zones[z];
+                                const dx = (nx - cx) / rx;
+                                const dy = (ny - cy) / ry;
+                                if (dx * dx + dy * dy <= 1.0) {
+                                    preserve = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (preserve) continue;
+
+                        const r = d[i], g = d[i + 1], b = d[i + 2];
+                        const max = Math.max(r, g, b);
+                        const min = Math.min(r, g, b);
+                        // Nur weiße/neutrale Karosserie einfärben; braune Sitze, Blinker & dunkle Reifen bleiben natürlich
+                        if ((max - min) < 28 && max > 105) {
+                            d[i]     = Math.round(r * tr);
+                            d[i + 1] = Math.round(g * tg);
+                            d[i + 2] = Math.round(b * tb);
+                        }
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+                tex.needsUpdate = true;
+            };
+            img.src = `${sp.file}?v=1.37.2`;
+            return tex;
+        }
+
         buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0) {
             const car = new THREE.Group();
-            if (!this._texCache) this._texCache = {};
-
-            if (!this._texCache[cacheKey]) {
-                const tex = new THREE.TextureLoader().load(`${sp.file}?v=1.37.1`);
-                tex.colorSpace = THREE.SRGBColorSpace;
-                this._texCache[cacheKey] = tex;
-            }
-            const carTex = this._texCache[cacheKey];
-            const tint = new THREE.Color(colorHex);
+            const carTex = this.getTintedCarTexture(sp, cacheKey, colorHex);
 
             // Weicher dunkler Bodenschatten auf dem Asphalt
             const shadow = new THREE.Mesh(
@@ -2826,12 +2885,11 @@
             shadow.position.set(0, 0.02, 0);
             car.add(shadow);
 
-            // Freigestelltes Krea-Cabrio (MeshBasicMaterial erhält helle Scheinwerfer & Chrom unabhängig vom Sonnenwinkel)
+            // Freigestelltes Krea-Cabrio (selektiv eingefärbt, Alufelgen/Fell/Scheinwerfer bleiben naturgetreu)
             const carMesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(sp.w, sp.h),
                 new THREE.MeshBasicMaterial({
                     map: carTex,
-                    color: tint,
                     alphaTest: 0.4,
                     side: THREE.DoubleSide,
                 })
@@ -2845,10 +2903,20 @@
 
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
-                sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.68 },
-                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.03 },
-                buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.89 },
-                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 1.81, y: 0.83 },
+                sportscar: {
+                    file: './textures/car_parked_white.png', w: 3.4, h: 1.46, y: 0.68,
+                    preserveZones: [[0.60, 0.70, 0.08, 0.22], [0.91, 0.65, 0.06, 0.18]],
+                },
+                monster: {
+                    file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.03,
+                },
+                buggy: {
+                    file: './textures/car_parked_buggy.png', w: 3.4, h: 1.92, y: 0.89,
+                },
+                dogcar: {
+                    file: './textures/car_parked_dogcar.png', w: 3.3, h: 1.81, y: 0.83,
+                    preserveZones: [[0.58, 0.76, 0.085, 0.18], [0.92, 0.67, 0.06, 0.15], [0.17, 0.54, 0.12, 0.20]],
+                },
             };
             const sp = specs[vehicle] || specs.sportscar;
             return this.buildCutoutCarSprite(sp, `car_parked_${vehicle}`, colorHex, 1.45, -Math.PI / 2 + 0.14);
@@ -2856,10 +2924,20 @@
 
         buildRoadPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
-                sportscar: { file: './textures/car_rear_white.png',   w: 3.2, h: 1.52, y: 0.68 },
-                monster:   { file: './textures/car_rear_monster.png', w: 3.5, h: 2.21, y: 1.02 },
-                buggy:     { file: './textures/car_rear_buggy.png',   w: 3.2, h: 1.97, y: 0.91 },
-                dogcar:    { file: './textures/car_rear_dogcar.png',  w: 3.1, h: 2.14, y: 0.98 },
+                sportscar: {
+                    file: './textures/car_rear_white.png', w: 3.2, h: 1.52, y: 0.68,
+                    preserveZones: [[0.08, 0.54, 0.06, 0.17], [0.37, 0.66, 0.08, 0.23]],
+                },
+                monster: {
+                    file: './textures/car_rear_monster.png', w: 3.5, h: 2.21, y: 1.02,
+                },
+                buggy: {
+                    file: './textures/car_rear_buggy.png', w: 3.2, h: 1.97, y: 0.91,
+                },
+                dogcar: {
+                    file: './textures/car_rear_dogcar.png', w: 3.1, h: 2.14, y: 0.98,
+                    preserveZones: [[0.08, 0.66, 0.06, 0.15], [0.42, 0.76, 0.08, 0.18], [0.78, 0.36, 0.16, 0.28], [0.11, 0.30, 0.10, 0.12]],
+                },
             };
             const sp = specs[vehicle] || specs.sportscar;
             return this.buildCutoutCarSprite(sp, `car_rear_${vehicle}`, colorHex, 1.35, 0.08);
