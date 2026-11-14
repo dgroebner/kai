@@ -1190,6 +1190,10 @@
             });
 
             // 3. Geschwungene, glatt modellierte 3D-Motorhauben je Fahrzeugtyp
+            this.hoodGroup = new THREE.Group();
+            this.hoodGroup.position.y = 0.08;
+            this.cockpitRig.add(this.hoodGroup);
+
             const buildSculptedSurface = (width, length, segX, segZ, heightFn, mat) => {
                 const geo = new THREE.PlaneGeometry(width, length, segX, segZ);
                 geo.rotateX(-Math.PI / 2);
@@ -1235,7 +1239,7 @@
             }, this.carHoodMat);
             porscheHood.position.set(0, 0, -2.20);
             porscheGroup.add(porscheHood);
-            this.cockpitRig.add(porscheGroup);
+            this.hoodGroup.add(porscheGroup);
             this.hoodVariants.sportscar = porscheGroup;
 
             // 3b. Monstertruck: hohe, bullige Pickup-Haube mit markanter Lufthutze
@@ -1260,7 +1264,7 @@
             const scoopMouth = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.09, 0.06), intakeMat);
             scoopMouth.position.set(0, 0.91, -2.84);
             monsterGroup.add(scoopMouth);
-            this.cockpitRig.add(monsterGroup);
+            this.hoodGroup.add(monsterGroup);
             this.hoodVariants.monster = monsterGroup;
 
             // 3c. Strand-Buggy: schmale Nase, ausgestellte Schutzbleche & runde Einzelscheinwerfer
@@ -1298,7 +1302,7 @@
                 lampRim.position.set(lx, 0.91, -2.74);
                 buggyGroup.add(lampRim);
             });
-            this.cockpitRig.add(buggyGroup);
+            this.hoodGroup.add(buggyGroup);
             this.hoodVariants.buggy = buggyGroup;
 
             // 3d. Labrador-Cabrio: weich abgerundete Kompakt-Haube mit kleiner Chrom-Hunde-Kühlerfigur
@@ -1331,7 +1335,7 @@
                 ornament.add(ear);
             });
             dogGroup.add(ornament);
-            this.cockpitRig.add(dogGroup);
+            this.hoodGroup.add(dogGroup);
             this.hoodVariants.dogcar = dogGroup;
 
             this.updateCockpitAppearance('#3b82f6', 'sportscar');
@@ -1356,15 +1360,15 @@
             shifterKnob.position.set(0, 0.98, -0.12);
             this.cockpitRig.add(shifterKnob);
 
-            // 5. Abgerundetes Carbon-Armaturenbrett (tief gesetzt für freie Sicht über Haube & Außenspiegel)
+            // 5. Abgerundetes Carbon-Armaturenbrett (satt sichtbar über dem Lenkrad)
             const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.40, 0.42, 0.90), leatherMat);
-            dashBase.position.set(0, 0.51, -0.88);
+            dashBase.position.set(0, 0.64, -0.88);
             this.cockpitRig.add(dashBase);
 
             const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.40, 16);
             dashTopRollGeo.rotateZ(Math.PI / 2);
             const dashTopRoll = new THREE.Mesh(dashTopRollGeo, dashMat);
-            dashTopRoll.position.set(0, 0.71, -0.82);
+            dashTopRoll.position.set(0, 0.84, -0.82);
             this.cockpitRig.add(dashTopRoll);
 
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
@@ -1373,7 +1377,7 @@
                 map: this.getDashboardDisplayTexture(),
             });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 0.85, -0.70);
+            cluster.position.set(-0.7, 0.98, -0.70);
             cluster.rotation.x = -0.22;
             this.cockpitRig.add(cluster);
 
@@ -1381,13 +1385,13 @@
             const cowlGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.28, 16, 1, false, -Math.PI / 2, Math.PI);
             cowlGeo.rotateX(Math.PI / 2);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 0.75, -0.76);
+            cowl.position.set(-0.7, 0.88, -0.76);
             cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
             // 7. Sportlenkrad (Links auf Fahrerseite, mit freigestelltem Krea-Sportlenkrad)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.78, -0.42);
+            wheelGroup.position.set(-0.7, 0.94, -0.44);
             wheelGroup.rotation.x = 0.35;
 
             const colGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.28, 12);
