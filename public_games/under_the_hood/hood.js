@@ -2806,7 +2806,7 @@
 
         applyTintedCarTexture(sp, cacheKey, colorHex, carMesh) {
             if (!this._texCache) this._texCache = {};
-            const fullKey = `${cacheKey}_${colorHex}_v1374`;
+            const fullKey = `${cacheKey}_${colorHex}_v1375`;
             const cached = this._texCache[fullKey];
             if (cached && cached.tex) {
                 carMesh.material.map = cached.tex;
@@ -2822,7 +2822,13 @@
             const entry = { tex: null, waiters: [carMesh] };
             this._texCache[fullKey] = entry;
 
+            // Dezente, realistische Autolack-Abstimmung (keine grellen Neonfarben)
             const tint = new THREE.Color(colorHex);
+            const hsl = { h: 0, s: 0, l: 0 };
+            tint.getHSL(hsl);
+            hsl.s = Math.min(hsl.s, 0.65);
+            hsl.l = Math.min(Math.max(hsl.l, 0.28), 0.48);
+            tint.setHSL(hsl.h, hsl.s, hsl.l);
             const tr = tint.r, tg = tint.g, tb = tint.b;
             const zones = sp.preserveZones || [];
 
@@ -2857,8 +2863,7 @@
                                 const dx = (nx - cx) / rx;
                                 const dy = (ny - cy) / ry;
                                 if (dx * dx + dy * dy <= 1.0) {
-                                    // Felgen sind silbergrau (<212) statt strahlend weiß; Fell wird immer geschützt
-                                    if (isFur || max < 212) {
+                                    if (isFur || max < 190) {
                                         preserve = true;
                                         break;
                                     }
@@ -2867,11 +2872,11 @@
                         }
                         if (preserve) continue;
 
-                        // Nur weiße/neutrale Karosserie einfärben; braune Sitze, Blinker & dunkle Reifen bleiben natürlich
+                        // Nur weiße/neutrale Karosserie einfärben + 18% Klarlack-Glanzlichter erhalten
                         if ((max - min) < 28 && max > 105) {
-                            d[i]     = Math.round(r * tr);
-                            d[i + 1] = Math.round(g * tg);
-                            d[i + 2] = Math.round(b * tb);
+                            d[i]     = Math.round(r * (0.82 * tr + 0.18));
+                            d[i + 1] = Math.round(g * (0.82 * tg + 0.18));
+                            d[i + 2] = Math.round(b * (0.82 * tb + 0.18));
                         }
                     }
                 }
@@ -2889,20 +2894,20 @@
                 });
                 entry.waiters = [];
             };
-            img.src = `${sp.file}?v=1.37.4`;
+            img.src = `${sp.file}?v=1.37.5`;
         }
 
         buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0) {
             const car = new THREE.Group();
 
-            // Weicher dunkler Bodenschatten auf dem Asphalt
+            // Weicher dunkler Bodenschatten direkt unter den Reifen
             const shadow = new THREE.Mesh(
                 new THREE.CircleGeometry(shadowRadius, 20),
-                new THREE.MeshBasicMaterial({ color: 0x05070a, transparent: true, opacity: 0.48, depthWrite: false })
+                new THREE.MeshBasicMaterial({ color: 0x05070a, transparent: true, opacity: 0.45, depthWrite: false })
             );
             shadow.rotation.x = -Math.PI / 2;
-            shadow.scale.set(1.25, 0.65, 1);
-            shadow.position.set(0, 0.02, 0);
+            shadow.scale.set(1.05, 0.55, 1);
+            shadow.position.set(0.18, 0.01, 0);
             car.add(shadow);
 
             // Freigestelltes Krea-Cabrio (erst sichtbar, sobald die CanvasTexture in voller Größe fertig ist)
@@ -2926,18 +2931,18 @@
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
                 sportscar: {
-                    file: './textures/car_parked_white.png', w: 3.4, h: 1.46, y: 0.64,
-                    preserveZones: [[0.615, 0.70, 0.055, 0.17, false], [0.925, 0.65, 0.045, 0.15, false]],
+                    file: './textures/car_parked_white.png', w: 3.4, h: 1.46, y: 0.615,
+                    preserveZones: [[0.615, 0.70, 0.055, 0.17, false], [0.935, 0.65, 0.032, 0.14, false]],
                 },
                 monster: {
-                    file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 0.99,
+                    file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 0.965,
                 },
                 buggy: {
-                    file: './textures/car_parked_buggy.png', w: 3.4, h: 1.92, y: 0.85,
+                    file: './textures/car_parked_buggy.png', w: 3.4, h: 1.92, y: 0.825,
                 },
                 dogcar: {
-                    file: './textures/car_parked_dogcar.png', w: 3.3, h: 1.81, y: 0.79,
-                    preserveZones: [[0.59, 0.76, 0.06, 0.15, false], [0.925, 0.67, 0.045, 0.13, false], [0.165, 0.54, 0.095, 0.165, true]],
+                    file: './textures/car_parked_dogcar.png', w: 3.3, h: 1.81, y: 0.765,
+                    preserveZones: [[0.59, 0.76, 0.06, 0.15, false], [0.935, 0.67, 0.032, 0.12, false], [0.165, 0.54, 0.095, 0.165, true]],
                 },
             };
             const sp = specs[vehicle] || specs.sportscar;
