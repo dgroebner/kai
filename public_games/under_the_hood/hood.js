@@ -5644,8 +5644,8 @@
                 // HOOD FM Übertragungswagen (Krea-2-Render, freigestelltes PNG-Billboard)
                 const vanTex = new THREE.TextureLoader().load('./textures/hood_fm_van.png');
                 vanTex.colorSpace = THREE.SRGBColorSpace;
-                const vanW = 4.0;
-                const vanH = 2.80;
+                const vanW = 3.5;
+                const vanH = 2.45;
                 const vanMesh = new THREE.Mesh(
                     new THREE.PlaneGeometry(vanW, vanH),
                     new THREE.MeshBasicMaterial({
@@ -5655,8 +5655,8 @@
                         side: THREE.DoubleSide,
                     })
                 );
-                vanMesh.position.set(-3.8, 0.2 + vanH / 2, -4.6);
-                vanMesh.rotation.y = -Math.PI / 2 + 0.18;
+                vanMesh.position.set(-3.6, 0.2 + vanH / 2, -2.9);
+                vanMesh.rotation.y = -Math.PI / 2 + 0.15;
                 radioGroup.add(vanMesh);
 
                 group.add(radioGroup);
