@@ -7008,7 +7008,19 @@
             }
 
             const groupData = this.getGroupData(tile.group);
-            this.ui.naviZoneTag.textContent = tile.group ? groupData.name : tile.type.toUpperCase();
+            const typeLabels = {
+                start: 'START',
+                tax: 'MAUT / STEUER',
+                card: 'EREIGNIS',
+                jail: 'WERKSTATT',
+                radar: 'BLITZER',
+                go_to_jail: 'BLITZER',
+                parking: 'AUTOKINO',
+                beach: 'STRAND',
+                club: 'CLUB',
+                street: 'STRASSE',
+            };
+            this.ui.naviZoneTag.textContent = tile.group ? groupData.name : (typeLabels[tile.type] || 'SONDERFELD');
             if (tile.group && groupData.color) {
                 this.ui.naviZoneTag.style.background = groupData.color;
             }
