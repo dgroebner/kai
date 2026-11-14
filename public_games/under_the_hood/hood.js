@@ -5690,45 +5690,23 @@
                 // Direkt am Straßenrand platziert, sodass der Fahrer direkt daran vorbeifährt!
                 radarGroup.position.set(-4.8, 0, 0.5);
 
-                // Betonsockel
-                const baseGeo = new THREE.BoxGeometry(1.6, 0.4, 1.6);
-                const baseMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 });
-                const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-                baseMesh.position.set(0, 0.4, 0);
-                baseMesh.receiveShadow = true;
-                radarGroup.add(baseMesh);
-
-                // Anthrazitfarbene Metallsäule (Matte Slate / Graphite)
-                const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1e242c, metalness: 0.45, roughness: 0.35 });
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 4.6, 24), pillarMat);
-                pillar.position.set(0, 2.7, 0);
-                pillar.castShadow = true;
-                radarGroup.add(pillar);
-
-                // 4 horizontale Glas-Sensorringe (Laser, Kamera 1, Rotlicht-Blitz, Kamera 2)
-                const glassMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.1, metalness: 0.9 });
-                const flashRingMat = new THREE.MeshBasicMaterial({ color: 0xb91c1c });
-
-                [
-                    { y: 4.3, isFlash: false },
-                    { y: 3.6, isFlash: false },
-                    { y: 2.9, isFlash: true }, // Rotlicht-Blitzglas
-                    { y: 2.2, isFlash: false },
-                ].forEach(ring => {
-                    const cut = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.56, 0.45, 24), ring.isFlash ? flashRingMat : glassMat);
-                    cut.position.set(0, ring.y, 0);
-                    radarGroup.add(cut);
-
-                    // Innere Linse
-                    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1 }));
-                    lens.position.set(0.35, ring.y, 0);
-                    radarGroup.add(lens);
-                });
-
-                // Rote Status-LED
-                const diode = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-                diode.position.set(0.56, 2.9, 0);
-                radarGroup.add(diode);
+                // Freigestellte Krea-2 PoliScan Blitzersäule (inkl. Betonsockel, 3 Kameralinsen & rotem Blitzring)
+                const radarTex = new THREE.TextureLoader().load('./textures/radar_pillar.png');
+                radarTex.colorSpace = THREE.SRGBColorSpace;
+                const radarH = 4.6;
+                const radarW = 2.25;
+                const radarMesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(radarW, radarH),
+                    new THREE.MeshBasicMaterial({
+                        map: radarTex,
+                        transparent: true,
+                        alphaTest: 0.2,
+                        side: THREE.DoubleSide,
+                    })
+                );
+                radarMesh.position.set(0, 0.2 + radarH / 2, 0);
+                radarMesh.rotation.y = -Math.PI / 2 + 0.18;
+                radarGroup.add(radarMesh);
 
                 group.add(radarGroup);
 
