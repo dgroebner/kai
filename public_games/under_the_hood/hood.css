@@ -437,10 +437,31 @@ body.hood-body {
     max-width: 440px;
     max-height: 85vh;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
     padding: 1.5rem;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     transform: scale(0.95);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hood-modal::-webkit-scrollbar {
+    width: 6px;
+}
+
+.hood-modal::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 10px 0;
+}
+
+.hood-modal::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+}
+
+.hood-modal::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
 }
 
 .hood-modal-backdrop.open .hood-modal {
@@ -645,6 +666,8 @@ body.hood-body {
     font-size: 0.8rem;
     border: 1px solid rgba(255, 255, 255, 0.06);
     position: relative;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .hood-group-tile-owner {
@@ -656,13 +679,23 @@ body.hood-body {
 
 .hood-group-tile-actions {
     display: flex;
-    gap: 0.3rem;
-    margin-top: 0.35rem;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.35rem;
+    margin-top: auto;
+    padding-top: 0.35rem;
+}
+
+.hood-group-tile-actions > div {
+    flex: 1 1 100%;
 }
 
 .hood-group-tile-actions button {
-    flex: 1;
-    padding: 0.35rem 0.45rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.25;
+    padding: 0.38rem 0.5rem;
     font-size: 0.72rem;
     font-weight: 700;
 }
