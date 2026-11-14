@@ -1217,28 +1217,31 @@
             cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
-            // 7. Sportlenkrad (Links auf Fahrerseite)
+            // 7. Sportlenkrad (Links auf Fahrerseite, mit freigestelltem Krea-Sportlenkrad)
             const wheelGroup = new THREE.Group();
             wheelGroup.position.set(-0.7, 0.88, -0.42);
             wheelGroup.rotation.x = 0.35;
 
-            const ringGeo = new THREE.TorusGeometry(0.36, 0.038, 12, 28);
-            const ring = new THREE.Mesh(ringGeo, leatherMat);
-            wheelGroup.add(ring);
+            const colGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.28, 12);
+            colGeo.rotateX(Math.PI / 2);
+            const colMesh = new THREE.Mesh(colGeo, leatherMat);
+            colMesh.position.z = -0.15;
+            wheelGroup.add(colMesh);
 
-            const hubGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.05, 14);
-            hubGeo.rotateX(Math.PI / 2);
-            const hub = new THREE.Mesh(hubGeo, leatherMat);
-            wheelGroup.add(hub);
-
-            for (let s = 0; s < 3; s++) {
-                const spokeGeo = new THREE.BoxGeometry(0.038, 0.26, 0.02);
-                const spoke = new THREE.Mesh(spokeGeo, chromeMat);
-                spoke.rotation.z = (s * Math.PI * 2) / 3;
-                spoke.position.y = -0.13 * Math.cos(spoke.rotation.z);
-                spoke.position.x = 0.13 * Math.sin(spoke.rotation.z);
-                wheelGroup.add(spoke);
-            }
+            const wheelTex = new THREE.TextureLoader().load('./textures/steering_wheel.png');
+            wheelTex.colorSpace = THREE.SRGBColorSpace;
+            const wheelFace = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.76, 0.76),
+                new THREE.MeshStandardMaterial({
+                    map: wheelTex,
+                    transparent: true,
+                    alphaTest: 0.2,
+                    side: THREE.DoubleSide,
+                    roughness: 0.45,
+                    metalness: 0.2,
+                })
+            );
+            wheelGroup.add(wheelFace);
 
             this.cockpitRig.add(wheelGroup);
             this.steeringWheel = wheelGroup;
