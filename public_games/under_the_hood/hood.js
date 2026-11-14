@@ -1237,7 +1237,7 @@
                 const fenderBump = 0.085 * Math.exp(-Math.pow((absX - 0.78) / 0.18, 2)) * (0.45 + 0.55 * (1 - nz));
                 return 0.61 + slope + edgeDrop + centerCrease + fenderBump;
             }, this.carHoodMat);
-            porscheHood.position.set(0, 0, -2.20);
+            porscheHood.position.set(0, 0, -2.10);
             porscheGroup.add(porscheHood);
             this.hoodGroup.add(porscheGroup);
             this.hoodVariants.sportscar = porscheGroup;
@@ -1251,7 +1251,7 @@
                 const powerDome = 0.068 * Math.exp(-Math.pow(absX / 0.30, 4)) * (1 - Math.pow(nz - 0.45, 2));
                 return 0.77 + slope + edgeDrop + powerDome;
             }, this.carHoodMat);
-            monsterHood.position.set(0, 0, -2.15);
+            monsterHood.position.set(0, 0, -2.05);
             monsterGroup.add(monsterHood);
 
             [-0.38, 0.38].forEach(vx => {
@@ -1309,7 +1309,7 @@
                 const roundDome = -0.11 * Math.pow(absX, 2.1) * (1 - nz * 0.85);
                 return 0.62 + slope + roundDome;
             }, this.carHoodMat);
-            dogHood.position.set(0, 0, -2.02);
+            dogHood.position.set(0, 0, -1.92);
             dogGroup.add(dogHood);
 
             // Dezente Chrom-Hunde-Kühlerfigur vorne auf der Haubenspitze
@@ -1368,8 +1368,8 @@
             this.cockpitRig.add(dashTopRoll);
 
             // Blickdichte Spritzwand / Windlauf zwischen Armaturenbrett und Motorhaube
-            const cowlApron = new THREE.Mesh(new THREE.BoxGeometry(3.32, 0.36, 0.48), dashMat);
-            cowlApron.position.set(0, 0.78, -1.12);
+            const cowlApron = new THREE.Mesh(new THREE.BoxGeometry(3.32, 0.44, 0.65), dashMat);
+            cowlApron.position.set(0, 0.82, -1.12);
             this.cockpitRig.add(cowlApron);
 
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
