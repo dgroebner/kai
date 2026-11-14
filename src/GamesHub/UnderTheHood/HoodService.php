@@ -985,7 +985,7 @@ class HoodService
 
         $state['log'][] = [
             'time' => date('H:i'),
-            'text' => ($deck === 'radio' ? '📻 RADIO TICKER: ' : '🗃️ HANDSCHUHFACH: ') . $card['text']
+            'text' => ($deck === 'radio' ? '📻 RADIO TICKER: ' : '🍔 DRIVE-IN DINER: ') . $card['text']
         ];
 
         // Kartenaktion ausführen

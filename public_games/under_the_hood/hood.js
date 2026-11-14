@@ -5422,7 +5422,7 @@
                 group.add(walk);
             }
 
-            const isHandschuhfach = [7, 22, 36].includes(tileIndex) || tileName.toLowerCase().includes('handschuhfach');
+            const isHandschuhfach = [7, 22, 36].includes(tileIndex) || tileName.toLowerCase().includes('diner') || tileName.toLowerCase().includes('handschuhfach');
             const isRadioTicker = [2, 17, 33].includes(tileIndex) || tileName.toLowerCase().includes('radio');
 
             if (isHandschuhfach) {
@@ -6626,9 +6626,9 @@
                 if (isMe && this.lastSeenCardId !== cardId && this.ui.modalCardAlert) {
                     this.lastSeenCardId = cardId;
                     const isRadio = (card.deck === 'radio');
-                    if (this.ui.cardAlertIcon) this.ui.cardAlertIcon.textContent = isRadio ? '📻' : '🗃️';
-                    if (this.ui.cardAlertBadge) this.ui.cardAlertBadge.textContent = isRadio ? 'RADIO TICKER' : 'HANDSCHUHFACH';
-                    if (this.ui.cardAlertTitle) this.ui.cardAlertTitle.textContent = isRadio ? 'NEUE MELDUNG AUS DER HOOD' : 'AUS DEM FACH GEZOGEN';
+                    if (this.ui.cardAlertIcon) this.ui.cardAlertIcon.textContent = isRadio ? '📻' : '🍔';
+                    if (this.ui.cardAlertBadge) this.ui.cardAlertBadge.textContent = isRadio ? 'RADIO TICKER' : 'DRIVE-IN DINER';
+                    if (this.ui.cardAlertTitle) this.ui.cardAlertTitle.textContent = isRadio ? 'NEUE MELDUNG AUS DER HOOD' : 'IM DINER ERLEBT';
                     if (this.ui.cardAlertText) this.ui.cardAlertText.textContent = card.text;
 
                     if (this.ui.cardAlertSub) {
@@ -6725,13 +6725,13 @@
 
                     if (tile.type === 'card') {
                         const isRadio = (tile.deck === 'radio' || [2, 17, 33].includes(tileIdx));
-                        icon = isRadio ? '📻' : '🗃️';
+                        icon = isRadio ? '📻' : '🍔';
                         if (state.last_card && state.last_card.text) {
-                            eventTitle = isRadio ? 'Live aus dem Radio Ticker' : 'Aus dem Handschuhfach gezogen';
+                            eventTitle = isRadio ? 'Live aus dem Radio Ticker' : 'Stopp im Drive-In Diner';
                             desc = state.last_card.text;
                         } else {
                             eventTitle = tile.name;
-                            desc = isRadio ? 'Zufällige Live-Nachricht aus der Hood.' : 'Greif ins Fach: Glück oder Bußgeld?';
+                            desc = isRadio ? 'Zufällige Live-Nachricht aus der Hood.' : 'Boxenstopp im Diner: Milkshake, Jackpot oder Zeche?';
                         }
                     } else if (tile.type === 'tax') {
                         icon = '🛑';

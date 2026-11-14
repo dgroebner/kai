@@ -112,7 +112,7 @@ $csrfToken = Auth::csrfToken();
                 <div class="hood-navi-event-box" id="navi-event-box" style="display: none;">
                     <div class="hood-navi-event-icon" id="navi-event-icon">🗃️</div>
                     <div class="hood-navi-event-body">
-                        <div class="hood-navi-event-title" id="navi-event-title">Handschuhfach</div>
+                        <div class="hood-navi-event-title" id="navi-event-title">Drive-In Diner</div>
                         <div class="hood-navi-event-desc" id="navi-event-desc">Greif ins Fach: Glück oder Bußgeld?</div>
                     </div>
                 </div>

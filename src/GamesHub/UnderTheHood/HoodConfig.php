@@ -114,14 +114,14 @@ class HoodConfig
                 'rent'       => [6, 30, 90, 270, 400, 550],
                 'mortgage'   => 50,
             ],
-            // 7: Card
+            // 7: Card (Drive-In Diner)
             7 => [
                 'index' => 7,
-                'name'  => 'Handschuhfach',
+                'name'  => 'Drive-In Diner',
                 'type'  => 'card',
                 'deck'  => 'glovebox',
-                'icon'  => '🗃️',
-                'desc'  => 'Greif ins Fach: Glück oder Bußgeld?',
+                'icon'  => '🍔',
+                'desc'  => 'Boxenstopp im Diner: Milkshake, Jackpot oder Zeche?',
             ],
             // 8: Suburb 2
             8 => [
@@ -267,14 +267,14 @@ class HoodConfig
                 'rent'       => [18, 90, 250, 700, 875, 1050],
                 'mortgage'   => 110,
             ],
-            // 22: Card
+            // 22: Card (Drive-In Diner)
             22 => [
                 'index' => 22,
-                'name'  => 'Handschuhfach',
+                'name'  => 'Drive-In Diner',
                 'type'  => 'card',
                 'deck'  => 'glovebox',
-                'icon'  => '🗃️',
-                'desc'  => 'Greif ins Fach: Dokumente oder Cash.',
+                'icon'  => '🍔',
+                'desc'  => 'Boxenstopp im Diner: Jukebox-Gewinn oder Rechnung?',
             ],
             // 23: Downtown 2
             23 => [
@@ -411,14 +411,14 @@ class HoodConfig
                 'rent'     => [25, 50, 100, 200],
                 'icon'     => '🎡',
             ],
-            // 36: Card
+            // 36: Card (Drive-In Diner)
             36 => [
                 'index' => 36,
-                'name'  => 'Handschuhfach',
+                'name'  => 'Drive-In Diner',
                 'type'  => 'card',
                 'deck'  => 'glovebox',
-                'icon'  => '🗃️',
-                'desc'  => 'Greif ins Fach: Glück oder Bußgeld?',
+                'icon'  => '🍔',
+                'desc'  => 'Boxenstopp im Diner: Milkshake, Jackpot oder Zeche?',
             ],
             // 37: Millionaires 1
             37 => [
@@ -475,21 +475,21 @@ class HoodConfig
     }
 
     /**
-     * Gemeinschaftskarten: Handschuhfach
+     * Gemeinschaftskarten: Drive-In Diner
      */
     public static function getGloveboxCards(): array
     {
         return [
-            ['text' => '💰 Steuerrückerstattung für deinen Oldtimer! Erhalte 100k €.', 'action' => 'cash', 'amount' => 100],
-            ['text' => '🎫 Parkschein abgelaufen: Zahle 50k € Verwarngeld.', 'action' => 'cash', 'amount' => -50],
-            ['text' => '🩺 Kfz-Haftpflicht-Bonus ausgeschüttet: Ziehe 50k € ein.', 'action' => 'cash', 'amount' => 50],
-            ['text' => '🔑 Notfall-Schlüsselkarte: Du kommst kostenlos aus der Verwahrstelle frei.', 'action' => 'get_out_of_jail_free'],
-            ['text' => '🏠 Straßen-Erneuerung: Zahle 40k € pro Haus und 115k € pro Hotel.', 'action' => 'repairs', 'per_house' => 40, 'per_hotel' => 115],
-            ['text' => '📦 Verschollenen Geldbeutel im Fach gefunden: +25k €!', 'action' => 'cash', 'amount' => 25],
-            ['text' => '🍸 Club-Abend gesponsert: Erhalte 45k € Promo-Prämie.', 'action' => 'cash', 'amount' => 45],
-            ['text' => '⚡ Mautstraße verstopft: Zahle 20k € Umleitungsgebühr.', 'action' => 'cash', 'amount' => -20],
-            ['text' => '🏖️ Einladung ins Strand-Resort: Reise direkt zur Palm Bay.', 'action' => 'teleport', 'tile' => 15],
-            ['text' => '🎂 Du spendierst der ganzen Hood einen Drink: Jeder erhält 10k € von dir.', 'action' => 'pay_to_all', 'amount' => 10],
+            ['text' => '🎰 Jukebox-Jackpot im Diner geknackt! Du kassierst 100k € Bonus.', 'action' => 'cash', 'amount' => 100],
+            ['text' => '🍔 Riesen-Bestellung für die Crew ausgegeben: Zahle 50k € an die Kasse.', 'action' => 'cash', 'amount' => -50],
+            ['text' => '🥤 Stammgast-Rabatt & Trinkgeld-Topf geteilt: Ziehe 50k € ein.', 'action' => 'cash', 'amount' => 50],
+            ['text' => '🔑 VIP-Diner-Pass vom Sheriff: Du kommst kostenlos aus der Verwahrstelle frei.', 'action' => 'get_out_of_jail_free'],
+            ['text' => '🧽 Diner-Frühjahrsputz in deinen Vierteln: Zahle 40k € pro Haus und 115k € pro Hotel.', 'action' => 'repairs', 'per_house' => 40, 'per_hotel' => 115],
+            ['text' => '🪙 Glücksmünze in der alten Jukebox gefunden: +25k €!', 'action' => 'cash', 'amount' => 25],
+            ['text' => '🍩 Oldtimer-Treffen auf dem Diner-Parkplatz gesponsert: Erhalte 45k € Prämie.', 'action' => 'cash', 'amount' => 45],
+            ['text' => '☕ Kaffeefleck auf dem weißen Ledersitz – Reinigung fällig: Zahle 20k €.', 'action' => 'cash', 'amount' => -20],
+            ['text' => '🏖️ Nach dem Milkshake geht es weiter ans Meer: Reise direkt zur Palm Bay.', 'action' => 'teleport', 'tile' => 15],
+            ['text' => '🍨 Eine Runde Milkshakes für alle Mitspieler! Jeder erhält 10k € von dir.', 'action' => 'pay_to_all', 'amount' => 10],
         ];
     }
 }
