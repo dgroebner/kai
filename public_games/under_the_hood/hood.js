@@ -1166,15 +1166,15 @@
             shifterKnob.position.set(0, 0.98, -0.12);
             this.cockpitRig.add(shifterKnob);
 
-            // 5. Abgerundetes Carbon-Armaturenbrett (kein eckiger Kasten)
+            // 5. Abgerundetes Carbon-Armaturenbrett (tief gesetzt für freie Sicht über Haube & Außenspiegel)
             const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.40, 0.42, 0.90), leatherMat);
-            dashBase.position.set(0, 0.64, -0.88);
+            dashBase.position.set(0, 0.51, -0.88);
             this.cockpitRig.add(dashBase);
 
             const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.40, 16);
             dashTopRollGeo.rotateZ(Math.PI / 2);
             const dashTopRoll = new THREE.Mesh(dashTopRollGeo, dashMat);
-            dashTopRoll.position.set(0, 0.84, -0.82);
+            dashTopRoll.position.set(0, 0.71, -0.82);
             this.cockpitRig.add(dashTopRoll);
 
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
@@ -1183,7 +1183,7 @@
                 map: this.getDashboardDisplayTexture(),
             });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 0.98, -0.70);
+            cluster.position.set(-0.7, 0.85, -0.70);
             cluster.rotation.x = -0.22;
             this.cockpitRig.add(cluster);
 
@@ -1191,13 +1191,13 @@
             const cowlGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.28, 16, 1, false, -Math.PI / 2, Math.PI);
             cowlGeo.rotateX(Math.PI / 2);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 0.88, -0.76);
+            cowl.position.set(-0.7, 0.75, -0.76);
             cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
             // 7. Sportlenkrad (Links auf Fahrerseite, mit freigestelltem Krea-Sportlenkrad)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.88, -0.42);
+            wheelGroup.position.set(-0.7, 0.78, -0.42);
             wheelGroup.rotation.x = 0.35;
 
             const colGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.28, 12);
@@ -2801,7 +2801,7 @@
 
         applyTintedCarTexture(sp, cacheKey, colorHex, carMesh) {
             if (!this._texCache) this._texCache = {};
-            const fullKey = `${cacheKey}_${colorHex}_v1375`;
+            const fullKey = `${cacheKey}_${colorHex}_v1380`;
             const cached = this._texCache[fullKey];
             if (cached && cached.tex) {
                 carMesh.material.map = cached.tex;
@@ -2869,7 +2869,8 @@
 
                         // Nur weiße/neutrale Karosserie einfärben + 18% Klarlack-Glanzlichter erhalten
                         const maxChroma = sp.maxChroma ?? 28;
-                        if ((max - min) < maxChroma && max > 105) {
+                        const minLum = sp.minLum ?? 105;
+                        if ((max - min) < maxChroma && max > minLum) {
                             d[i]     = Math.round(r * (0.82 * tr + 0.18));
                             d[i + 1] = Math.round(g * (0.82 * tg + 0.18));
                             d[i + 2] = Math.round(b * (0.82 * tb + 0.18));
@@ -2943,10 +2944,10 @@
 
             if (!this.cockpitHoodMesh) return;
             const specs = {
-                sportscar: { file: './textures/hood_sportscar.png', w: 3.30, h: 1.01, x: -0.22, y: 0.66, z: -1.22, rotX: -0.10, maxChroma: 75 },
-                monster:   { file: './textures/hood_monster.png',   w: 3.55, h: 1.24, x: -0.22, y: 0.64, z: -1.22, rotX: -0.08, maxChroma: 75 },
-                buggy:     { file: './textures/hood_buggy.png',     w: 3.30, h: 0.55, x: -0.22, y: 0.94, z: -1.22, rotX: -0.08, maxChroma: 75 },
-                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.30, h: 1.02, x: -0.22, y: 0.68, z: -1.22, rotX: -0.10, maxChroma: 75 },
+                sportscar: { file: './textures/hood_sportscar.png', w: 3.50, h: 1.08, x: -0.30, y: 0.78, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
+                monster:   { file: './textures/hood_monster.png',   w: 3.70, h: 1.29, x: -0.25, y: 0.72, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
+                buggy:     { file: './textures/hood_buggy.png',     w: 3.50, h: 0.59, x: -0.25, y: 0.96, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
+                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.55, h: 1.10, x: -0.25, y: 0.76, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
             };
             const sp = specs[safeVehicle] || specs.sportscar;
             this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
