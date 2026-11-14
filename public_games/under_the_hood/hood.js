@@ -2806,6 +2806,52 @@
             return tex;
         }
 
+        getTikiBarFrontTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['tiki_bar_front']) return this._texCache['tiki_bar_front'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Warme vertikale Bambus-Latten mit Fugen & Glanz
+            ctx.fillStyle = '#5c3a1b';
+            ctx.fillRect(0, 0, 512, 256);
+            for (let bx = 0; bx < 512; bx += 24) {
+                const g = ctx.createLinearGradient(bx, 0, bx + 22, 0);
+                g.addColorStop(0, '#784b24');
+                g.addColorStop(0.45, '#c28b4e');
+                g.addColorStop(0.85, '#8f5a2b');
+                g.addColorStop(1, '#4a2c11');
+                ctx.fillStyle = g;
+                ctx.fillRect(bx + 1, 0, 21, 256);
+            }
+            // Horizontale Bast-Bindungen
+            [36, 128, 220].forEach(ry => {
+                ctx.fillStyle = '#3f240e';
+                ctx.fillRect(0, ry - 4, 512, 10);
+                ctx.fillStyle = '#d6a468';
+                ctx.fillRect(0, ry - 2, 512, 4);
+            });
+
+            // "TIKI BAR" Holzschild in der Mitte
+            ctx.fillStyle = '#2e1a0b';
+            ctx.fillRect(116, 62, 280, 90);
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(120, 66, 272, 82);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 52px sans-serif';
+            ctx.fillStyle = '#fef08a';
+            ctx.fillText('TIKI BAR', 256, 108);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['tiki_bar_front'] = tex;
+            return tex;
+        }
+
         getBeachClosedSignTexture(tileName = 'Strand') {
             const key = `beach_closed_${tileName}`;
             if (!this._texCache) this._texCache = {};
@@ -4650,58 +4696,98 @@
                 cleanFoam.position.set(6.7, 0.16, 0);
                 group.add(cleanFoam);
 
-                // Karibische Tiki-Cocktailbar
-                const barCounter = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.2, 4.5), bambooMat);
-                barCounter.position.set(1.5, 0.8, 0);
+                // Karibische Tiki-Cocktailbar mit Bambus-Verkleidung, Holztheke & Barhockern
+                const barFrontMat = new THREE.MeshStandardMaterial({ map: this.getTikiBarFrontTexture(), roughness: 0.72 });
+                const barWoodMat = new THREE.MeshStandardMaterial({ color: 0x5c3415, roughness: 0.55 });
+
+                const barCounter = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.25, 4.4), barFrontMat);
+                barCounter.position.set(1.5, 0.72, 0);
                 barCounter.castShadow = true;
                 group.add(barCounter);
 
+                // Überstehende dunkle Holz-Thekenplatte
+                const counterTop = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.14, 4.8), barWoodMat);
+                counterTop.position.set(1.35, 1.40, 0);
+                counterTop.castShadow = true;
+                group.add(counterTop);
+
+                // 3 runde Barhocker vor der Theke
+                [-1.3, 0, 1.3].forEach(sz => {
+                    const stoolLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.85, 8), bambooMat);
+                    stoolLeg.position.set(-0.25, 0.52, sz);
+                    group.add(stoolLeg);
+                    const stoolTop = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.10, 14), playerMat);
+                    stoolTop.position.set(-0.25, 0.96, sz);
+                    group.add(stoolTop);
+                });
+
+                // 4 stabile Bambus-Dachpfosten (tragen das Schilfdach fest auf dem Sand)
+                [[-0.05, -2.1], [-0.05, 2.1], [2.95, -2.1], [2.95, 2.1]].forEach(([px, pz]) => {
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 2.55, 10), bambooMat);
+                    post.position.set(px, 1.38, pz);
+                    post.castShadow = true;
+                    group.add(post);
+                });
+
                 // Schilfdach über der Bar
-                const roof = new THREE.Mesh(new THREE.ConeGeometry(3.8, 1.8, 8), thatchMat);
-                roof.position.set(1.5, 3.2, 0);
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(4.0, 1.8, 10), thatchMat);
+                roof.position.set(1.45, 3.25, 0);
                 roof.castShadow = true;
                 group.add(roof);
 
-                // Bunte Lichterkette unter dem Dach
-                for (let l = 0; l < 4; l++) {
-                    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-                    lamp.position.set(1.5 + (l - 1.5) * 0.8, 2.2, 1.8);
+                // Warm leuchtende Lichterkette entlang der vorderen Dachkante (zur Straße sichtbar)
+                for (let l = 0; l < 5; l++) {
+                    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+                    lamp.position.set(-0.65, 2.38, -1.6 + l * 0.8);
                     group.add(lamp);
                 }
 
-                // 2 Große, bunte Sonnenschirme in Spielerfarbe
+                // 2 Große Sonnenschirme mit zweifarbigem Schirmrand & Liegestühlen mit Kopfteil
                 [-3.5, 3.5].forEach(oz => {
                     const umbrellaGroup = new THREE.Group();
                     umbrellaGroup.position.set(-3.5, 0, oz);
 
-                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.8), bambooMat);
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8, 10), bambooMat);
                     pole.position.y = 1.4;
                     umbrellaGroup.add(pole);
 
-                    const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.1, 0.9, 12), playerMat);
+                    const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.1, 0.85, 12), playerMat);
                     canopy.position.y = 2.7;
                     canopy.castShadow = true;
                     umbrellaGroup.add(canopy);
 
-                    // Gemütliche Strand-Liegestühle
-                    const lounger = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, 0.8), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
-                    lounger.position.set(0.5, 0.35, 0.4);
-                    lounger.rotation.y = 0.2;
-                    umbrellaGroup.add(lounger);
+                    const trimCap = new THREE.Mesh(new THREE.ConeGeometry(1.15, 0.48, 12), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.6 }));
+                    trimCap.position.y = 2.92;
+                    umbrellaGroup.add(trimCap);
+
+                    // Strandliege mit Holzgestell, weißem Polster & schräger Rückenlehne
+                    const loungerBase = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, 0.78), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 }));
+                    loungerBase.position.set(0.55, 0.34, 0.4);
+                    loungerBase.rotation.y = 0.2;
+                    umbrellaGroup.add(loungerBase);
+
+                    const loungerBack = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.14, 0.76), playerMat);
+                    loungerBack.position.set(-0.18, 0.52, 0.54);
+                    loungerBack.rotation.y = 0.2;
+                    loungerBack.rotation.z = -0.45;
+                    umbrellaGroup.add(loungerBack);
 
                     group.add(umbrellaGroup);
                 });
 
-                // Bunte Surfbretter an der Tiki-Bar gelehnt
-                const boardGeo = new THREE.BoxGeometry(0.1, 2.4, 0.6);
+                // Abgerundete Surfbretter an der Tiki-Bar gelehnt
+                const boardGeo = new THREE.SphereGeometry(0.32, 14, 12);
+                boardGeo.scale(0.14, 3.6, 0.92);
                 const surfboard1 = new THREE.Mesh(boardGeo, playerMat);
-                surfboard1.position.set(-0.5, 1.1, 1.8);
-                surfboard1.rotation.z = -0.25;
+                surfboard1.position.set(-0.15, 1.15, 2.45);
+                surfboard1.rotation.z = -0.22;
+                surfboard1.rotation.y = 0.2;
                 group.add(surfboard1);
 
-                const surfboard2 = new THREE.Mesh(boardGeo, new THREE.MeshStandardMaterial({ color: 0x06b6d4 }));
-                surfboard2.position.set(-0.5, 1.1, 2.3);
-                surfboard2.rotation.z = -0.2;
+                const surfboard2 = new THREE.Mesh(boardGeo, new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3 }));
+                surfboard2.position.set(-0.05, 1.12, 2.85);
+                surfboard2.rotation.z = -0.18;
+                surfboard2.rotation.y = -0.15;
                 group.add(surfboard2);
 
                 // Edle weiße Flagge mit Wimpel in Spielerfarbe
