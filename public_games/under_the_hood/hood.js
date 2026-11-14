@@ -5168,12 +5168,15 @@
                     group.add(cabin);
 
                 } else if (level === 2) {
-                    // --- LEVEL 2: GEMÜTLICHES MODERNES EINFAMILIENHAUS MIT WALMDACH ---
+                    // --- LEVEL 2: MODERNES EINFAMILIENHAUS MIT KREA-2 TEXTUREN & SYMMETRISCHEM WALMDACH ---
                     const house = new THREE.Group();
                     house.position.set(3.2, 0, 0);
 
-                    // Heller Verputz-Baukörper + dunkler Naturstein-Sockel
-                    const plasterMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.78 });
+                    // Putzfassade & Naturstein-Sockel
+                    const plasterMat = new THREE.MeshStandardMaterial({
+                        map: this.loadSeamlessTexture('./textures/house_plaster.jpg', true, 2, 1),
+                        roughness: 0.85,
+                    });
                     const plinthMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 });
 
                     const plinth = new THREE.Mesh(new THREE.BoxGeometry(6.1, 0.45, 7.6), plinthMat);
@@ -5185,66 +5188,73 @@
                     body.castShadow = true;
                     house.add(body);
 
-                    // Echtes geneigtes Walmdach mit Ziegeltextur + Schornstein
-                    const roofMat = new THREE.MeshStandardMaterial({ map: this.getRoofTilesTexture(), color: 0x334155, roughness: 0.65 });
-                    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.15, 1.85, 4), roofMat);
-                    roof.position.set(0, 4.45, 0);
+                    // Symmetrisches schwarzes Ziegel-Walmdach (Group-Skalierung außen verhindert Scherung!)
+                    const roofTex = this.loadSeamlessTexture('./textures/roof_tiles_black.jpg', true, 4, 2);
+                    const roofMat = new THREE.MeshStandardMaterial({ map: roofTex, roughness: 0.55 });
+                    const roofGroup = new THREE.Group();
+                    roofGroup.position.set(0, 4.5, 0);
+                    roofGroup.scale.set(0.95, 1.0, 1.18);
+                    const roof = new THREE.Mesh(new THREE.ConeGeometry(4.75, 1.9, 4), roofMat);
                     roof.rotation.y = Math.PI / 4;
-                    roof.scale.set(0.95, 1.0, 1.18);
                     roof.castShadow = true;
-                    house.add(roof);
+                    roofGroup.add(roof);
+                    house.add(roofGroup);
 
-                    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.1, 0.55), new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 }));
+                    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.15, 0.55), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 }));
                     chimney.position.set(0.8, 4.95, 1.6);
                     house.add(chimney);
 
-                    // Haustür mit Stufe, Rahmen, Griff & Überdachung in Spielerfarbe (z = -1.7)
-                    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 });
-                    const doorMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 });
-                    const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0xfef08a, emissiveIntensity: 0.22, roughness: 0.15, metalness: 0.5 });
+                    // Krea-2 Eingangstür mit Stufe & Überdachung in Spielerfarbe (z = -1.8)
+                    const doorTex = new THREE.TextureLoader().load('./textures/house_door.jpg');
+                    doorTex.colorSpace = THREE.SRGBColorSpace;
+                    const doorMesh = new THREE.Mesh(
+                        new THREE.PlaneGeometry(1.55, 2.15),
+                        new THREE.MeshBasicMaterial({ map: doorTex })
+                    );
+                    doorMesh.position.set(-2.96, 1.52, -1.8);
+                    doorMesh.rotation.y = -Math.PI / 2;
+                    house.add(doorMesh);
 
-                    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.15, 1.25), frameMat);
-                    doorFrame.position.set(-2.96, 1.52, -1.7);
-                    house.add(doorFrame);
-
-                    const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.0, 1.05), doorMat);
-                    doorLeaf.position.set(-2.97, 1.48, -1.7);
-                    house.add(doorLeaf);
-
-                    const doorStep = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.16, 1.5), plinthMat);
-                    doorStep.position.set(-3.2, 0.28, -1.7);
+                    const doorStep = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 1.75), plinthMat);
+                    doorStep.position.set(-3.2, 0.28, -1.8);
                     house.add(doorStep);
 
-                    const doorRoof = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 1.7), new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 }));
-                    doorRoof.position.set(-3.35, 2.75, -1.7);
+                    const doorRoof = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 1.85), new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 }));
+                    doorRoof.position.set(-3.35, 2.78, -1.8);
                     doorRoof.rotation.z = 0.08;
                     house.add(doorRoof);
 
-                    // Zwei echte gerahmte Wohnzimmer- & Küchenfenster mit Fensterbank & Blumenkasten
-                    [0.3, 2.3].forEach(wz => {
-                        const wFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.45, 1.45), frameMat);
-                        wFrame.position.set(-2.96, 2.05, wz);
-                        house.add(wFrame);
+                    // Zwei Krea-2 Fenster (Wohnzimmer & Küche) mit Naturstein-Fensterbank
+                    const winConfigs = [
+                        { file: './textures/house_win_1.jpg', z: 0.35 },
+                        { file: './textures/house_win_2.jpg', z: 2.35 },
+                    ];
+                    winConfigs.forEach(wc => {
+                        const wTex = new THREE.TextureLoader().load(wc.file);
+                        wTex.colorSpace = THREE.SRGBColorSpace;
+                        const wMesh = new THREE.Mesh(
+                            new THREE.PlaneGeometry(1.45, 1.38),
+                            new THREE.MeshBasicMaterial({ map: wTex })
+                        );
+                        wMesh.position.set(-2.96, 2.05, wc.z);
+                        wMesh.rotation.y = -Math.PI / 2;
+                        house.add(wMesh);
 
-                        const wGlass = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.25, 1.25), glassMat);
-                        wGlass.position.set(-2.97, 2.05, wz);
-                        house.add(wGlass);
-
-                        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.10, 1.6), plinthMat);
-                        sill.position.set(-3.02, 1.30, wz);
+                        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.10, 1.58), plinthMat);
+                        sill.position.set(-3.0, 1.33, wc.z);
                         house.add(sill);
                     });
 
                     // Gepflasterter Gartenweg führt direkt zur Haustür
                     const path = new THREE.Mesh(
-                        new THREE.BoxGeometry(3.8, 0.08, 1.3),
+                        new THREE.BoxGeometry(3.8, 0.08, 1.4),
                         new THREE.MeshStandardMaterial({
                             map: this.loadSeamlessTexture('./textures/sidewalk_diffuse.webp', true, 2, 1),
                             normalMap: this.loadSeamlessTexture('./textures/sidewalk_normal.webp', false, 2, 1),
                             roughness: 0.8,
                         })
                     );
-                    path.position.set(-1.6, 0.15, -1.7);
+                    path.position.set(-1.6, 0.15, -1.8);
                     group.add(path);
 
                     group.add(house);
