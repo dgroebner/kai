@@ -2617,25 +2617,40 @@
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, 1024, 512);
 
-            // Zarte, vom Höhenwind gezogene Zirrus-Schleier in der oberen Hemisphäre
-            for (let s = 0; s < 38; s++) {
+            // Zarte, vom Höhenwind gezogene Zirrus-Schleier (nahtlos & beidseitig weich auslaufend)
+            ctx.lineCap = 'round';
+            for (let s = 0; s < 34; s++) {
                 const sx = Math.random() * 1024;
                 const sy = 55 + Math.random() * 155;
-                const len = 110 + Math.random() * 180;
-                const curve = (Math.random() - 0.5) * 28;
-                for (let f = 0; f < 5; f++) {
-                    const fy = sy + (f - 2) * 3.5;
-                    const grad = ctx.createLinearGradient(sx, fy, sx + len, fy + curve);
-                    grad.addColorStop(0, 'rgba(255,255,255,0)');
-                    grad.addColorStop(0.35, `rgba(255,255,255,${0.12 + Math.random() * 0.12})`);
-                    grad.addColorStop(0.7, 'rgba(241,245,249,0.08)');
-                    grad.addColorStop(1, 'rgba(255,255,255,0)');
-                    ctx.strokeStyle = grad;
-                    ctx.lineWidth = 2 + Math.random() * 4;
-                    ctx.beginPath();
-                    ctx.moveTo(sx, fy);
-                    ctx.quadraticCurveTo(sx + len * 0.5, fy + curve * 0.6, sx + len, fy + curve);
-                    ctx.stroke();
+                const len = 140 + Math.random() * 200;
+                const curve = (Math.random() - 0.5) * 32;
+                const count = 6 + Math.floor(Math.random() * 4);
+                for (let f = 0; f < count; f++) {
+                    const fx = sx + (Math.random() - 0.5) * 55;
+                    const fy = sy + (f - count / 2) * 3.8 + (Math.random() - 0.5) * 3;
+                    const flen = len * (0.65 + Math.random() * 0.55);
+                    const fcurve = curve + (Math.random() - 0.5) * 14;
+                    const peakAlpha = 0.08 + Math.random() * 0.10;
+                    const lw = 2.5 + Math.random() * 4.5;
+
+                    // Bei Überlauf über x=1024 auch links bei (fx - 1024) zeichnen -> keine UV-Naht
+                    const offsets = (fx + flen > 1024) ? [0, -1024] : (fx < 0 ? [0, 1024] : [0]);
+                    for (const ox of offsets) {
+                        const x0 = fx + ox;
+                        const x1 = x0 + flen;
+                        const grad = ctx.createLinearGradient(x0, fy, x1, fy + fcurve);
+                        grad.addColorStop(0.00, 'rgba(255,255,255,0)');
+                        grad.addColorStop(0.25, `rgba(255,255,255,${(peakAlpha * 0.45).toFixed(3)})`);
+                        grad.addColorStop(0.50, `rgba(255,255,255,${peakAlpha.toFixed(3)})`);
+                        grad.addColorStop(0.75, `rgba(241,245,249,${(peakAlpha * 0.45).toFixed(3)})`);
+                        grad.addColorStop(1.00, 'rgba(255,255,255,0)');
+                        ctx.strokeStyle = grad;
+                        ctx.lineWidth = lw;
+                        ctx.beginPath();
+                        ctx.moveTo(x0, fy);
+                        ctx.quadraticCurveTo(x0 + flen * 0.5, fy + fcurve * 0.6, x1, fy + fcurve);
+                        ctx.stroke();
+                    }
                 }
             }
 
