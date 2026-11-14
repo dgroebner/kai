@@ -5219,11 +5219,6 @@
                     doorStep.position.set(-3.2, 0.28, -1.8);
                     house.add(doorStep);
 
-                    const doorRoof = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 1.85), new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 }));
-                    doorRoof.position.set(-3.35, 2.78, -1.8);
-                    doorRoof.rotation.z = 0.08;
-                    house.add(doorRoof);
-
                     // Zwei Krea-2 Fenster (Wohnzimmer & Küche) mit Naturstein-Fensterbank
                     const winConfigs = [
                         { file: './textures/house_win_1.jpg', z: 0.35 },
