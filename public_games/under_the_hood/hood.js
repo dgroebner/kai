@@ -1191,7 +1191,7 @@
 
             // 3. Geschwungene, glatt modellierte 3D-Motorhauben je Fahrzeugtyp
             this.hoodGroup = new THREE.Group();
-            this.hoodGroup.position.y = 0.08;
+            this.hoodGroup.position.y = 0.13;
             this.cockpitRig.add(this.hoodGroup);
 
             const buildSculptedSurface = (width, length, segX, segZ, heightFn, mat) => {
@@ -1229,10 +1229,10 @@
 
             // 3a. Sportwagen (Porsche): flache, geschwungene Haube mit sanften Kotflügel-Wölbungen
             const porscheGroup = new THREE.Group();
-            const porscheHood = buildSculptedSurface(3.32, 2.55, 28, 18, (nx, nz) => {
+            const porscheHood = buildSculptedSurface(3.38, 2.55, 28, 18, (nx, nz) => {
                 const absX = Math.abs(nx);
                 const slope = 0.24 * nz; // sanft nach vorne abfallend
-                const edgeDrop = -0.09 * Math.pow(absX, 2.6);
+                const edgeDrop = -0.09 * Math.pow(absX, 2.6) * (1 - nz * 0.85);
                 const centerCrease = -0.014 * Math.exp(-Math.pow(absX / 0.14, 2)) * (1 - nz * 0.5);
                 const fenderBump = 0.085 * Math.exp(-Math.pow((absX - 0.78) / 0.18, 2)) * (0.45 + 0.55 * (1 - nz));
                 return 0.61 + slope + edgeDrop + centerCrease + fenderBump;
@@ -1247,7 +1247,7 @@
             const monsterHood = buildSculptedSurface(3.40, 2.45, 26, 16, (nx, nz) => {
                 const absX = Math.abs(nx);
                 const slope = 0.18 * nz;
-                const edgeDrop = -0.07 * Math.pow(absX, 3.2);
+                const edgeDrop = -0.07 * Math.pow(absX, 3.2) * (1 - nz * 0.85);
                 const powerDome = 0.065 * Math.exp(-Math.pow(absX / 0.34, 2)) * (1 - Math.pow(nz - 0.45, 2));
                 return 0.77 + slope + edgeDrop + powerDome;
             }, this.carHoodMat);
@@ -1307,10 +1307,10 @@
 
             // 3d. Labrador-Cabrio: weich abgerundete Kompakt-Haube mit kleiner Chrom-Hunde-Kühlerfigur
             const dogGroup = new THREE.Group();
-            const dogHood = buildSculptedSurface(3.18, 2.15, 26, 16, (nx, nz) => {
+            const dogHood = buildSculptedSurface(3.34, 2.15, 26, 16, (nx, nz) => {
                 const absX = Math.abs(nx);
                 const slope = 0.22 * nz;
-                const roundDome = -0.11 * Math.pow(absX, 2.1);
+                const roundDome = -0.11 * Math.pow(absX, 2.1) * (1 - nz * 0.85);
                 return 0.62 + slope + roundDome;
             }, this.carHoodMat);
             dogHood.position.set(0, 0, -2.02);
@@ -1360,15 +1360,15 @@
             shifterKnob.position.set(0, 0.98, -0.12);
             this.cockpitRig.add(shifterKnob);
 
-            // 5. Abgerundetes Carbon-Armaturenbrett (satt sichtbar über dem Lenkrad)
+            // 5. Abgerundetes Carbon-Armaturenbrett (bündig mit Türen, A-Säulen & Hauben)
             const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.40, 0.42, 0.90), leatherMat);
-            dashBase.position.set(0, 0.64, -0.88);
+            dashBase.position.set(0, 0.70, -0.88);
             this.cockpitRig.add(dashBase);
 
             const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.40, 16);
             dashTopRollGeo.rotateZ(Math.PI / 2);
             const dashTopRoll = new THREE.Mesh(dashTopRollGeo, dashMat);
-            dashTopRoll.position.set(0, 0.84, -0.82);
+            dashTopRoll.position.set(0, 0.90, -0.82);
             this.cockpitRig.add(dashTopRoll);
 
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
@@ -1377,7 +1377,7 @@
                 map: this.getDashboardDisplayTexture(),
             });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 0.98, -0.70);
+            cluster.position.set(-0.7, 1.02, -0.70);
             cluster.rotation.x = -0.22;
             this.cockpitRig.add(cluster);
 
@@ -1385,13 +1385,13 @@
             const cowlGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.28, 16, 1, false, -Math.PI / 2, Math.PI);
             cowlGeo.rotateX(Math.PI / 2);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 0.88, -0.76);
+            cowl.position.set(-0.7, 0.92, -0.76);
             cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
             // 7. Sportlenkrad (Links auf Fahrerseite, mit freigestelltem Krea-Sportlenkrad)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.94, -0.44);
+            wheelGroup.position.set(-0.7, 0.98, -0.44);
             wheelGroup.rotation.x = 0.35;
 
             const colGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.28, 12);
