@@ -231,9 +231,9 @@
             const h = this.container.clientHeight;
 
             this.scene = new THREE.Scene();
-            // Frischer, klarer Sommerhimmel
-            this.scene.background = new THREE.Color(0x7dd3fc);
-            this.scene.fog = new THREE.FogExp2(0xbfe0f7, 0.0015);
+            // Tieferer, atmosphärischer Sommerhimmel (Grundton + Nebelpassung)
+            this.scene.background = new THREE.Color(0x3a82c4);
+            this.scene.fog = new THREE.FogExp2(0xb8ddf5, 0.00125);
 
             this.camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 1600);
 
@@ -268,6 +268,53 @@
 
             const ambient = new THREE.AmbientLight(0xe0f2fe, 0.7);
             this.scene.add(ambient);
+
+            // Mehrschichtiger Himmel: 1) Atmosphären-Verlauf, 2) Zirrus-Schleier, 3) Sonne + Lens-Flare
+            const skyDome = new THREE.Mesh(
+                new THREE.SphereGeometry(1200, 32, 24),
+                new THREE.MeshBasicMaterial({ map: this.getSkyDomeTexture(), side: THREE.BackSide, fog: false, depthWrite: false })
+            );
+            this.scene.add(skyDome);
+
+            this.cirrusDome = new THREE.Mesh(
+                new THREE.SphereGeometry(1140, 28, 20),
+                new THREE.MeshBasicMaterial({ map: this.getCirrusCloudTexture(), transparent: true, opacity: 0.72, side: THREE.BackSide, fog: false, depthWrite: false })
+            );
+            this.scene.add(this.cirrusDome);
+
+            this.sunDir = new THREE.Vector3(180, 280, 140).normalize();
+            const sunCoreSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: this.getSunFlareTexture('core'),
+                color: 0xfffbeb,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                fog: false,
+            }));
+            sunCoreSprite.position.copy(this.sunDir).multiplyScalar(980);
+            sunCoreSprite.scale.set(170, 170, 1);
+            this.scene.add(sunCoreSprite);
+
+            this.sunFlares = [
+                { dist: 0.35, size: 75, opacity: 0.24, color: 0xfef08a, type: 'ring' },
+                { dist: 0.62, size: 42, opacity: 0.30, color: 0x93c5fd, type: 'ghost' },
+                { dist: 0.85, size: 96, opacity: 0.16, color: 0xfde68a, type: 'ghost' },
+                { dist: 1.25, size: 54, opacity: 0.22, color: 0x67e8f9, type: 'ring' },
+            ].map(cfg => {
+                const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+                    map: this.getSunFlareTexture(cfg.type),
+                    color: cfg.color,
+                    transparent: true,
+                    opacity: 0,
+                    blending: THREE.AdditiveBlending,
+                    depthTest: false,
+                    depthWrite: false,
+                    fog: false,
+                }));
+                sp.renderOrder = 999;
+                this.scene.add(sp);
+                return { sprite: sp, ...cfg };
+            });
 
             // Ozean rund um die Küste (mit tropischer Kaustik-Wassertextur)
             const oceanGeo = new THREE.PlaneGeometry(2800, 2800);
@@ -312,6 +359,39 @@
 
                 if (this.steeringWheel && this.isDriving) {
                     this.steeringWheel.rotation.z = Math.sin(Date.now() * 0.005) * 0.25;
+                }
+
+                if (this.cirrusDome) {
+                    this.cirrusDome.rotation.y += 0.00004;
+                }
+                if (this.cumulusClouds && this.camera) {
+                    for (let ci = 0; ci < this.cumulusClouds.length; ci++) {
+                        const cl = this.cumulusClouds[ci];
+                        cl.group.position.x += cl.speed;
+                        if (cl.group.position.x > 460) cl.group.position.x = -460;
+                        cl.group.lookAt(this.camera.position.x, cl.group.position.y, this.camera.position.z);
+                    }
+                }
+                if (this.sunFlares && this.sunDir && this.camera) {
+                    const camForward = new THREE.Vector3();
+                    this.camera.getWorldDirection(camForward);
+                    const dot = camForward.dot(this.sunDir);
+                    const intensity = dot > 0.72 ? Math.pow((dot - 0.72) / 0.28, 1.6) : 0;
+                    if (intensity > 0.01) {
+                        const camWorld = new THREE.Vector3();
+                        this.camera.getWorldPosition(camWorld);
+                        const sunPos = camWorld.clone().addScaledVector(this.sunDir, 120);
+                        const centerPos = camWorld.clone().addScaledVector(camForward, 120);
+                        for (const fl of this.sunFlares) {
+                            fl.sprite.visible = true;
+                            fl.sprite.position.lerpVectors(sunPos, centerPos, fl.dist);
+                            const s = fl.size * 0.14;
+                            fl.sprite.scale.set(s, s, 1);
+                            fl.sprite.material.opacity = fl.opacity * intensity;
+                        }
+                    } else {
+                        for (const fl of this.sunFlares) fl.sprite.visible = false;
+                    }
                 }
 
                 if (this._wavingFlags && this._wavingFlags.length > 0) {
@@ -675,35 +755,44 @@
                 this.scene.add(hill);
             });
 
-            // 2. Flauschige 3D-Sommerwolken am Himmel
-            const cloudMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                roughness: 0.9,
-                flatShading: true,
+            // 2. Strukturierte Schönwetter-Cumuluswolken (flauschige Alpha-Wolken statt Kugel-Ballons)
+            const cumulusMat = new THREE.MeshBasicMaterial({
+                map: this.getCumulusCloudTexture(),
+                transparent: true,
+                opacity: 0.94,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+                fog: true,
             });
+            this.cumulusClouds = [];
 
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 22; i++) {
                 const cloudGroup = new THREE.Group();
-                const puffCount = 4 + Math.floor(Math.random() * 4);
+                const puffCount = 3 + Math.floor(Math.random() * 3);
                 for (let p = 0; p < puffCount; p++) {
-                    const puffGeo = new THREE.SphereGeometry(7 + Math.random() * 5, 12, 10);
-                    const puff = new THREE.Mesh(puffGeo, cloudMat);
+                    const pw = 24 + Math.random() * 18;
+                    const ph = pw * (0.52 + Math.random() * 0.18);
+                    const puff = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), cumulusMat);
                     puff.position.set(
-                        (p - puffCount / 2) * 8 + (Math.random() - 0.5) * 4,
-                        Math.random() * 3,
-                        (Math.random() - 0.5) * 6
+                        (p - (puffCount - 1) / 2) * 14 + (Math.random() - 0.5) * 5,
+                        (Math.random() - 0.3) * 5,
+                        (Math.random() - 0.5) * 4
                     );
                     cloudGroup.add(puff);
                 }
 
                 const angle = Math.random() * Math.PI * 2;
-                const dist = 180 + Math.random() * 260;
+                const dist = 190 + Math.random() * 250;
                 cloudGroup.position.set(
                     Math.cos(angle) * dist,
-                    80 + Math.random() * 35,
+                    82 + Math.random() * 36,
                     Math.sin(angle) * dist
                 );
                 this.scene.add(cloudGroup);
+                this.cumulusClouds.push({
+                    group: cloudGroup,
+                    speed: 0.015 + Math.random() * 0.02,
+                });
             }
 
             // 4. Schattige Laubbäume & Palmen entlang der Landschaft & Küste
@@ -2484,6 +2573,160 @@
             ctx.fillStyle = '#cbd5e1';
             ctx.font = 'bold 22px sans-serif';
             ctx.fillText('SANIERUNGSBEDÜRFTIG', 256, 192);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getSkyDomeTexture() {
+            const key = 'sky_dome_gradient';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            const g = ctx.createLinearGradient(0, 0, 0, 512);
+            g.addColorStop(0.00, '#164e87'); // Tieferes Zenit-Blau
+            g.addColorStop(0.24, '#246eb0');
+            g.addColorStop(0.42, '#4895d4');
+            g.addColorStop(0.50, '#9bd0ef'); // Sanfter Horizont-Dunst
+            g.addColorStop(0.56, '#bfe3f7');
+            g.addColorStop(1.00, '#6aa8d6');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, 64, 512);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getCirrusCloudTexture() {
+            const key = 'sky_cirrus_veil';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 1024, 512);
+
+            // Zarte, vom Höhenwind gezogene Zirrus-Schleier in der oberen Hemisphäre
+            for (let s = 0; s < 38; s++) {
+                const sx = Math.random() * 1024;
+                const sy = 55 + Math.random() * 155;
+                const len = 110 + Math.random() * 180;
+                const curve = (Math.random() - 0.5) * 28;
+                for (let f = 0; f < 5; f++) {
+                    const fy = sy + (f - 2) * 3.5;
+                    const grad = ctx.createLinearGradient(sx, fy, sx + len, fy + curve);
+                    grad.addColorStop(0, 'rgba(255,255,255,0)');
+                    grad.addColorStop(0.35, `rgba(255,255,255,${0.12 + Math.random() * 0.12})`);
+                    grad.addColorStop(0.7, 'rgba(241,245,249,0.08)');
+                    grad.addColorStop(1, 'rgba(255,255,255,0)');
+                    ctx.strokeStyle = grad;
+                    ctx.lineWidth = 2 + Math.random() * 4;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, fy);
+                    ctx.quadraticCurveTo(sx + len * 0.5, fy + curve * 0.6, sx + len, fy + curve);
+                    ctx.stroke();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getCumulusCloudTexture() {
+            const key = 'sky_cumulus_puff';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 512, 256);
+
+            // Strukturierte Cumulus-Bäuche: unten leicht schattig, oben sonnenbeschienen weiß
+            const lobes = [
+                [140, 145, 86, '#cbd5e1', 0.55],
+                [256, 148, 104, '#cbd5e1', 0.60],
+                [370, 145, 82, '#cbd5e1', 0.55],
+                [160, 118, 78, '#f8fafc', 0.78],
+                [256, 98, 98, '#ffffff', 0.88],
+                [352, 120, 74, '#f8fafc', 0.76],
+                [212, 112, 68, '#ffffff', 0.82],
+                [302, 110, 68, '#ffffff', 0.82],
+            ];
+            for (const [cx, cy, r, col, alpha] of lobes) {
+                const rg = ctx.createRadialGradient(cx, cy - r * 0.15, r * 0.1, cx, cy, r);
+                rg.addColorStop(0, col);
+                rg.addColorStop(0.55, col);
+                rg.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = rg;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        getSunFlareTexture(type = 'core') {
+            const key = `sun_flare_${type}`;
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 256, 256);
+
+            if (type === 'core') {
+                const rg = ctx.createRadialGradient(128, 128, 4, 128, 128, 124);
+                rg.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+                rg.addColorStop(0.14, 'rgba(254, 249, 195, 0.95)');
+                rg.addColorStop(0.35, 'rgba(253, 224, 71, 0.35)');
+                rg.addColorStop(1.0, 'rgba(253, 224, 71, 0.0)');
+                ctx.fillStyle = rg;
+                ctx.fillRect(0, 0, 256, 256);
+            } else if (type === 'ring') {
+                const rg = ctx.createRadialGradient(128, 128, 60, 128, 128, 120);
+                rg.addColorStop(0.0, 'rgba(255,255,255,0)');
+                rg.addColorStop(0.65, 'rgba(255,255,255,0.45)');
+                rg.addColorStop(0.85, 'rgba(255,255,255,0.8)');
+                rg.addColorStop(1.0, 'rgba(255,255,255,0)');
+                ctx.fillStyle = rg;
+                ctx.beginPath();
+                ctx.arc(128, 128, 122, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                const rg = ctx.createRadialGradient(128, 128, 6, 128, 128, 118);
+                rg.addColorStop(0.0, 'rgba(255,255,255,0.85)');
+                rg.addColorStop(0.6, 'rgba(255,255,255,0.28)');
+                rg.addColorStop(1.0, 'rgba(255,255,255,0)');
+                ctx.fillStyle = rg;
+                ctx.beginPath();
+                ctx.arc(128, 128, 120, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             const tex = new THREE.CanvasTexture(canvas);
             tex.colorSpace = THREE.SRGBColorSpace;
