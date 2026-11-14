@@ -3461,6 +3461,123 @@
             return tex;
         }
 
+        getDinerWallTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['diner_wall']) return this._texCache['diner_wall'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Creme-Kacheln mit feinen Fugen & Retro-Chromleiste
+            ctx.fillStyle = '#fef3c7';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.strokeStyle = 'rgba(180, 140, 85, 0.25)';
+            ctx.lineWidth = 2;
+            for (let y = 0; y <= 256; y += 32) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke();
+            }
+            for (let x = 0; x <= 512; x += 64) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 256); ctx.stroke();
+            }
+            // Chrom-Zierleiste mittig & rot-weißes Diner-Band
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(0, 180, 512, 16);
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 184, 512, 5);
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillRect(0, 196, 512, 60);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.repeat.set(2, 1);
+            this._texCache['diner_wall'] = tex;
+            return tex;
+        }
+
+        getDinerWindowTexture() {
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache['diner_window']) return this._texCache['diner_window'];
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Warmes 50er-Jahre-Diner-Interieur
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
+            bgGrad.addColorStop(0, '#451a03');
+            bgGrad.addColorStop(0.55, '#92400e');
+            bgGrad.addColorStop(1, '#78350f');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 1024, 256);
+
+            // Warm leuchtende Hängelampen an der Decke
+            for (let lx = 110; lx <= 910; lx += 160) {
+                const glow = ctx.createRadialGradient(lx, 55, 6, lx, 75, 95);
+                glow.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
+                glow.addColorStop(0.4, 'rgba(251, 191, 36, 0.45)');
+                glow.addColorStop(1, 'rgba(251, 191, 36, 0)');
+                ctx.fillStyle = glow;
+                ctx.fillRect(lx - 95, 0, 190, 175);
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(lx - 2, 0, 4, 26);
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.arc(lx, 42, 22, Math.PI, 0);
+                ctx.fill();
+            }
+
+            // Schachbrett-Tresen & rote Diner-Barhocker
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(40, 178, 944, 16);
+            ctx.fillStyle = '#991b1b';
+            ctx.fillRect(40, 194, 944, 62);
+            for (let hx = 100; hx <= 920; hx += 105) {
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillRect(hx - 4, 192, 8, 64);
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.ellipse(hx, 184, 24, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Leuchtendes Neon-"OPEN 24H" Schild im Fenster
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(432, 68, 160, 62);
+            ctx.fillStyle = 'rgba(14, 116, 144, 0.65)';
+            ctx.fillRect(434, 70, 156, 58);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 28px sans-serif';
+            ctx.fillStyle = '#e0f2fe';
+            ctx.fillText('OPEN 24H', 512, 100);
+
+            // Vertikale Chrom-Fenstersprossen & diagonale Glas-Reflexion
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+            ctx.beginPath();
+            ctx.moveTo(140, 0); ctx.lineTo(250, 0); ctx.lineTo(130, 256); ctx.lineTo(20, 256);
+            ctx.closePath(); ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(680, 0); ctx.lineTo(760, 0); ctx.lineTo(640, 256); ctx.lineTo(560, 256);
+            ctx.closePath(); ctx.fill();
+
+            ctx.fillStyle = '#cbd5e1';
+            for (let mx = 0; mx <= 1024; mx += 256) {
+                ctx.fillRect(mx - 6, 0, 12, 256);
+            }
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(0, 0, 1024, 256);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache['diner_window'] = tex;
+            return tex;
+        }
+
         getMysteryVaultTexture() {
             if (!this._texCache) this._texCache = {};
             if (this._texCache['mystery_vault']) return this._texCache['mystery_vault'];
@@ -5327,36 +5444,43 @@
                     driveInGroup.add(mark);
                 }
 
-                // Hauptgebäude: 50s Diner-Look (Creme & Karminrot)
-                const dinerBody = new THREE.Mesh(new THREE.BoxGeometry(8.2, 4.2, 9.6), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.45 }));
+                // Hauptgebäude: 50s Diner-Look (gekachelte Creme-Fassade & Karminrot)
+                const dinerBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(8.2, 4.2, 9.6),
+                    new THREE.MeshStandardMaterial({ map: this.getDinerWallTexture(), roughness: 0.42 })
+                );
                 dinerBody.position.set(1.5, 2.3, 0);
                 dinerBody.castShadow = true;
                 driveInGroup.add(dinerBody);
 
-                // Roter Sockelstreifen
-                const redBase = new THREE.Mesh(new THREE.BoxGeometry(8.4, 1.2, 9.8), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4 }));
-                redBase.position.set(1.5, 0.9, 0);
+                // Roter Sockelstreifen + Chrom-Leiste
+                const redBase = new THREE.Mesh(new THREE.BoxGeometry(8.35, 1.0, 9.75), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.38 }));
+                redBase.position.set(1.5, 0.85, 0);
                 driveInGroup.add(redBase);
 
-                // Großes Panorama-Glasfenster mit warmem Innenlicht
-                const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-                const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 7.8), windowMat);
-                frontWin.position.set(-2.65, 2.6, 0);
+                // Großes beleuchtetes 50er-Panorama-Fenster mit Interieur & Barhockern
+                const windowMat = new THREE.MeshBasicMaterial({ map: this.getDinerWindowTexture() });
+                const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.95, 7.8), windowMat);
+                frontWin.position.set(-2.62, 2.65, 0);
                 driveInGroup.add(frontWin);
 
-                // Weites, geschwungenes Vordach über der Drive-In Fahrspur
+                // Weites, geschwungenes Vordach über der Drive-In Fahrspur + Cyan-Neon-Band
                 const canopy = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.45, 11.5), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.35 }));
                 canopy.position.set(-3.2, 4.4, 0);
                 canopy.castShadow = true;
                 driveInGroup.add(canopy);
 
-                // Goldene Kanten-Zierleiste um das Vordach (wie im Bild)
-                const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.15, 11.7), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 }));
+                const neonRim = new THREE.Mesh(new THREE.BoxGeometry(7.35, 0.08, 11.65), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+                neonRim.position.set(-3.2, 4.28, 0);
+                driveInGroup.add(neonRim);
+
+                // Goldene Kanten-Zierleiste um das Vordach
+                const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.15, 11.7), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.65, roughness: 0.25 }));
                 goldTrim.position.set(-3.2, 4.6, 0);
                 driveInGroup.add(goldTrim);
 
                 // Schräge V-Stützen aus Chrom
-                const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95, roughness: 0.1 });
+                const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9, roughness: 0.15 });
                 const pillar1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.4, 16), chromeMat);
                 pillar1.position.set(-5.6, 2.2, -4.2);
                 pillar1.rotation.z = -0.15;
@@ -5367,41 +5491,33 @@
                 pillar2.rotation.z = -0.15;
                 driveInGroup.add(pillar2);
 
-                // Beleuchtetes "DRIVE-IN" Retro-Dachschild (Canvas-Textur)
-                const signMat = new THREE.MeshStandardMaterial({ map: this.getDriveInFasciaTexture(), roughness: 0.3 });
-                const roofSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.6, 5.2), signMat);
-                roofSign.position.set(-3.2, 5.4, 0);
+                // Beleuchtetes "DRIVE-IN" Retro-Dachschild (gut lesbar, nicht vom Tresor verdeckt)
+                const signMat = new THREE.MeshBasicMaterial({ map: this.getDriveInFasciaTexture() });
+                const roofSign = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.5, 5.4), signMat);
+                roofSign.position.set(-3.2, 5.45, 0);
                 driveInGroup.add(roofSign);
 
-                // Roter Retro-Klassiker unter dem Vordach geparkt (wie im Foto!)
-                const carGroup = new THREE.Group();
-                carGroup.position.set(-3.8, 0.4, 1.5);
-                const carBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.4, roughness: 0.3 }));
-                carBody.position.set(0, 0.45, 0);
-                carGroup.add(carBody);
-                const carTop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 2.0), new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.4 }));
-                carTop.position.set(0, 0.95, -0.3);
-                carGroup.add(carTop);
-                // Räder
-                [-0.9, 0.9].forEach(wx => {
-                    [-1.3, 1.3].forEach(wz => {
-                        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0x18181b }));
-                        wheel.rotation.z = Math.PI / 2;
-                        wheel.position.set(wx, 0.3, wz);
-                        carGroup.add(wheel);
-                    });
-                });
-                driveInGroup.add(carGroup);
+                // Karminroter Retro-Klassiker unter dem Vordach geparkt
+                const parkedDinerCar = this.buildParkedPlayerCar('#b91c1c', 'sportscar');
+                parkedDinerCar.position.set(-4.2, 0.40, 1.8);
+                parkedDinerCar.rotation.y = Math.PI * 0.55;
+                driveInGroup.add(parkedDinerCar);
 
                 // =========================================================
-                // DER SCHWEBENDE GOLD-TRESOR MIT MÜNZWIRBEL (HIGHLIGHT!)
+                // DER SCHWEBENDE GOLD-TRESOR MIT MÜNZWIRBEL (HÖHER ÜBER SCHILD)
                 // =========================================================
                 const vaultGroup = new THREE.Group();
-                vaultGroup.position.set(-3.2, 6.4, 0);
+                vaultGroup.position.set(-3.2, 7.6, 0);
                 vaultGroup.rotation.y = Math.PI / 5;
 
-                // Goldener Tresor-Würfel mit Nieten & Relief-Textur
-                const vaultMat = new THREE.MeshStandardMaterial({ map: this.getMysteryVaultTexture(), metalness: 0.85, roughness: 0.2 });
+                // Goldener Tresor-Würfel (mit warmem Gold-Emissive, damit er nicht dunkelbraun wirkt)
+                const vaultMat = new THREE.MeshStandardMaterial({
+                    map: this.getMysteryVaultTexture(),
+                    metalness: 0.45,
+                    roughness: 0.28,
+                    emissive: 0x92400e,
+                    emissiveIntensity: 0.45,
+                });
                 const vaultBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.4), vaultMat);
                 vaultBody.castShadow = true;
                 vaultGroup.add(vaultBody);
