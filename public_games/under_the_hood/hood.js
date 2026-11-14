@@ -422,6 +422,13 @@
                     const prevTarget = this.renderer.getRenderTarget();
                     this.renderer.setRenderTarget(this.mirrorRenderTarget);
                     this.renderer.render(this.scene, this.mirrorCamera);
+                    if (this.sideMirrors && this.sideMirrors.length > 0) {
+                        for (let i = 0; i < this.sideMirrors.length; i++) {
+                            const sm = this.sideMirrors[i];
+                            this.renderer.setRenderTarget(sm.rt);
+                            this.renderer.render(this.scene, sm.cam);
+                        }
+                    }
                     this.renderer.setRenderTarget(prevTarget);
                 }
 
@@ -1123,27 +1130,217 @@
             });
             [-1.68, 1.68].forEach(sideX => {
                 const isLeft = sideX < 0;
-                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 2.90), this.carHoodMat);
-                doorOuter.position.set(sideX, 0.62, 0.50);
+                const doorOuter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 3.25), this.carHoodMat);
+                doorOuter.position.set(sideX, 0.62, 0.55);
                 this.cockpitRig.add(doorOuter);
 
                 const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 2.80), leatherMat);
                 doorTrim.position.set(isLeft ? sideX + 0.10 : sideX - 0.10, 0.78, 0.35);
                 this.cockpitRig.add(doorTrim);
 
-                // Boxy Außenspiegel werden durch die Krea 1st-Person Hauben-Cutouts ersetzt
+                // Abgerundeter 3D-Außenspiegel mit realem Live-Rückspiegelbild
+                const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.036, 0.32, 10), leatherMat);
+                mirrorArm.rotation.z = Math.PI / 2 + (isLeft ? -0.30 : 0.30);
+                mirrorArm.position.set(isLeft ? sideX - 0.14 : sideX + 0.14, 0.90, -0.84);
+                this.cockpitRig.add(mirrorArm);
+
+                const sideMirrorPivot = new THREE.Group();
+                sideMirrorPivot.position.set(isLeft ? sideX - 0.31 : sideX + 0.31, 0.96, -0.86);
+                sideMirrorPivot.rotation.y = isLeft ? 0.24 : -0.26;
+
+                const housingGeo = new THREE.SphereGeometry(0.14, 16, 12);
+                housingGeo.scale(1.22, 0.68, 0.65);
+                const housingMesh = new THREE.Mesh(housingGeo, this.carHoodMat);
+                housingMesh.position.set(0, 0, -0.02);
+                sideMirrorPivot.add(housingMesh);
+
+                const bezelGeo = new THREE.BoxGeometry(0.27, 0.14, 0.025);
+                const bezelMesh = new THREE.Mesh(bezelGeo, leatherMat);
+                bezelMesh.position.set(0, 0, 0.048);
+                sideMirrorPivot.add(bezelMesh);
+
+                const sideRt = new THREE.WebGLRenderTarget(160, 96, {
+                    minFilter: THREE.LinearFilter,
+                    magFilter: THREE.LinearFilter,
+                });
+                const sideGlass = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.24, 0.115),
+                    new THREE.MeshBasicMaterial({ map: sideRt.texture, side: THREE.DoubleSide })
+                );
+                sideGlass.scale.x = -1; // Echte Spiegelung
+                sideGlass.position.set(0, 0, 0.064);
+                sideMirrorPivot.add(sideGlass);
+
+                this.cockpitRig.add(sideMirrorPivot);
+
+                const sideCam = new THREE.PerspectiveCamera(50, 0.24 / 0.115, 0.35, 240);
+                sideCam.position.set(isLeft ? sideX - 0.31 : sideX + 0.31, 0.98, -0.62);
+                sideCam.rotation.order = 'YXZ';
+                sideCam.rotation.y = Math.PI + (isLeft ? -0.14 : 0.14);
+                sideCam.rotation.x = -0.04;
+                this.cockpitRig.add(sideCam);
+
+                if (!this.sideMirrors) this.sideMirrors = [];
+                this.sideMirrors.push({ rt: sideRt, cam: sideCam });
             });
 
-            // 3. Fotorealistische 1st-Person Motorhaube + Außenspiegel (per updateCockpitAppearance gesetzt)
-            this.cockpitHoodMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(1, 1),
-                new THREE.MeshBasicMaterial({
-                    alphaTest: 0.4,
-                    side: THREE.FrontSide,
-                })
-            );
-            this.cockpitHoodMesh.visible = false;
-            this.cockpitRig.add(this.cockpitHoodMesh);
+            // 3. Geschwungene, glatt modellierte 3D-Motorhauben je Fahrzeugtyp
+            const buildSculptedSurface = (width, length, segX, segZ, heightFn, mat) => {
+                const geo = new THREE.PlaneGeometry(width, length, segX, segZ);
+                geo.rotateX(-Math.PI / 2);
+                const pos = geo.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const lx = pos.getX(i);
+                    const lz = pos.getZ(i);
+                    const nx = lx / (width * 0.5);       // -1 .. +1 (links..rechts)
+                    const nz = (lz + length * 0.5) / length; // 0 (vorne) .. 1 (hinten am Cockpit)
+                    pos.setY(i, heightFn(nx, nz));
+                }
+                geo.computeVertexNormals();
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                return mesh;
+            };
+
+            const headlightGlassMat = new THREE.MeshStandardMaterial({
+                color: 0xe2e8f0,
+                roughness: 0.12,
+                metalness: 0.35,
+                emissive: 0x334155,
+                emissiveIntensity: 0.25,
+            });
+            const intakeMat = new THREE.MeshStandardMaterial({
+                color: 0x0f172a,
+                roughness: 0.85,
+                metalness: 0.15,
+            });
+
+            this.hoodVariants = {};
+
+            // 3a. Sportwagen (Porsche): flache, geschwungene Haube mit runden Kotflügel-Höckern & Scheinwerfern
+            const porscheGroup = new THREE.Group();
+            const porscheHood = buildSculptedSurface(3.32, 2.55, 28, 18, (nx, nz) => {
+                const absX = Math.abs(nx);
+                const slope = 0.24 * nz; // sanft nach vorne abfallend
+                const edgeDrop = -0.09 * Math.pow(absX, 2.6);
+                const centerCrease = -0.014 * Math.exp(-Math.pow(absX / 0.14, 2)) * (1 - nz * 0.5);
+                const fenderBump = 0.085 * Math.exp(-Math.pow((absX - 0.78) / 0.18, 2)) * (0.45 + 0.55 * (1 - nz));
+                return 0.61 + slope + edgeDrop + centerCrease + fenderBump;
+            }, this.carHoodMat);
+            porscheHood.position.set(0, 0, -2.20);
+            porscheGroup.add(porscheHood);
+
+            [-1.29, 1.29].forEach(hx => {
+                const pod = new THREE.Mesh(new THREE.SphereGeometry(0.20, 16, 12), this.carHoodMat);
+                pod.scale.set(1.0, 0.55, 1.45);
+                pod.position.set(hx, 0.70, -3.12);
+                porscheGroup.add(pod);
+
+                const lens = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), headlightGlassMat);
+                lens.scale.set(0.95, 0.52, 1.15);
+                lens.position.set(hx, 0.71, -3.22);
+                porscheGroup.add(lens);
+            });
+            this.cockpitRig.add(porscheGroup);
+            this.hoodVariants.sportscar = porscheGroup;
+
+            // 3b. Monstertruck: hohe, bullige Pickup-Haube mit markanter Lufthutze
+            const monsterGroup = new THREE.Group();
+            const monsterHood = buildSculptedSurface(3.40, 2.45, 26, 16, (nx, nz) => {
+                const absX = Math.abs(nx);
+                const slope = 0.18 * nz;
+                const edgeDrop = -0.07 * Math.pow(absX, 3.2);
+                const powerDome = 0.065 * Math.exp(-Math.pow(absX / 0.34, 2)) * (1 - Math.pow(nz - 0.45, 2));
+                return 0.77 + slope + edgeDrop + powerDome;
+            }, this.carHoodMat);
+            monsterHood.position.set(0, 0, -2.15);
+            monsterGroup.add(monsterHood);
+
+            const scoopShell = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.52, 1.35, 12, 1, false, 0, Math.PI), this.carHoodMat);
+            scoopShell.rotation.z = Math.PI / 2;
+            scoopShell.rotation.y = Math.PI / 2;
+            scoopShell.scale.set(1.0, 0.34, 1.0);
+            scoopShell.position.set(0, 0.90, -2.18);
+            monsterGroup.add(scoopShell);
+
+            const scoopMouth = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.09, 0.06), intakeMat);
+            scoopMouth.position.set(0, 0.91, -2.84);
+            monsterGroup.add(scoopMouth);
+            this.cockpitRig.add(monsterGroup);
+            this.hoodVariants.monster = monsterGroup;
+
+            // 3c. Strand-Buggy: schmale Nase, ausgestellte Schutzbleche & runde Einzelscheinwerfer
+            const buggyGroup = new THREE.Group();
+            const buggyNose = buildSculptedSurface(1.55, 2.40, 18, 16, (nx, nz) => {
+                const absX = Math.abs(nx);
+                const slope = 0.28 * nz;
+                const arch = -0.08 * Math.pow(absX, 2.0);
+                return 0.58 + slope + arch;
+            }, this.carHoodMat);
+            buggyNose.position.set(0, 0, -2.14);
+            buggyGroup.add(buggyNose);
+
+            [-1.32, 1.32].forEach(fx => {
+                const fenderArch = buildSculptedSurface(0.68, 1.45, 12, 12, (nx, nz) => {
+                    const archZ = -0.14 * Math.pow((nz - 0.5) * 2, 2);
+                    const archX = -0.04 * Math.pow(nx, 2);
+                    return 0.80 + archZ + archX;
+                }, this.carHoodMat);
+                fenderArch.position.set(fx, 0, -2.35);
+                buggyGroup.add(fenderArch);
+            });
+
+            [-0.78, 0.78].forEach(lx => {
+                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.20, 8), chromeMat);
+                stalk.position.set(lx, 0.78, -2.65);
+                buggyGroup.add(stalk);
+
+                const lampBack = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), this.carHoodMat);
+                lampBack.scale.set(1.0, 1.0, 0.85);
+                lampBack.position.set(lx, 0.91, -2.66);
+                buggyGroup.add(lampBack);
+
+                const lampRim = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.018, 10, 20), chromeMat);
+                lampRim.position.set(lx, 0.91, -2.74);
+                buggyGroup.add(lampRim);
+            });
+            this.cockpitRig.add(buggyGroup);
+            this.hoodVariants.buggy = buggyGroup;
+
+            // 3d. Labrador-Cabrio: weich abgerundete Kompakt-Haube mit kleiner Chrom-Hunde-Kühlerfigur
+            const dogGroup = new THREE.Group();
+            const dogHood = buildSculptedSurface(3.18, 2.15, 26, 16, (nx, nz) => {
+                const absX = Math.abs(nx);
+                const slope = 0.22 * nz;
+                const roundDome = -0.11 * Math.pow(absX, 2.1);
+                return 0.62 + slope + roundDome;
+            }, this.carHoodMat);
+            dogHood.position.set(0, 0, -2.02);
+            dogGroup.add(dogHood);
+
+            // Dezente Chrom-Hunde-Kühlerfigur vorne auf der Haubenspitze
+            const ornament = new THREE.Group();
+            ornament.position.set(0, 0.67, -2.92);
+            const ornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.018, 12), chromeMat);
+            ornament.add(ornBase);
+            const ornBody = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), chromeMat);
+            ornBody.scale.set(0.75, 0.85, 1.45);
+            ornBody.position.set(0, 0.04, 0.01);
+            ornament.add(ornBody);
+            const ornHead = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), chromeMat);
+            ornHead.position.set(0, 0.08, -0.025);
+            ornament.add(ornHead);
+            [-0.022, 0.022].forEach(ex => {
+                const ear = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.026, 0.014), chromeMat);
+                ear.position.set(ex, 0.072, -0.022);
+                ear.rotation.z = ex < 0 ? 0.25 : -0.25;
+                ornament.add(ear);
+            });
+            dogGroup.add(ornament);
+            this.cockpitRig.add(dogGroup);
+            this.hoodVariants.dogcar = dogGroup;
+
             this.updateCockpitAppearance('#3b82f6', 'sportscar');
 
             // 4. Mittelkonsole mit Schalthebel (sitzt bündig auf Bodenwanne y=0.43)
@@ -2942,18 +3139,12 @@
                 this.carHoodMat.color.copy(tint);
             }
 
-            if (!this.cockpitHoodMesh) return;
-            const specs = {
-                sportscar: { file: './textures/hood_sportscar.png', w: 4.50, h: 0.72, x: -0.58, y: 0.82, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
-                monster:   { file: './textures/hood_monster.png',   w: 4.30, h: 0.78, x: -0.38, y: 0.84, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
-                buggy:     { file: './textures/hood_buggy.png',     w: 4.10, h: 0.52, x: -0.38, y: 0.92, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
-                dogcar:    { file: './textures/hood_dogcar.png',    w: 4.30, h: 0.72, x: -0.38, y: 0.82, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
-            };
-            const sp = specs[safeVehicle] || specs.sportscar;
-            this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
-            this.cockpitHoodMesh.position.set(sp.x, sp.y, sp.z);
-            this.cockpitHoodMesh.rotation.x = sp.rotX;
-            this.applyTintedCarTexture(sp, `hood_${safeVehicle}`, safeColor, this.cockpitHoodMesh);
+            if (this.hoodVariants) {
+                const activeKey = this.hoodVariants[safeVehicle] ? safeVehicle : 'sportscar';
+                Object.keys(this.hoodVariants).forEach(k => {
+                    this.hoodVariants[k].visible = (k === activeKey);
+                });
+            }
         }
 
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
