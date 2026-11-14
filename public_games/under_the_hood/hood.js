@@ -5717,47 +5717,123 @@
                 const tollGroup = new THREE.Group();
                 tollGroup.position.set(1.5, 0, 0);
 
-                // Großes Stahl-Überdachungsportal (überbrückt die Fahrspur)
-                const canopyMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
-                const tollCanopy = new THREE.Mesh(new THREE.BoxGeometry(11.5, 0.7, 13.0), canopyMat);
-                tollCanopy.position.set(-2.0, 5.2, 0);
+                // Asphalt-Fahrbahn unter der Mautstelle
+                const tollAsphalt = new THREE.Mesh(
+                    new THREE.BoxGeometry(14.5, 0.12, 16.5),
+                    new THREE.MeshStandardMaterial({
+                        map: this.loadSeamlessTexture('./textures/asphalt_diffuse.webp', true, 3, 4),
+                        normalMap: this.loadSeamlessTexture('./textures/asphalt_normal.webp', false, 3, 4),
+                        roughness: 0.85,
+                    })
+                );
+                tollAsphalt.position.set(-2.0, 0.22, 0);
+                tollAsphalt.receiveShadow = true;
+                tollGroup.add(tollAsphalt);
+
+                // Erhabene Beton-Mittelinsel
+                const concreteMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/concrete_diffuse.webp', true, 2, 2),
+                    normalMap: this.loadSeamlessTexture('./textures/concrete_normal.webp', false, 2, 2),
+                    roughness: 0.85,
+                });
+                const island = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.22, 3.8), concreteMat);
+                island.position.set(-0.5, 0.35, 0);
+                island.receiveShadow = true;
+                tollGroup.add(island);
+
+                // Großes Stahl-Überdachungsportal mit weiß-blauem Leuchtband
+                const canopyMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.65, roughness: 0.35 });
+                const tollCanopy = new THREE.Mesh(new THREE.BoxGeometry(11.5, 0.72, 13.4), canopyMat);
+                tollCanopy.position.set(-2.0, 5.3, 0);
                 tollCanopy.castShadow = true;
                 tollGroup.add(tollCanopy);
 
-                // Stahl-Pfeiler für das Dach
+                // Blaues/Weißes Dachband ("MAUTSTATION")
+                const fasciaBand = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.12, 0.32, 13.45),
+                    new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.45, roughness: 0.3 })
+                );
+                fasciaBand.position.set(-7.75, 5.3, 0);
+                tollGroup.add(fasciaBand);
+
+                // Stahl-Pfeiler mit Beton-Sockel für das Dach
                 [-6.5, 2.5].forEach(px => {
                     [-5.5, 5.5].forEach(pz => {
-                        const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5.2, 0.5), canopyMat);
-                        col.position.set(px, 2.6, pz);
+                        const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5.1, 0.5), canopyMat);
+                        col.position.set(px, 2.75, pz);
+                        col.castShadow = true;
                         tollGroup.add(col);
+                        const colBase = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.45, 0.75), concreteMat);
+                        colBase.position.set(px, 0.45, pz);
+                        tollGroup.add(colBase);
                     });
                 });
 
                 // Digitales LED-Spuranzeigen-Schild (Canvas-Textur mit roten Kreuzen & grünen Pfeilen!)
                 const signMat = new THREE.MeshStandardMaterial({ map: this.getTollPlazaSignTexture(), roughness: 0.2 });
-                const matrixSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 11.0), signMat);
-                matrixSign.position.set(-6.55, 4.4, 0);
+                const matrixSign = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.35, 10.6), signMat);
+                matrixSign.position.set(-6.55, 4.35, 0);
                 tollGroup.add(matrixSign);
 
-                // Mauthäuschen (Toll Booth) mit Fenster
-                const booth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.4, 3.2), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-                booth.position.set(0.5, 1.9, 0);
+                // Detailliertes Mauthäuschen auf der Beton-Insel (inkl. Dachkranz, Rahmen & Ausgabeschalter)
+                const booth = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.2, 3.2), concreteMat);
+                booth.position.set(0.5, 2.05, 0);
+                booth.castShadow = true;
                 tollGroup.add(booth);
-                const boothWin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.0), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
-                boothWin.position.set(-0.75, 2.2, 0);
+
+                const boothRoof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.25, 3.6), canopyMat);
+                boothRoof.position.set(0.5, 3.72, 0);
+                tollGroup.add(boothRoof);
+
+                const boothFrameMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+                const boothFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.35, 2.15), boothFrameMat);
+                boothFrame.position.set(-0.8, 2.3, 0);
+                tollGroup.add(boothFrame);
+
+                const boothWin = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.16, 1.15, 1.95),
+                    new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0ea5e9, emissiveIntensity: 0.22, roughness: 0.12, metalness: 0.65 })
+                );
+                boothWin.position.set(-0.81, 2.3, 0);
                 tollGroup.add(boothWin);
 
-                // Gelb-schwarz schraffierter Beton-Prallschutz (Hazard Chevron Stripes)
-                const hazardMat = new THREE.MeshStandardMaterial({ map: this.getHazardStripeTexture(), roughness: 0.7 });
-                const crashBarrier = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 4.5), hazardMat);
-                crashBarrier.position.set(-2.5, 0.7, -3.5);
-                tollGroup.add(crashBarrier);
+                // Kleines "MAUT" Leuchtschild über dem Schalter
+                const mautCanvas = document.createElement('canvas');
+                mautCanvas.width = 256; mautCanvas.height = 72;
+                const mc = mautCanvas.getContext('2d');
+                mc.fillStyle = '#0f172a'; mc.fillRect(0, 0, 256, 72);
+                mc.strokeStyle = '#38bdf8'; mc.lineWidth = 5; mc.strokeRect(4, 4, 248, 64);
+                mc.fillStyle = '#f8fafc'; mc.font = '900 38px "Arial Black", sans-serif';
+                mc.textAlign = 'center'; mc.textBaseline = 'middle';
+                mc.fillText('MAUT', 128, 38);
+                const mautTex = new THREE.CanvasTexture(mautCanvas);
+                mautTex.colorSpace = THREE.SRGBColorSpace;
+                const mautSign = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 1.6), new THREE.MeshBasicMaterial({ map: mautTex }));
+                mautSign.position.set(-0.84, 3.3, 0);
+                tollGroup.add(mautSign);
 
-                // Rot-weiß gestreifte Schranke über der Fahrspur
-                const barrierBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5.8, 8), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-                barrierBoom.position.set(-4.5, 1.2, 0);
-                barrierBoom.rotation.x = Math.PI / 2;
-                tollGroup.add(barrierBoom);
+                // Gelb-schwarz schraffierte Beton-Prallschutze links & rechts
+                const hazardMat = new THREE.MeshStandardMaterial({ map: this.getHazardStripeTexture(), roughness: 0.7 });
+                const crashBarrierL = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.95, 4.2), hazardMat);
+                crashBarrierL.position.set(-2.6, 0.72, -3.6);
+                tollGroup.add(crashBarrierL);
+                const crashBarrierR = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.95, 4.2), hazardMat);
+                crashBarrierR.position.set(-2.6, 0.72, 3.6);
+                tollGroup.add(crashBarrierR);
+
+                // Schranken-Antriebskasten + rot-weiß gestreifte Schranke über der Fahrspur
+                const gateBox = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.15, 0.55), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 }));
+                gateBox.position.set(-4.3, 0.85, -2.0);
+                tollGroup.add(gateBox);
+
+                const barRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.35 });
+                const barWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+                for (let s = 0; s < 8; s++) {
+                    const boomSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.7, 10), (s % 2 === 0) ? barRed : barWhite);
+                    boomSeg.position.set(-4.3, 1.25, -1.55 + s * 0.7);
+                    boomSeg.rotation.x = Math.PI / 2;
+                    tollGroup.add(boomSeg);
+                }
 
                 group.add(tollGroup);
 
