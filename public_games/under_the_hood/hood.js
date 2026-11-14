@@ -5790,56 +5790,99 @@
                 const shopGroup = new THREE.Group();
                 shopGroup.position.set(3.5, 0, 0);
 
+                // Asphalt-Vorplatz vor der Werkstatt
+                const shopApron = new THREE.Mesh(
+                    new THREE.BoxGeometry(14.5, 0.12, 16.5),
+                    new THREE.MeshStandardMaterial({
+                        map: this.loadSeamlessTexture('./textures/asphalt_diffuse.webp', true, 3, 4),
+                        normalMap: this.loadSeamlessTexture('./textures/asphalt_normal.webp', false, 3, 4),
+                        roughness: 0.85,
+                    })
+                );
+                shopApron.position.set(-0.5, 0.22, 0);
+                shopApron.receiveShadow = true;
+                shopGroup.add(shopApron);
+
                 // Backstein-Werkstatthalle mit Rolltoren
-                const shopBody = new THREE.Mesh(new THREE.BoxGeometry(9.5, 5.4, 11.5), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 }));
-                shopBody.position.set(1.5, 2.8, 0);
+                const shopBrickMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/brick_diffuse.webp', true, 3, 2),
+                    normalMap: this.loadSeamlessTexture('./textures/brick_normal.webp', false, 3, 2),
+                    roughness: 0.85,
+                });
+                const shopBody = new THREE.Mesh(new THREE.BoxGeometry(9.5, 5.6, 11.5), shopBrickMat);
+                shopBody.position.set(1.5, 3.0, 0);
                 shopBody.castShadow = true;
                 shopGroup.add(shopBody);
 
+                // Dunkler Stahl-Dachkranz (Attika)
+                const roofTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.55, roughness: 0.45 });
+                const roofTrim = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.35, 11.8), roofTrimMat);
+                roofTrim.position.set(1.5, 5.9, 0);
+                shopGroup.add(roofTrim);
+
                 // Großes Fassadenschild "KFZ-Meisterbetrieb - Reparatur aller Marken"
-                const signMat = new THREE.MeshStandardMaterial({ map: this.getWorkshopSignTexture(), roughness: 0.5 });
-                const shopSign = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.6, 9.2), signMat);
-                shopSign.position.set(-3.3, 4.8, 0);
+                const signMat = new THREE.MeshStandardMaterial({ map: this.getWorkshopSignTexture(), roughness: 0.45 });
+                const shopSign = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.5, 9.2), signMat);
+                shopSign.position.set(-3.32, 4.9, 0);
                 shopGroup.add(shopSign);
 
-                // 2 geöffnete Werkstatt-Tore (Blick in die helle Werkstatt)
-                [-2.8, 2.8].forEach(bz => {
-                    const bayCut = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.4, 3.8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-                    bayCut.position.set(-3.28, 1.9, bz);
-                    shopGroup.add(bayCut);
+                // 2 geöffnete Krea-2 Werkstatt-Tore (Hebebühne links, Werkzeug & Reifenregal rechts)
+                const bayFiles = ['./textures/workshop_bay_1.jpg', './textures/workshop_bay_2.jpg'];
+                const bayPositions = [-2.6, 2.6];
+                bayPositions.forEach((bz, idx) => {
+                    const bayTex = new THREE.TextureLoader().load(bayFiles[idx]);
+                    bayTex.colorSpace = THREE.SRGBColorSpace;
+                    const bayPanel = new THREE.Mesh(
+                        new THREE.PlaneGeometry(3.8, 3.55),
+                        new THREE.MeshBasicMaterial({ map: bayTex })
+                    );
+                    bayPanel.position.set(-3.28, 2.02, bz);
+                    bayPanel.rotation.y = -Math.PI / 2;
+                    shopGroup.add(bayPanel);
+
+                    // Stahl-Torrahmen um jedes Werkstatttor
+                    const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.65, 0.16), roofTrimMat);
+                    frameL.position.set(-3.29, 2.05, bz - 1.92);
+                    shopGroup.add(frameL);
+                    const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.65, 0.16), roofTrimMat);
+                    frameR.position.set(-3.29, 2.05, bz + 1.92);
+                    shopGroup.add(frameR);
+                    const frameTop = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 4.02), roofTrimMat);
+                    frameTop.position.set(-3.29, 3.86, bz);
+                    shopGroup.add(frameTop);
                 });
 
-                // =========================================================
-                // BLAUE 2-SÄULEN-HEBEBÜHNE MIT AUFGEBOCKTEM WAGEN (WIE IM FOTO!)
-                // =========================================================
-                const liftMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.4 });
-                const post1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.0, 0.35), liftMat);
-                post1.position.set(-4.2, 2.0, -1.8);
-                shopGroup.add(post1);
+                // Detaillierte 3D-Reifenstapel (Torus-Reifen mit Felgen-Scheibe, leicht versetzt gestapelt)
+                const tireRubberMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.88 });
+                const rimMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.8, roughness: 0.25 });
+                const tireGeo = new THREE.TorusGeometry(0.32, 0.14, 10, 18);
+                tireGeo.rotateX(Math.PI / 2);
+                const rimGeo = new THREE.CylinderGeometry(0.21, 0.21, 0.16, 12);
 
-                const post2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.0, 0.35), liftMat);
-                post2.position.set(-4.2, 2.0, 1.8);
-                shopGroup.add(post2);
+                const addTireStack = (sx, sz, count, leanX = 0) => {
+                    for (let t = 0; t < count; t++) {
+                        const jx = ((t % 2 === 0 ? 1 : -1) * 0.03) + t * leanX;
+                        const jz = (t % 3 - 1) * 0.025;
+                        const tire = new THREE.Mesh(tireGeo, tireRubberMat);
+                        tire.position.set(sx + jx, 0.40 + t * 0.25, sz + jz);
+                        tire.castShadow = true;
+                        shopGroup.add(tire);
+                        const rim = new THREE.Mesh(rimGeo, rimMat);
+                        rim.position.set(sx + jx, 0.40 + t * 0.25, sz + jz);
+                        shopGroup.add(rim);
+                    }
+                };
+                // Zwei Reifenstapel rechts neben der Einfahrt + ein kleiner Stapel links
+                addTireStack(-4.6, 5.2, 5, 0.01);
+                addTireStack(-3.6, 5.6, 3, -0.01);
+                addTireStack(-4.8, -5.2, 4, 0.015);
 
-                // Aufgebocktes silbernes Fahrzeug auf 1.8m Höhe
-                const carOnLift = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.1, 4.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.3 }));
-                carOnLift.position.set(-4.2, 2.5, 0);
-                carOnLift.castShadow = true;
-                shopGroup.add(carOnLift);
-
-                // Reifenstapel im Hof
-                for (let t = 0; t < 4; t++) {
-                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.28, 12), new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 }));
-                    tire.position.set(-5.6, 0.45 + t * 0.28, 3.8);
-                    shopGroup.add(tire);
-                }
-
-                // Blaue und rote Ölfässer
-                const drumB = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }));
-                drumB.position.set(-5.4, 0.8, -3.8);
+                // Blaue und rote Ölfässer mit silbernem Spannring
+                const drumB = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.98, 14), new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.4, metalness: 0.3 }));
+                drumB.position.set(-4.3, 0.76, -4.1);
                 shopGroup.add(drumB);
-                const drumR = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-                drumR.position.set(-4.8, 0.8, -4.2);
+                const drumR = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.98, 14), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4, metalness: 0.3 }));
+                drumR.position.set(-3.7, 0.76, -4.5);
                 shopGroup.add(drumR);
 
                 group.add(shopGroup);
