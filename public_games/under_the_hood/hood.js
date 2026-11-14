@@ -2868,7 +2868,8 @@
                         if (preserve) continue;
 
                         // Nur weiße/neutrale Karosserie einfärben + 18% Klarlack-Glanzlichter erhalten
-                        if ((max - min) < 28 && max > 105) {
+                        const maxChroma = sp.maxChroma ?? 28;
+                        if ((max - min) < maxChroma && max > 105) {
                             d[i]     = Math.round(r * (0.82 * tr + 0.18));
                             d[i + 1] = Math.round(g * (0.82 * tg + 0.18));
                             d[i + 2] = Math.round(b * (0.82 * tb + 0.18));
@@ -2942,10 +2943,10 @@
 
             if (!this.cockpitHoodMesh) return;
             const specs = {
-                sportscar: { file: './textures/hood_sportscar.png', w: 3.70, h: 1.14, x: 0, y: 0.78, z: -1.32, rotX: -0.92 },
-                monster:   { file: './textures/hood_monster.png',   w: 3.85, h: 1.34, x: 0, y: 0.80, z: -1.34, rotX: -0.88 },
-                buggy:     { file: './textures/hood_buggy.png',     w: 3.75, h: 0.63, x: 0, y: 0.90, z: -1.24, rotX: -0.42 },
-                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.70, h: 1.15, x: 0, y: 0.78, z: -1.32, rotX: -0.92 },
+                sportscar: { file: './textures/hood_sportscar.png', w: 3.30, h: 1.01, x: -0.22, y: 0.66, z: -1.22, rotX: -0.10, maxChroma: 75 },
+                monster:   { file: './textures/hood_monster.png',   w: 3.55, h: 1.24, x: -0.22, y: 0.64, z: -1.22, rotX: -0.08, maxChroma: 75 },
+                buggy:     { file: './textures/hood_buggy.png',     w: 3.30, h: 0.55, x: -0.22, y: 0.94, z: -1.22, rotX: -0.08, maxChroma: 75 },
+                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.30, h: 1.02, x: -0.22, y: 0.68, z: -1.22, rotX: -0.10, maxChroma: 75 },
             };
             const sp = specs[safeVehicle] || specs.sportscar;
             this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
