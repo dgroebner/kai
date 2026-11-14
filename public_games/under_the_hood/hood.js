@@ -6023,15 +6023,15 @@
                     });
                 });
 
-                // 2 freigestellte Autos vor der Leinwand (statt bunter Box-Klötze)
-                const parked1 = this.buildParkedPlayerCar('#0284c7', 'sportscar');
+                // 2 freigestellte Autos vor der Leinwand (Heckansicht zur Straße, Blickrichtung zur Leinwand!)
+                const parked1 = this.buildRoadPlayerCar('#0284c7', 'sportscar');
                 parked1.position.set(2.4, 0.48, -2.0);
-                parked1.rotation.y = Math.PI / 2 - 0.15;
+                parked1.rotation.y = -Math.PI / 2 - 0.10;
                 cinemaGroup.add(parked1);
 
-                const parked2 = this.buildParkedPlayerCar('#f97316', 'buggy');
+                const parked2 = this.buildRoadPlayerCar('#f97316', 'buggy');
                 parked2.position.set(2.8, 0.48, 2.2);
-                parked2.rotation.y = Math.PI / 2 + 0.12;
+                parked2.rotation.y = -Math.PI / 2 + 0.08;
                 cinemaGroup.add(parked2);
 
                 // =========================================================
