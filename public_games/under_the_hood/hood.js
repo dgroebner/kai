@@ -1360,15 +1360,15 @@
             shifterKnob.position.set(0, 0.98, -0.12);
             this.cockpitRig.add(shifterKnob);
 
-            // 5. Abgerundetes Carbon-Armaturenbrett (bündig mit Türen, A-Säulen & Hauben)
-            const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.40, 0.42, 0.90), leatherMat);
-            dashBase.position.set(0, 0.70, -0.88);
+            // 5. Abgerundetes Carbon-Armaturenbrett (weiter vorne unter der Scheibe, lässt Außenspiegel frei)
+            const dashBase = new THREE.Mesh(new THREE.BoxGeometry(3.24, 0.42, 0.80), leatherMat);
+            dashBase.position.set(0, 0.70, -0.98);
             this.cockpitRig.add(dashBase);
 
-            const dashTopRollGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.40, 16);
+            const dashTopRollGeo = new THREE.CylinderGeometry(0.16, 0.16, 3.24, 16);
             dashTopRollGeo.rotateZ(Math.PI / 2);
             const dashTopRoll = new THREE.Mesh(dashTopRollGeo, dashMat);
-            dashTopRoll.position.set(0, 0.90, -0.82);
+            dashTopRoll.position.set(0, 0.90, -0.94);
             this.cockpitRig.add(dashTopRoll);
 
             // 6. Digitales OLED Tacho-Kombiinstrument (gut ablesbar über dem Lenkrad)
@@ -1377,7 +1377,7 @@
                 map: this.getDashboardDisplayTexture(),
             });
             const cluster = new THREE.Mesh(clusterGeo, clusterMat);
-            cluster.position.set(-0.7, 1.02, -0.70);
+            cluster.position.set(-0.7, 1.02, -0.82);
             cluster.rotation.x = -0.22;
             this.cockpitRig.add(cluster);
 
@@ -1385,13 +1385,13 @@
             const cowlGeo = new THREE.CylinderGeometry(0.42, 0.44, 0.28, 16, 1, false, -Math.PI / 2, Math.PI);
             cowlGeo.rotateX(Math.PI / 2);
             const cowl = new THREE.Mesh(cowlGeo, dashMat);
-            cowl.position.set(-0.7, 0.92, -0.76);
+            cowl.position.set(-0.7, 0.92, -0.88);
             cowl.scale.set(1.0, 0.65, 1.0);
             this.cockpitRig.add(cowl);
 
             // 7. Sportlenkrad (Links auf Fahrerseite, mit freigestelltem Krea-Sportlenkrad)
             const wheelGroup = new THREE.Group();
-            wheelGroup.position.set(-0.7, 0.98, -0.44);
+            wheelGroup.position.set(-0.7, 0.98, -0.52);
             wheelGroup.rotation.x = 0.35;
 
             const colGeo = new THREE.CylinderGeometry(0.045, 0.055, 0.28, 12);
