@@ -6987,9 +6987,9 @@
                             ? `Wagen auf der Hebebühne (${activePlayer.jail_turns || 1}/3). 50k € Kaution zahlen.`
                             : 'Nur zu Besuch. Freie Weiterfahrt!';
                     } else if (tile.type === 'parking') {
-                        icon = '☕';
+                        icon = '🎬';
                         eventTitle = tile.name;
-                        desc = 'Kostenlose Rast mit Meerblick. Keine Gebühren fällig.';
+                        desc = 'Kostenlose Rast beim Kinofilm. Keine Gebühren fällig.';
                     } else if (tile.type === 'start') {
                         icon = '🏁';
                         eventTitle = tile.name;
