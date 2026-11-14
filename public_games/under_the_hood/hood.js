@@ -419,10 +419,11 @@
                 }
 
                 if (this.dogTailGroup && this.dogTailGroup.visible) {
+                    const wagT = performance.now() * 0.001;
                     const wagSpeed = this.isMoving ? 11.0 : 6.8;
-                    this.dogTailGroup.rotation.z = Math.sin(t * wagSpeed) * 0.46;
+                    this.dogTailGroup.rotation.z = Math.sin(wagT * wagSpeed) * 0.46;
                     if (this.dogTailTip) {
-                        this.dogTailTip.rotation.z = Math.sin(t * wagSpeed - 0.55) * 0.34;
+                        this.dogTailTip.rotation.z = Math.sin(wagT * wagSpeed - 0.55) * 0.34;
                     }
                 }
 
