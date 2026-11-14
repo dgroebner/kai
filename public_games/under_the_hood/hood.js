@@ -2809,12 +2809,12 @@
             if (!this._texCache) this._texCache = {};
 
             if (!this._texCache[cacheKey]) {
-                const tex = new THREE.TextureLoader().load(`${sp.file}?v=1.36.98`);
+                const tex = new THREE.TextureLoader().load(`${sp.file}?v=1.36.99`);
                 tex.colorSpace = THREE.SRGBColorSpace;
                 this._texCache[cacheKey] = tex;
             }
             const carTex = this._texCache[cacheKey];
-            const tint = new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.28);
+            const tint = new THREE.Color(colorHex);
 
             // Weicher dunkler Bodenschatten auf dem Asphalt
             const shadow = new THREE.Mesh(
@@ -2845,10 +2845,10 @@
 
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
-                sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.75 },
-                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.13 },
-                buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.98 },
-                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 1.81, y: 0.92 },
+                sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.66 },
+                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.00 },
+                buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.87 },
+                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 1.81, y: 0.81 },
             };
             const sp = specs[vehicle] || specs.sportscar;
             return this.buildCutoutCarSprite(sp, `car_parked_${vehicle}`, colorHex, 1.45, -Math.PI / 2 + 0.14);
