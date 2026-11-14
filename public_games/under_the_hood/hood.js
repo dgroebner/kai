@@ -1138,8 +1138,8 @@
                 doorTrim.position.set(isLeft ? sideX + 0.10 : sideX - 0.10, 0.78, 0.35);
                 this.cockpitRig.add(doorTrim);
 
-                // Abgerundeter 3D-Außenspiegel mit realem Live-Rückspiegelbild
-                const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.036, 0.32, 10), leatherMat);
+                // Abgerundeter 3D-Außenspiegel mit bündig eingelassenem ovalem Live-Spiegelglas
+                const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.034, 0.30, 10), leatherMat);
                 mirrorArm.rotation.z = Math.PI / 2 + (isLeft ? -0.30 : 0.30);
                 mirrorArm.position.set(isLeft ? sideX - 0.14 : sideX + 0.14, 0.90, -0.84);
                 this.cockpitRig.add(mirrorArm);
@@ -1148,35 +1148,40 @@
                 sideMirrorPivot.position.set(isLeft ? sideX - 0.31 : sideX + 0.31, 0.96, -0.86);
                 sideMirrorPivot.rotation.y = isLeft ? 0.24 : -0.26;
 
-                const housingGeo = new THREE.SphereGeometry(0.14, 16, 12);
-                housingGeo.scale(1.22, 0.68, 0.65);
+                // Aerodynamische Halbschale als Spiegelgehäuse (nach vorne gewölbt, hinten flach für das Glas)
+                const housingGeo = new THREE.SphereGeometry(0.145, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.52);
+                housingGeo.rotateX(-Math.PI / 2);
+                housingGeo.scale(1.24, 0.74, 0.92);
                 const housingMesh = new THREE.Mesh(housingGeo, this.carHoodMat);
-                housingMesh.position.set(0, 0, -0.02);
                 sideMirrorPivot.add(housingMesh);
 
-                const bezelGeo = new THREE.BoxGeometry(0.27, 0.14, 0.025);
+                const bezelGeo = new THREE.CylinderGeometry(0.145, 0.145, 0.022, 24);
+                bezelGeo.rotateX(Math.PI / 2);
+                bezelGeo.scale(1.22, 0.72, 1.0);
                 const bezelMesh = new THREE.Mesh(bezelGeo, leatherMat);
-                bezelMesh.position.set(0, 0, 0.048);
+                bezelMesh.position.set(0, 0, 0.005);
                 sideMirrorPivot.add(bezelMesh);
 
                 const sideRt = new THREE.WebGLRenderTarget(160, 96, {
                     minFilter: THREE.LinearFilter,
                     magFilter: THREE.LinearFilter,
                 });
+                const sideGlassGeo = new THREE.CircleGeometry(0.132, 24);
+                sideGlassGeo.scale(1.20, 0.70, 1.0);
                 const sideGlass = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.24, 0.115),
+                    sideGlassGeo,
                     new THREE.MeshBasicMaterial({ map: sideRt.texture, side: THREE.DoubleSide })
                 );
                 sideGlass.scale.x = -1; // Echte Spiegelung
-                sideGlass.position.set(0, 0, 0.064);
+                sideGlass.position.set(0, 0, 0.018);
                 sideMirrorPivot.add(sideGlass);
 
                 this.cockpitRig.add(sideMirrorPivot);
 
                 const sideCam = new THREE.PerspectiveCamera(50, 0.24 / 0.115, 0.35, 240);
-                sideCam.position.set(isLeft ? sideX - 0.31 : sideX + 0.31, 0.98, -0.62);
+                sideCam.position.set(isLeft ? sideX - 0.38 : sideX + 0.38, 1.00, -0.45);
                 sideCam.rotation.order = 'YXZ';
-                sideCam.rotation.y = Math.PI + (isLeft ? -0.14 : 0.14);
+                sideCam.rotation.y = Math.PI + (isLeft ? -0.18 : 0.18);
                 sideCam.rotation.x = -0.04;
                 this.cockpitRig.add(sideCam);
 
@@ -1218,7 +1223,7 @@
 
             this.hoodVariants = {};
 
-            // 3a. Sportwagen (Porsche): flache, geschwungene Haube mit runden Kotflügel-Höckern & Scheinwerfern
+            // 3a. Sportwagen (Porsche): flache, geschwungene Haube mit sanften Kotflügel-Wölbungen
             const porscheGroup = new THREE.Group();
             const porscheHood = buildSculptedSurface(3.32, 2.55, 28, 18, (nx, nz) => {
                 const absX = Math.abs(nx);
@@ -1230,18 +1235,6 @@
             }, this.carHoodMat);
             porscheHood.position.set(0, 0, -2.20);
             porscheGroup.add(porscheHood);
-
-            [-1.29, 1.29].forEach(hx => {
-                const pod = new THREE.Mesh(new THREE.SphereGeometry(0.20, 16, 12), this.carHoodMat);
-                pod.scale.set(1.0, 0.55, 1.45);
-                pod.position.set(hx, 0.70, -3.12);
-                porscheGroup.add(pod);
-
-                const lens = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), headlightGlassMat);
-                lens.scale.set(0.95, 0.52, 1.15);
-                lens.position.set(hx, 0.71, -3.22);
-                porscheGroup.add(lens);
-            });
             this.cockpitRig.add(porscheGroup);
             this.hoodVariants.sportscar = porscheGroup;
 
