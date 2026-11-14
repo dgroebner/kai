@@ -2804,17 +2804,23 @@
             return tex;
         }
 
-        getTintedCarTexture(sp, cacheKey, colorHex = '#3b82f6') {
+        applyTintedCarTexture(sp, cacheKey, colorHex, carMesh) {
             if (!this._texCache) this._texCache = {};
-            const fullKey = `${cacheKey}_${colorHex}_v1372`;
-            if (this._texCache[fullKey]) return this._texCache[fullKey];
+            const fullKey = `${cacheKey}_${colorHex}_v1373`;
+            const cached = this._texCache[fullKey];
+            if (cached && cached.tex) {
+                carMesh.material.map = cached.tex;
+                carMesh.material.needsUpdate = true;
+                carMesh.visible = true;
+                return;
+            }
+            if (cached && cached.waiters) {
+                cached.waiters.push(carMesh);
+                return;
+            }
 
-            const canvas = document.createElement('canvas');
-            canvas.width = 2;
-            canvas.height = 2;
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            this._texCache[fullKey] = tex;
+            const entry = { tex: null, waiters: [carMesh] };
+            this._texCache[fullKey] = entry;
 
             const tint = new THREE.Color(colorHex);
             const tr = tint.r, tg = tint.g, tb = tint.b;
@@ -2825,6 +2831,7 @@
                 const w = img.naturalWidth || img.width;
                 const h = img.naturalHeight || img.height;
                 if (!w || !h) return;
+                const canvas = document.createElement('canvas');
                 canvas.width = w;
                 canvas.height = h;
                 const ctx = canvas.getContext('2d');
@@ -2865,15 +2872,24 @@
                     }
                 }
                 ctx.putImageData(imgData, 0, 0);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.colorSpace = THREE.SRGBColorSpace;
                 tex.needsUpdate = true;
+                entry.tex = tex;
+                entry.waiters.forEach(m => {
+                    if (m && m.material) {
+                        m.material.map = tex;
+                        m.material.needsUpdate = true;
+                        m.visible = true;
+                    }
+                });
+                entry.waiters = [];
             };
-            img.src = `${sp.file}?v=1.37.2`;
-            return tex;
+            img.src = `${sp.file}?v=1.37.3`;
         }
 
         buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0) {
             const car = new THREE.Group();
-            const carTex = this.getTintedCarTexture(sp, cacheKey, colorHex);
 
             // Weicher dunkler Bodenschatten auf dem Asphalt
             const shadow = new THREE.Mesh(
@@ -2885,18 +2901,20 @@
             shadow.position.set(0, 0.02, 0);
             car.add(shadow);
 
-            // Freigestelltes Krea-Cabrio (selektiv eingefärbt, Alufelgen/Fell/Scheinwerfer bleiben naturgetreu)
+            // Freigestelltes Krea-Cabrio (erst sichtbar, sobald die CanvasTexture in voller Größe fertig ist)
             const carMesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(sp.w, sp.h),
                 new THREE.MeshBasicMaterial({
-                    map: carTex,
                     alphaTest: 0.4,
                     side: THREE.DoubleSide,
                 })
             );
+            carMesh.visible = false;
             carMesh.position.set(0, sp.y, 0);
             carMesh.rotation.y = rotY;
             car.add(carMesh);
+
+            this.applyTintedCarTexture(sp, cacheKey, colorHex, carMesh);
 
             return car;
         }
