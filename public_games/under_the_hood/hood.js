@@ -418,6 +418,13 @@
                     }
                 }
 
+                if (this.mirrorRenderTarget && this.mirrorCamera) {
+                    const prevTarget = this.renderer.getRenderTarget();
+                    this.renderer.setRenderTarget(this.mirrorRenderTarget);
+                    this.renderer.render(this.scene, this.mirrorCamera);
+                    this.renderer.setRenderTarget(prevTarget);
+                }
+
                 this.renderer.render(this.scene, this.camera);
             };
             animate();
@@ -1386,15 +1393,32 @@
 
             const mirrorGroup = new THREE.Group();
             mirrorGroup.position.set(0, headerY - 0.14, headerZ + 0.02);
+            mirrorGroup.rotation.y = 0.22;
 
             const mirrorCase = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.05), leatherMat);
             mirrorGroup.add(mirrorCase);
 
-            const mirrorGlass = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.14, 0.02), new THREE.MeshBasicMaterial({ color: 0x93c5fd }));
-            mirrorGlass.position.set(0, 0, 0.025);
+            this.mirrorRenderTarget = new THREE.WebGLRenderTarget(320, 96, {
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.LinearFilter,
+            });
+            const mirrorGlass = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.58, 0.14),
+                new THREE.MeshBasicMaterial({ map: this.mirrorRenderTarget.texture, side: THREE.DoubleSide })
+            );
+            mirrorGlass.scale.x = -1; // Echte Spiegelung (links bleibt links)
+            mirrorGlass.position.set(0, 0, 0.027);
             mirrorGroup.add(mirrorGlass);
 
             this.cockpitRig.add(mirrorGroup);
+
+            // Live-Rückfahrkamera für den Innenspiegel (blickt nach hinten über das Heck auf die Straße)
+            this.mirrorCamera = new THREE.PerspectiveCamera(46, 0.58 / 0.14, 0.4, 260);
+            this.mirrorCamera.position.set(0, headerY - 0.10, headerZ + 0.22);
+            this.mirrorCamera.rotation.order = 'YXZ';
+            this.mirrorCamera.rotation.y = Math.PI;
+            this.mirrorCamera.rotation.x = -0.05;
+            this.cockpitRig.add(this.mirrorCamera);
 
             // 12. Fahrer-Kamera: Sitzt am Steuer mit Panorama-Blick
             this.camera.position.set(-0.7, 1.44, 0.10);
