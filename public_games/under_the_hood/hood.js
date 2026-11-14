@@ -5432,8 +5432,12 @@
                 const driveInGroup = new THREE.Group();
                 driveInGroup.position.set(3.5, 0, 0);
 
-                // Asphalt-Zufahrt mit Drive-Through Markierungen
-                const lane = new THREE.Mesh(new THREE.BoxGeometry(11, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+                // Asphalt-Zufahrt mit echter Asphalt-Textur & Drive-Through Markierungen
+                const dinerAsphaltTex = this.loadSeamlessTexture('./textures/asphalt_diffuse.webp', true, 3, 4);
+                const lane = new THREE.Mesh(
+                    new THREE.BoxGeometry(11, 0.04, 16),
+                    new THREE.MeshStandardMaterial({ map: dinerAsphaltTex, roughness: 0.85 })
+                );
                 lane.position.set(-2.0, 0.38, 0);
                 driveInGroup.add(lane);
 
@@ -5491,16 +5495,17 @@
                 pillar2.rotation.z = -0.15;
                 driveInGroup.add(pillar2);
 
-                // Beleuchtetes "DRIVE-IN" Retro-Dachschild (gut lesbar, nicht vom Tresor verdeckt)
+                // Beleuchtetes "DRIVE-IN" Retro-Dachschild (komplett frei über dem Goldrand)
                 const signMat = new THREE.MeshBasicMaterial({ map: this.getDriveInFasciaTexture() });
                 const roofSign = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.5, 5.4), signMat);
-                roofSign.position.set(-3.2, 5.45, 0);
+                roofSign.position.set(-3.2, 5.65, 0);
                 driveInGroup.add(roofSign);
 
-                // Karminroter Retro-Klassiker unter dem Vordach geparkt
+                // Karminroter Retro-Klassiker unter dem Vordach geparkt (unverzerrt zur Straße ausgerichtet)
                 const parkedDinerCar = this.buildParkedPlayerCar('#b91c1c', 'sportscar');
-                parkedDinerCar.position.set(-4.2, 0.40, 1.8);
-                parkedDinerCar.rotation.y = Math.PI * 0.55;
+                parkedDinerCar.position.set(-4.6, 0.40, 2.2);
+                parkedDinerCar.rotation.y = Math.PI * 0.5 - 0.14;
+                parkedDinerCar.scale.set(1.12, 1.12, 1.12);
                 driveInGroup.add(parkedDinerCar);
 
                 // =========================================================
