@@ -3964,38 +3964,7 @@
         getAutokinoScreenTexture() {
             if (!this._texCache) this._texCache = {};
             if (this._texCache['autokino_screen']) return this._texCache['autokino_screen'];
-            const canvas = document.createElement('canvas');
-            canvas.width = 1024;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-
-            // Film-Leinwand: Sonnenuntergangs-Road-Movie Szene!
-            const grad = ctx.createLinearGradient(0, 0, 0, 512);
-            grad.addColorStop(0, '#f97316');
-            grad.addColorStop(0.4, '#ec4899');
-            grad.addColorStop(0.7, '#8b5cf6');
-            grad.addColorStop(1, '#1e1b4b');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 1024, 512);
-
-            // Riesige goldene Sonne
-            ctx.fillStyle = '#fef08a';
-            ctx.beginPath(); ctx.arc(512, 320, 140, 0, Math.PI * 2); ctx.fill();
-
-            // Silhouette eines Autos auf dem Highway
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 440, 1024, 72);
-            ctx.fillRect(400, 410, 224, 35);
-            ctx.fillRect(440, 385, 140, 28);
-
-            // Retro Filmtitel oben
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = '900 52px "Arial Black", sans-serif';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.fillText('NOW SHOWING: UNDER THE HOOD', 512, 70);
-
-            const tex = new THREE.CanvasTexture(canvas);
+            const tex = new THREE.TextureLoader().load('./textures/autokino_stitch.jpg');
             tex.colorSpace = THREE.SRGBColorSpace;
             this._texCache['autokino_screen'] = tex;
             return tex;
@@ -6017,10 +5986,17 @@
                 // =========================================================
                 // 3. RIESIGE MONUMENTALE PROJEKTIONS-LEINWAND IM HINTERGRUND
                 // =========================================================
+                const screenFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.28, 7.8, 14.1),
+                    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.65, metalness: 0.3 })
+                );
+                screenFrame.position.set(9.62, 4.8, 0);
+                screenFrame.castShadow = true;
+                cinemaGroup.add(screenFrame);
+
                 const screenMat = new THREE.MeshBasicMaterial({ map: this.getAutokinoScreenTexture() });
-                const bigScreen = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7.2, 13.5), screenMat);
-                bigScreen.position.set(9.5, 4.8, 0);
-                bigScreen.castShadow = true;
+                const bigScreen = new THREE.Mesh(new THREE.BoxGeometry(0.12, 7.2, 13.5), screenMat);
+                bigScreen.position.set(9.45, 4.8, 0);
                 cinemaGroup.add(bigScreen);
 
                 // Stahl-Trägergerüst hinter der Leinwand
