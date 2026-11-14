@@ -2806,44 +2806,41 @@
 
         buildParkedPlayerCar(colorHex = '#3b82f6') {
             const car = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.55, roughness: 0.28 });
-            const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.1 });
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.85 });
-            const rimMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.2 });
+            if (!this._texCache) this._texCache = {};
+            if (!this._texCache['car_parked_white']) {
+                const tex = new THREE.TextureLoader().load('./textures/car_parked_white.png');
+                tex.colorSpace = THREE.SRGBColorSpace;
+                this._texCache['car_parked_white'] = tex;
+            }
+            const carTex = this._texCache['car_parked_white'];
+            const tint = new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.14);
 
-            const chassis = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.62, 1.65), bodyMat);
-            chassis.position.set(0, 0.52, 0);
-            chassis.castShadow = true;
-            car.add(chassis);
+            // Weicher dunkler Bodenschatten auf dem Asphalt
+            const shadow = new THREE.Mesh(
+                new THREE.CircleGeometry(1.45, 20),
+                new THREE.MeshBasicMaterial({ color: 0x05070a, transparent: true, opacity: 0.48, depthWrite: false })
+            );
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.scale.set(1.25, 0.65, 1);
+            shadow.position.set(0, 0.02, 0);
+            car.add(shadow);
 
-            const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.52, 1.42), glassMat);
-            cabin.position.set(0.1, 1.05, 0);
-            cabin.castShadow = true;
-            car.add(cabin);
-
-            const roof = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.08, 1.38), bodyMat);
-            roof.position.set(0.15, 1.33, 0);
-            car.add(roof);
-
-            const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 14);
-            wheelGeo.rotateX(Math.PI / 2);
-            const rimGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.24, 10);
-            rimGeo.rotateX(Math.PI / 2);
-            [[-1.05, -0.82], [-1.05, 0.82], [1.05, -0.82], [1.05, 0.82]].forEach(([wx, wz]) => {
-                const w = new THREE.Mesh(wheelGeo, wheelMat);
-                w.position.set(wx, 0.32, wz);
-                car.add(w);
-                const r = new THREE.Mesh(rimGeo, rimMat);
-                r.position.set(wx, 0.32, wz);
-                car.add(r);
-            });
-
-            const headMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-            [-0.55, 0.55].forEach(lz => {
-                const hl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.26), headMat);
-                hl.position.set(-1.71, 0.56, lz);
-                car.add(hl);
-            });
+            // Freigestelltes Krea-Cabrio, in der Spielerfarbe eingefärbt
+            const carMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(3.4, 2.12),
+                new THREE.MeshStandardMaterial({
+                    map: carTex,
+                    color: tint,
+                    transparent: true,
+                    alphaTest: 0.25,
+                    side: THREE.DoubleSide,
+                    roughness: 0.42,
+                    metalness: 0.15,
+                })
+            );
+            carMesh.position.set(0, 1.06, 0);
+            carMesh.rotation.y = -Math.PI / 2 + 0.14;
+            car.add(carMesh);
 
             return car;
         }
