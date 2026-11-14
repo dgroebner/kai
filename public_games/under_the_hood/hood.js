@@ -2944,10 +2944,10 @@
 
             if (!this.cockpitHoodMesh) return;
             const specs = {
-                sportscar: { file: './textures/hood_sportscar.png', w: 4.10, h: 0.64, x: -0.05, y: 0.74, z: -1.08, rotX: -0.18, maxChroma: 90, minLum: 65 },
-                monster:   { file: './textures/hood_monster.png',   w: 4.20, h: 0.72, x: -0.05, y: 0.76, z: -1.08, rotX: -0.16, maxChroma: 90, minLum: 65 },
-                buggy:     { file: './textures/hood_buggy.png',     w: 3.85, h: 0.48, x: -0.05, y: 0.88, z: -1.08, rotX: -0.12, maxChroma: 90, minLum: 65 },
-                dogcar:    { file: './textures/hood_dogcar.png',    w: 4.10, h: 0.64, x: -0.05, y: 0.74, z: -1.08, rotX: -0.18, maxChroma: 90, minLum: 65 },
+                sportscar: { file: './textures/hood_sportscar.png', w: 4.50, h: 0.72, x: -0.58, y: 0.82, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
+                monster:   { file: './textures/hood_monster.png',   w: 4.30, h: 0.78, x: -0.38, y: 0.84, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
+                buggy:     { file: './textures/hood_buggy.png',     w: 4.10, h: 0.52, x: -0.38, y: 0.92, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
+                dogcar:    { file: './textures/hood_dogcar.png',    w: 4.30, h: 0.72, x: -0.38, y: 0.82, z: -1.08, rotX: -0.08, maxChroma: 90, minLum: 65 },
             };
             const sp = specs[safeVehicle] || specs.sportscar;
             this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
