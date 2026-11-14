@@ -3496,88 +3496,6 @@
             return tex;
         }
 
-        getDinerWindowTexture() {
-            if (!this._texCache) this._texCache = {};
-            if (this._texCache['diner_window']) return this._texCache['diner_window'];
-            const canvas = document.createElement('canvas');
-            canvas.width = 1024;
-            canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-
-            // Warmes 50er-Jahre-Diner-Interieur
-            const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
-            bgGrad.addColorStop(0, '#451a03');
-            bgGrad.addColorStop(0.55, '#92400e');
-            bgGrad.addColorStop(1, '#78350f');
-            ctx.fillStyle = bgGrad;
-            ctx.fillRect(0, 0, 1024, 256);
-
-            // Warm leuchtende Hängelampen an der Decke
-            for (let lx = 110; lx <= 910; lx += 160) {
-                const glow = ctx.createRadialGradient(lx, 55, 6, lx, 75, 95);
-                glow.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
-                glow.addColorStop(0.4, 'rgba(251, 191, 36, 0.45)');
-                glow.addColorStop(1, 'rgba(251, 191, 36, 0)');
-                ctx.fillStyle = glow;
-                ctx.fillRect(lx - 95, 0, 190, 175);
-
-                ctx.fillStyle = '#e2e8f0';
-                ctx.fillRect(lx - 2, 0, 4, 26);
-                ctx.fillStyle = '#dc2626';
-                ctx.beginPath();
-                ctx.arc(lx, 42, 22, Math.PI, 0);
-                ctx.fill();
-            }
-
-            // Schachbrett-Tresen & rote Diner-Barhocker
-            ctx.fillStyle = '#e2e8f0';
-            ctx.fillRect(40, 178, 944, 16);
-            ctx.fillStyle = '#991b1b';
-            ctx.fillRect(40, 194, 944, 62);
-            for (let hx = 100; hx <= 920; hx += 105) {
-                ctx.fillStyle = '#cbd5e1';
-                ctx.fillRect(hx - 4, 192, 8, 64);
-                ctx.fillStyle = '#ef4444';
-                ctx.beginPath();
-                ctx.ellipse(hx, 184, 24, 10, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Leuchtendes Neon-"OPEN 24H" Schild im Fenster
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(432, 68, 160, 62);
-            ctx.fillStyle = 'rgba(14, 116, 144, 0.65)';
-            ctx.fillRect(434, 70, 156, 58);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = 'bold 28px sans-serif';
-            ctx.fillStyle = '#e0f2fe';
-            ctx.fillText('OPEN 24H', 512, 100);
-
-            // Vertikale Chrom-Fenstersprossen & diagonale Glas-Reflexion
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-            ctx.beginPath();
-            ctx.moveTo(140, 0); ctx.lineTo(250, 0); ctx.lineTo(130, 256); ctx.lineTo(20, 256);
-            ctx.closePath(); ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(680, 0); ctx.lineTo(760, 0); ctx.lineTo(640, 256); ctx.lineTo(560, 256);
-            ctx.closePath(); ctx.fill();
-
-            ctx.fillStyle = '#cbd5e1';
-            for (let mx = 0; mx <= 1024; mx += 256) {
-                ctx.fillRect(mx - 6, 0, 12, 256);
-            }
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 10;
-            ctx.strokeRect(0, 0, 1024, 256);
-
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            this._texCache['diner_window'] = tex;
-            return tex;
-        }
-
         getMysteryVaultTexture() {
             if (!this._texCache) this._texCache = {};
             if (this._texCache['mystery_vault']) return this._texCache['mystery_vault'];
@@ -5462,11 +5380,24 @@
                 redBase.position.set(1.5, 0.85, 0);
                 driveInGroup.add(redBase);
 
-                // Großes beleuchtetes 50er-Panorama-Fenster mit Interieur & Barhockern
-                const windowMat = new THREE.MeshBasicMaterial({ map: this.getDinerWindowTexture() });
-                const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.95, 7.8), windowMat);
-                frontWin.position.set(-2.62, 2.65, 0);
-                driveInGroup.add(frontWin);
+                // 4 quadratische Krea-Diner-Schaufenster nebeneinander mit Chrom-Rahmen
+                const winBacking = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.10, 2.04, 8.20),
+                    new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.75, roughness: 0.25 })
+                );
+                winBacking.position.set(-2.61, 2.66, 0);
+                driveInGroup.add(winBacking);
+
+                [-3.00, -1.00, 1.00, 3.00].forEach((wz, wi) => {
+                    const winTex = this.loadSeamlessTexture(`./textures/diner_win_${wi + 1}.jpg`, false);
+                    const winPane = new THREE.Mesh(
+                        new THREE.PlaneGeometry(1.92, 1.92),
+                        new THREE.MeshBasicMaterial({ map: winTex })
+                    );
+                    winPane.rotation.y = -Math.PI / 2;
+                    winPane.position.set(-2.67, 2.66, wz);
+                    driveInGroup.add(winPane);
+                });
 
                 // Weites, geschwungenes Vordach über der Drive-In Fahrspur + Cyan-Neon-Band
                 const canopy = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.45, 11.5), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.35 }));
