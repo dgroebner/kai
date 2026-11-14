@@ -1356,7 +1356,13 @@
             // PERFORMANCE & RAM-OPTIMIERUNG:
             // Verhindert das ununterbrochene Neugenerieren von 1.600 3D-Meshes alle 1.5s im Polling-Zyklus!
             if (!this.renderedPlotSignatures) this.renderedPlotSignatures = {};
-            const sig = `${ownerColor}_${isMortgaged ? 1 : 0}_${level}_${ownerName || ''}_${tileName}_${tilePrice}`;
+            const startCarsSig = (tileIndex === 0 && this.state && Array.isArray(this.state.players))
+                ? this.state.players
+                    .filter(p => p.id !== this.getActivePlayerId() && (p.position || 0) === 0)
+                    .map(p => `${p.id}:${p.color || ''}`)
+                    .join(',')
+                : '';
+            const sig = `${ownerColor}_${isMortgaged ? 1 : 0}_${level}_${ownerName || ''}_${tileName}_${tilePrice}_${startCarsSig}`;
             if (!force && this.renderedPlotSignatures[tileIndex] === sig && group.children.length > 0) {
                 return;
             }
@@ -2483,6 +2489,102 @@
             tex.colorSpace = THREE.SRGBColorSpace;
             this._texCache[key] = tex;
             return tex;
+        }
+
+        getStartBannerTexture() {
+            const key = 'start_portal_banner';
+            if (!this._texCache) this._texCache = {};
+            if (this._texCache[key]) return this._texCache[key];
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Dunkler Schiefer-Hintergrund mit Holz-/Gold-Rahmen
+            const bg = ctx.createLinearGradient(0, 0, 0, 256);
+            bg.addColorStop(0, '#0f172a');
+            bg.addColorStop(1, '#1e293b');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, 1024, 256);
+
+            // Zielflaggen-Schachbrett links & rechts
+            const sq = 32;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 4; c++) {
+                    ctx.fillStyle = (r + c) % 2 === 0 ? '#f8fafc' : '#090d16';
+                    ctx.fillRect(c * sq, r * sq, sq, sq);
+                    ctx.fillRect(1024 - 4 * sq + c * sq, r * sq, sq, sq);
+                }
+            }
+
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(132, 6, 760, 244);
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 74px sans-serif';
+            ctx.fillText('START & ZIEL', 512, 112);
+
+            // Grünes +200k € Schild
+            ctx.fillStyle = '#059669';
+            ctx.fillRect(262, 146, 500, 68);
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(262, 146, 500, 68);
+            ctx.fillStyle = '#ecfdf5';
+            ctx.font = 'bold 34px sans-serif';
+            ctx.fillText('+200k € BEI DURCHFAHRT', 512, 192);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            this._texCache[key] = tex;
+            return tex;
+        }
+
+        buildParkedPlayerCar(colorHex = '#3b82f6') {
+            const car = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.55, roughness: 0.28 });
+            const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.1 });
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.85 });
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.2 });
+
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.62, 1.65), bodyMat);
+            chassis.position.set(0, 0.52, 0);
+            chassis.castShadow = true;
+            car.add(chassis);
+
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.52, 1.42), glassMat);
+            cabin.position.set(0.1, 1.05, 0);
+            cabin.castShadow = true;
+            car.add(cabin);
+
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.08, 1.38), bodyMat);
+            roof.position.set(0.15, 1.33, 0);
+            car.add(roof);
+
+            const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 14);
+            wheelGeo.rotateX(Math.PI / 2);
+            const rimGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.24, 10);
+            rimGeo.rotateX(Math.PI / 2);
+            [[-1.05, -0.82], [-1.05, 0.82], [1.05, -0.82], [1.05, 0.82]].forEach(([wx, wz]) => {
+                const w = new THREE.Mesh(wheelGeo, wheelMat);
+                w.position.set(wx, 0.32, wz);
+                car.add(w);
+                const r = new THREE.Mesh(rimGeo, rimMat);
+                r.position.set(wx, 0.32, wz);
+                car.add(r);
+            });
+
+            const headMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            [-0.55, 0.55].forEach(lz => {
+                const hl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.26), headMat);
+                hl.position.set(-1.71, 0.56, lz);
+                car.add(hl);
+            });
+
+            return car;
         }
 
         getClubCornerSignTexture(isOwned = false) {
@@ -4446,8 +4548,8 @@
 
         // --- D. SPEZIELLE FELDER (1:1 UMSETZUNG DER REFERENZBILDER DES USERS!) ---
         renderSpecialPlot(group, tileType, tileName, tileIndex = 0) {
-            // Grundstücksboden (für normale Felder; das Autokino hat sein eigenes sauberes Areal)
-            if (tileType !== 'parking') {
+            // Grundstücksboden (für normale Felder; Autokino und Startfeld gestalten ihr eigenes Areal)
+            if (tileType !== 'parking' && tileType !== 'start') {
                 const plotMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
                 const plot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), plotMat);
                 plot.position.set(0, 0.18, 0);
@@ -4455,11 +4557,13 @@
                 group.add(plot);
             }
 
-            // Gehweg vor dem Areal
-            const walk = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 18), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
-            walk.position.set(-5.5, 0.4, 0);
-            walk.receiveShadow = true;
-            group.add(walk);
+            // Gehweg vor dem Areal (Startfeld nutzt texturierten Granit-Gehweg)
+            if (tileType !== 'start') {
+                const walk = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 18), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
+                walk.position.set(-5.5, 0.4, 0);
+                walk.receiveShadow = true;
+                group.add(walk);
+            }
 
             const isHandschuhfach = [7, 22, 36].includes(tileIndex) || tileName.toLowerCase().includes('handschuhfach');
             const isRadioTicker = [2, 17, 33].includes(tileIndex) || tileName.toLowerCase().includes('radio');
@@ -5001,22 +5105,117 @@
 
             } else if (tileType === 'start') {
                 // =============================================================
-                // 7. START & ZIEL 🏁 — GRAND-PRIX ZIELBOGEN
+                // 7. START & ZIEL 🏁 — HOLZ-PORTAL, PARKPLATZ & 3D-GELDAUTOMAT
                 // =============================================================
-                const archMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.7, roughness: 0.3 });
-                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 8.0, 16), archMat);
+                // Asphalt-Parkplatzfläche
+                const lotMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/asphalt_diffuse.webp', true, 4, 4),
+                    normalMap: this.loadSeamlessTexture('./textures/asphalt_normal.webp', false, 4, 4),
+                    roughness: 0.88,
+                });
+                const lot = new THREE.Mesh(new THREE.BoxGeometry(20, 0.35, 18), lotMat);
+                lot.position.set(0, 0.18, 0);
+                lot.receiveShadow = true;
+                group.add(lot);
+
+                // Granit-Vorplatz unter dem Portal
+                const plazaMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/sidewalk_diffuse.webp', true, 2, 4),
+                    normalMap: this.loadSeamlessTexture('./textures/sidewalk_normal.webp', false, 2, 4),
+                    roughness: 0.78,
+                });
+                const plaza = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.08, 18), plazaMat);
+                plaza.position.set(-6.0, 0.39, 0);
+                plaza.receiveShadow = true;
+                group.add(plaza);
+
+                // Weiße Parkbuchten hinter dem Portal (4 Plätze für wartende Spieler-Autos)
+                const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+                const bayZ = [-5.4, -1.8, 1.8, 5.4];
+                [-7.2, -3.6, 0.0, 3.6, 7.2].forEach(lz => {
+                    const divLine = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.02, 0.12), lineMat);
+                    divLine.position.set(3.5, 0.37, lz);
+                    group.add(divLine);
+                });
+                const backLine = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 14.5), lineMat);
+                backLine.position.set(6.3, 0.37, 0);
+                group.add(backLine);
+
+                // Geparkte Autos der anderen Spieler auf Feld 0 (verschwinden beim Losfahren)
+                const activeId = this.getActivePlayerId();
+                const waitingPlayers = (this.state && Array.isArray(this.state.players))
+                    ? this.state.players.filter(p => p.id !== activeId && (p.position || 0) === 0)
+                    : [];
+                waitingPlayers.slice(0, 4).forEach((p, idx) => {
+                    const parkedCar = this.buildParkedPlayerCar(p.color || '#3b82f6');
+                    parkedCar.position.set(3.4, 0.36, bayZ[idx]);
+                    parkedCar.rotation.y = ((idx % 2) - 0.5) * 0.05;
+                    group.add(parkedCar);
+                });
+
+                // Holz-Portal (texturiert mit Holzbohlen + Rinden-Normal-Map)
+                const woodPortalMat = new THREE.MeshStandardMaterial({
+                    map: this.getLogCabinWallTexture(),
+                    normalMap: this.loadSeamlessTexture('./textures/bark_normal.webp', false, 1, 3),
+                    normalScale: new THREE.Vector2(0.55, 0.55),
+                    roughness: 0.85,
+                });
+                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 8.0, 12), woodPortalMat);
                 p1.position.set(-6.5, 4.0, -4.8);
+                p1.castShadow = true;
                 group.add(p1);
-                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 8.0, 16), archMat);
+                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 8.0, 12), woodPortalMat);
                 p2.position.set(-6.5, 4.0, 4.8);
+                p2.castShadow = true;
                 group.add(p2);
-                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 10.2), archMat);
+                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.15, 10.4), woodPortalMat);
                 beam.position.set(-6.5, 8.0, 0);
+                beam.castShadow = true;
                 group.add(beam);
 
-                const banner = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 8.8), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
-                banner.position.set(-6.5, 6.7, 0);
+                // Start- & Ziel-Banner mit Zielflaggen & +200k € Bonus
+                const bannerMat = new THREE.MeshStandardMaterial({
+                    map: this.getStartBannerTexture(),
+                    roughness: 0.35,
+                });
+                const banner = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.6, 8.8), bannerMat);
+                banner.position.set(-6.5, 6.65, 0);
                 group.add(banner);
+
+                // 3D-Geldautomat (ATM) am Vorplatz mit Krea-Front & Seitenansicht
+                const atmGroup = new THREE.Group();
+                atmGroup.position.set(-5.6, 0.43, 6.7);
+                atmGroup.rotation.y = -0.25;
+
+                const atmPlinth = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.18, 0.14, 1.18),
+                    new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 })
+                );
+                atmPlinth.position.y = 0.07;
+                atmGroup.add(atmPlinth);
+
+                const atmFrontMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/atm_front.jpg', true, 1, 1),
+                    emissive: new THREE.Color(0x0ea5e9),
+                    emissiveMap: this.loadSeamlessTexture('./textures/atm_front.jpg', true, 1, 1),
+                    emissiveIntensity: 0.25,
+                    roughness: 0.35,
+                    metalness: 0.3,
+                });
+                const atmSideMat = new THREE.MeshStandardMaterial({
+                    map: this.loadSeamlessTexture('./textures/atm_side.jpg', true, 1, 1),
+                    roughness: 0.35,
+                    metalness: 0.65,
+                });
+                const atmSteelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.35, metalness: 0.7 });
+                const atmBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.95, 2.05, 0.95),
+                    [atmSteelMat, atmFrontMat, atmSteelMat, atmSteelMat, atmSideMat, atmSideMat]
+                );
+                atmBody.position.y = 1.16;
+                atmBody.castShadow = true;
+                atmGroup.add(atmBody);
+                group.add(atmGroup);
 
             } else {
                 // Fallback / Generischer Landmark-Pfosten
