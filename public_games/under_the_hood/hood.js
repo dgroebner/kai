@@ -5655,8 +5655,8 @@
                         side: THREE.DoubleSide,
                     })
                 );
-                vanMesh.position.set(-2.5, 0.2 + vanH / 2, -3.5);
-                vanMesh.rotation.y = -Math.PI / 2 + 0.12;
+                vanMesh.position.set(-3.8, 0.2 + vanH / 2, -4.6);
+                vanMesh.rotation.y = -Math.PI / 2 + 0.18;
                 radioGroup.add(vanMesh);
 
                 group.add(radioGroup);
