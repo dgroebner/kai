@@ -2801,7 +2801,7 @@
 
         applyTintedCarTexture(sp, cacheKey, colorHex, carMesh) {
             if (!this._texCache) this._texCache = {};
-            const fullKey = `${cacheKey}_${colorHex}_v1380`;
+            const fullKey = `${cacheKey}_${colorHex}_v1381`;
             const cached = this._texCache[fullKey];
             if (cached && cached.tex) {
                 carMesh.material.map = cached.tex;
@@ -2944,10 +2944,10 @@
 
             if (!this.cockpitHoodMesh) return;
             const specs = {
-                sportscar: { file: './textures/hood_sportscar.png', w: 3.50, h: 1.08, x: -0.30, y: 0.78, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
-                monster:   { file: './textures/hood_monster.png',   w: 3.70, h: 1.29, x: -0.25, y: 0.72, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
-                buggy:     { file: './textures/hood_buggy.png',     w: 3.50, h: 0.59, x: -0.25, y: 0.96, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
-                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.55, h: 1.10, x: -0.25, y: 0.76, z: -1.20, rotX: -0.06, maxChroma: 65, minLum: 135 },
+                sportscar: { file: './textures/hood_sportscar.png', w: 3.55, h: 0.58, x: -0.22, y: 0.80, z: -1.20, rotX: -0.18, maxChroma: 90, minLum: 65 },
+                monster:   { file: './textures/hood_monster.png',   w: 3.65, h: 0.68, x: -0.22, y: 0.80, z: -1.20, rotX: -0.16, maxChroma: 90, minLum: 65 },
+                buggy:     { file: './textures/hood_buggy.png',     w: 3.45, h: 0.46, x: -0.22, y: 0.88, z: -1.20, rotX: -0.12, maxChroma: 90, minLum: 65 },
+                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.55, h: 0.58, x: -0.22, y: 0.80, z: -1.20, rotX: -0.18, maxChroma: 90, minLum: 65 },
             };
             const sp = specs[safeVehicle] || specs.sportscar;
             this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
