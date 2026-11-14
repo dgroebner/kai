@@ -1014,62 +1014,66 @@
             tree.position.set(x, 0, z);
 
             if (isPalm) {
-                // Tropische Kokospalme mit geschwungenem Stamm
-                const trunkGroup = new THREE.Group();
-                const trunkMat = this.getBarkMaterial(1, 1);
-                const segHeights = [2.2, 2.0, 1.8];
-                let curY = 0;
-                let curTilt = 0;
-                const tiltAngle = (Math.random() - 0.5) * 0.18;
+                // Tropische Kokospalme mit nahtlos geschwungenem Stamm (1 verjüngter, gebogener Zylinder)
+                const trunkH = 6.0;
+                const curveOffset = (Math.random() - 0.5) * 1.1;
+                const trunkGeo = new THREE.CylinderGeometry(0.14, 0.30, trunkH, 12, 16);
+                const posAttr = trunkGeo.attributes.position;
+                for (let i = 0; i < posAttr.count; i++) {
+                    const vy = posAttr.getY(i); // -trunkH/2 .. +trunkH/2
+                    const t = (vy + trunkH / 2) / trunkH; // 0 .. 1
+                    posAttr.setX(i, posAttr.getX(i) + (t * t) * curveOffset);
+                }
+                trunkGeo.computeVertexNormals();
+                const trunkMat = this.getBarkMaterial(1, 2);
+                const trunkMesh = new THREE.Mesh(trunkGeo, trunkMat);
+                trunkMesh.position.set(0, trunkH / 2, 0);
+                trunkMesh.castShadow = true;
+                tree.add(trunkMesh);
 
-                segHeights.forEach((h, idx) => {
-                    const segGeo = new THREE.CylinderGeometry(0.20 - idx * 0.03, 0.28 - idx * 0.03, h, 10);
-                    const seg = new THREE.Mesh(segGeo, trunkMat);
-                    seg.position.set(curTilt, curY + h / 2, 0);
-                    seg.rotation.z = tiltAngle * idx;
-                    seg.castShadow = true;
-                    trunkGroup.add(seg);
-                    curY += h;
-                    curTilt += Math.sin(tiltAngle * idx) * h;
+                const topX = curveOffset;
+                const topY = trunkH;
+
+                // Freigestellte Krea-2 Palmenwedel (10 gefächerte Wedel rund um die Krone)
+                if (!this._texCache) this._texCache = {};
+                if (!this._texCache['palm_frond']) {
+                    const tex = new THREE.TextureLoader().load('./textures/palm_frond.png');
+                    tex.colorSpace = THREE.SRGBColorSpace;
+                    this._texCache['palm_frond'] = tex;
+                }
+                if (!this._palmFrondGeo) {
+                    const fSize = 3.8;
+                    const g = new THREE.PlaneGeometry(fSize, fSize);
+                    // Stielansatz unten links in den Ursprung (0,0,0) verschieben
+                    g.translate(fSize * 0.42, fSize * 0.48, 0);
+                    this._palmFrondGeo = g;
+                }
+                const frondMat = new THREE.MeshStandardMaterial({
+                    map: this._texCache['palm_frond'],
+                    alphaTest: 0.25,
+                    roughness: 0.78,
+                    side: THREE.DoubleSide,
                 });
-                tree.add(trunkGroup);
 
-                // 9 bogenförmig herabhängende Palmwedel (rotation.x neigt entlang +Z nach oben/unten!)
-                const frondMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.78, side: THREE.DoubleSide });
-                const frondDarkMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.82, side: THREE.DoubleSide });
-                for (let f = 0; f < 9; f++) {
-                    const frondRoot = new THREE.Group();
-                    frondRoot.position.set(curTilt, curY - 0.05, 0);
-                    frondRoot.rotation.y = (f / 9) * Math.PI * 2 + (f % 2) * 0.15;
-
-                    const mat = (f % 2 === 0) ? frondMat : frondDarkMat;
-                    // Segment 1: Steigt leicht nach außen an
-                    const seg1 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 1.35), mat);
-                    seg1.position.set(0, 0.18, 0.65);
-                    seg1.rotation.x = -0.26;
-                    frondRoot.add(seg1);
-
-                    // Segment 2: Biegt sich elegant nach unten
-                    const seg2 = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.04, 1.40), mat);
-                    seg2.position.set(0, 0.02, 1.85);
-                    seg2.rotation.x = 0.48;
-                    frondRoot.add(seg2);
-
-                    // Segment 3: Spitze hängt herab
-                    const seg3 = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.05, 4), mat);
-                    seg3.rotation.x = Math.PI / 2 + 0.92;
-                    seg3.scale.set(1.0, 1.0, 0.25);
-                    seg3.position.set(0, -0.62, 2.75);
-                    frondRoot.add(seg3);
-
-                    tree.add(frondRoot);
+                const frondCount = 10;
+                for (let f = 0; f < frondCount; f++) {
+                    const frondMesh = new THREE.Mesh(this._palmFrondGeo, frondMat);
+                    frondMesh.position.set(topX, topY - 0.15, 0);
+                    frondMesh.rotation.order = 'YXZ';
+                    frondMesh.rotation.y = (f / frondCount) * Math.PI * 2 + (f % 2) * 0.18;
+                    frondMesh.rotation.z = -0.18 - (f % 3) * 0.12;
+                    frondMesh.rotation.x = (f % 2 === 0 ? 0.16 : -0.16);
+                    const s = 0.88 + (f % 3) * 0.1;
+                    frondMesh.scale.set(s, s, s);
+                    frondMesh.castShadow = true;
+                    tree.add(frondMesh);
                 }
 
                 // 3 Kokosnüsse unter der Krone
                 const coconutMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
                 for (let c = 0; c < 3; c++) {
                     const coco = new THREE.Mesh(new THREE.SphereGeometry(0.20, 8, 8), coconutMat);
-                    coco.position.set(curTilt + (c - 1) * 0.18, curY - 0.25, (c % 2) * 0.18);
+                    coco.position.set(topX + (c - 1) * 0.18, topY - 0.30, (c % 2) * 0.18);
                     tree.add(coco);
                 }
             } else {
