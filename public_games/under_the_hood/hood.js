@@ -2809,7 +2809,7 @@
             if (!this._texCache) this._texCache = {};
 
             if (!this._texCache[cacheKey]) {
-                const tex = new THREE.TextureLoader().load(`${sp.file}?v=1.37.0`);
+                const tex = new THREE.TextureLoader().load(`${sp.file}?v=1.37.1`);
                 tex.colorSpace = THREE.SRGBColorSpace;
                 this._texCache[cacheKey] = tex;
             }
@@ -2845,10 +2845,10 @@
 
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
             const specs = {
-                sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.62 },
-                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 0.96 },
-                buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.83 },
-                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 1.81, y: 0.77 },
+                sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.68 },
+                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.03 },
+                buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.89 },
+                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 1.81, y: 0.83 },
             };
             const sp = specs[vehicle] || specs.sportscar;
             return this.buildCutoutCarSprite(sp, `car_parked_${vehicle}`, colorHex, 1.45, -Math.PI / 2 + 0.14);
@@ -5486,7 +5486,7 @@
                     : [];
                 waitingPlayers.slice(0, 4).forEach((p, idx) => {
                     const parkedCar = this.buildParkedPlayerCar(p.color || '#3b82f6', p.vehicle || 'sportscar');
-                    parkedCar.position.set(0.1, 0.09, bayZ[idx]);
+                    parkedCar.position.set(0.1, 0.14, bayZ[idx]);
                     parkingGroup.add(parkedCar);
                 });
                 group.add(parkingGroup);
