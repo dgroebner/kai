@@ -1494,31 +1494,87 @@
             rearSpoiler.position.set(0, 1.01, 2.40);
             this.cockpitRig.add(rearSpoiler);
 
-            // Gimmick fürs Labrador-Cabrio: Wedelnder Labrador-Schwanz mittig auf dem Kofferraumdeckel
+            // Gimmick fürs Labrador-Cabrio: Wedelnder Labrador-Schwanz mit Fellstruktur am Heck
+            const createFurTextures = () => {
+                const size = 256;
+                const colCanvas = document.createElement('canvas');
+                colCanvas.width = size;
+                colCanvas.height = size;
+                const cctx = colCanvas.getContext('2d');
+
+                const bumpCanvas = document.createElement('canvas');
+                bumpCanvas.width = size;
+                bumpCanvas.height = size;
+                const bctx = bumpCanvas.getContext('2d');
+
+                cctx.fillStyle = '#ecc57a';
+                cctx.fillRect(0, 0, size, size);
+                bctx.fillStyle = '#808080';
+                bctx.fillRect(0, 0, size, size);
+
+                const shades = ['#f8df9f', '#f0cb82', '#e1b25f', '#d5a24c', '#fae8b8'];
+                for (let s = 0; s < 2600; s++) {
+                    const sx = (s * 73) % size;
+                    const sy = (s * 137) % size;
+                    const len = 10 + (s % 18);
+                    const drift = ((s % 7) - 3) * 0.6;
+                    cctx.strokeStyle = shades[s % shades.length];
+                    cctx.lineWidth = 1 + (s % 2) * 0.7;
+                    cctx.globalAlpha = 0.55;
+                    cctx.beginPath();
+                    cctx.moveTo(sx, sy);
+                    cctx.lineTo(sx + drift, sy + len);
+                    cctx.stroke();
+
+                    const bVal = 95 + (s % 120);
+                    bctx.strokeStyle = `rgb(${bVal},${bVal},${bVal})`;
+                    bctx.lineWidth = 1.3;
+                    bctx.globalAlpha = 0.6;
+                    bctx.beginPath();
+                    bctx.moveTo(sx, sy);
+                    bctx.lineTo(sx + drift, sy + len);
+                    bctx.stroke();
+                }
+                const map = new THREE.CanvasTexture(colCanvas);
+                map.colorSpace = THREE.SRGBColorSpace;
+                map.wrapS = map.wrapT = THREE.RepeatWrapping;
+                map.repeat.set(2, 2);
+
+                const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+                bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+                bumpMap.repeat.set(2, 2);
+                return { map, bumpMap };
+            };
+            const furTex = createFurTextures();
             const dogFurMat = new THREE.MeshStandardMaterial({
-                color: 0xf3cf88,
-                roughness: 0.72,
-                metalness: 0.04,
+                map: furTex.map,
+                bumpMap: furTex.bumpMap,
+                bumpScale: 0.018,
+                roughness: 0.88,
+                metalness: 0.02,
             });
             this.dogTailGroup = new THREE.Group();
-            this.dogTailGroup.position.set(0, 1.03, 2.08);
-            this.dogTailGroup.rotation.x = 0.55; // Schräg nach hinten-oben abstehend
+            this.dogTailGroup.position.set(0, 0.94, 2.34);
+            this.dogTailGroup.rotation.x = 0.72; // Tief am Heck angesetzt, schräg nach hinten-oben
             this.dogTailGroup.visible = false;
 
-            const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.095, 0.36, 12), dogFurMat);
-            tailBase.position.set(0, 0.18, 0);
+            const tailRoot = new THREE.Mesh(new THREE.SphereGeometry(0.088, 12, 10), dogFurMat);
+            this.dogTailGroup.add(tailRoot);
+
+            const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.088, 0.30, 14), dogFurMat);
+            tailBase.position.set(0, 0.15, 0);
             this.dogTailGroup.add(tailBase);
 
             this.dogTailTip = new THREE.Group();
-            this.dogTailTip.position.set(0, 0.35, 0);
-            this.dogTailTip.rotation.x = -0.24; // Leichte natürliche Ruten-Krümmung
+            this.dogTailTip.position.set(0, 0.29, 0);
+            this.dogTailTip.rotation.x = -0.26; // Leichte natürliche Ruten-Krümmung
 
-            const tailMid = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.065, 0.34, 12), dogFurMat);
-            tailMid.position.set(0, 0.17, 0);
+            const tailMid = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.062, 0.28, 14), dogFurMat);
+            tailMid.position.set(0, 0.14, 0);
             this.dogTailTip.add(tailMid);
 
-            const tailEnd = new THREE.Mesh(new THREE.SphereGeometry(0.036, 10, 8), dogFurMat);
-            tailEnd.position.set(0, 0.34, 0);
+            const tailEnd = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), dogFurMat);
+            tailEnd.position.set(0, 0.28, 0);
             this.dogTailTip.add(tailEnd);
 
             this.dogTailGroup.add(this.dogTailTip);
