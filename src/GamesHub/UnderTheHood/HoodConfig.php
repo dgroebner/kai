@@ -16,10 +16,10 @@ class HoodConfig
         'suburb'       => ['name' => 'Vorstadt & Diners',    'color' => '#38BDF8', 'badge' => '☕'],
         'arts'         => ['name' => 'Künstlerviertel',      'color' => '#EC4899', 'badge' => '🎨'],
         'promenade'    => ['name' => 'Flaniermeile',         'color' => '#F97316', 'badge' => '🌴'],
-        'downtown'     => ['name' => 'Downtown & Skyline',   'color' => '#EF4444', 'badge' => '🏙️'],
-        'marina'       => ['name' => 'Yachthafen & Marina',  'color' => '#EAB308', 'badge' => '⛵'],
+        'downtown'     => ['name' => 'Innenstadt & Skyline', 'color' => '#EF4444', 'badge' => '🏙️'],
+        'marina'       => ['name' => 'Yachthafen & Kai',     'color' => '#EAB308', 'badge' => '⛵'],
         'heights'      => ['name' => 'Panorama-Höhen',       'color' => '#22C55E', 'badge' => '⛰️'],
-        'millionaires' => ['name' => 'Millionaires’ Hill',   'color' => '#3B82F6', 'badge' => '💎'],
+        'millionaires' => ['name' => 'Villenviertel',        'color' => '#3B82F6', 'badge' => '💎'],
     ];
 
     public const VEHICLES = [
@@ -67,11 +67,11 @@ class HoodConfig
             // 2: Card
             2 => [
                 'index' => 2,
-                'name'  => 'Radio Ticker',
+                'name'  => 'Verkehrsfunk',
                 'type'  => 'card',
                 'deck'  => 'radio',
                 'icon'  => '📻',
-                'desc'  => 'Zufällige Live-Nachricht aus der Hood.',
+                'desc'  => 'Zufällige Live-Nachricht aus der Nachbarschaft.',
             ],
             // 3: Docks 2
             3 => [
@@ -96,7 +96,7 @@ class HoodConfig
             // 5: Strand 1
             5 => [
                 'index'    => 5,
-                'name'     => 'North Beach',
+                'name'     => 'Nordstrand',
                 'type'     => 'beach',
                 'price'    => 200,
                 'mortgage' => 100,
@@ -126,7 +126,7 @@ class HoodConfig
             // 8: Suburb 2
             8 => [
                 'index'      => 8,
-                'name'       => 'Neon-Drive',
+                'name'       => 'Leuchtallee',
                 'type'       => 'street',
                 'group'      => 'suburb',
                 'price'      => 100,
@@ -167,7 +167,7 @@ class HoodConfig
             // 12: Club 1
             12 => [
                 'index'    => 12,
-                'name'     => 'The Neon Lounge',
+                'name'     => 'Club Nachtlicht',
                 'type'     => 'club',
                 'price'    => 150,
                 'mortgage' => 75,
@@ -199,7 +199,7 @@ class HoodConfig
             // 15: Strand 2
             15 => [
                 'index'    => 15,
-                'name'     => 'Palm Bay',
+                'name'     => 'Palmenbucht',
                 'type'     => 'beach',
                 'price'    => 200,
                 'mortgage' => 100,
@@ -220,11 +220,11 @@ class HoodConfig
             // 17: Card
             17 => [
                 'index' => 17,
-                'name'  => 'Radio Ticker',
+                'name'  => 'Verkehrsfunk',
                 'type'  => 'card',
                 'deck'  => 'radio',
                 'icon'  => '📻',
-                'desc'  => 'Zufällige Live-Nachricht aus der Hood.',
+                'desc'  => 'Zufällige Live-Nachricht aus der Nachbarschaft.',
             ],
             // 18: Promenade 2
             18 => [
@@ -251,7 +251,7 @@ class HoodConfig
             // 20: Autokino & Aussichtspunkt
             20 => [
                 'index' => 20,
-                'name'  => 'Autokino & Sunset Point',
+                'name'  => 'Autokino & Abendrot',
                 'type'  => 'parking',
                 'icon'  => '🎬',
                 'desc'  => 'Frei Parken & Autokino: Wer hier landet, räumt den Jackpot aus allen Strafgeldern ab!',
@@ -259,7 +259,7 @@ class HoodConfig
             // 21: Downtown 1
             21 => [
                 'index'      => 21,
-                'name'       => 'Tower-Kreuzung',
+                'name'       => 'Turm-Kreuzung',
                 'type'       => 'street',
                 'group'      => 'downtown',
                 'price'      => 220,
@@ -290,7 +290,7 @@ class HoodConfig
             // 24: Downtown 3
             24 => [
                 'index'      => 24,
-                'name'       => 'Wall Street',
+                'name'       => 'Börsenstraße',
                 'type'       => 'street',
                 'group'      => 'downtown',
                 'price'      => 240,
@@ -301,7 +301,7 @@ class HoodConfig
             // 25: Strand 3
             25 => [
                 'index'    => 25,
-                'name'     => 'Sunset Bay',
+                'name'     => 'Abendrotbucht',
                 'type'     => 'beach',
                 'price'    => 200,
                 'mortgage' => 100,
@@ -333,7 +333,7 @@ class HoodConfig
             // 28: Club 2
             28 => [
                 'index'    => 28,
-                'name'     => 'Underground Vault',
+                'name'     => 'Club Tresor',
                 'type'     => 'club',
                 'price'    => 150,
                 'mortgage' => 75,
@@ -384,16 +384,16 @@ class HoodConfig
             // 33: Card
             33 => [
                 'index' => 33,
-                'name'  => 'Radio Ticker',
+                'name'  => 'Verkehrsfunk',
                 'type'  => 'card',
                 'deck'  => 'radio',
                 'icon'  => '📻',
-                'desc'  => 'Zufällige Live-Nachricht aus der Hood.',
+                'desc'  => 'Zufällige Live-Nachricht aus der Nachbarschaft.',
             ],
             // 34: Heights 3
             34 => [
                 'index'      => 34,
-                'name'       => 'Skyview-Drive',
+                'name'       => 'Panoramastraße',
                 'type'       => 'street',
                 'group'      => 'heights',
                 'price'      => 320,
@@ -404,7 +404,7 @@ class HoodConfig
             // 35: Strand 4
             35 => [
                 'index'    => 35,
-                'name'     => 'Ocean Pier',
+                'name'     => 'Seebrücke',
                 'type'     => 'beach',
                 'price'    => 200,
                 'mortgage' => 100,
@@ -423,7 +423,7 @@ class HoodConfig
             // 37: Millionaires 1
             37 => [
                 'index'      => 37,
-                'name'       => 'Sunset-Boulevard',
+                'name'       => 'Abendsonne-Boulevard',
                 'type'       => 'street',
                 'group'      => 'millionaires',
                 'price'      => 350,
@@ -434,7 +434,7 @@ class HoodConfig
             // 38: Tax 2
             38 => [
                 'index' => 38,
-                'name'  => 'City-Maut & Luxussteuer',
+                'name'  => 'Stadtmaut & Luxussteuer',
                 'type'  => 'tax',
                 'tax'   => 100,
                 'icon'  => '💎',
@@ -443,7 +443,7 @@ class HoodConfig
             // 39: Millionaires 2 (Schlossallee)
             39 => [
                 'index'      => 39,
-                'name'       => 'Ocean-Crest-Avenue',
+                'name'       => 'Meeresblick-Allee',
                 'type'       => 'street',
                 'group'      => 'millionaires',
                 'price'      => 400,
@@ -460,17 +460,17 @@ class HoodConfig
     public static function getRadioCards(): array
     {
         return [
-            ['text' => '🏆 Du gewinnst das Street-Race! Kassiere 150k €.', 'action' => 'cash', 'amount' => 150],
+            ['text' => '🏆 Du gewinnst das Straßenrennen! Kassiere 150k €.', 'action' => 'cash', 'amount' => 150],
             ['text' => '🚨 Blitzer auf der Strandpromenade! Zahle 50k € Strafe.', 'action' => 'cash', 'amount' => -50],
             ['text' => '⛽ Tankstellen-Gutschein gewonnen! Ziehe 100k € ein.', 'action' => 'cash', 'amount' => 100],
             ['text' => '🔨 Werkstatt-Inspektion fällig: Zahle 25k € pro Haus und 100k € pro Hotel.', 'action' => 'repairs', 'per_house' => 25, 'per_hotel' => 100],
             ['text' => '🏁 Gib Vollgas: Fahre direkt auf START & ZIEL (kassiere 400k € Bonus).', 'action' => 'teleport', 'tile' => 0],
             ['text' => '🏖️ Abkühlung gefällig? Fahre vor zum nächsten Strand.', 'action' => 'nearest_beach'],
             ['text' => '🚓 Polizeikontrolle: Alkoholfahrt! Fahre sofort in die Verwahrstelle.', 'action' => 'go_to_jail'],
-            ['text' => '🎉 Geburtstags-Cruising: Jeder Mitspieler schenkt dir 20k €.', 'action' => 'collect_from_all', 'amount' => 20],
-            ['text' => '🏎️ Luxus-Tuning: Deine Autoserie gewinnt den Best-of-Show. Erhalte 100k €.', 'action' => 'cash', 'amount' => 100],
+            ['text' => '🎉 Geburtstags-Ausfahrt: Jeder Mitspieler schenkt dir 20k €.', 'action' => 'collect_from_all', 'amount' => 20],
+            ['text' => '🏎️ Luxus-Tuning: Dein Wagen gewinnt den Schönheitswettbewerb. Erhalte 100k €.', 'action' => 'cash', 'amount' => 100],
             ['text' => '🔑 Notfall-Schlüsselkarte: Du kommst kostenlos aus der Verwahrstelle frei.', 'action' => 'get_out_of_jail_free'],
-            ['text' => '🚧 Mautgebühr auf dem Ocean-Highway: Zahle 30k €.', 'action' => 'cash', 'amount' => -30],
+            ['text' => '🚧 Mautgebühr auf der Küstenstraße: Zahle 30k €.', 'action' => 'cash', 'amount' => -30],
         ];
     }
 
@@ -488,7 +488,7 @@ class HoodConfig
             ['text' => '🪙 Glücksmünze in der alten Jukebox gefunden: +25k €!', 'action' => 'cash', 'amount' => 25],
             ['text' => '🍩 Oldtimer-Treffen auf dem Diner-Parkplatz gesponsert: Erhalte 45k € Prämie.', 'action' => 'cash', 'amount' => 45],
             ['text' => '☕ Kaffeefleck auf dem weißen Ledersitz – Reinigung fällig: Zahle 20k €.', 'action' => 'cash', 'amount' => -20],
-            ['text' => '🏖️ Nach dem Milkshake geht es weiter ans Meer: Reise direkt zur Palm Bay.', 'action' => 'teleport', 'tile' => 15],
+            ['text' => '🏖️ Nach dem Milkshake geht es weiter ans Meer: Reise direkt zur Palmenbucht.', 'action' => 'teleport', 'tile' => 15],
             ['text' => '🍨 Eine Runde Milkshakes für alle Mitspieler! Jeder erhält 10k € von dir.', 'action' => 'pay_to_all', 'amount' => 10],
         ];
     }

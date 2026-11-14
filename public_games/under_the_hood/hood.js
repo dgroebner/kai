@@ -2255,7 +2255,7 @@
         // ---------------------------------------------------------------------
         // TEXTUR-GENERATOREN (FOTOREALISTISCHE NEON-SCHILDER, FENSTER & ZIEGEL)
         // ---------------------------------------------------------------------
-        getNeonFasciaTexture(title = 'The Neon Lounge', isOwned = false, colorHex = '#00f5ff') {
+        getNeonFasciaTexture(title = 'Club Nachtlicht', isOwned = false, colorHex = '#00f5ff') {
             const key = `fascia_${title}_${isOwned ? colorHex : 'ruin'}`;
             if (!this._texCache) this._texCache = {};
             if (this._texCache[key]) return this._texCache[key];
@@ -3903,17 +3903,17 @@
             ctx.font = '900 120px "Arial Black", "Impact", sans-serif';
             ctx.fillText('AUTOKINO', 512, 143);
 
-            // 2. UNTERES SCHILD: "& Sunset Point" (Türkis-cremefarbene geschwungene Plakette)
+            // 2. UNTERES SCHILD: "& Abendrot" (Türkis-cremefarbene geschwungene Plakette)
             ctx.fillStyle = '#f8fafc';
             ctx.fillRect(80, 290, 864, 180);
             ctx.strokeStyle = '#0f766e';
             ctx.lineWidth = 10;
             ctx.strokeRect(80, 290, 864, 180);
 
-            // Elegante Schreibschrift "& Sunset Point"
+            // Elegante Schreibschrift "& Abendrot"
             ctx.font = 'italic 700 85px "Brush Script MT", "Segoe Script", "Dancing Script", cursive, sans-serif';
             ctx.fillStyle = '#0f766e';
-            ctx.fillText('& Sunset Point', 512, 380);
+            ctx.fillText('& Abendrot', 512, 380);
 
             const tex = new THREE.CanvasTexture(canvas);
             tex.colorSpace = THREE.SRGBColorSpace;
@@ -3995,10 +3995,10 @@
                 suburb: 'Vorstadt & Diners',
                 arts: 'Künstlerviertel',
                 promenade: 'Flaniermeile',
-                downtown: 'Downtown & Skyline',
-                marina: 'Yachthafen & Marina',
+                downtown: 'Innenstadt & Skyline',
+                marina: 'Yachthafen & Kai',
                 heights: 'Panorama-Höhen',
-                millionaires: 'Millionaires’ Hill',
+                millionaires: 'Villenviertel',
             };
             return map[groupKey] || 'Kategorie';
         }
@@ -6644,8 +6644,8 @@
                     this.lastSeenCardId = cardId;
                     const isRadio = (card.deck === 'radio');
                     if (this.ui.cardAlertIcon) this.ui.cardAlertIcon.textContent = isRadio ? '📻' : '🍔';
-                    if (this.ui.cardAlertBadge) this.ui.cardAlertBadge.textContent = isRadio ? 'RADIO TICKER' : 'DRIVE-IN DINER';
-                    if (this.ui.cardAlertTitle) this.ui.cardAlertTitle.textContent = isRadio ? 'NEUE MELDUNG AUS DER HOOD' : 'IM DINER ERLEBT';
+                    if (this.ui.cardAlertBadge) this.ui.cardAlertBadge.textContent = isRadio ? 'VERKEHRSFUNK' : 'DRIVE-IN DINER';
+                    if (this.ui.cardAlertTitle) this.ui.cardAlertTitle.textContent = isRadio ? 'AKTUELLE VERKEHRSMELDUNG' : 'IM DINER ERLEBT';
                     if (this.ui.cardAlertText) this.ui.cardAlertText.textContent = card.text;
 
                     if (this.ui.cardAlertSub) {
@@ -6744,11 +6744,11 @@
                         const isRadio = (tile.deck === 'radio' || [2, 17, 33].includes(tileIdx));
                         icon = isRadio ? '📻' : '🍔';
                         if (state.last_card && state.last_card.text) {
-                            eventTitle = isRadio ? 'Live aus dem Radio Ticker' : 'Stopp im Drive-In Diner';
+                            eventTitle = isRadio ? 'Live aus dem Verkehrsfunk' : 'Stopp im Drive-In Diner';
                             desc = state.last_card.text;
                         } else {
                             eventTitle = tile.name;
-                            desc = isRadio ? 'Zufällige Live-Nachricht aus der Hood.' : 'Boxenstopp im Diner: Milkshake, Jackpot oder Zeche?';
+                            desc = isRadio ? 'Zufällige Live-Nachricht aus der Nachbarschaft.' : 'Boxenstopp im Diner: Milkshake, Jackpot oder Zeche?';
                         }
                     } else if (tile.type === 'tax') {
                         icon = '🛑';
@@ -6997,10 +6997,10 @@
                 suburb: { name: 'Vorstadt & Diners', color: '#38BDF8', badge: '☕' },
                 arts: { name: 'Künstlerviertel', color: '#EC4899', badge: '🎨' },
                 promenade: { name: 'Flaniermeile', color: '#F97316', badge: '🌴' },
-                downtown: { name: 'Downtown & Skyline', color: '#EF4444', badge: '🏙️' },
-                marina: { name: 'Yachthafen & Marina', color: '#EAB308', badge: '⛵' },
+                downtown: { name: 'Innenstadt & Skyline', color: '#EF4444', badge: '🏙️' },
+                marina: { name: 'Yachthafen & Kai', color: '#EAB308', badge: '⛵' },
                 heights: { name: 'Panorama-Höhen', color: '#22C55E', badge: '⛰️' },
-                millionaires: { name: 'Millionaires’ Hill', color: '#3B82F6', badge: '💎' },
+                millionaires: { name: 'Villenviertel', color: '#3B82F6', badge: '💎' },
             };
             return groups[groupKey] || { name: groupKey || 'Sondergebiet', color: '#64748b', badge: '📍' };
         }

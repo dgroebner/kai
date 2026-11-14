@@ -470,7 +470,7 @@ $csrfToken = Auth::csrfToken();
         <div class="hood-modal" style="max-width: 480px; width: 95%; text-align: center; padding: 1.6rem; border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: 0 0 35px rgba(245, 158, 11, 0.25);">
             <div id="card-alert-icon" style="font-size: 3.2rem; margin-bottom: 0.4rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));">📻</div>
             <div id="card-alert-badge" style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hood-gold); margin-bottom: 0.35rem;">EREIGNISKARTE</div>
-            <h2 class="hood-modal-title" id="card-alert-title" style="margin-bottom: 0.85rem; font-size: 1.35rem; color: #f8fafc;">RADIO TICKER</h2>
+            <h2 class="hood-modal-title" id="card-alert-title" style="margin-bottom: 0.85rem; font-size: 1.35rem; color: #f8fafc;">VERKEHRSFUNK</h2>
             
             <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
                 <p id="card-alert-text" style="font-size: 1.05rem; line-height: 1.45; color: #ffffff; margin: 0; font-weight: 600;"></p>
