@@ -2804,18 +2804,10 @@
             return tex;
         }
 
-        buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
+        buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0) {
             const car = new THREE.Group();
             if (!this._texCache) this._texCache = {};
 
-            const specs = {
-                sportscar: { file: './textures/car_parked_white.png', w: 3.4, h: 1.91, y: 0.78 },
-                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.95, y: 1.24 },
-                buggy:     { file: './textures/car_parked_buggy.png', w: 3.4, h: 2.79, y: 1.18 },
-                dogcar:    { file: './textures/car_parked_dogcar.png', w: 3.4, h: 2.46, y: 1.04 },
-            };
-            const sp = specs[vehicle] || specs.sportscar;
-            const cacheKey = `car_parked_${vehicle}`;
             if (!this._texCache[cacheKey]) {
                 const tex = new THREE.TextureLoader().load(sp.file);
                 tex.colorSpace = THREE.SRGBColorSpace;
@@ -2826,7 +2818,7 @@
 
             // Weicher dunkler Bodenschatten auf dem Asphalt
             const shadow = new THREE.Mesh(
-                new THREE.CircleGeometry(1.45, 20),
+                new THREE.CircleGeometry(shadowRadius, 20),
                 new THREE.MeshBasicMaterial({ color: 0x05070a, transparent: true, opacity: 0.48, depthWrite: false })
             );
             shadow.rotation.x = -Math.PI / 2;
@@ -2847,10 +2839,82 @@
                 })
             );
             carMesh.position.set(0, sp.y, 0);
-            carMesh.rotation.y = -Math.PI / 2 + 0.14;
+            carMesh.rotation.y = rotY;
             car.add(carMesh);
 
             return car;
+        }
+
+        buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
+            const specs = {
+                sportscar: { file: './textures/car_parked_white.png', w: 3.4, h: 1.91, y: 0.78 },
+                monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.95, y: 1.24 },
+                buggy:     { file: './textures/car_parked_buggy.png', w: 3.4, h: 2.79, y: 1.18 },
+                dogcar:    { file: './textures/car_parked_dogcar.png', w: 3.4, h: 2.46, y: 1.04 },
+            };
+            const sp = specs[vehicle] || specs.sportscar;
+            return this.buildCutoutCarSprite(sp, `car_parked_${vehicle}`, colorHex, 1.45, -Math.PI / 2 + 0.14);
+        }
+
+        buildRoadPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
+            const specs = {
+                sportscar: { file: './textures/car_rear_white.png',   w: 3.2, h: 1.52, y: 0.68 },
+                monster:   { file: './textures/car_rear_monster.png', w: 3.5, h: 2.21, y: 1.02 },
+                buggy:     { file: './textures/car_rear_buggy.png',   w: 3.2, h: 1.97, y: 0.91 },
+                dogcar:    { file: './textures/car_rear_dogcar.png',  w: 3.1, h: 2.14, y: 0.98 },
+            };
+            const sp = specs[vehicle] || specs.sportscar;
+            return this.buildCutoutCarSprite(sp, `car_rear_${vehicle}`, colorHex, 1.35, 0.08);
+        }
+
+        updateRoadPlayerCars(state) {
+            if (!this.scene || !this.trackPoints || !state || !Array.isArray(state.players)) return;
+            if (!this.roadCarsGroup) {
+                this.roadCarsGroup = new THREE.Group();
+                this.scene.add(this.roadCarsGroup);
+            }
+
+            const activeId = this.getActivePlayerId();
+            const roadPlayers = state.players.filter(p => p.id !== activeId && (p.position || 0) > 0);
+            const sig = roadPlayers
+                .map(p => `${p.id}:${p.position || 0}:${p.color || ''}:${p.vehicle || 'sportscar'}`)
+                .join(',');
+
+            if (this._roadCarsSig === sig) return;
+            this._roadCarsSig = sig;
+
+            this.disposeHierarchy(this.roadCarsGroup);
+            while (this.roadCarsGroup.children.length > 0) {
+                this.roadCarsGroup.remove(this.roadCarsGroup.children[0]);
+            }
+
+            // Gruppierung nach Feld, damit mehrere Gegner auf demselben Feld versetzt stehen
+            const byTile = new Map();
+            roadPlayers.forEach(p => {
+                const tileIdx = Math.floor(p.position || 0) % 40;
+                if (!byTile.has(tileIdx)) byTile.set(tileIdx, []);
+                byTile.get(tileIdx).push(p);
+            });
+
+            const laneOffsets = [-2.6, -0.7, -4.1];
+            const fwdOffsets  = [0.0, 2.2, -2.0];
+
+            byTile.forEach((playersOnTile, tileIdx) => {
+                const tp = this.trackPoints[tileIdx];
+                if (!tp) return;
+                playersOnTile.forEach((p, idx) => {
+                    const car = this.buildRoadPlayerCar(p.color || '#3b82f6', p.vehicle || 'sportscar');
+                    const lat = laneOffsets[idx % laneOffsets.length];
+                    const fwd = fwdOffsets[idx % fwdOffsets.length];
+                    const carPos = tp.pos.clone()
+                        .add(tp.normal.clone().multiplyScalar(lat))
+                        .add(tp.tangent.clone().multiplyScalar(fwd));
+                    carPos.y = 0.25; // Straßenoberfläche
+                    car.position.copy(carPos);
+                    car.rotation.y = tp.angle;
+                    this.roadCarsGroup.add(car);
+                });
+            });
         }
 
         getClubCornerSignTexture(isOwned = false) {
@@ -5951,6 +6015,9 @@
                     this.renderPlotState(t, owner ? owner.color : null, t.mortgaged, owner ? owner.name : null);
                 });
             }
+
+            // Gegenspieler-Cabrios (Heckansicht) auf der linken Fahrspur platzieren
+            this.updateRoadPlayerCars(newState);
 
             // Fahrt animieren
             const activePlayer = (newState.players && newState.current_player_index !== undefined)
