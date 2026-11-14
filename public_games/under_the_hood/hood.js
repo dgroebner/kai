@@ -5168,52 +5168,83 @@
                     group.add(cabin);
 
                 } else if (level === 2) {
-                    // --- LEVEL 2: MODERNES EINFAMILIENHAUS / BUNGALOW ---
+                    // --- LEVEL 2: GEMÜTLICHES MODERNES EINFAMILIENHAUS MIT WALMDACH ---
                     const house = new THREE.Group();
                     house.position.set(3.2, 0, 0);
 
-                    // Heller Massivbau mit moderner Fassadentextur
-                    const body = new THREE.Mesh(
-                        new THREE.BoxGeometry(6.8, 3.8, 5.4),
-                        new THREE.MeshStandardMaterial({ map: this.getModernFacadeTexture('#f8fafc'), roughness: 0.35 })
-                    );
-                    body.position.set(0, 1.9, 0);
+                    // Heller Verputz-Baukörper + dunkler Naturstein-Sockel
+                    const plasterMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.78 });
+                    const plinthMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 });
+
+                    const plinth = new THREE.Mesh(new THREE.BoxGeometry(6.1, 0.45, 7.6), plinthMat);
+                    plinth.position.set(0, 0.225, 0);
+                    house.add(plinth);
+
+                    const body = new THREE.Mesh(new THREE.BoxGeometry(5.9, 3.1, 7.4), plasterMat);
+                    body.position.set(0, 2.0, 0);
+                    body.castShadow = true;
                     house.add(body);
 
-                    // Anthrazitfarbenes Schieferdach mit Ziegeltextur
-                    const roof = new THREE.Mesh(
-                        new THREE.BoxGeometry(7.4, 0.55, 6.0),
-                        new THREE.MeshStandardMaterial({ map: this.getRoofTilesTexture(), roughness: 0.4 })
-                    );
-                    roof.position.set(0, 4.0, 0);
+                    // Echtes geneigtes Walmdach mit Ziegeltextur + Schornstein
+                    const roofMat = new THREE.MeshStandardMaterial({ map: this.getRoofTilesTexture(), color: 0x334155, roughness: 0.65 });
+                    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.15, 1.85, 4), roofMat);
+                    roof.position.set(0, 4.45, 0);
+                    roof.rotation.y = Math.PI / 4;
+                    roof.scale.set(0.95, 1.0, 1.18);
+                    roof.castShadow = true;
                     house.add(roof);
 
-                    // Großes Panorama-Fenster zur Straße
-                    const win = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.1, 2.0, 2.8),
-                        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.7, roughness: 0.1 })
-                    );
-                    win.position.set(-3.45, 2.0, 0.8);
-                    house.add(win);
+                    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.1, 0.55), new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 }));
+                    chimney.position.set(0.8, 4.95, 1.6);
+                    house.add(chimney);
 
-                    // Eingangstür mit Überdachung in Spielerfarbe
-                    const doorRoof = new THREE.Mesh(
-                        new THREE.BoxGeometry(1.6, 0.15, 1.8),
-                        new THREE.MeshStandardMaterial({ color: ownerHex })
-                    );
-                    doorRoof.position.set(-3.8, 2.8, -1.5);
+                    // Haustür mit Stufe, Rahmen, Griff & Überdachung in Spielerfarbe (z = -1.7)
+                    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55 });
+                    const doorMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 });
+                    const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0xfef08a, emissiveIntensity: 0.22, roughness: 0.15, metalness: 0.5 });
+
+                    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.15, 1.25), frameMat);
+                    doorFrame.position.set(-2.96, 1.52, -1.7);
+                    house.add(doorFrame);
+
+                    const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.0, 1.05), doorMat);
+                    doorLeaf.position.set(-2.97, 1.48, -1.7);
+                    house.add(doorLeaf);
+
+                    const doorStep = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.16, 1.5), plinthMat);
+                    doorStep.position.set(-3.2, 0.28, -1.7);
+                    house.add(doorStep);
+
+                    const doorRoof = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 1.7), new THREE.MeshStandardMaterial({ color: ownerHex, roughness: 0.4 }));
+                    doorRoof.position.set(-3.35, 2.75, -1.7);
+                    doorRoof.rotation.z = 0.08;
                     house.add(doorRoof);
 
-                    // Gepflasterter Gartenweg
+                    // Zwei echte gerahmte Wohnzimmer- & Küchenfenster mit Fensterbank & Blumenkasten
+                    [0.3, 2.3].forEach(wz => {
+                        const wFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.45, 1.45), frameMat);
+                        wFrame.position.set(-2.96, 2.05, wz);
+                        house.add(wFrame);
+
+                        const wGlass = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.25, 1.25), glassMat);
+                        wGlass.position.set(-2.97, 2.05, wz);
+                        house.add(wGlass);
+
+                        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.10, 1.6), plinthMat);
+                        sill.position.set(-3.02, 1.30, wz);
+                        house.add(sill);
+                    });
+
+                    // Gepflasterter Gartenweg führt direkt zur Haustür
                     const path = new THREE.Mesh(
-                        new THREE.BoxGeometry(3.5, 0.08, 1.4),
+                        new THREE.BoxGeometry(3.8, 0.08, 1.3),
                         new THREE.MeshStandardMaterial({
                             map: this.loadSeamlessTexture('./textures/sidewalk_diffuse.webp', true, 2, 1),
                             normalMap: this.loadSeamlessTexture('./textures/sidewalk_normal.webp', false, 2, 1),
                             roughness: 0.8,
                         })
                     );
-                    path.position.set(-4.5, 0.15, 0);
+                    path.position.set(-1.6, 0.15, -1.7);
                     group.add(path);
 
                     group.add(house);
