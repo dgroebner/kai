@@ -1131,49 +1131,20 @@
                 doorTrim.position.set(isLeft ? sideX + 0.10 : sideX - 0.10, 0.78, 0.35);
                 this.cockpitRig.add(doorTrim);
 
-                // Außenspiegel-Arm + Gehäuse + Spiegelglas (deutlich sichtbar neben der A-Säule)
-                const mirrorArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.07, 0.10), leatherMat);
-                mirrorArm.position.set(isLeft ? sideX - 0.14 : sideX + 0.14, 0.97, -0.82);
-                mirrorArm.rotation.z = isLeft ? -0.25 : 0.25;
-                this.cockpitRig.add(mirrorArm);
-
-                const mirrorPivot = new THREE.Group();
-                mirrorPivot.position.set(isLeft ? sideX - 0.30 : sideX + 0.30, 1.03, -0.84);
-                mirrorPivot.rotation.y = isLeft ? 0.28 : -0.32;
-
-                const mirrorCap = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.17, 0.16), this.carHoodMat);
-                mirrorPivot.add(mirrorCap);
-
-                const mirrorGlass = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.13, 0.02), mirrorGlassMat);
-                mirrorGlass.position.set(0, 0, 0.082);
-                mirrorPivot.add(mirrorGlass);
-
-                this.cockpitRig.add(mirrorPivot);
+                // Boxy Außenspiegel werden durch die Krea 1st-Person Hauben-Cutouts ersetzt
             });
 
-            // 3. Geschwungene Sport-Cabrio Motorhaube mit Kotflügeln & Powerdome (neigt sich nach vorn ab)
-            const hoodBaseGeo = new THREE.BoxGeometry(2.65, 0.24, 3.15);
-            this.carHoodMesh = new THREE.Mesh(hoodBaseGeo, this.carHoodMat);
-            this.carHoodMesh.position.set(0, 0.68, -2.55);
-            this.carHoodMesh.rotation.x = -0.05; // Leicht nach vorn abfallende Sport-Front
-            this.carHoodMesh.castShadow = true;
-            this.cockpitRig.add(this.carHoodMesh);
-
-            // Abgerundete Kotflügel links & rechts neben der Haube
-            [-1.46, 1.46].forEach(fX => {
-                const fenderGeo = new THREE.CylinderGeometry(0.20, 0.22, 3.15, 14);
-                fenderGeo.rotateX(Math.PI / 2);
-                const fender = new THREE.Mesh(fenderGeo, this.carHoodMat);
-                fender.position.set(fX, 0.69, -2.55);
-                fender.rotation.x = -0.05;
-                this.cockpitRig.add(fender);
-            });
-
-            // Carbon Power-Dome in der Haubenmitte
-            const powerDome = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.10, 2.30), dashMat);
-            powerDome.position.set(0, 0.81, -2.45);
-            powerDome.rotation.x = -0.05;
-            this.cockpitRig.add(powerDome);
+            // 3. Fotorealistische 1st-Person Motorhaube + Außenspiegel (per updateCockpitAppearance gesetzt)
+            this.cockpitHoodMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(1, 1),
+                new THREE.MeshBasicMaterial({
+                    alphaTest: 0.4,
+                    side: THREE.FrontSide,
+                })
+            );
+            this.cockpitHoodMesh.visible = false;
+            this.cockpitRig.add(this.cockpitHoodMesh);
+            this.updateCockpitAppearance('#3b82f6', 'sportscar');
 
             // 4. Mittelkonsole mit Schalthebel (sitzt bündig auf Bodenwanne y=0.43)
             const consoleGeo = new THREE.BoxGeometry(0.56, 0.36, 2.15);
@@ -2950,6 +2921,37 @@
             this.applyTintedCarTexture(sp, cacheKey, colorHex, carMesh);
 
             return car;
+        }
+
+        updateCockpitAppearance(colorHex = '#3b82f6', vehicle = 'sportscar') {
+            const safeColor = colorHex || '#3b82f6';
+            const safeVehicle = vehicle || 'sportscar';
+            const key = `${safeVehicle}_${safeColor}`;
+            if (this._cockpitAppearanceKey === key) return;
+            this._cockpitAppearanceKey = key;
+
+            if (this.carHoodMat) {
+                const tint = new THREE.Color(safeColor);
+                const hsl = { h: 0, s: 0, l: 0 };
+                tint.getHSL(hsl);
+                hsl.s = Math.min(hsl.s, 0.65);
+                hsl.l = Math.min(Math.max(hsl.l, 0.28), 0.48);
+                tint.setHSL(hsl.h, hsl.s, hsl.l);
+                this.carHoodMat.color.copy(tint);
+            }
+
+            if (!this.cockpitHoodMesh) return;
+            const specs = {
+                sportscar: { file: './textures/hood_sportscar.png', w: 3.70, h: 1.14, x: 0, y: 0.78, z: -1.32, rotX: -0.92 },
+                monster:   { file: './textures/hood_monster.png',   w: 3.85, h: 1.34, x: 0, y: 0.80, z: -1.34, rotX: -0.88 },
+                buggy:     { file: './textures/hood_buggy.png',     w: 3.75, h: 0.63, x: 0, y: 0.90, z: -1.24, rotX: -0.42 },
+                dogcar:    { file: './textures/hood_dogcar.png',    w: 3.70, h: 1.15, x: 0, y: 0.78, z: -1.32, rotX: -0.92 },
+            };
+            const sp = specs[safeVehicle] || specs.sportscar;
+            this.cockpitHoodMesh.scale.set(sp.w, sp.h, 1);
+            this.cockpitHoodMesh.position.set(sp.x, sp.y, sp.z);
+            this.cockpitHoodMesh.rotation.x = sp.rotX;
+            this.applyTintedCarTexture(sp, `hood_${safeVehicle}`, safeColor, this.cockpitHoodMesh);
         }
 
         buildParkedPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
@@ -6120,8 +6122,8 @@
                 this.isHost = !!me.is_host;
                 this.ui.cashBadge.textContent = `${me.cash}k €`;
 
-                if (this.carHoodMat && me.color) {
-                    this.carHoodMat.color.set(me.color);
+                if (me.color || me.vehicle) {
+                    this.updateCockpitAppearance(me.color || '#3b82f6', me.vehicle || 'sportscar');
                 }
             }
 
@@ -6406,8 +6408,8 @@
 
             if (activePlayer) {
                 this.ui.cashBadge.textContent = `${activePlayer.cash}k €`;
-                if (this.carHoodMat && activePlayer.color) {
-                    this.carHoodMat.color.set(activePlayer.color);
+                if (activePlayer.color || activePlayer.vehicle) {
+                    this.updateCockpitAppearance(activePlayer.color || '#3b82f6', activePlayer.vehicle || 'sportscar');
                 }
             }
 
