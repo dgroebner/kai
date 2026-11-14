@@ -2850,7 +2850,7 @@
                 sportscar: { file: './textures/car_parked_white.png',   w: 3.4, h: 1.46, y: 0.67 },
                 monster:   { file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 1.03 },
                 buggy:     { file: './textures/car_parked_buggy.png',   w: 3.4, h: 1.92, y: 0.89 },
-                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 2.39, y: 1.08 },
+                dogcar:    { file: './textures/car_parked_dogcar.png',  w: 3.3, h: 1.81, y: 0.84 },
             };
             const sp = specs[vehicle] || specs.sportscar;
             return this.buildCutoutCarSprite(sp, `car_parked_${vehicle}`, colorHex, 1.45, -Math.PI / 2 + 0.14);
