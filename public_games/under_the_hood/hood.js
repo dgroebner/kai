@@ -2809,12 +2809,12 @@
             if (!this._texCache) this._texCache = {};
 
             if (!this._texCache[cacheKey]) {
-                const tex = new THREE.TextureLoader().load(sp.file);
+                const tex = new THREE.TextureLoader().load(`${sp.file}?v=1.36.98`);
                 tex.colorSpace = THREE.SRGBColorSpace;
                 this._texCache[cacheKey] = tex;
             }
             const carTex = this._texCache[cacheKey];
-            const tint = new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.14);
+            const tint = new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.28);
 
             // Weicher dunkler Bodenschatten auf dem Asphalt
             const shadow = new THREE.Mesh(
@@ -2826,16 +2826,14 @@
             shadow.position.set(0, 0.02, 0);
             car.add(shadow);
 
-            // Freigestelltes Krea-Cabrio, in der Spielerfarbe eingefärbt
+            // Freigestelltes Krea-Cabrio (MeshBasicMaterial erhält helle Scheinwerfer & Chrom unabhängig vom Sonnenwinkel)
             const carMesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(sp.w, sp.h),
-                new THREE.MeshStandardMaterial({
+                new THREE.MeshBasicMaterial({
                     map: carTex,
                     color: tint,
                     alphaTest: 0.4,
                     side: THREE.DoubleSide,
-                    roughness: 0.42,
-                    metalness: 0.15,
                 })
             );
             carMesh.position.set(0, sp.y, 0);
