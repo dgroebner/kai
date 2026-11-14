@@ -1242,28 +1242,24 @@
             this.hoodGroup.add(porscheGroup);
             this.hoodVariants.sportscar = porscheGroup;
 
-            // 3b. Monstertruck: hohe, bullige Pickup-Haube mit markanter Lufthutze
+            // 3b. Monstertruck: hohe, bullige Pickup-Haube mit flachem Powerdome & schwarzen Luftschlitzen
             const monsterGroup = new THREE.Group();
-            const monsterHood = buildSculptedSurface(3.40, 2.45, 26, 16, (nx, nz) => {
+            const monsterHood = buildSculptedSurface(3.40, 2.45, 28, 18, (nx, nz) => {
                 const absX = Math.abs(nx);
                 const slope = 0.18 * nz;
                 const edgeDrop = -0.07 * Math.pow(absX, 3.2) * (1 - nz * 0.85);
-                const powerDome = 0.065 * Math.exp(-Math.pow(absX / 0.34, 2)) * (1 - Math.pow(nz - 0.45, 2));
+                const powerDome = 0.068 * Math.exp(-Math.pow(absX / 0.30, 4)) * (1 - Math.pow(nz - 0.45, 2));
                 return 0.77 + slope + edgeDrop + powerDome;
             }, this.carHoodMat);
             monsterHood.position.set(0, 0, -2.15);
             monsterGroup.add(monsterHood);
 
-            const scoopShell = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.52, 1.35, 12, 1, false, 0, Math.PI), this.carHoodMat);
-            scoopShell.rotation.z = Math.PI / 2;
-            scoopShell.rotation.y = Math.PI / 2;
-            scoopShell.scale.set(1.0, 0.34, 1.0);
-            scoopShell.position.set(0, 0.90, -2.18);
-            monsterGroup.add(scoopShell);
-
-            const scoopMouth = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.09, 0.06), intakeMat);
-            scoopMouth.position.set(0, 0.91, -2.84);
-            monsterGroup.add(scoopMouth);
+            [-0.38, 0.38].forEach(vx => {
+                const vent = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.44), intakeMat);
+                vent.position.set(vx, 0.90, -2.28);
+                vent.rotation.x = 0.08;
+                monsterGroup.add(vent);
+            });
             this.hoodGroup.add(monsterGroup);
             this.hoodVariants.monster = monsterGroup;
 
