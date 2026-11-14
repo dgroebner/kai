@@ -3226,7 +3226,7 @@
             img.src = `${sp.file}?v=1.37.5`;
         }
 
-        buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0) {
+        buildCutoutCarSprite(sp, cacheKey, colorHex = '#3b82f6', shadowRadius = 1.45, rotY = 0, side = THREE.DoubleSide) {
             const car = new THREE.Group();
 
             // Weicher dunkler Bodenschatten direkt unter den Reifen
@@ -3244,7 +3244,7 @@
                 new THREE.PlaneGeometry(sp.w, sp.h),
                 new THREE.MeshBasicMaterial({
                     alphaTest: 0.4,
-                    side: THREE.DoubleSide,
+                    side,
                 })
             );
             carMesh.visible = false;
@@ -3307,7 +3307,7 @@
         }
 
         buildRoadPlayerCar(colorHex = '#3b82f6', vehicle = 'sportscar') {
-            const specs = {
+            const rearSpecs = {
                 sportscar: {
                     file: './textures/car_rear_white.png', w: 3.2, h: 1.52, y: 0.68,
                     preserveZones: [[0.08, 0.54, 0.05, 0.15, false], [0.37, 0.66, 0.065, 0.19, false]],
@@ -3323,8 +3323,44 @@
                     preserveZones: [[0.08, 0.66, 0.05, 0.13, false], [0.42, 0.76, 0.065, 0.16, false], [0.78, 0.36, 0.15, 0.27, true], [0.11, 0.30, 0.09, 0.11, true]],
                 },
             };
-            const sp = specs[vehicle] || specs.sportscar;
-            return this.buildCutoutCarSprite(sp, `car_rear_${vehicle}`, colorHex, 1.35, 0.08);
+            const frontSpecs = {
+                sportscar: {
+                    file: './textures/car_parked_white.png', w: 3.4, h: 1.46, y: 0.615,
+                    preserveZones: [[0.615, 0.70, 0.055, 0.17, false], [0.935, 0.65, 0.032, 0.14, false]],
+                },
+                monster: {
+                    file: './textures/car_parked_monster.png', w: 3.6, h: 2.22, y: 0.965,
+                },
+                buggy: {
+                    file: './textures/car_parked_buggy.png', w: 3.4, h: 1.92, y: 0.825,
+                },
+                dogcar: {
+                    file: './textures/car_parked_dogcar.png', w: 3.3, h: 1.81, y: 0.765,
+                    preserveZones: [[0.59, 0.76, 0.06, 0.15, false], [0.935, 0.67, 0.032, 0.12, false], [0.165, 0.54, 0.095, 0.165, true]],
+                },
+            };
+
+            const rearSp = rearSpecs[vehicle] || rearSpecs.sportscar;
+            const frontSp = frontSpecs[vehicle] || frontSpecs.sportscar;
+
+            // Rücken-an-Rücken mit FrontSide:
+            // - Von hinten gesehen (Auto vor dir): nur Heck-Ansicht sichtbar
+            // - Von vorne gesehen (Auto hinter dir / im Rückspiegel): nur Front-Ansicht sichtbar
+            const car = this.buildCutoutCarSprite(rearSp, `car_rear_${vehicle}`, colorHex, 1.35, 0.08, THREE.FrontSide);
+            const frontMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(frontSp.w, frontSp.h),
+                new THREE.MeshBasicMaterial({
+                    alphaTest: 0.4,
+                    side: THREE.FrontSide,
+                })
+            );
+            frontMesh.visible = false;
+            frontMesh.position.set(0, frontSp.y, 0);
+            frontMesh.rotation.y = Math.PI + 0.08;
+            car.add(frontMesh);
+            this.applyTintedCarTexture(frontSp, `car_parked_${vehicle}`, colorHex, frontMesh);
+
+            return car;
         }
 
         updateRoadPlayerCars(state) {
@@ -4794,14 +4830,26 @@
                 surfboard2.rotation.y = -0.15;
                 group.add(surfboard2);
 
-                // Edle weiße Flagge mit Wimpel in Spielerfarbe
-                const flagMast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                // Edle weiße Flagge mit im Wind wehendem Wimpel in Spielerfarbe
+                const flagMast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.4 }));
                 flagMast.position.set(-6.5, 3.0, -3.5);
                 group.add(flagMast);
 
-                const flag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.2, 1.8), playerMat);
-                flag.position.set(-6.5, 5.2, -4.3);
-                group.add(flag);
+                const flagGeo = new THREE.PlaneGeometry(1.8, 1.15, 14, 6);
+                flagGeo.translate(0.9, 0, 0);
+                const beachFlag = new THREE.Mesh(
+                    flagGeo,
+                    new THREE.MeshStandardMaterial({ color: ownerColor || '#3b82f6', roughness: 0.55, side: THREE.DoubleSide })
+                );
+                beachFlag.position.set(-6.5, 5.3, -3.5);
+                beachFlag.rotation.y = Math.PI / 2;
+                group.add(beachFlag);
+                if (!this._wavingFlags) this._wavingFlags = [];
+                this._wavingFlags.push({
+                    mesh: beachFlag,
+                    basePos: Float32Array.from(flagGeo.attributes.position.array),
+                    phase: Math.random() * Math.PI * 2,
+                });
             }
         }
 
