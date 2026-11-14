@@ -1139,9 +1139,9 @@
                 this.cockpitRig.add(doorTrim);
 
                 // Abgerundeter 3D-Außenspiegel mit bündig eingelassenem ovalem Live-Spiegelglas
-                const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.034, 0.30, 10), leatherMat);
-                mirrorArm.rotation.z = Math.PI / 2 + (isLeft ? -0.30 : 0.30);
-                mirrorArm.position.set(isLeft ? sideX - 0.14 : sideX + 0.14, 0.90, -0.84);
+                const mirrorArm = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.032, 0.24, 10), this.carHoodMat);
+                mirrorArm.rotation.z = Math.PI / 2 + (isLeft ? -0.32 : 0.32);
+                mirrorArm.position.set(isLeft ? sideX - 0.12 : sideX + 0.12, 0.90, -0.92);
                 this.cockpitRig.add(mirrorArm);
 
                 const sideMirrorPivot = new THREE.Group();
