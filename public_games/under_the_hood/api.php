@@ -29,6 +29,19 @@ $playerTokenHash = $playerToken !== '' ? hash('sha256', $playerToken) : '';
 
 function hoodRespond(int $status, array $payload): never
 {
+    // Aktuelle Orts-/Straßennamen aus HoodConfig auch für laufende Partien synchronisieren
+    if (isset($payload['state']['tiles']) && is_array($payload['state']['tiles'])) {
+        $tileConfigs = HoodConfig::getTiles();
+        foreach ($payload['state']['tiles'] as $idx => &$tileState) {
+            if (isset($tileConfigs[$idx])) {
+                $tileState['name'] = $tileConfigs[$idx]['name'];
+                if (isset($tileConfigs[$idx]['desc'])) {
+                    $tileState['desc'] = $tileConfigs[$idx]['desc'];
+                }
+            }
+        }
+        unset($tileState);
+    }
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE);
     exit;
