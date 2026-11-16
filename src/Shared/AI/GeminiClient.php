@@ -7,16 +7,60 @@ use Kai\Tools\Shared\Log\Logger;
 
 class GeminiClient
 {
+    private const DEFAULT_FALLBACK_MODELS = [
+        'gemini-4-hydrogen',
+        'gemini-3.8-flash',
+        'gemini-3.5-flash-lite',
+    ];
+
     private string $apiKey;
-    private string $apiUrl;
+    private string $primaryModel;
+    /** @var string[] */
+    private array $fallbackModels;
     private Logger $logger;
+    private int $lastHttpCode = 0;
 
     public function __construct(?string $model = null)
     {
         $this->apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
-        $resolvedModel = $model ?? $_ENV['GEMINI_MODEL'] ?? 'gemini-3.1-flash-lite';
-        $this->apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/$resolvedModel:generateContent";
+        $this->primaryModel = $model ?? ($_ENV['GEMINI_MODEL'] ?? 'gemini-3.1-flash-lite');
+        $this->fallbackModels = $this->resolveFallbackModels($this->primaryModel);
         $this->logger = new Logger();
+    }
+
+    public function getLastHttpCode(): int
+    {
+        return $this->lastHttpCode;
+    }
+
+    public function isTemporarilyUnavailable(): bool
+    {
+        return in_array($this->lastHttpCode, [429, 503], true);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function resolveFallbackModels(string $primaryModel): array
+    {
+        $envRaw = trim((string)($_ENV['GEMINI_FALLBACK_MODELS'] ?? ''));
+        $candidates = $envRaw !== ''
+            ? array_map('trim', explode(',', $envRaw))
+            : self::DEFAULT_FALLBACK_MODELS;
+
+        $fallbacks = [];
+        foreach ($candidates as $candidate) {
+            if ($candidate !== '' && $candidate !== $primaryModel && !in_array($candidate, $fallbacks, true)) {
+                $fallbacks[] = $candidate;
+            }
+        }
+
+        return $fallbacks;
+    }
+
+    private function buildApiUrl(string $model): string
+    {
+        return "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
     }
 
     /**
@@ -77,58 +121,87 @@ class GeminiClient
             throw new Exception("Payload konnte nicht in JSON encodiert werden: " . json_last_error_msg());
         }
 
-        $maxAttempts = ($timeout <= 10) ? 1 : 3;
+        $this->lastHttpCode = 0;
+        $modelsToTry = ($timeout <= 10)
+            ? [$this->primaryModel]
+            : array_merge([$this->primaryModel], $this->fallbackModels);
+
         $response = null;
         $httpCode = 0;
+        $usedModel = $this->primaryModel;
 
-        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-            $ch = curl_init($this->apiUrl);
-            if ($ch === false) {
-                throw new Exception("cURL konnte nicht initialisiert werden.");
-            }
+        foreach ($modelsToTry as $modelIndex => $currentModel) {
+            $usedModel = $currentModel;
+            $isPrimary = ($modelIndex === 0);
+            $maxAttempts = ($isPrimary && $timeout > 10) ? 3 : 1;
+            $apiUrl = $this->buildApiUrl($currentModel);
 
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(10, $timeout));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'x-goog-api-key: ' . $this->apiKey
-            ]);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                $ch = curl_init($apiUrl);
+                if ($ch === false) {
+                    throw new Exception("cURL konnte nicht initialisiert werden.");
+                }
 
-            // Hinweis: Für reine lokale Windows-Tests ohne SSL-Zertifikate diese Zeile einkommentieren:
-            if (($_ENV['GEMINI_DISABLE_SSL'] ?? 'false') === 'true') {
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            }
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(10, $timeout));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json',
+                    'x-goog-api-key: ' . $this->apiKey
+                ]);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
 
-            $this->logger->info("GeminiClient: Sende Request an Google API (Versuch $attempt/$maxAttempts)...");
-            $response = curl_exec($ch);
+                // Hinweis: Für reine lokale Windows-Tests ohne SSL-Zertifikate diese Zeile einkommentieren:
+                if (($_ENV['GEMINI_DISABLE_SSL'] ?? 'false') === 'true') {
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                }
 
-            // Fehlerbehandlung: System-Ebene (cURL)
-            if (curl_errno($ch)) {
-                $errorMsg = curl_error($ch);
+                $this->logger->info("GeminiClient: Sende Request an Google API (Modell: $currentModel, Versuch $attempt/$maxAttempts)...");
+                $response = curl_exec($ch);
+
+                // Fehlerbehandlung: System-Ebene (cURL)
+                if (curl_errno($ch)) {
+                    $errorMsg = curl_error($ch);
+                    curl_close($ch);
+                    throw new Exception("Netzwerk/cURL-Fehler bei API-Anfrage: " . $errorMsg);
+                }
+
+                $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
-                throw new Exception("Netzwerk/cURL-Fehler bei API-Anfrage: " . $errorMsg);
+
+                // Bei temporärer Überlastung (503) oder Rate Limit (429) kurz warten und wiederholen
+                if (($httpCode === 503 || $httpCode === 429) && $attempt < $maxAttempts) {
+                    $waitSec = $attempt * 2;
+                    $this->logger->warn("GeminiClient: Vorübergehende Überlastung (HTTP $httpCode) bei '$currentModel'. Wiederhole Versuch in {$waitSec}s...");
+                    sleep($waitSec);
+                    continue;
+                }
+
+                break;
             }
 
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            if ($httpCode === 200) {
+                break;
+            }
 
-            // Bei temporärer Überlastung (503) oder Rate Limit (429) kurz warten und wiederholen
-            if (($httpCode === 503 || $httpCode === 429) && $attempt < $maxAttempts) {
-                $waitSec = $attempt * 2;
-                $this->logger->warn("GeminiClient: Vorübergehende Überlastung (HTTP $httpCode). Wiederhole Versuch in {$waitSec}s...");
-                sleep($waitSec);
+            // Bei Überlastung/Rate-Limit/nicht verfügbarem Modell auf das nächste Fallback-Modell wechseln
+            $hasNextModel = isset($modelsToTry[$modelIndex + 1]);
+            if ($hasNextModel && in_array($httpCode, [404, 429, 503], true)) {
+                $nextModel = $modelsToTry[$modelIndex + 1];
+                $this->logger->warn("GeminiClient: Modell '$currentModel' nicht verfügbar (HTTP $httpCode). Wechsle auf Fallback-Modell '$nextModel'...");
                 continue;
             }
 
             break;
         }
 
+        $this->lastHttpCode = $httpCode;
+
         // Fehlerbehandlung: API-Ebene (Google)
         if ($httpCode !== 200) {
             $this->logger->error("GeminiClient: Google API lehnte Anfrage ab.", [
+                'model' => $usedModel,
                 'http_code' => $httpCode,
                 'response' => $response
             ]);

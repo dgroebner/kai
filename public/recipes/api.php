@@ -6,6 +6,7 @@ use Kai\Tools\Recipes\RecipeRepository;
 use Kai\Tools\Recipes\RecipeScaler;
 use Kai\Tools\Recipes\RecipeShoppingService;
 use Kai\Tools\Recipes\RecipeTimelineService;
+use Kai\Tools\Shared\AI\AiUnavailableException;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\Shared\Security\Auth;
 use Kai\Tools\System\SystemSettingsService;
@@ -362,6 +363,9 @@ try {
         default:
             Auth::sendJsonError(400, 'Unbekannte Aktion.');
     }
+} catch (AiUnavailableException $e) {
+    $logger->warn('recipes/api.php: KI vorübergehend nicht erreichbar bei Aktion ' . $action, ['error' => $e->getMessage()]);
+    Auth::sendJsonError(503, 'Die Google KI ist aktuell stark ausgelastet. Bitte versuche es in wenigen Sekunden erneut.');
 } catch (\Throwable $e) {
     $logger->error('recipes/api.php: Fehler bei Aktion ' . $action, ['error' => $e->getMessage()]);
     Auth::sendJsonError(500, 'Interner Fehler bei der Verarbeitung des Rezepts.');

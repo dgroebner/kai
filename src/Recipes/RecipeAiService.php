@@ -3,6 +3,7 @@
 namespace Kai\Tools\Recipes;
 
 use Exception;
+use Kai\Tools\Shared\AI\AiUnavailableException;
 use Kai\Tools\Shared\AI\GeminiClient;
 use Kai\Tools\Shared\Log\Logger;
 use Kai\Tools\System\SystemSettingsService;
@@ -239,6 +240,11 @@ PROMPT;
         );
 
         if (!is_array($response) || empty($response['title'])) {
+            if ($this->gemini->isTemporarilyUnavailable()) {
+                throw new AiUnavailableException(
+                    'Die Google KI ist aktuell vorübergehend überlastet (HTTP ' . $this->gemini->getLastHttpCode() . ').'
+                );
+            }
             throw new Exception('Das Rezept konnte von der KI nicht vollständig erkannt werden.');
         }
 
