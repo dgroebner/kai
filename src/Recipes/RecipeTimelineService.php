@@ -34,6 +34,7 @@ class RecipeTimelineService
             $pot = (string)($comp['pot_or_appliance'] ?? 'Topf / Pfanne');
             $cookSteps = [];
             $compCookDuration = 0;
+            $hasSeenCookingInComp = false;
 
             foreach ($comp['steps'] ?? [] as $step) {
                 $phase = (string)($step['phase'] ?? 'cooking');
@@ -55,6 +56,11 @@ class RecipeTimelineService
                         $phase = $isPreheatAction ? 'preheat' : 'cooking';
                         $step['phase'] = $phase;
                     }
+                } elseif ($phase === 'mise_en_place_parallel' && $hasSeenCookingInComp) {
+                    // Ein Schritt nach einem Koch-/Aufheizschritt derselben Komponente (z. B. gekochte Eier schälen)
+                    // darf nicht zeitlich vor das Kochen geschoben werden.
+                    $phase = 'resting';
+                    $step['phase'] = 'resting';
                 }
 
                 if ($phase === 'mise_en_place_pre') {
@@ -71,6 +77,7 @@ class RecipeTimelineService
                     $step['effective_duration_min'] = $effectiveDur;
                     $servingSteps[] = $step;
                 } else {
+                    $hasSeenCookingInComp = true;
                     $effectiveDur = $dur > 0 ? $dur : 2;
                     $step['effective_duration_min'] = $effectiveDur;
                     $cookSteps[] = $step;

@@ -145,7 +145,8 @@ VERBINDLICHE REGELN FÜR DIE AUFBEREITUNG:
    - WICHTIG: Die Phasen `mise_en_place_pre` und `mise_en_place_parallel` sind AUSSCHLIESSLICH für kalte Schneide-, Rüst- und Vorbereitungsarbeiten auf der Arbeitsfläche (ohne Herd/Hitze)!
    - Sobald ein Schritt Hitze, Kochen, Braten, Köcheln, Backen oder eine Herd-Stufe (`stove_level`) erfordert, ist er IMMER `phase = "cooking"` (oder `phase = "preheat"` beim Wasser aufkochen / Ofen vorheizen)! Setze NIEMALS `mise_en_place_parallel` für echte Kochvorgänge auf dem Herd (wie Nudeln kochen)!
    - Vorbereitung vor dem Einschalten des Herdes (`phase = "mise_en_place_pre"`): Schneide-, Würfel- und Rüst-Arbeiten, die fertig sein müssen, bevor der Herd eingeschaltet wird.
-   - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): Reine Schneide-/Vorbereitungsarbeiten (ohne Herd!), die während passiver Schmorzeiten erledigt werden können.
+   - Parallele Vorbereitung (`phase = "mise_en_place_parallel"`): AUSSCHLIESSLICH unabhängige Schneide-/Vorbereitungsarbeiten an **rohen** Zutaten (ohne Herd!), die während passiver Schmorzeiten erledigt werden können.
+   - WICHTIG FÜR LOGISCHE REIHENFOLGEN (z. B. gekochte Eier schälen, Abgießen, Abkühlen): Schritte, die erst NACH einem vorherigen Kochschritt möglich sind (z. B. "gekochte Eier abschrecken, abkühlen lassen und schälen"), dürfen NIEMALS `mise_en_place_parallel` sein! Sie gehören chronologisch als `phase = "resting"` bzw. `phase = "cooking"` direkt in dieselbe Komponente NACH dem jeweiligen Kochschritt, damit der Zeitplan sie niemals vor dem Kochen einplant!
    - Chronologische Reihenfolge bei Töpfen (Nudeln, Reis, Kartoffeln):
      1. Schritt: Wasser aufsetzen & erhitzen (`phase = "preheat"`, Stufe {$stoveLevels}, ca. 6 Min).
      2. Schritt: Nudeln/Reis hineingeben & garen (`phase = "cooking"`, z. B. Stufe 5, 10 Min).
